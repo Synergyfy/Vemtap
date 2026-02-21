@@ -233,7 +233,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     ];
 
     const filteredMenuItems = menuItems.filter(item =>
-        !item.roles || item.roles.includes(user?.role as string)
+        !item.roles || item.roles.includes((user?.role as string)?.toLowerCase() || 'owner')
     );
 
     const isActive = (href: string) => pathname === href;

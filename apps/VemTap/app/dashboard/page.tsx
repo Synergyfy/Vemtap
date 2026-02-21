@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dashboardApi } from '@/lib/api/dashboard';
+import { useQueryClient } from '@tanstack/react-query';
 import { Visitor } from '@/lib/store/mockDashboardStore';
 import toast from 'react-hot-toast';
 import {
@@ -18,7 +17,7 @@ import PreviewRewardModal from '@/components/dashboard/PreviewRewardModal';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useBusinessStore } from '@/store/useBusinessStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { exportToCSV } from '@/lib/utils/export';
+import { useDashboardAnalytics } from '@/services/analytics/hooks';
 
 
 export default function DashboardPage() {
@@ -42,55 +41,17 @@ export default function DashboardPage() {
     }, [user, router]);
 
     // Fetch Dashboard Data
-    const { data, isLoading } = useQuery({
-        queryKey: ['dashboard'],
-        queryFn: dashboardApi.fetchDashboardData,
-    });
+    const { data, isLoading } = useDashboardAnalytics();
 
-    // Mutation: Add Visitor (Simulates inbound traffic)
-    const addVisitorMutation = useMutation({
-        mutationFn: dashboardApi.addVisitor,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            toast.success('New visitor check-in simulated!');
-        },
-    });
-
-    // Mutation: Clear Dashboard
-    const clearDashboardMutation = useMutation({
-        mutationFn: dashboardApi.clearDashboard,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            toast.success('Dashboard data cleared');
-        },
-    });
+    // Mutations are stripped for now since backend is truth.
+    const isPending = false;
 
     const { getActiveBranch, activeBranchId } = useBusinessStore();
     const { hasReachedVisitorLimit, getPlan } = useSubscriptionStore();
     const currentPlan = getPlan();
 
     const handleSimulateVisitor = () => {
-        if (data && hasReachedVisitorLimit(data.stats.totalVisitors)) {
-            toast.error(`You have reached the ${currentPlan?.name} plan limit of ${currentPlan?.visitorLimit} visitors. Please upgrade to continue tracking.`);
-            return;
-        }
-
-        const activeBranch = getActiveBranch();
-        const bId = activeBranchId === 'all' ? 'head-office' : activeBranchId;
-        const loc = activeBranch?.address || 'Head Office';
-
-        const isNew = Math.random() > 0.5;
-        const newVisitor: Visitor = {
-            id: Math.random().toString(36).substr(2, 9),
-            name: isNew ? `New User ${Math.floor(Math.random() * 100)}` : `Returning User ${Math.floor(Math.random() * 100)}`,
-            phone: `+234 ${Math.floor(Math.random() * 900) + 100} ${Math.floor(Math.random() * 9000) + 1000}`,
-            time: 'Just now',
-            timestamp: Date.now(),
-            status: isNew ? 'new' : 'returning',
-            branchId: bId,
-            location: loc,
-        };
-        addVisitorMutation.mutate(newVisitor);
+        toast.error("Simulation disabled while backend integration is ongoing.");
     };
 
     const handleClearDashboard = () => {
@@ -98,67 +59,37 @@ export default function DashboardPage() {
     };
 
     const confirmClear = () => {
-        clearDashboardMutation.mutate();
         setShowClearModal(false);
+        toast.error("Clear disabled while backend integration is ongoing.");
     };
 
-    const handleExportRecentVisitors = () => {
-        if (!data?.recentVisitors) return;
+    const stats = data?.stats.map((s) => {
+        let icon = Users;
+        let color = 'blue';
+        if (s.label === 'New Customers') { icon = UserPlus; color = 'green'; }
+        if (s.label === 'Repeat Rate') { icon = Repeat; color = 'purple'; }
+        if (s.label === 'Avg. Stay Time') { icon = Calendar; color = 'orange'; }
 
-        // Map data to clean export format
-        const exportData = data.recentVisitors.map(v => ({
-            Name: v.name,
-            Phone: v.phone,
-            Status: v.status.toUpperCase(),
-            'Last Visit': v.time,
-            Location: v.location || 'Head Office'
-        }));
+        return {
+            label: s.label,
+            value: s.value.toString(),
+            change: s.trend,
+            trend: s.isUp ? 'up' : 'down',
+            icon: icon,
+            color: color
+        };
+    }) || [];
 
-        exportToCSV(exportData, `recent_visitors_${new Date().toISOString().split('T')[0]}`);
-        toast.success('Recent visitors exported to CSV');
-    };
-
-    const stats = [
-        {
-            label: 'Total Visitors',
-            value: data?.stats.totalVisitors.toLocaleString() || '0',
-            change: '+12.5%',
-            trend: 'up',
-            icon: Users,
-            color: 'blue'
-        },
-        {
-            label: 'New Visitors',
-            value: data?.stats.newVisitors.toLocaleString() || '0',
-            change: '+36.8%',
-            trend: 'up',
-            icon: UserPlus,
-            color: 'green'
-        },
-        {
-            label: 'Repeat Visitors',
-            value: data?.stats.repeatVisitors.toLocaleString() || '0',
-            change: '+8.2%',
-            trend: 'up',
-            icon: Repeat,
-            color: 'purple'
-        },
-        {
-            label: 'Today\'s Visits',
-            value: data?.stats.todaysVisits.toLocaleString() || '0',
-            change: '-2.4%',
-            trend: 'down',
-            icon: Calendar,
-            color: 'orange'
-        },
-    ];
-
-    const maxVisits = data ? Math.max(...data.activityData.map((d: any) => d.visits)) : 100;
+    const maxVisits = data ? Math.max(...data.peakTimes.map(d => d.value)) : 100;
 
     // Computed audience breakdown
-    const totalVisitors = data?.stats?.totalVisitors || 0;
-    const repeatVisitors = data?.stats?.repeatVisitors || 0;
-    const newVisitors = data?.stats?.newVisitors || 0;
+    const totalVisitsStat = data?.stats.find(s => s.label === 'Total Visits');
+    const newCustomersStat = data?.stats.find(s => s.label === 'New Customers');
+
+    const totalVisitors = parseInt(totalVisitsStat?.value.toString().replace(/,/g, '') || '0', 10);
+    const newVisitors = parseInt(newCustomersStat?.value.toString().replace(/,/g, '') || '0', 10);
+    const repeatVisitors = totalVisitors - newVisitors > 0 ? totalVisitors - newVisitors : 0;
+
     const returningPct = totalVisitors > 0 ? Math.round((repeatVisitors / totalVisitors) * 100) : 0;
     const newPct = totalVisitors > 0 ? 100 - returningPct : 0;
 
@@ -194,7 +125,7 @@ export default function DashboardPage() {
                     )}
                     <button
                         onClick={handleClearDashboard}
-                        disabled={clearDashboardMutation.isPending}
+                        disabled={isPending}
                         className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
                     >
                         <Trash size={16} />
@@ -257,22 +188,22 @@ export default function DashboardPage() {
 
                     {/* Bar Chart */}
                     <div className="flex items-end justify-between gap-2 h-48">
-                        {data?.activityData.map((d: any, index: number) => {
-                            const newVisits = Math.floor(d.visits * 0.4);
-                            const totalPct = maxVisits > 0 ? (d.visits / maxVisits) * 100 : 0;
-                            const newPctBar = d.visits > 0 ? (newVisits / d.visits) * 100 : 0;
+                        {data?.peakTimes.map((d: any, index: number) => {
+                            const newVisits = Math.floor(d.value * 0.4);
+                            const totalPct = maxVisits > 0 ? (d.value / maxVisits) * 100 : 0;
+                            const newPctBar = d.value > 0 ? (newVisits / d.value) * 100 : 0;
                             return (
                                 <div key={index} className="flex-1 flex flex-col items-center gap-1.5 group relative">
                                     <div className="w-full rounded-t-md relative flex flex-col justify-end" style={{ height: '100%' }}>
                                         {/* Tooltip */}
                                         <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[9px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none whitespace-nowrap">
-                                            {d.visits} ({newVisits} new)
+                                            {d.value} ({newVisits} new)
                                         </div>
 
                                         {/* Total Bar */}
                                         <div
                                             className="w-full bg-primary/15 rounded-t-md transition-all relative overflow-hidden"
-                                            style={{ height: `${totalPct}%`, minHeight: d.visits > 0 ? '4px' : '0' }}
+                                            style={{ height: `${totalPct}%`, minHeight: d.value > 0 ? '4px' : '0' }}
                                         >
                                             {/* New Visitor portion */}
                                             <div
@@ -282,7 +213,7 @@ export default function DashboardPage() {
                                         </div>
                                     </div>
                                     <div className="text-center">
-                                        <p className="text-[9px] font-bold text-text-main">{d.visits}</p>
+                                        <p className="text-[9px] font-bold text-text-main">{d.value}</p>
                                         <p className="text-[8px] text-text-secondary font-medium uppercase tracking-tighter">{d.hour}</p>
                                     </div>
                                 </div>
@@ -341,12 +272,12 @@ export default function DashboardPage() {
                         <div className="space-y-2">
                             <button
                                 onClick={handleSimulateVisitor}
-                                disabled={addVisitorMutation.isPending}
+                                disabled={isPending}
                                 className="w-full flex items-center justify-between p-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-50 group"
                             >
                                 <div className="flex items-center gap-3">
                                     <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center">
-                                        {addVisitorMutation.isPending ? (
+                                        {isPending ? (
                                             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                         ) : (
                                             <UserPlus size={16} />
@@ -391,21 +322,12 @@ export default function DashboardPage() {
                         <h2 className="text-base font-display font-bold text-text-main mb-0.5">Recent Visitors</h2>
                         <p className="text-[10px] text-text-secondary">Latest customer check-ins</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleExportRecentVisitors}
-                            className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                            title="Export to CSV"
-                        >
-                            <Download size={18} />
-                        </button>
-                        <button
-                            onClick={() => router.push('/dashboard/visitors/all')}
-                            className="px-4 py-2 text-xs font-bold text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                        >
-                            View All
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => router.push('/dashboard/visitors/all')}
+                        className="px-4 py-2 text-xs font-bold text-primary hover:bg-primary/5 rounded-lg transition-colors"
+                    >
+                        View All
+                    </button>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full">
@@ -419,65 +341,11 @@ export default function DashboardPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {data?.recentVisitors.slice(0, 5).map((visitor: Visitor, index: number) => (
-                                <tr
-                                    key={visitor.id || index}
-                                    className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer"
-                                    onClick={() => setSelectedVisitorForDetails(visitor)}
-                                >
-                                    <td className="py-3 px-4">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                                <Users className="text-primary" size={14} />
-                                            </div>
-                                            <span className="font-bold text-sm text-text-main">{visitor.name}</span>
-                                        </div>
-                                    </td>
-                                    <td className="py-3 px-4 text-sm text-text-secondary font-medium">{visitor.phone}</td>
-                                    <td className="py-3 px-4 text-sm text-text-secondary font-medium">{visitor.time}</td>
-                                    <td className="py-3 px-4">
-                                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold ${visitor.status === 'new'
-                                            ? 'bg-emerald-50 text-emerald-600'
-                                            : 'bg-primary/10 text-primary'
-                                            }`}>
-                                            {visitor.status === 'new' ? 'New' : 'Returning'}
-                                        </span>
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedVisitorForMsg({
-                                                        visitor,
-                                                        type: visitor.status === 'new' ? 'welcome' : 'reward'
-                                                    });
-                                                }}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider rounded-lg hover:bg-primary/20 transition-colors"
-                                            >
-                                                <Send size={10} />
-                                                {visitor.status === 'new' ? 'Welcome' : 'Message'}
-                                            </button>
-                                            {visitor.status === 'returning' && (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setRewardPreviewVisitor(visitor);
-                                                    }}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 text-white text-[10px] font-black uppercase tracking-wider rounded-lg hover:bg-orange-600 transition-colors shadow-lg shadow-orange-500/20"
-                                                >
-                                                    <Gift size={10} />
-                                                    Reward
-                                                </button>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {data?.recentVisitors.length === 0 && (
+                            {[]}
+                            {true && (
                                 <tr>
                                     <td colSpan={5} className="py-8 text-center text-text-secondary font-medium">
-                                        No recent visitors found. Click "Simulate Check-in" to add test data.
+                                        Recent visitors list is not populated yet. Endpoints merging in progress...
                                     </td>
                                 </tr>
                             )}
@@ -520,7 +388,7 @@ export default function DashboardPage() {
                 isOpen={!!rewardPreviewVisitor}
                 onClose={() => setRewardPreviewVisitor(null)}
                 rewardTitle="Free Coffee or Pastry"
-                businessName={data?.businessName || 'Your Business'}
+                businessName={user?.businessName || 'Your Business'}
             />
         </div >
     );
