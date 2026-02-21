@@ -7,6 +7,7 @@ import StatsCard from '@/components/dashboard/StatsCard';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import EmptyState from '@/components/dashboard/EmptyState';
 import { useQuery } from '@tanstack/react-query';
+import { useBusinessStore } from '@/store/useBusinessStore';
 import { dashboardApi } from '@/lib/api/dashboard';
 import { Visitor } from '@/lib/store/mockDashboardStore';
 import { Users, UserPlus, Repeat, Star, Search, Download, MoreVertical, Send, Gift, Plus } from 'lucide-react';
@@ -21,8 +22,10 @@ export default function VisitorsOverviewPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' | 'general' } | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
 
+    const { activeBranchId } = useBusinessStore();
+
     const { data: storeData, isLoading } = useQuery({
-        queryKey: ['dashboard'],
+        queryKey: ['dashboard', activeBranchId],
         queryFn: dashboardApi.fetchDashboardData,
     });
 

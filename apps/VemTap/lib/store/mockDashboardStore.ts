@@ -176,7 +176,7 @@ const initialVisitors: Visitor[] = [
     timestamp: Date.now() - 900000, 
     status: 'returning',
     optIn: true,
-    surveyAnswers: { q1: 4, q2: 'Maybe', q3: 'Great service!' },
+    surveyAnswers: { q1: 4, q2: 'Maybe', q3: 'Great service' },
     branchId: 'head-office',
     location: 'Reception'
   },
@@ -192,6 +192,17 @@ const initialVisitors: Visitor[] = [
     location: 'Allen Ave Entrance'
   },
   { 
+    id: '3-2', 
+    name: 'Robert Fox', 
+    phone: '+234 803 111 2222', 
+    time: '3 hours ago', 
+    timestamp: Date.now() - 10800000, 
+    status: 'returning',
+    optIn: true,
+    branchId: 'ikeja-branch',
+    location: 'VIP Lounge'
+  },
+  { 
     id: '4', 
     name: 'Sarah Williams', 
     phone: '+234 804 567 8901', 
@@ -204,15 +215,15 @@ const initialVisitors: Visitor[] = [
     location: 'Apo Main'
   },
   { 
-    id: '5', 
-    name: 'David Brown', 
-    phone: '+234 805 678 9012', 
-    time: '3 hours ago', 
-    timestamp: Date.now() - 10800000, 
+    id: '4-2', 
+    name: 'Esther Howard', 
+    phone: '+234 804 333 4444', 
+    time: '5 hours ago', 
+    timestamp: Date.now() - 18000000, 
     status: 'new',
-    optIn: false,
-    branchId: 'head-office',
-    location: 'Side Gate'
+    optIn: true,
+    branchId: 'abuja-branch',
+    location: 'Gate 2'
   },
 ];
 
@@ -221,26 +232,27 @@ const initialActivityData: ActivityPoint[] = [
   { hour: '10 AM', visits: 24, branchId: 'head-office' },
   { hour: '11 AM', visits: 35, branchId: 'head-office' },
   { hour: '12 PM', visits: 48, branchId: 'head-office' },
-  { hour: '1 PM', visits: 42, branchId: 'head-office' },
-  { hour: '2 PM', visits: 38, branchId: 'head-office' },
-  { hour: '3 PM', visits: 45, branchId: 'head-office' },
-  { hour: '4 PM', visits: 52, branchId: 'head-office' },
   { hour: '9 AM', visits: 5, branchId: 'ikeja-branch' },
   { hour: '10 AM', visits: 10, branchId: 'ikeja-branch' },
+  { hour: '11 AM', visits: 18, branchId: 'ikeja-branch' },
+  { hour: '12 PM', visits: 15, branchId: 'ikeja-branch' },
   { hour: '9 AM', visits: 8, branchId: 'abuja-branch' },
+  { hour: '10 AM', visits: 12, branchId: 'abuja-branch' },
+  { hour: '11 AM', visits: 22, branchId: 'abuja-branch' },
+  { hour: '12 PM', visits: 19, branchId: 'abuja-branch' },
 ];
 
 const initialRewards: Reward[] = [
   { id: '1', title: 'Free Coffee', points: 100, description: 'Get a free coffee on us', active: true, branchId: 'head-office' },
-  { id: '2', title: '10% Off', points: 250, description: '10% off your next purchase', active: true },
-  { id: '3', title: 'VIP Access', points: 500, description: 'VIP access for one month', active: false, branchId: 'abuja-branch' },
+  { id: '2', title: '10% Off', points: 250, description: '10% off your next purchase', active: true, branchId: 'head-office' },
+  { id: '3', title: 'Buy 1 Get 1', points: 500, description: 'Exclusive Ikeja offer', active: true, branchId: 'ikeja-branch' },
+  { id: '4', title: 'VIP Access', points: 1000, description: 'Abuja Elite Reward', active: true, branchId: 'abuja-branch' },
 ];
 
 const initialNotifications: Notification[] = [
-    { id: '1', title: 'Welcome', message: 'Welcome to your new dashboard!', timestamp: Date.now(), read: false, type: 'info', scope: 'DASHBOARD', branchId: 'head-office' },
-    { id: '2', title: 'System Healthy', message: 'Platform services are running optimally.', timestamp: Date.now(), read: true, type: 'success', scope: 'ADMIN' },
-    { id: '3', title: 'Pending Approval', message: '3 businesses are waiting for verification.', timestamp: Date.now() - 3600000, read: false, type: 'warning', scope: 'ADMIN' },
-    { id: '4', title: 'Device Offline', message: '12 devices in Lagos sector are offline.', timestamp: Date.now() - 7200000, read: false, type: 'error', scope: 'ADMIN' },
+    { id: '1', title: 'Welcome', message: 'Welcome to your dashboard.', timestamp: Date.now(), read: false, type: 'info', scope: 'DASHBOARD', branchId: 'head-office' },
+    { id: '2', title: 'Ikeja Update', message: 'Ikeja branch traffic is increasing.', timestamp: Date.now() - 3600000, read: false, type: 'info', scope: 'DASHBOARD', branchId: 'ikeja-branch' },
+    { id: '3', title: 'Abuja Alert', message: 'New reward redemption in Abuja.', timestamp: Date.now() - 7200000, read: false, type: 'warning', scope: 'DASHBOARD', branchId: 'abuja-branch' },
 ];
 
 const initialMessages: Message[] = [
@@ -261,21 +273,21 @@ const initialMessages: Message[] = [
   },
   { 
     id: '2', 
-    name: 'Welcome Message', 
+    name: 'Ikeja Lunch Promo', 
     type: 'SMS', 
-    audience: 'New Customers', 
-    status: 'Recurring', 
+    audience: 'Local Customers', 
+    status: 'Active', 
     sent: 412, 
     delivered: '395', 
     deliveryRate: 95,
     clicks: 84, 
     ctr: 20.3,
-    timestamp: Date.now() - 172800000,
-    branchId: 'head-office'
+    timestamp: Date.now() - 43200000,
+    branchId: 'ikeja-branch'
   },
   { 
     id: '3', 
-    name: 'VIP Night Invitation', 
+    name: 'Abuja VIP Event', 
     type: 'WhatsApp', 
     audience: 'VIP Members', 
     status: 'Scheduled', 
@@ -285,22 +297,7 @@ const initialMessages: Message[] = [
     clicks: 0, 
     ctr: 0,
     timestamp: Date.now() + 86400000,
-    branchId: 'head-office'
-  },
-  { 
-    id: '4', 
-    name: 'October Newsletter', 
-    type: 'Email', 
-    audience: 'Newsletter Subs', 
-    status: 'Completed', 
-    sent: 2840, 
-    delivered: '2.6k', 
-    deliveryRate: 92,
-    clicks: 312, 
-    opens: 1950,
-    ctr: 10.9,
-    timestamp: Date.now() - 604800000,
-    branchId: 'head-office'
+    branchId: 'abuja-branch'
   },
 ];
 

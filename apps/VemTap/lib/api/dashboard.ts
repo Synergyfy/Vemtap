@@ -9,7 +9,7 @@ export const dashboardApi = {
     const state = useMockDashboardStore.getState();
     const { activeBranchId } = (await import('@/store/useBusinessStore')).useBusinessStore.getState();
     
-    const isAllBranches = activeBranchId === 'all';
+    const isAllBranches = activeBranchId === 'all' || !activeBranchId;
     
     // Filter data by branch
     const filteredVisitors = isAllBranches ? state.visitors : state.visitors.filter(v => v.branchId === activeBranchId);
@@ -18,17 +18,16 @@ export const dashboardApi = {
     const filteredStaff = isAllBranches ? state.staffMembers : state.staffMembers.filter(s => s.branchId === activeBranchId);
     const filteredDevices = isAllBranches ? state.devices : state.devices.filter(d => d.branchId === activeBranchId);
     const filteredRedemptions = isAllBranches ? state.redemptionRequests : state.redemptionRequests.filter(r => r.branchId === activeBranchId);
+    const filteredRewards = isAllBranches ? state.rewards : state.rewards.filter(r => !r.branchId || r.branchId === activeBranchId);
 
     // Aggregate stats if 'all'
     let stats = state.stats;
     if (isAllBranches) {
-        // In a real app, this would be computed on the server
-        // For mock, we can just return the global stats (which are currently global)
         stats = {
-            totalVisitors: state.visitors.length * 10, // Mocking larger combined numbers
-            newVisitors: state.visitors.filter(v => v.status === 'new').length * 10,
-            repeatVisitors: state.visitors.filter(v => v.status === 'returning').length * 10,
-            todaysVisits: state.visitors.filter(v => v.time === 'Just now').length * 5,
+            totalVisitors: state.visitors.length,
+            newVisitors: state.visitors.filter(v => v.status === 'new').length,
+            repeatVisitors: state.visitors.filter(v => v.status === 'returning').length,
+            todaysVisits: state.visitors.filter(v => v.time === 'Just now').length,
         };
     } else {
         // Individual branch stats
@@ -44,7 +43,7 @@ export const dashboardApi = {
       stats,
       recentVisitors: filteredVisitors,
       activityData: filteredActivity,
-      rewards: state.rewards, // Rewards can be global or filtered
+      rewards: filteredRewards,
       notifications: state.notifications.filter(n => !n.branchId || isAllBranches || n.branchId === activeBranchId),
       messages: filteredMessages,
       staffMembers: filteredStaff,
@@ -76,17 +75,20 @@ export const dashboardApi = {
 
   addVisitor: async (visitor: Visitor) => {
     await delay(500);
-    useMockDashboardStore.getState().addVisitor(visitor);
+    const { activeBranchId } = (await import('@/store/useBusinessStore')).useBusinessStore.getState();
+    const visitorWithBranch = { ...visitor, branchId: visitor.branchId || activeBranchId };
+    useMockDashboardStore.getState().addVisitor(visitorWithBranch);
     useMockDashboardStore.getState().addNotification({
         id: Math.random().toString(36).substr(2, 9),
         title: 'New Visitor',
-        message: `${visitor.name} just checked in!`,
+        message: `${visitor.name} checked in.`,
         timestamp: Date.now(),
         read: false,
         type: 'info',
-        scope: 'DASHBOARD'
+        scope: 'DASHBOARD',
+        branchId: visitorWithBranch.branchId
     });
-    return visitor;
+    return visitorWithBranch;
   },
 
   clearDashboard: async () => {
@@ -97,17 +99,20 @@ export const dashboardApi = {
   // Reward Actions
   createReward: async (reward: Reward) => {
       await delay(600);
-      useMockDashboardStore.getState().addReward(reward);
+      const { activeBranchId } = (await import('@/store/useBusinessStore')).useBusinessStore.getState();
+      const rewardWithBranch = { ...reward, branchId: reward.branchId || activeBranchId };
+      useMockDashboardStore.getState().addReward(rewardWithBranch);
       useMockDashboardStore.getState().addNotification({
           id: Math.random().toString(36).substr(2, 9),
           title: 'Reward Created',
-          message: `Reward "${reward.title}" has been created successfully.`,
+          message: `Reward "${reward.title}" has been created.`,
           timestamp: Date.now(),
           read: false,
           type: 'success',
-          scope: 'DASHBOARD'
+          scope: 'DASHBOARD',
+          branchId: rewardWithBranch.branchId
       });
-      return reward;
+      return rewardWithBranch;
   },
 
   deleteReward: async (id: string) => {
@@ -121,6 +126,7 @@ export const dashboardApi = {
       await delay(700);
       const state = useMockDashboardStore.getState();
       const reward = state.rewards.find(r => r.id === rewardId);
+      const { activeBranchId } = (await import('@/store/useBusinessStore')).useBusinessStore.getState();
       
       if (reward) {
           useMockDashboardStore.getState().addNotification({
@@ -130,7 +136,8 @@ export const dashboardApi = {
               timestamp: Date.now(),
               read: false,
               type: 'success',
-              scope: 'DASHBOARD'
+              scope: 'DASHBOARD',
+              branchId: reward.branchId || activeBranchId
           });
       }
       return { userId, rewardId };
@@ -155,6 +162,7 @@ export const dashboardApi = {
   // Message Actions
   createMessage: async (message: any) => {
     await delay(1000);
+    const { activeBranchId } = (await import('@/store/useBusinessStore')).useBusinessStore.getState();
     const id = Math.random().toString(36).substr(2, 9);
     const newMessage = {
       ...message,
@@ -162,7 +170,8 @@ export const dashboardApi = {
       sent: 0,
       delivered: '0%',
       clicks: 0,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      branchId: message.branchId || activeBranchId
     };
     useMockDashboardStore.getState().addMessage(newMessage);
     useMockDashboardStore.getState().addNotification({
@@ -172,7 +181,8 @@ export const dashboardApi = {
       timestamp: Date.now(),
       read: false,
       type: 'success',
-      scope: 'DASHBOARD'    
+      scope: 'DASHBOARD',
+      branchId: newMessage.branchId
     });
     return newMessage;
   },
@@ -198,8 +208,9 @@ export const dashboardApi = {
   // Staff Actions
   addStaff: async (staff: any) => {
     await delay(800);
+    const { activeBranchId } = (await import('@/store/useBusinessStore')).useBusinessStore.getState();
     const id = Math.random().toString(36).substr(2, 9);
-    const newStaff = { ...staff, id, lastActive: 'Never', status: 'Active' };
+    const newStaff = { ...staff, id, lastActive: 'Never', status: 'Active', branchId: staff.branchId || activeBranchId };
     useMockDashboardStore.getState().addStaff(newStaff);
     return newStaff;
   },
@@ -219,6 +230,7 @@ export const dashboardApi = {
   // Device Actions
   addDevice: async (device: any) => {
     await delay(800);
+    const { activeBranchId } = (await import('@/store/useBusinessStore')).useBusinessStore.getState();
     const id = device.id || Math.random().toString(36).substr(2, 9);
     const newDevice = { 
       ...device, 
@@ -227,7 +239,8 @@ export const dashboardApi = {
       status: 'active', 
       batteryLevel: 100,
       totalScans: 0,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      branchId: device.branchId || activeBranchId
     };
     useMockDashboardStore.getState().addDevice(newDevice);
     return newDevice;

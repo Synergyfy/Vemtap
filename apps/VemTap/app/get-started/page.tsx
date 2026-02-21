@@ -1,6 +1,4 @@
-git pull origin mono-frank
-fatal: couldn't find remote ref mono-frank
-b'use client';
+'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
@@ -13,6 +11,9 @@ import Logo from '@/components/brand/Logo';
 import { SanitizedInput } from '@/components/ui/SanitizedInput';
 import { sanitizeFormData } from '@/lib/utils/sanitize';
 import { useRegisterOwner, useOtp } from '@/services/auth/hooks';
+import { useQuery } from '@tanstack/react-query';
+import { fetchPricingPlans } from '@/lib/api/pricing';
+import { CheckCircle2 } from 'lucide-react';
 
 export default function GetStarted() {
     const { registerOwner, isLoading: isRegistering } = useRegisterOwner();
@@ -79,6 +80,20 @@ export default function GetStarted() {
             setStep(prev => prev - 1);
             if (step === 4) setSubStep(10);
         }
+    };
+
+    const calculatePersonalPrice = () => {
+        let base = 15000;
+        const branchVal = formData.branchCount === '1' ? 0 :
+            formData.branchCount === '2-5' ? 5000 :
+                formData.branchCount === '6-10' ? 15000 :
+                    formData.branchCount === '11-50' ? 40000 : 100000;
+
+        const visitorVal = formData.visitors === '0-500' ? 0 :
+            formData.visitors === '501-2000' ? 10000 :
+                formData.visitors === '2001-5000' ? 25000 : 60000;
+
+        return base + branchVal + visitorVal;
     };
 
     const handleCreateAccount = async () => {
@@ -822,7 +837,7 @@ export default function GetStarted() {
                                     key="final"
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="space-y-8 min-w-[320px] md:min-w-[600px] lg:min-w-[800px] -ml-0 md:-ml-20 lg:-ml-40"
+                                    className="space-y-8 min-w-[320px] md:min-w-[600px] lg:min-w-[800px] ml-0 md:-ml-20 lg:-ml-40"
                                 >
                                     <div className="text-center mb-12">
                                         <div className="size-16 bg-primary/10 rounded-full flex items-center justify-center text-primary mx-auto mb-6">
@@ -849,9 +864,9 @@ export default function GetStarted() {
                                                     </div>
 
                                                     <ul className="space-y-3 mb-8 flex-1">
-                                                        {plan.features.slice(0, 4).map((f, i) => (
-                                                            <li key={i} className="flex items-start gap-2 text-[10px] font-bold text-slate-600">
-                                                                <CheckCircle2 size={12} className="text-primary mt-0.5 shrink-0" />
+                                                        {plan.features.slice(0, 4).map((f: string, i: number) => (
+                                                            <li key={i} className="flex items-center gap-2 text-[11px] font-bold text-slate-500">
+                                                                <CheckCircle2 className="size-3.5 text-primary" />
                                                                 {f}
                                                             </li>
                                                         ))}

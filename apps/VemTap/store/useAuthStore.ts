@@ -32,11 +32,12 @@ interface AuthState {
   login: (userData: User) => void;
   signup: (userData: User) => void;
   logout: () => void;
+  subscribe: (planId: SubscriptionPlan) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
 
@@ -52,6 +53,20 @@ export const useAuthStore = create<AuthState>()(
         set({ user: null, isAuthenticated: false });
         useChatStore.getState().clearHistory();
         localStorage.removeItem('chat-history');
+      },
+
+      subscribe: async (planId: SubscriptionPlan) => {
+        const { user } = get();
+        if (!user) return { success: false, error: 'User not found' };
+
+        set({
+          user: {
+            ...user,
+            planId,
+            subscriptionStatus: planId === 'free' ? 'active' : 'trialing'
+          }
+        });
+        return { success: true };
       }
     }),
     {

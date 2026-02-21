@@ -341,11 +341,56 @@ export default function DashboardPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {[]}
-                            {true && (
+                            {(data as any)?.recentVisitors?.length > 0 ? (
+                                (data as any).recentVisitors.slice(0, 5).map((visitor: Visitor) => (
+                                    <tr
+                                        key={visitor.id}
+                                        className="border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                                        onClick={() => setSelectedVisitorForDetails(visitor)}
+                                    >
+                                        <td className="py-4 px-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px] uppercase">
+                                                    {visitor.name.split(' ').map(n => n[0]).join('')}
+                                                </div>
+                                                <span className="text-sm font-bold text-text-main">{visitor.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-4 text-sm text-text-secondary font-medium">{visitor.phone}</td>
+                                        <td className="py-4 px-4 text-sm text-text-secondary font-medium">{visitor.time}</td>
+                                        <td className="py-4 px-4">
+                                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${visitor.status === 'new' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                {visitor.status}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-4">
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedVisitorForMsg({ visitor, type: 'welcome' });
+                                                    }}
+                                                    className="p-1.5 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
+                                                >
+                                                    <Send size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setRewardPreviewVisitor(visitor);
+                                                    }}
+                                                    className="p-1.5 text-text-secondary hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-all"
+                                                >
+                                                    <Gift size={14} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
                                 <tr>
                                     <td colSpan={5} className="py-8 text-center text-text-secondary font-medium">
-                                        Recent visitors list is not populated yet. Endpoints merging in progress...
+                                        No recent visitors found for this branch.
                                     </td>
                                 </tr>
                             )}
