@@ -14,6 +14,7 @@ import {
 import { UsersService } from './users.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from './entities/user.entity';
+import { BusinessesService } from '../businesses/businesses.service';
 import {
   ApiTags,
   ApiOperation,
@@ -29,7 +30,10 @@ import * as bcrypt from 'bcrypt';
 @ApiBearerAuth()
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly businessesService: BusinessesService,
+  ) { }
 
   @Get('staff')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
@@ -63,11 +67,17 @@ export class UsersController {
       throw new BadRequestException('User with this email already exists');
     }
 
+    // Verify the business is owned by the current user (owner)
+    const business = await this.businessesService.findById(inviteDto.businessId);
+    if (!business || business.ownerId !== req.user.id) {
+      throw new BadRequestException('Business not found or not owned by you');
+    }
+
     // In a real app, we'd send an invite email. For this MVP, we create them with a default password.
     const hashedPassword = await bcrypt.hash('staff123', 10);
     return this.usersService.create({
       ...inviteDto,
-      businessId: req.user.businessId,
+      businessId: inviteDto.businessId,
       password: hashedPassword,
     });
   }

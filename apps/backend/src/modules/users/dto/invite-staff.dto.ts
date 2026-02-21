@@ -41,4 +41,9 @@ export class InviteStaffDto {
   @IsArray()
   @IsOptional()
   permissions?: string[];
+
+  @ApiProperty({ example: 'business-uuid' })
+  @IsString()
+  @IsNotEmpty()
+  businessId: string;
 }
