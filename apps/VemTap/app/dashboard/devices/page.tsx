@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dashboardApi } from '@/lib/api/dashboard';
-import { Device } from '@/lib/store/mockDashboardStore';
+import { useQueryClient } from '@tanstack/react-query';
+import { useDevices, useAddDevice, useUpdateDevice, useDeleteDevice } from '@/services/devices/hooks';
+import { Device } from '@/services/devices/types';
 import { notify } from '@/lib/notify';
 import AddDeviceModal from '@/components/dashboard/AddDeviceModal';
 import EditDeviceModal from '@/components/dashboard/EditDeviceModal';
@@ -18,43 +18,42 @@ export default function DevicesPage() {
     const [isQRModalOpen, setIsQRModalOpen] = useState(false);
     const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
 
-    const { data, isLoading } = useQuery({
-        queryKey: ['dashboard'],
-        queryFn: dashboardApi.fetchDashboardData,
-    });
-
-    const devices = data?.devices || [];
+    const { data: devices = [], isLoading } = useDevices();
 
     // Mutations
-    const addDeviceMutation = useMutation({
-        mutationFn: dashboardApi.addDevice,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            setIsAddModalOpen(false);
-            notify.success('Device linked successfully!');
-        },
-        onError: () => notify.error('Failed to link device')
-    });
+    const addDeviceMutation = useAddDevice();
+    const updateDeviceMutation = useUpdateDevice();
+    const deleteDeviceMutation = useDeleteDevice();
 
-    const updateDeviceMutation = useMutation({
-        mutationFn: dashboardApi.updateDevice,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            setIsEditModalOpen(false);
-            notify.success('Device configuration updated');
-        },
-        onError: () => notify.error('Update failed')
-    });
+    const handleAddSubmit = (data: any) => {
+        addDeviceMutation.mutate(data, {
+            onSuccess: () => {
+                setIsAddModalOpen(false);
+                notify.success('Device linked successfully!');
+            },
+            onError: () => notify.error('Failed to link device')
+        });
+    };
 
-    const deleteDeviceMutation = useMutation({
-        mutationFn: dashboardApi.deleteDevice,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            setIsEditModalOpen(false);
-            notify.success('Device removed permanently');
-        },
-        onError: () => notify.error('Deletion failed')
-    });
+    const handleUpdateSubmit = (id: string, updates: any) => {
+        updateDeviceMutation.mutate({ id, updates }, {
+            onSuccess: () => {
+                setIsEditModalOpen(false);
+                notify.success('Device configuration updated');
+            },
+            onError: () => notify.error('Update failed')
+        });
+    };
+
+    const handleDeleteSubmit = (id: string) => {
+        deleteDeviceMutation.mutate(id, {
+            onSuccess: () => {
+                setIsEditModalOpen(false);
+                notify.success('Device removed permanently');
+            },
+            onError: () => notify.error('Deletion failed')
+        });
+    };
 
     const stats = [
         { label: 'Total Devices', value: devices.length, icon: 'nfc', color: 'blue' },
@@ -197,7 +196,7 @@ export default function DevicesPage() {
             <AddDeviceModal
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
-                onSubmit={(data) => addDeviceMutation.mutate(data)}
+                onSubmit={handleAddSubmit}
                 isLoading={addDeviceMutation.isPending}
             />
 
@@ -209,8 +208,8 @@ export default function DevicesPage() {
                         setSelectedDevice(null);
                     }}
                     device={selectedDevice}
-                    onSubmit={(id, updates) => updateDeviceMutation.mutate({ id, updates })}
-                    onDelete={(id) => deleteDeviceMutation.mutate(id)}
+                    onSubmit={handleUpdateSubmit}
+                    onDelete={handleDeleteSubmit}
                     isLoading={updateDeviceMutation.isPending || deleteDeviceMutation.isPending}
                 />
             )}

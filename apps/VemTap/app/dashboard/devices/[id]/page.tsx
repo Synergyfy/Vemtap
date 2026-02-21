@@ -2,8 +2,7 @@
 
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { dashboardApi } from '@/lib/api/dashboard';
+import { useDevice } from '@/services/devices/hooks';
 import Link from 'next/link';
 import {
     ArrowLeft, BarChart2, Users, MousePointer2,
@@ -18,12 +17,7 @@ export default function DeviceStatsPage() {
     const router = useRouter();
     const deviceId = params.id as string;
 
-    const { data, isLoading } = useQuery({
-        queryKey: ['dashboard'],
-        queryFn: dashboardApi.fetchDashboardData,
-    });
-
-    const device = data?.devices?.find((d: any) => d.id === deviceId);
+    const { data: device, isLoading } = useDevice(deviceId);
 
     if (isLoading) {
         return (

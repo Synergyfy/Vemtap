@@ -28,9 +28,10 @@ interface User {
 
 interface AuthState {
   user: User | null;
+  token: string | null;
   isAuthenticated: boolean;
-  login: (userData: User) => void;
-  signup: (userData: User) => void;
+  login: (userData: User, token: string) => void;
+  signup: (userData: User, token: string) => void;
   logout: () => void;
   subscribe: (planId: SubscriptionPlan) => Promise<{ success: boolean; error?: string }>;
 }
@@ -39,18 +40,19 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
+      token: null,
       isAuthenticated: false,
 
-      login: (userData: User) => {
-        set({ user: userData, isAuthenticated: true });
+      login: (userData: User, token: string) => {
+        set({ user: userData, token, isAuthenticated: true });
       },
 
-      signup: (userData: User) => {
-        set({ user: userData, isAuthenticated: true });
+      signup: (userData: User, token: string) => {
+        set({ user: userData, token, isAuthenticated: true });
       },
 
       logout: () => {
-        set({ user: null, isAuthenticated: false });
+        set({ user: null, token: null, isAuthenticated: false });
         useChatStore.getState().clearHistory();
         localStorage.removeItem('chat-history');
       },

@@ -12,8 +12,8 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
         if (authStorage) {
             try {
                 const state = JSON.parse(authStorage).state;
-                if (state?.user?.token) {
-                    defaultHeaders['Authorization'] = `Bearer ${state.user.token}`;
+                if (state?.token) {
+                    defaultHeaders['Authorization'] = `Bearer ${state.token}`;
                 }
             } catch (e) {
                 console.error('Error parsing auth storage', e);
@@ -44,6 +44,8 @@ export const api = {
         apiCall(endpoint, { ...options, method: 'GET' }),
     put: (endpoint: string, data: any, options: RequestInit = {}) =>
         apiCall(endpoint, { ...options, method: 'PUT', body: JSON.stringify(data) }),
+    patch: (endpoint: string, data: any, options: RequestInit = {}) =>
+        apiCall(endpoint, { ...options, method: 'PATCH', body: JSON.stringify(data) }),
     delete: (endpoint: string, options: RequestInit = {}) =>
         apiCall(endpoint, { ...options, method: 'DELETE' }),
 };

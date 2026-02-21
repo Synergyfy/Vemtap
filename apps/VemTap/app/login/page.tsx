@@ -30,8 +30,8 @@ export default function LoginPage() {
         try {
             const response = await loginUser({ email: formData.email, password: formData.password });
 
-            // Set global state using the retrieved user
-            await signup(response.user);
+            // Set global state using the retrieved user and token
+            await signup(response.user, response.access_token);
 
             const role = response.user?.role || 'owner';
             if (role === 'admin') {
@@ -93,7 +93,7 @@ export default function LoginPage() {
                                                     setError('');
                                                     try {
                                                         const response = await loginUser({ email: demo.email.trim(), password: demo.pass.trim() });
-                                                        await signup(response.user);
+                                                        await signup(response.user, response.access_token);
                                                         notify.success(`Logged in as ${demo.label}`);
                                                         router.push(demo.route);
                                                     } catch (err: any) {

@@ -178,7 +178,7 @@ export default function GetStarted() {
                 businessId: response?.user?.businessId || 'new_' + Math.random().toString(36).substr(2, 6)
             };
 
-            await signup(userData);
+            await signup(userData as any, response.access_token);
             setStep(6);
 
             // Auto redirect to Plan Selection after 3 seconds

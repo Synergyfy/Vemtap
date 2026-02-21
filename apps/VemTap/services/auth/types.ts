@@ -17,7 +17,7 @@ export interface RegisterOwnerRequest {
 
 export interface AuthResponse {
     user: any; // We can type this better later
-    token: string;
+    access_token: string;
 }
 
 export interface LoginRequest {
