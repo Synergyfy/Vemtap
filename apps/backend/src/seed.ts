@@ -43,7 +43,7 @@ async function bootstrap() {
   const businesses = await businessesService.findByOwner(owner.id);
   const businessId = businesses[0]?.id;
 
-  let manager = await usersService.findByEmail('manager@latap.com');
+  const manager = await usersService.findByEmail('manager@latap.com');
   if (!manager) {
     const hashedPassword = await bcrypt.hash('manager123', 10);
     await usersService.create({
@@ -58,7 +58,7 @@ async function bootstrap() {
   }
 
   // 3. Create Staff
-  let staff = await usersService.findByEmail('staff@latap.com');
+  const staff = await usersService.findByEmail('staff@latap.com');
   if (!staff) {
     const hashedPassword = await bcrypt.hash('staff123', 10);
     await usersService.create({
@@ -73,7 +73,7 @@ async function bootstrap() {
   }
 
   // 4. Create Admin
-  let admin = await usersService.findByEmail('admin@latap.com');
+  const admin = await usersService.findByEmail('admin@latap.com');
   if (!admin) {
     const hashedPassword = await bcrypt.hash('admin123', 10);
     await usersService.create({
@@ -87,7 +87,7 @@ async function bootstrap() {
   }
 
   // 5. Create Customer
-  let customer = await usersService.findByEmail('customer@latap.com');
+  const customer = await usersService.findByEmail('customer@latap.com');
   if (!customer) {
     const hashedPassword = await bcrypt.hash('customer123', 10);
     await usersService.create({

@@ -18,7 +18,10 @@ export class MailService {
 
   async sendOtp(email: string, otp: string) {
     const mailOptions = {
-      from: '"LaTap Support" <' + this.configService.get<string>('EMAIL_USER') + '>',
+      from:
+        '"LaTap Support" <' +
+        this.configService.get<string>('EMAIL_USER') +
+        '>',
       to: email,
       subject: 'Verify your LaTap Account',
       html: `

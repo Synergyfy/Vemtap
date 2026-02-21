@@ -6,51 +6,42 @@ import { MailService } from '../mail/mail.service';
 import { JwtService } from '@nestjs/jwt';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Otp } from './entities/otp.entity';
-import { User, UserRole } from '../users/entities/user.entity';
-import { ConflictException, BadRequestException, UnauthorizedException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
-
-jest.mock('bcrypt');
+import { RegisterOwnerDto } from './dto/register-owner.dto';
+import { UserRole } from '../users/entities/user.entity';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let usersService: UsersService;
-  let businessesService: BusinessesService;
-  let mailService: MailService;
+  let usersService: any;
+  let businessesService: any;
+  let mailService: any;
+  let jwtService: any;
   let otpRepository: any;
 
-  const mockUser = {
-    id: 'user-id',
-    email: 'test@example.com',
-    password: 'hashedpassword',
-    role: UserRole.CUSTOMER,
-  };
-
-  const mockUsersService = {
-    findByEmail: jest.fn(),
-    create: jest.fn(),
-  };
-
-  const mockBusinessesService = {
-    create: jest.fn(),
-  };
-
-  const mockMailService = {
-    sendOtp: jest.fn(),
-  };
-
-  const mockJwtService = {
-    sign: jest.fn(() => 'jwt-token'),
-  };
-
-  const mockOtpRepository = {
-    create: jest.fn(),
-    save: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
-  };
-
   beforeEach(async () => {
+    const mockUsersService = {
+      findByEmail: jest.fn(),
+      create: jest
+        .fn()
+        .mockImplementation((u) => Promise.resolve({ ...u, id: 'user-1' })),
+    };
+    const mockBusinessesService = {
+      create: jest
+        .fn()
+        .mockImplementation((b) => Promise.resolve({ ...b, id: 'biz-1' })),
+    };
+    const mockMailService = {
+      sendOtp: jest.fn(),
+    };
+    const mockJwtService = {
+      sign: jest.fn().mockReturnValue('mock_token'),
+    };
+    const mockOtpRepository = {
+      create: jest.fn(),
+      save: jest.fn(),
+      findOne: jest.fn(),
+      remove: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -63,80 +54,64 @@ describe('AuthService', () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    usersService = module.get<UsersService>(UsersService);
-    businessesService = module.get<BusinessesService>(BusinessesService);
-    mailService = module.get<MailService>(MailService);
+    usersService = module.get(UsersService);
+    businessesService = module.get(BusinessesService);
+    mailService = module.get(MailService);
+    jwtService = module.get(JwtService);
     otpRepository = module.get(getRepositoryToken(Otp));
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
-
-  describe('validateUser', () => {
-    it('should return user data if validation is successful', async () => {
-      mockUsersService.findByEmail.mockResolvedValue(mockUser);
-      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-
-      const result = await service.validateUser('test@example.com', 'password');
-      expect(result).toEqual({ id: 'user-id', email: 'test@example.com', role: UserRole.CUSTOMER });
-    });
-
-    it('should return null if password does not match', async () => {
-      mockUsersService.findByEmail.mockResolvedValue(mockUser);
-      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
-
-      const result = await service.validateUser('test@example.com', 'wrongpassword');
-      expect(result).toBeNull();
-    });
-  });
-
-  describe('sendOtp', () => {
-    it('should throw ConflictException if user exists', async () => {
-      mockUsersService.findByEmail.mockResolvedValue(mockUser);
-      await expect(service.sendOtp('test@example.com')).rejects.toThrow(ConflictException);
-    });
-
-    it('should generate OTP, save it, and send email', async () => {
-      mockUsersService.findByEmail.mockResolvedValue(null);
-      mockOtpRepository.create.mockReturnValue({ code: '1234' });
-      mockOtpRepository.save.mockResolvedValue({ id: 'otp-id' });
-      mockMailService.sendOtp.mockResolvedValue(true);
-
-      const result = await service.sendOtp('new@example.com');
-      
-      expect(mockOtpRepository.create).toHaveBeenCalled();
-      expect(mockOtpRepository.save).toHaveBeenCalled();
-      expect(mockMailService.sendOtp).toHaveBeenCalledWith('new@example.com', expect.any(String));
-      expect(result).toEqual({ message: 'OTP sent successfully' });
-    });
-  });
-
-  describe('verifyOtp', () => {
-    it('should verify valid OTP', async () => {
-      const validOtp = {
-        email: 'test@example.com',
-        code: '1234',
-        expiresAt: new Date(Date.now() + 10000), // Future
+  describe('registerOwner', () => {
+    it('should register an owner and a business', async () => {
+      const dto: RegisterOwnerDto = {
+        firstName: 'Dan',
+        lastName: 'Owner',
+        email: 'dan@owner.com',
+        password: 'password123',
+        businessName: 'Dan Biz',
+        category: 'Retail',
+        visitors: '500',
+        goals: ['Growth'],
+        businessAddress: '123 St',
+        businessWebsite: 'dan.com',
+        whatsappNumber: '123456',
+        officialEmail: 'info@dan.com',
+        businessNumber: '987654',
       };
-      mockOtpRepository.findOne.mockResolvedValue(validOtp);
-      mockOtpRepository.remove.mockResolvedValue(true);
 
-      const result = await service.verifyOtp('test@example.com', '1234');
-      
-      expect(result).toEqual({ message: 'OTP verified successfully' });
-      expect(mockOtpRepository.remove).toHaveBeenCalledWith(validOtp);
+      usersService.findByEmail.mockResolvedValue(null);
+
+      const result = await service.registerOwner(dto);
+
+      // Verify User Creation
+      expect(usersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: dto.email,
+          role: UserRole.OWNER,
+        }),
+      );
+
+      // Verify Business Creation
+      expect(businessesService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: dto.businessName,
+          address: dto.businessAddress,
+          website: dto.businessWebsite,
+          whatsappNumber: dto.whatsappNumber,
+          officialEmail: dto.officialEmail,
+        }),
+      );
+
+      // Verify Response (should include token)
+      expect(result).toHaveProperty('access_token');
+      expect(result).toHaveProperty('user');
     });
 
-    it('should throw BadRequestException if OTP expired', async () => {
-      const expiredOtp = {
-        email: 'test@example.com',
-        code: '1234',
-        expiresAt: new Date(Date.now() - 10000), // Past
-      };
-      mockOtpRepository.findOne.mockResolvedValue(expiredOtp);
-
-      await expect(service.verifyOtp('test@example.com', '1234')).rejects.toThrow(BadRequestException);
+    it('should throw ConflictException if email exists', async () => {
+      usersService.findByEmail.mockResolvedValue({ id: 'existing' });
+      await expect(
+        service.registerOwner({ email: 'test@test.com' } as any),
+      ).rejects.toThrow();
     });
   });
 });

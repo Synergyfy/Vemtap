@@ -66,15 +66,15 @@ describe('VisitorsService', () => {
   describe('findAll', () => {
     it('should return paginated visitors', async () => {
       const mockUsers = [
-        { 
-            id: '1', 
-            firstName: 'John', 
-            lastName: 'Doe', 
-            email: 'john@example.com', 
-            visits: [{ createdAt: new Date() }] 
-        }
+        {
+          id: '1',
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@example.com',
+          visits: [{ createdAt: new Date() }],
+        },
       ];
-      
+
       mockQueryBuilder.getManyAndCount.mockResolvedValue([[{ id: '1' }], 1]);
       mockQueryBuilder.getMany.mockResolvedValue(mockUsers);
 
@@ -83,7 +83,10 @@ describe('VisitorsService', () => {
       expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
       expect(result.data[0].name).toBe('John Doe');
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith('visit.businessId = :businessId', { businessId: 'biz-1' });
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        'visit.businessId = :businessId',
+        { businessId: 'biz-1' },
+      );
     });
   });
 
@@ -93,17 +96,26 @@ describe('VisitorsService', () => {
       const businessId = 'biz-1';
 
       (userRepository.findOne as jest.Mock).mockResolvedValueOnce(null); // First check: not found
-      
-      const savedUser = { id: 'u1', email: 'new@example.com', firstName: 'New', lastName: 'Guy', phone: '123' };
+
+      const savedUser = {
+        id: 'u1',
+        email: 'new@example.com',
+        firstName: 'New',
+        lastName: 'Guy',
+        phone: '123',
+      };
       (userRepository.create as jest.Mock).mockReturnValue(savedUser);
       (userRepository.save as jest.Mock).mockResolvedValue(savedUser);
-      
+
       const savedVisit = { id: 'v1', customer: savedUser, businessId };
       (visitRepository.create as jest.Mock).mockReturnValue(savedVisit);
       (visitRepository.save as jest.Mock).mockResolvedValue(savedVisit);
 
       // Re-fetch returns user with visits
-      (userRepository.findOne as jest.Mock).mockResolvedValueOnce({ ...savedUser, visits: [savedVisit] });
+      (userRepository.findOne as jest.Mock).mockResolvedValueOnce({
+        ...savedUser,
+        visits: [savedVisit],
+      });
 
       const result = await service.create(dto, businessId);
 

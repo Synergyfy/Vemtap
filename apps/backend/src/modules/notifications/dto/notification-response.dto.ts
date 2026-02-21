@@ -10,7 +10,10 @@ export class NotificationResponseDto {
   @ApiProperty({ example: 'Your account has been successfully verified.' })
   message: string;
 
-  @ApiProperty({ example: 'success', enum: ['info', 'success', 'warning', 'error'] })
+  @ApiProperty({
+    example: 'success',
+    enum: ['info', 'success', 'warning', 'error'],
+  })
   type: string;
 
   @ApiProperty({ example: false })

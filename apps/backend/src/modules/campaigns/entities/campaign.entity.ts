@@ -6,15 +6,22 @@ import { CampaignType, CampaignStatus } from '../dto/create-campaign.dto';
 
 @Entity('campaigns')
 export class Campaign extends AbstractBaseEntity {
-  @ApiProperty({ example: 'Weekend Coffee Special', description: 'The name of the campaign' })
+  @ApiProperty({
+    example: 'Weekend Coffee Special',
+    description: 'The name of the campaign',
+  })
   @Column()
   name: string;
 
-  @ApiProperty({ enum: CampaignType, example: CampaignType.WHATSAPP, description: 'Communication channel' })
+  @ApiProperty({
+    enum: CampaignType,
+    example: CampaignType.WHATSAPP,
+    description: 'Communication channel',
+  })
   @Column({
     type: 'enum',
     enum: CampaignType,
-    default: CampaignType.WHATSAPP
+    default: CampaignType.WHATSAPP,
   })
   type: CampaignType;
 
@@ -22,19 +29,30 @@ export class Campaign extends AbstractBaseEntity {
   @Column()
   audience: string;
 
-  @ApiProperty({ example: 'Hello {name}, enjoy 50% off your next coffee!', description: 'Message content' })
+  @ApiProperty({
+    example: 'Hello {name}, enjoy 50% off your next coffee!',
+    description: 'Message content',
+  })
   @Column('text')
   message: string;
 
-  @ApiProperty({ example: '2024-10-12T10:00:00Z', description: 'Scheduled send time', required: false })
+  @ApiProperty({
+    example: '2024-10-12T10:00:00Z',
+    description: 'Scheduled send time',
+    required: false,
+  })
   @Column({ nullable: true })
   scheduledFor: Date;
 
-  @ApiProperty({ enum: CampaignStatus, example: CampaignStatus.DRAFT, description: 'Current status' })
+  @ApiProperty({
+    enum: CampaignStatus,
+    example: CampaignStatus.DRAFT,
+    description: 'Current status',
+  })
   @Column({
     type: 'enum',
     enum: CampaignStatus,
-    default: CampaignStatus.DRAFT
+    default: CampaignStatus.DRAFT,
   })
   status: CampaignStatus;
 
@@ -50,7 +68,10 @@ export class Campaign extends AbstractBaseEntity {
   @Column({ default: 0 })
   clicks: number;
 
-  @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000', description: 'ID of the business' })
+  @ApiProperty({
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    description: 'ID of the business',
+  })
   @Column({ nullable: true })
   businessId: string;
 

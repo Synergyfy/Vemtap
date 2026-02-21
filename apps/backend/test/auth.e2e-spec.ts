@@ -24,9 +24,9 @@ describe('Auth & Notifications (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-    .overrideProvider(MailService)
-    .useValue(mockMailService)
-    .compile();
+      .overrideProvider(MailService)
+      .useValue(mockMailService)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api/v1');
@@ -87,15 +87,17 @@ describe('Auth & Notifications (e2e)', () => {
       .send({ email: newEmail })
       .expect(201)
       .expect({ message: 'OTP sent successfully' });
-      
+
     expect(mockMailService.sendOtp).toHaveBeenCalled();
   });
 
   it('/auth/verify-otp (POST)', async () => {
     const newEmail = 'otp@example.com';
-    
+
     // Fetch the OTP from the in-memory DB
-    const otpRecord = await otpRepository.findOne({ where: { email: newEmail } });
+    const otpRecord = await otpRepository.findOne({
+      where: { email: newEmail },
+    });
     expect(otpRecord).toBeDefined();
 
     return request(app.getHttpServer())

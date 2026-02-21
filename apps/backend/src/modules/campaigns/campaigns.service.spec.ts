@@ -20,7 +20,11 @@ const mockTemplateRepository = () => ({
   find: jest.fn(),
 });
 
-type MockRepository<T = any> = Partial<Record<keyof Repository<T>, jest.Mock>>;
+import { ObjectLiteral } from 'typeorm';
+
+type MockRepository<T extends ObjectLiteral = any> = Partial<
+  Record<keyof Repository<T>, jest.Mock>
+>;
 
 describe('CampaignsService', () => {
   let service: CampaignsService;
@@ -30,13 +34,21 @@ describe('CampaignsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CampaignsService,
-        { provide: getRepositoryToken(Campaign), useFactory: mockCampaignRepository },
-        { provide: getRepositoryToken(CampaignTemplate), useFactory: mockTemplateRepository },
+        {
+          provide: getRepositoryToken(Campaign),
+          useFactory: mockCampaignRepository,
+        },
+        {
+          provide: getRepositoryToken(CampaignTemplate),
+          useFactory: mockTemplateRepository,
+        },
       ],
     }).compile();
 
     service = module.get<CampaignsService>(CampaignsService);
-    campaignRepository = module.get<MockRepository<Campaign>>(getRepositoryToken(Campaign));
+    campaignRepository = module.get<MockRepository<Campaign>>(
+      getRepositoryToken(Campaign),
+    );
   });
 
   it('should be defined', () => {
@@ -52,14 +64,25 @@ describe('CampaignsService', () => {
         message: 'Hello',
       };
       const businessId = 'biz-123';
-      const expectedCampaign = { ...createDto, businessId, id: '1', sent: 0, delivered: '0%', clicks: 0, status: CampaignStatus.DRAFT };
+      const expectedCampaign = {
+        ...createDto,
+        businessId,
+        id: '1',
+        sent: 0,
+        delivered: '0%',
+        clicks: 0,
+        status: CampaignStatus.DRAFT,
+      };
 
-      campaignRepository.create.mockReturnValue(expectedCampaign);
-      campaignRepository.save.mockResolvedValue(expectedCampaign);
+      campaignRepository.create!.mockReturnValue(expectedCampaign);
+      campaignRepository.save!.mockResolvedValue(expectedCampaign);
 
       const result = await service.create(createDto, businessId);
       expect(result).toEqual(expectedCampaign);
-      expect(campaignRepository.create).toHaveBeenCalledWith({ ...createDto, businessId });
+      expect(campaignRepository.create).toHaveBeenCalledWith({
+        ...createDto,
+        businessId,
+      });
       expect(campaignRepository.save).toHaveBeenCalled();
     });
   });

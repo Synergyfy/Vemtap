@@ -93,9 +93,7 @@ describe('Devices & Security (e2e)', () => {
     });
 
     it('/devices (GET) - Should fail without token (Global Guard)', () => {
-      return request(app.getHttpServer())
-        .get('/api/v1/devices')
-        .expect(401);
+      return request(app.getHttpServer()).get('/api/v1/devices').expect(401);
     });
   });
 

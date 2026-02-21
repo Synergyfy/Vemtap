@@ -22,7 +22,10 @@ export class VisitorQueryDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ example: 'active', enum: ['all', 'new', 'active', 'returning', 'vip', 'inactive'] })
+  @ApiPropertyOptional({
+    example: 'active',
+    enum: ['all', 'new', 'active', 'returning', 'vip', 'inactive'],
+  })
   @IsOptional()
   @IsString()
   status?: string;

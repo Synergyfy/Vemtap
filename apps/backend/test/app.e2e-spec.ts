@@ -18,8 +18,6 @@ describe('AppController (e2e)', () => {
   });
 
   it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/api/v1/')
-      .expect(401); // Expect 401 because root is NOT marked public in AppController (except for our public-test)
+    return request(app.getHttpServer()).get('/api/v1/').expect(401); // Expect 401 because root is NOT marked public in AppController (except for our public-test)
   });
 });

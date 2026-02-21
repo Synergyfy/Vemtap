@@ -1,9 +1,24 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+  Req,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { VisitorsService } from './visitors.service';
 import { CreateVisitorDto } from './dto/create-visitor.dto';
 import { VisitorQueryDto } from './dto/visitor-query.dto';
-import { VisitorResponseDto, PaginatedVisitorResponseDto, NewVisitorResponseDto, ReturningVisitorResponseDto } from './dto/visitor-response.dto';
+import {
+  VisitorResponseDto,
+  PaginatedVisitorResponseDto,
+  NewVisitorResponseDto,
+  ReturningVisitorResponseDto,
+} from './dto/visitor-response.dto';
 import { VisitorStatsResponseDto } from './dto/visitor-stats.dto';
 
 @ApiTags('Visitors')
@@ -12,13 +27,13 @@ export class VisitorsController {
   constructor(private readonly visitorsService: VisitorsService) {}
 
   private getBusinessId(req: any): string {
-      // In a real app, this comes from req.user.businessId
-      // Returning a mock ID for development/testing context
-      return req.user?.businessId || '123e4567-e89b-12d3-a456-426614174000';
+    // In a real app, this comes from req.user.businessId
+    // Returning a mock ID for development/testing context
+    return req.user?.businessId || '123e4567-e89b-12d3-a456-426614174000';
   }
 
   // --- Stats ---
-  
+
   @Get('stats')
   @ApiOperation({ summary: 'Get main visitor stats' })
   @ApiResponse({ type: VisitorStatsResponseDto })
@@ -57,7 +72,10 @@ export class VisitorsController {
   @Get()
   @ApiOperation({ summary: 'Get all visitors with pagination and filtering' })
   @ApiResponse({ type: PaginatedVisitorResponseDto })
-  async findAll(@Query() query: VisitorQueryDto, @Req() req: any): Promise<PaginatedVisitorResponseDto> {
+  async findAll(
+    @Query() query: VisitorQueryDto,
+    @Req() req: any,
+  ): Promise<PaginatedVisitorResponseDto> {
     return this.visitorsService.findAll(query, this.getBusinessId(req));
   }
 
@@ -67,7 +85,10 @@ export class VisitorsController {
   @ApiOperation({ summary: 'Export visitors to CSV' })
   async export(@Req() req: any) {
     // Mock export
-    return { message: 'Export started', url: 'http://example.com/visitors.csv' };
+    return {
+      message: 'Export started',
+      url: 'http://example.com/visitors.csv',
+    };
   }
 
   @Post('campaign')
@@ -85,7 +106,10 @@ export class VisitorsController {
   @Post('rewards')
   @ApiOperation({ summary: 'Create a reward for visitors' })
   async createReward(@Body() body: any) {
-      return { message: 'Reward created', id: Math.random().toString(36).substr(2, 9) };
+    return {
+      message: 'Reward created',
+      id: Math.random().toString(36).substr(2, 9),
+    };
   }
 
   // --- CRUD & Individual Actions ---
@@ -94,7 +118,10 @@ export class VisitorsController {
   @ApiOperation({ summary: 'Create a new visitor' })
   @ApiResponse({ type: VisitorResponseDto })
   async create(@Body() createVisitorDto: CreateVisitorDto, @Req() req: any) {
-    return this.visitorsService.create(createVisitorDto, this.getBusinessId(req));
+    return this.visitorsService.create(
+      createVisitorDto,
+      this.getBusinessId(req),
+    );
   }
 
   @Get(':id')
@@ -107,7 +134,10 @@ export class VisitorsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update a visitor' })
   @ApiResponse({ type: VisitorResponseDto })
-  async update(@Param('id') id: string, @Body() updateVisitorDto: Partial<CreateVisitorDto>) {
+  async update(
+    @Param('id') id: string,
+    @Body() updateVisitorDto: Partial<CreateVisitorDto>,
+  ) {
     return this.visitorsService.update(id, updateVisitorDto);
   }
 
@@ -119,19 +149,22 @@ export class VisitorsController {
 
   @Post(':id/message')
   @ApiOperation({ summary: 'Send a message to a visitor' })
-  async sendMessage(@Param('id') id: string, @Body() body: { message: string }) {
-      return { message: `Message sent to visitor ${id}` };
+  async sendMessage(
+    @Param('id') id: string,
+    @Body() body: { message: string },
+  ) {
+    return { message: `Message sent to visitor ${id}` };
   }
 
   @Post(':id/welcome')
   @ApiOperation({ summary: 'Send welcome message to a visitor' })
   async sendWelcome(@Param('id') id: string) {
-      return { message: `Welcome message sent to visitor ${id}` };
+    return { message: `Welcome message sent to visitor ${id}` };
   }
 
   @Post(':id/reward')
   @ApiOperation({ summary: 'Send reward to a visitor' })
   async sendReward(@Param('id') id: string) {
-      return { message: `Reward sent to visitor ${id}` };
+    return { message: `Reward sent to visitor ${id}` };
   }
 }

@@ -1,7 +1,20 @@
-import { Controller, Get, Post, Patch, Param, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { NotificationResponseDto } from './dto/notification-response.dto';
 
 @ApiTags('notifications')
@@ -13,14 +26,22 @@ export class NotificationsController {
 
   @Get()
   @ApiOperation({ summary: 'Get all notifications for current user' })
-  @ApiResponse({ status: 200, description: 'List of notifications', type: [NotificationResponseDto] })
+  @ApiResponse({
+    status: 200,
+    description: 'List of notifications',
+    type: [NotificationResponseDto],
+  })
   findAll(@Request() req) {
     return this.notificationsService.findByUser(req.user.id);
   }
 
   @Get('unread-count')
   @ApiOperation({ summary: 'Get count of unread notifications' })
-  @ApiResponse({ status: 200, description: 'Count of unread notifications', schema: { example: 5 } })
+  @ApiResponse({
+    status: 200,
+    description: 'Count of unread notifications',
+    schema: { example: 5 },
+  })
   getUnreadCount(@Request() req) {
     return this.notificationsService.getUnreadCount(req.user.id);
   }

@@ -13,14 +13,19 @@ export class Visit extends AbstractBaseEntity {
   @Column()
   customerId: string;
 
-  @ManyToOne(() => Business, (business) => business.visits, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Business, (business) => business.visits, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'businessId' })
   business: Business;
 
   @Column()
   businessId: string;
 
-  @ManyToOne(() => Device, (device) => device.visits, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => Device, (device) => device.visits, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
   @JoinColumn({ name: 'deviceId' })
   device: Device;
 

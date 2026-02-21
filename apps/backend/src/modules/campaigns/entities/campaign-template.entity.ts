@@ -9,7 +9,10 @@ export class CampaignTemplate extends AbstractBaseEntity {
   @Column()
   title: string;
 
-  @ApiProperty({ example: 'Onboarding', description: 'Category (e.g., Marketing, Retention)' })
+  @ApiProperty({
+    example: 'Onboarding',
+    description: 'Category (e.g., Marketing, Retention)',
+  })
   @Column()
   category: string;
 
@@ -17,15 +20,26 @@ export class CampaignTemplate extends AbstractBaseEntity {
   @Column()
   type: string;
 
-  @ApiProperty({ example: 'Hello {name}, welcome to our store!', description: 'Template content with variables' })
+  @ApiProperty({
+    example: 'Hello {name}, welcome to our store!',
+    description: 'Template content with variables',
+  })
   @Column('text')
   content: string;
 
-  @ApiProperty({ example: 'blue', description: 'Color code for UI display', required: false })
+  @ApiProperty({
+    example: 'blue',
+    description: 'Color code for UI display',
+    required: false,
+  })
   @Column({ nullable: true })
   textColor: string;
 
-  @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000', description: 'Business ID', required: false })
+  @ApiProperty({
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    description: 'Business ID',
+    required: false,
+  })
   @Column({ nullable: true })
   businessId: string;
 

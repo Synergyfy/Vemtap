@@ -19,7 +19,10 @@ export class VisitorResponseDto {
   @ApiProperty({ example: '2023-10-27T10:00:00Z' })
   lastVisit: Date;
 
-  @ApiProperty({ example: 'Active', enum: ['New', 'Active', 'Returning', 'VIP', 'Inactive'] })
+  @ApiProperty({
+    example: 'Active',
+    enum: ['New', 'Active', 'Returning', 'VIP', 'Inactive'],
+  })
   status: string;
 
   @ApiProperty({ example: '₦45,000' })

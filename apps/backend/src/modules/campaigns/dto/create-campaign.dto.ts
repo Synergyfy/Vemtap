@@ -1,4 +1,10 @@
-import { IsString, IsEnum, IsOptional, IsDateString, IsNotEmpty } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsDateString,
+  IsNotEmpty,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum CampaignType {
@@ -16,7 +22,10 @@ export enum CampaignStatus {
 }
 
 export class CreateCampaignDto {
-  @ApiProperty({ example: 'Weekend Coffee Special', description: 'Name of the campaign' })
+  @ApiProperty({
+    example: 'Weekend Coffee Special',
+    description: 'Name of the campaign',
+  })
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -30,7 +39,10 @@ export class CreateCampaignDto {
   @IsNotEmpty()
   audience: string;
 
-  @ApiProperty({ example: 'Hello {name}, visit us today!', description: 'Message content' })
+  @ApiProperty({
+    example: 'Hello {name}, visit us today!',
+    description: 'Message content',
+  })
   @IsString()
   @IsNotEmpty()
   message: string;

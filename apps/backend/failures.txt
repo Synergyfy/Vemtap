@@ -1,0 +1,167 @@
+
+--- FAILED: C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\apps\backend\src\modules\messaging\services\credit.service.spec.ts -> should deduct credits if balance is sufficient
+Error: Nest can't resolve dependencies of the CreditService (?, DataSource). Please make sure that the argument "BusinessRepository" at index [0] is available in the RootTestModule context.
+
+Potential solutions:
+- Is RootTestModule a valid NestJS module?
+- If "BusinessRepository" is a provider, is it part of the current RootTestModule?
+- If "BusinessRepository" is exported from a separate @Module, is that module imported within RootTestModule?
+  @Module({
+    imports: [ /* the Module containing "BusinessRepository" */ ]
+  })
+
+For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+    at TestingInjector.lookupComponentInParentModules (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\injector.js:290:19)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at TestingInjector.resolveComponentWrapper (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+testing@11.1.14_@ne_3c12c068d6af4247d49797d76634c0bc\node_modules\@nestjs\testing\testing-injector.js:19:45)
+    at resolveParam (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\injector.js:140:38)
+    at async Promise.all (index 0)
+    at TestingInjector.resolveConstructorParams (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\injector.js:169:27)
+    at TestingInjector.loadInstance (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\injector.js:75:13)
+    at TestingInjector.loadProvider (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\injector.js:103:9)
+    at C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\instance-loader.js:56:13
+    at async Promise.all (index 3)
+    at TestingInstanceLoader.createInstancesOfProviders (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\instance-loader.js:55:9)
+    at C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\instance-loader.js:40:13
+    at async Promise.all (index 1)
+    at TestingInstanceLoader.createInstances (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\instance-loader.js:39:9)
+    at TestingInstanceLoader.createInstancesOfDependencies (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\instance-loader.js:22:13)
+    at TestingInstanceLoader.createInstancesOfDependencies (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+testing@11.1.14_@ne_3c12c068d6af4247d49797d76634c0bc\node_modules\@nestjs\testing\testing-instance-loader.js:9:9)
+    at TestingModuleBuilder.createInstancesOfDependencies (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+testing@11.1.14_@ne_3c12c068d6af4247d49797d76634c0bc\node_modules\@nestjs\testing\testing-module.builder.js:118:9)
+    at TestingModuleBuilder.compile (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+testing@11.1.14_@ne_3c12c068d6af4247d49797d76634c0bc\node_modules\@nestjs\testing\testing-module.builder.js:74:9)
+    at Object.<anonymous> (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\apps\backend\src\modules\messaging\services\credit.service.spec.ts:16:39)
+
+--- FAILED: C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\apps\backend\src\modules\messaging\services\credit.service.spec.ts -> should throw BadRequestException if balance is insufficient
+Error: Nest can't resolve dependencies of the CreditService (?, DataSource). Please make sure that the argument "BusinessRepository" at index [0] is available in the RootTestModule context.
+
+Potential solutions:
+- Is RootTestModule a valid NestJS module?
+- If "BusinessRepository" is a provider, is it part of the current RootTestModule?
+- If "BusinessRepository" is exported from a separate @Module, is that module imported within RootTestModule?
+  @Module({
+    imports: [ /* the Module containing "BusinessRepository" */ ]
+  })
+
+For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+    at TestingInjector.lookupComponentInParentModules (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\injector.js:290:19)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at TestingInjector.resolveComponentWrapper (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+testing@11.1.14_@ne_3c12c068d6af4247d49797d76634c0bc\node_modules\@nestjs\testing\testing-injector.js:19:45)
+    at resolveParam (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\injector.js:140:38)
+    at async Promise.all (index 0)
+    at TestingInjector.resolveConstructorParams (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\injector.js:169:27)
+    at TestingInjector.loadInstance (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\injector.js:75:13)
+    at TestingInjector.loadProvider (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\injector.js:103:9)
+    at C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\instance-loader.js:56:13
+    at async Promise.all (index 3)
+    at TestingInstanceLoader.createInstancesOfProviders (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\instance-loader.js:55:9)
+    at C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\instance-loader.js:40:13
+    at async Promise.all (index 1)
+    at TestingInstanceLoader.createInstances (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\instance-loader.js:39:9)
+    at TestingInstanceLoader.createInstancesOfDependencies (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\instance-loader.js:22:13)
+    at TestingInstanceLoader.createInstancesOfDependencies (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+testing@11.1.14_@ne_3c12c068d6af4247d49797d76634c0bc\node_modules\@nestjs\testing\testing-instance-loader.js:9:9)
+    at TestingModuleBuilder.createInstancesOfDependencies (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+testing@11.1.14_@ne_3c12c068d6af4247d49797d76634c0bc\node_modules\@nestjs\testing\testing-module.builder.js:118:9)
+    at TestingModuleBuilder.compile (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+testing@11.1.14_@ne_3c12c068d6af4247d49797d76634c0bc\node_modules\@nestjs\testing\testing-module.builder.js:74:9)
+    at Object.<anonymous> (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\apps\backend\src\modules\messaging\services\credit.service.spec.ts:16:39)
+
+--- FAILED: C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\apps\backend\src\modules\messaging\services\credit.service.spec.ts -> should throw BadRequestException if business is not found
+Error: Nest can't resolve dependencies of the CreditService (?, DataSource). Please make sure that the argument "BusinessRepository" at index [0] is available in the RootTestModule context.
+
+Potential solutions:
+- Is RootTestModule a valid NestJS module?
+- If "BusinessRepository" is a provider, is it part of the current RootTestModule?
+- If "BusinessRepository" is exported from a separate @Module, is that module imported within RootTestModule?
+  @Module({
+    imports: [ /* the Module containing "BusinessRepository" */ ]
+  })
+
+For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+    at TestingInjector.lookupComponentInParentModules (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\injector.js:290:19)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at TestingInjector.resolveComponentWrapper (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+testing@11.1.14_@ne_3c12c068d6af4247d49797d76634c0bc\node_modules\@nestjs\testing\testing-injector.js:19:45)
+    at resolveParam (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\injector.js:140:38)
+    at async Promise.all (index 0)
+    at TestingInjector.resolveConstructorParams (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\injector.js:169:27)
+    at TestingInjector.loadInstance (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\injector.js:75:13)
+    at TestingInjector.loadProvider (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\injector.js:103:9)
+    at C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\instance-loader.js:56:13
+    at async Promise.all (index 3)
+    at TestingInstanceLoader.createInstancesOfProviders (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\instance-loader.js:55:9)
+    at C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\instance-loader.js:40:13
+    at async Promise.all (index 1)
+    at TestingInstanceLoader.createInstances (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\instance-loader.js:39:9)
+    at TestingInstanceLoader.createInstancesOfDependencies (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+core@11.1.14_@nestj_488fcd591e5c2c52e06716874218c4c2\node_modules\@nestjs\core\injector\instance-loader.js:22:13)
+    at TestingInstanceLoader.createInstancesOfDependencies (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+testing@11.1.14_@ne_3c12c068d6af4247d49797d76634c0bc\node_modules\@nestjs\testing\testing-instance-loader.js:9:9)
+    at TestingModuleBuilder.createInstancesOfDependencies (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+testing@11.1.14_@ne_3c12c068d6af4247d49797d76634c0bc\node_modules\@nestjs\testing\testing-module.builder.js:118:9)
+    at TestingModuleBuilder.compile (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\@nestjs+testing@11.1.14_@ne_3c12c068d6af4247d49797d76634c0bc\node_modules\@nestjs\testing\testing-module.builder.js:74:9)
+    at Object.<anonymous> (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\apps\backend\src\modules\messaging\services\credit.service.spec.ts:16:39)
+
+--- FAILED: C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\apps\backend\src\modules\messaging\services\template.service.spec.ts -> should correctly replace variables in template content
+Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+Expected: [32m"Hello Alice, welcome!"[39m
+Received: [31m"Hello [7m{[27mAlice[7m}[27m, welcome!"[39m
+    at Object.<anonymous> (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\apps\backend\src\modules\messaging\services\template.service.spec.ts:36:28)
+    at Promise.finally.completed (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:1557:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:1497:10)
+    at _callCircusTest (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:1007:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTest (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:947:3)
+    at C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:849:7
+    at _runTestsForDescribeBlock (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:862:11)
+    at _runTestsForDescribeBlock (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:857:11)
+    at _runTestsForDescribeBlock (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:857:11)
+    at run (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:761:3)
+    at runAndTransformResultsToJestFormat (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:1918:21)
+    at jestAdapter (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\runner.js:101:19)
+    at runTestInternal (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-runner@30.2.0\node_modules\jest-runner\build\testWorker.js:275:16)
+    at runTest (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-runner@30.2.0\node_modules\jest-runner\build\testWorker.js:343:7)
+    at Object.worker (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-runner@30.2.0\node_modules\jest-runner\build\testWorker.js:497:12)
+
+--- FAILED: C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\apps\backend\src\modules\messaging\services\template.service.spec.ts -> should throw BadRequestException for invalid template syntax
+Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoThrow[2m([22m[32mexpected[39m[2m)[22m
+
+Expected constructor: [32mBadRequestException[39m
+
+Received function did not throw
+    at Object.<anonymous> (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\apps\backend\src\modules\messaging\services\template.service.spec.ts:40:77)
+    at Promise.finally.completed (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:1557:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:1497:10)
+    at _callCircusTest (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:1007:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTest (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:947:3)
+    at C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:849:7
+    at _runTestsForDescribeBlock (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:862:11)
+    at _runTestsForDescribeBlock (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:857:11)
+    at _runTestsForDescribeBlock (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:857:11)
+    at run (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:761:3)
+    at runAndTransformResultsToJestFormat (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:1918:21)
+    at jestAdapter (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\runner.js:101:19)
+    at runTestInternal (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-runner@30.2.0\node_modules\jest-runner\build\testWorker.js:275:16)
+    at runTest (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-runner@30.2.0\node_modules\jest-runner\build\testWorker.js:343:7)
+    at Object.worker (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-runner@30.2.0\node_modules\jest-runner\build\testWorker.js:497:12)
+
+--- FAILED: C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\apps\backend\src\modules\messaging\services\template.service.spec.ts -> should throw BadRequestException when template rendering fails during simulation
+Error: [2mexpect([22m[31mreceived[39m[2m).[22mrejects[2m.[22mtoThrow[2m()[22m
+
+Received promise resolved instead of rejected
+Resolved to value: [31m{"businessId": "b1", "channel": "SMS", "content": "text {{x", "id": "t1", "name": "promo"}[39m
+    at expect (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\expect@30.2.0\node_modules\expect\build\index.js:2116:15)
+    at Object.<anonymous> (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\apps\backend\src\modules\messaging\services\template.service.spec.ts:53:19)
+    at Promise.finally.completed (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:1557:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:1497:10)
+    at _callCircusTest (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:1007:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTest (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:947:3)
+    at C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:849:7
+    at _runTestsForDescribeBlock (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:862:11)
+    at _runTestsForDescribeBlock (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:857:11)
+    at _runTestsForDescribeBlock (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:857:11)
+    at run (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:761:3)
+    at runAndTransformResultsToJestFormat (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\jestAdapterInit.js:1918:21)
+    at jestAdapter (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-circus@30.2.0\node_modules\jest-circus\build\runner.js:101:19)
+    at runTestInternal (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-runner@30.2.0\node_modules\jest-runner\build\testWorker.js:275:16)
+    at runTest (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-runner@30.2.0\node_modules\jest-runner\build\testWorker.js:343:7)
+    at Object.worker (C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\node_modules\.pnpm\jest-runner@30.2.0\node_modules\jest-runner\build\testWorker.js:497:12)
