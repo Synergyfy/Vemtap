@@ -14,7 +14,7 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-  ) { }
+  ) {}
 
   findOne(id: string): Promise<User | null> {
     return this.usersRepository.findOneBy({ id });
@@ -78,21 +78,38 @@ export class UsersService {
 
   // --- Admin Methods ---
 
-  async findAllAdmin(query: { search?: string, role?: string, status?: string, page?: number, limit?: number }) {
+  async findAllAdmin(query: {
+    search?: string;
+    role?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }) {
     const qb = this.usersRepository.createQueryBuilder('user');
 
     if (query.role && query.role !== 'all') {
-      const roleMap: any = { admin: UserRole.ADMIN, business_owner: UserRole.OWNER, staff: UserRole.STAFF, customer: UserRole.CUSTOMER };
-      qb.andWhere('user.role = :role', { role: roleMap[query.role] || query.role });
+      const roleMap: any = {
+        admin: UserRole.ADMIN,
+        business_owner: UserRole.OWNER,
+        staff: UserRole.STAFF,
+        customer: UserRole.CUSTOMER,
+      };
+      qb.andWhere('user.role = :role', {
+        role: roleMap[query.role] || query.role,
+      });
     }
 
     if (query.status && query.status !== 'all') {
-      const statusValue = query.status.charAt(0).toUpperCase() + query.status.slice(1);
+      const statusValue =
+        query.status.charAt(0).toUpperCase() + query.status.slice(1);
       qb.andWhere('user.status = :status', { status: statusValue });
     }
 
     if (query.search) {
-      qb.andWhere('(user.firstName ILIKE :search OR user.lastName ILIKE :search OR user.email ILIKE :search)', { search: `%${query.search}%` });
+      qb.andWhere(
+        '(user.firstName ILIKE :search OR user.lastName ILIKE :search OR user.email ILIKE :search)',
+        { search: `%${query.search}%` },
+      );
     }
 
     const page = query.page || 1;
@@ -104,23 +121,31 @@ export class UsersService {
 
     const stats = {
       total: await this.usersRepository.count(),
-      owners: await this.usersRepository.count({ where: { role: UserRole.OWNER } }),
-      customers: await this.usersRepository.count({ where: { role: UserRole.CUSTOMER } }),
-      staff: await this.usersRepository.count({ where: { role: UserRole.STAFF } })
+      owners: await this.usersRepository.count({
+        where: { role: UserRole.OWNER },
+      }),
+      customers: await this.usersRepository.count({
+        where: { role: UserRole.CUSTOMER },
+      }),
+      staff: await this.usersRepository.count({
+        where: { role: UserRole.STAFF },
+      }),
     };
 
     return {
-      data: users.map(user => ({
+      data: users.map((user) => ({
         id: user.id,
         name: `${user.firstName} ${user.lastName}`.trim(),
         email: user.email,
         role: user.role === UserRole.OWNER ? 'Business Owner' : user.role,
         status: user.status.toLowerCase(),
-        lastLogin: user.lastActive ? new Date(user.lastActive).toLocaleString() : 'Never',
-        joined: new Date(user.createdAt).toISOString().split('T')[0]
+        lastLogin: user.lastActive
+          ? new Date(user.lastActive).toLocaleString()
+          : 'Never',
+        joined: new Date(user.createdAt).toISOString().split('T')[0],
       })),
       meta: { total, page, lastPage: Math.ceil(total / limit) },
-      stats
+      stats,
     };
   }
 
@@ -132,20 +157,27 @@ export class UsersService {
     const lastName = parts.slice(1).join(' ') || '';
 
     const roleMapping: Record<string, UserRole> = {
-      'Admin': UserRole.ADMIN, 'admin': UserRole.ADMIN,
-      'Business Owner': UserRole.OWNER, 'business_owner': UserRole.OWNER,
-      'Staff': UserRole.STAFF, 'staff': UserRole.STAFF,
-      'Customer': UserRole.CUSTOMER, 'customer': UserRole.CUSTOMER
+      Admin: UserRole.ADMIN,
+      admin: UserRole.ADMIN,
+      'Business Owner': UserRole.OWNER,
+      business_owner: UserRole.OWNER,
+      Staff: UserRole.STAFF,
+      staff: UserRole.STAFF,
+      Customer: UserRole.CUSTOMER,
+      customer: UserRole.CUSTOMER,
     };
 
     const statusMapping: Record<string, UserStatus> = {
-      'active': UserStatus.ACTIVE, 'Active': UserStatus.ACTIVE,
-      'pending': UserStatus.PENDING, 'Pending': UserStatus.PENDING,
-      'suspended': UserStatus.SUSPENDED, 'Suspended': UserStatus.SUSPENDED
+      active: UserStatus.ACTIVE,
+      Active: UserStatus.ACTIVE,
+      pending: UserStatus.PENDING,
+      Pending: UserStatus.PENDING,
+      suspended: UserStatus.SUSPENDED,
+      Suspended: UserStatus.SUSPENDED,
     };
 
-    let userRole = roleMapping[userData.role] || UserRole.CUSTOMER;
-    let userStatus = statusMapping[userData.status] || UserStatus.ACTIVE;
+    const userRole = roleMapping[userData.role] || UserRole.CUSTOMER;
+    const userStatus = statusMapping[userData.status] || UserStatus.ACTIVE;
 
     const user = this.usersRepository.create({
       email: userData.email,
@@ -171,21 +203,29 @@ export class UsersService {
 
     if (updates.role) {
       const roleMapping: Record<string, UserRole> = {
-        'Admin': UserRole.ADMIN, 'admin': UserRole.ADMIN,
-        'Business Owner': UserRole.OWNER, 'business_owner': UserRole.OWNER,
-        'Staff': UserRole.STAFF, 'staff': UserRole.STAFF,
-        'Customer': UserRole.CUSTOMER, 'customer': UserRole.CUSTOMER
+        Admin: UserRole.ADMIN,
+        admin: UserRole.ADMIN,
+        'Business Owner': UserRole.OWNER,
+        business_owner: UserRole.OWNER,
+        Staff: UserRole.STAFF,
+        staff: UserRole.STAFF,
+        Customer: UserRole.CUSTOMER,
+        customer: UserRole.CUSTOMER,
       };
       if (roleMapping[updates.role]) user.role = roleMapping[updates.role];
     }
 
     if (updates.status) {
       const statusMapping: Record<string, UserStatus> = {
-        'active': UserStatus.ACTIVE, 'Active': UserStatus.ACTIVE,
-        'pending': UserStatus.PENDING, 'Pending': UserStatus.PENDING,
-        'suspended': UserStatus.SUSPENDED, 'Suspended': UserStatus.SUSPENDED
+        active: UserStatus.ACTIVE,
+        Active: UserStatus.ACTIVE,
+        pending: UserStatus.PENDING,
+        Pending: UserStatus.PENDING,
+        suspended: UserStatus.SUSPENDED,
+        Suspended: UserStatus.SUSPENDED,
       };
-      if (statusMapping[updates.status]) user.status = statusMapping[updates.status];
+      if (statusMapping[updates.status])
+        user.status = statusMapping[updates.status];
     }
 
     return this.usersRepository.save(user);

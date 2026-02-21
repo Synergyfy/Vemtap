@@ -3,13 +3,20 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ProductsService } from './products.service';
 import { Product, ProductStatus } from './entities/product.entity';
 import { Quote, QuoteStatus } from './entities/quote.entity';
-import { QuoteNegotiation, OfferedByRole } from './entities/quote-negotiation.entity';
+import {
+  QuoteNegotiation,
+  OfferedByRole,
+} from './entities/quote-negotiation.entity';
 import { Order, OrderStatus } from './entities/order.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { RequestQuoteDto } from './dto/request-quote.dto';
 import { NegotiateQuoteDto } from './dto/negotiate-quote.dto';
 import { User, UserRole } from '../users/entities/user.entity';
-import { NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 
 const mockProductRepository = {
   create: jest.fn(),
@@ -221,7 +228,9 @@ describe('ProductsService', () => {
   describe('negotiateQuote', () => {
     it('should throw if quote not found', async () => {
       mockQuoteRepository.findOne.mockResolvedValue(null);
-      await expect(service.negotiateQuote('id', new User(), { priceOffered: 100 })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.negotiateQuote('id', new User(), { priceOffered: 100 }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should successfully negotiate', async () => {
@@ -237,9 +246,15 @@ describe('ProductsService', () => {
 
       mockQuoteRepository.findOne.mockResolvedValue(quote);
       mockNegotiationRepository.create.mockReturnValue({ priceOffered: 100 });
-      mockQuoteRepository.save.mockResolvedValue({ ...quote, currentPrice: 100 });
+      mockQuoteRepository.save.mockResolvedValue({
+        ...quote,
+        currentPrice: 100,
+      });
 
-      const result = await service.negotiateQuote('quote-1', user, { priceOffered: 100, message: 'Offer' });
+      const result = await service.negotiateQuote('quote-1', user, {
+        priceOffered: 100,
+        message: 'Offer',
+      });
 
       expect(mockNegotiationRepository.create).toHaveBeenCalled();
       expect(mockQuoteRepository.save).toHaveBeenCalled();
@@ -278,7 +293,10 @@ describe('ProductsService', () => {
       order.status = OrderStatus.PENDING;
 
       mockOrderRepository.findOne.mockResolvedValue(order);
-      mockOrderRepository.save.mockResolvedValue({ ...order, status: OrderStatus.READY });
+      mockOrderRepository.save.mockResolvedValue({
+        ...order,
+        status: OrderStatus.READY,
+      });
 
       const result = await service.markOrderReady('order-1');
       expect(result.status).toBe(OrderStatus.READY);

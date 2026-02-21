@@ -28,7 +28,7 @@ import {
 @Controller('devices')
 @Roles(UserRole.OWNER, UserRole.MANAGER) // Only Owners and Managers can manage devices
 export class DevicesController {
-  constructor(private readonly devicesService: DevicesService) { }
+  constructor(private readonly devicesService: DevicesService) {}
 
   @Post()
   @ApiOperation({ summary: 'Register a new NFC device' })
@@ -78,13 +78,16 @@ export class DevicesController {
           businessId: 'biz-1uuid',
           orderId: 'order-1uuid',
           totalScans: 0,
-          createdAt: '2023-11-01T10:00:00Z'
-        }
-      ]
-    }
+          createdAt: '2023-11-01T10:00:00Z',
+        },
+      ],
+    },
   })
   generateAssets(@Request() req) {
-    return this.devicesService.generateDevicesForReadyOrders(req.user.id, req.user.businessId);
+    return this.devicesService.generateDevicesForReadyOrders(
+      req.user.id,
+      req.user.businessId,
+    );
   }
 
   @Patch('names')
@@ -103,10 +106,10 @@ export class DevicesController {
           businessId: 'biz-1uuid',
           orderId: 'order-1uuid',
           totalScans: 0,
-          createdAt: '2023-11-01T10:00:00Z'
-        }
-      ]
-    }
+          createdAt: '2023-11-01T10:00:00Z',
+        },
+      ],
+    },
   })
   updateNames(@Request() req, @Body() dto: UpdateAssetNamesDto) {
     return this.devicesService.updateAssetNames(req.user.businessId, dto);
@@ -161,10 +164,7 @@ export class DevicesController {
   @Patch('admin/:id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Update device configuration' })
-  async adminUpdate(
-    @Param('id') id: string,
-    @Body() updateDeviceDto: any,
-  ) {
+  async adminUpdate(@Param('id') id: string, @Body() updateDeviceDto: any) {
     return this.devicesService.adminUpdate(id, updateDeviceDto);
   }
 

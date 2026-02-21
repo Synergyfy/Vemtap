@@ -19,7 +19,7 @@ import { Setting } from './entities/setting.entity';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('admin/settings')
 export class SettingsController {
-  constructor(private readonly settingsService: SettingsService) { }
+  constructor(private readonly settingsService: SettingsService) {}
 
   @Get()
   @Roles(UserRole.ADMIN)

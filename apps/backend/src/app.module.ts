@@ -82,4 +82,4 @@ import { BranchesModule } from './modules/branches/branches.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

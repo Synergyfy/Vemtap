@@ -11,4 +11,4 @@ import { Order } from '../products/entities/order.entity';
   providers: [DevicesService],
   exports: [DevicesService],
 })
-export class DevicesModule { }
+export class DevicesModule {}

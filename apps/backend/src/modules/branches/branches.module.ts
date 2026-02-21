@@ -7,12 +7,9 @@ import { Business } from '../businesses/entities/business.entity';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Branch, Business]),
-        SubscriptionsModule,
-    ],
-    controllers: [BranchesController],
-    providers: [BranchesService],
-    exports: [BranchesService],
+  imports: [TypeOrmModule.forFeature([Branch, Business]), SubscriptionsModule],
+  controllers: [BranchesController],
+  providers: [BranchesService],
+  exports: [BranchesService],
 })
-export class BranchesModule { }
+export class BranchesModule {}

@@ -31,7 +31,7 @@ export class VisitorsService {
     private branchRepository: Repository<Branch>,
     private messagingService: MessagingEngineService,
     private campaignsService: CampaignsService,
-  ) { }
+  ) {}
 
   // --- Main/All Visitors ---
 
@@ -116,7 +116,9 @@ export class VisitorsService {
   async getStats(branchId: string): Promise<VisitorStatsResponseDto> {
     const totalVisitorsQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId });
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', {
+        branchId,
+      });
     const totalVisitors = await totalVisitorsQb.getCount();
 
     const startOfMonth = new Date();
@@ -125,20 +127,25 @@ export class VisitorsService {
 
     const newThisMonthQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId })
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', {
+        branchId,
+      })
       .where('user.createdAt >= :startOfMonth', { startOfMonth });
     const newThisMonth = await newThisMonthQb.getCount();
 
     // Frequency = Total Visits / Total Visitors
     const totalVisitsCount = await this.visitRepository.count({
-      where: { branchId }
+      where: { branchId },
     });
-    const avgFrequency = totalVisitors > 0 ? (totalVisitsCount / totalVisitors).toFixed(1) : '0';
+    const avgFrequency =
+      totalVisitors > 0 ? (totalVisitsCount / totalVisitors).toFixed(1) : '0';
 
     // VIP Guests (e.g., > 10 visits)
     const vipCountQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId });
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', {
+        branchId,
+      });
     const vipCount = await vipCountQb
       .groupBy('user.id')
       .having('COUNT(visit.id) > 10')
@@ -202,11 +209,15 @@ export class VisitorsService {
     // Resolve branchId from device if not provided
     let resolvedBranchId = branchId;
     if (!resolvedBranchId && createVisitorDto.deviceId) {
-      const device = await this.deviceRepository.findOne({ where: { id: createVisitorDto.deviceId } });
+      const device = await this.deviceRepository.findOne({
+        where: { id: createVisitorDto.deviceId },
+      });
       if (device) resolvedBranchId = device.branchId;
     }
     if (!resolvedBranchId) {
-      throw new Error('branchId is required (provide directly or via deviceId for a device with branchId)');
+      throw new Error(
+        'branchId is required (provide directly or via deviceId for a device with branchId)',
+      );
     }
 
     const visit = this.visitRepository.create({
@@ -273,7 +284,12 @@ export class VisitorsService {
 
     const qb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoinAndSelect('user.visits', 'visit', 'visit.branchId = :branchId', { branchId })
+      .innerJoinAndSelect(
+        'user.visits',
+        'visit',
+        'visit.branchId = :branchId',
+        { branchId },
+      )
       .where('user.createdAt >= :startOfWeek', { startOfWeek })
       .andWhere('user.role = :role', { role: UserRole.CUSTOMER });
 
@@ -302,7 +318,9 @@ export class VisitorsService {
 
     const newTodayQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId })
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', {
+        branchId,
+      })
       .where('user.createdAt >= :today', { today });
     const newToday = await newTodayQb.getCount();
 
@@ -310,7 +328,9 @@ export class VisitorsService {
     startOfWeek.setDate(startOfWeek.getDate() - 7);
     const newWeeklyQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId })
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', {
+        branchId,
+      })
       .where('user.createdAt >= :startOfWeek', { startOfWeek });
     const newWeekly = await newWeeklyQb.getCount();
 
@@ -359,7 +379,12 @@ export class VisitorsService {
 
     const qb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoinAndSelect('user.visits', 'visit', 'visit.branchId = :branchId', { branchId })
+      .innerJoinAndSelect(
+        'user.visits',
+        'visit',
+        'visit.branchId = :branchId',
+        { branchId },
+      )
       .where('user.role = :role', { role: UserRole.CUSTOMER });
 
     // Users with > 1 visit
@@ -372,7 +397,7 @@ export class VisitorsService {
         'user.email',
         'user.phone',
         'COUNT(visit.id) as total_visits',
-        'MAX(visit.createdAt) as last_visit'
+        'MAX(visit.createdAt) as last_visit',
       ]);
 
     const rawData = await qb
@@ -383,7 +408,9 @@ export class VisitorsService {
 
     const total = await this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId })
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', {
+        branchId,
+      })
       .groupBy('user.id')
       .having('COUNT(visit.id) > 1')
       .getCount();
@@ -405,22 +432,31 @@ export class VisitorsService {
   async getReturningStats(branchId: string): Promise<VisitorStatsResponseDto> {
     const totalVisitorsQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId });
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', {
+        branchId,
+      });
     const totalVisitors = await totalVisitorsQb.getCount();
 
     const returningCountQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId });
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', {
+        branchId,
+      });
     const returningCount = await returningCountQb
       .groupBy('user.id')
       .having('COUNT(visit.id) > 1')
       .getCount();
 
-    const rate = totalVisitors > 0 ? ((returningCount / totalVisitors) * 100).toFixed(1) : '0';
+    const rate =
+      totalVisitors > 0
+        ? ((returningCount / totalVisitors) * 100).toFixed(1)
+        : '0';
 
     const vipCountQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId });
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', {
+        branchId,
+      });
     const vipCount = await vipCountQb
       .groupBy('user.id')
       .having('COUNT(visit.id) > 10')
@@ -476,7 +512,9 @@ export class VisitorsService {
   }
 
   async sendCampaign(branchId: string, body: any) {
-    const branch = await this.branchRepository.findOne({ where: { id: branchId } });
+    const branch = await this.branchRepository.findOne({
+      where: { id: branchId },
+    });
     if (!branch) throw new NotFoundException('Branch not found');
     const visitors = await this.findAll({ page: 1, limit: 1000 }, branchId);
     const contactIds = visitors.data.map((v) => v.id);
@@ -491,7 +529,9 @@ export class VisitorsService {
   }
 
   async sendWelcomeCampaign(branchId: string) {
-    const branch = await this.branchRepository.findOne({ where: { id: branchId } });
+    const branch = await this.branchRepository.findOne({
+      where: { id: branchId },
+    });
     if (!branch) throw new NotFoundException('Branch not found');
     const newVisitors = await this.findNew({ page: 1, limit: 1000 }, branchId);
     const contactIds = newVisitors.data.map((v) => v.id);
@@ -505,8 +545,15 @@ export class VisitorsService {
     });
   }
 
-  async sendMessage(branchId: string, visitorId: string, message: string, channel: Channel) {
-    const branch = await this.branchRepository.findOne({ where: { id: branchId } });
+  async sendMessage(
+    branchId: string,
+    visitorId: string,
+    message: string,
+    channel: Channel,
+  ) {
+    const branch = await this.branchRepository.findOne({
+      where: { id: branchId },
+    });
     if (!branch) throw new NotFoundException('Branch not found');
     return this.messagingService.sendMessage({
       businessId: branch.businessId,
@@ -517,17 +564,27 @@ export class VisitorsService {
   }
 
   async sendWelcome(branchId: string, visitorId: string) {
-    return this.sendMessage(branchId, visitorId, 'Welcome! Thank you for visiting us.', Channel.SMS);
+    return this.sendMessage(
+      branchId,
+      visitorId,
+      'Welcome! Thank you for visiting us.',
+      Channel.SMS,
+    );
   }
 
   async sendReward(branchId: string, visitorId: string, rewardId: string) {
     // In a real system, you might generate a redemption code or similar.
     // For now, we'll send a message with the reward details.
     const rewards = await this.campaignsService.getRewards(branchId);
-    const reward = rewards.find(r => r.id === rewardId);
+    const reward = rewards.find((r) => r.id === rewardId);
     if (!reward) throw new NotFoundException('Reward not found');
 
-    return this.sendMessage(branchId, visitorId, `You've received a reward: ${reward.name}! Use code REWARD123 to redeem.`, Channel.SMS);
+    return this.sendMessage(
+      branchId,
+      visitorId,
+      `You've received a reward: ${reward.name}! Use code REWARD123 to redeem.`,
+      Channel.SMS,
+    );
   }
 
   // --- Helpers ---

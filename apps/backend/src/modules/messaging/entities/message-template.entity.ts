@@ -6,19 +6,19 @@ import { Channel } from '../enums/channel.enum';
 @Entity('message_templates')
 @Unique(['businessId', 'name', 'channel'])
 export class MessageTemplate extends AbstractBaseEntity {
-    @ManyToOne(() => Business, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'businessId' })
-    business: Business;
+  @ManyToOne(() => Business, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'businessId' })
+  business: Business;
 
-    @Column()
-    businessId: string;
+  @Column()
+  businessId: string;
 
-    @Column({ type: 'enum', enum: Channel })
-    channel: Channel;
+  @Column({ type: 'enum', enum: Channel })
+  channel: Channel;
 
-    @Column()
-    name: string;
+  @Column()
+  name: string;
 
-    @Column({ type: 'text' })
-    content: string;
+  @Column({ type: 'text' })
+  content: string;
 }

@@ -28,58 +28,58 @@ import { AnalyticsService } from './services/analytics.service';
 import { MessagingController } from './controllers/messaging.controller';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([
-            MessageTemplate,
-            MessageCampaign,
-            ConversationThread,
-            Message,
-            MessageLog,
-            Business,
-            Branch,
-        ]),
-        ContactsModule,
-        BusinessesModule,
-        SettingsModule,
-        BullModule.forRootAsync({
-            imports: [ConfigModule],
-            useFactory: async (configService: ConfigService) => ({
-                connection: {
-                    host: configService.get('REDIS_HOST', 'localhost'),
-                    port: configService.get('REDIS_PORT', 6379),
-                },
-            }),
-            inject: [ConfigService],
-        }),
-        BullModule.registerQueue({
-            name: 'messaging-batch-send',
-        }),
-    ],
-    providers: [
-        MessagingEngineService,
-        SmsService,
-        WhatsappService,
-        EmailService,
-        TemplateService,
-        ComplianceService,
-        CreditService,
-        CampaignService,
-        InboxService,
-        AnalyticsService,
-    ],
-    controllers: [MessagingController],
-    exports: [
-        TypeOrmModule,
-        MessagingEngineService,
-        SmsService,
-        WhatsappService,
-        EmailService,
-        TemplateService,
-        ComplianceService,
-        CreditService,
-        CampaignService,
-        InboxService,
-        AnalyticsService,
-    ],
+  imports: [
+    TypeOrmModule.forFeature([
+      MessageTemplate,
+      MessageCampaign,
+      ConversationThread,
+      Message,
+      MessageLog,
+      Business,
+      Branch,
+    ]),
+    ContactsModule,
+    BusinessesModule,
+    SettingsModule,
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        connection: {
+          host: configService.get('REDIS_HOST', 'localhost'),
+          port: configService.get('REDIS_PORT', 6379),
+        },
+      }),
+      inject: [ConfigService],
+    }),
+    BullModule.registerQueue({
+      name: 'messaging-batch-send',
+    }),
+  ],
+  providers: [
+    MessagingEngineService,
+    SmsService,
+    WhatsappService,
+    EmailService,
+    TemplateService,
+    ComplianceService,
+    CreditService,
+    CampaignService,
+    InboxService,
+    AnalyticsService,
+  ],
+  controllers: [MessagingController],
+  exports: [
+    TypeOrmModule,
+    MessagingEngineService,
+    SmsService,
+    WhatsappService,
+    EmailService,
+    TemplateService,
+    ComplianceService,
+    CreditService,
+    CampaignService,
+    InboxService,
+    AnalyticsService,
+  ],
 })
-export class MessagingModule { }
+export class MessagingModule {}

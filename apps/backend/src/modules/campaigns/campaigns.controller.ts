@@ -16,18 +16,31 @@ import { UpdateCampaignDto } from './dto/update-campaign.dto';
 import { CreateCampaignTemplateDto } from './dto/campaign-template.dto';
 import { Campaign } from './entities/campaign.entity';
 import { CampaignTemplate } from './entities/campaign-template.entity';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiQuery,
+  ApiBody,
+} from '@nestjs/swagger';
 import { LoyaltyProfile } from './entities/loyalty-profile.entity';
 import { PointTransaction } from './entities/point-transaction.entity';
 import { LoyaltyRule } from './entities/loyalty-rule.entity';
 import { Reward } from './entities/reward.entity';
 import { Redemption } from './entities/redemption.entity';
-import { CreateRewardDto, UpdateRewardDto, PointEarnRequestDto, RewardRedeemRequestDto, UpdateLoyaltyRuleDto, VerifyRedemptionDto } from './dto/loyalty.dto';
+import {
+  CreateRewardDto,
+  UpdateRewardDto,
+  PointEarnRequestDto,
+  RewardRedeemRequestDto,
+  UpdateLoyaltyRuleDto,
+  VerifyRedemptionDto,
+} from './dto/loyalty.dto';
 
 @ApiTags('Campaigns')
 @Controller('campaigns')
 export class CampaignsController {
-  constructor(private readonly campaignsService: CampaignsService) { }
+  constructor(private readonly campaignsService: CampaignsService) {}
 
   private getBranchId(req: any, branchId?: string): string {
     const resolved = branchId || req.user?.branchId;
@@ -42,7 +55,11 @@ export class CampaignsController {
     description: 'The campaign has been successfully created.',
     type: Campaign,
   })
-  create(@Body() createCampaignDto: CreateCampaignDto, @Req() req: any, @Query('branchId') branchId?: string) {
+  create(
+    @Body() createCampaignDto: CreateCampaignDto,
+    @Req() req: any,
+    @Query('branchId') branchId?: string,
+  ) {
     return this.campaignsService.create(
       createCampaignDto,
       this.getBranchId(req, branchId || createCampaignDto.branchId),
@@ -58,8 +75,15 @@ export class CampaignsController {
     description: 'List of campaigns',
     type: [Campaign],
   })
-  findAll(@Req() req: any, @Query('status') status?: CampaignStatus, @Query('branchId') branchId?: string) {
-    return this.campaignsService.findAll(this.getBranchId(req, branchId), status);
+  findAll(
+    @Req() req: any,
+    @Query('status') status?: CampaignStatus,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.campaignsService.findAll(
+      this.getBranchId(req, branchId),
+      status,
+    );
   }
 
   @Get('stats')
@@ -108,7 +132,10 @@ export class CampaignsController {
   ) {
     return this.campaignsService.createTemplate(
       createTemplateDto,
-      this.getBranchId(req, branchId ?? (createTemplateDto.branchId ?? undefined)),
+      this.getBranchId(
+        req,
+        branchId ?? createTemplateDto.branchId ?? undefined,
+      ),
     );
   }
 
@@ -153,19 +180,30 @@ export class CampaignsController {
     description: 'The user loyalty profile',
     type: LoyaltyProfile,
   })
-  getLoyaltyProfile(@Param('userId') userId: string, @Req() req: any, @Query('branchId') branchId?: string) {
-    return this.campaignsService.getLoyaltyProfile(userId, this.getBranchId(req, branchId));
+  getLoyaltyProfile(
+    @Param('userId') userId: string,
+    @Req() req: any,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.campaignsService.getLoyaltyProfile(
+      userId,
+      this.getBranchId(req, branchId),
+    );
   }
 
   @Get('loyalty/profiles')
-  @ApiOperation({ summary: 'Get all loyalty profiles for branch (Customer Directory)' })
+  @ApiOperation({
+    summary: 'Get all loyalty profiles for branch (Customer Directory)',
+  })
   @ApiResponse({
     status: 200,
     description: 'List of all loyalty profiles',
     type: [LoyaltyProfile],
   })
   getLoyaltyProfiles(@Req() req: any, @Query('branchId') branchId?: string) {
-    return this.campaignsService.getLoyaltyProfiles(this.getBranchId(req, branchId));
+    return this.campaignsService.getLoyaltyProfiles(
+      this.getBranchId(req, branchId),
+    );
   }
 
   @Get('loyalty/rules')
@@ -176,7 +214,9 @@ export class CampaignsController {
     type: LoyaltyRule,
   })
   getLoyaltyRule(@Req() req: any, @Query('branchId') branchId?: string) {
-    return this.campaignsService.getLoyaltyRule(this.getBranchId(req, branchId));
+    return this.campaignsService.getLoyaltyRule(
+      this.getBranchId(req, branchId),
+    );
   }
 
   @Patch('loyalty/rules')
@@ -187,8 +227,15 @@ export class CampaignsController {
     description: 'Updated loyalty rules',
     type: LoyaltyRule,
   })
-  updateLoyaltyRule(@Body() updates: UpdateLoyaltyRuleDto, @Req() req: any, @Query('branchId') branchId?: string) {
-    return this.campaignsService.updateLoyaltyRule(this.getBranchId(req, branchId), updates);
+  updateLoyaltyRule(
+    @Body() updates: UpdateLoyaltyRuleDto,
+    @Req() req: any,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.campaignsService.updateLoyaltyRule(
+      this.getBranchId(req, branchId),
+      updates,
+    );
   }
 
   @Get('loyalty/rewards')
@@ -210,8 +257,15 @@ export class CampaignsController {
     description: 'The created reward',
     type: Reward,
   })
-  createReward(@Body() dto: CreateRewardDto, @Req() req: any, @Query('branchId') branchId?: string) {
-    return this.campaignsService.createReward(this.getBranchId(req, branchId || dto.branchId), dto);
+  createReward(
+    @Body() dto: CreateRewardDto,
+    @Req() req: any,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.campaignsService.createReward(
+      this.getBranchId(req, branchId || dto.branchId),
+      dto,
+    );
   }
 
   @Patch('loyalty/rewards/:id')
@@ -222,8 +276,17 @@ export class CampaignsController {
     description: 'The updated reward',
     type: Reward,
   })
-  updateReward(@Param('id') id: string, @Body() dto: UpdateRewardDto, @Req() req: any, @Query('branchId') branchId?: string) {
-    return this.campaignsService.updateReward(this.getBranchId(req, branchId || dto.branchId), id, dto);
+  updateReward(
+    @Param('id') id: string,
+    @Body() dto: UpdateRewardDto,
+    @Req() req: any,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.campaignsService.updateReward(
+      this.getBranchId(req, branchId || dto.branchId),
+      id,
+      dto,
+    );
   }
 
   @Post('loyalty/earn')
@@ -239,12 +302,19 @@ export class CampaignsController {
         pointsEarned: 150,
         newBalance: 1400,
         message: 'Congratulations! You earned 150 points.',
-        breakdown: { visitPoints: 50, spendingPoints: 100 }
-      }
-    }
+        breakdown: { visitPoints: 50, spendingPoints: 100 },
+      },
+    },
   })
-  earnPoints(@Body() dto: PointEarnRequestDto, @Req() req: any, @Query('branchId') branchId?: string) {
-    return this.campaignsService.earnPoints(this.getBranchId(req, branchId || dto.branchId), dto);
+  earnPoints(
+    @Body() dto: PointEarnRequestDto,
+    @Req() req: any,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.campaignsService.earnPoints(
+      this.getBranchId(req, branchId || dto.branchId),
+      dto,
+    );
   }
 
   @Post('loyalty/redeem')
@@ -263,13 +333,20 @@ export class CampaignsController {
           rewardId: 'rew_123',
           redemptionCode: 'A1B2C3D4',
           pointsSpent: 500,
-          status: 'pending'
-        }
-      }
-    }
+          status: 'pending',
+        },
+      },
+    },
   })
-  redeemReward(@Body() dto: RewardRedeemRequestDto, @Req() req: any, @Query('branchId') branchId?: string) {
-    return this.campaignsService.redeemReward(this.getBranchId(req, branchId || dto.branchId), dto);
+  redeemReward(
+    @Body() dto: RewardRedeemRequestDto,
+    @Req() req: any,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.campaignsService.redeemReward(
+      this.getBranchId(req, branchId || dto.branchId),
+      dto,
+    );
   }
 
   @Post('loyalty/verify-redemption')
@@ -285,13 +362,20 @@ export class CampaignsController {
         redemption: {
           id: 'red_123',
           status: 'verified',
-          verifiedAt: '2024-03-10T15:00:00Z'
-        }
-      }
-    }
+          verifiedAt: '2024-03-10T15:00:00Z',
+        },
+      },
+    },
   })
-  verifyRedemption(@Body() dto: VerifyRedemptionDto, @Req() req: any, @Query('branchId') branchId?: string) {
-    return this.campaignsService.verifyRedemption(this.getBranchId(req, branchId || dto.branchId), dto.code);
+  verifyRedemption(
+    @Body() dto: VerifyRedemptionDto,
+    @Req() req: any,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.campaignsService.verifyRedemption(
+      this.getBranchId(req, branchId || dto.branchId),
+      dto.code,
+    );
   }
 
   @Get('loyalty/transactions/:profileId')

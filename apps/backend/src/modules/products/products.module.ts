@@ -8,8 +8,10 @@ import { QuoteNegotiation } from './entities/quote-negotiation.entity';
 import { Order } from './entities/order.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Product, Quote, QuoteNegotiation, Order])],
+  imports: [
+    TypeOrmModule.forFeature([Product, Quote, QuoteNegotiation, Order]),
+  ],
   controllers: [ProductsController],
   providers: [ProductsService],
 })
-export class ProductsModule { }
+export class ProductsModule {}

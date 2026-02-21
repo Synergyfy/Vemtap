@@ -13,7 +13,7 @@ export class BusinessesService {
   constructor(
     @InjectRepository(Business)
     private businessesRepository: Repository<Business>,
-  ) { }
+  ) {}
 
   async create(businessData: Partial<Business>): Promise<Business> {
     if (businessData.ownerId) {
@@ -49,8 +49,14 @@ export class BusinessesService {
 
   // --- Admin Methods ---
 
-  async findAllAdmin(query: { search?: string, status?: BusinessStatus, page?: number, limit?: number }) {
-    const qb = this.businessesRepository.createQueryBuilder('business')
+  async findAllAdmin(query: {
+    search?: string;
+    status?: BusinessStatus;
+    page?: number;
+    limit?: number;
+  }) {
+    const qb = this.businessesRepository
+      .createQueryBuilder('business')
       .leftJoinAndSelect('business.owner', 'owner')
       .leftJoinAndSelect('business.devices', 'devices');
 
@@ -59,7 +65,10 @@ export class BusinessesService {
     }
 
     if (query.search) {
-      qb.andWhere('(business.name ILIKE :search OR owner.email ILIKE :search OR owner.firstName ILIKE :search)', { search: `%${query.search}%` });
+      qb.andWhere(
+        '(business.name ILIKE :search OR owner.email ILIKE :search OR owner.firstName ILIKE :search)',
+        { search: `%${query.search}%` },
+      );
     }
 
     const page = query.page || 1;
@@ -70,9 +79,15 @@ export class BusinessesService {
     const [businesses, total] = await qb.getManyAndCount();
 
     // Stats
-    const activeCount = await this.businessesRepository.count({ where: { status: BusinessStatus.ACTIVE } });
-    const pendingCount = await this.businessesRepository.count({ where: { status: BusinessStatus.PENDING } });
-    const suspendedCount = await this.businessesRepository.count({ where: { status: BusinessStatus.SUSPENDED } });
+    const activeCount = await this.businessesRepository.count({
+      where: { status: BusinessStatus.ACTIVE },
+    });
+    const pendingCount = await this.businessesRepository.count({
+      where: { status: BusinessStatus.PENDING },
+    });
+    const suspendedCount = await this.businessesRepository.count({
+      where: { status: BusinessStatus.SUSPENDED },
+    });
 
     return {
       data: businesses,
@@ -85,8 +100,8 @@ export class BusinessesService {
         total: activeCount + pendingCount + suspendedCount,
         active: activeCount,
         pending: pendingCount,
-        suspended: suspendedCount
-      }
+        suspended: suspendedCount,
+      },
     };
   }
 

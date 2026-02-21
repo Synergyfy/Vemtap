@@ -29,7 +29,7 @@ import {
 @ApiTags('products')
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) { }
+  constructor(private readonly productsService: ProductsService) {}
 
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
@@ -154,10 +154,10 @@ export class ProductsController {
           productId: 'product-uuid',
           currentPrice: null,
           isNegotiable: true,
-          createdAt: '2023-11-01T10:00:00Z'
-        }
-      ]
-    }
+          createdAt: '2023-11-01T10:00:00Z',
+        },
+      ],
+    },
   })
   getAllQuotesAdmin() {
     return this.productsService.getAllQuotesAdmin();
@@ -186,12 +186,12 @@ export class ProductsController {
               id: 'neg-1',
               priceOffered: 900,
               message: 'Can we do 900?',
-              offeredBy: 'Admin'
-            }
-          ]
-        }
-      ]
-    }
+              offeredBy: 'Admin',
+            },
+          ],
+        },
+      ],
+    },
   })
   getMyQuotes(@Request() req: { user: User }) {
     return this.productsService.getMyQuotes(req.user.id);
@@ -209,9 +209,9 @@ export class ProductsController {
         id: 'quote-1uuid',
         status: 'Owner_Offered',
         currentPrice: 850,
-        isNegotiable: true
-      }
-    }
+        isNegotiable: true,
+      },
+    },
   })
   negotiateQuote(
     @Request() req: { user: User },
@@ -235,9 +235,9 @@ export class ProductsController {
         quoteId: 'quote-1uuid',
         agreedPrice: 850,
         status: 'Pending',
-        userId: 'owner-uuid'
-      }
-    }
+        userId: 'owner-uuid',
+      },
+    },
   })
   acceptQuote(@Request() req: { user: User }, @Param('id') id: string) {
     return this.productsService.acceptQuote(id, req.user);
@@ -251,7 +251,7 @@ export class ProductsController {
     status: 201,
     type: Quote,
     description: 'Marks the quote as rejected',
-    schema: { example: { id: 'quote-1uuid', status: 'Rejected' } }
+    schema: { example: { id: 'quote-1uuid', status: 'Rejected' } },
   })
   rejectQuote(@Request() req: { user: User }, @Param('id') id: string) {
     return this.productsService.rejectQuote(id, req.user);
@@ -274,10 +274,10 @@ export class ProductsController {
           userId: 'owner-uuid',
           createdAt: '2023-11-01T10:00:00Z',
           user: { firstName: 'John', lastName: 'Doe' },
-          quote: { quantity: 100 }
-        }
-      ]
-    }
+          quote: { quantity: 100 },
+        },
+      ],
+    },
   })
   getAllOrdersAdmin() {
     return this.productsService.getAllOrdersAdmin();
@@ -297,10 +297,10 @@ export class ProductsController {
           quoteId: 'quote-uuid',
           agreedPrice: 850,
           status: 'Ready',
-          userId: 'owner-uuid'
-        }
-      ]
-    }
+          userId: 'owner-uuid',
+        },
+      ],
+    },
   })
   getMyOrders(@Request() req: { user: User }) {
     return this.productsService.getMyOrders(req.user.id);
@@ -319,9 +319,9 @@ export class ProductsController {
         quoteId: 'quote-uuid',
         agreedPrice: 850,
         status: 'Ready',
-        userId: 'owner-uuid'
-      }
-    }
+        userId: 'owner-uuid',
+      },
+    },
   })
   markOrderReady(@Param('id') id: string) {
     return this.productsService.markOrderReady(id);

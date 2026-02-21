@@ -75,7 +75,9 @@ export class Campaign extends AbstractBaseEntity {
   @Column()
   branchId: string;
 
-  @ManyToOne(() => Branch, (branch) => branch.campaigns, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Branch, (branch) => branch.campaigns, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'branchId' })
   branch: Branch;
 }

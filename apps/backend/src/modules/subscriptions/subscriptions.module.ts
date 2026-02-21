@@ -11,13 +11,13 @@ import { PlansService } from './plans.service';
 import { SubscriptionsService } from './subscriptions.service';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Plan, Subscription, Business]),
-        BusinessesModule,
-        HttpModule,
-    ],
-    controllers: [PlansController, SubscriptionsController],
-    providers: [PlansService, SubscriptionsService],
-    exports: [PlansService, SubscriptionsService],
+  imports: [
+    TypeOrmModule.forFeature([Plan, Subscription, Business]),
+    BusinessesModule,
+    HttpModule,
+  ],
+  controllers: [PlansController, SubscriptionsController],
+  providers: [PlansService, SubscriptionsService],
+  exports: [PlansService, SubscriptionsService],
 })
-export class SubscriptionsModule { }
+export class SubscriptionsModule {}

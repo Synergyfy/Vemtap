@@ -19,11 +19,11 @@ import { Redemption } from './entities/redemption.entity';
       PointTransaction,
       LoyaltyRule,
       Reward,
-      Redemption
-    ])
+      Redemption,
+    ]),
   ],
   controllers: [CampaignsController],
   providers: [CampaignsService],
   exports: [CampaignsService],
 })
-export class CampaignsModule { }
+export class CampaignsModule {}

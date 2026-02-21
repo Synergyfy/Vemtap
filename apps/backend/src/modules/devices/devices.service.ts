@@ -18,7 +18,7 @@ export class DevicesService {
     private devicesRepository: Repository<Device>,
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
-  ) { }
+  ) {}
 
   async create(
     businessId: string,
@@ -87,7 +87,10 @@ export class DevicesService {
     return result;
   }
 
-  async generateDevicesForReadyOrders(userId: string, businessId: string): Promise<Device[]> {
+  async generateDevicesForReadyOrders(
+    userId: string,
+    businessId: string,
+  ): Promise<Device[]> {
     const readyOrders = await this.orderRepository.find({
       where: { userId, status: OrderStatus.READY },
       relations: ['quote', 'devices'],
@@ -133,7 +136,10 @@ export class DevicesService {
     return newDevices;
   }
 
-  async updateAssetNames(businessId: string, dto: UpdateAssetNamesDto): Promise<Device[]> {
+  async updateAssetNames(
+    businessId: string,
+    dto: UpdateAssetNamesDto,
+  ): Promise<Device[]> {
     const updatedDevices: Device[] = [];
 
     for (const asset of dto.assets) {
@@ -154,8 +160,14 @@ export class DevicesService {
 
   // --- Admin Methods ---
 
-  async findAllAdmin(query: { search?: string, status?: string, page?: number, limit?: number }) {
-    const qb = this.devicesRepository.createQueryBuilder('device')
+  async findAllAdmin(query: {
+    search?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const qb = this.devicesRepository
+      .createQueryBuilder('device')
       .leftJoinAndSelect('device.business', 'business');
 
     if (query.status) {
@@ -167,7 +179,10 @@ export class DevicesService {
     }
 
     if (query.search) {
-      qb.andWhere('(device.code ILIKE :search OR device.id ILIKE :search OR business.name ILIKE :search)', { search: `%${query.search}%` });
+      qb.andWhere(
+        '(device.code ILIKE :search OR device.id ILIKE :search OR business.name ILIKE :search)',
+        { search: `%${query.search}%` },
+      );
     }
 
     const page = query.page || 1;
@@ -183,25 +198,33 @@ export class DevicesService {
         total,
         page,
         lastPage: Math.ceil(total / limit),
-      }
+      },
     };
   }
 
   async getAdminStats() {
     const total = await this.devicesRepository.count();
-    const active = await this.devicesRepository.createQueryBuilder('d').where('d.businessId IS NOT NULL').getCount();
-    const inventory = await this.devicesRepository.createQueryBuilder('d').where('d.businessId IS NULL').getCount();
+    const active = await this.devicesRepository
+      .createQueryBuilder('d')
+      .where('d.businessId IS NOT NULL')
+      .getCount();
+    const inventory = await this.devicesRepository
+      .createQueryBuilder('d')
+      .where('d.businessId IS NULL')
+      .getCount();
 
     return {
       total,
       active,
       inventory,
-      alerts: 0 // Mocking alerts for now
+      alerts: 0, // Mocking alerts for now
     };
   }
 
   async adminCreate(deviceData: any): Promise<Device> {
-    const existing = await this.devicesRepository.findOneBy({ code: deviceData.id });
+    const existing = await this.devicesRepository.findOneBy({
+      code: deviceData.id,
+    });
     if (existing) {
       throw new ConflictException('Device Serial already registered');
     }
@@ -210,7 +233,7 @@ export class DevicesService {
       code: deviceData.id,
       name: deviceData.name || '',
       type: deviceData.type,
-      // In a real app, assignedTo would map to a business ID. 
+      // In a real app, assignedTo would map to a business ID.
       // If it's literally the string 'Unassigned' or blank, we leave businessId null
       status: DeviceStatus.ACTIVE,
     });

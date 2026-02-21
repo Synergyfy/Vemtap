@@ -1,5 +1,5 @@
 export enum Channel {
-    SMS = 'SMS',
-    WHATSAPP = 'WHATSAPP',
-    EMAIL = 'EMAIL',
+  SMS = 'SMS',
+  WHATSAPP = 'WHATSAPP',
+  EMAIL = 'EMAIL',
 }
