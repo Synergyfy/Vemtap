@@ -16,5 +16,5 @@ export abstract class AbstractBaseEntity {
   updatedAt: Date;
 
   @DeleteDateColumn()
-  deletedAt: Date;
+  deletedAt!: Date;
 }

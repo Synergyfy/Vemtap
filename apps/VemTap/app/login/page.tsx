@@ -8,12 +8,14 @@ import AuthSidePanel from '@/components/auth/AuthSidePanel';
 import { useAuthStore } from '@/store/useAuthStore';
 import { notify } from '@/lib/notify';
 import Logo from '@/components/brand/Logo';
+import { useLogin } from '@/services/auth/hooks';
 
 export default function LoginPage() {
+    const { loginUser, isLoading: isLoggingIn } = useLogin();
     const router = useRouter();
     const login = useAuthStore((state) => state.login);
+    const signup = useAuthStore((state) => state.signup);
     const [showPassword, setShowPassword] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [formData, setFormData] = useState({
         email: '',
@@ -24,25 +26,24 @@ export default function LoginPage() {
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        setIsLoading(true);
 
-        const result = await login(formData.email, formData.password);
+        try {
+            const response = await loginUser({ email: formData.email, password: formData.password });
 
-        if (result.success) {
-            // Get user to determine redirect
-            const user = useAuthStore.getState().user;
-            if (user?.role === 'admin') {
+            // Set global state using the retrieved user
+            await signup(response.user);
+
+            const role = response.user?.role || 'owner';
+            if (role === 'admin') {
                 router.push('/admin/dashboard');
-            } else if (user?.role === 'customer') {
+            } else if (role === 'customer') {
                 router.push('/customer/dashboard');
             } else {
                 router.push('/dashboard');
             }
-        } else {
-            setError(result.error || 'Login failed');
+        } catch (err: any) {
+            setError(err.message || 'Login failed');
         }
-
-        setIsLoading(false);
     };
 
     return (
@@ -90,22 +91,16 @@ export default function LoginPage() {
                                                     e.preventDefault();
                                                     setFormData({ email: demo.email, password: demo.pass, rememberMe: true });
                                                     setError('');
-                                                    setIsLoading(true);
                                                     try {
-                                                        const result = await login(demo.email.trim(), demo.pass.trim());
-                                                        if (result.success) {
-                                                            notify.success(`Logged in as ${demo.label}`);
-                                                            router.push(demo.route);
-                                                        } else {
-                                                            setError(result.error || 'Demo login failed');
-                                                            setIsLoading(false);
-                                                        }
-                                                    } catch (err) {
-                                                        setError('An unexpected error occurred');
-                                                        setIsLoading(false);
+                                                        const response = await loginUser({ email: demo.email.trim(), password: demo.pass.trim() });
+                                                        await signup(response.user);
+                                                        notify.success(`Logged in as ${demo.label}`);
+                                                        router.push(demo.route);
+                                                    } catch (err: any) {
+                                                        setError(err.message || 'Demo login failed');
                                                     }
                                                 }}
-                                                disabled={isLoading}
+                                                disabled={isLoggingIn}
                                                 className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-white border border-gray-100 rounded-2xl hover:border-primary/40 hover:shadow-xl hover:-translate-y-1 transition-all disabled:opacity-50"
                                             >
                                                 <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center group-hover/btn:bg-primary/10 transition-colors">
@@ -190,10 +185,10 @@ export default function LoginPage() {
 
                                     <button
                                         type="submit"
-                                        disabled={isLoading}
+                                        disabled={isLoggingIn}
                                         className="w-full h-14 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-base mt-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                                     >
-                                        {isLoading ? (
+                                        {isLoggingIn ? (
                                             <>
                                                 <span className="material-icons-round animate-spin">refresh</span>
                                                 Proccessing Secure Login...

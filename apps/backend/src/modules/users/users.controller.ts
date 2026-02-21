@@ -49,6 +49,15 @@ export class UsersController {
   })
   @ApiBody({ type: InviteStaffDto })
   async inviteStaff(@Request() req, @Body() inviteDto: InviteStaffDto) {
+    if (
+      inviteDto.role &&
+      ![UserRole.STAFF, UserRole.MANAGER].includes(inviteDto.role as UserRole)
+    ) {
+      throw new BadRequestException(
+        'Only Staff and Manager roles can be assigned via invitation',
+      );
+    }
+
     const existing = await this.usersService.findByEmail(inviteDto.email);
     if (existing) {
       throw new BadRequestException('User with this email already exists');

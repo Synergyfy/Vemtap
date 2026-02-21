@@ -25,15 +25,6 @@ export class UsersService {
   }
 
   async create(userData: Partial<User>): Promise<User> {
-    if (
-      userData.role &&
-      ![UserRole.STAFF, UserRole.MANAGER].includes(userData.role)
-    ) {
-      throw new BadRequestException(
-        'Only Staff and Manager roles can be assigned via invitation',
-      );
-    }
-
     const user = this.usersRepository.create(userData);
     return this.usersRepository.save(user);
   }
