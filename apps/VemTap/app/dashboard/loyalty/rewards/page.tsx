@@ -14,19 +14,20 @@ export default function RewardManagementPage() {
     const { availableRewards, fetchRewards, createReward, updateReward, isLoading } = useLoyaltyStore();
     const { activeBranchId } = useBusinessStore();
 
-    // Business ID is hardcoded for demo
-    const businessId = 'bistro_001';
-
     useEffect(() => {
-        fetchRewards(businessId);
-    }, [activeBranchId]);
+        if (activeBranchId && activeBranchId !== 'all') {
+            fetchRewards(activeBranchId);
+        }
+    }, [activeBranchId, fetchRewards]);
 
     const handleCreate = async (reward: Partial<Reward>) => {
-        await createReward(businessId, reward);
+        if (!activeBranchId || activeBranchId === 'all') return;
+        await createReward(activeBranchId, reward);
     };
 
     const handleUpdate = async (id: string, updates: Partial<Reward>) => {
-        await updateReward(businessId, id, updates);
+        if (!activeBranchId || activeBranchId === 'all') return;
+        await updateReward(activeBranchId, id, updates);
     };
 
     const handleExportRewards = () => {

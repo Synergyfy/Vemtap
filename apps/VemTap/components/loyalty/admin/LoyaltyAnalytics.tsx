@@ -1,12 +1,14 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     Users, Gift, Zap, TrendingUp, BarChart3,
-    ArrowUpRight, ArrowDownRight, Activity, PieChart
+    ArrowUpRight, ArrowDownRight, Activity, PieChart, Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLoyaltyStore } from '@/store/loyaltyStore';
+import { useBusinessStore } from '@/store/useBusinessStore';
 
 interface AnalyticsStat {
     label: string;
@@ -16,14 +18,29 @@ interface AnalyticsStat {
     trend: 'up' | 'down';
 }
 
-const STATS: AnalyticsStat[] = [
-    { label: 'Total Members', value: '1,284', change: 12.5, icon: Users, trend: 'up' },
-    { label: 'Points Earned', value: '45,200', change: 8.2, icon: Zap, trend: 'up' },
-    { label: 'Rewards Claimed', value: '312', change: -2.4, icon: Gift, trend: 'down' },
-    { label: 'Redemption Rate', value: '24.8%', change: 5.1, icon: Activity, trend: 'up' },
-];
-
 export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }) => {
+    const { allProfiles, fetchAllProfiles, isLoading } = useLoyaltyStore();
+    const { activeBranchId } = useBusinessStore();
+
+    useEffect(() => {
+        if (activeBranchId && activeBranchId !== 'all') {
+            fetchAllProfiles(activeBranchId);
+        }
+    }, [activeBranchId, fetchAllProfiles]);
+
+    const STATS: AnalyticsStat[] = [
+        {
+            label: 'Total Members',
+            value: activeBranchId === 'all' ? '---' : allProfiles.length.toLocaleString(),
+            change: 12.5,
+            icon: Users,
+            trend: 'up'
+        },
+        { label: 'Points Earned', value: '45,200', change: 8.2, icon: Zap, trend: 'up' },
+        { label: 'Rewards Claimed', value: '312', change: -2.4, icon: Gift, trend: 'down' },
+        { label: 'Redemption Rate', value: '24.8%', change: 5.1, icon: Activity, trend: 'up' },
+    ];
+
     return (
         <div className={cn("space-y-8", className)}>
             {/* Stats Grid */}
@@ -34,8 +51,13 @@ export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.3, delay: index * 0.1 }}
-                        className="p-6 bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all group"
+                        className="p-6 bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all group relative"
                     >
+                        {isLoading && index === 0 && (
+                            <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+                                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                            </div>
+                        )}
                         <div className="flex items-center justify-between mb-4">
                             <div className="w-10 h-10 bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                                 <stat.icon className="w-5 h-5" />
@@ -82,7 +104,7 @@ export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }
                 </div>
 
                 {/* Breakdown Panel */}
-                <div className="lg:col-span-4 bg-white p-8 text-slate-900 border border-slate-200 rounded-2xl shadow-sm">
+                <div className="lg:col-span-4 bg-white p-8 text-slate-900 border border-slate-200 shadow-sm">
                     <div className="flex items-center gap-3 mb-8">
                         <PieChart className="w-5 h-5 text-primary" />
                         <h3 className="text-lg font-bold tracking-tight uppercase">Tier Distribution</h3>
@@ -97,10 +119,10 @@ export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }
                         ].map((tier) => (
                             <div key={tier.label} className="space-y-2">
                                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                                    <span className="text-white/60">{tier.label} Members</span>
+                                    <span className="text-slate-500">{tier.label} Members</span>
                                     <span>{tier.value}%</span>
                                 </div>
-                                <div className="h-1.5 w-full bg-white/5 overflow-hidden">
+                                <div className="h-1.5 w-full bg-slate-100 overflow-hidden">
                                     <motion.div
                                         initial={{ width: 0 }}
                                         animate={{ width: `${tier.value}%` }}
@@ -112,10 +134,10 @@ export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }
                         ))}
                     </div>
 
-                    <div className="mt-12 p-5 bg-white/5 border border-white/10 text-center">
+                    <div className="mt-12 p-5 bg-slate-50 border border-slate-100 text-center">
                         <TrendingUp className="w-6 h-6 text-emerald-500 mx-auto mb-2" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Growth Forecast</p>
-                        <p className="text-lg font-display font-black text-white">+18% Revenue Increase</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Growth Forecast</p>
+                        <p className="text-lg font-display font-black text-slate-900">+18% Revenue Increase</p>
                     </div>
                 </div>
             </div>

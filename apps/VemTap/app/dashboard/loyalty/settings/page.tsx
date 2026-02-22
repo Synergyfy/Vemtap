@@ -4,20 +4,23 @@ import React, { useEffect } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { LoyaltySettings } from '@/components/loyalty/admin/LoyaltySettings';
 import { useLoyaltyStore } from '@/store/loyaltyStore';
+import { useBusinessStore } from '@/store/useBusinessStore';
 import { LoyaltyRule } from '@/types/loyalty';
 
 export default function LoyaltySettingsPage() {
     const { rules, fetchRules, updateRules, isLoading } = useLoyaltyStore();
-
-    // Business ID is hardcoded for demo
-    const businessId = 'bistro_001';
+    const { activeBranchId } = useBusinessStore();
 
     useEffect(() => {
-        fetchRules(businessId);
-    }, []);
+        if (activeBranchId && activeBranchId !== 'all') {
+            fetchRules(activeBranchId);
+        }
+    }, [activeBranchId, fetchRules]);
 
     const handleSave = async (updates: Partial<LoyaltyRule>) => {
-        await updateRules(businessId, updates);
+        if (activeBranchId && activeBranchId !== 'all') {
+            await updateRules(activeBranchId, updates);
+        }
     };
 
     return (

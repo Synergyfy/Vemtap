@@ -24,6 +24,7 @@ interface User {
   status?: string;
   lastLogin?: string;
   joined?: string;
+  createdAt?: string;
 }
 
 interface AuthState {
@@ -33,6 +34,7 @@ interface AuthState {
   login: (userData: User, token: string) => void;
   signup: (userData: User, token: string) => void;
   logout: () => void;
+  updateUser: (data: Partial<User>) => Promise<{ success: boolean; error?: string }>;
   subscribe: (planId: SubscriptionPlan) => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -55,6 +57,20 @@ export const useAuthStore = create<AuthState>()(
         set({ user: null, token: null, isAuthenticated: false });
         useChatStore.getState().clearHistory();
         localStorage.removeItem('chat-history');
+      },
+
+      updateUser: async (data: Partial<User>) => {
+        try {
+          const { usersApi } = await import('@/lib/api/users');
+          const updatedUser = await usersApi.updateMe(data);
+          const { user } = get();
+          if (user) {
+            set({ user: { ...user, ...updatedUser } });
+          }
+          return { success: true };
+        } catch (error: any) {
+          return { success: false, error: error.message || 'Update failed' };
+        }
       },
 
       subscribe: async (planId: SubscriptionPlan) => {

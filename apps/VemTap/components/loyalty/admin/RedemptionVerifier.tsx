@@ -10,6 +10,7 @@ import {
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import { useLoyaltyStore } from '@/store/loyaltyStore';
+import { useBusinessStore } from '@/store/useBusinessStore';
 import { Reward, Redemption } from '@/types/loyalty';
 
 export const RedemptionVerifier: React.FC<{ className?: string }> = ({ className }) => {
@@ -32,11 +33,16 @@ export const RedemptionVerifier: React.FC<{ className?: string }> = ({ className
         setIsValidating(true);
         setResult(null);
 
-        // Business ID is hardcoded for demo
-        const businessId = 'bistro_001';
+        // Use real branch ID from business store
+        const branchId = useBusinessStore.getState().activeBranchId;
+        if (!branchId || branchId === 'all') {
+            notify.error('Please select a specific branch to verify codes');
+            setIsValidating(false);
+            return;
+        }
 
         try {
-            const response = await verifyRedemption(businessId, code);
+            const response = await verifyRedemption(branchId, code);
             if (response.success) {
                 setResult({
                     success: true,
