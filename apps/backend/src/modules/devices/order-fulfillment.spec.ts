@@ -18,6 +18,7 @@ describe('DevicesService - Order Fulfillment', () => {
     save: jest.fn(),
     findOneBy: jest.fn(),
     count: jest.fn(),
+    find: jest.fn(),
   };
 
   const mockOrderRepo = {
@@ -53,18 +54,21 @@ describe('DevicesService - Order Fulfillment', () => {
     const orderId = 'order-1';
     const businessId = 'biz-1';
 
-    it('should generate devices for order', async () => {
+    it('should generate devices for order with correct type', async () => {
       const order = {
         id: orderId,
         quantity: 2,
         user: { businessId },
-        product: { name: 'Product A' },
+        product: {
+            name: 'Product A',
+            productType: { id: 'type-1', name: 'NFC Card' }
+        },
         status: OrderStatus.PENDING,
       } as unknown as Order;
 
       mockOrderRepo.findOne.mockResolvedValue(order);
       mockDeviceRepo.count.mockResolvedValue(0); // No existing devices
-      mockDeviceRepo.findOneBy.mockResolvedValue(null); // Unique codes
+      mockDeviceRepo.find.mockResolvedValue([]); // Unique codes in bulk check
       mockDeviceRepo.create.mockImplementation((dto) => dto);
       mockDeviceRepo.save.mockResolvedValue([]);
       mockOrderRepo.save.mockResolvedValue(order);
@@ -72,6 +76,8 @@ describe('DevicesService - Order Fulfillment', () => {
       const result = await service.fulfillOrder(orderId);
 
       expect(result).toHaveLength(2);
+      expect(result[0].productTypeId).toBe('type-1');
+      expect(result[0].type).toBe('NFC Card');
       expect(mockDeviceRepo.save).toHaveBeenCalledTimes(1);
       expect(mockOrderRepo.save).toHaveBeenCalled();
       expect(order.status).toBe(OrderStatus.READY);

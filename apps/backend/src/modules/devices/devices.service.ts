@@ -4,7 +4,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Device, DeviceStatus } from './entities/device.entity';
 import { CreateDeviceDto } from './dto/create-device.dto';
 import { UpdateDeviceDto } from './dto/update-device.dto';
@@ -82,7 +82,14 @@ export class DevicesService {
   async fulfillOrder(orderId: string): Promise<Device[]> {
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
-      relations: ['user', 'product', 'quote', 'quote.product'],
+      relations: [
+        'user',
+        'product',
+        'product.productType',
+        'quote',
+        'quote.product',
+        'quote.product.productType',
+      ],
     });
 
     if (!order) throw new NotFoundException('Order not found');
@@ -102,33 +109,62 @@ export class DevicesService {
     const quantity = order.quantity || order.quote?.quantity || 0;
     const productName =
       order.product?.name || order.quote?.product?.name || 'Device';
+    const productType =
+      order.product?.productType || order.quote?.product?.productType;
 
     if (quantity <= 0) {
       throw new ConflictException('Order quantity is invalid');
     }
 
-    const newDevices: Device[] = [];
-    for (let i = 0; i < quantity; i++) {
-      let code = '';
-      let isUnique = false;
-      while (!isUnique) {
-        code = this.generateRandomCode();
-        const existing = await this.devicesRepository.findOneBy({ code });
-        if (!existing) isUnique = true;
+    // Efficient bulk generation logic
+    const uniqueCodes = new Set<string>();
+    while (uniqueCodes.size < quantity) {
+      // Generate batches
+      const batchSize = quantity - uniqueCodes.size;
+      const potentialCodes: string[] = [];
+
+      // Generate a batch of random codes
+      for (let i = 0; i < batchSize + 10; i++) { // Generate a few extras to account for collisions
+        potentialCodes.push(this.generateRandomCode());
       }
 
-      const device = this.devicesRepository.create({
+      // Check existence in DB in one query
+      const existingDevices = await this.devicesRepository.find({
+        where: { code: In(potentialCodes) },
+        select: ['code'],
+      });
+
+      const existingCodes = new Set(existingDevices.map(d => d.code));
+
+      // Add non-conflicting codes to our set
+      for (const code of potentialCodes) {
+        if (!existingCodes.has(code)) {
+          uniqueCodes.add(code);
+          if (uniqueCodes.size >= quantity) break;
+        }
+      }
+    }
+
+    const codesArray = Array.from(uniqueCodes);
+    const newDevices: Partial<Device>[] = [];
+
+    for (let i = 0; i < quantity; i++) {
+      newDevices.push({
         name: `${productName} #${i + 1}`,
-        code,
+        code: codesArray[i],
         status: DeviceStatus.ACTIVE,
         businessId,
         orderId: order.id,
-        type: 'Card',
+        type: productType?.name || 'Card',
+        productTypeId: productType?.id,
       });
-      newDevices.push(device);
     }
 
-    await this.devicesRepository.save(newDevices);
+    // Bulk insert is more efficient than saving individual entities
+    // save() with an array handles insertion in batches
+    await this.devicesRepository.save(
+      this.devicesRepository.create(newDevices as Device[])
+    );
 
     order.status = OrderStatus.READY;
     await this.orderRepository.save(order);
