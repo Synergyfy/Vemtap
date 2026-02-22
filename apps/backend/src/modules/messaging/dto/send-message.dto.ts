@@ -4,10 +4,15 @@ import { Channel } from '../enums/channel.enum';
 import { AudienceType } from '../entities/message-campaign.entity';
 
 export class SendMessageDto {
-    @ApiProperty()
+    @ApiProperty({ description: 'Business ID (for credits)' })
     @IsNotEmpty()
     @IsString()
     businessId: string;
+
+    @ApiPropertyOptional({ description: 'Branch ID (required for campaign creation; derived from business if not provided)' })
+    @IsOptional()
+    @IsString()
+    branchId?: string;
 
     @ApiProperty({ enum: Channel })
     @IsEnum(Channel)

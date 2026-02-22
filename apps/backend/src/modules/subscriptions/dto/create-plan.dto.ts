@@ -61,6 +61,11 @@ export class CreatePlanDto {
     @IsOptional()
     tagsLimit?: number;
 
+    @ApiPropertyOptional({ description: 'Branches limit (null for unlimited)', example: 3 })
+    @IsNumber()
+    @IsOptional()
+    branchLimit?: number;
+
     @ApiPropertyOptional({ description: 'Level of analytics', example: 'advanced' })
     @IsString()
     @IsOptional()

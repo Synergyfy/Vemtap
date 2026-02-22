@@ -34,11 +34,11 @@ export class CampaignsService {
 
   async create(
     createCampaignDto: CreateCampaignDto,
-    businessId?: string,
+    branchId: string,
   ): Promise<Campaign> {
     const campaign = this.campaignRepository.create({
       ...createCampaignDto,
-      businessId,
+      branchId,
     });
     // Mock initial stats
     campaign.sent = 0;
@@ -49,11 +49,10 @@ export class CampaignsService {
   }
 
   async findAll(
-    businessId?: string,
+    branchId: string,
     status?: CampaignStatus,
   ): Promise<Campaign[]> {
-    const where: any = {};
-    if (businessId) where.businessId = businessId;
+    const where: any = { branchId };
     if (status) where.status = status;
 
     return this.campaignRepository.find({
@@ -84,12 +83,12 @@ export class CampaignsService {
     await this.campaignRepository.softDelete(campaign.id);
   }
 
-  async getStats(businessId?: string) {
+  async getStats(branchId: string) {
     // In a real app, we would aggregate this from the DB or a separate analytics table.
     // For now, we mock the trends but calculate the totals from actual campaigns if possible,
     // or just return the mocked structure required by the frontend.
 
-    const campaigns = await this.findAll(businessId);
+    const campaigns = await this.findAll(branchId);
 
     const totalSent = campaigns.reduce((acc, c) => acc + c.sent, 0);
     const totalClicks = campaigns.reduce((acc, c) => acc + c.clicks, 0);
@@ -132,78 +131,78 @@ export class CampaignsService {
   // Templates
   async createTemplate(
     dto: CreateCampaignTemplateDto,
-    businessId?: string,
+    branchId?: string | null,
   ): Promise<CampaignTemplate> {
     const template = this.templateRepository.create({
       ...dto,
-      businessId,
+      branchId: branchId ?? null,
     });
     return this.templateRepository.save(template);
   }
 
-  async getTemplates(businessId?: string): Promise<CampaignTemplate[]> {
-    // Return both global (null businessId) and specific business templates
+  async getTemplates(branchId?: string | null): Promise<CampaignTemplate[]> {
+    // Return both global (null branchId) and specific branch templates
     return this.templateRepository.find({
       where: [
-        { businessId: IsNull() }, // Global
-        ...(businessId ? [{ businessId }] : []),
+        { branchId: IsNull() }, // Global
+        ...(branchId ? [{ branchId }] : []),
       ],
       order: { createdAt: 'ASC' },
     });
   }
 
   // Loyalty Features
-  async getLoyaltyProfile(userId: string, businessId: string): Promise<LoyaltyProfile> {
-    let profile = await this.profileRepository.findOne({ where: { userId, businessId } });
+  async getLoyaltyProfile(userId: string, branchId: string): Promise<LoyaltyProfile> {
+    let profile = await this.profileRepository.findOne({ where: { userId, branchId } });
     if (!profile) {
-      profile = this.profileRepository.create({ userId, businessId, tierLevel: 'bronze' });
+      profile = this.profileRepository.create({ userId, branchId, tierLevel: 'bronze' });
       await this.profileRepository.save(profile);
     }
     return profile;
   }
 
-  async getLoyaltyProfiles(businessId: string): Promise<LoyaltyProfile[]> {
-    return this.profileRepository.find({ where: { businessId } });
+  async getLoyaltyProfiles(branchId: string): Promise<LoyaltyProfile[]> {
+    return this.profileRepository.find({ where: { branchId } });
   }
 
-  async getLoyaltyRule(businessId: string): Promise<LoyaltyRule> {
-    let rule = await this.ruleRepository.findOne({ where: { businessId } });
+  async getLoyaltyRule(branchId: string): Promise<LoyaltyRule> {
+    let rule = await this.ruleRepository.findOne({ where: { branchId } });
     if (!rule) {
-      rule = this.ruleRepository.create({ businessId });
+      rule = this.ruleRepository.create({ branchId });
       await this.ruleRepository.save(rule);
     }
     return rule;
   }
 
-  async updateLoyaltyRule(businessId: string, updates: UpdateLoyaltyRuleDto): Promise<LoyaltyRule> {
-    const rule = await this.getLoyaltyRule(businessId);
+  async updateLoyaltyRule(branchId: string, updates: UpdateLoyaltyRuleDto): Promise<LoyaltyRule> {
+    const rule = await this.getLoyaltyRule(branchId);
     Object.assign(rule, updates);
     return this.ruleRepository.save(rule);
   }
 
-  async createReward(businessId: string, dto: CreateRewardDto): Promise<Reward> {
-    const reward = this.rewardRepository.create({ ...dto, businessId });
+  async createReward(branchId: string, dto: CreateRewardDto): Promise<Reward> {
+    const reward = this.rewardRepository.create({ ...dto, branchId });
     return this.rewardRepository.save(reward);
   }
 
-  async updateReward(businessId: string, id: string, dto: UpdateRewardDto): Promise<Reward> {
-    const reward = await this.rewardRepository.findOne({ where: { id, businessId } });
+  async updateReward(branchId: string, id: string, dto: UpdateRewardDto): Promise<Reward> {
+    const reward = await this.rewardRepository.findOne({ where: { id, branchId } });
     if (!reward) throw new NotFoundException('Reward not found');
     Object.assign(reward, dto);
     return this.rewardRepository.save(reward);
   }
 
-  async getRewards(businessId: string): Promise<Reward[]> {
-    return this.rewardRepository.find({ where: { businessId, isActive: true } });
+  async getRewards(branchId: string): Promise<Reward[]> {
+    return this.rewardRepository.find({ where: { branchId, isActive: true } });
   }
 
-  async earnPoints(businessId: string, dto: PointEarnRequestDto): Promise<any> {
-    const rule = await this.getLoyaltyRule(businessId);
+  async earnPoints(branchId: string, dto: PointEarnRequestDto): Promise<any> {
+    const rule = await this.getLoyaltyRule(branchId);
     if (!rule || !rule.isActive) {
       return { success: false, pointsEarned: 0, newBalance: 0, message: 'Loyalty system is inactive' };
     }
 
-    const profile = await this.getLoyaltyProfile(dto.userId, businessId);
+    const profile = await this.getLoyaltyProfile(dto.userId, branchId);
 
     let earned = 0;
     const breakdown: any = {};
@@ -257,9 +256,9 @@ export class CampaignsService {
     };
   }
 
-  async redeemReward(businessId: string, dto: RewardRedeemRequestDto): Promise<any> {
-    const profile = await this.profileRepository.findOne({ where: { id: dto.loyaltyProfileId, businessId } });
-    const reward = await this.rewardRepository.findOne({ where: { id: dto.rewardId, businessId } });
+  async redeemReward(branchId: string, dto: RewardRedeemRequestDto): Promise<any> {
+    const profile = await this.profileRepository.findOne({ where: { id: dto.loyaltyProfileId, branchId } });
+    const reward = await this.rewardRepository.findOne({ where: { id: dto.rewardId, branchId } });
 
     if (!profile || !reward) return { success: false, error: 'Profile or Reward not found' };
     if (profile.currentPointsBalance < reward.pointCost) return { success: false, error: 'Insufficient points' };
@@ -296,14 +295,14 @@ export class CampaignsService {
     return { success: true, redemption };
   }
 
-  async verifyRedemption(businessId: string, code: string): Promise<any> {
+  async verifyRedemption(branchId: string, code: string): Promise<any> {
     const redemption = await this.redemptionRepository.findOne({
       where: { redemptionCode: code, status: 'pending' },
       relations: ['reward']
     });
 
     if (!redemption) return { success: false, error: 'Invalid or already used code' };
-    if (redemption.reward.businessId !== businessId) return { success: false, error: 'Reward not found for this business' };
+    if (redemption.reward.branchId !== branchId) return { success: false, error: 'Reward not found for this branch' };
 
     if (new Date(redemption.expiresAt) < new Date()) {
       redemption.status = 'expired';

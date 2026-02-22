@@ -142,11 +142,12 @@ export class SubscriptionsService {
         // Load business with relations to count usage
         const business = await this.businessRepository.findOne({
             where: { id: businessId },
-            relations: ['staff', 'devices'],
+            relations: ['staff', 'devices', 'branches'],
         });
 
         const usedStaff = business?.staff?.length || 0;
         const usedTags = business?.devices?.length || 0;
+        const usedBranches = business?.branches?.length || 0;
 
         // We can expand loyalty usage metrics as needed. For now just mock it or calculate it properly if entities exist.
         // e.g. usedLoyaltyPrograms
@@ -170,6 +171,11 @@ export class SubscriptionsService {
                     limit: plan.loyaltyLimit ?? 'unlimited',
                     used: usedLoyaltyPrograms,
                     remaining: plan.loyaltyLimit === null ? 'unlimited' : Math.max(0, plan.loyaltyLimit - usedLoyaltyPrograms)
+                },
+                branches: {
+                    limit: plan.branchLimit ?? 'unlimited',
+                    used: usedBranches,
+                    remaining: plan.branchLimit === null ? 'unlimited' : Math.max(0, plan.branchLimit - usedBranches)
                 },
                 analytics: plan.analyticsLevel
             }

@@ -27,4 +27,20 @@ export class CreateVisitorDto {
   @IsString()
   @IsOptional()
   status?: string;
+
+  @ApiProperty({
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  deviceId?: string;
+
+  @ApiProperty({
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    description: 'Branch ID where visitor is being registered (required if deviceId not provided)',
+    required: false,
+  })
+  @IsString()
+  branchId?: string;
 }

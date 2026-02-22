@@ -26,4 +26,9 @@ export class CreateCampaignTemplateDto {
   @IsOptional()
   @IsString()
   textColor?: string;
+
+  @ApiProperty({ example: 'branch-uuid', description: 'Branch ID for branch-specific template (null for global)', required: false })
+  @IsOptional()
+  @IsString()
+  branchId?: string | null;
 }

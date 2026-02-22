@@ -23,7 +23,8 @@
     "typeorm": "dotenv -e .env -- ts-node --project tsconfig.orm.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/database/data-source.ts",
     "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm -- migration:run",
-    "migration:revert": "npm run typeorm -- migration:revert"
+    "migration:revert": "npm run typeorm -- migration:revert",
+    "db:reset": "dotenv -e .env -- ts-node --project tsconfig.orm.json -r tsconfig-paths/register src/database/reset-and-sync.ts"
   },
   "dependencies": {
     "@infobip-api/sdk": "^0.3.2",

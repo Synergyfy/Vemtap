@@ -15,15 +15,15 @@ export class CampaignService {
         return this.campaignRepo.save(campaign);
     }
 
-    async getCampaigns(businessId: string): Promise<MessageCampaign[]> {
+    async getCampaigns(branchId: string): Promise<MessageCampaign[]> {
         return this.campaignRepo.find({
-            where: { businessId },
+            where: { branchId },
             order: { createdAt: 'DESC' },
         });
     }
 
-    async getCampaignById(id: string, businessId: string): Promise<MessageCampaign> {
-        const campaign = await this.campaignRepo.findOne({ where: { id, businessId } });
+    async getCampaignById(id: string, branchId: string): Promise<MessageCampaign> {
+        const campaign = await this.campaignRepo.findOne({ where: { id, branchId } });
         if (!campaign) {
             throw new NotFoundException('Campaign not found');
         }

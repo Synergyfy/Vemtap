@@ -4,6 +4,7 @@ import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Order } from '../../products/entities/order.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 
 export enum DeviceStatus {
   ACTIVE = 'active',
@@ -85,4 +86,15 @@ export class Device extends AbstractBaseEntity {
   })
   @Column({ nullable: true })
   orderId: string;
+
+  @ManyToOne(() => Branch, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'branchId' })
+  branch: Branch;
+
+  @ApiProperty({
+    example: 'branch-uuid',
+    description: 'Branch ID the device is assigned to',
+  })
+  @Column({ nullable: true })
+  branchId: string;
 }

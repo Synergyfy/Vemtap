@@ -16,12 +16,18 @@ export class BusinessesService {
   ) { }
 
   async create(businessData: Partial<Business>): Promise<Business> {
+    if (businessData.ownerId) {
+      const existing = await this.findByOwner(businessData.ownerId);
+      if (existing) {
+        throw new ConflictException('Owner already has a business');
+      }
+    }
     const business = this.businessesRepository.create(businessData);
     return this.businessesRepository.save(business);
   }
 
-  async findByOwner(ownerId: string): Promise<Business[]> {
-    return this.businessesRepository.find({ where: { ownerId } });
+  async findByOwner(ownerId: string): Promise<Business | null> {
+    return this.businessesRepository.findOne({ where: { ownerId } });
   }
 
   async findById(id: string): Promise<Business> {

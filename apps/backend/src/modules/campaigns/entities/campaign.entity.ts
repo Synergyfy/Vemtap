@@ -1,7 +1,7 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
-import { Business } from '../../businesses/entities/business.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 import { CampaignType, CampaignStatus } from '../dto/create-campaign.dto';
 
 @Entity('campaigns')
@@ -70,12 +70,12 @@ export class Campaign extends AbstractBaseEntity {
 
   @ApiProperty({
     example: '123e4567-e89b-12d3-a456-426614174000',
-    description: 'ID of the business',
+    description: 'ID of the branch',
   })
-  @Column({ nullable: true })
-  businessId: string;
+  @Column()
+  branchId: string;
 
-  @ManyToOne(() => Business, { nullable: true })
-  @JoinColumn({ name: 'businessId' })
-  business: Business;
+  @ManyToOne(() => Branch, (branch) => branch.campaigns, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'branchId' })
+  branch: Branch;
 }

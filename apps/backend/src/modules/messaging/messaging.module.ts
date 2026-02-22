@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { Business } from '../businesses/entities/business.entity';
+import { Branch } from '../branches/entities/branch.entity';
 
 import { MessageTemplate } from './entities/message-template.entity';
 import { MessageCampaign } from './entities/message-campaign.entity';
@@ -13,6 +15,18 @@ import { ContactsModule } from '../contacts/contacts.module';
 import { BusinessesModule } from '../businesses/businesses.module';
 import { SettingsModule } from '../settings/settings.module';
 
+import { MessagingEngineService } from './services/messaging-engine.service';
+import { SmsService } from './services/sms.service';
+import { WhatsappService } from './services/whatsapp.service';
+import { EmailService } from './services/email.service';
+import { TemplateService } from './services/template.service';
+import { ComplianceService } from './services/compliance.service';
+import { CreditService } from './services/credit.service';
+import { CampaignService } from './services/campaign.service';
+import { InboxService } from './services/inbox.service';
+import { AnalyticsService } from './services/analytics.service';
+import { MessagingController } from './controllers/messaging.controller';
+
 @Module({
     imports: [
         TypeOrmModule.forFeature([
@@ -21,6 +35,8 @@ import { SettingsModule } from '../settings/settings.module';
             ConversationThread,
             Message,
             MessageLog,
+            Business,
+            Branch,
         ]),
         ContactsModule,
         BusinessesModule,
@@ -39,8 +55,31 @@ import { SettingsModule } from '../settings/settings.module';
             name: 'messaging-batch-send',
         }),
     ],
-    providers: [],
-    controllers: [],
-    exports: [TypeOrmModule],
+    providers: [
+        MessagingEngineService,
+        SmsService,
+        WhatsappService,
+        EmailService,
+        TemplateService,
+        ComplianceService,
+        CreditService,
+        CampaignService,
+        InboxService,
+        AnalyticsService,
+    ],
+    controllers: [MessagingController],
+    exports: [
+        TypeOrmModule,
+        MessagingEngineService,
+        SmsService,
+        WhatsappService,
+        EmailService,
+        TemplateService,
+        ComplianceService,
+        CreditService,
+        CampaignService,
+        InboxService,
+        AnalyticsService,
+    ],
 })
 export class MessagingModule { }

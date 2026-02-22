@@ -3,6 +3,7 @@ import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { User } from '../../users/entities/user.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Device } from '../../devices/entities/device.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 
 @Entity('visits')
 export class Visit extends AbstractBaseEntity {
@@ -13,14 +14,21 @@ export class Visit extends AbstractBaseEntity {
   @Column()
   customerId: string;
 
-  @ManyToOne(() => Business, (business) => business.visits, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(() => Business, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'businessId' })
   business: Business;
 
-  @Column()
+  @Column({ nullable: true })
   businessId: string;
+
+  @ManyToOne(() => Branch, (branch) => branch.visits, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'branchId' })
+  branch: Branch;
+
+  @Column()
+  branchId: string;
 
   @ManyToOne(() => Device, (device) => device.visits, {
     nullable: true,

@@ -56,4 +56,9 @@ export class CreateCampaignDto {
   @IsOptional()
   @IsEnum(CampaignStatus)
   status?: CampaignStatus = CampaignStatus.DRAFT;
+
+  @ApiProperty({ example: 'branch-uuid', description: 'Branch ID (optional if passed as query)', required: false })
+  @IsOptional()
+  @IsString()
+  branchId?: string;
 }

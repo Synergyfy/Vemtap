@@ -46,4 +46,9 @@ export class InviteStaffDto {
   @IsString()
   @IsNotEmpty()
   businessId: string;
+
+  @ApiProperty({ example: 'branch-uuid' })
+  @IsString()
+  @IsNotEmpty()
+  branchId: string;
 }

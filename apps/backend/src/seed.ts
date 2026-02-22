@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { UsersService } from './modules/users/users.service';
 import { BusinessesService } from './modules/businesses/businesses.service';
 import { UserRole } from './modules/users/entities/user.entity';
+import { BranchesService } from './modules/branches/branches.service';
 import * as bcrypt from 'bcrypt';
 import { BusinessType } from './modules/businesses/entities/business.entity';
 
@@ -10,6 +11,7 @@ async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
   const usersService = app.get(UsersService);
   const businessesService = app.get(BusinessesService);
+  const branchesService = app.get(BranchesService);
 
   console.log('Seeding data...');
 
@@ -39,9 +41,26 @@ async function bootstrap() {
     console.log('Created Business: The Azure Bistro');
   }
 
-  // 2. Create Manager (Linked to Business) - We need the business ID, let's fetch it
-  const businesses = await businessesService.findByOwner(owner.id);
-  const businessId = businesses[0]?.id;
+  // 2. Create Manager (Linked to Business & Branch)
+  const business = await businessesService.findByOwner(owner.id);
+  const businessId = business?.id;
+
+  // Create a default Branch for the business
+  let branchId: string | undefined;
+  if (business) {
+    const branches = await branchesService.findAll(owner.id);
+    if (branches.length === 0) {
+      const branch = await branchesService.create(owner.id, {
+        name: 'Main Branch',
+        address: '123 Main St',
+        phone: '08012345678',
+      });
+      branchId = branch.id;
+      console.log('Created Default Branch: Main Branch');
+    } else {
+      branchId = branches[0].id;
+    }
+  }
 
   const manager = await usersService.findByEmail('manager@latap.com');
   if (!manager) {
@@ -53,6 +72,7 @@ async function bootstrap() {
       password: hashedPassword,
       role: UserRole.MANAGER,
       businessId: businessId,
+      branchId: branchId,
     });
     console.log('Created Manager: manager@latap.com');
   }
@@ -68,6 +88,7 @@ async function bootstrap() {
       password: hashedPassword,
       role: UserRole.STAFF,
       businessId: businessId,
+      branchId: branchId,
     });
     console.log('Created Staff: staff@latap.com');
   }

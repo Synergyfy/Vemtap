@@ -1,8 +1,12 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from './analytics.service';
+import { User } from '../users/entities/user.entity';
+import { Visit } from '../visitors/entities/visit.entity';
 
 @Module({
+    imports: [TypeOrmModule.forFeature([User, Visit])],
     controllers: [AnalyticsController],
     providers: [AnalyticsService],
 })

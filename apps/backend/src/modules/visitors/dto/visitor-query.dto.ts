@@ -29,4 +29,14 @@ export class VisitorQueryDto {
   @IsOptional()
   @IsString()
   status?: string;
+
+  @ApiPropertyOptional({ example: 'business-id' })
+  @IsOptional()
+  @IsString()
+  businessId?: string;
+
+  @ApiPropertyOptional({ example: 'owner-id' })
+  @IsOptional()
+  @IsString()
+  ownerId?: string;
 }

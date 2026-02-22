@@ -44,6 +44,11 @@ export class UpdateLoyaltyRuleDto {
 }
 
 export class CreateRewardDto {
+    @ApiProperty({ description: 'Branch ID', example: 'branch_001', required: false })
+    @IsString()
+    @IsOptional()
+    branchId?: string;
+
     @ApiProperty({ description: 'Reward name', example: 'Free Coffee' })
     @IsString()
     name: string;
@@ -81,6 +86,11 @@ export class CreateRewardDto {
 export class UpdateRewardDto extends PartialType(CreateRewardDto) { }
 
 export class PointEarnRequestDto {
+    @ApiProperty({ description: 'Branch ID', example: 'branch_001', required: false })
+    @IsString()
+    @IsOptional()
+    branchId?: string;
+
     @ApiProperty({ description: 'The user ID', example: 'user_001' })
     @IsString()
     userId: string;
@@ -101,6 +111,11 @@ export class PointEarnRequestDto {
 }
 
 export class RewardRedeemRequestDto {
+    @ApiProperty({ description: 'Branch ID', example: 'branch_001', required: false })
+    @IsString()
+    @IsOptional()
+    branchId?: string;
+
     @ApiProperty({ description: 'Loyalty profile ID', example: 'lp_123456' })
     @IsString()
     loyaltyProfileId: string;
@@ -111,6 +126,11 @@ export class RewardRedeemRequestDto {
 }
 
 export class VerifyRedemptionDto {
+    @ApiProperty({ description: 'Branch ID', example: 'branch_001', required: false })
+    @IsString()
+    @IsOptional()
+    branchId?: string;
+
     @ApiProperty({ description: 'Redemption code', example: 'A1B2C3D4' })
     @IsString()
     code: string;

@@ -15,6 +15,7 @@ import { Channel } from '../enums/channel.enum';
 interface BatchJobData {
     campaignId: string;
     businessId: string;
+    branchId?: string;
     channel: Channel;
     contactIds: string[];
     templateId?: string;
@@ -38,7 +39,7 @@ export class BatchSendProcessor extends WorkerHost {
     }
 
     async process(job: Job<BatchJobData, any, string>): Promise<any> {
-        const { campaignId, businessId, contactIds, templateId, content } = job.data;
+        const { campaignId, businessId, branchId, contactIds, templateId, content } = job.data;
         this.logger.log(`Processing batch send for campaign ${campaignId}, targeting ${contactIds.length} contacts.`);
 
         let successCount = 0;
@@ -62,7 +63,7 @@ export class BatchSendProcessor extends WorkerHost {
                     const contact = await this.contactRepo.findOne({ where: { id: contactId } });
                     if (!contact) continue;
 
-                    const dto = { businessId, channel: job.data.channel, content };
+                    const dto = { businessId, branchId, channel: job.data.channel, content };
                     await this.messagingEngine.processSingleSend(contact, dto, business, template);
                     successCount++;
                 } catch (err) {

@@ -2,6 +2,7 @@ import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { User } from '../../users/entities/user.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 
 @Entity('loyalty_profiles')
 export class LoyaltyProfile extends AbstractBaseEntity {
@@ -10,10 +11,14 @@ export class LoyaltyProfile extends AbstractBaseEntity {
     @Index()
     userId: string;
 
-    @ApiProperty({ description: 'The business ID', example: 'business_001' })
+    @ApiProperty({ description: 'The branch ID', example: 'branch_001' })
     @Column()
     @Index()
-    businessId: string;
+    branchId: string;
+
+    @ManyToOne(() => Branch, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'branchId' })
+    branch: Branch;
 
     @ApiProperty({ description: 'Total points earned over lifetime', example: 5000 })
     @Column({ type: 'int', default: 0 })

@@ -1,8 +1,8 @@
-import { Entity, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, OneToMany, JoinColumn, OneToOne } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { User } from '../../users/entities/user.entity';
 import { Device } from '../../devices/entities/device.entity';
-import { Visit } from '../../visitors/entities/visit.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 
 export enum BusinessType {
   RESTAURANT = 'RESTAURANT',
@@ -93,7 +93,9 @@ export class Business extends AbstractBaseEntity {
   rewardVisitThreshold: number;
 
   // Relation to the owner
-  @ManyToOne(() => User, (user) => user.ownedBusinesses)
+  @OneToOne(() => User, (user) => user.ownedBusiness, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'ownerId' })
   owner: User;
 
@@ -107,6 +109,6 @@ export class Business extends AbstractBaseEntity {
   @OneToMany(() => Device, (device) => device.business)
   devices: Device[];
 
-  @OneToMany(() => Visit, (visit) => visit.business)
-  visits: Visit[];
+  @OneToMany(() => Branch, (branch) => branch.business)
+  branches: Branch[];
 }

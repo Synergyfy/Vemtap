@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
+import { useMyBusiness } from '@/services/businesses/hooks';
 
 interface SidebarProps {
     children: React.ReactNode;
@@ -25,7 +26,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
     const { user, logout } = useAuthStore();
-    const { storeName, logoUrl: businessLogo } = useCustomerFlowStore();
+    const { data: myBusiness } = useMyBusiness();
 
     // Auto-expand the menu corresponding to the current path
     const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
@@ -408,14 +409,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 {/* User Profile */}
                 <div className="border-t border-gray-200 p-4">
                     <Link
-                        href={`/business/${(storeName || user?.businessName || 'profile').toLowerCase().replace(/\s+/g, '-')}`}
+                        href={`/business/${(myBusiness?.name || user?.businessName || 'profile').toLowerCase().replace(/\s+/g, '-')}`}
                         className="flex items-center gap-3 mb-3 hover:bg-gray-50 p-2 rounded-xl transition-colors group"
                     >
                         <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-gray-100 group-hover:scale-105 transition-transform">
-                            {businessLogo || defaultLogo ? (
+                            {myBusiness?.logoUrl || defaultLogo ? (
                                 <img
-                                    src={businessLogo || defaultLogo.src}
-                                    alt={storeName}
+                                    src={myBusiness?.logoUrl || defaultLogo.src}
+                                    alt={myBusiness?.name || 'Store'}
                                     className="w-full h-full object-contain p-1"
                                 />
                             ) : (
@@ -424,7 +425,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-text-main truncate">{user?.name || 'Business Owner'}</p>
-                            <p className="text-xs text-text-secondary truncate">{storeName || user?.businessName || 'Business Profile'}</p>
+                            <p className="text-xs text-text-secondary truncate">{myBusiness?.name || user?.businessName || 'Business Profile'}</p>
                         </div>
                     </Link>
                     <button

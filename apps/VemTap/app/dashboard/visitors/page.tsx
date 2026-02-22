@@ -6,10 +6,9 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import StatsCard from '@/components/dashboard/StatsCard';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import EmptyState from '@/components/dashboard/EmptyState';
-import { useQuery } from '@tanstack/react-query';
-import { useBusinessStore } from '@/store/useBusinessStore';
-import { dashboardApi } from '@/lib/api/dashboard';
-import { Visitor } from '@/lib/store/mockDashboardStore';
+import { useVisitors, useVisitorStats } from '@/services/visitors/hooks';
+import { Visitor } from '@/services/visitors/types';
+import { useAuthStore } from '@/store/useAuthStore';
 import { Users, UserPlus, Repeat, Star, Search, Download, MoreVertical, Send, Gift, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
@@ -22,45 +21,56 @@ export default function VisitorsOverviewPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' | 'general' } | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
 
+<<<<<<< HEAD
     const { activeBranchId } = useBusinessStore();
 
     const { data: storeData, isLoading } = useQuery({
         queryKey: ['dashboard', activeBranchId],
         queryFn: dashboardApi.fetchDashboardData,
+=======
+    const userBranchId = useAuthStore((state) => state.user?.businessId);
+    const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(userBranchId, {
+        search: searchQuery,
+        status: filterStatus !== 'all' ? filterStatus : undefined
+>>>>>>> 3fc086c969e80003206a0cddf262600a3ce2226d
     });
+    const { data: statsData } = useVisitorStats(userBranchId);
 
-    const visitors = storeData?.recentVisitors || [];
+    const visitors = paginatedData?.data || [];
+    const isLoading = isLoadingVisitors;
 
     const handleExportCSV = () => {
-        const exportData = filteredVisitors.map(v => ({
-            Name: v.name,
-            Phone: v.phone,
-            Email: v.email || 'N/A',
-            Status: v.status.toUpperCase(),
-            'Last Visit': v.time
-        }));
+        const csvContent = [
+            ['Name', 'Phone', 'Status', 'Last Visit'],
+            ...visitors.map((v: Visitor) => [v.name, v.phone, v.status, String(v.lastVisit || v.time)])
+        ].map(row => row.join(',')).join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `visitors_report_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
 
         exportToCSV(exportData, `visitors_report_${new Date().toISOString().split('T')[0]}`);
         toast.success('Report exported successfully!');
     };
 
-    const stats = [
-        { label: 'Total Visitors', value: visitors.length.toString(), icon: Users, color: 'blue' as const, trend: { value: '+12%', isUp: true } },
-        { label: 'New This Month', value: visitors.filter(v => v.status === 'new').length.toString(), icon: UserPlus, color: 'green' as const, trend: { value: '+5%', isUp: true } },
-        { label: 'Returning', value: visitors.filter(v => v.status === 'returning').length.toString(), icon: Repeat, color: 'purple' as const, trend: { value: '+8%', isUp: true } },
-        { label: 'VIP Members', value: '156', icon: Star, color: 'yellow' as const, trend: { value: '+15%', isUp: true } },
+    const stats = statsData?.stats && statsData.stats.length > 0 ? statsData.stats.map(s => ({
+        ...s,
+        // Map backend string icon names to Lucide components
+        icon: s.icon === 'group' ? Users : s.icon === 'person_add' ? UserPlus : s.icon === 'repeat' ? Repeat : Star
+    })) : [
+        { label: 'Total Visitors', value: visitors.length.toString(), icon: Users, color: 'blue' as const, trend: { value: '+0%', isUp: true } },
+        { label: 'New This Month', value: visitors.filter(v => v.status === 'New' || v.status === 'new').length.toString(), icon: UserPlus, color: 'green' as const, trend: { value: '+0%', isUp: true } },
+        { label: 'Returning', value: visitors.filter(v => v.status === 'Returning' || v.status === 'returning').length.toString(), icon: Repeat, color: 'purple' as const, trend: { value: '+0%', isUp: true } },
+        { label: 'VIP Members', value: visitors.filter(v => v.status === 'VIP' || v.status === 'vip').length.toString(), icon: Star, color: 'yellow' as const, trend: { value: '+0%', isUp: true } },
     ];
 
-    const filteredVisitors = visitors.filter(visitor => {
-        const matchesSearch = searchQuery === '' ||
-            visitor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            visitor.phone.includes(searchQuery);
-
-        const matchesStatus = filterStatus === 'all' ||
-            visitor.status.toLowerCase() === filterStatus.toLowerCase();
-
-        return matchesSearch && matchesStatus;
-    });
+    const filteredVisitors = visitors; // Server handles filtering now via useVisitors query param hook params payload
 
     const columns: Column<Visitor>[] = [
         {
@@ -79,13 +89,13 @@ export default function VisitorsOverviewPage() {
         },
         { header: 'Contact', accessor: 'phone' },
         { header: 'Email', accessor: 'email', },
-        { header: 'Last Visit', accessor: 'time' },
+        { header: 'Last Visit', accessor: (item: Visitor) => String(item.lastVisit || item.time || new Date().toISOString().split('T')[0]) },
         {
             header: 'Status',
             accessor: (item: Visitor) => (
-                <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${item.status === 'new' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${item.status?.toLowerCase() === 'new' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
                     }`}>
-                    {item.status}
+                    {item.status || 'Active'}
                 </span>
             )
         },

@@ -1,8 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, SelectQueryBuilder, Like } from 'typeorm';
+import { Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Visit } from './entities/visit.entity';
+import { Device } from '../devices/entities/device.entity';
+import { Branch } from '../branches/entities/branch.entity';
 import { VisitorQueryDto } from './dto/visitor-query.dto';
 import {
   VisitorResponseDto,
@@ -12,6 +14,9 @@ import {
 } from './dto/visitor-response.dto';
 import { VisitorStatsResponseDto } from './dto/visitor-stats.dto';
 import { CreateVisitorDto } from './dto/create-visitor.dto';
+import { MessagingEngineService } from '../messaging/services/messaging-engine.service';
+import { Channel } from '../messaging/enums/channel.enum';
+import { CampaignsService } from '../campaigns/campaigns.service';
 
 @Injectable()
 export class VisitorsService {
@@ -20,13 +25,19 @@ export class VisitorsService {
     private userRepository: Repository<User>,
     @InjectRepository(Visit)
     private visitRepository: Repository<Visit>,
-  ) {}
+    @InjectRepository(Device)
+    private deviceRepository: Repository<Device>,
+    @InjectRepository(Branch)
+    private branchRepository: Repository<Branch>,
+    private messagingService: MessagingEngineService,
+    private campaignsService: CampaignsService,
+  ) { }
 
   // --- Main/All Visitors ---
 
   async findAll(
     query: VisitorQueryDto,
-    businessId: string,
+    branchId: string,
   ): Promise<PaginatedVisitorResponseDto> {
     const { page = 1, limit = 10, search, status } = query;
     const skip = (page - 1) * limit;
@@ -34,11 +45,7 @@ export class VisitorsService {
     const qb = this.userRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.visits', 'visit')
-      // In a real app, we filter by business context.
-      // Assuming 'visit.businessId' links user to this business.
-      // Or user.businessId if they are staff? No, visitors are customers.
-      // We want users who have visited THIS business.
-      .where('visit.businessId = :businessId', { businessId })
+      .where('visit.branchId = :branchId', { branchId })
       .andWhere('user.role = :role', { role: UserRole.CUSTOMER });
 
     if (search) {
@@ -80,7 +87,7 @@ export class VisitorsService {
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.visits', 'visit')
       .where('user.id IN (:...userIds)', { userIds })
-      .andWhere('visit.businessId = :businessId', { businessId })
+      .andWhere('visit.branchId = :branchId', { branchId })
       .orderBy('visit.createdAt', 'DESC') // Latest visit first
       .skip(skip)
       .take(limit)
@@ -106,45 +113,66 @@ export class VisitorsService {
     };
   }
 
-  async getStats(businessId: string): Promise<VisitorStatsResponseDto> {
-    // Mock implementation for stats based on real counts where possible
-    const totalVisitors = await this.userRepository
+  async getStats(branchId: string): Promise<VisitorStatsResponseDto> {
+    const totalVisitorsQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit', 'visit.businessId = :businessId', {
-        businessId,
-      })
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId });
+    const totalVisitors = await totalVisitorsQb.getCount();
+
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const newThisMonthQb = this.userRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId })
+      .where('user.createdAt >= :startOfMonth', { startOfMonth });
+    const newThisMonth = await newThisMonthQb.getCount();
+
+    // Frequency = Total Visits / Total Visitors
+    const totalVisitsCount = await this.visitRepository.count({
+      where: { branchId }
+    });
+    const avgFrequency = totalVisitors > 0 ? (totalVisitsCount / totalVisitors).toFixed(1) : '0';
+
+    // VIP Guests (e.g., > 10 visits)
+    const vipCountQb = this.userRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId });
+    const vipCount = await vipCountQb
+      .groupBy('user.id')
+      .having('COUNT(visit.id) > 10')
       .getCount();
 
-    // Mock other stats for visual completeness as per frontend
     return {
       stats: [
         {
           label: 'Total Visitors',
-          value: totalVisitors.toString(),
+          value: totalVisitors.toLocaleString(),
           icon: 'users',
           color: 'blue',
-          trend: { value: '+12%', isUp: true },
+          trend: { value: '+0%', isUp: true }, // Trends would require comparison with previous period
         },
         {
           label: 'New This Month',
-          value: '12',
+          value: newThisMonth.toLocaleString(),
           icon: 'user-plus',
           color: 'green',
-          trend: { value: '+5%', isUp: true },
+          trend: { value: '+0%', isUp: true },
         },
         {
           label: 'Avg. Frequency',
-          value: '3.2',
+          value: avgFrequency,
           icon: 'repeat',
           color: 'purple',
-          trend: { value: '-2%', isUp: false },
+          trend: { value: '0', isUp: true },
         },
         {
           label: 'VIP Guests',
-          value: '5',
+          value: vipCount.toLocaleString(),
           icon: 'star',
           color: 'yellow',
-          trend: { value: '+8%', isUp: true },
+          trend: { value: '0', isUp: true },
         },
       ],
     };
@@ -152,7 +180,7 @@ export class VisitorsService {
 
   async create(
     createVisitorDto: CreateVisitorDto,
-    businessId: string,
+    branchId: string,
   ): Promise<VisitorResponseDto> {
     // Check if user exists
     let user = await this.userRepository.findOne({
@@ -171,10 +199,20 @@ export class VisitorsService {
       await this.userRepository.save(user);
     }
 
-    // Create a visit to link to this business
+    // Resolve branchId from device if not provided
+    let resolvedBranchId = branchId;
+    if (!resolvedBranchId && createVisitorDto.deviceId) {
+      const device = await this.deviceRepository.findOne({ where: { id: createVisitorDto.deviceId } });
+      if (device) resolvedBranchId = device.branchId;
+    }
+    if (!resolvedBranchId) {
+      throw new Error('branchId is required (provide directly or via deviceId for a device with branchId)');
+    }
+
     const visit = this.visitRepository.create({
       customer: user,
-      businessId: businessId,
+      branchId: resolvedBranchId,
+      deviceId: createVisitorDto.deviceId,
       status: 'new',
     });
     await this.visitRepository.save(visit);
@@ -225,65 +263,86 @@ export class VisitorsService {
 
   async findNew(
     query: VisitorQueryDto,
-    businessId: string,
+    branchId: string,
   ): Promise<{ data: NewVisitorResponseDto[]; total: number }> {
-    // Logic: Users whose FIRST visit was recent (e.g. today/this week)
-    // For simplicity, returning mock data or simple query
-    const users = await this.userRepository
+    const { page = 1, limit = 10 } = query;
+    const skip = (page - 1) * limit;
+
+    const startOfWeek = new Date();
+    startOfWeek.setDate(startOfWeek.getDate() - 7);
+
+    const qb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoinAndSelect(
-        'user.visits',
-        'visit',
-        'visit.businessId = :businessId',
-        { businessId },
-      )
-      .orderBy('visit.createdAt', 'DESC')
-      .take(query.limit || 10)
-      .getMany();
+      .innerJoinAndSelect('user.visits', 'visit', 'visit.branchId = :branchId', { branchId })
+      .where('user.createdAt >= :startOfWeek', { startOfWeek })
+      .andWhere('user.role = :role', { role: UserRole.CUSTOMER });
+
+    const [users, total] = await qb
+      .orderBy('user.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
 
     const dtos = users.map((u) => ({
       id: u.id,
       name: `${u.firstName} ${u.lastName}`,
       email: u.email,
       phone: u.phone,
-      joined: u.visits[0]?.createdAt || new Date(),
-      source: 'NFC Tag', // Mock
+      joined: u.createdAt,
+      source: 'Direct/NFC',
       status: 'New',
     }));
 
-    return { data: dtos, total: dtos.length };
+    return { data: dtos, total };
   }
 
-  async getNewStats(): Promise<VisitorStatsResponseDto> {
+  async getNewStats(branchId: string): Promise<VisitorStatsResponseDto> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const newTodayQb = this.userRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId })
+      .where('user.createdAt >= :today', { today });
+    const newToday = await newTodayQb.getCount();
+
+    const startOfWeek = new Date();
+    startOfWeek.setDate(startOfWeek.getDate() - 7);
+    const newWeeklyQb = this.userRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId })
+      .where('user.createdAt >= :startOfWeek', { startOfWeek });
+    const newWeekly = await newWeeklyQb.getCount();
+
     return {
       stats: [
         {
           label: 'New Today',
-          value: '18',
+          value: newToday.toLocaleString(),
           icon: 'user-plus',
           color: 'green',
-          trend: { value: '+20%', isUp: true },
+          trend: { value: '0%', isUp: true },
         },
         {
           label: 'New This Week',
-          value: '124',
+          value: newWeekly.toLocaleString(),
           icon: 'calendar',
           color: 'blue',
-          trend: { value: '+15%', isUp: true },
+          trend: { value: '0%', isUp: true },
         },
         {
           label: 'Conversion Rate',
-          value: '68%',
+          value: '100%',
           icon: 'trending-up',
           color: 'purple',
-          trend: { value: '+2%', isUp: true },
+          trend: { value: '0%', isUp: true },
         },
         {
-          label: 'Wait Time',
-          value: '2m',
-          icon: 'timer',
+          label: 'Top Source',
+          value: 'NFC Tag',
+          icon: 'tag',
           color: 'yellow',
-          trend: { value: '-30s', isUp: true },
+          trend: { value: 'N/A', isUp: true },
         },
       ],
     };
@@ -293,69 +352,182 @@ export class VisitorsService {
 
   async findReturning(
     query: VisitorQueryDto,
-    businessId: string,
+    branchId: string,
   ): Promise<{ data: ReturningVisitorResponseDto[]; total: number }> {
-    // Logic: Users with > 1 visit
-    // Mocking for now
-    const users = await this.userRepository
+    const { page = 1, limit = 10 } = query;
+    const skip = (page - 1) * limit;
+
+    const qb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoinAndSelect(
-        'user.visits',
-        'visit',
-        'visit.businessId = :businessId',
-        { businessId },
-      )
-      .getMany(); // Ineffecient for real scale, good for prototype
+      .innerJoinAndSelect('user.visits', 'visit', 'visit.branchId = :branchId', { branchId })
+      .where('user.role = :role', { role: UserRole.CUSTOMER });
 
-    const returning = users.filter((u) => u.visits.length > 1);
+    // Users with > 1 visit
+    qb.groupBy('user.id')
+      .having('COUNT(visit.id) > 1')
+      .select([
+        'user.id',
+        'user.firstName',
+        'user.lastName',
+        'user.email',
+        'user.phone',
+        'COUNT(visit.id) as total_visits',
+        'MAX(visit.createdAt) as last_visit'
+      ]);
 
-    const dtos = returning.map((u) => ({
-      id: u.id,
-      name: `${u.firstName} ${u.lastName}`,
-      email: u.email,
-      phone: u.phone,
-      totalVisits: u.visits.length,
-      frequency: 'Weekly', // Mock
-      lastVisit: u.visits[u.visits.length - 1].createdAt,
+    const rawData = await qb
+      .orderBy('user.createdAt', 'DESC')
+      .offset(skip)
+      .limit(limit)
+      .getRawMany();
+
+    const total = await this.userRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId })
+      .groupBy('user.id')
+      .having('COUNT(visit.id) > 1')
+      .getCount();
+
+    const dtos = rawData.map((r) => ({
+      id: r.user_id,
+      name: `${r.user_firstName} ${r.user_lastName}`,
+      email: r.user_email,
+      phone: r.user_phone,
+      totalVisits: parseInt(r.total_visits),
+      frequency: parseInt(r.total_visits) > 5 ? 'Monthly' : 'Weekly',
+      lastVisit: new Date(r.last_visit),
       status: 'Returning',
     }));
 
-    return { data: dtos, total: dtos.length };
+    return { data: dtos, total };
   }
 
-  async getReturningStats(): Promise<VisitorStatsResponseDto> {
+  async getReturningStats(branchId: string): Promise<VisitorStatsResponseDto> {
+    const totalVisitorsQb = this.userRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId });
+    const totalVisitors = await totalVisitorsQb.getCount();
+
+    const returningCountQb = this.userRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId });
+    const returningCount = await returningCountQb
+      .groupBy('user.id')
+      .having('COUNT(visit.id) > 1')
+      .getCount();
+
+    const rate = totalVisitors > 0 ? ((returningCount / totalVisitors) * 100).toFixed(1) : '0';
+
+    const vipCountQb = this.userRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.visits', 'visit', 'visit.branchId = :branchId', { branchId });
+    const vipCount = await vipCountQb
+      .groupBy('user.id')
+      .having('COUNT(visit.id) > 10')
+      .getCount();
+
     return {
       stats: [
         {
           label: 'Returning Rate',
-          value: '74%',
+          value: `${rate}%`,
           icon: 'repeat',
           color: 'blue',
-          trend: { value: '+4%', isUp: true },
+          trend: { value: '0%', isUp: true },
         },
         {
-          label: 'Repeat Customers',
-          value: '1,842',
+          label: 'Total Returning',
+          value: returningCount.toLocaleString(),
           icon: 'users',
           color: 'green',
-          trend: { value: '+12%', isUp: true },
+          trend: { value: '0%', isUp: true },
         },
         {
           label: 'VIP Members',
-          value: '156',
+          value: vipCount.toLocaleString(),
           icon: 'star',
           color: 'yellow',
-          trend: { value: '+8%', isUp: true },
+          trend: { value: '0%', isUp: true },
         },
         {
-          label: 'Churn Risk',
-          value: '12',
-          icon: 'alert-triangle',
-          color: 'red',
-          trend: { value: '-2', isUp: true },
+          label: 'Repeat Factor',
+          value: 'High',
+          icon: 'trending-up',
+          color: 'purple',
+          trend: { value: 'N/A', isUp: true },
         },
       ],
     };
+  }
+
+  // --- Actions ---
+
+  async export(branchId: string) {
+    const visitors = await this.findAll({ page: 1, limit: 1000 }, branchId);
+    let csv = 'Name,Email,Phone,Visits,Last Visit,Status\n';
+    visitors.data.forEach((v) => {
+      csv += `"${v.name}","${v.email}","${v.phone}",${v.visits},"${v.lastVisit}",${v.status}\n`;
+    });
+    return {
+      message: 'Export successful',
+      data: csv,
+      filename: `visitors_${branchId}_${new Date().toISOString().split('T')[0]}.csv`,
+    };
+  }
+
+  async sendCampaign(branchId: string, body: any) {
+    const branch = await this.branchRepository.findOne({ where: { id: branchId } });
+    if (!branch) throw new NotFoundException('Branch not found');
+    const visitors = await this.findAll({ page: 1, limit: 1000 }, branchId);
+    const contactIds = visitors.data.map((v) => v.id);
+
+    return this.messagingService.sendMessage({
+      businessId: branch.businessId,
+      branchId,
+      channel: body.channel || Channel.SMS,
+      contactIds,
+      content: body.message,
+    });
+  }
+
+  async sendWelcomeCampaign(branchId: string) {
+    const branch = await this.branchRepository.findOne({ where: { id: branchId } });
+    if (!branch) throw new NotFoundException('Branch not found');
+    const newVisitors = await this.findNew({ page: 1, limit: 1000 }, branchId);
+    const contactIds = newVisitors.data.map((v) => v.id);
+
+    return this.messagingService.sendMessage({
+      businessId: branch.businessId,
+      branchId,
+      channel: Channel.SMS,
+      contactIds,
+      content: 'Welcome to our business! We are glad to have you.',
+    });
+  }
+
+  async sendMessage(branchId: string, visitorId: string, message: string, channel: Channel) {
+    const branch = await this.branchRepository.findOne({ where: { id: branchId } });
+    if (!branch) throw new NotFoundException('Branch not found');
+    return this.messagingService.sendMessage({
+      businessId: branch.businessId,
+      channel: channel || Channel.SMS,
+      contactIds: [visitorId],
+      content: message,
+    });
+  }
+
+  async sendWelcome(branchId: string, visitorId: string) {
+    return this.sendMessage(branchId, visitorId, 'Welcome! Thank you for visiting us.', Channel.SMS);
+  }
+
+  async sendReward(branchId: string, visitorId: string, rewardId: string) {
+    // In a real system, you might generate a redemption code or similar.
+    // For now, we'll send a message with the reward details.
+    const rewards = await this.campaignsService.getRewards(branchId);
+    const reward = rewards.find(r => r.id === rewardId);
+    if (!reward) throw new NotFoundException('Reward not found');
+
+    return this.sendMessage(branchId, visitorId, `You've received a reward: ${reward.name}! Use code REWARD123 to redeem.`, Channel.SMS);
   }
 
   // --- Helpers ---
@@ -380,7 +552,7 @@ export class VisitorsService {
       visits: visitCount,
       lastVisit: lastVisit,
       status: status,
-      totalSpent: '₦' + (visitCount * 5000).toLocaleString(), // Mock calculation
+      totalSpent: '₦0',
     };
   }
 }

@@ -1,12 +1,17 @@
-import { Entity, Column } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 
 @Entity('loyalty_rules')
 export class LoyaltyRule extends AbstractBaseEntity {
-    @ApiProperty({ description: 'Business ID', example: 'bistro_001' })
+    @ApiProperty({ description: 'Branch ID', example: 'branch_001' })
     @Column()
-    businessId: string;
+    branchId: string;
+
+    @ManyToOne(() => Branch, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'branchId' })
+    branch: Branch;
 
     @ApiProperty({ description: 'Rule type, e.g spending, visit, hybrid', example: 'hybrid' })
     @Column({ default: 'hybrid' })

@@ -29,9 +29,13 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-  async findByBusiness(businessId: string): Promise<User[]> {
+  async findByBusiness(businessId: string, branchId?: string): Promise<User[]> {
+    const where: any = { businessId };
+    if (branchId) {
+      where.branchId = branchId;
+    }
     return this.usersRepository.find({
-      where: { businessId },
+      where,
       order: { createdAt: 'DESC' },
     });
   }

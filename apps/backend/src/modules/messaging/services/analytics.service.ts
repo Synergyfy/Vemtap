@@ -15,9 +15,9 @@ export class AnalyticsService {
         private readonly campaignRepo: Repository<MessageCampaign>,
     ) { }
 
-    async getDashboardMetrics(businessId: string, channel?: Channel) {
+    async getDashboardMetrics(branchId: string, channel?: Channel) {
         const query = this.logRepo.createQueryBuilder('log')
-            .where('log.businessId = :businessId', { businessId });
+            .where('log.branchId = :branchId', { branchId });
 
         if (channel) {
             query.andWhere('log.channel = :channel', { channel });

@@ -1,37 +1,51 @@
-import { Controller, Get, UseGuards, Request } from '@nestjs/common';
+import { BadRequestException, Controller, Get, UseGuards, Request, Query } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Permissions } from '../../common/decorators/permissions.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 
 @ApiTags('analytics')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Controller('analytics')
 export class AnalyticsController {
     constructor(private readonly analyticsService: AnalyticsService) { }
 
     @Get('dashboard')
-    @Roles(UserRole.OWNER, UserRole.MANAGER)
+    @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+    @Permissions('dashboard')
     @ApiOperation({ summary: 'Get primary analytics dashboard stats' })
     @ApiResponse({ status: 200, description: 'Analytics summary' })
-    getDashboardAnalytics(@Request() req) {
-        return this.analyticsService.getDashboardAnalytics();
+    getDashboardAnalytics(@Request() req, @Query('branchId') branchId?: string) {
+        const resolved = branchId || req.user?.branchId;
+        if (!resolved) throw new BadRequestException('branchId is required');
+        return this.analyticsService.getDashboardAnalytics(resolved);
     }
 
     @Get('footfall')
     @Roles(UserRole.OWNER, UserRole.MANAGER)
+    @Permissions('analytics')
     @ApiOperation({ summary: 'Get footfall analytics' })
     @ApiResponse({ status: 200, description: 'Footfall stats' })
-    getFootfallAnalytics(@Request() req) {
-        return this.analyticsService.getFootfallAnalytics();
+    getFootfallAnalytics(@Request() req, @Query('branchId') branchId?: string) {
+        const resolved = branchId || req.user?.branchId;
+        if (!resolved) throw new BadRequestException('branchId is required');
+        return this.analyticsService.getFootfallAnalytics(resolved);
     }
 
     @Get('peak-times')
     @Roles(UserRole.OWNER, UserRole.MANAGER)
+    @Permissions('analytics')
     @ApiOperation({ summary: 'Get peak times analytics' })
     @ApiResponse({ status: 200, description: 'Peak times stats' })
-    getPeakTimesAnalytics(@Request() req) {
-        return this.analyticsService.getPeakTimesAnalytics();
+    getPeakTimesAnalytics(@Request() req, @Query('branchId') branchId?: string) {
+        const resolved = branchId || req.user?.branchId;
+        if (!resolved) throw new BadRequestException('branchId is required');
+        return this.analyticsService.getPeakTimesAnalytics(resolved);
     }
 
     // --- Admin Endpoints ---

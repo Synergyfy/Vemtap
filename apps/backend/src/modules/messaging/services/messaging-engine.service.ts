@@ -6,6 +6,7 @@ import { Queue } from 'bullmq';
 
 import { Contact } from '../../contacts/entities/contact.entity';
 import { Business } from '../../businesses/entities/business.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 import { Message, MessageDirection, MessageStatus } from '../entities/message.entity';
 import { MessageLog } from '../entities/message-log.entity';
 import { MessageCampaign, CampaignStatus } from '../entities/message-campaign.entity';
@@ -37,6 +38,8 @@ export class MessagingEngineService {
         private readonly threadRepo: Repository<ConversationThread>,
         @InjectRepository(Business)
         private readonly businessRepo: Repository<Business>,
+        @InjectRepository(Branch)
+        private readonly branchRepo: Repository<Branch>,
         @InjectQueue('messaging-batch-send') private readonly batchQueue: Queue,
         private readonly complianceService: ComplianceService,
         private readonly creditService: CreditService,
@@ -74,9 +77,18 @@ export class MessagingEngineService {
             const messageId = await this.processSingleSend(contact, dto, business, template);
             return { messageIds: [messageId] };
         } else {
-            // Campaign batch send
+            // Campaign batch send - need branchId
+            let branchId = dto.branchId;
+            if (!branchId) {
+                const branch = await this.branchRepo.findOne({
+                    where: { businessId: dto.businessId },
+                });
+                if (!branch) throw new BadRequestException('No branch found for business; branchId required');
+                branchId = branch.id;
+            }
+
             const campaign = await this.campaignService.createCampaign({
-                businessId: dto.businessId,
+                branchId,
                 name: `Campaign ${new Date().toISOString()}`,
                 channel: dto.channel,
                 audienceType: dto.audienceType,
@@ -91,6 +103,7 @@ export class MessagingEngineService {
             await this.batchQueue.add('send:batch', {
                 campaignId: campaign.id,
                 businessId: dto.businessId,
+                branchId,
                 channel: dto.channel,
                 contactIds: contacts.map(c => c.id),
                 templateId: dto.templateId,
@@ -260,6 +273,7 @@ export class MessagingEngineService {
 
             await this.logRepo.save(this.logRepo.create({
                 businessId: dto.businessId,
+                branchId: dto.branchId,
                 contactId: contact.id,
                 channel: dto.channel,
                 direction: MessageDirection.OUTBOUND,
@@ -271,6 +285,7 @@ export class MessagingEngineService {
         } catch (error) {
             await this.logRepo.save(this.logRepo.create({
                 businessId: dto.businessId,
+                branchId: dto.branchId,
                 contactId: contact.id,
                 channel: dto.channel,
                 direction: MessageDirection.OUTBOUND,

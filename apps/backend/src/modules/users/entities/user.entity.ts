@@ -1,9 +1,10 @@
-import { Entity, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, OneToMany, JoinColumn, OneToOne } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Notification } from '../../notifications/entities/notification.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 
 export enum UserRole {
   OWNER = 'Owner',
@@ -73,9 +74,20 @@ export class User extends AbstractBaseEntity {
   @Column({ nullable: true })
   businessId: string;
 
-  // Relation to businesses they own
-  @OneToMany(() => Business, (business) => business.owner)
-  ownedBusinesses: Business[];
+  // Relation to branch they belong to
+  @ManyToOne(() => Branch, (branch) => branch.staff, {
+    nullable: true,
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'branchId' })
+  branch: Branch;
+
+  @Column({ nullable: true })
+  branchId: string;
+
+  // Relation to business they own
+  @OneToOne(() => Business, (business) => business.owner)
+  ownedBusiness: Business;
 
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];

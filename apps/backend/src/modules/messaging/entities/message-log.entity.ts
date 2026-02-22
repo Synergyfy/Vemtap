@@ -1,17 +1,25 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Channel } from '../enums/channel.enum';
 import { MessageDirection, MessageStatus } from './message.entity';
 
 @Entity('message_logs')
 export class MessageLog extends AbstractBaseEntity {
-    @ManyToOne(() => Business, { onDelete: 'CASCADE' })
+    @ManyToOne(() => Business, { onDelete: 'CASCADE', nullable: true })
     @JoinColumn({ name: 'businessId' })
     business: Business;
 
-    @Column()
+    @Column({ nullable: true })
     businessId: string;
+
+    @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
+    @JoinColumn({ name: 'branchId' })
+    branch: Branch;
+
+    @Column({ nullable: true })
+    branchId: string;
 
     @Column({ nullable: true })
     contactId: string;

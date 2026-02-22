@@ -18,6 +18,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { SettingsModule } from './modules/settings/settings.module';
+import { BranchesModule } from './modules/branches/branches.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { SettingsModule } from './modules/settings/settings.module';
     AnalyticsModule,
     SubscriptionsModule,
     SettingsModule,
+    BranchesModule,
   ],
   controllers: [AppController],
   providers: [
