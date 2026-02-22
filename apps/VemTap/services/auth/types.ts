@@ -24,3 +24,17 @@ export interface LoginRequest {
     email: string;
     password: string;
 }
+
+export interface RegisterRequest {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    role?: string; // 'Owner' | 'Manager' | 'Staff' | 'Customer'
+    phone?: string;
+    businessName?: string;
+    category?: string;
+    monthlyVisitors?: string;
+    goal?: string;
+    businessId?: string; // For joining an existing business (Manager flow)
+}

@@ -7,7 +7,7 @@ export interface StatCard {
     label: string;
     value: string;
     icon: any; // Mapped to Lucide component later or string
-    color: string;
+    color: 'blue' | 'green' | 'purple' | 'red' | 'yellow' | string;
     trend?: StatTrend;
 }
 
@@ -22,9 +22,17 @@ export interface Visitor {
     phone: string;
     visits: number;
     lastVisit: string;
-    time?: string; // Fallback mapping for UI
+    time?: string;       // Fallback mapping for UI
     status: string;
     totalSpent: string;
+    // Optional fields used by UI columns and modal props
+    optIn?: boolean;
+    surveyAnswers?: Record<string, any>;
+    location?: string;
+    timestamp?: number;
+    branchId?: string;
+    joinedDate?: string;
+    tags?: string[];
 }
 
 export interface PaginatedVisitorResponse {

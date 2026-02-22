@@ -10,8 +10,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { notify } from '@/lib/notify';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
+import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
 import { Reward } from '@/lib/store/mockDashboardStore';
-import { HelpCircle, X, CheckCircle2, Gift, ArrowRight, MessageSquare, Smartphone, ChevronLeft, ChevronRight } from 'lucide-react';
+import { HelpCircle, X, CheckCircle2, Gift, ArrowRight, MessageSquare, Smartphone, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 export default function MessageSettingsPage() {
     const store = useCustomerFlowStore();
@@ -24,6 +25,10 @@ export default function MessageSettingsPage() {
         queryKey: ['dashboard'],
         queryFn: dashboardApi.fetchDashboardData,
     });
+
+    // Fetch current business data
+    const { data: business, isLoading: isBusinessLoading } = useMyBusiness();
+    const saveBusinessMutation = useUpdateBusiness();
 
     const updateRewardMutation = useMutation({
         mutationFn: dashboardApi.updateReward,
@@ -59,10 +64,46 @@ export default function MessageSettingsPage() {
         logoUrl: store.logoUrl || ''
     });
 
+    React.useEffect(() => {
+        if (business && business.welcomeMessage) {
+            setSettings(prev => ({ ...prev, welcomeMessage: business.welcomeMessage || prev.welcomeMessage }));
+        }
+        if (business && business.welcomeSubMessage) {
+            // we map welcomeSubMessage to one of these fields if we want, or create new fields in Business entity.
+            // for now just map existing if present
+        }
+    }, [business]);
+
     const handleSave = () => {
+        // Optimistically update store
         store.updateCustomSettings(settings);
-        notify.success('Your message settings have been updated and are live!');
+
+        if (business) {
+            saveBusinessMutation.mutate({
+                id: business.id,
+                updates: {
+                    welcomeMessage: settings.welcomeMessage,
+                }
+            }, {
+                onSuccess: () => {
+                    notify.success('Your message settings have been updated and are live!');
+                },
+                onError: () => {
+                    notify.error('Failed to save settings to the server.');
+                }
+            });
+        } else {
+            notify.success('Your message settings have been updated locally!');
+        }
     };
+
+    if (isBusinessLoading) {
+        return (
+            <div className="flex h-[calc(100vh-100px)] items-center justify-center">
+                <Loader2 className="animate-spin text-primary" size={32} />
+            </div>
+        );
+    }
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8">
@@ -369,10 +410,15 @@ export default function MessageSettingsPage() {
                         <div className="mt-10 pt-8 border-t border-gray-100">
                             <button
                                 onClick={handleSave}
-                                className="w-full h-14 bg-primary text-white font-bold rounded-xl shadow-xl shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-sm"
+                                disabled={saveBusinessMutation.isPending}
+                                className="w-full h-14 bg-primary text-white font-bold rounded-xl shadow-xl shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-sm disabled:opacity-50"
                             >
-                                Update customer experience
-                                <Smartphone size={18} />
+                                {saveBusinessMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : (
+                                    <>
+                                        Update customer experience
+                                        <Smartphone size={18} />
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>

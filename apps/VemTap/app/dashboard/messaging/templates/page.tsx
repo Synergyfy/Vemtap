@@ -2,16 +2,21 @@
 
 import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
-import { useMessagingStore, Template, MessageChannel } from '@/lib/store/useMessagingStore';
+import { Template, MessageChannel } from '@/lib/store/useMessagingStore';
+import { useMessagingStore } from '@/lib/store/useMessagingStore';
+import { useCreateTemplate } from '@/services/messaging/hooks';
 import { Plus, MessageSquare, Copy, Trash2, Edit, X, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function TemplatesPage() {
-    const { templates, addTemplate, updateTemplate, deleteTemplate } = useMessagingStore();
+    const { templates: localTemplates, addTemplate, updateTemplate, deleteTemplate } = useMessagingStore();
+    const createTemplateMutation = useCreateTemplate();
     const [searchQuery, setSearchQuery] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState<Partial<Template> | null>(null);
+
+    const templates = localTemplates;
 
     const filteredTemplates = templates.filter(t =>
         t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -38,7 +43,7 @@ export default function TemplatesPage() {
         setIsModalOpen(true);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!editingTemplate?.name || !editingTemplate?.content) {
             toast.error('Please fill in all fields');
             return;
@@ -49,14 +54,25 @@ export default function TemplatesPage() {
             updateTemplate(editingTemplate.id!, editingTemplate);
             toast.success('Template updated');
         } else {
-            addTemplate({
-                id: editingTemplate.id || Math.random().toString(36).substr(2, 9),
-                name: editingTemplate.name!,
-                content: editingTemplate.content!,
-                channel: (editingTemplate.channel as MessageChannel) || 'SMS',
-                status: 'approved'
-            });
-            toast.success('Template created');
+            try {
+                // Persist to backend
+                await createTemplateMutation.mutateAsync({
+                    name: editingTemplate.name!,
+                    channel: (editingTemplate.channel as any) || 'SMS',
+                    content: editingTemplate.content!,
+                });
+                // Also update local store
+                addTemplate({
+                    id: editingTemplate.id || Math.random().toString(36).substr(2, 9),
+                    name: editingTemplate.name!,
+                    content: editingTemplate.content!,
+                    channel: (editingTemplate.channel as MessageChannel) || 'SMS',
+                    status: 'approved'
+                });
+                toast.success('Template created');
+            } catch {
+                toast.error('Failed to save template to server');
+            }
         }
         setIsModalOpen(false);
         setEditingTemplate(null);

@@ -188,7 +188,7 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
 
     // Business Branding Helper
     const businessName = user?.businessName || 'Your Business';
-    const businessLogo = user?.businessLogo;
+    const businessLogo = (user as any)?.businessLogo;
     // If a channel was explicitly passed, skip channel selection (step 1) and go to compose (step 2)
     const [step, setStep] = useState(defaultChannel ? 2 : 1);
 

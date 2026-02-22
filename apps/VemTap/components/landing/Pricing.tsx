@@ -5,14 +5,17 @@ import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPricingPlans } from '@/lib/api/pricing';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useAuthStore, AuthState } from '../../store/useAuthStore';
+import { useSubscribe } from '@/services/subscriptions/hooks';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import SubscriptionCheckout from '@/components/dashboard/SubscriptionCheckout';
 
 export default function Pricing() {
     const router = useRouter();
-    const { user, subscribe, isAuthenticated } = useAuthStore();
+    const user = useAuthStore((state: AuthState) => state.user);
+    const isAuthenticated = useAuthStore((state: AuthState) => state.isAuthenticated);
+    const subscribeMutation = useSubscribe();
     const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
 
@@ -28,9 +31,14 @@ export default function Pricing() {
         }
 
         if (plan.id === 'free') {
-            const res = await subscribe('free');
-            if (res.success) toast.success('Switched to Free plan!');
-            else toast.error(res.error || 'Failed to update plan');
+            subscribeMutation.mutate({
+                businessId: user?.businessId || '',
+                planId: 'free',
+                billingCycle
+            }, {
+                onSuccess: () => toast.success('Switched to Free plan!'),
+                onError: () => toast.error('Failed to update plan')
+            });
         } else {
             setCheckoutPlan({ ...plan, billingCycle });
         }
@@ -240,6 +248,7 @@ export default function Pricing() {
                         onClose={() => setCheckoutPlan(null)}
                         plan={checkoutPlan}
                         billingCycle={checkoutPlan.billingCycle}
+                        businessId={user?.businessId}
                     />
                 )}
             </div>

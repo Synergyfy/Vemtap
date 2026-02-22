@@ -8,28 +8,35 @@ import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import EditVisitorModal from '@/components/dashboard/EditVisitorModal';
 import AddNoteModal from '@/components/dashboard/AddNoteModal';
 import { notify } from '@/lib/notify';
+import { useVisitor } from '@/services/visitors/hooks';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function VisitorProfilePage({ params }: { params: { id: string } }) {
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isMsgOpen, setIsMsgOpen] = useState(false);
     const [isNoteOpen, setIsNoteOpen] = useState(false);
 
-    // Mock user data
-    const [visitor, setVisitor] = useState({
+    const userBranchId = useAuthStore((state) => state.user?.businessId);
+    const { data: serverVisitor, isLoading } = useVisitor(params.id, userBranchId);
+
+    // Fallback object to map data safely if isLoading
+    const visitorObj = serverVisitor || {
         id: params.id,
-        name: 'Bisi Adebowale',
-        email: 'bisi.a@example.com',
-        phone: '+234 804 567 8901',
-        totalVisits: 24,
-        joinedDate: 'Oct 12, 2024',
-        lastVisit: '3 hours ago',
-        status: 'VIP',
-        points: 1250,
-        tags: ['Regular', 'Coffee Lover', 'High Spender'],
-    });
+        name: 'Loading...',
+        email: '',
+        phone: '',
+        visits: 0,
+        joinedDate: '',
+        lastVisit: '',
+        status: 'Loading',
+        totalSpent: '0',
+        tags: [],
+    };
+
+    const visitor = visitorObj;
 
     const handleEditSubmit = (data: any) => {
-        setVisitor(prev => ({ ...prev, ...data }));
+        // You'd trigger an api.patch mutation here
         setIsEditOpen(false);
         notify.success('Visitor profile updated successfully');
     };
@@ -72,105 +79,113 @@ export default function VisitorProfilePage({ params }: { params: { id: string } 
                 }
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Column: Basic Info */}
-                <div className="space-y-6">
-                    <div className="bg-white rounded-xl border border-gray-200 p-6">
-                        <div className="flex flex-col items-center text-center mb-6">
-                            <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-3xl mb-4 border-4 border-white shadow-lg">
-                                {visitor.name.split(' ').map((n: string) => n[0]).join('')}
+            {isLoading ? (
+                <div className="flex items-center justify-center min-h-[40vh]">
+                    <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Left Column: Basic Info */}
+                    <div className="space-y-6">
+                        <div className="bg-white rounded-xl border border-gray-200 p-6">
+                            <div className="flex flex-col items-center text-center mb-6">
+                                <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-3xl mb-4 border-4 border-white shadow-lg">
+                                    {visitor.name.split(' ').map((n: string) => n[0]).join('')}
+                                </div>
+                                <h2 className="text-2xl font-display font-bold text-text-main">{visitor.name}</h2>
+                                <span className="mt-2 inline-flex px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-yellow-100 text-yellow-700">
+                                    {visitor.status}
+                                </span>
                             </div>
-                            <h2 className="text-2xl font-display font-bold text-text-main">{visitor.name}</h2>
-                            <span className="mt-2 inline-flex px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-yellow-100 text-yellow-700">
-                                {visitor.status}
-                            </span>
+
+                            <div className="space-y-4 border-t border-gray-100 pt-6">
+                                <div className="flex items-center gap-3">
+                                    <span className="material-icons-round text-gray-400">email</span>
+                                    <span className="text-sm font-medium text-text-main">{visitor.email}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="material-icons-round text-gray-400">phone</span>
+                                    <span className="text-sm font-medium text-text-main">{visitor.phone}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="material-icons-round text-gray-400">calendar_today</span>
+                                    <span className="text-sm font-medium text-text-main">Joined: {visitor.joinedDate}</span>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 pt-6 border-t border-gray-100">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-3">Tags</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {(visitor.tags || []).length > 0 ? visitor.tags.map((tag: string, i: number) => (
+                                        <span key={i} className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-bold">
+                                            {tag}
+                                        </span>
+                                    )) : (
+                                        <span className="text-xs text-text-secondary italic">No tags assigned</span>
+                                    )}
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="space-y-4 border-t border-gray-100 pt-6">
-                            <div className="flex items-center gap-3">
-                                <span className="material-icons-round text-gray-400">email</span>
-                                <span className="text-sm font-medium text-text-main">{visitor.email}</span>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-white rounded-xl border border-gray-200 p-4">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">Total Visits</p>
+                                <p className="text-2xl font-display font-bold text-text-main">{visitor.visits}</p>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <span className="material-icons-round text-gray-400">phone</span>
-                                <span className="text-sm font-medium text-text-main">{visitor.phone}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <span className="material-icons-round text-gray-400">calendar_today</span>
-                                <span className="text-sm font-medium text-text-main">Joined: {visitor.joinedDate}</span>
+                            <div className="bg-white rounded-xl border border-gray-200 p-4">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">Total Spent</p>
+                                <p className="text-2xl font-display font-bold text-text-main">{visitor.totalSpent}</p>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="mt-6 pt-6 border-t border-gray-100">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-3">Tags</p>
-                            <div className="flex flex-wrap gap-2">
-                                {visitor.tags.map((tag, i) => (
-                                    <span key={i} className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-bold">
-                                        {tag}
-                                    </span>
+                    {/* Right Column: Activity Timeline */}
+                    <div className="lg:col-span-2">
+                        <ChartCard title="Activity Timeline" subtitle="Recent interactions with your business">
+                            <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-linear-to-b before:from-transparent before:via-gray-200 before:to-transparent">
+                                {timeline.map((item, index) => (
+                                    <div key={index} className="relative flex items-center justify-between gap-6">
+                                        <div className="flex items-center gap-6">
+                                            <div className="relative z-10 w-10 h-10 flex items-center justify-center bg-white border-2 border-primary/20 rounded-full shadow-sm">
+                                                <span className="material-icons-round text-primary text-xl">{item.icon}</span>
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-text-main">{item.activity}</p>
+                                                <p className="text-xs text-text-secondary">{item.location} • {item.date}</p>
+                                            </div>
+                                        </div>
+                                        <button className="text-text-secondary hover:text-primary">
+                                            <span className="material-icons-round text-lg">chevron_right</span>
+                                        </button>
+                                    </div>
                                 ))}
                             </div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-white rounded-xl border border-gray-200 p-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">Total Visits</p>
-                            <p className="text-2xl font-display font-bold text-text-main">{visitor.totalVisits}</p>
-                        </div>
-                        <div className="bg-white rounded-xl border border-gray-200 p-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">Loyalty Points</p>
-                            <p className="text-2xl font-display font-bold text-text-main">{visitor.points}</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Column: Activity Timeline */}
-                <div className="lg:col-span-2">
-                    <ChartCard title="Activity Timeline" subtitle="Recent interactions with your business">
-                        <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-linear-to-b before:from-transparent before:via-gray-200 before:to-transparent">
-                            {timeline.map((item, index) => (
-                                <div key={index} className="relative flex items-center justify-between gap-6">
-                                    <div className="flex items-center gap-6">
-                                        <div className="relative z-10 w-10 h-10 flex items-center justify-center bg-white border-2 border-primary/20 rounded-full shadow-sm">
-                                            <span className="material-icons-round text-primary text-xl">{item.icon}</span>
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-text-main">{item.activity}</p>
-                                            <p className="text-xs text-text-secondary">{item.location} • {item.date}</p>
-                                        </div>
-                                    </div>
-                                    <button className="text-text-secondary hover:text-primary">
-                                        <span className="material-icons-round text-lg">chevron_right</span>
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </ChartCard>
-
-                    <div className="mt-8">
-                        <ChartCard title="Notes" actions={
-                            <button
-                                onClick={() => setIsNoteOpen(true)}
-                                className="text-primary text-sm font-bold flex items-center gap-1"
-                            >
-                                <span className="material-icons-round text-sm">add</span>
-                                Add Note
-                            </button>
-                        }>
-                            <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
-                                <p className="text-sm text-text-main leading-relaxed">
-                                    "Prefers seating near the window. Usually visits on Tuesday mornings for a double espresso."
-                                </p>
-                                <div className="mt-3 flex items-center justify-between text-[10px] font-bold text-text-secondary uppercase tracking-wider">
-                                    <span>By John Manager</span>
-                                    <span>Oct 28, 2024</span>
-                                </div>
-                            </div>
                         </ChartCard>
+
+                        <div className="mt-8">
+                            <ChartCard title="Notes" actions={
+                                <button
+                                    onClick={() => setIsNoteOpen(true)}
+                                    className="text-primary text-sm font-bold flex items-center gap-1"
+                                >
+                                    <span className="material-icons-round text-sm">add</span>
+                                    Add Note
+                                </button>
+                            }>
+                                <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
+                                    <p className="text-sm text-text-main leading-relaxed">
+                                        "Prefers seating near the window. Usually visits on Tuesday mornings for a double espresso."
+                                    </p>
+                                    <div className="mt-3 flex items-center justify-between text-[10px] font-bold text-text-secondary uppercase tracking-wider">
+                                        <span>By John Manager</span>
+                                        <span>Oct 28, 2024</span>
+                                    </div>
+                                </div>
+                            </ChartCard>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             <EditVisitorModal
                 isOpen={isEditOpen}

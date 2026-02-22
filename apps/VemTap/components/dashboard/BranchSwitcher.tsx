@@ -2,19 +2,33 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronDown, MapPin, Building2, Check, Plus, Layers, X, Save } from 'lucide-react';
-import { useBusinessStore } from '@/store/useBusinessStore';
+import { ChevronDown, MapPin, Building2, Check, Plus, Layers, X, Save, Trash2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { useBranches, useCreateBranch, useDeleteBranch } from '@/services/branches/hooks';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function BranchSwitcher() {
-    const { branches, activeBranchId, setActiveBranch, getActiveBranch, addBranch } = useBusinessStore();
+    const { activeBranchId, setActiveBranch } = useAuthStore();
+    const { data: branches = [], isLoading } = useBranches();
+    const createBranchMutation = useCreateBranch();
+    const deleteBranchMutation = useDeleteBranch();
+
     const [isOpen, setIsOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const [newBranchName, setNewBranchName] = useState('');
     const [newBranchAddress, setNewBranchAddress] = useState('');
+    const [newBranchPhone, setNewBranchPhone] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);
-    const activeBranch = getActiveBranch();
+
+    const activeBranch = branches.find(b => b.id === activeBranchId);
+
+    // Auto-select first branch if none selected and branches loaded
+    useEffect(() => {
+        if (!activeBranchId && branches.length > 0) {
+            setActiveBranch(branches[0].id);
+        }
+    }, [branches, activeBranchId, setActiveBranch]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -27,20 +41,44 @@ export default function BranchSwitcher() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleCreateBranch = () => {
+    const handleCreateBranch = async () => {
         if (!newBranchName.trim()) {
             toast.error('Branch name is required');
             return;
         }
-        addBranch({
-            name: newBranchName.trim(),
-            address: newBranchAddress.trim() || 'Address not set',
-        });
-        toast.success(`"${newBranchName}" branch created`);
-        setNewBranchName('');
-        setNewBranchAddress('');
-        setIsCreating(false);
+        try {
+            const created = await createBranchMutation.mutateAsync({
+                name: newBranchName.trim(),
+                address: newBranchAddress.trim() || undefined,
+                phone: newBranchPhone.trim() || undefined,
+            });
+            // Auto-switch to the new branch
+            setActiveBranch(created.id);
+            toast.success(`"${created.name}" branch created`);
+            setNewBranchName('');
+            setNewBranchAddress('');
+            setNewBranchPhone('');
+            setIsCreating(false);
+        } catch (err: any) {
+            toast.error(err?.message || 'Failed to create branch');
+        }
     };
+
+    const handleDelete = async (e: React.MouseEvent, branchId: string, branchName: string) => {
+        e.stopPropagation();
+        if (!confirm(`Delete "${branchName}"? This cannot be undone.`)) return;
+        try {
+            await deleteBranchMutation.mutateAsync(branchId);
+            if (activeBranchId === branchId) setActiveBranch(null);
+            toast.success(`Branch deleted`);
+        } catch {
+            toast.error('Failed to delete branch');
+        }
+    };
+
+    const displayName = activeBranchId === 'all'
+        ? 'All Branches'
+        : activeBranch?.name || (branches.length === 0 ? 'No Branches' : 'Select Branch');
 
     return (
         <div className="relative" ref={dropdownRef}>
@@ -50,7 +88,7 @@ export default function BranchSwitcher() {
                     className="flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-primary/20 transition-all duration-200 group"
                 >
                     <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                        <Building2 size={18} />
+                        {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Building2 size={18} />}
                     </div>
                     <div className="text-left hidden sm:block">
                         <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1">
@@ -58,7 +96,7 @@ export default function BranchSwitcher() {
                         </p>
                         <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-text-main truncate max-w-[120px]">
-                                {activeBranchId === 'all' ? 'All Branches' : (activeBranch?.name || 'Head Office')}
+                                {displayName}
                             </span>
                             <ChevronDown
                                 size={14}
@@ -82,17 +120,20 @@ export default function BranchSwitcher() {
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute top-full left-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 overflow-hidden"
+                        className="absolute top-full left-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 overflow-hidden"
                     >
                         {!isCreating ? (
                             <>
-                                <div className="px-3 py-2 mb-1">
+                                <div className="px-3 py-2 mb-1 flex items-center justify-between">
                                     <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">
                                         Switch Branch
                                     </p>
+                                    <span className="text-[10px] text-text-secondary font-medium">
+                                        {branches.length} branch{branches.length !== 1 ? 'es' : ''}
+                                    </span>
                                 </div>
 
-                                <div className="space-y-1">
+                                <div className="space-y-1 max-h-64 overflow-y-auto">
                                     {/* All Branches Option */}
                                     <button
                                         onClick={() => { setActiveBranch('all'); setIsOpen(false); }}
@@ -117,11 +158,23 @@ export default function BranchSwitcher() {
                                         )}
                                     </button>
 
+                                    {isLoading && (
+                                        <div className="py-4 text-center text-text-secondary text-sm flex items-center justify-center gap-2">
+                                            <Loader2 size={16} className="animate-spin" /> Loading branches...
+                                        </div>
+                                    )}
+
+                                    {!isLoading && branches.length === 0 && (
+                                        <div className="py-4 text-center text-text-secondary text-sm">
+                                            No branches yet. Create one below.
+                                        </div>
+                                    )}
+
                                     {branches.map((branch) => (
                                         <button
                                             key={branch.id}
                                             onClick={() => { setActiveBranch(branch.id); setIsOpen(false); }}
-                                            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${activeBranchId === branch.id
+                                            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group/item ${activeBranchId === branch.id
                                                 ? 'bg-primary text-white shadow-lg shadow-primary/20'
                                                 : 'hover:bg-gray-50 text-text-main'
                                                 }`}
@@ -134,12 +187,24 @@ export default function BranchSwitcher() {
                                                     {branch.name}
                                                 </p>
                                                 <p className={`text-[10px] truncate ${activeBranchId === branch.id ? 'text-white/80' : 'text-text-secondary'}`}>
-                                                    {branch.address}
+                                                    {branch.address || 'No address set'}
                                                 </p>
                                             </div>
-                                            {activeBranchId === branch.id && (
-                                                <Check size={16} className="text-white shrink-0" />
-                                            )}
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                {activeBranchId === branch.id && (
+                                                    <Check size={16} className="text-white" />
+                                                )}
+                                                <button
+                                                    onClick={(e) => handleDelete(e, branch.id, branch.name)}
+                                                    title="Delete branch"
+                                                    className={`opacity-0 group-hover/item:opacity-100 p-1 rounded-lg transition-all ${activeBranchId === branch.id
+                                                        ? 'hover:bg-white/20 text-white'
+                                                        : 'hover:bg-red-50 text-red-400 hover:text-red-600'
+                                                        }`}
+                                                >
+                                                    <Trash2 size={13} />
+                                                </button>
+                                            </div>
                                         </button>
                                     ))}
                                 </div>
@@ -182,7 +247,13 @@ export default function BranchSwitcher() {
                                     placeholder="Address (optional)"
                                     value={newBranchAddress}
                                     onChange={(e) => setNewBranchAddress(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleCreateBranch()}
+                                    className="w-full h-10 bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Phone (optional)"
+                                    value={newBranchPhone}
+                                    onChange={(e) => setNewBranchPhone(e.target.value)}
                                     className="w-full h-10 bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                                 />
                                 <div className="flex gap-2 pt-1">
@@ -194,10 +265,15 @@ export default function BranchSwitcher() {
                                     </button>
                                     <button
                                         onClick={handleCreateBranch}
-                                        className="flex-1 h-9 bg-primary text-white font-bold text-xs rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                                        disabled={createBranchMutation.isPending}
+                                        className="flex-1 h-9 bg-primary text-white font-bold text-xs rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
-                                        <Save size={13} />
-                                        Create
+                                        {createBranchMutation.isPending ? (
+                                            <Loader2 size={13} className="animate-spin" />
+                                        ) : (
+                                            <Save size={13} />
+                                        )}
+                                        {createBranchMutation.isPending ? 'Creating...' : 'Create'}
                                     </button>
                                 </div>
                             </div>

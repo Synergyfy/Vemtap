@@ -3,20 +3,28 @@
 import React from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import ChartCard from '@/components/dashboard/ChartCard';
-
+import { usePeakTimesAnalytics } from '@/services/analytics/hooks';
 
 export default function PeakTimesPage() {
-    const weeklyData = [
-        { day: 'Monday', hours: [10, 15, 20, 25, 40, 50, 45, 30, 25, 20] },
-        { day: 'Tuesday', hours: [12, 18, 25, 30, 45, 55, 50, 35, 30, 25] },
-        { day: 'Wednesday', hours: [15, 22, 28, 35, 50, 60, 55, 40, 35, 30] },
-        { day: 'Thursday', hours: [20, 30, 40, 50, 70, 85, 80, 60, 50, 40] },
-        { day: 'Friday', hours: [30, 45, 60, 80, 100, 120, 110, 90, 80, 70] },
-        { day: 'Saturday', hours: [40, 60, 80, 110, 140, 160, 150, 130, 110, 90] },
-        { day: 'Sunday', hours: [35, 55, 75, 100, 130, 150, 140, 120, 100, 80] },
-    ];
+    const { data, isLoading, error } = usePeakTimesAnalytics();
 
-    const hours = ['10am', '12pm', '2pm', '4pm', '6pm', '8pm', '10pm', '12am', '2am', '4am'];
+    if (isLoading) {
+        return (
+            <div className="p-8 flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
+
+    if (error || !data) {
+        return (
+            <div className="p-8 flex items-center justify-center min-h-[400px]">
+                <p className="text-red-500">Failed to load peak times data</p>
+            </div>
+        );
+    }
+
+    const maxHourlyValue = Math.max(...data.weeklyData.flatMap(d => d.hours));
 
     return (
         <div className="p-8">
@@ -31,20 +39,20 @@ export default function PeakTimesPage() {
                         <div className="min-w-[800px]">
                             <div className="grid grid-cols-11 mb-4">
                                 <div className="col-span-1"></div>
-                                {hours.map((h, idx) => (
+                                {data.hoursLabels.map((h, idx) => (
                                     <div key={idx} className="text-[10px] font-black uppercase tracking-widest text-text-secondary text-center px-1">
                                         {h}
                                     </div>
                                 ))}
                             </div>
                             <div className="space-y-4">
-                                {weeklyData.map((d, idx) => (
+                                {data.weeklyData.map((d, idx) => (
                                     <div key={idx} className="grid grid-cols-11 items-center">
                                         <div className="col-span-1 text-[10px] font-black uppercase tracking-widest text-text-main line-clamp-1">
                                             {d.day}
                                         </div>
                                         {d.hours.map((v, j) => {
-                                            const opacity = v / 160;
+                                            const opacity = v / maxHourlyValue;
                                             return (
                                                 <div key={j} className="h-10 mx-1 rounded-lg transition-all hover:scale-105 group relative cursor-pointer flex items-center justify-center" style={{ backgroundColor: `rgba(37, 99, 235, ${Math.max(opacity, 0.05)})` }}>
                                                     {v > 100 && <span className="material-icons-round text-white text-xs">local_fire_department</span>}
@@ -73,13 +81,14 @@ export default function PeakTimesPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <ChartCard title="Busiest Day Analysis" subtitle="Weekly traffic distribution">
                         <div className="h-64 flex items-end justify-between px-4 pb-4">
-                            {weeklyData.map((d, idx) => {
+                            {data.weeklyData.map((d, idx) => {
                                 const total = d.hours.reduce((a, b) => a + b, 0);
+                                const maxTotal = Math.max(...data.weeklyData.map(w => w.hours.reduce((a, b) => a + b, 0)));
                                 return (
                                     <div key={idx} className="flex flex-col items-center gap-3 w-12 group relative">
                                         <div
                                             className="w-full bg-primary/20 rounded-lg hover:bg-primary transition-all cursor-pointer"
-                                            style={{ height: `${(total / 1000) * 100}%` }}
+                                            style={{ height: `${(total / maxTotal) * 100}%` }}
                                         >
                                             <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
                                                 {total} visits
@@ -99,7 +108,7 @@ export default function PeakTimesPage() {
                                 Smart Suggestion
                             </h4>
                             <p className="text-sm text-text-main leading-relaxed">
-                                Based on your peak times (Saturdays between 6pm - 8pm), we suggest adding **2 additional staff** members during this window to reduce wait times and improve customer satisfaction.
+                                Based on your peak times ({data.smartSuggestion.peakTime}), we suggest adding **2 additional staff** members during this window to reduce wait times and improve customer satisfaction.
                             </p>
                         </div>
                         <button className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm">
