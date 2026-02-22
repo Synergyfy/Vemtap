@@ -13,7 +13,7 @@ export class LoyaltyTransaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'uuid' })
   loyaltyProfileId: string;
 
   @ManyToOne(() => LoyaltyProfile, (profile) => profile.transactions)
