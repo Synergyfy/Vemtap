@@ -6,21 +6,26 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { CheckCircle2, Crown, Star, ShieldCheck, Zap, ArrowRight, CreditCard, Clock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPricingPlans } from '@/lib/api/pricing';
+import { useActiveSubscription, useSubscribe } from '@/services/subscriptions/hooks';
 import SubscriptionCheckout from '@/components/dashboard/SubscriptionCheckout';
 import toast from 'react-hot-toast';
 
 export default function DashboardPricingPage() {
-    const { user, subscribe } = useAuthStore();
+    const { user } = useAuthStore();
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
     const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
 
-    const { data: plans = [], isLoading } = useQuery({
+    const { data: plans = [], isLoading: plansLoading } = useQuery({
         queryKey: ['subscription-plans'],
         queryFn: fetchPricingPlans
     });
 
-    const activePlanId = user?.planId || 'free';
-    const activePlan = plans.find(p => p.id === activePlanId);
+    const { data: subscription, isLoading: subLoading } = useActiveSubscription();
+    const subscribeMutation = useSubscribe();
+
+    const isLoading = plansLoading || subLoading;
+    const activePlanId = subscription?.planId || 'free';
+    const activePlan = plans.find((p: any) => p.id === activePlanId);
 
     const handlePlanSelect = async (plan: any) => {
         localStorage.setItem('has_selected_plan', 'true');
@@ -30,9 +35,14 @@ export default function DashboardPricingPage() {
         }
 
         if (plan.id === 'free') {
-            const res = await subscribe('free');
-            if (res.success) toast.success('Switched to Free plan!');
-            else toast.error(res.error || 'Failed to update plan');
+            subscribeMutation.mutate({
+                businessId: user?.businessId || '',
+                planId: 'free',
+                billingCycle
+            }, {
+                onSuccess: () => toast.success('Switched to Free plan!'),
+                onError: () => toast.error('Failed to update plan')
+            });
         } else {
             setCheckoutPlan({ ...plan, billingCycle });
         }
@@ -103,7 +113,7 @@ export default function DashboardPricingPage() {
                                 {activePlan?.id !== 'free' && <span className="text-xs font-bold opacity-40 mb-1">/mo</span>}
                             </div>
                             <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest mb-6 border-b border-white/10 pb-4">
-                                Next billing on Oct 24, 2025
+                                {subscription?.currentPeriodEnd ? `Next billing on ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}` : 'No upcoming billing'}
                             </p>
                             <button className="w-full h-11 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all">
                                 Manage Payment
@@ -131,7 +141,7 @@ export default function DashboardPricingPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {plans.filter(p => p.id !== 'white-label' && p.id !== 'enterprise').map((plan) => {
+                {plans.filter((p: any) => p.id !== 'white-label' && p.id !== 'enterprise').map((plan: any) => {
                     const isCurrent = plan.id === activePlanId;
                     return (
                         <div key={plan.id} className={`p-8 rounded-4xl border transition-all ${isCurrent ? 'bg-primary/5 border-primary shadow-xl shadow-primary/5' : 'bg-white border-slate-100 hover:border-primary/20'
@@ -149,7 +159,7 @@ export default function DashboardPricingPage() {
                                 {plan.id !== 'free' && <span className="text-sm font-bold text-slate-400">/mo</span>}
                             </div>
                             <ul className="space-y-4 mb-8">
-                                {plan.features.map((f, i) => (
+                                {plan.features?.map((f: string, i: number) => (
                                     <li key={i} className="flex items-start gap-2.5 text-xs font-bold text-slate-600 leading-snug">
                                         <CheckCircle2 size={14} className="text-primary mt-0.5 shrink-0" />
                                         {f}

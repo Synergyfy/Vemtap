@@ -1,27 +1,40 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { RewardManager } from '@/components/loyalty/admin/RewardManager';
-import { useLoyaltyStore } from '@/store/loyaltyStore';
-import { Reward } from '@/types/loyalty';
+import { useRewards, useCreateReward, useUpdateReward } from '@/services/loyalty/hooks';
+import { Reward, CreateRewardRequest, UpdateRewardRequest } from '@/services/loyalty/types';
 
 export default function RewardManagementPage() {
-    const { availableRewards, fetchRewards, createReward, updateReward, isLoading } = useLoyaltyStore();
-
-    // Business ID is hardcoded for demo
-    const businessId = 'bistro_001';
-
-    useEffect(() => {
-        fetchRewards(businessId);
-    }, []);
+    const { data: rewards, isLoading } = useRewards();
+    const createMutation = useCreateReward();
+    const updateMutation = useUpdateReward();
 
     const handleCreate = async (reward: Partial<Reward>) => {
-        await createReward(businessId, reward);
+        const dto: CreateRewardRequest = {
+            name: reward.name || '',
+            description: reward.description || '',
+            rewardType: reward.rewardType || 'free_item',
+            pointCost: reward.pointCost || 100,
+            value: reward.value || 0,
+            validityDays: reward.validityDays || 30,
+            usageLimitPerUser: reward.usageLimitPerUser || 1,
+        };
+        await createMutation.mutateAsync(dto);
     };
 
     const handleUpdate = async (id: string, updates: Partial<Reward>) => {
-        await updateReward(businessId, id, updates);
+        const dto: UpdateRewardRequest = {
+            name: updates.name,
+            description: updates.description,
+            pointCost: updates.pointCost,
+            value: updates.value,
+            validityDays: updates.validityDays,
+            usageLimitPerUser: updates.usageLimitPerUser,
+            isActive: updates.isActive,
+        };
+        await updateMutation.mutateAsync({ id, updates: dto });
     };
 
     return (
@@ -31,13 +44,13 @@ export default function RewardManagementPage() {
                 description="Create and manage what your customers can redeem"
             />
 
-            {isLoading && availableRewards.length === 0 ? (
+            {isLoading && !rewards ? (
                 <div className="flex items-center justify-center p-24">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
                 </div>
             ) : (
                 <RewardManager
-                    rewards={availableRewards}
+                    rewards={rewards || []}
                     onCreate={handleCreate}
                     onUpdate={handleUpdate}
                 />

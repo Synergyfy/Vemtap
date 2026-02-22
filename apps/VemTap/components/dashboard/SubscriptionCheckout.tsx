@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { CreditCard, ShieldCheck, Zap, ArrowRight, Loader2, Info } from 'lucide-react';
-import { useAuthStore, SubscriptionPlan } from '@/store/useAuthStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useSubscribe } from '@/services/subscriptions/hooks';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -19,21 +20,30 @@ interface Props {
 }
 
 export default function SubscriptionCheckout({ isOpen, onClose, plan, billingCycle = 'monthly' }: Props) {
-    const { subscribe } = useAuthStore();
+    const { user } = useAuthStore();
+    const subscribeMutation = useSubscribe();
     const [isProcessing, setIsProcessing] = useState(false);
 
     const handlePayment = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsProcessing(true);
         await new Promise(resolve => setTimeout(resolve, 2000));
-        const res = await subscribe(plan.id as SubscriptionPlan);
-        setIsProcessing(false);
-        if (res.success) {
-            toast.success(`Welcome to the ${plan.name} plan!`);
-            onClose();
-        } else {
-            toast.error(res.error || 'Payment failed');
-        }
+        
+        subscribeMutation.mutate({
+            businessId: user?.businessId || '',
+            planId: plan.id,
+            billingCycle
+        }, {
+            onSuccess: () => {
+                setIsProcessing(false);
+                toast.success(`Welcome to the ${plan.name} plan!`);
+                onClose();
+            },
+            onError: (error) => {
+                setIsProcessing(false);
+                toast.error('Payment failed');
+            }
+        });
     };
 
     const getBasePrice = () => {

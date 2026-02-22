@@ -3,8 +3,10 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dashboardApi } from '@/lib/api/dashboard';
-import { Visitor } from '@/lib/store/mockDashboardStore';
+import { api } from '@/lib/api';
+import { Visitor } from '@/services/visitors/types';
+import { useVisitors, useVisitorStats } from '@/services/visitors/hooks';
+import { useAuthStore } from '@/store/useAuthStore';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import PageHeader from '@/components/dashboard/PageHeader';
 import StatsCard from '@/components/dashboard/StatsCard';
@@ -35,38 +37,38 @@ export default function AllVisitorsPage() {
     const [deleteVisitorId, setDeleteVisitorId] = useState<string | null>(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
-    const { data: storeData, isLoading } = useQuery({
-        queryKey: ['dashboard'],
-        queryFn: dashboardApi.fetchDashboardData,
-    });
+    const userBranchId = useAuthStore((state) => state.user?.businessId);
 
-    const visitors = storeData?.recentVisitors || [];
+    const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(userBranchId, {
+        search: searchQuery,
+        status: filterStatus !== 'all' ? filterStatus : undefined
+    });
+    const { data: statsData } = useVisitorStats(userBranchId);
+
+    const visitors = paginatedData?.data || [];
+    const isLoading = isLoadingVisitors;
 
     const deleteMutation = useMutation({
-        mutationFn: dashboardApi.deleteVisitor,
+        mutationFn: async (id: string) => await api.delete(`/visitors/${id}`),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            queryClient.invalidateQueries({ queryKey: ['visitors'] });
             toast.success('Visitor removed successfully');
             setDeleteVisitorId(null);
         }
     });
 
     const addVisitorMutation = useMutation({
-        mutationFn: (data: VisitorFormData) => {
-            const newVisitor: Visitor = {
-                id: Math.random().toString(36).substr(2, 9),
+        mutationFn: async (data: VisitorFormData) => {
+            const newVisitor = {
                 name: data.name,
                 phone: data.phone,
-                time: 'Just now',
-                timestamp: Date.now(),
-                status: data.status as any,
-                optIn: true,
-                branchId: 'head-office'
+                email: data.email,
+                branchId: userBranchId,
             };
-            return dashboardApi.addVisitor(newVisitor);
+            return await api.post('/visitors', newVisitor);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            queryClient.invalidateQueries({ queryKey: ['visitors'] });
             setIsAddModalOpen(false);
             toast.success('Visitor added successfully');
         }
@@ -78,8 +80,8 @@ export default function AllVisitorsPage() {
 
     const handleExportCSV = () => {
         const csvContent = [
-            ['Name', 'Phone', 'Email', 'Status', 'Opt-in'],
-            ...visitors.map((v: Visitor) => [v.name, v.phone, v.email || '', v.status, v.optIn ? 'Yes' : 'No'])
+            ['Name', 'Phone', 'Email', 'Status', 'Last Visit'],
+            ...visitors.map((v: Visitor) => [v.name, v.phone, v.email || '', v.status, String(v.lastVisit || v.time)])
         ].map(row => row.join(',')).join('\n');
 
         const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -113,24 +115,18 @@ export default function AllVisitorsPage() {
         }
     };
 
-    const stats = [
-        { label: 'Total Visitors', value: visitors.length.toString(), icon: Users, color: 'blue' as const, trend: { value: '+12%', isUp: true } },
-        { label: 'New This Month', value: visitors.filter((v: Visitor) => v.status === 'new').length.toString(), icon: UserPlus, color: 'green' as const, trend: { value: '+5%', isUp: true } },
-        { label: 'Avg. Frequency', value: '3.2', icon: Repeat, color: 'purple' as const, trend: { value: '-2%', isUp: false } },
-        { label: 'Top Segment', value: 'Returning', icon: Star, color: 'yellow' as const, trend: { value: '+8%', isUp: true } },
+    const stats = statsData?.stats && statsData.stats.length > 0 ? statsData.stats.map(s => ({
+        ...s,
+        color: s.color as 'blue' | 'green' | 'purple' | 'red' | 'yellow',
+        icon: s.icon === 'group' ? Users : s.icon === 'person_add' ? UserPlus : s.icon === 'repeat' ? Repeat : Star
+    })) : [
+        { label: 'Total Visitors', value: visitors.length.toString(), icon: Users, color: 'blue' as const, trend: { value: '+0%', isUp: true } },
+        { label: 'New This Month', value: visitors.filter((v: Visitor) => v.status === 'New' || v.status === 'new').length.toString(), icon: UserPlus, color: 'green' as const, trend: { value: '+0%', isUp: true } },
+        { label: 'Avg. Frequency', value: '0', icon: Repeat, color: 'purple' as const, trend: { value: '0%', isUp: false } },
+        { label: 'Top Segment', value: 'Returning', icon: Star, color: 'yellow' as const, trend: { value: '+0%', isUp: true } },
     ];
 
-    const filteredVisitors = visitors.filter((visitor: Visitor) => {
-        const matchesSearch = searchQuery === '' ||
-            visitor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            visitor.phone.includes(searchQuery) ||
-            visitor.email?.toLowerCase().includes(searchQuery.toLowerCase());
-
-        const matchesStatus = filterStatus === 'all' ||
-            visitor.status.toLowerCase() === filterStatus.toLowerCase();
-
-        return matchesSearch && matchesStatus;
-    });
+    const filteredVisitors = visitors;
 
     const columns: Column<Visitor>[] = [
         {
@@ -311,14 +307,14 @@ export default function AllVisitorsPage() {
             <VisitorDetailsModal
                 isOpen={!!selectedVisitorForDetails}
                 onClose={() => setSelectedVisitorForDetails(null)}
-                visitor={selectedVisitorForDetails}
+                visitor={selectedVisitorForDetails as any}
             />
 
             <PreviewRewardModal
                 isOpen={!!rewardPreviewVisitor}
                 onClose={() => setRewardPreviewVisitor(null)}
                 rewardTitle="Free Coffee or Pastry"
-                businessName={storeData?.businessName || 'Your Business'}
+                businessName={'Your Business'}
             />
 
             <DeleteConfirmationModal
