@@ -11,6 +11,8 @@ import { MessageCampaign } from './entities/message-campaign.entity';
 import { ConversationThread } from './entities/conversation-thread.entity';
 import { Message } from './entities/message.entity';
 import { MessageLog } from './entities/message-log.entity';
+import { Flow } from './entities/flow.entity';
+import { FlowExecution } from './entities/flow-execution.entity';
 
 import { ContactsModule } from '../contacts/contacts.module';
 import { BusinessesModule } from '../businesses/businesses.module';
@@ -23,13 +25,14 @@ import { CreditService } from './services/credit.service';
 import { CampaignService } from './services/campaign.service';
 import { InboxService } from './services/inbox.service';
 import { AnalyticsService } from './services/analytics.service';
+import { FlowEngineService } from './services/flow-engine.service';
 import { MessagingController } from './controllers/messaging.controller';
+import { FlowController } from './controllers/flow.controller';
 import { TermiiWebhookController } from './controllers/termii.controller';
-import { WapsChatWebhookController } from './controllers/wapschat.controller';
 import { TermiiProvider } from './providers/termii.provider';
-import { WapsChatProvider } from './providers/wapschat.provider';
 import { ProviderRouterService } from './services/provider-router.service';
 import { BatchSendProcessor } from './processors/batch-send.processor';
+import { FlowDelayProcessor } from './processors/flow-delay.processor';
 
 @Module({
   imports: [
@@ -39,6 +42,8 @@ import { BatchSendProcessor } from './processors/batch-send.processor';
       ConversationThread,
       Message,
       MessageLog,
+      Flow,
+      FlowExecution,
       Business,
       Branch,
     ]),
@@ -58,6 +63,8 @@ import { BatchSendProcessor } from './processors/batch-send.processor';
     }),
     BullModule.registerQueue({
       name: 'messaging-batch-send',
+    }, {
+      name: 'messaging-flow-delay',
     }),
   ],
   providers: [
@@ -68,15 +75,16 @@ import { BatchSendProcessor } from './processors/batch-send.processor';
     CampaignService,
     InboxService,
     AnalyticsService,
+    FlowEngineService,
     TermiiProvider,
-    WapsChatProvider,
     ProviderRouterService,
     BatchSendProcessor,
+    FlowDelayProcessor,
   ],
   controllers: [
     MessagingController,
+    FlowController,
     TermiiWebhookController,
-    WapsChatWebhookController,
   ],
   exports: [
     TypeOrmModule,
@@ -87,8 +95,8 @@ import { BatchSendProcessor } from './processors/batch-send.processor';
     CampaignService,
     InboxService,
     AnalyticsService,
+    FlowEngineService,
     TermiiProvider,
-    WapsChatProvider,
     ProviderRouterService,
   ],
 })

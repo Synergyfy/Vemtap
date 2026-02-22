@@ -36,7 +36,7 @@ export class TermiiProvider implements MessagingProvider {
         from: payload.from || 'N-Alert',
         sms: payload.content,
         type: 'plain',
-        channel: 'generic', // Could be configurable: generic, dnd, whatsapp (but this is SMS provider)
+        channel: 'generic',
       };
 
       try {
@@ -53,9 +53,47 @@ export class TermiiProvider implements MessagingProvider {
         );
         throw error;
       }
+    } else if (payload.channel === Channel.WHATSAPP) {
+        // Termii WhatsApp Implementation (Generic/Mock structure based on typical providers)
+        // Termii's WhatsApp API documentation would specify the exact endpoint and payload.
+        // Assuming a similar structure to SMS but with different channel/type or a specific endpoint.
+        // Note: Termii often uses "dnd" or specific routes for WhatsApp, or a different base URL for "Token" based messaging.
+        // For this implementation, we will use a hypothetical endpoint as per instruction to use Termii.
+
+        const url = `${this.baseUrl}/sms/send`; // Often same endpoint, different 'channel'
+        const data: any = {
+            api_key: apiKey,
+            to: payload.to,
+            from: payload.from || 'N-Alert', // Or a registered WhatsApp Sender ID
+            sms: payload.content,
+            type: 'plain',
+            channel: 'whatsapp', // Specifying channel as whatsapp
+        };
+
+        if (payload.mediaUrl) {
+            data.media = { url: payload.mediaUrl };
+        }
+
+        try {
+            const response = await firstValueFrom(this.httpService.post(url, data));
+            return {
+                messageId: response.data.message_id,
+                status: 'queued', // WhatsApp via Termii usually queues
+                rawResponse: response.data,
+            };
+        } catch (error) {
+             this.logger.error(
+                'Termii WhatsApp Send Failed',
+                error.response?.data || error.message,
+              );
+              return {
+                  messageId: null,
+                  status: 'failed',
+                  rawResponse: error.response?.data
+              };
+        }
+
     } else if (payload.channel === Channel.EMAIL) {
-      // Hypothetical Termii Email implementation as per prompt
-      // Assuming similar structure or using standard email service if Termii supports it via API
       this.logger.warn('Termii Email implementation is a placeholder');
       return {
         messageId: `mock-email-${Date.now()}`,
@@ -75,8 +113,15 @@ export class TermiiProvider implements MessagingProvider {
     type: 'inbound' | 'delivery';
     data: InboundMessage | DeliveryReport;
   } | null> {
-    // Termii Inbound SMS usually has: receiver (shortcode/senderID), sender (phone), message, msgid
+    // Termii Inbound SMS/WhatsApp usually has: receiver (shortcode/senderID), sender (phone), message, msgid
     if (payload.receiver && payload.sender && payload.message) {
+      // Try to detect channel if possible, else default based on context or assume SMS/Unified
+      // If we are strictly using Termii for everything, maybe we can inspect 'receiver' to know if it's a WhatsApp ID
+      let channel = Channel.SMS;
+      if (payload.channel === 'whatsapp' || payload.type === 'whatsapp') {
+          channel = Channel.WHATSAPP;
+      }
+
       return {
         type: 'inbound',
         data: {
@@ -84,7 +129,7 @@ export class TermiiProvider implements MessagingProvider {
           to: payload.receiver,
           content: payload.message,
           providerMessageId: payload.msgid || payload.message_id,
-          channel: Channel.SMS,
+          channel: channel,
           timestamp: new Date(payload.received_at || Date.now()),
           rawPayload: payload,
         },
@@ -108,8 +153,9 @@ export class TermiiProvider implements MessagingProvider {
 
   estimateCost(payload: SendMessagePayload): number {
     if (payload.channel === Channel.SMS) {
-      // Standard Termii rate (approximate, should be configurable)
       return 4.0;
+    } else if (payload.channel === Channel.WHATSAPP) {
+        return 15.0; // Higher cost for WhatsApp
     }
     return 0;
   }
