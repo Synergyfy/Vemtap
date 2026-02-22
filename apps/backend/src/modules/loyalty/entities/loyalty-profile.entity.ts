@@ -25,14 +25,14 @@ export class LoyaltyProfile {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'uuid' })
   userId: string;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column()
+  @Column({ type: 'uuid' })
   businessId: string;
 
   @ManyToOne(() => Business)
@@ -54,6 +54,12 @@ export class LoyaltyProfile {
     default: TierLevel.BRONZE,
   })
   tierLevel: TierLevel;
+
+  @Column({ type: 'uuid', nullable: true })
+  branchId: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  deletedAt: Date;
 
   @Column({ type: 'timestamp', nullable: true })
   lastVisitDate: Date;
