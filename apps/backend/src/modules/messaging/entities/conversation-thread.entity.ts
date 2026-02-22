@@ -1,6 +1,7 @@
 import { Entity, Column, ManyToOne, JoinColumn, Unique } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 import { Channel } from '../enums/channel.enum';
 import { Contact } from '../../contacts/entities/contact.entity';
 
@@ -11,7 +12,7 @@ export enum ThreadStatus {
 }
 
 @Entity('conversation_threads')
-@Unique(['businessId', 'contactId', 'channel'])
+@Unique(['branchId', 'contactId', 'channel'])
 export class ConversationThread extends AbstractBaseEntity {
   @ManyToOne(() => Business, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'businessId' })
@@ -19,6 +20,13 @@ export class ConversationThread extends AbstractBaseEntity {
 
   @Column()
   businessId: string;
+
+  @ManyToOne(() => Branch, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'branchId' })
+  branch: Branch;
+
+  @Column()
+  branchId: string;
 
   @ManyToOne(() => Contact, (contact) => contact.threads, {
     onDelete: 'CASCADE',

@@ -18,9 +18,7 @@ export class CreditService {
     if (!business) {
       throw new BadRequestException('Business not found');
     }
-    // Assumes there's a credits or wallet balance property on the Business
-    // Fallback to 0 if missing from original entity.
-    return (business as any).credits ?? 1000; // Mock starting balance for integration
+    return Number(business.balance) || 0;
   }
 
   public async deduct(
@@ -37,15 +35,15 @@ export class CreditService {
         throw new BadRequestException('Business not found');
       }
 
-      const currentBalance = (business as any).credits ?? 1000; // Mock current balance
+      const currentBalance = Number(business.balance) || 0;
       if (currentBalance < amount) {
         throw new BadRequestException('Insufficient credits');
       }
 
-      (business as any).credits = currentBalance - amount;
+      business.balance = currentBalance - amount;
       await manager.save(business);
 
-      // We should arguably store a transaction log here (Reason: reason).
+      // TODO: Log transaction to wallet_transactions table when created
     });
   }
 }

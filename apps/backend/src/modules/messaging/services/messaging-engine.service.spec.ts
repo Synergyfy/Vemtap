@@ -6,21 +6,18 @@ import { ComplianceService } from './compliance.service';
 import { CreditService } from './credit.service';
 import { TemplateService } from './template.service';
 import { CampaignService } from './campaign.service';
-import { SmsService } from './sms.service';
-import { WhatsappService } from './whatsapp.service';
-import { EmailService } from './email.service';
 import { SettingsService } from '../../settings/settings.service';
+import { ProviderRouterService } from './provider-router.service';
 import { DataSource } from 'typeorm';
 
 import { Contact } from '../../contacts/entities/contact.entity';
 import {
   Message,
-  MessageDirection,
-  MessageStatus,
 } from '../entities/message.entity';
 import { MessageLog } from '../entities/message-log.entity';
 import { ConversationThread } from '../entities/conversation-thread.entity';
 import { Business } from '../../businesses/entities/business.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 import { Channel } from '../enums/channel.enum';
 
 describe('MessagingEngineService', () => {
@@ -34,6 +31,7 @@ describe('MessagingEngineService', () => {
       .fn()
       .mockImplementation((e) => Promise.resolve({ id: '1', ...e })),
     findBy: jest.fn(),
+    update: jest.fn(),
   };
 
   const mockQueue = {
@@ -56,6 +54,11 @@ describe('MessagingEngineService', () => {
     }),
   };
 
+  const mockProviderRouter = {
+    sendMessage: jest.fn().mockResolvedValue({ messageId: 'msg-1', status: 'sent' }),
+    estimateCost: jest.fn().mockReturnValue(1),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -65,6 +68,7 @@ describe('MessagingEngineService', () => {
         { provide: getRepositoryToken(MessageLog), useValue: mockRepo },
         { provide: getRepositoryToken(ConversationThread), useValue: mockRepo },
         { provide: getRepositoryToken(Business), useValue: mockRepo },
+        { provide: getRepositoryToken(Branch), useValue: mockRepo },
         { provide: getQueueToken('messaging-batch-send'), useValue: mockQueue },
         {
           provide: ComplianceService,
@@ -79,10 +83,8 @@ describe('MessagingEngineService', () => {
           useValue: { getTemplate: jest.fn(), render: jest.fn() },
         },
         { provide: CampaignService, useValue: mockCampaignService },
-        { provide: SmsService, useValue: { sendSingle: jest.fn() } },
-        { provide: WhatsappService, useValue: {} },
-        { provide: EmailService, useValue: {} },
         { provide: SettingsService, useValue: mockSettingsService },
+        { provide: ProviderRouterService, useValue: mockProviderRouter },
         { provide: DataSource, useValue: {} },
       ],
     }).compile();
@@ -96,6 +98,7 @@ describe('MessagingEngineService', () => {
       await expect(
         service.sendMessage({
           businessId: 'b1',
+          branchId: 'br1',
           channel: Channel.SMS,
           content: 'test',
         }),
@@ -107,10 +110,14 @@ describe('MessagingEngineService', () => {
         id: 'b1',
         name: 'TestBusiness',
       });
-      mockRepo.find.mockResolvedValueOnce([{ id: 'c1' }, { id: 'c2' }]); // Multiple targets returned by find() when querying audience
+      // Mock resolveAudience
+      mockRepo.find.mockResolvedValueOnce([{ id: 'c1' }, { id: 'c2' }]);
+      // Mock branchRepo.findOne
+      mockRepo.findOne.mockResolvedValueOnce({ id: 'branch1' });
 
       const result = await service.sendMessage({
         businessId: 'b1',
+        branchId: 'branch1',
         channel: Channel.SMS,
         content: 'msg',
       });

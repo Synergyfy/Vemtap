@@ -26,22 +26,22 @@ export class InboxService {
   ) {}
 
   async getThreads(
-    businessId: string,
+    branchId: string,
     channel: Channel,
   ): Promise<ConversationThread[]> {
     return this.threadRepo.find({
-      where: { businessId, channel },
+      where: { branchId, channel },
       relations: ['contact'],
       order: { lastActivityAt: 'DESC' },
     });
   }
 
   async getThreadMessages(
-    businessId: string,
+    branchId: string,
     threadId: string,
   ): Promise<Message[]> {
     const thread = await this.threadRepo.findOne({
-      where: { id: threadId, businessId },
+      where: { id: threadId, branchId },
     });
     if (!thread) {
       throw new NotFoundException('Thread not found');
@@ -54,12 +54,12 @@ export class InboxService {
   }
 
   async sendReply(
-    businessId: string,
+    branchId: string,
     threadId: string,
     content: string,
   ): Promise<Message | null> {
     const thread = await this.threadRepo.findOne({
-      where: { id: threadId, businessId },
+      where: { id: threadId, branchId },
       relations: ['contact'],
     });
 
