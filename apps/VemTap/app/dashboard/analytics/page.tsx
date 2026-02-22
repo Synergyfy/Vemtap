@@ -9,8 +9,10 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useAuthStore, AuthState } from '../../../store/useAuthStore';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
+import { exportToCSV } from '@/lib/utils/export';
+import toast from 'react-hot-toast';
 
 const iconMap: Record<string, React.ElementType> = {
     'Total Visits': Users,
@@ -30,7 +32,7 @@ const colorMap: Record<string, { color: string; bg: string }> = {
 
 export default function AnalyticsDashboardPage() {
     const router = useRouter();
-    const { user } = useAuthStore();
+    const user = useAuthStore((state: AuthState) => state.user);
     const { data, isLoading, error } = useDashboardAnalytics();
 
     React.useEffect(() => {
@@ -70,7 +72,7 @@ export default function AnalyticsDashboardPage() {
                     </div>
                     <button
                         onClick={() => {
-                            const exportData = STATS.map(s => ({ Metric: s.label, Value: s.value, Trend: s.trend }));
+                            const exportData = data.stats.map((s: any) => ({ Metric: s.label, Value: s.value, Trend: s.trend }));
                             exportToCSV(exportData, `analytics_report_${new Date().toISOString().split('T')[0]}`);
                             toast.success('Analytics report exported');
                         }}

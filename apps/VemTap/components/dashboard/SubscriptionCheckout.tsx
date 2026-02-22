@@ -3,10 +3,8 @@
 import React, { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { CreditCard, ShieldCheck, Zap, ArrowRight, Loader2, Info } from 'lucide-react';
-import { useAuthStore } from '@/store/useAuthStore';
 import { useSubscribe } from '@/services/subscriptions/hooks';
 import toast from 'react-hot-toast';
-
 interface Props {
     isOpen: boolean;
     onClose: () => void;
@@ -17,10 +15,10 @@ interface Props {
         period: string;
     };
     billingCycle?: 'monthly' | 'quarterly' | 'yearly';
+    businessId?: string;
 }
 
-export default function SubscriptionCheckout({ isOpen, onClose, plan, billingCycle = 'monthly' }: Props) {
-    const { user } = useAuthStore();
+export default function SubscriptionCheckout({ isOpen, onClose, plan, billingCycle = 'monthly', businessId }: Props) {
     const subscribeMutation = useSubscribe();
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -28,9 +26,9 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingCyc
         e.preventDefault();
         setIsProcessing(true);
         await new Promise(resolve => setTimeout(resolve, 2000));
-        
+
         subscribeMutation.mutate({
-            businessId: user?.businessId || '',
+            businessId: businessId || '',
             planId: plan.id,
             billingCycle
         }, {

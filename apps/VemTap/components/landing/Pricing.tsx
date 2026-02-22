@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPricingPlans } from '@/lib/api/pricing';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useAuthStore, AuthState } from '../../store/useAuthStore';
 import { useSubscribe } from '@/services/subscriptions/hooks';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
@@ -13,7 +13,8 @@ import SubscriptionCheckout from '@/components/dashboard/SubscriptionCheckout';
 
 export default function Pricing() {
     const router = useRouter();
-    const { user, isAuthenticated } = useAuthStore();
+    const user = useAuthStore((state: AuthState) => state.user);
+    const isAuthenticated = useAuthStore((state: AuthState) => state.isAuthenticated);
     const subscribeMutation = useSubscribe();
     const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
@@ -247,6 +248,7 @@ export default function Pricing() {
                         onClose={() => setCheckoutPlan(null)}
                         plan={checkoutPlan}
                         billingCycle={checkoutPlan.billingCycle}
+                        businessId={user?.businessId}
                     />
                 )}
             </div>

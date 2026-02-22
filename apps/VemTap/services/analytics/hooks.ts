@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useAuthStore, AuthState } from '../../store/useAuthStore';
 import { DashboardAnalyticsResponse, FootfallAnalyticsResponse, PeakTimesAnalyticsResponse } from './types';
 
 function useResolvedBranchId(branchId?: string): string | undefined {
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const userBusinessId = useAuthStore((state) => state.user?.businessId);
+    const activeBranchId = useAuthStore((state: AuthState) => state.activeBranchId);
+    const userBusinessId = useAuthStore((state: AuthState) => state.user?.businessId);
     const resolved = branchId || (activeBranchId === 'all' ? undefined : activeBranchId) || userBusinessId;
     return resolved || undefined;
 }
