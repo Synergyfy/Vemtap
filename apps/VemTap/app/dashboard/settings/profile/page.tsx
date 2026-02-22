@@ -72,26 +72,56 @@ export default function BusinessProfilePage() {
                         <div className="flex flex-col md:flex-row items-center md:items-start gap-10">
                             {/* Logo Section */}
                             <div className="flex flex-col items-center space-y-4">
-                                <div className="size-32 rounded-3xl bg-gray-50 flex items-center justify-center border-2 border-dashed border-gray-200 overflow-hidden relative shadow-inner">
+                                <div className="size-32 rounded-3xl bg-gray-50 flex items-center justify-center border-2 border-dashed border-gray-200 overflow-hidden relative shadow-inner group">
                                     {logo ? (
-                                        <img src={logo} alt="Logo" className="w-full h-full object-contain p-4" />
+                                        <>
+                                            <img src={logo} alt="Logo" className="w-full h-full object-contain p-4 transition-transform group-hover:scale-110" />
+                                            <button
+                                                onClick={() => setLogo('')}
+                                                className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1.5 rounded-lg shadow-sm text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                                            >
+                                                <span className="material-icons-round text-sm">delete</span>
+                                            </button>
+                                        </>
                                     ) : (
                                         <div className="flex flex-col items-center gap-2 text-gray-400">
                                             <span className="material-icons-round text-4xl">add_a_photo</span>
                                             <span className="text-[10px] font-black uppercase tracking-widest text-center px-2">No Logo</span>
                                         </div>
                                     )}
-                                </div>
-                                <div className="w-full max-w-[200px]">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-1 block">Logo Image URL</label>
                                     <input
-                                        type="text"
-                                        value={logo}
-                                        onChange={(e) => setLogo(e.target.value)}
-                                        placeholder="https://..."
-                                        className="w-full h-10 bg-gray-50 border border-gray-200 rounded-lg px-3 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-primary/10 transition-all outline-none"
+                                        type="file"
+                                        id="logo-upload"
+                                        className="hidden"
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                const reader = new FileReader();
+                                                reader.onloadend = () => setLogo(reader.result as string);
+                                                reader.readAsDataURL(file);
+                                            }
+                                        }}
                                     />
-                                    <p className="text-[10px] text-gray-400 mt-1 ml-1 line-clamp-1">Paste a direct link to your logo image.</p>
+                                </div>
+                                <div className="w-full max-w-[200px] space-y-3">
+                                    <button
+                                        onClick={() => document.getElementById('logo-upload')?.click()}
+                                        className="w-full h-10 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <span className="material-icons-round text-sm">upload</span>
+                                        Upload Logo
+                                    </button>
+                                    <div className="relative">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-1 block">Or Paste Image URL</label>
+                                        <input
+                                            type="text"
+                                            value={logo}
+                                            onChange={(e) => setLogo(e.target.value)}
+                                            placeholder="https://..."
+                                            className="w-full h-10 bg-gray-50 border border-gray-200 rounded-lg px-3 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-primary/10 transition-all outline-none"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 

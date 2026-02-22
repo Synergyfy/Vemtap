@@ -62,6 +62,7 @@ export interface Reward {
   totalAvailable?: number;
   totalRedeemed: number;
   isActive: boolean;
+  branchId?: string;
   imageUrl?: string;
   createdAt: string;
   updatedAt: string;
@@ -76,6 +77,7 @@ export interface Redemption {
   redemptionCode: string;
   pointsSpent: number;
   status: RedemptionStatus;
+  branchId?: string;
   redeemedAt: string;
   verifiedAt?: string;
   verifiedByUserId?: string;

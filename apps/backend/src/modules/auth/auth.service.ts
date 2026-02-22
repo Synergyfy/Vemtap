@@ -14,6 +14,7 @@ import * as bcrypt from 'bcrypt';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Otp } from './entities/otp.entity';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
+import { RegisterAdminDto } from './dto/register-admin.dto';
 
 @Injectable()
 export class AuthService {
@@ -24,7 +25,7 @@ export class AuthService {
     private jwtService: JwtService,
     @InjectRepository(Otp)
     private otpRepository: Repository<Otp>,
-  ) {}
+  ) { }
 
   async sendOtp(email: string) {
     const existingUser = await this.usersService.findByEmail(email);
@@ -188,6 +189,39 @@ export class AuthService {
 
     // Return auth response (token + user) or just user?
     // Usually auto-login after register is good UX.
+    return this.login(user);
+  }
+
+  // --- New Dedicated Admin Registration ---
+  async registerAdmin(dto: RegisterAdminDto) {
+    const defaultCode = 'admin_secret_123';
+    const envCode = process.env.ADMIN_ACCOUNT_CODE;
+
+    // Safety check just in case env code is not set, don't allow open registration
+    if (!envCode) {
+      throw new BadRequestException('Admin registration is not correctly configured on the server');
+    }
+
+    if (dto.adminAccountCode !== envCode) {
+      throw new UnauthorizedException('Invalid admin account code');
+    }
+
+    const existingUser = await this.usersService.findByEmail(dto.email);
+    if (existingUser) {
+      throw new ConflictException('Email already exists');
+    }
+
+    // Create User (Admin)
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const user = await this.usersService.create({
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      email: dto.email,
+      password: hashedPassword,
+      role: UserRole.ADMIN, // Explicitly ADMIN
+      phone: dto.phone || undefined,
+    });
+
     return this.login(user);
   }
 }

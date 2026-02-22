@@ -9,6 +9,7 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Quote } from './quote.entity';
+import { Product } from './product.entity';
 import { User } from '../../users/entities/user.entity';
 import { Device } from '../../devices/entities/device.entity';
 
@@ -18,18 +19,46 @@ export enum OrderStatus {
   COMPLETED = 'Completed', // Optional mapping
 }
 
+export enum PaymentStatus {
+  PENDING = 'Pending',
+  PAID = 'Paid',
+  FAILED = 'Failed',
+}
+
 @Entity('orders')
 export class Order extends AbstractBaseEntity {
-  @OneToOne(() => Quote, (quote) => quote.order, { onDelete: 'RESTRICT' })
+  @OneToOne(() => Quote, (quote) => quote.order, {
+    onDelete: 'RESTRICT',
+    nullable: true,
+  })
   @JoinColumn()
   quote: Quote;
 
-  @ApiProperty({ example: 'quote-uuid' })
-  @Column()
+  @ApiProperty({ example: 'quote-uuid', required: false })
+  @Column({ nullable: true })
   quoteId: string;
 
-  @ApiProperty({ example: 900 })
-  @Column('decimal', { precision: 10, scale: 2 })
+  @ManyToOne(() => Product, { onDelete: 'SET NULL', nullable: true })
+  product: Product;
+
+  @ApiProperty({ example: 'product-uuid' })
+  @Column({ nullable: true })
+  productId: string;
+
+  @ApiProperty({ example: 100 })
+  @Column({ nullable: true })
+  quantity: number;
+
+  @ApiProperty({ example: 20000 })
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  unitPrice: number;
+
+  @ApiProperty({ example: 2000000 })
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  totalPrice: number;
+
+  @ApiProperty({ example: 900, description: 'Price agreed from quote' })
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
   agreedPrice: number;
 
   @ApiProperty({ enum: OrderStatus, default: OrderStatus.PENDING })
@@ -39,6 +68,18 @@ export class Order extends AbstractBaseEntity {
     default: OrderStatus.PENDING,
   })
   status: OrderStatus;
+
+  @ApiProperty({ enum: PaymentStatus, default: PaymentStatus.PENDING })
+  @Column({
+    type: 'simple-enum',
+    enum: PaymentStatus,
+    default: PaymentStatus.PENDING,
+  })
+  paymentStatus: PaymentStatus;
+
+  @ApiProperty({ example: 'T123456789', required: false })
+  @Column({ nullable: true })
+  paymentReference: string;
 
   @ManyToOne(() => User, { onDelete: 'SET NULL' })
   user: User;

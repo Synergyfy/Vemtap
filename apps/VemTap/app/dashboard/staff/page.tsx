@@ -7,8 +7,9 @@ import { useStaff, useInviteStaff, useUpdateStaff, useRemoveStaff } from '@/serv
 import { StaffMember, UserRole } from '@/services/users/types';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useBusinessStore } from '@/store/useBusinessStore';
 import toast from 'react-hot-toast';
-import { UserPlus, Shield, Edit3, Trash2, Eye, MessageSquare, BarChart3, Users as UsersIcon, Settings as SettingsIcon } from 'lucide-react';
+import { UserPlus, Shield, Edit3, Trash2, Eye, MessageSquare, BarChart3, Users as UsersIcon, Settings as SettingsIcon, Building2 } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 
 const PERMISSIONS = [
@@ -27,6 +28,8 @@ export default function StaffManagementPage() {
     const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
     const [staffToDelete, setStaffToDelete] = useState<{ id: string, name: string } | null>(null);
     const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['dashboard', 'visitors']);
+
+    const { activeBranchId, branches } = useBusinessStore();
 
     const { data: staffMembers, isLoading } = useStaff();
     const inviteMutation = useInviteStaff();
@@ -53,6 +56,7 @@ export default function StaffManagementPage() {
             businessId: user?.businessId || '',
             branchId: user?.branchId || '',
             permissions: selectedPermissions,
+            branchId: formData.get('branchId') as string,
         };
 
         inviteMutation.mutate(staffData, {
@@ -121,6 +125,18 @@ export default function StaffManagementPage() {
             )
         },
         {
+            header: 'Branch',
+            accessor: (item: Staff) => {
+                const branch = branches.find(b => b.id === item.branchId);
+                return (
+                    <div className="flex items-center gap-2">
+                        <Building2 size={14} className="text-gray-400" />
+                        <span className="text-sm font-bold text-text-main leading-none">{branch?.name || 'Main Branch'}</span>
+                    </div>
+                );
+            }
+        },
+        {
             header: 'Status',
             accessor: (item: StaffMember) => (
                 <div className="flex items-center gap-2">
@@ -136,7 +152,7 @@ export default function StaffManagementPage() {
                     <button
                         onClick={() => setEditingStaff(item)}
                         className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
-                        title="Change Role"
+                        title="Edit Staff Access"
                     >
                         <Edit3 size={18} />
                     </button>

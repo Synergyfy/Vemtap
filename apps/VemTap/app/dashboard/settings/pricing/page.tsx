@@ -20,6 +20,18 @@ export default function DashboardPricingPage() {
         queryFn: fetchPricingPlans
     });
 
+    const [personalConfig, setPersonalConfig] = useState({
+        visitors: 1000,
+        tags: 1
+    });
+
+    const calculatePersonalPrice = (visitors: number, tags: number) => {
+        const base = 15000;
+        const visitorCost = Math.max(0, (visitors - 500) * 10);
+        const tagCost = (tags - 1) * 5000;
+        return base + visitorCost + tagCost;
+    };
+
     const { data: subscription, isLoading: subLoading } = useActiveSubscription();
     const subscribeMutation = useSubscribe();
 
@@ -29,7 +41,7 @@ export default function DashboardPricingPage() {
 
     const handlePlanSelect = async (plan: any) => {
         localStorage.setItem('has_selected_plan', 'true');
-        if (plan.id === activePlanId) {
+        if (plan.id === activePlanId && plan.id !== 'personal') {
             toast.error('You are already on this plan');
             return;
         }
@@ -143,8 +155,9 @@ export default function DashboardPricingPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {plans.filter((p: any) => p.id !== 'white-label' && p.id !== 'enterprise').map((plan: any) => {
                     const isCurrent = plan.id === activePlanId;
+                    const isPersonal = plan.id === 'personal';
                     return (
-                        <div key={plan.id} className={`p-8 rounded-4xl border transition-all ${isCurrent ? 'bg-primary/5 border-primary shadow-xl shadow-primary/5' : 'bg-white border-slate-100 hover:border-primary/20'
+                        <div key={plan.id} className={`p-8 rounded-4xl border transition-all flex flex-col ${isCurrent ? 'bg-primary/5 border-primary shadow-xl shadow-primary/5' : 'bg-white border-slate-100 hover:border-primary/20'
                             }`}>
                             <div className="flex items-center justify-between mb-6">
                                 <h4 className="font-black text-slate-900">{plan.name}</h4>
@@ -168,13 +181,13 @@ export default function DashboardPricingPage() {
                             </ul>
                             <button
                                 onClick={() => handlePlanSelect(plan)}
-                                disabled={isCurrent}
+                                disabled={isCurrent && !isPersonal}
                                 className={`w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${isCurrent
-                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                    ? isPersonal ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                     : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg'
                                     }`}
                             >
-                                {isCurrent ? 'Current Plan' : 'Switch Plan'}
+                                {isCurrent ? isPersonal ? 'Update Configuration' : 'Current Plan' : 'Switch Plan'}
                             </button>
                         </div>
                     );

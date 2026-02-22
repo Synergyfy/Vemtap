@@ -9,12 +9,13 @@ import { PlansController } from './plans.controller';
 import { SubscriptionsController } from './subscriptions.controller';
 import { PlansService } from './plans.service';
 import { SubscriptionsService } from './subscriptions.service';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Plan, Subscription, Business]),
     BusinessesModule,
-    HttpModule,
+    PaymentsModule,
   ],
   controllers: [PlansController, SubscriptionsController],
   providers: [PlansService, SubscriptionsService],

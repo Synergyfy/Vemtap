@@ -4,27 +4,20 @@ import React, { useState } from 'react';
 import { notify } from '@/lib/notify';
 import {
     Tag, Plus, Trash2, Edit3, Save, X,
-    Zap, Shield, Globe, Crown, CheckCircle2, Package, Box, Cpu, Palette
+    Zap, Shield, Globe, Crown, CheckCircle2
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchPricingPlans, updatePricingPlan, addPricingPlan, deletePricingPlan } from '@/lib/api/pricing';
-import { fetchHardwarePricing, updateHardwarePrice } from '@/lib/api/hardware-pricing';
-import { PricingPlan, HardwareOption } from '@/types/pricing';
+import { PricingPlan } from '@/types/pricing';
 
 export default function AdminPricingPage() {
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState<'plans' | 'hardware'>('plans');
     const [editingPlan, setEditingPlan] = useState<PricingPlan | null>(null);
 
     // Queries
     const { data: plans = [], isLoading: plansLoading } = useQuery({
         queryKey: ['subscription-plans'],
         queryFn: fetchPricingPlans
-    });
-
-    const { data: hardware = [], isLoading: hardwareLoading } = useQuery({
-        queryKey: ['hardware-pricing'],
-        queryFn: fetchHardwarePricing
     });
 
     // Mutations
@@ -50,14 +43,6 @@ export default function AdminPricingPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
             notify.success('Plan deleted successfully');
-        }
-    });
-
-    const updateHardwareMutation = useMutation({
-        mutationFn: ({ id, price }: { id: string, price: number }) => updateHardwarePrice(id, price),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['hardware-pricing'] });
-            notify.success('Hardware price updated');
         }
     });
 
@@ -98,42 +83,22 @@ export default function AdminPricingPage() {
                             <span className="text-xs font-black uppercase tracking-widest">Pricing Management</span>
                         </div>
                         <h1 className="text-4xl font-display font-bold text-text-main">
-                            {activeTab === 'plans' ? 'Subscription Plans' : 'Hardware Pricing'}
+                            Subscription Plans
                         </h1>
                     </div>
-                    {activeTab === 'plans' && (
-                        <button
-                            onClick={handleAddPlan}
-                            className="h-12 px-6 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
-                        >
-                            <Plus size={18} /> Add New Plan
-                        </button>
-                    )}
-                </div>
-
-                {/* Tab Switcher */}
-                <div className="flex items-center gap-4 mb-12 border-b border-gray-100 pb-px">
                     <button
-                        onClick={() => setActiveTab('plans')}
-                        className={`px-6 py-4 text-sm font-bold transition-all relative ${activeTab === 'plans' ? 'text-primary' : 'text-slate-400 hover:text-slate-600'}`}
+                        onClick={handleAddPlan}
+                        className="h-12 px-6 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
                     >
-                        Subscription Plans
-                        {activeTab === 'plans' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />}
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('hardware')}
-                        className={`px-6 py-4 text-sm font-bold transition-all relative ${activeTab === 'hardware' ? 'text-primary' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        Hardware Products
-                        {activeTab === 'hardware' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />}
+                        <Plus size={18} /> Add New Plan
                     </button>
                 </div>
 
-                {(plansLoading || hardwareLoading) ? (
+                {plansLoading ? (
                     <div className="flex items-center justify-center py-20">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
                     </div>
-                ) : activeTab === 'plans' ? (
+                ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         {plans.map((plan: PricingPlan) => (
                             <div
@@ -190,63 +155,6 @@ export default function AdminPricingPage() {
                                                     </div>
                                                 ))}
                                             </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {hardware.map((item: HardwareOption) => (
-                            <div key={item.id} className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-                                <div className="flex items-start justify-between mb-6">
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${item.color === 'blue' ? 'bg-blue-50 text-blue-600' :
-                                        item.color === 'green' ? 'bg-green-50 text-green-600' :
-                                            item.color === 'orange' ? 'bg-orange-50 text-orange-600' :
-                                                item.color === 'purple' ? 'bg-purple-50 text-purple-600' :
-                                                    'bg-gray-50 text-gray-600'
-                                        }`}>
-                                        {(() => {
-                                            const IconMap: any = { Cpu, Zap, Shield, Palette };
-                                            const Icon = IconMap[item.icon] || Box;
-                                            return <Icon size={24} />;
-                                        })()}
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Current Net Margin</span>
-                                        <p className="text-lg font-bold text-green-600">+{((item.price - item.cost) / item.price * 100).toFixed(0)}%</p>
-                                    </div>
-                                </div>
-
-                                <h3 className="text-lg font-bold text-text-main mb-1">{item.name}</h3>
-                                <p className="text-xs text-text-secondary font-bold uppercase tracking-widest mb-6">Stock: {item.stock} Units</p>
-
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block mb-1.5 ml-1">Retail Price (₦)</label>
-                                        <div className="relative">
-                                            <input
-                                                type="number"
-                                                value={item.price}
-                                                onChange={(e) => updateHardwareMutation.mutate({ id: item.id, price: parseInt(e.target.value) })}
-                                                className="w-full h-11 pl-4 pr-12 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 focus:outline-none focus:bg-white transition-all"
-                                            />
-                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-text-secondary">NGN</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-4">
-                                        <div className="flex-1">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block mb-1.5 ml-1">Unit Cost</label>
-                                            <p className="h-11 flex items-center px-4 bg-gray-100 border border-gray-200 rounded-xl font-bold text-sm text-text-secondary">
-                                                ₦{item.cost?.toLocaleString()}
-                                            </p>
-                                        </div>
-                                        <div className="flex-1">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block mb-1.5 ml-1">Profit</label>
-                                            <p className="h-11 flex items-center px-4 bg-green-50 border border-green-100 rounded-xl font-bold text-sm text-green-600">
-                                                ₦{(item.price - item.cost)?.toLocaleString()}
-                                            </p>
                                         </div>
                                     </div>
                                 </div>

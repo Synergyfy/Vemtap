@@ -1,7 +1,8 @@
-import { Entity, Column, OneToMany } from 'typeorm';
+import { Entity, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Quote } from './quote.entity';
+import { ProductType } from './product-type.entity';
 
 export enum ProductStatus {
   PUBLISHED = 'Published',
@@ -41,6 +42,32 @@ export class Product extends AbstractBaseEntity {
   @ApiProperty({ example: 50 })
   @Column({ default: 1 })
   moq: number;
+
+  @ApiProperty({
+    example: '[{"min": 1, "max": 100, "price": 20000}]',
+    description: 'Tiered pricing configuration',
+    required: false,
+  })
+  @Column({ type: 'jsonb', nullable: true })
+  priceTiers: { min: number; max: number | null; price: number }[];
+
+  @ApiProperty({
+    example: 300,
+    description: 'Quantity threshold above which a quote is required',
+    required: false,
+  })
+  @Column({ nullable: true })
+  requestQuoteThreshold: number;
+
+  @ManyToOne(() => ProductType, (productType) => productType.products, {
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'productTypeId' })
+  productType: ProductType;
+
+  @ApiProperty({ example: 'type-uuid' })
+  @Column({ nullable: true })
+  productTypeId: string;
 
   @ApiProperty({ enum: ProductStatus, default: ProductStatus.PUBLISHED })
   @Column({

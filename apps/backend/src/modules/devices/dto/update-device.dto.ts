@@ -13,6 +13,11 @@ export class UpdateDeviceDto {
   @IsOptional()
   location?: string;
 
+  @ApiPropertyOptional({ example: 'branch-uuid' })
+  @IsString()
+  @IsOptional()
+  branchId?: string;
+
   @ApiPropertyOptional({ enum: DeviceStatus, example: DeviceStatus.INACTIVE })
   @IsEnum(DeviceStatus)
   @IsOptional()

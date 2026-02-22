@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { toast } from 'react-hot-toast';
-import { Plus, Trash2, GripVertical, CheckCircle2, Layout, Settings, Eye, Save, Type, Star, List } from 'lucide-react';
+import { Plus, Trash2, GripVertical, CheckCircle2, Layout, Settings, Eye, Save, Type, Star, List, BarChart3 } from 'lucide-react';
 import { motion, Reorder, AnimatePresence } from 'framer-motion';
 import { useSurvey, useCreateOrUpdateSurvey } from '@/services/surveys/hooks';
 import { SurveyTriggerType, TargetAudience } from '@/services/surveys/types';
@@ -80,6 +80,15 @@ export default function SurveyBuilderPage() {
             <PageHeader
                 title="Survey Builder"
                 description="Design quick touch-friendly surveys to capture customer insights"
+                actions={
+                    <button
+                        onClick={() => window.location.href = '/dashboard/surveys/analytics'}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm shadow-sm"
+                    >
+                        <BarChart3 size={18} />
+                        Analytics
+                    </button>
+                }
             />
 
             <div className="flex flex-col lg:flex-row gap-8 max-w-6xl">

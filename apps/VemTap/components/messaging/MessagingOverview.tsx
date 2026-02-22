@@ -39,9 +39,9 @@ export default function MessagingOverview() {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h2 className="text-xl font-display font-black text-slate-800 uppercase tracking-tight">Global Performance</h2>
+                <h2 className="text-xl font-display font-black text-slate-800 uppercase tracking-tight">Performance Overview</h2>
                 <div className="flex items-center gap-2 px-3 py-1 bg-green-50 rounded-full">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
                     <span className="text-[10px] font-black text-green-600 uppercase">Live Systems OK</span>
                 </div>
             </div>

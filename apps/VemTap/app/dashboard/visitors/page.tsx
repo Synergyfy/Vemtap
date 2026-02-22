@@ -13,6 +13,7 @@ import { Users, UserPlus, Repeat, Star, Search, Download, MoreVertical, Send, Gi
 import toast from 'react-hot-toast';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
+import { exportToCSV } from '@/lib/utils/export';
 
 export default function VisitorsOverviewPage() {
     const [searchQuery, setSearchQuery] = useState('');

@@ -161,6 +161,18 @@ export class DevicesController {
     return this.devicesService.adminCreate(createDeviceDto);
   }
 
+  @Post('admin/fulfill-order/:orderId')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Fulfill an order (Generate devices)' })
+  @ApiResponse({
+    status: 201,
+    description: 'Devices generated and assigned.',
+    type: [Device],
+  })
+  async fulfillOrder(@Param('orderId') orderId: string) {
+    return this.devicesService.fulfillOrder(orderId);
+  }
+
   @Patch('admin/:id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Update device configuration' })

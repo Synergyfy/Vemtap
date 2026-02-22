@@ -29,6 +29,13 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
+  async updateProfile(id: string, updates: Partial<User>): Promise<User> {
+    const user = await this.findOne(id);
+    if (!user) throw new NotFoundException('User not found');
+    Object.assign(user, updates);
+    return this.usersRepository.save(user);
+  }
+
   async findByBusiness(businessId: string, branchId?: string): Promise<User[]> {
     const where: any = { businessId };
     if (branchId) {

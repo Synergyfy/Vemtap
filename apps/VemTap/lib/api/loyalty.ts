@@ -1,4 +1,5 @@
 import { useLoyaltyMockStore } from '@/store/loyaltyMockStore';
+import { useBusinessStore } from '@/store/useBusinessStore';
 import {
   LoyaltyProfile,
   PointTransaction,
@@ -143,7 +144,13 @@ export const loyaltyApi = {
   fetchRewardsByBusiness: async (businessId: string): Promise<Reward[]> => {
     await delay(500);
     const state = useLoyaltyMockStore.getState();
-    return state.rewards.filter(r => r.businessId === businessId && r.isActive);
+    const activeBranchId = useBusinessStore.getState().activeBranchId;
+    
+    return state.rewards.filter(r => 
+      r.businessId === businessId && 
+      r.isActive && 
+      (activeBranchId === 'all' || r.branchId === activeBranchId)
+    );
   },
 
   // Redeem reward
@@ -172,6 +179,7 @@ export const loyaltyApi = {
       redemptionCode: Math.random().toString(36).substr(2, 8).toUpperCase(),
       pointsSpent: reward.pointCost,
       status: 'pending',
+      branchId: reward.branchId,
       redeemedAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + reward.validityDays * 24 * 60 * 60 * 1000).toISOString(),
       createdAt: new Date().toISOString(),

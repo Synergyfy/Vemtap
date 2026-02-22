@@ -1,0 +1,102 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Query,
+  Param,
+  UseGuards,
+  Request,
+  BadRequestException,
+} from '@nestjs/common';
+import { LoyaltyService } from './loyalty.service';
+import { CreateRewardDto } from './dto/create-reward.dto';
+import { EarnPointsDto } from './dto/earn-points.dto';
+import { RedeemRewardDto } from './dto/redeem-reward.dto';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
+
+@ApiTags('Loyalty')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('loyalty')
+export class LoyaltyController {
+  constructor(private readonly loyaltyService: LoyaltyService) {}
+
+  @Get('analytics')
+  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
+  @ApiOperation({ summary: 'Get customer analytics (visits, points, savings)' })
+  async getAnalytics(@Request() req) {
+    return this.loyaltyService.getAnalytics(req.user.id);
+  }
+
+  @Post('tap/:code')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Process a device tap (Record visit/earn points)' })
+  async tap(@Request() req, @Param('code') code: string) {
+    return this.loyaltyService.processTap(req.user.id, code);
+  }
+
+  @Get('profile')
+  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
+  @ApiOperation({ summary: 'Get loyalty profile for current user' })
+  @ApiQuery({ name: 'businessId', required: false })
+  async getProfile(@Request() req, @Query('businessId') businessId?: string) {
+    if (businessId) {
+      return this.loyaltyService.getProfile(req.user.id, businessId);
+    }
+    return this.loyaltyService.getAllProfiles(req.user.id);
+  }
+
+  @Get('history')
+  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
+  @ApiOperation({ summary: 'Get loyalty transaction history' })
+  @ApiQuery({ name: 'businessId', required: false })
+  async getHistory(@Request() req, @Query('businessId') businessId?: string) {
+    return this.loyaltyService.getHistory(req.user.id, businessId);
+  }
+
+  @Get('rewards')
+  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
+  @ApiOperation({ summary: 'Get available rewards for a business' })
+  @ApiQuery({ name: 'businessId', required: true })
+  async getRewards(@Query('businessId') businessId: string) {
+    if (!businessId) throw new BadRequestException('Business ID is required');
+    return this.loyaltyService.getRewards(businessId);
+  }
+
+  @Post('redeem')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Redeem a reward' })
+  async redeemReward(@Request() req, @Body() dto: RedeemRewardDto, @Query('businessId') businessId: string) {
+    if (!businessId) throw new BadRequestException('Business ID is required');
+    return this.loyaltyService.redeemReward(req.user.id, businessId, dto.rewardId);
+  }
+
+  // --- Staff/Admin Endpoints ---
+
+  @Post('earn')
+  @Roles(UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.ADMIN) // Restricted to staff
+  @ApiOperation({ summary: 'Manually add points to a user (Staff only)' })
+  async earnPoints(@Body() dto: EarnPointsDto, @Query('businessId') businessId: string) {
+     if (!businessId) throw new BadRequestException('Business ID is required');
+    return this.loyaltyService.earnPoints(businessId, dto);
+  }
+
+  @Post('rewards/create')
+  @Roles(UserRole.MANAGER, UserRole.OWNER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Create a new reward (Manager/Owner only)' })
+  async createReward(@Body() dto: CreateRewardDto, @Query('businessId') businessId: string) {
+     if (!businessId) throw new BadRequestException('Business ID is required');
+    return this.loyaltyService.createReward(businessId, dto);
+  }
+}

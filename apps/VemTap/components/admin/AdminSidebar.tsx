@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
 import { Notification } from '@/lib/store/mockDashboardStore';
 import {
-    Home, Store, Users, Nfc, CreditCard, BarChart, MessageSquare,
+    Home, Store, Users, Nfc, CreditCard, BarChart, MessageSquare, Activity,
     Settings, ChevronDown, Shield, LogOut, Gift, Search, Bell, HelpCircle, Package, FileText, Tag, Menu, X
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
@@ -134,10 +134,22 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             href: '/admin/quotes',
         },
         {
+            id: 'messaging',
+            label: 'WhatsApp Templates',
+            icon: MessageSquare,
+            href: '/admin/messaging',
+        },
+        {
             id: 'pricing',
             label: 'Pricing Plans',
             icon: Tag,
             href: '/admin/pricing',
+        },
+        {
+            id: 'health',
+            label: 'System Health',
+            icon: Activity,
+            href: '/admin/health',
         },
         {
             id: 'agents',

@@ -33,6 +33,7 @@ export interface DashboardAnalyticsResponse {
     messagingRoi: MessagingRoi[];
     engagementQuality: EngagementQuality;
     topPerformers: TopPerformer[];
+    recentVisitors: any[]; // Added for dashboard parity
 }
 
 export interface FootfallStat {

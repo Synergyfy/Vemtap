@@ -56,6 +56,7 @@ const INITIAL_REWARDS: Reward[] = [
   {
     id: 'rew_001',
     businessId: 'bistro_001',
+    branchId: 'head-office',
     name: 'Free Coffee',
     description: 'Enjoy a free brewed coffee on us!',
     rewardType: 'free_item',
@@ -73,6 +74,7 @@ const INITIAL_REWARDS: Reward[] = [
   {
     id: 'rew_002',
     businessId: 'bistro_001',
+    branchId: 'ikeja-branch',
     name: '₦1,000 Discount',
     description: 'Get ₦1,000 off your next meal.',
     rewardType: 'discount',
@@ -84,6 +86,24 @@ const INITIAL_REWARDS: Reward[] = [
     totalRedeemed: 5,
     isActive: true,
     imageUrl: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=400&fit=crop',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'rew_003',
+    businessId: 'bistro_001',
+    branchId: 'abuja-branch',
+    name: 'VIP Lunch Pack',
+    description: 'Exclusive Abuja VIP lunch pack.',
+    rewardType: 'gift',
+    pointCost: 1000,
+    value: 5000,
+    valueAmount: 5000,
+    validityDays: 7,
+    usageLimitPerUser: 1,
+    totalRedeemed: 2,
+    isActive: true,
+    imageUrl: 'https://images.unsplash.com/photo-1547573854-74d2a71d0826?w=400&h=400&fit=crop',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }

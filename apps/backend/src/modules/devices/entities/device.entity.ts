@@ -5,6 +5,7 @@ import { Business } from '../../businesses/entities/business.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Order } from '../../products/entities/order.entity';
 import { Branch } from '../../branches/entities/branch.entity';
+import { ProductType } from '../../products/entities/product-type.entity';
 
 export enum DeviceStatus {
   ACTIVE = 'active',
@@ -97,4 +98,14 @@ export class Device extends AbstractBaseEntity {
   })
   @Column({ nullable: true })
   branchId: string;
+
+  @ManyToOne(() => ProductType, (productType) => productType.devices, {
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'productTypeId' })
+  productType: ProductType;
+
+  @ApiProperty({ example: 'type-uuid' })
+  @Column({ nullable: true })
+  productTypeId: string;
 }

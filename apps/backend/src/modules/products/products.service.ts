@@ -8,12 +8,26 @@ import {
   OfferedByRole,
 } from './entities/quote-negotiation.entity';
 import { Order, OrderStatus } from './entities/order.entity';
+import { ProductType } from './entities/product-type.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { CreateProductTypeDto } from './dto/create-product-type.dto';
+import { UpdateProductTypeDto } from './dto/update-product-type.dto';
+import { CreateOrderDto } from './dto/create-order.dto';
 import { RequestQuoteDto } from './dto/request-quote.dto';
 import { NegotiateQuoteDto } from './dto/negotiate-quote.dto';
 import { User, UserRole } from '../users/entities/user.entity';
-import { ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
+import { PaymentsService } from '../payments/payments.service';
+import {
+  PaymentPurpose,
+  PaymentStatus,
+} from '../payments/entities/payment.entity';
+import { PaymentStatus as OrderPaymentStatus } from './entities/order.entity';
 
 @Injectable()
 export class ProductsService {
@@ -26,16 +40,161 @@ export class ProductsService {
     private negotiationRepository: Repository<QuoteNegotiation>,
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
+    @InjectRepository(ProductType)
+    private productTypeRepository: Repository<ProductType>,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     const product = this.productRepository.create(createProductDto);
+
+    if (createProductDto.productTypeId) {
+      const type = await this.productTypeRepository.findOneBy({
+        id: createProductDto.productTypeId,
+      });
+      if (!type) throw new NotFoundException('Product type not found');
+      product.productType = type;
+    }
+
     return this.productRepository.save(product);
   }
 
-  async findAllPublished(): Promise<Product[]> {
+  // --- Product Type Methods ---
+
+  async createProductType(dto: CreateProductTypeDto): Promise<ProductType> {
+    const existing = await this.productTypeRepository.findOne({
+      where: [{ name: dto.name }, { slug: dto.slug }],
+    });
+    if (existing) {
+      throw new ConflictException('Product type with name or slug already exists');
+    }
+    const productType = this.productTypeRepository.create(dto);
+    return this.productTypeRepository.save(productType);
+  }
+
+  async findAllProductTypes(): Promise<ProductType[]> {
+    return this.productTypeRepository.find({
+      order: { name: 'ASC' },
+    });
+  }
+
+  async findOneProductType(id: string): Promise<ProductType> {
+    const productType = await this.productTypeRepository.findOneBy({ id });
+    if (!productType) {
+      throw new NotFoundException('Product type not found');
+    }
+    return productType;
+  }
+
+  async updateProductType(
+    id: string,
+    dto: UpdateProductTypeDto,
+  ): Promise<ProductType> {
+    const productType = await this.findOneProductType(id);
+    Object.assign(productType, dto);
+    return this.productTypeRepository.save(productType);
+  }
+
+  async removeProductType(id: string): Promise<void> {
+    const productType = await this.findOneProductType(id);
+    await this.productTypeRepository.remove(productType);
+  }
+
+  // --- End Product Type Methods ---
+
+  async createDirectOrder(
+    user: User,
+    createOrderDto: CreateOrderDto,
+  ): Promise<Order> {
+    const product = await this.findOne(createOrderDto.productId);
+
+    if (
+      product.requestQuoteThreshold &&
+      createOrderDto.quantity > product.requestQuoteThreshold
+    ) {
+      throw new BadRequestException(
+        `Quantity exceeds limit for direct order. Please request a quote.`,
+      );
+    }
+
+    let unitPrice = Number(product.price);
+
+    if (product.priceTiers && Array.isArray(product.priceTiers)) {
+      const tier = product.priceTiers.find(
+        (t) =>
+          createOrderDto.quantity >= t.min &&
+          (t.max === null || createOrderDto.quantity <= t.max),
+      );
+      if (tier) {
+        unitPrice = Number(tier.price);
+      }
+    }
+
+    const totalPrice = unitPrice * createOrderDto.quantity;
+
+    let paymentStatus = OrderPaymentStatus.PENDING;
+
+    if (createOrderDto.paymentReference) {
+      // Idempotency check: Ensure reference isn't already used for another order
+      const existingOrder = await this.orderRepository.findOneBy({
+        paymentReference: createOrderDto.paymentReference,
+      });
+      if (existingOrder) {
+        throw new ConflictException(
+          'Order with this payment reference already exists',
+        );
+      }
+
+      const isPaymentValid = await this.paymentsService.verifyTransaction(
+        createOrderDto.paymentReference,
+      );
+
+      if (!isPaymentValid) {
+        throw new BadRequestException('Invalid payment reference');
+      }
+
+      await this.paymentsService.recordPayment({
+        reference: createOrderDto.paymentReference,
+        amount: totalPrice,
+        purpose: PaymentPurpose.ORDER,
+        status: PaymentStatus.SUCCESS,
+        metadata: {
+          productId: product.id,
+          quantity: createOrderDto.quantity,
+        },
+        businessId: user.businessId,
+        userId: user.id,
+      });
+
+      paymentStatus = OrderPaymentStatus.PAID;
+    } else {
+      throw new BadRequestException('Payment is required for direct orders');
+    }
+
+    const order = this.orderRepository.create({
+      product,
+      productId: product.id,
+      quantity: createOrderDto.quantity,
+      unitPrice,
+      totalPrice,
+      user,
+      userId: user.id,
+      status: OrderStatus.PENDING,
+      paymentStatus,
+      paymentReference: createOrderDto.paymentReference,
+    });
+
+    return this.orderRepository.save(order);
+  }
+
+  async findAllPublished(productTypeId?: string): Promise<Product[]> {
+    const where: any = { status: ProductStatus.PUBLISHED };
+    if (productTypeId) {
+      where.productTypeId = productTypeId;
+    }
     return this.productRepository.find({
-      where: { status: ProductStatus.PUBLISHED },
+      where,
+      relations: ['productType'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -206,7 +365,7 @@ export class ProductsService {
 
   async getAllOrdersAdmin(): Promise<Order[]> {
     return this.orderRepository.find({
-      relations: ['quote', 'quote.product', 'user'],
+      relations: ['quote', 'quote.product', 'user', 'product'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -214,7 +373,7 @@ export class ProductsService {
   async getMyOrders(userId: string): Promise<Order[]> {
     return this.orderRepository.find({
       where: { userId },
-      relations: ['quote', 'quote.product'],
+      relations: ['quote', 'quote.product', 'product'],
       order: { createdAt: 'DESC' },
     });
   }

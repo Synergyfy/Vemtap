@@ -29,6 +29,7 @@ import {
 } from '@nestjs/swagger';
 import { InviteStaffDto } from './dto/invite-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import * as bcrypt from 'bcrypt';
 
 @ApiTags('users')
@@ -41,6 +42,49 @@ export class UsersController {
     private readonly businessesService: BusinessesService,
     private readonly branchesService: BranchesService,
   ) {}
+
+  @Get('me')
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.ADMIN,
+  )
+  @ApiOperation({ summary: 'Get current logged-in user profile' })
+  async getMe(@Request() req) {
+    const user = await this.usersService.findOne(req.user.id);
+    if (!user) throw new BadRequestException('User not found');
+    const { password, ...rest } = user;
+    return rest;
+  }
+
+  @Patch('me')
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.ADMIN,
+  )
+  @ApiOperation({ summary: 'Update current logged-in user profile' })
+  async updateMe(@Request() req, @Body() body: UpdateProfileDto) {
+    return this.usersService.updateProfile(req.user.id, body);
+  }
+
+  @Delete('me')
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.ADMIN,
+  )
+  @ApiOperation({ summary: 'Deactivate current user account' })
+  async deleteMe(@Request() req) {
+    // We treat deletion as suspension
+    return this.usersService.adminDeleteUser(req.user.id);
+  }
 
   @Get('staff')
   @Roles(UserRole.OWNER, UserRole.MANAGER)

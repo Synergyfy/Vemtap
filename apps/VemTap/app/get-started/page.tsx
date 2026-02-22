@@ -11,16 +11,25 @@ import Logo from '@/components/brand/Logo';
 import { SanitizedInput } from '@/components/ui/SanitizedInput';
 import { sanitizeFormData } from '@/lib/utils/sanitize';
 import { useRegisterOwner, useOtp } from '@/services/auth/hooks';
+import { useQuery } from '@tanstack/react-query';
+import { fetchPricingPlans } from '@/lib/api/pricing';
+import { CheckCircle2 } from 'lucide-react';
 
 export default function GetStarted() {
     const { registerOwner, isLoading: isRegistering } = useRegisterOwner();
     const { sendOtp, verifyOtp, isLoading: isOtpLoading } = useOtp();
     const router = useRouter();
-    const { signup } = useAuthStore();
+    const { signup, subscribe } = useAuthStore();
     const [step, setStep] = useState(1);
     const [subStep, setSubStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
+
+    const { data: plans = [] } = useQuery({
+        queryKey: ['subscription-plans'],
+        queryFn: fetchPricingPlans
+    });
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
@@ -51,7 +60,7 @@ export default function GetStarted() {
         if (step === 3 && subStep < 10) {
             setSubStep(prev => prev + 1);
         } else if (step === 3 && subStep === 10) {
-            setStep(5); // Skip Step 4 (Objectives)
+            setStep(4);
             setSubStep(1);
         } else {
             setStep(prev => prev + 1);
@@ -60,6 +69,9 @@ export default function GetStarted() {
     };
     const prevStep = () => {
         if (step === 5) {
+            setStep(4);
+            setSubStep(1);
+        } else if (step === 4) {
             setStep(3);
             setSubStep(10);
         } else if (step === 3 && subStep > 1) {
@@ -68,6 +80,20 @@ export default function GetStarted() {
             setStep(prev => prev - 1);
             if (step === 4) setSubStep(10);
         }
+    };
+
+    const calculatePersonalPrice = () => {
+        let base = 15000;
+        const branchVal = formData.branchCount === '1' ? 0 :
+            formData.branchCount === '2-5' ? 5000 :
+                formData.branchCount === '6-10' ? 15000 :
+                    formData.branchCount === '11-50' ? 40000 : 100000;
+
+        const visitorVal = formData.visitors === '0-500' ? 0 :
+            formData.visitors === '501-2000' ? 10000 :
+                formData.visitors === '2001-5000' ? 25000 : 60000;
+
+        return base + branchVal + visitorVal;
     };
 
     const handleCreateAccount = async () => {
@@ -644,6 +670,68 @@ export default function GetStarted() {
                             )}
 
 
+                            {step === 4 && (
+                                <motion.div
+                                    key="step4"
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 20 }}
+                                    className="space-y-8"
+                                >
+                                    <div className="text-center md:text-left">
+                                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-4">
+                                            <span className="material-icons-round text-sm">auto_awesome</span>
+                                            Recommended for you
+                                        </div>
+                                        <h1 className="text-2xl font-display font-bold text-text-main mb-2 leading-tight tracking-tight">Your Personal Plan is ready</h1>
+                                        <p className="text-[13px] text-text-secondary font-medium leading-relaxed">Based on your {formData.branchCount} branches and {formData.visitors} visitors.</p>
+                                    </div>
+
+                                    <div className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden border border-white/10 shadow-2xl">
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/20 blur-[50px] rounded-full -mr-16 -mt-16" />
+
+                                        <div className="relative z-10">
+                                            <div className="flex justify-between items-start mb-6">
+                                                <div>
+                                                    <h3 className="text-xl font-black mb-1">Personal Plan</h3>
+                                                    <p className="text-white/50 text-xs font-bold uppercase tracking-widest">Tailored Business Tier</p>
+                                                </div>
+                                                <div className="p-3 bg-white/10 rounded-2xl">
+                                                    <span className="material-icons-round text-emerald-400">verified</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-baseline gap-1 mb-8">
+                                                <span className="text-4xl font-black">₦{calculatePersonalPrice().toLocaleString()}</span>
+                                                <span className="text-white/40 text-sm font-bold">/mo</span>
+                                            </div>
+
+                                            <ul className="space-y-4 mb-8">
+                                                {['Custom Visitor Limit', 'Branch Syncing', 'Global CRM Access', 'Priority Onboarding'].map((f, i) => (
+                                                    <li key={i} className="flex items-center gap-3 text-xs font-bold text-white/70">
+                                                        <span className="material-icons-round text-emerald-400 text-sm">check_circle</span>
+                                                        {f}
+                                                    </li>
+                                                ))}
+                                            </ul>
+
+                                            <button onClick={nextStep} className="w-full h-14 bg-emerald-500 text-white rounded-xl font-black text-sm uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20">
+                                                Select Personal Plan
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="text-center">
+                                        <button onClick={nextStep} className="text-xs font-black text-text-secondary uppercase tracking-widest hover:text-primary transition-colors">
+                                            Or browse all standard plans
+                                        </button>
+                                    </div>
+
+                                    <div className="flex gap-4 pt-4 border-t border-gray-100">
+                                        <button onClick={prevStep} className="h-12 px-8 border border-gray-100 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm">Back</button>
+                                    </div>
+                                </motion.div>
+                            )}
                             {step === 5 && (
                                 <motion.div
                                     key="step5"
@@ -747,18 +835,68 @@ export default function GetStarted() {
                             {step === 6 && (
                                 <motion.div
                                     key="final"
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="space-y-8 min-w-[320px] md:min-w-[600px] lg:min-w-[800px] ml-0 md:-ml-20 lg:-ml-40"
                                 >
-                                    <div className="size-20 bg-primary/10 rounded-full flex items-center justify-center text-primary mx-auto mb-8">
-                                        <span className="material-icons-round text-4xl">celebration</span>
+                                    <div className="text-center mb-12">
+                                        <div className="size-16 bg-primary/10 rounded-full flex items-center justify-center text-primary mx-auto mb-6">
+                                            <span className="material-icons-round text-3xl">celebration</span>
+                                        </div>
+                                        <h1 className="text-3xl font-display font-bold text-text-main mb-3">Account Created!</h1>
+                                        <p className="text-sm text-text-secondary font-medium">Select a plan to enter your dashboard and start tapping.</p>
                                     </div>
-                                    <div>
-                                        <h1 className="text-2xl font-display font-bold text-text-main mb-3">You're ready to tap!</h1>
-                                        <p className="text-sm text-text-secondary font-medium mb-8">Your account is active and your space is ready for configuration.</p>
-                                        <Link href="/dashboard" className="w-full h-12 bg-primary text-white font-bold rounded-xl shadow-xl shadow-primary/20 hover:bg-primary-hover transition-all flex items-center justify-center gap-2">
-                                            Enter Dashboard
-                                            <span className="material-icons-round">space_dashboard</span>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                        {plans.filter(p => ['free', 'personal', 'basic', 'premium'].includes(p.id)).map((plan) => {
+                                            const isPersonal = plan.id === 'personal';
+                                            const priceVal = isPersonal ? calculatePersonalPrice() : parseInt(plan.price.replace(/[^0-9]/g, ''));
+                                            const displayPrice = isPersonal ? `₦${priceVal.toLocaleString()}` : plan.price;
+
+                                            return (
+                                                <div key={plan.id} className="p-6 rounded-3xl border border-gray-100 bg-white hover:border-primary/20 transition-all flex flex-col shadow-sm hover:shadow-xl">
+                                                    <div className="mb-6">
+                                                        <h4 className="font-black text-slate-900 text-sm mb-1">{plan.name}</h4>
+                                                        <div className="flex items-baseline gap-1">
+                                                            <span className="text-2xl font-black text-slate-900">{displayPrice}</span>
+                                                            {plan.id !== 'free' && <span className="text-[10px] font-bold text-slate-400">/mo</span>}
+                                                        </div>
+                                                    </div>
+
+                                                    <ul className="space-y-3 mb-8 flex-1">
+                                                        {plan.features.slice(0, 4).map((f: string, i: number) => (
+                                                            <li key={i} className="flex items-center gap-2 text-[11px] font-bold text-slate-500">
+                                                                <CheckCircle2 className="size-3.5 text-primary" />
+                                                                {f}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (plan.id === 'free') {
+                                                                await subscribe('free');
+                                                                toast.success('Joined Free Plan!');
+                                                            } else {
+                                                                // For other plans, we'll set it and redirect to dashboard billing
+                                                                // in a real app this would go to Stripe/Paystack
+                                                                toast.success(`Selected ${plan.name}`);
+                                                            }
+                                                            router.push('/dashboard');
+                                                        }}
+                                                        className="w-full h-11 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all"
+                                                    >
+                                                        {plan.id === 'free' ? 'Get Started' : 'Select Plan'}
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div className="text-center pt-8">
+                                        <Link href="/dashboard" className="text-xs font-black text-text-secondary uppercase tracking-widest hover:text-primary transition-colors flex items-center justify-center gap-2">
+                                            Skip for now and enter dashboard
+                                            <span className="material-icons-round text-sm">arrow_forward</span>
                                         </Link>
                                     </div>
                                 </motion.div>
