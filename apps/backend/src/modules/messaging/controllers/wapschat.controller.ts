@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { MessagingEngineService } from '../services/messaging-engine.service';
 import { WapsChatProvider } from '../providers/wapschat.provider';
 import { InboundMessage, DeliveryReport } from '../interfaces/messaging-provider.interface';
+import { Public } from '../../../common/decorators/public.decorator';
 
 @ApiTags('Webhooks')
 @Controller('webhooks/wapschat')
@@ -12,6 +13,7 @@ export class WapsChatWebhookController {
     private readonly wapsChatProvider: WapsChatProvider,
   ) {}
 
+  @Public()
   @Post('whatsapp')
   @HttpCode(200)
   @ApiOperation({ summary: 'WapsChat WhatsApp Webhook' })
