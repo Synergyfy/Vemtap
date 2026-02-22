@@ -13,6 +13,8 @@ import { MessagingModule } from '../messaging/messaging.module';
 import { UsersModule } from '../users/users.module';
 import { ContactsModule } from '../contacts/contacts.module';
 import { BranchesModule } from '../branches/branches.module';
+import { User } from '../users/entities/user.entity';
+import { Contact } from '../contacts/entities/contact.entity';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { BranchesModule } from '../branches/branches.module';
       LoyaltyRule,
       Reward,
       Redemption,
+      User,
+      Contact,
     ]),
     MessagingModule,
     UsersModule,
