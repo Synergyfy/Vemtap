@@ -42,6 +42,22 @@ export class Product extends AbstractBaseEntity {
   @Column({ default: 1 })
   moq: number;
 
+  @ApiProperty({
+    example: '[{"min": 1, "max": 100, "price": 20000}]',
+    description: 'Tiered pricing configuration',
+    required: false,
+  })
+  @Column({ type: 'jsonb', nullable: true })
+  priceTiers: { min: number; max: number | null; price: number }[];
+
+  @ApiProperty({
+    example: 300,
+    description: 'Quantity threshold above which a quote is required',
+    required: false,
+  })
+  @Column({ nullable: true })
+  requestQuoteThreshold: number;
+
   @ApiProperty({ enum: ProductStatus, default: ProductStatus.PUBLISHED })
   @Column({
     type: 'simple-enum',

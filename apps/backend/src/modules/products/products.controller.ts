@@ -11,6 +11,7 @@ import {
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { CreateOrderDto } from './dto/create-order.dto';
 import { RequestQuoteDto } from './dto/request-quote.dto';
 import { NegotiateQuoteDto } from './dto/negotiate-quote.dto';
 import { Product } from './entities/product.entity';
@@ -99,6 +100,26 @@ export class ProductsController {
   @ApiResponse({ status: 403, description: 'Forbidden.' })
   update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
     return this.productsService.update(id, updateProductDto);
+  }
+
+  @Roles(UserRole.OWNER)
+  @ApiBearerAuth()
+  @Post('orders')
+  @ApiOperation({ summary: 'Place a direct order (Owner only)' })
+  @ApiResponse({
+    status: 201,
+    description: 'The order has been successfully created.',
+    type: Order,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request (e.g. quantity exceeds threshold)',
+  })
+  createDirectOrder(
+    @Request() req: { user: User },
+    @Body() createOrderDto: CreateOrderDto,
+  ) {
+    return this.productsService.createDirectOrder(req.user, createOrderDto);
   }
 
   @Roles(UserRole.ADMIN)

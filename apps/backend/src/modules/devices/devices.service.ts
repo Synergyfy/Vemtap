@@ -10,6 +10,7 @@ import { CreateDeviceDto } from './dto/create-device.dto';
 import { UpdateDeviceDto } from './dto/update-device.dto';
 import { UpdateAssetNamesDto } from './dto/update-asset-names.dto';
 import { Order, OrderStatus } from '../products/entities/order.entity';
+import { Branch } from '../branches/entities/branch.entity';
 
 @Injectable()
 export class DevicesService {
@@ -18,6 +19,8 @@ export class DevicesService {
     private devicesRepository: Repository<Device>,
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
+    @InjectRepository(Branch)
+    private branchRepository: Repository<Branch>,
   ) {}
 
   async create(
@@ -59,8 +62,78 @@ export class DevicesService {
     updateDeviceDto: UpdateDeviceDto,
   ): Promise<Device> {
     const device = await this.findOne(id, businessId);
+
+    if (updateDeviceDto.branchId) {
+      const branch = await this.branchRepository.findOneBy({
+        id: updateDeviceDto.branchId,
+      });
+      if (!branch) {
+        throw new NotFoundException('Branch not found');
+      }
+      if (branch.businessId !== businessId) {
+        throw new ConflictException('Branch does not belong to your business');
+      }
+    }
+
     Object.assign(device, updateDeviceDto);
     return this.devicesRepository.save(device);
+  }
+
+  async fulfillOrder(orderId: string): Promise<Device[]> {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+      relations: ['user', 'product', 'quote', 'quote.product'],
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+
+    const existingDevices = await this.devicesRepository.count({
+      where: { orderId },
+    });
+    if (existingDevices > 0) {
+      throw new ConflictException('Devices already generated for this order');
+    }
+
+    const businessId = order.user?.businessId;
+    if (!businessId) {
+      throw new ConflictException('User does not have a business assigned');
+    }
+
+    const quantity = order.quantity || order.quote?.quantity || 0;
+    const productName =
+      order.product?.name || order.quote?.product?.name || 'Device';
+
+    if (quantity <= 0) {
+      throw new ConflictException('Order quantity is invalid');
+    }
+
+    const newDevices: Device[] = [];
+    for (let i = 0; i < quantity; i++) {
+      let code = '';
+      let isUnique = false;
+      while (!isUnique) {
+        code = this.generateRandomCode();
+        const existing = await this.devicesRepository.findOneBy({ code });
+        if (!existing) isUnique = true;
+      }
+
+      const device = this.devicesRepository.create({
+        name: `${productName} #${i + 1}`,
+        code,
+        status: DeviceStatus.ACTIVE,
+        businessId,
+        orderId: order.id,
+        type: 'Card',
+      });
+      newDevices.push(device);
+    }
+
+    await this.devicesRepository.save(newDevices);
+
+    order.status = OrderStatus.READY;
+    await this.orderRepository.save(order);
+
+    return newDevices;
   }
 
   async remove(id: string, businessId: string): Promise<void> {

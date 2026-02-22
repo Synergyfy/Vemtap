@@ -53,6 +53,19 @@ export class CreateProductDto {
   moq?: number;
 
   @ApiProperty({
+    example: '[{"min": 1, "max": 100, "price": 20000}]',
+    required: false,
+  })
+  @IsOptional()
+  priceTiers?: { min: number; max: number | null; price: number }[];
+
+  @ApiProperty({ example: 300, required: false })
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  requestQuoteThreshold?: number;
+
+  @ApiProperty({
     enum: ProductStatus,
     default: ProductStatus.PUBLISHED,
     required: false,

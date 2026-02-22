@@ -10,6 +10,7 @@ import {
 import { Order, OrderStatus } from './entities/order.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { CreateOrderDto } from './dto/create-order.dto';
 import { RequestQuoteDto } from './dto/request-quote.dto';
 import { NegotiateQuoteDto } from './dto/negotiate-quote.dto';
 import { User, UserRole } from '../users/entities/user.entity';
@@ -31,6 +32,50 @@ export class ProductsService {
   async create(createProductDto: CreateProductDto): Promise<Product> {
     const product = this.productRepository.create(createProductDto);
     return this.productRepository.save(product);
+  }
+
+  async createDirectOrder(
+    user: User,
+    createOrderDto: CreateOrderDto,
+  ): Promise<Order> {
+    const product = await this.findOne(createOrderDto.productId);
+
+    if (
+      product.requestQuoteThreshold &&
+      createOrderDto.quantity > product.requestQuoteThreshold
+    ) {
+      throw new BadRequestException(
+        `Quantity exceeds limit for direct order. Please request a quote.`,
+      );
+    }
+
+    let unitPrice = Number(product.price);
+
+    if (product.priceTiers && Array.isArray(product.priceTiers)) {
+      const tier = product.priceTiers.find(
+        (t) =>
+          createOrderDto.quantity >= t.min &&
+          (t.max === null || createOrderDto.quantity <= t.max),
+      );
+      if (tier) {
+        unitPrice = Number(tier.price);
+      }
+    }
+
+    const totalPrice = unitPrice * createOrderDto.quantity;
+
+    const order = this.orderRepository.create({
+      product,
+      productId: product.id,
+      quantity: createOrderDto.quantity,
+      unitPrice,
+      totalPrice,
+      user,
+      userId: user.id,
+      status: OrderStatus.PENDING,
+    });
+
+    return this.orderRepository.save(order);
   }
 
   async findAllPublished(): Promise<Product[]> {
@@ -206,7 +251,7 @@ export class ProductsService {
 
   async getAllOrdersAdmin(): Promise<Order[]> {
     return this.orderRepository.find({
-      relations: ['quote', 'quote.product', 'user'],
+      relations: ['quote', 'quote.product', 'user', 'product'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -214,7 +259,7 @@ export class ProductsService {
   async getMyOrders(userId: string): Promise<Order[]> {
     return this.orderRepository.find({
       where: { userId },
-      relations: ['quote', 'quote.product'],
+      relations: ['quote', 'quote.product', 'product'],
       order: { createdAt: 'DESC' },
     });
   }
