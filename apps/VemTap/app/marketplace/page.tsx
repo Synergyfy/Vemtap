@@ -12,7 +12,7 @@ import { useMarketplaceStore } from '@/store/marketplaceStore';
 import { fetchProducts } from '@/lib/api/marketplace';
 import { ProductCardSkeleton } from '@/components/marketplace/Skeletons';
 import { useAuthStore } from '@/store/useAuthStore';
-import Logo from '@/components/brand/Logo';
+import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
 export default function MarketplacePage() {
@@ -133,13 +133,7 @@ export default function MarketplacePage() {
         router.push(`/marketplace/product/${id}`);
     };
 
-    return (
-        <div className="min-h-screen bg-white flex flex-col font-sans text-text-main relative">
-            import Navbar from '@/components/layout/Navbar';
 
-            export default function MarketplacePage() {
-    const router = useRouter();
-            // ...
             return (
             <div className="min-h-screen bg-white flex flex-col font-sans text-text-main relative">
                 <Navbar />

@@ -52,8 +52,8 @@ export default function AdminNfcGrantsPage() {
     };
 
     const adminQuotes = quotes.filter(q =>
-        q.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        q.businessId.toLowerCase().includes(searchTerm.toLowerCase())
+        (q.businessName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (q.businessId?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return (

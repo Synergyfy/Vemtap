@@ -31,12 +31,12 @@ export default function StaffManagementPage() {
     const [staffToDelete, setStaffToDelete] = useState<{ id: string, name: string } | null>(null);
     const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['dashboard', 'visitors']);
 
+    const { activeBranchId, branches } = useBusinessStore();
+
     const { data: storeData, isLoading } = useQuery({
-        queryKey: ['dashboard'],
+        queryKey: ['dashboard', activeBranchId],
         queryFn: dashboardApi.fetchDashboardData,
     });
-
-    const { branches } = useBusinessStore();
 
     // Protection: Only Owners can manage staff
     React.useEffect(() => {

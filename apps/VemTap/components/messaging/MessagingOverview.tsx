@@ -7,9 +7,16 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Send, Users, Activity, BarChart2, MessageSquare, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { useBusinessStore } from '@/store/useBusinessStore';
 
 export default function MessagingOverview() {
-    const { stats, wallets, broadcasts } = useMessagingStore();
+    const { stats, wallets, broadcasts: allBroadcasts } = useMessagingStore();
+    const { activeBranchId } = useBusinessStore();
+
+    // Filter broadcasts by branch
+    const broadcasts = allBroadcasts.filter(b =>
+        activeBranchId === 'all' || b.branchId === activeBranchId
+    );
 
     // Mock data for the chart
     const data = [
@@ -27,9 +34,9 @@ export default function MessagingOverview() {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h2 className="text-xl font-display font-black text-slate-800 uppercase tracking-tight">Global Performance</h2>
+                <h2 className="text-xl font-display font-black text-slate-800 uppercase tracking-tight">Performance Overview</h2>
                 <div className="flex items-center gap-2 px-3 py-1 bg-green-50 rounded-full">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
                     <span className="text-[10px] font-black text-green-600 uppercase">Live Systems OK</span>
                 </div>
             </div>

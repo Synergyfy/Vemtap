@@ -48,6 +48,7 @@ export interface Template {
 
 export interface BroadcastLog {
     id: string;
+    branchId: string;
     name: string;
     channel: MessageChannel;
     audienceSize: number;

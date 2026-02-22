@@ -8,16 +8,18 @@ import { Reward } from '@/types/loyalty';
 import { exportToCSV } from '@/lib/utils/export';
 import { Download } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useBusinessStore } from '@/store/useBusinessStore';
 
 export default function RewardManagementPage() {
     const { availableRewards, fetchRewards, createReward, updateReward, isLoading } = useLoyaltyStore();
+    const { activeBranchId } = useBusinessStore();
 
     // Business ID is hardcoded for demo
     const businessId = 'bistro_001';
 
     useEffect(() => {
         fetchRewards(businessId);
-    }, []);
+    }, [activeBranchId]);
 
     const handleCreate = async (reward: Partial<Reward>) => {
         await createReward(businessId, reward);
