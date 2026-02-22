@@ -124,7 +124,8 @@ export class DevicesService {
       const potentialCodes: string[] = [];
 
       // Generate a batch of random codes
-      for (let i = 0; i < batchSize + 10; i++) { // Generate a few extras to account for collisions
+      for (let i = 0; i < batchSize + 10; i++) {
+        // Generate a few extras to account for collisions
         potentialCodes.push(this.generateRandomCode());
       }
 
@@ -134,7 +135,7 @@ export class DevicesService {
         select: ['code'],
       });
 
-      const existingCodes = new Set(existingDevices.map(d => d.code));
+      const existingCodes = new Set(existingDevices.map((d) => d.code));
 
       // Add non-conflicting codes to our set
       for (const code of potentialCodes) {

@@ -11,9 +11,7 @@ import { ProviderRouterService } from './provider-router.service';
 import { DataSource } from 'typeorm';
 
 import { Contact } from '../../contacts/entities/contact.entity';
-import {
-  Message,
-} from '../entities/message.entity';
+import { Message } from '../entities/message.entity';
 import { MessageLog } from '../entities/message-log.entity';
 import { ConversationThread } from '../entities/conversation-thread.entity';
 import { Business } from '../../businesses/entities/business.entity';
@@ -55,7 +53,9 @@ describe('MessagingEngineService', () => {
   };
 
   const mockProviderRouter = {
-    sendMessage: jest.fn().mockResolvedValue({ messageId: 'msg-1', status: 'sent' }),
+    sendMessage: jest
+      .fn()
+      .mockResolvedValue({ messageId: 'msg-1', status: 'sent' }),
     estimateCost: jest.fn().mockReturnValue(1),
   };
 

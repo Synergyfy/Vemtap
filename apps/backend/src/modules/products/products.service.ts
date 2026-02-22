@@ -66,7 +66,9 @@ export class ProductsService {
       where: [{ name: dto.name }, { slug: dto.slug }],
     });
     if (existing) {
-      throw new ConflictException('Product type with name or slug already exists');
+      throw new ConflictException(
+        'Product type with name or slug already exists',
+      );
     }
     const productType = this.productTypeRepository.create(dto);
     return this.productTypeRepository.save(productType);

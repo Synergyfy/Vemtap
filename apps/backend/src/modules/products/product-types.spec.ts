@@ -23,7 +23,12 @@ describe('ProductsService - Product Types', () => {
     remove: jest.fn(),
   };
 
-  const mockProductRepo = { create: jest.fn(), save: jest.fn(), find: jest.fn(), findOne: jest.fn() };
+  const mockProductRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+  };
   const mockOrderRepo = {};
   const mockQuoteRepo = {};
   const mockNegotiationRepo = {};
@@ -33,17 +38,25 @@ describe('ProductsService - Product Types', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductsService,
-        { provide: getRepositoryToken(ProductType), useValue: mockProductTypeRepo },
+        {
+          provide: getRepositoryToken(ProductType),
+          useValue: mockProductTypeRepo,
+        },
         { provide: getRepositoryToken(Product), useValue: mockProductRepo },
         { provide: getRepositoryToken(Order), useValue: mockOrderRepo },
         { provide: getRepositoryToken(Quote), useValue: mockQuoteRepo },
-        { provide: getRepositoryToken(QuoteNegotiation), useValue: mockNegotiationRepo },
+        {
+          provide: getRepositoryToken(QuoteNegotiation),
+          useValue: mockNegotiationRepo,
+        },
         { provide: PaymentsService, useValue: mockPaymentsService },
       ],
     }).compile();
 
     service = module.get<ProductsService>(ProductsService);
-    productTypeRepo = module.get<Repository<ProductType>>(getRepositoryToken(ProductType));
+    productTypeRepo = module.get<Repository<ProductType>>(
+      getRepositoryToken(ProductType),
+    );
   });
 
   afterEach(() => {
@@ -63,7 +76,9 @@ describe('ProductsService - Product Types', () => {
 
     it('should throw conflict if exists', async () => {
       mockProductTypeRepo.findOne.mockResolvedValue({ id: 'existing' });
-      await expect(service.createProductType({ name: 'Card', slug: 'card' })).rejects.toThrow(ConflictException);
+      await expect(
+        service.createProductType({ name: 'Card', slug: 'card' }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 

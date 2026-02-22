@@ -60,8 +60,8 @@ describe('DevicesService - Order Fulfillment', () => {
         quantity: 2,
         user: { businessId },
         product: {
-            name: 'Product A',
-            productType: { id: 'type-1', name: 'NFC Card' }
+          name: 'Product A',
+          productType: { id: 'type-1', name: 'NFC Card' },
         },
         status: OrderStatus.PENDING,
       } as unknown as Order;
@@ -85,25 +85,31 @@ describe('DevicesService - Order Fulfillment', () => {
 
     it('should throw error if order not found', async () => {
       mockOrderRepo.findOne.mockResolvedValue(null);
-      await expect(service.fulfillOrder(orderId)).rejects.toThrow(NotFoundException);
+      await expect(service.fulfillOrder(orderId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw error if devices already exist', async () => {
       const order = { id: orderId } as Order;
       mockOrderRepo.findOne.mockResolvedValue(order);
       mockDeviceRepo.count.mockResolvedValue(1);
-      await expect(service.fulfillOrder(orderId)).rejects.toThrow(ConflictException);
+      await expect(service.fulfillOrder(orderId)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should throw error if user has no business', async () => {
-       const order = {
+      const order = {
         id: orderId,
         quantity: 2,
         user: { businessId: null },
       } as unknown as Order;
       mockOrderRepo.findOne.mockResolvedValue(order);
       mockDeviceRepo.count.mockResolvedValue(0);
-      await expect(service.fulfillOrder(orderId)).rejects.toThrow(ConflictException);
+      await expect(service.fulfillOrder(orderId)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 });

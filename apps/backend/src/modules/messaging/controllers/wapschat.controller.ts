@@ -2,7 +2,10 @@ import { Controller, Post, Body, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { MessagingEngineService } from '../services/messaging-engine.service';
 import { WapsChatProvider } from '../providers/wapschat.provider';
-import { InboundMessage, DeliveryReport } from '../interfaces/messaging-provider.interface';
+import {
+  InboundMessage,
+  DeliveryReport,
+} from '../interfaces/messaging-provider.interface';
 import { Public } from '../../../common/decorators/public.decorator';
 
 @ApiTags('Webhooks')
@@ -24,7 +27,9 @@ export class WapsChatWebhookController {
     if (parsed.type === 'inbound') {
       await this.messagingEngine.handleInbound(parsed.data as InboundMessage);
     } else if (parsed.type === 'delivery') {
-      await this.messagingEngine.updateDeliveryStatus(parsed.data as DeliveryReport);
+      await this.messagingEngine.updateDeliveryStatus(
+        parsed.data as DeliveryReport,
+      );
     }
     return { status: 'Received' };
   }

@@ -76,14 +76,14 @@ export class MessagingController {
     // Use user's branchId if available, unless overridden (e.g. by owner sending on behalf of branch)
     // Staff should always use their branch.
     if (req.user.role === UserRole.STAFF) {
-        dto.branchId = req.user.branchId;
+      dto.branchId = req.user.branchId;
     } else if (!dto.branchId && req.user.branchId) {
-        // Default to user's branch if not provided
-        dto.branchId = req.user.branchId;
+      // Default to user's branch if not provided
+      dto.branchId = req.user.branchId;
     }
 
     if (!dto.branchId) {
-        throw new BadRequestException('branchId is required');
+      throw new BadRequestException('branchId is required');
     }
 
     return this.messagingEngine.sendMessage(dto);
@@ -184,16 +184,19 @@ export class MessagingController {
     // InboxService.sendReply expects a branchId.
     // If owner, we need to get branchId from the thread first? Or just pass undefined?
 
-    if (!resolved && (req.user.role === UserRole.OWNER || req.user.role === UserRole.MANAGER)) {
-         // We can't validate branch ownership easily without fetching thread first.
-         // Let's rely on InboxService to fetch thread and maybe we trust it belongs to business?
-         // InboxService currently expects branchId to filter.
-         // Let's modify InboxService to find thread by ID and then check businessId/branchId?
-         // For now, I'll update InboxService.sendReply to be more flexible or we require branchId in query/body for reply too if not staff.
-         // But wait, the previous code passed `req.user.businessId` to `inboxService.sendReply`.
-         // `InboxService` now expects `branchId`.
-         // If I am owner, I don't have branchId.
-         // I should probably fetch the thread by ID and BusinessID, then get the branchId from it.
+    if (
+      !resolved &&
+      (req.user.role === UserRole.OWNER || req.user.role === UserRole.MANAGER)
+    ) {
+      // We can't validate branch ownership easily without fetching thread first.
+      // Let's rely on InboxService to fetch thread and maybe we trust it belongs to business?
+      // InboxService currently expects branchId to filter.
+      // Let's modify InboxService to find thread by ID and then check businessId/branchId?
+      // For now, I'll update InboxService.sendReply to be more flexible or we require branchId in query/body for reply too if not staff.
+      // But wait, the previous code passed `req.user.businessId` to `inboxService.sendReply`.
+      // `InboxService` now expects `branchId`.
+      // If I am owner, I don't have branchId.
+      // I should probably fetch the thread by ID and BusinessID, then get the branchId from it.
     }
 
     // FIX: Update InboxService to finding thread by businessId (for owners) OR branchId (for staff).
@@ -205,13 +208,11 @@ export class MessagingController {
     // So `MessagingController` must provide it.
     // If `req.user.branchId` is null, throw error "branchId required".
     if (!resolved) {
-         throw new BadRequestException('branchId is required to reply. Please switch to a branch context.');
+      throw new BadRequestException(
+        'branchId is required to reply. Please switch to a branch context.',
+      );
     }
 
-    return this.inboxService.sendReply(
-      resolved,
-      threadId,
-      dto.content,
-    );
+    return this.inboxService.sendReply(resolved, threadId, dto.content);
   }
 }

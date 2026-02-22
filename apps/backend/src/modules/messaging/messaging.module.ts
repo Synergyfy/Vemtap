@@ -11,6 +11,8 @@ import { MessageCampaign } from './entities/message-campaign.entity';
 import { ConversationThread } from './entities/conversation-thread.entity';
 import { Message } from './entities/message.entity';
 import { MessageLog } from './entities/message-log.entity';
+import { AutomationRule } from './entities/automation-rule.entity';
+import { AutomationLog } from './entities/automation-log.entity';
 
 import { ContactsModule } from '../contacts/contacts.module';
 import { BusinessesModule } from '../businesses/businesses.module';
@@ -23,7 +25,9 @@ import { CreditService } from './services/credit.service';
 import { CampaignService } from './services/campaign.service';
 import { InboxService } from './services/inbox.service';
 import { AnalyticsService } from './services/analytics.service';
+import { AutomationService } from './services/automation.service';
 import { MessagingController } from './controllers/messaging.controller';
+import { AutomationController } from './controllers/automation.controller';
 import { TermiiWebhookController } from './controllers/termii.controller';
 import { WapsChatWebhookController } from './controllers/wapschat.controller';
 import { TermiiProvider } from './providers/termii.provider';
@@ -39,6 +43,8 @@ import { BatchSendProcessor } from './processors/batch-send.processor';
       ConversationThread,
       Message,
       MessageLog,
+      AutomationRule,
+      AutomationLog,
       Business,
       Branch,
     ]),
@@ -68,6 +74,7 @@ import { BatchSendProcessor } from './processors/batch-send.processor';
     CampaignService,
     InboxService,
     AnalyticsService,
+    AutomationService,
     TermiiProvider,
     WapsChatProvider,
     ProviderRouterService,
@@ -75,6 +82,7 @@ import { BatchSendProcessor } from './processors/batch-send.processor';
   ],
   controllers: [
     MessagingController,
+    AutomationController,
     TermiiWebhookController,
     WapsChatWebhookController,
   ],
@@ -87,6 +95,7 @@ import { BatchSendProcessor } from './processors/batch-send.processor';
     CampaignService,
     InboxService,
     AnalyticsService,
+    AutomationService,
     TermiiProvider,
     WapsChatProvider,
     ProviderRouterService,

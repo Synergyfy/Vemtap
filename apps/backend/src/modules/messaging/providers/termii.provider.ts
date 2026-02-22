@@ -69,9 +69,7 @@ export class TermiiProvider implements MessagingProvider {
     );
   }
 
-  async parseWebhook(
-    payload: any,
-  ): Promise<{
+  async parseWebhook(payload: any): Promise<{
     type: 'inbound' | 'delivery';
     data: InboundMessage | DeliveryReport;
   } | null> {
