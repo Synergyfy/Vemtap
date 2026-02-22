@@ -36,8 +36,10 @@ export default function StaffManagementPage() {
     const updateMutation = useUpdateStaff();
     const removeMutation = useRemoveStaff();
 
+    const isOwner = user?.role?.toLowerCase() === 'owner';
+
     React.useEffect(() => {
-        if (!isLoading && user && user.role !== 'owner') {
+        if (!isLoading && user && !['owner', 'manager'].includes((user.role as string)?.toLowerCase())) {
             router.push('/dashboard');
         }
     }, [user, isLoading, router]);
@@ -54,9 +56,8 @@ export default function StaffManagementPage() {
             email: formData.get('email') as string,
             role,
             businessId: user?.businessId || '',
-            branchId: user?.branchId || '',
+            branchId: formData.get('branchId') as string || user?.branchId || '',
             permissions: selectedPermissions,
-            branchId: formData.get('branchId') as string,
         };
 
         inviteMutation.mutate(staffData, {
@@ -126,7 +127,7 @@ export default function StaffManagementPage() {
         },
         {
             header: 'Branch',
-            accessor: (item: Staff) => {
+            accessor: (item: StaffMember) => {
                 const branch = branches.find(b => b.id === item.branchId);
                 return (
                     <div className="flex items-center gap-2">
@@ -148,22 +149,26 @@ export default function StaffManagementPage() {
         {
             header: 'Actions',
             accessor: (item: StaffMember) => (
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => setEditingStaff(item)}
-                        className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
-                        title="Edit Staff Access"
-                    >
-                        <Edit3 size={18} />
-                    </button>
-                    <button
-                        onClick={() => setStaffToDelete({ id: item.id, name: `${item.firstName} ${item.lastName}` })}
-                        className="p-2 text-text-secondary hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                        title="Remove Staff"
-                    >
-                        <Trash2 size={18} />
-                    </button>
-                </div>
+                isOwner ? (
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setEditingStaff(item)}
+                            className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
+                            title="Edit Staff Access"
+                        >
+                            <Edit3 size={18} />
+                        </button>
+                        <button
+                            onClick={() => setStaffToDelete({ id: item.id, name: `${item.firstName} ${item.lastName}` })}
+                            className="p-2 text-text-secondary hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            title="Remove Staff"
+                        >
+                            <Trash2 size={18} />
+                        </button>
+                    </div>
+                ) : (
+                    <span className="text-xs text-text-secondary font-medium">View Only</span>
+                )
             )
         }
     ];
@@ -175,13 +180,15 @@ export default function StaffManagementPage() {
                     title="Staff Management"
                     description="Invite and manage your team members and their permissions"
                     actions={
-                        <button
-                            onClick={() => setIsInviteModalOpen(true)}
-                            className="flex items-center gap-2 px-6 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary-hover transition-all text-sm shadow-lg shadow-primary/20 active:scale-95"
-                        >
-                            <UserPlus size={18} />
-                            Invite Staff
-                        </button>
+                        isOwner ? (
+                            <button
+                                onClick={() => setIsInviteModalOpen(true)}
+                                className="flex items-center gap-2 px-6 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary-hover transition-all text-sm shadow-lg shadow-primary/20 active:scale-95"
+                            >
+                                <UserPlus size={18} />
+                                Invite Staff
+                            </button>
+                        ) : undefined
                     }
                 />
 

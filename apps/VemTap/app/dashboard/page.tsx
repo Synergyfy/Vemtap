@@ -426,7 +426,7 @@ export default function DashboardPage() {
             <VisitorDetailsModal
                 isOpen={!!selectedVisitorForDetails}
                 onClose={() => setSelectedVisitorForDetails(null)}
-                visitor={selectedVisitorForDetails}
+                visitor={selectedVisitorForDetails as any}
             />
 
             <PreviewRewardModal

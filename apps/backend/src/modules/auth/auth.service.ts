@@ -140,7 +140,7 @@ export class AuthService {
     }
 
     const { password, ...result } = user;
-    return result;
+    return this.login(result);
   }
 
   // --- New Dedicated Owner Registration ---

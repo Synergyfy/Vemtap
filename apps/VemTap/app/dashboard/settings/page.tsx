@@ -5,18 +5,26 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import Link from 'next/link';
 import { Store, Bell, Users, Puzzle, MessageSquare, Shield, ArrowRight, Star } from 'lucide-react';
 import LogoIcon from '@/components/brand/LogoIcon';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function SettingsPage() {
+    const { user } = useAuthStore();
+    const isOwner = user?.role?.toLowerCase() === 'owner';
+
     const settingsCategories = [
         { title: 'Business Profile', desc: 'Manage your business information and layout', icon: Store, href: '/dashboard/settings/profile' },
         { title: 'Notifications', desc: 'Configure how you receive alerts and reports', icon: Bell, href: '/dashboard/settings/notifications' },
         { title: 'Device Settings', desc: 'Configure NFC device defaults and behaviors', icon: LogoIcon, href: '/dashboard/settings/devices' },
-        { title: 'Team Management', desc: 'Invite staff and manage permissions', icon: Users, href: '/dashboard/staff' },
+        { title: 'Team Management', desc: 'Invite staff and manage permissions', icon: Users, href: '/dashboard/staff', ownerOnly: true },
         { title: 'Integrations', desc: 'Connect with POS and CRM tools', icon: Puzzle, href: '/dashboard/settings/integrations' },
         { title: 'Message Settings', desc: 'Customize welcome and success messages', icon: MessageSquare, href: '/dashboard/settings/messages' },
         { title: 'Engagement', desc: 'Configure post-tap engagement tiles & surveys', icon: Star, href: '/dashboard/settings/engagement' },
         { title: 'Data & Privacy', desc: 'Manage data retention and compliance', icon: Shield, href: '/dashboard/settings/privacy' },
     ];
+
+    const filteredCategories = settingsCategories.filter(item =>
+        !item.ownerOnly || isOwner
+    );
 
     return (
         <div className="p-8">
@@ -26,7 +34,7 @@ export default function SettingsPage() {
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {settingsCategories.map((item, i) => (
+                {filteredCategories.map((item, i) => (
                     <Link
                         key={i}
                         href={item.href}

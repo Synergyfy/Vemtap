@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
 import { notify } from '@/lib/notify';
 import { Plus, Search, Filter, Download, MoreVertical, Trash2, Cpu, Battery, Activity, Link as LinkIcon, Edit3, Copy } from 'lucide-react';
-import { Device } from '@/lib/store/mockDashboardStore';
+import { Device } from '@/services/devices/types';
 import EditDeviceModal from '@/components/dashboard/EditDeviceModal';
 
 export default function AdminDevicesPage() {
@@ -204,7 +204,7 @@ export default function AdminDevicesPage() {
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredDevices.map((device) => (
+                                    filteredDevices.map((device: any) => (
                                         <tr key={device.id} className="hover:bg-gray-50 transition-colors group">
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-3">

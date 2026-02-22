@@ -200,7 +200,7 @@ export default function AdminUsersPage() {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredUsers.map((user) => (
+                                filteredUsers.map((user: any) => (
                                     <tr key={user.id} className="hover:bg-gray-50 transition-colors group">
                                         <td className="py-4 px-6">
                                             <input type="checkbox" className="rounded accent-primary" />

@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-export default function AdminAnalyticsPage() {
+function AnalyticsContent() {
     const searchParams = useSearchParams();
     const businessId = searchParams.get('businessId');
     const [dateRange, setDateRange] = useState('30days');
@@ -208,5 +209,21 @@ export default function AdminAnalyticsPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function AdminAnalyticsPage() {
+    return (
+        <Suspense fallback={
+            <div className="p-8 animate-pulse">
+                <div className="h-20 w-1/3 bg-gray-100 rounded-2xl mb-8"></div>
+                <div className="grid grid-cols-4 gap-6 mb-8">
+                    {[1, 2, 3, 4].map(i => <div key={i} className="h-32 bg-gray-50 rounded-xl"></div>)}
+                </div>
+                <div className="h-96 bg-gray-50 rounded-2xl"></div>
+            </div>
+        }>
+            <AnalyticsContent />
+        </Suspense>
     );
 }

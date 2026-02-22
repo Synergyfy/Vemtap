@@ -5,12 +5,23 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import { toast } from 'react-hot-toast';
 import DynamicQRCode from '@/components/shared/DynamicQRCode';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
+import { Loader2 } from 'lucide-react';
 
 export default function BusinessProfilePage() {
-    const { storeName, logoUrl, updateCustomSettings, setBusinessType, businessType, setRedirect, redirects } = useCustomerFlowStore();
-    const [name, setName] = useState(storeName);
-    const [logo, setLogo] = useState(logoUrl || '');
+    const { storeName, logoUrl, updateCustomSettings, setRedirect } = useCustomerFlowStore();
+
+    const { data: business, isLoading } = useMyBusiness();
+    const updateMutation = useUpdateBusiness();
+
+    const [name, setName] = useState('');
+    const [logo, setLogo] = useState('');
     const [profileSlug, setProfileSlug] = useState('');
+    const [businessType, setBusinessType] = useState('');
+    const [supportEmail, setSupportEmail] = useState('');
+    const [supportPhone, setSupportPhone] = useState('');
+    const [address, setAddress] = useState('');
+
     const [origin, setOrigin] = useState('https://vemtap.com');
 
     useEffect(() => {
@@ -23,27 +34,56 @@ export default function BusinessProfilePage() {
     const qrId = 'biz-profile-main';
 
     useEffect(() => {
-        setName(storeName);
-        setLogo(logoUrl || '');
-        if (!profileSlug) {
-            const slug = storeName.toLowerCase().replace(/\s+/g, '-');
-            setProfileSlug(slug);
-            // Initialize redirect
-            setRedirect(qrId, `${origin}/${slug}`);
+        if (business) {
+            setName(business.name || storeName);
+            setLogo(business.logoUrl || logoUrl || '');
+            setBusinessType(business.category || 'RESTAURANT');
+            setSupportEmail(business.officialEmail || 'hello@vemtap.com');
+            setSupportPhone(business.whatsappNumber || '+234 801 234 5678');
+            setAddress(business.address || '42 Admiralty Way, Lekki Phase 1, Lagos, Nigeria');
+
+            if (!profileSlug) {
+                const slug = (business.name || storeName).toLowerCase().replace(/\s+/g, '-');
+                setProfileSlug(slug);
+                setRedirect(qrId, `${origin}/${slug}`);
+            }
         }
-    }, [storeName, logoUrl, origin]);
+    }, [business, storeName, logoUrl, origin]);
 
     const handleSave = () => {
-        updateCustomSettings({
-            logoUrl: logo
-        });
-        useCustomerFlowStore.setState({ storeName: name });
-        // Update the dynamic redirect destination
-        const fullProfileUrl = `${origin}/${profileSlug}`;
-        setRedirect(qrId, fullProfileUrl);
+        if (!business) return;
 
-        toast.success('Business profile and QR Link updated!');
+        updateMutation.mutate({
+            id: business.id,
+            updates: {
+                name,
+                logoUrl: logo,
+                category: businessType,
+                officialEmail: supportEmail,
+                whatsappNumber: supportPhone,
+                address: address
+            }
+        }, {
+            onSuccess: () => {
+                updateCustomSettings({ logoUrl: logo });
+                useCustomerFlowStore.setState({ storeName: name });
+                const fullProfileUrl = `${origin}/${profileSlug}`;
+                setRedirect(qrId, fullProfileUrl);
+                toast.success('Business profile and QR Link updated!');
+            },
+            onError: () => {
+                toast.error('Failed to update business profile.');
+            }
+        });
     };
+
+    if (isLoading) {
+        return (
+            <div className="flex h-[calc(100vh-100px)] items-center justify-center">
+                <Loader2 className="animate-spin text-primary" size={32} />
+            </div>
+        );
+    }
 
 
     return (
@@ -54,9 +94,10 @@ export default function BusinessProfilePage() {
                 actions={
                     <button
                         onClick={handleSave}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20"
+                        disabled={updateMutation.isPending}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20 disabled:opacity-50"
                     >
-                        Save Changes
+                        {updateMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
                     </button>
                 }
             />
@@ -179,15 +220,15 @@ export default function BusinessProfilePage() {
                     <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Support Email</label>
-                            <input type="email" defaultValue="hello@vemtap.com" className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" />
+                            <input type="email" value={supportEmail} onChange={e => setSupportEmail(e.target.value)} placeholder="hello@vemtap.com" className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" />
                         </div>
                         <div className="space-y-2">
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Support Phone</label>
-                            <input type="tel" defaultValue="+234 801 234 5678" className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" />
+                            <input type="tel" value={supportPhone} onChange={e => setSupportPhone(e.target.value)} placeholder="+234 801 234 5678" className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" />
                         </div>
                         <div className="col-span-1 md:col-span-2 space-y-2">
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Detailed Address</label>
-                            <textarea defaultValue="42 Admiralty Way, Lekki Phase 1, Lagos, Nigeria" rows={3} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none" />
+                            <textarea value={address} onChange={e => setAddress(e.target.value)} placeholder="42 Admiralty Way, Lekki Phase 1, Lagos, Nigeria" rows={3} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none" />
                         </div>
                     </div>
                 </div>
