@@ -23,6 +23,11 @@ export interface Business {
     customLink?: string;
     isActive: boolean;
     status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+    linkedinUrl?: string;
+    reviewUrl?: string;
+    showReview?: boolean;
+    showSocial?: boolean;
+    showFeedback?: boolean;
     createdAt?: string;
     updatedAt?: string;
 }

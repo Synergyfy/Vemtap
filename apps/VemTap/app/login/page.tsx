@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import AuthSidePanel from '@/components/auth/AuthSidePanel';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useAuthStore, AuthState } from '../../store/useAuthStore';
 import { notify } from '@/lib/notify';
 import Logo from '@/components/brand/Logo';
 import { useLogin } from '@/services/auth/hooks';
@@ -13,8 +13,8 @@ import { useLogin } from '@/services/auth/hooks';
 export default function LoginPage() {
     const { loginUser, isLoading: isLoggingIn } = useLogin();
     const router = useRouter();
-    const login = useAuthStore((state) => state.login);
-    const signup = useAuthStore((state) => state.signup);
+    const login = useAuthStore((state: AuthState) => state.login);
+    const signup = useAuthStore((state: AuthState) => state.signup);
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [formData, setFormData] = useState({

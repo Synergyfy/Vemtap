@@ -1,47 +1,39 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useAuthStore } from '@/store/useAuthStore';
 import { notify } from '@/lib/notify';
-import { useAuthStore, UserRole } from '@/store/useAuthStore';
+import { useAdminUsers, useAdminCreateUser, useAdminUpdateUser, useAdminDeleteUser } from '@/services/users/hooks';
 
 export default function AdminUsersPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterRole, setFilterRole] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
+    const [page, setPage] = useState(1);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any | null>(null);
-    const { registeredUsers, adminCreateUser, adminUpdateUser, adminDeleteUser } = useAuthStore();
 
-    // Combine mock users with registered users from store
-    const MOCK_DATA = [
-        { id: '1', name: 'Daniel Admin', email: 'daniel@VemTap.com', role: 'Admin', status: 'active', lastLogin: '2 mins ago', joined: '2023-11-01' },
-        { id: '2', name: 'John Smith', email: 'john@greenterrace.com', role: 'Business Owner', status: 'active', lastLogin: '1 hour ago', joined: '2024-01-15' },
-        { id: '3', name: 'Sarah Johnson', email: 'sarah@techhub.ng', role: 'Business Owner', status: 'active', lastLogin: '3 hours ago', joined: '2024-01-10' },
-        { id: '4', name: 'Mike Williams', email: 'mike@fashion.com', role: 'Business Owner', status: 'pending', lastLogin: '1 day ago', joined: '2024-02-01' },
-        { id: '5', name: 'Emily Davis', email: 'emily@fitness.ng', role: 'Staff', status: 'active', lastLogin: '5 mins ago', joined: '2024-01-20' },
-        { id: '6', name: 'David Brown', email: 'david@restaurant360.com', role: 'Business Owner', status: 'suspended', lastLogin: '2 weeks ago', joined: '2023-12-05' },
-        { id: '7', name: 'Lisa Anderson', email: 'lisa@beautyspa.ng', role: 'Business Owner', status: 'active', lastLogin: '10 mins ago', joined: '2024-01-28' },
-        { id: '8', name: 'Tom Wilson', email: 'tom@customer.com', role: 'Customer', status: 'active', lastLogin: 'Just now', joined: '2024-02-02' },
-    ];
+    const { data, isLoading } = useAdminUsers({
+        search: searchQuery,
+        role: filterRole === 'all' ? undefined : filterRole,
+        status: filterStatus === 'all' ? undefined : filterStatus,
+        page
+    });
 
-    const users = [...MOCK_DATA, ...registeredUsers];
+    const createUserMutation = useAdminCreateUser();
+    const updateUserMutation = useAdminUpdateUser();
+    const deleteUserMutation = useAdminDeleteUser();
 
-    const stats = [
-        { label: 'Total Users', value: users.length.toString(), icon: 'people', color: 'blue' },
-        { label: 'Business Owners', value: users.filter((u: any) => u.role === 'Business Owner' || u.role === 'owner').length.toString(), icon: 'store', color: 'purple' },
-        { label: 'Customers', value: users.filter((u: any) => u.role === 'Customer' || u.role === 'customer').length.toString(), icon: 'person', color: 'green' },
-        { label: 'Staff Members', value: users.filter((u: any) => u.role === 'Staff' || u.role === 'staff' || u.role === 'manager').length.toString(), icon: 'badge', color: 'orange' },
-    ];
+    const users = data?.items || [];
+    const totalCount = data?.total || 0;
 
     const handleDelete = (id: string) => {
-        const user = users.find(u => u.id === id);
+        const user = users.find((u: any) => u.id === id);
         if (window.confirm(`Are you sure you want to disable the account for ${user?.name}?`)) {
-            if (MOCK_DATA.find(u => u.id === id)) {
-                notify.error("Cannot delete mock admin users in demo mode.");
-                return;
-            }
-            adminDeleteUser(id);
-            notify.success(`Account for ${user?.name} has been removed.`);
+            deleteUserMutation.mutate(id, {
+                onSuccess: () => notify.success(`Account for ${user?.name} has been removed.`),
+                onError: () => notify.error('Failed to delete user')
+            });
         }
     };
 
@@ -52,10 +44,9 @@ export default function AdminUsersPage() {
     const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
-
-        // Map UI roles to store roles
         const uiRole = formData.get('role') as string;
-        let mappedRole: UserRole = 'staff';
+
+        let mappedRole = 'staff';
         if (uiRole === 'Admin') mappedRole = 'admin';
         else if (uiRole === 'Business Owner') mappedRole = 'owner';
         else if (uiRole === 'Customer') mappedRole = 'customer';
@@ -66,33 +57,37 @@ export default function AdminUsersPage() {
             email: formData.get('email') as string,
             role: mappedRole,
             status: formData.get('status') as string,
-            password: formData.get('password') as string || 'default123',
-            lastLogin: selectedUser?.lastLogin || 'Never',
-            joined: selectedUser?.joined || new Date().toISOString().split('T')[0]
+            password: formData.get('password') as string || undefined,
         };
 
         if (selectedUser) {
-            if (MOCK_DATA.find(u => u.id === selectedUser.id)) {
-                notify.error("Cannot modify mock admin users in demo mode.");
-            } else if (selectedUser.id) {
-                adminUpdateUser(selectedUser.id, userData);
-                notify.success('User updated successfully');
-            }
+            updateUserMutation.mutate({ id: selectedUser.id, updates: userData }, {
+                onSuccess: () => {
+                    notify.success('User updated successfully');
+                    setIsAddModalOpen(false);
+                    setSelectedUser(null);
+                },
+                onError: () => notify.error('Failed to update user')
+            });
         } else {
-            adminCreateUser(userData);
-            notify.success('New user created successfully');
+            createUserMutation.mutate(userData, {
+                onSuccess: () => {
+                    notify.success('New user created successfully');
+                    setIsAddModalOpen(false);
+                },
+                onError: () => notify.error('Failed to create user')
+            });
         }
-        setIsAddModalOpen(false);
-        setSelectedUser(null);
     };
 
-    const filteredUsers = users.filter(u => {
-        const matchesSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            u.email.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesRole = filterRole === 'all' || (u.role?.toLowerCase().replace(' ', '_') ?? '') === filterRole;
-        const matchesStatus = filterStatus === 'all' || u.status === filterStatus;
-        return matchesSearch && matchesRole && matchesStatus;
-    });
+    const stats = [
+        { label: 'Total Users', value: totalCount.toString(), icon: 'people', color: 'blue' },
+        { label: 'Business Owners', value: (data?.stats?.owners || 0).toString(), icon: 'store', color: 'purple' },
+        { label: 'Customers', value: (data?.stats?.customers || 0).toString(), icon: 'person', color: 'green' },
+        { label: 'Staff Members', value: (data?.stats?.staff || 0).toString(), icon: 'badge', color: 'orange' },
+    ];
+
+    const filteredUsers = users; // Server side filtered
 
     return (
         <div className="p-8">
@@ -205,7 +200,7 @@ export default function AdminUsersPage() {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredUsers.map((user) => (
+                                filteredUsers.map((user: any) => (
                                     <tr key={user.id} className="hover:bg-gray-50 transition-colors group">
                                         <td className="py-4 px-6">
                                             <input type="checkbox" className="rounded accent-primary" />

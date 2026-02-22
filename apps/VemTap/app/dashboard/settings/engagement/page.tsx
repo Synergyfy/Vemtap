@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
 import { toast } from 'react-hot-toast';
-import { Star, Share2, MessageCircle, Trophy, Link as LinkIcon, Save, Smartphone } from 'lucide-react';
+import { Star, Share2, MessageCircle, Trophy, Link as LinkIcon, Save, Smartphone, Loader2 } from 'lucide-react';
 
 const Toggle = ({ active, onChange }: { active: boolean; onChange: (val: boolean) => void }) => (
     <button
@@ -17,15 +18,76 @@ const Toggle = ({ active, onChange }: { active: boolean; onChange: (val: boolean
 );
 
 export default function EngagementSettingsPage() {
-    const { engagementSettings } = useCustomerFlowStore();
-    const [localSettings, setLocalSettings] = useState(engagementSettings);
+    const { engagementSettings, updateEngagementSettings } = useCustomerFlowStore();
+    const { data: business, isLoading } = useMyBusiness();
+    const updateMutation = useUpdateBusiness();
 
-    const { updateEngagementSettings } = useCustomerFlowStore();
+    const [localSettings, setLocalSettings] = useState({
+        reviewUrl: '',
+        instagram: '',
+        twitter: '',
+        facebook: '',
+        linkedin: '',
+        showReview: true,
+        showSocial: true,
+        showFeedback: true,
+    });
+
+    React.useEffect(() => {
+        if (business) {
+            setLocalSettings({
+                reviewUrl: business.reviewUrl || '',
+                instagram: business.instagramUrl || '',
+                twitter: business.xUrl || '',
+                facebook: business.facebookUrl || '',
+                linkedin: business.linkedinUrl || '',
+                showReview: business.showReview ?? true,
+                showSocial: business.showSocial ?? true,
+                showFeedback: business.showFeedback ?? true,
+            });
+        }
+    }, [business]);
 
     const handleSave = () => {
-        updateEngagementSettings(localSettings);
-        toast.success('Engagement settings updated successfully');
+        if (!business) return;
+        updateMutation.mutate({
+            id: business.id,
+            updates: {
+                reviewUrl: localSettings.reviewUrl,
+                instagramUrl: localSettings.instagram,
+                xUrl: localSettings.twitter,
+                facebookUrl: localSettings.facebook,
+                linkedinUrl: localSettings.linkedin,
+                showReview: localSettings.showReview,
+                showSocial: localSettings.showSocial,
+                showFeedback: localSettings.showFeedback,
+            }
+        }, {
+            onSuccess: () => {
+                // Also update local store just in case
+                updateEngagementSettings({
+                    ...engagementSettings,
+                    reviewUrl: localSettings.reviewUrl,
+                    instagram: localSettings.instagram,
+                    twitter: localSettings.twitter,
+                    facebook: localSettings.facebook,
+                    showReview: localSettings.showReview,
+                    showSocial: localSettings.showSocial,
+                    showFeedback: localSettings.showFeedback,
+                });
+                toast.success('Engagement settings updated successfully');
+            },
+            onError: () => toast.error('Failed to update settings')
+        });
     };
+
+    if (isLoading) {
+        return (
+            <div className="flex h-[calc(100vh-100px)] items-center justify-center">
+                <Loader2 className="animate-spin text-primary" size={32} />
+            </div>
+        );
+    }
 
     return (
         <div className="p-8">
@@ -210,10 +272,15 @@ export default function EngagementSettingsPage() {
             <div className="flex justify-end pt-12 border-t border-gray-100 mt-12">
                 <button
                     onClick={handleSave}
-                    className="h-14 px-10 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3"
+                    disabled={updateMutation.isPending}
+                    className="h-14 px-10 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3 disabled:opacity-50"
                 >
-                    <Save size={18} />
-                    Save Configuration
+                    {updateMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : (
+                        <>
+                            <Save size={18} />
+                            Save Configuration
+                        </>
+                    )}
                 </button>
             </div>
         </div>

@@ -8,12 +8,12 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     };
 
     if (typeof window !== 'undefined') {
-        const authStorage = localStorage.getItem('auth-storage');
+        const authStorage = localStorage.getItem('auth-storage-v2');
         if (authStorage) {
             try {
                 const state = JSON.parse(authStorage).state;
-                if (state?.token) {
-                    defaultHeaders['Authorization'] = `Bearer ${state.token}`;
+                if (state?.access_token) {
+                    defaultHeaders['Authorization'] = `Bearer ${state.access_token}`;
                 }
             } catch (e) {
                 console.error('Error parsing auth storage', e);

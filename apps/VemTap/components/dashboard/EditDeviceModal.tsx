@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { X, Nfc, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { Device } from '@/lib/store/mockDashboardStore';
+import { Device } from '@/services/devices/types';
 
 interface EditDeviceModalProps {
     isOpen: boolean;

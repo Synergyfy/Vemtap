@@ -6,15 +6,16 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { CheckCircle2, Crown, Star, ShieldCheck, Zap, ArrowRight, CreditCard, Clock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPricingPlans } from '@/lib/api/pricing';
+import { useActiveSubscription, useSubscribe } from '@/services/subscriptions/hooks';
 import SubscriptionCheckout from '@/components/dashboard/SubscriptionCheckout';
 import toast from 'react-hot-toast';
 
 export default function DashboardPricingPage() {
-    const { user, subscribe } = useAuthStore();
+    const { user } = useAuthStore();
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
     const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
 
-    const { data: plans = [], isLoading } = useQuery({
+    const { data: plans = [], isLoading: plansLoading } = useQuery({
         queryKey: ['subscription-plans'],
         queryFn: fetchPricingPlans
     });
@@ -31,29 +32,12 @@ export default function DashboardPricingPage() {
         return base + visitorCost + tagCost;
     };
 
-    const activePlanId = user?.planId || 'free';
+    const { data: subscription, isLoading: subLoading } = useActiveSubscription();
+    const subscribeMutation = useSubscribe();
 
-    // Inject personal config into plans
-    const displayPlans = plans.map(p => {
-        if (p.id === 'personal') {
-            const priceVal = calculatePersonalPrice(personalConfig.visitors, personalConfig.tags);
-            return {
-                ...p,
-                price: `₦${priceVal.toLocaleString()}`,
-                visitorLimit: personalConfig.visitors,
-                tagLimit: personalConfig.tags,
-                features: [
-                    `${personalConfig.visitors.toLocaleString()} visitors/mo`,
-                    `${personalConfig.tags} Active Tag License${personalConfig.tags > 1 ? 's' : ''}`,
-                    'Growth Analytics',
-                    'Email & Chat Support'
-                ]
-            };
-        }
-        return p;
-    });
-
-    const activePlan = displayPlans.find(p => p.id === activePlanId);
+    const isLoading = plansLoading || subLoading;
+    const activePlanId = subscription?.planId || 'free';
+    const activePlan = plans.find((p: any) => p.id === activePlanId);
 
     const handlePlanSelect = async (plan: any) => {
         localStorage.setItem('has_selected_plan', 'true');
@@ -63,9 +47,14 @@ export default function DashboardPricingPage() {
         }
 
         if (plan.id === 'free') {
-            const res = await subscribe('free');
-            if (res.success) toast.success('Switched to Free plan!');
-            else toast.error(res.error || 'Failed to update plan');
+            subscribeMutation.mutate({
+                businessId: user?.businessId || '',
+                planId: 'free',
+                billingCycle
+            }, {
+                onSuccess: () => toast.success('Switched to Free plan!'),
+                onError: () => toast.error('Failed to update plan')
+            });
         } else {
             setCheckoutPlan({ ...plan, billingCycle });
         }
@@ -136,7 +125,7 @@ export default function DashboardPricingPage() {
                                 {activePlan?.id !== 'free' && <span className="text-xs font-bold opacity-40 mb-1">/mo</span>}
                             </div>
                             <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest mb-6 border-b border-white/10 pb-4">
-                                Next billing on Oct 24, 2025
+                                {subscription?.currentPeriodEnd ? `Next billing on ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}` : 'No upcoming billing'}
                             </p>
                             <button className="w-full h-11 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all">
                                 Manage Payment
@@ -164,7 +153,7 @@ export default function DashboardPricingPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {displayPlans.filter(p => ['free', 'personal', 'basic', 'premium'].includes(p.id)).map((plan) => {
+                {plans.filter((p: any) => p.id !== 'white-label' && p.id !== 'enterprise').map((plan: any) => {
                     const isCurrent = plan.id === activePlanId;
                     const isPersonal = plan.id === 'personal';
                     return (
@@ -182,44 +171,8 @@ export default function DashboardPricingPage() {
                                 <span className="text-3xl font-black text-slate-900 tracking-tight">{plan.price}</span>
                                 {plan.id !== 'free' && <span className="text-sm font-bold text-slate-400">/mo</span>}
                             </div>
-
-                            {isPersonal && (
-                                <div className="mb-8 p-4 bg-emerald-50 rounded-2xl space-y-4">
-                                    <div className="space-y-1">
-                                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-emerald-700">
-                                            <span>Visitors</span>
-                                            <span>{personalConfig.visitors.toLocaleString()}</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="100"
-                                            max="10000"
-                                            step="100"
-                                            value={personalConfig.visitors}
-                                            onChange={(e) => setPersonalConfig({ ...personalConfig, visitors: parseInt(e.target.value) })}
-                                            className="w-full h-1.5 bg-emerald-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-emerald-700">
-                                            <span>Tags</span>
-                                            <span>{personalConfig.tags}</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="1"
-                                            max="20"
-                                            step="1"
-                                            value={personalConfig.tags}
-                                            onChange={(e) => setPersonalConfig({ ...personalConfig, tags: parseInt(e.target.value) })}
-                                            className="w-full h-1.5 bg-emerald-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            <ul className="space-y-4 mb-8 flex-1">
-                                {plan.features.map((f, i) => (
+                            <ul className="space-y-4 mb-8">
+                                {plan.features?.map((f: string, i: number) => (
                                     <li key={i} className="flex items-start gap-2.5 text-xs font-bold text-slate-600 leading-snug">
                                         <CheckCircle2 size={14} className="text-primary mt-0.5 shrink-0" />
                                         {f}
