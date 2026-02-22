@@ -98,6 +98,7 @@ describe('MessagingEngineService', () => {
       await expect(
         service.sendMessage({
           businessId: 'b1',
+          branchId: 'br1',
           channel: Channel.SMS,
           content: 'test',
         }),
@@ -116,6 +117,7 @@ describe('MessagingEngineService', () => {
 
       const result = await service.sendMessage({
         businessId: 'b1',
+        branchId: 'branch1',
         channel: Channel.SMS,
         content: 'msg',
       });

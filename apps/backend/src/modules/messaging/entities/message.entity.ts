@@ -1,6 +1,7 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 import { Contact } from '../../contacts/entities/contact.entity';
 import { ConversationThread } from './conversation-thread.entity';
 import { MessageCampaign } from './message-campaign.entity';
@@ -29,6 +30,13 @@ export class Message extends AbstractBaseEntity {
 
   @Column()
   businessId: string;
+
+  @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'branchId' })
+  branch: Branch;
+
+  @Column({ nullable: true })
+  branchId: string;
 
   @Column({ type: 'enum', enum: Channel })
   channel: Channel;

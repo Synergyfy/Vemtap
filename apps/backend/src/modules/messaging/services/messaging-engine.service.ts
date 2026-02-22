@@ -71,6 +71,26 @@ export class MessagingEngineService {
     });
     if (!business) throw new BadRequestException('Business not found');
 
+    // Ensure branchId is resolved
+    let branchId = dto.branchId;
+    if (!branchId) {
+       // Find a default branch or require it.
+       // For better robustness, if single send, we might want to infer from context (e.g. user's branch)
+       // But this method might be called by a system process too.
+       // Let's try to find the first active branch for the business if not provided.
+       const branch = await this.branchRepo.findOne({ where: { businessId: dto.businessId, isActive: true }});
+       if (branch) branchId = branch.id;
+    }
+
+    // For campaign (multiple contacts), branchId is crucial for data segmentation.
+    // If we still don't have branchId, and contacts > 1, maybe we should fail?
+    // Or just let it be null on Message entity? But ConversationThread requires branchId.
+    // So we MUST have a branchId for ConversationThread.
+    if (!branchId) {
+        throw new BadRequestException('Branch ID is required for messaging.');
+    }
+    dto.branchId = branchId; // Update DTO for downstream use
+
     let template: any = null;
     if (dto.templateId) {
       template = await this.templateService.getTemplate(
@@ -107,19 +127,6 @@ export class MessagingEngineService {
       );
       return { messageIds: [messageId] };
     } else {
-      // Campaign batch send - need branchId
-      let branchId = dto.branchId;
-      if (!branchId) {
-        const branch = await this.branchRepo.findOne({
-          where: { businessId: dto.businessId },
-        });
-        if (!branch)
-          throw new BadRequestException(
-            'No branch found for business; branchId required',
-          );
-        branchId = branch.id;
-      }
-
       const campaign = await this.campaignService.createCampaign({
         branchId,
         name: `Campaign ${new Date().toISOString()}`,
@@ -153,6 +160,7 @@ export class MessagingEngineService {
   ): Promise<string | null> {
     const dto: SendMessageDto = {
       businessId: thread.businessId,
+      branchId: thread.branchId, // Use thread's branch
       channel: thread.channel,
       contactIds: [thread.contactId],
       content,
@@ -172,14 +180,37 @@ export class MessagingEngineService {
   public async handleInbound(message: InboundMessage): Promise<void> {
     this.logger.log(`Inbound ${message.channel} from ${message.from} to ${message.to}`);
 
-    const business = await this.businessRepo.findOne({
-      order: { createdAt: 'ASC' },
-    });
-    if (!business) {
-        this.logger.warn(`No business found for inbound message to ${message.to}`);
+    // Resolve Branch by 'to' number (assuming distinct numbers per branch)
+    let branch = await this.branchRepo.findOne({ where: { phone: message.to } });
+
+    let business: Business | null = null;
+
+    if (branch) {
+        business = await this.businessRepo.findOne({ where: { id: branch.businessId } });
+    } else {
+        // Fallback: Find business by generic number/email and assign to default branch
+        // This is tricky if multiple businesses use shared numbers (like shortcodes),
+        // but typically the provider gives us a unique destination or we look up the keyword.
+        // For now, assuming 'message.to' matches a business identifier if not a branch phone.
+        business = await this.businessRepo.findOne({ where: { whatsappNumber: message.to } }); // Example fallback
+
+        if (!business) {
+             // Absolute fallback for dev/demo: Pick the first business
+             business = await this.businessRepo.findOne({ order: { createdAt: 'ASC' } });
+        }
+
+        if (business) {
+            // Pick default branch (e.g. first active)
+            branch = await this.branchRepo.findOne({ where: { businessId: business.id, isActive: true }, order: { createdAt: 'ASC' } });
+        }
+    }
+
+    if (!business || !branch) {
+        this.logger.warn(`Could not resolve business or branch for inbound message to ${message.to}`);
         return;
     }
 
+    // Ensure contact exists (Contact is Business-level)
     let contact = await this.contactRepo.findOne({
       where: { businessId: business.id, phone: message.from },
     });
@@ -215,12 +246,14 @@ export class MessagingEngineService {
       );
     }
 
+    // Find thread by Branch + Contact + Channel
     let thread = await this.threadRepo.findOne({
-      where: { businessId: business.id, contactId: safeContact.id, channel: message.channel },
+      where: { branchId: branch.id, contactId: safeContact.id, channel: message.channel },
     });
     if (!thread) {
       thread = this.threadRepo.create({
         businessId: business.id,
+        branchId: branch.id,
         contactId: safeContact.id,
         channel: message.channel,
       });
@@ -231,6 +264,7 @@ export class MessagingEngineService {
 
     const msgEntity = this.messageRepo.create({
       businessId: business.id,
+      branchId: branch.id,
       contactId: safeContact.id,
       threadId: thread.id,
       direction: MessageDirection.INBOUND,
@@ -243,7 +277,7 @@ export class MessagingEngineService {
     await this.messageRepo.save(msgEntity);
 
     this.logger.log(
-      `[SocketEmit] 'inbox:new-message' to room business-${business.id}`,
+      `[SocketEmit] 'inbox:new-message' to room branch-${branch.id}`,
     );
   }
 
@@ -280,8 +314,17 @@ export class MessagingEngineService {
         });
       }
 
-      const senderId = business.name || 'VemTap';
-      const from = (dto.channel === Channel.WHATSAPP && business.whatsappNumber) ? business.whatsappNumber : senderId;
+      // Determine sender ID / From
+      // If we have a branchId, and that branch has a specific number, use it.
+      let from = business.name || 'VemTap';
+      if (dto.branchId) {
+          const branch = await this.branchRepo.findOne({ where: { id: dto.branchId } });
+          if (branch && branch.phone && dto.channel === Channel.WHATSAPP) {
+              from = branch.phone;
+          } else if (business.whatsappNumber && dto.channel === Channel.WHATSAPP) {
+              from = business.whatsappNumber;
+          }
+      }
 
       const response = await this.providerRouter.sendMessage({
         to: (dto.channel === Channel.EMAIL) ? contact.email : contact.phone,
@@ -293,6 +336,7 @@ export class MessagingEngineService {
       const message = await this.messageRepo.save(
         this.messageRepo.create({
           businessId: dto.businessId,
+          branchId: dto.branchId,
           contactId: contact.id,
           direction: MessageDirection.OUTBOUND,
           content: finalContent,
