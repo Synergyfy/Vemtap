@@ -8,37 +8,37 @@ import { Channel } from '../../messaging/enums/channel.enum';
 
 @Entity('contacts')
 export class Contact extends AbstractBaseEntity {
-    @ManyToOne(() => Business, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'businessId' })
-    business: Business;
+  @ManyToOne(() => Business, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'businessId' })
+  business: Business;
 
-    @Column()
-    businessId: string;
+  @Column()
+  businessId: string;
 
-    @Column({ nullable: true })
-    phone: string;
+  @Column({ nullable: true })
+  phone: string;
 
-    @Column({ nullable: true })
-    email: string;
+  @Column({ nullable: true })
+  email: string;
 
-    @Column({ nullable: true })
-    name: string;
+  @Column({ nullable: true })
+  name: string;
 
-    @Column({
-        type: 'simple-array',
-        default: [Channel.SMS, Channel.WHATSAPP, Channel.EMAIL],
-    })
-    optInChannels: Channel[];
+  @Column({
+    type: 'simple-array',
+    default: [Channel.SMS, Channel.WHATSAPP, Channel.EMAIL],
+  })
+  optInChannels: Channel[];
 
-    @Column({ default: false })
-    optOut: boolean;
+  @Column({ default: false })
+  optOut: boolean;
 
-    @Column({ type: 'simple-array', nullable: true })
-    tags: string[];
+  @Column({ type: 'simple-array', nullable: true })
+  tags: string[];
 
-    @OneToMany(() => Message, (message) => message.contact)
-    messages: Message[];
+  @OneToMany(() => Message, (message) => message.contact)
+  messages: Message[];
 
-    @OneToMany(() => ConversationThread, (thread) => thread.contact)
-    threads: ConversationThread[];
+  @OneToMany(() => ConversationThread, (thread) => thread.contact)
+  threads: ConversationThread[];
 }

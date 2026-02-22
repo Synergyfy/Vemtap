@@ -3,7 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Product, ProductStatus } from './entities/product.entity';
 import { Quote, QuoteStatus } from './entities/quote.entity';
-import { QuoteNegotiation, OfferedByRole } from './entities/quote-negotiation.entity';
+import {
+  QuoteNegotiation,
+  OfferedByRole,
+} from './entities/quote-negotiation.entity';
 import { Order, OrderStatus } from './entities/order.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -23,7 +26,7 @@ export class ProductsService {
     private negotiationRepository: Repository<QuoteNegotiation>,
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
-  ) { }
+  ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     const product = this.productRepository.create(createProductDto);
@@ -110,7 +113,10 @@ export class ProductsService {
 
     if (!quote) throw new NotFoundException('Quote not found');
 
-    if (quote.status === QuoteStatus.ACCEPTED || quote.status === QuoteStatus.REJECTED) {
+    if (
+      quote.status === QuoteStatus.ACCEPTED ||
+      quote.status === QuoteStatus.REJECTED
+    ) {
       throw new BadRequestException('Cannot negotiate a finalized quote');
     }
 
@@ -122,7 +128,8 @@ export class ProductsService {
       throw new ForbiddenException('Not your quote');
     }
 
-    const offeredBy = user.role === UserRole.ADMIN ? OfferedByRole.ADMIN : OfferedByRole.OWNER;
+    const offeredBy =
+      user.role === UserRole.ADMIN ? OfferedByRole.ADMIN : OfferedByRole.OWNER;
 
     const negotiation = this.negotiationRepository.create({
       quote,
@@ -137,7 +144,10 @@ export class ProductsService {
     await this.negotiationRepository.save(negotiation);
 
     quote.currentPrice = dto.priceOffered;
-    quote.status = user.role === UserRole.ADMIN ? QuoteStatus.ADMIN_OFFERED : QuoteStatus.OWNER_OFFERED;
+    quote.status =
+      user.role === UserRole.ADMIN
+        ? QuoteStatus.ADMIN_OFFERED
+        : QuoteStatus.OWNER_OFFERED;
 
     if (user.role === UserRole.ADMIN && dto.isNegotiable !== undefined) {
       quote.isNegotiable = dto.isNegotiable;
@@ -152,7 +162,8 @@ export class ProductsService {
     });
 
     if (!quote) throw new NotFoundException('Quote not found');
-    if (quote.userId !== user.id) throw new ForbiddenException('Not your quote');
+    if (quote.userId !== user.id)
+      throw new ForbiddenException('Not your quote');
 
     if (quote.status === QuoteStatus.ACCEPTED) {
       throw new BadRequestException('Quote is already accepted');
@@ -186,7 +197,8 @@ export class ProductsService {
     });
 
     if (!quote) throw new NotFoundException('Quote not found');
-    if (quote.userId !== user.id) throw new ForbiddenException('Not your quote');
+    if (quote.userId !== user.id)
+      throw new ForbiddenException('Not your quote');
 
     quote.status = QuoteStatus.REJECTED;
     return this.quoteRepository.save(quote);
@@ -209,7 +221,7 @@ export class ProductsService {
 
   async markOrderReady(orderId: string): Promise<Order> {
     const order = await this.orderRepository.findOne({
-      where: { id: orderId }
+      where: { id: orderId },
     });
 
     if (!order) throw new NotFoundException('Order not found');

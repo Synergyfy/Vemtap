@@ -25,7 +25,7 @@ import { UserRole } from '../users/entities/user.entity';
 @ApiBearerAuth()
 @Controller('businesses')
 export class BusinessesController {
-  constructor(private readonly businessesService: BusinessesService) { }
+  constructor(private readonly businessesService: BusinessesService) {}
 
   @Get('my-business')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
@@ -58,7 +58,12 @@ export class BusinessesController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ) {
-    return this.businessesService.findAllAdmin({ search, status: status as any, page, limit });
+    return this.businessesService.findAllAdmin({
+      search,
+      status: status as any,
+      page,
+      limit,
+    });
   }
 
   @Post('admin')
@@ -92,7 +97,10 @@ export class BusinessesController {
   @Patch('admin/:id/suspend')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Suspend a business' })
-  async suspendBusiness(@Param('id') id: string, @Body('reason') reason: string) {
+  async suspendBusiness(
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+  ) {
     return this.businessesService.suspend(id, reason || 'Terms Violation');
   }
 

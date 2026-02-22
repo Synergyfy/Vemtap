@@ -95,7 +95,10 @@ describe('DevicesService', () => {
       mockDeviceRepository.create.mockImplementation((dto) => dto);
       mockDeviceRepository.save.mockResolvedValue([]);
 
-      const result = await service.generateDevicesForReadyOrders('user-1', 'biz-1');
+      const result = await service.generateDevicesForReadyOrders(
+        'user-1',
+        'biz-1',
+      );
 
       expect(result.length).toBe(3); // 5 - 2 = 3
       expect(mockDeviceRepository.save).toHaveBeenCalled();
@@ -105,12 +108,28 @@ describe('DevicesService', () => {
     });
 
     it('should handle missing quote or no remaining devices gracefully', async () => {
-      const mockOrderNoQuote = { id: 'order-1', status: OrderStatus.READY, userId: 'user-1' };
-      const mockOrderFulfilled = { id: 'order-2', status: OrderStatus.READY, userId: 'user-1', quote: { quantity: 1 }, devices: [{}] };
+      const mockOrderNoQuote = {
+        id: 'order-1',
+        status: OrderStatus.READY,
+        userId: 'user-1',
+      };
+      const mockOrderFulfilled = {
+        id: 'order-2',
+        status: OrderStatus.READY,
+        userId: 'user-1',
+        quote: { quantity: 1 },
+        devices: [{}],
+      };
 
-      mockOrderRepository.find.mockResolvedValue([mockOrderNoQuote, mockOrderFulfilled]);
+      mockOrderRepository.find.mockResolvedValue([
+        mockOrderNoQuote,
+        mockOrderFulfilled,
+      ]);
 
-      const result = await service.generateDevicesForReadyOrders('user-1', 'biz-1');
+      const result = await service.generateDevicesForReadyOrders(
+        'user-1',
+        'biz-1',
+      );
       expect(result.length).toBe(0);
       expect(mockDeviceRepository.save).not.toHaveBeenCalled(); // No new devices to save
     });
@@ -128,7 +147,7 @@ describe('DevicesService', () => {
         assets: [
           { id: 'dev-1', name: 'New Name 1' },
           { id: 'dev-2', name: 'New Name 2' }, // Not found
-        ]
+        ],
       });
 
       expect(result.length).toBe(1);

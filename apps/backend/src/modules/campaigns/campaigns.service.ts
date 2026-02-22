@@ -11,7 +11,13 @@ import { PointTransaction } from './entities/point-transaction.entity';
 import { LoyaltyRule } from './entities/loyalty-rule.entity';
 import { Reward } from './entities/reward.entity';
 import { Redemption } from './entities/redemption.entity';
-import { CreateRewardDto, UpdateRewardDto, PointEarnRequestDto, RewardRedeemRequestDto, UpdateLoyaltyRuleDto } from './dto/loyalty.dto';
+import {
+  CreateRewardDto,
+  UpdateRewardDto,
+  PointEarnRequestDto,
+  RewardRedeemRequestDto,
+  UpdateLoyaltyRuleDto,
+} from './dto/loyalty.dto';
 
 @Injectable()
 export class CampaignsService {
@@ -30,7 +36,7 @@ export class CampaignsService {
     private rewardRepository: Repository<Reward>,
     @InjectRepository(Redemption)
     private redemptionRepository: Repository<Redemption>,
-  ) { }
+  ) {}
 
   async create(
     createCampaignDto: CreateCampaignDto,
@@ -152,10 +158,19 @@ export class CampaignsService {
   }
 
   // Loyalty Features
-  async getLoyaltyProfile(userId: string, branchId: string): Promise<LoyaltyProfile> {
-    let profile = await this.profileRepository.findOne({ where: { userId, branchId } });
+  async getLoyaltyProfile(
+    userId: string,
+    branchId: string,
+  ): Promise<LoyaltyProfile> {
+    let profile = await this.profileRepository.findOne({
+      where: { userId, branchId },
+    });
     if (!profile) {
-      profile = this.profileRepository.create({ userId, branchId, tierLevel: 'bronze' });
+      profile = this.profileRepository.create({
+        userId,
+        branchId,
+        tierLevel: 'bronze',
+      });
       await this.profileRepository.save(profile);
     }
     return profile;
@@ -174,7 +189,10 @@ export class CampaignsService {
     return rule;
   }
 
-  async updateLoyaltyRule(branchId: string, updates: UpdateLoyaltyRuleDto): Promise<LoyaltyRule> {
+  async updateLoyaltyRule(
+    branchId: string,
+    updates: UpdateLoyaltyRuleDto,
+  ): Promise<LoyaltyRule> {
     const rule = await this.getLoyaltyRule(branchId);
     Object.assign(rule, updates);
     return this.ruleRepository.save(rule);
@@ -185,8 +203,14 @@ export class CampaignsService {
     return this.rewardRepository.save(reward);
   }
 
-  async updateReward(branchId: string, id: string, dto: UpdateRewardDto): Promise<Reward> {
-    const reward = await this.rewardRepository.findOne({ where: { id, branchId } });
+  async updateReward(
+    branchId: string,
+    id: string,
+    dto: UpdateRewardDto,
+  ): Promise<Reward> {
+    const reward = await this.rewardRepository.findOne({
+      where: { id, branchId },
+    });
     if (!reward) throw new NotFoundException('Reward not found');
     Object.assign(reward, dto);
     return this.rewardRepository.save(reward);
@@ -199,7 +223,12 @@ export class CampaignsService {
   async earnPoints(branchId: string, dto: PointEarnRequestDto): Promise<any> {
     const rule = await this.getLoyaltyRule(branchId);
     if (!rule || !rule.isActive) {
-      return { success: false, pointsEarned: 0, newBalance: 0, message: 'Loyalty system is inactive' };
+      return {
+        success: false,
+        pointsEarned: 0,
+        newBalance: 0,
+        message: 'Loyalty system is inactive',
+      };
     }
 
     const profile = await this.getLoyaltyProfile(dto.userId, branchId);
@@ -213,7 +242,9 @@ export class CampaignsService {
     }
 
     if (dto.amountSpent && rule.spendingBaseAmount && rule.spendingBasePoints) {
-      const spendPoints = Math.floor((dto.amountSpent / rule.spendingBaseAmount) * rule.spendingBasePoints);
+      const spendPoints = Math.floor(
+        (dto.amountSpent / rule.spendingBaseAmount) * rule.spendingBasePoints,
+      );
       earned += spendPoints;
       breakdown.spendingPoints = spendPoints;
     }
@@ -224,7 +255,12 @@ export class CampaignsService {
     }
 
     if (earned <= 0) {
-      return { success: true, pointsEarned: 0, newBalance: profile.currentPointsBalance, message: 'No points earned for this action' };
+      return {
+        success: true,
+        pointsEarned: 0,
+        newBalance: profile.currentPointsBalance,
+        message: 'No points earned for this action',
+      };
     }
 
     profile.totalPointsEarned += earned;
@@ -242,7 +278,12 @@ export class CampaignsService {
       loyaltyProfileId: profile.id,
       transactionType: 'earn',
       pointsAmount: earned,
-      reason: dto.isVisit && dto.amountSpent ? 'Visit + Purchase' : dto.isVisit ? 'Visit' : 'Purchase',
+      reason:
+        dto.isVisit && dto.amountSpent
+          ? 'Visit + Purchase'
+          : dto.isVisit
+            ? 'Visit'
+            : 'Purchase',
       metadata: breakdown,
     });
     await this.transactionRepository.save(transaction);
@@ -252,16 +293,25 @@ export class CampaignsService {
       pointsEarned: earned,
       newBalance: profile.currentPointsBalance,
       message: `Congratulations! You earned ${earned} points.`,
-      breakdown
+      breakdown,
     };
   }
 
-  async redeemReward(branchId: string, dto: RewardRedeemRequestDto): Promise<any> {
-    const profile = await this.profileRepository.findOne({ where: { id: dto.loyaltyProfileId, branchId } });
-    const reward = await this.rewardRepository.findOne({ where: { id: dto.rewardId, branchId } });
+  async redeemReward(
+    branchId: string,
+    dto: RewardRedeemRequestDto,
+  ): Promise<any> {
+    const profile = await this.profileRepository.findOne({
+      where: { id: dto.loyaltyProfileId, branchId },
+    });
+    const reward = await this.rewardRepository.findOne({
+      where: { id: dto.rewardId, branchId },
+    });
 
-    if (!profile || !reward) return { success: false, error: 'Profile or Reward not found' };
-    if (profile.currentPointsBalance < reward.pointCost) return { success: false, error: 'Insufficient points' };
+    if (!profile || !reward)
+      return { success: false, error: 'Profile or Reward not found' };
+    if (profile.currentPointsBalance < reward.pointCost)
+      return { success: false, error: 'Insufficient points' };
 
     profile.currentPointsBalance -= reward.pointCost;
     profile.pointsRedeemed += reward.pointCost;
@@ -276,7 +326,7 @@ export class CampaignsService {
       redemptionCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
       pointsSpent: reward.pointCost,
       status: 'pending',
-      expiresAt
+      expiresAt,
     });
     await this.redemptionRepository.save(redemption);
 
@@ -298,11 +348,13 @@ export class CampaignsService {
   async verifyRedemption(branchId: string, code: string): Promise<any> {
     const redemption = await this.redemptionRepository.findOne({
       where: { redemptionCode: code, status: 'pending' },
-      relations: ['reward']
+      relations: ['reward'],
     });
 
-    if (!redemption) return { success: false, error: 'Invalid or already used code' };
-    if (redemption.reward.branchId !== branchId) return { success: false, error: 'Reward not found for this branch' };
+    if (!redemption)
+      return { success: false, error: 'Invalid or already used code' };
+    if (redemption.reward.branchId !== branchId)
+      return { success: false, error: 'Reward not found for this branch' };
 
     if (new Date(redemption.expiresAt) < new Date()) {
       redemption.status = 'expired';
@@ -320,8 +372,7 @@ export class CampaignsService {
   async getTransactions(profileId: string): Promise<PointTransaction[]> {
     return this.transactionRepository.find({
       where: { loyaltyProfileId: profileId },
-      order: { createdAt: 'DESC' }
+      order: { createdAt: 'DESC' },
     });
   }
-
 }

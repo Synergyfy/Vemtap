@@ -40,7 +40,7 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly businessesService: BusinessesService,
     private readonly branchesService: BranchesService,
-  ) { }
+  ) {}
 
   @Get('staff')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
@@ -63,7 +63,7 @@ export class UsersController {
   async inviteStaff(@Request() req, @Body() inviteDto: InviteStaffDto) {
     if (
       inviteDto.role &&
-      ![UserRole.STAFF, UserRole.MANAGER].includes(inviteDto.role as UserRole)
+      ![UserRole.STAFF, UserRole.MANAGER].includes(inviteDto.role)
     ) {
       throw new BadRequestException(
         'Only Staff and Manager roles can be assigned via invitation',
@@ -76,15 +76,22 @@ export class UsersController {
     }
 
     // Verify the business is owned by the current user (owner)
-    const business = await this.businessesService.findById(inviteDto.businessId);
+    const business = await this.businessesService.findById(
+      inviteDto.businessId,
+    );
     if (!business || business.ownerId !== req.user.id) {
       throw new BadRequestException('Business not found or not owned by you');
     }
 
     // Verify the branch belongs to the business
-    const branch = await this.branchesService.findOne(req.user.id, inviteDto.branchId);
+    const branch = await this.branchesService.findOne(
+      req.user.id,
+      inviteDto.branchId,
+    );
     if (!branch) {
-      throw new BadRequestException('Branch not found or does not belong to your business');
+      throw new BadRequestException(
+        'Branch not found or does not belong to your business',
+      );
     }
 
     // In a real app, we'd send an invite email. For this MVP, we create them with a default password.
@@ -131,7 +138,13 @@ export class UsersController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ) {
-    return this.usersService.findAllAdmin({ search, role, status, page, limit });
+    return this.usersService.findAllAdmin({
+      search,
+      role,
+      status,
+      page,
+      limit,
+    });
   }
 
   @Post('admin')
@@ -144,16 +157,15 @@ export class UsersController {
   @Patch('admin/:id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Update user details' })
-  async adminUpdateUser(
-    @Param('id') id: string,
-    @Body() updateUserDto: any,
-  ) {
+  async adminUpdateUser(@Param('id') id: string, @Body() updateUserDto: any) {
     return this.usersService.adminUpdateUser(id, updateUserDto);
   }
 
   @Delete('admin/:id')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Disable user account (Sets status to Suspended)' })
+  @ApiOperation({
+    summary: 'Admin: Disable user account (Sets status to Suspended)',
+  })
   async adminDeleteUser(@Param('id') id: string) {
     return this.usersService.adminDeleteUser(id);
   }

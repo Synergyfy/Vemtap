@@ -8,35 +8,46 @@ import { MessageStatus } from '../entities/message.entity';
 
 @Injectable()
 export class AnalyticsService {
-    constructor(
-        @InjectRepository(MessageLog)
-        private readonly logRepo: Repository<MessageLog>,
-        @InjectRepository(MessageCampaign)
-        private readonly campaignRepo: Repository<MessageCampaign>,
-    ) { }
+  constructor(
+    @InjectRepository(MessageLog)
+    private readonly logRepo: Repository<MessageLog>,
+    @InjectRepository(MessageCampaign)
+    private readonly campaignRepo: Repository<MessageCampaign>,
+  ) {}
 
-    async getDashboardMetrics(branchId: string, channel?: Channel) {
-        const query = this.logRepo.createQueryBuilder('log')
-            .where('log.branchId = :branchId', { branchId });
+  async getDashboardMetrics(branchId: string, channel?: Channel) {
+    const query = this.logRepo
+      .createQueryBuilder('log')
+      .where('log.branchId = :branchId', { branchId });
 
-        if (channel) {
-            query.andWhere('log.channel = :channel', { channel });
-        }
-
-        const totalSent = await query.clone().andWhere('log.direction = :direction', { direction: 'OUTBOUND' }).getCount();
-        const totalDelivered = await query.clone()
-            .andWhere('log.direction = :direction AND log.status = :status', { direction: 'OUTBOUND', status: MessageStatus.DELIVERED })
-            .getCount();
-
-        const deliveryRate = totalSent > 0 ? (totalDelivered / totalSent) * 100 : 0;
-
-        const totalInbound = await query.clone().andWhere('log.direction = :direction', { direction: 'INBOUND' }).getCount();
-
-        return {
-            totalSent,
-            totalDelivered,
-            deliveryRate,
-            repliesReceived: totalInbound,
-        };
+    if (channel) {
+      query.andWhere('log.channel = :channel', { channel });
     }
+
+    const totalSent = await query
+      .clone()
+      .andWhere('log.direction = :direction', { direction: 'OUTBOUND' })
+      .getCount();
+    const totalDelivered = await query
+      .clone()
+      .andWhere('log.direction = :direction AND log.status = :status', {
+        direction: 'OUTBOUND',
+        status: MessageStatus.DELIVERED,
+      })
+      .getCount();
+
+    const deliveryRate = totalSent > 0 ? (totalDelivered / totalSent) * 100 : 0;
+
+    const totalInbound = await query
+      .clone()
+      .andWhere('log.direction = :direction', { direction: 'INBOUND' })
+      .getCount();
+
+    return {
+      totalSent,
+      totalDelivered,
+      deliveryRate,
+      repliesReceived: totalInbound,
+    };
+  }
 }

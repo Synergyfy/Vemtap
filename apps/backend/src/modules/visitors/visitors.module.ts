@@ -19,4 +19,4 @@ import { MessagingModule } from '../messaging/messaging.module';
   providers: [VisitorsService],
   exports: [VisitorsService],
 })
-export class VisitorsModule { }
+export class VisitorsModule {}

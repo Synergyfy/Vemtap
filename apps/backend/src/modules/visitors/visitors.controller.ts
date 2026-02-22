@@ -11,7 +11,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { VisitorsService } from './visitors.service';
 import { CreateVisitorDto } from './dto/create-visitor.dto';
 import { VisitorQueryDto } from './dto/visitor-query.dto';
@@ -40,12 +45,14 @@ export class VisitorsController {
     private readonly visitorsService: VisitorsService,
     private readonly campaignsService: CampaignsService,
     private readonly messagingService: MessagingEngineService,
-  ) { }
+  ) {}
 
   private getBranchId(req: any, branchId?: string): string {
     const resolved = branchId || req.user?.branchId;
     if (!resolved) {
-      throw new BadRequestException('branchId is required (pass as query param or ensure user has branchId)');
+      throw new BadRequestException(
+        'branchId is required (pass as query param or ensure user has branchId)',
+      );
     }
     return resolved;
   }
@@ -57,7 +64,10 @@ export class VisitorsController {
   @Permissions('visitors')
   @ApiOperation({ summary: 'Get overview visitor stats' })
   @ApiResponse({ type: VisitorStatsResponseDto })
-  async getStats(@Req() req: any, @Query('branchId') branchId?: string): Promise<VisitorStatsResponseDto> {
+  async getStats(
+    @Req() req: any,
+    @Query('branchId') branchId?: string,
+  ): Promise<VisitorStatsResponseDto> {
     return this.visitorsService.getStats(this.getBranchId(req, branchId));
   }
 
@@ -66,7 +76,10 @@ export class VisitorsController {
   @Permissions('visitors')
   @ApiOperation({ summary: 'Get new visitor stats' })
   @ApiResponse({ type: VisitorStatsResponseDto })
-  async getNewStats(@Req() req: any, @Query('branchId') branchId?: string): Promise<VisitorStatsResponseDto> {
+  async getNewStats(
+    @Req() req: any,
+    @Query('branchId') branchId?: string,
+  ): Promise<VisitorStatsResponseDto> {
     return this.visitorsService.getNewStats(this.getBranchId(req, branchId));
   }
 
@@ -75,8 +88,13 @@ export class VisitorsController {
   @Permissions('visitors')
   @ApiOperation({ summary: 'Get returning visitor stats' })
   @ApiResponse({ type: VisitorStatsResponseDto })
-  async getReturningStats(@Req() req: any, @Query('branchId') branchId?: string): Promise<VisitorStatsResponseDto> {
-    return this.visitorsService.getReturningStats(this.getBranchId(req, branchId));
+  async getReturningStats(
+    @Req() req: any,
+    @Query('branchId') branchId?: string,
+  ): Promise<VisitorStatsResponseDto> {
+    return this.visitorsService.getReturningStats(
+      this.getBranchId(req, branchId),
+    );
   }
 
   // --- Listings ---
@@ -85,7 +103,11 @@ export class VisitorsController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @Permissions('visitors')
   @ApiOperation({ summary: 'Get new visitors list' })
-  async getNew(@Query() query: VisitorQueryDto, @Req() req: any, @Query('branchId') branchId?: string) {
+  async getNew(
+    @Query() query: VisitorQueryDto,
+    @Req() req: any,
+    @Query('branchId') branchId?: string,
+  ) {
     return this.visitorsService.findNew(query, this.getBranchId(req, branchId));
   }
 
@@ -93,8 +115,15 @@ export class VisitorsController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @Permissions('visitors')
   @ApiOperation({ summary: 'Get returning visitors list' })
-  async getReturning(@Query() query: VisitorQueryDto, @Req() req: any, @Query('branchId') branchId?: string) {
-    return this.visitorsService.findReturning(query, this.getBranchId(req, branchId));
+  async getReturning(
+    @Query() query: VisitorQueryDto,
+    @Req() req: any,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.visitorsService.findReturning(
+      query,
+      this.getBranchId(req, branchId),
+    );
   }
 
   @Get()
@@ -124,24 +153,43 @@ export class VisitorsController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @Permissions('messages')
   @ApiOperation({ summary: 'Send campaign to visitors' })
-  async sendCampaign(@Req() req: any, @Body() body: any, @Query('branchId') branchId?: string) {
-    return this.visitorsService.sendCampaign(this.getBranchId(req, branchId || body.branchId), body);
+  async sendCampaign(
+    @Req() req: any,
+    @Body() body: any,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.visitorsService.sendCampaign(
+      this.getBranchId(req, branchId || body.branchId),
+      body,
+    );
   }
 
   @Post('welcome-campaign')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @Permissions('messages')
   @ApiOperation({ summary: 'Send welcome campaign to new visitors' })
-  async sendWelcomeCampaign(@Req() req: any, @Query('branchId') branchId?: string) {
-    return this.visitorsService.sendWelcomeCampaign(this.getBranchId(req, branchId));
+  async sendWelcomeCampaign(
+    @Req() req: any,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.visitorsService.sendWelcomeCampaign(
+      this.getBranchId(req, branchId),
+    );
   }
 
   @Post('rewards')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @Permissions('dashboard') // Rewards might fall under campaigns/loyalty/dashboard
   @ApiOperation({ summary: 'Create a reward for visitors' })
-  async createReward(@Req() req: any, @Body() body: any, @Query('branchId') branchId?: string) {
-    return this.campaignsService.createReward(this.getBranchId(req, branchId || body.branchId), body);
+  async createReward(
+    @Req() req: any,
+    @Body() body: any,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.campaignsService.createReward(
+      this.getBranchId(req, branchId || body.branchId),
+      body,
+    );
   }
 
   // --- CRUD & Individual Actions ---
@@ -151,7 +199,11 @@ export class VisitorsController {
   @Permissions('visitors')
   @ApiOperation({ summary: 'Create a new visitor' })
   @ApiResponse({ type: VisitorResponseDto })
-  async create(@Body() createVisitorDto: CreateVisitorDto, @Req() req: any, @Query('branchId') branchId?: string) {
+  async create(
+    @Body() createVisitorDto: CreateVisitorDto,
+    @Req() req: any,
+    @Query('branchId') branchId?: string,
+  ) {
     return this.visitorsService.create(
       createVisitorDto,
       this.getBranchId(req, branchId || createVisitorDto.branchId),
@@ -194,25 +246,46 @@ export class VisitorsController {
   async sendMessage(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() body: { message: string, channel: string },
+    @Body() body: { message: string; channel: string },
     @Query('branchId') branchId?: string,
   ) {
-    return this.visitorsService.sendMessage(this.getBranchId(req, branchId), id, body.message, body.channel as any);
+    return this.visitorsService.sendMessage(
+      this.getBranchId(req, branchId),
+      id,
+      body.message,
+      body.channel as any,
+    );
   }
 
   @Post(':id/welcome')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @Permissions('messages')
   @ApiOperation({ summary: 'Send welcome message to a visitor' })
-  async sendWelcome(@Req() req: any, @Param('id') id: string, @Query('branchId') branchId?: string) {
-    return this.visitorsService.sendWelcome(this.getBranchId(req, branchId), id);
+  async sendWelcome(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.visitorsService.sendWelcome(
+      this.getBranchId(req, branchId),
+      id,
+    );
   }
 
   @Post(':id/reward')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @Permissions('dashboard')
   @ApiOperation({ summary: 'Send reward to a visitor' })
-  async sendReward(@Req() req: any, @Param('id') id: string, @Body() body: { rewardId: string }, @Query('branchId') branchId?: string) {
-    return this.visitorsService.sendReward(this.getBranchId(req, branchId), id, body.rewardId);
+  async sendReward(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: { rewardId: string },
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.visitorsService.sendReward(
+      this.getBranchId(req, branchId),
+      id,
+      body.rewardId,
+    );
   }
 }

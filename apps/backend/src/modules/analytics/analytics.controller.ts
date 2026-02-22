@@ -1,6 +1,18 @@
-import { BadRequestException, Controller, Get, UseGuards, Request, Query } from '@nestjs/common';
+import {
+    BadRequestException,
+    Controller,
+    Get,
+    UseGuards,
+    Request,
+    Query,
+} from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+    ApiBearerAuth,
+    ApiOperation,
+    ApiResponse,
+    ApiTags,
+} from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { UserRole } from '../users/entities/user.entity';
@@ -21,31 +33,25 @@ export class AnalyticsController {
     @ApiOperation({ summary: 'Get primary analytics dashboard stats' })
     @ApiResponse({ status: 200, description: 'Analytics summary' })
     getDashboardAnalytics(@Request() req, @Query('branchId') branchId?: string) {
-        const resolved = branchId || req.user?.branchId;
-        if (!resolved) throw new BadRequestException('branchId is required');
-        return this.analyticsService.getDashboardAnalytics(resolved);
+        return this.analyticsService.getDashboardAnalytics(branchId, req.user);
     }
 
     @Get('footfall')
-    @Roles(UserRole.OWNER, UserRole.MANAGER)
+    @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
     @Permissions('analytics')
     @ApiOperation({ summary: 'Get footfall analytics' })
     @ApiResponse({ status: 200, description: 'Footfall stats' })
     getFootfallAnalytics(@Request() req, @Query('branchId') branchId?: string) {
-        const resolved = branchId || req.user?.branchId;
-        if (!resolved) throw new BadRequestException('branchId is required');
-        return this.analyticsService.getFootfallAnalytics(resolved);
+        return this.analyticsService.getFootfallAnalytics(branchId, req.user);
     }
 
     @Get('peak-times')
-    @Roles(UserRole.OWNER, UserRole.MANAGER)
+    @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
     @Permissions('analytics')
     @ApiOperation({ summary: 'Get peak times analytics' })
     @ApiResponse({ status: 200, description: 'Peak times stats' })
     getPeakTimesAnalytics(@Request() req, @Query('branchId') branchId?: string) {
-        const resolved = branchId || req.user?.branchId;
-        if (!resolved) throw new BadRequestException('branchId is required');
-        return this.analyticsService.getPeakTimesAnalytics(resolved);
+        return this.analyticsService.getPeakTimesAnalytics(branchId, req.user);
     }
 
     // --- Admin Endpoints ---
@@ -53,7 +59,10 @@ export class AnalyticsController {
     @Get('admin/loyalty/stats')
     @Roles(UserRole.ADMIN)
     @ApiOperation({ summary: 'Admin: Get loyalty metrics and ecosystem stats' })
-    @ApiResponse({ status: 200, description: 'Ecosystem stats, alerts, and sector split' })
+    @ApiResponse({
+        status: 200,
+        description: 'Ecosystem stats, alerts, and sector split',
+    })
     getAdminLoyaltyStats() {
         return this.analyticsService.getAdminLoyaltyStats();
     }

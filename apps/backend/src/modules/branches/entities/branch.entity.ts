@@ -8,36 +8,36 @@ import { MessageCampaign } from '../../messaging/entities/message-campaign.entit
 
 @Entity('branches')
 export class Branch extends AbstractBaseEntity {
-    @Column()
-    name: string;
+  @Column()
+  name: string;
 
-    @Column({ nullable: true })
-    address: string;
+  @Column({ nullable: true })
+  address: string;
 
-    @Column({ nullable: true })
-    phone: string;
+  @Column({ nullable: true })
+  phone: string;
 
-    @Column({ default: true })
-    isActive: boolean;
+  @Column({ default: true })
+  isActive: boolean;
 
-    @ManyToOne(() => Business, (business) => business.branches, {
-        onDelete: 'CASCADE',
-    })
-    @JoinColumn({ name: 'businessId' })
-    business: Business;
+  @ManyToOne(() => Business, (business) => business.branches, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'businessId' })
+  business: Business;
 
-    @Column()
-    businessId: string;
+  @Column()
+  businessId: string;
 
-    @OneToMany(() => User, (user) => user.branch)
-    staff: User[];
+  @OneToMany(() => User, (user) => user.branch)
+  staff: User[];
 
-    @OneToMany(() => Visit, (visit) => visit.branch)
-    visits: Visit[];
+  @OneToMany(() => Visit, (visit) => visit.branch)
+  visits: Visit[];
 
-    @OneToMany(() => Campaign, (campaign) => campaign.branch)
-    campaigns: Campaign[];
+  @OneToMany(() => Campaign, (campaign) => campaign.branch)
+  campaigns: Campaign[];
 
-    @OneToMany(() => MessageCampaign, (mc) => mc.branch)
-    messageCampaigns: MessageCampaign[];
+  @OneToMany(() => MessageCampaign, (mc) => mc.branch)
+  messageCampaigns: MessageCampaign[];
 }
