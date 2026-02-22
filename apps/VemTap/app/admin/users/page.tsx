@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { notify } from '@/lib/notify';
 import { useAdminUsers, useAdminCreateUser, useAdminUpdateUser, useAdminDeleteUser } from '@/services/users/hooks';
+import { AdminUser } from '@/services/users/types';
 
 export default function AdminUsersPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -11,7 +12,7 @@ export default function AdminUsersPage() {
     const [filterStatus, setFilterStatus] = useState('all');
     const [page, setPage] = useState(1);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<any | null>(null);
+    const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
 
     const { data, isLoading } = useAdminUsers({
         search: searchQuery,
@@ -28,7 +29,7 @@ export default function AdminUsersPage() {
     const totalCount = data?.total || 0;
 
     const handleDelete = (id: string) => {
-        const user = users.find((u: any) => u.id === id);
+        const user = users.find((u: AdminUser) => u.id === id);
         if (window.confirm(`Are you sure you want to disable the account for ${user?.name}?`)) {
             deleteUserMutation.mutate(id, {
                 onSuccess: () => notify.success(`Account for ${user?.name} has been removed.`),
@@ -200,7 +201,7 @@ export default function AdminUsersPage() {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredUsers.map((user) => (
+                                filteredUsers.map((user: AdminUser) => (
                                     <tr key={user.id} className="hover:bg-gray-50 transition-colors group">
                                         <td className="py-4 px-6">
                                             <input type="checkbox" className="rounded accent-primary" />
