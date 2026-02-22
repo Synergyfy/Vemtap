@@ -341,7 +341,7 @@ export class MessagingEngineService {
           direction: MessageDirection.OUTBOUND,
           content: finalContent,
           status: MessageStatus.SENT,
-          providerMessageId: response.messageId,
+          providerMessageId: response.messageId || undefined,
           channel: dto.channel,
           cost: await this.providerRouter.estimateCost({
               to: (dto.channel === Channel.EMAIL) ? contact.email : contact.phone,
