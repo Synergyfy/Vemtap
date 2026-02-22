@@ -21,18 +21,10 @@ export default function VisitorsOverviewPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' | 'general' } | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
 
-<<<<<<< HEAD
-    const { activeBranchId } = useBusinessStore();
-
-    const { data: storeData, isLoading } = useQuery({
-        queryKey: ['dashboard', activeBranchId],
-        queryFn: dashboardApi.fetchDashboardData,
-=======
     const userBranchId = useAuthStore((state) => state.user?.businessId);
     const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(userBranchId, {
         search: searchQuery,
         status: filterStatus !== 'all' ? filterStatus : undefined
->>>>>>> 3fc086c969e80003206a0cddf262600a3ce2226d
     });
     const { data: statsData } = useVisitorStats(userBranchId);
 
@@ -55,7 +47,6 @@ export default function VisitorsOverviewPage() {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
 
-        exportToCSV(exportData, `visitors_report_${new Date().toISOString().split('T')[0]}`);
         toast.success('Report exported successfully!');
     };
 
