@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { MessagingEngineService } from '../services/messaging-engine.service';
 import { TermiiProvider } from '../providers/termii.provider';
 import { InboundMessage, DeliveryReport } from '../interfaces/messaging-provider.interface';
+import { Public } from '../../../common/decorators/public.decorator';
 
 @ApiTags('Webhooks')
 @Controller('webhooks/termii')
@@ -12,6 +13,7 @@ export class TermiiWebhookController {
     private readonly termiiProvider: TermiiProvider,
   ) {}
 
+  @Public()
   @Post('sms')
   @HttpCode(200)
   @ApiOperation({ summary: 'Termii SMS Webhook (Inbound & Delivery)' })
