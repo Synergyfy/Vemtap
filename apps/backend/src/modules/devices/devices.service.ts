@@ -162,14 +162,14 @@ export class DevicesService {
 
     // Bulk insert is more efficient than saving individual entities
     // save() with an array handles insertion in batches
-    await this.devicesRepository.save(
-      this.devicesRepository.create(newDevices as Device[])
+    const createdDevices = await this.devicesRepository.save(
+      this.devicesRepository.create(newDevices as Device[]),
     );
 
     order.status = OrderStatus.READY;
     await this.orderRepository.save(order);
 
-    return newDevices;
+    return createdDevices;
   }
 
   async remove(id: string, businessId: string): Promise<void> {

@@ -70,7 +70,7 @@ describe('DevicesService - Order Fulfillment', () => {
       mockDeviceRepo.count.mockResolvedValue(0); // No existing devices
       mockDeviceRepo.find.mockResolvedValue([]); // Unique codes in bulk check
       mockDeviceRepo.create.mockImplementation((dto) => dto);
-      mockDeviceRepo.save.mockResolvedValue([]);
+      mockDeviceRepo.save.mockImplementation((dto) => dto);
       mockOrderRepo.save.mockResolvedValue(order);
 
       const result = await service.fulfillOrder(orderId);
