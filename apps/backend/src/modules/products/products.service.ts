@@ -14,7 +14,17 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { RequestQuoteDto } from './dto/request-quote.dto';
 import { NegotiateQuoteDto } from './dto/negotiate-quote.dto';
 import { User, UserRole } from '../users/entities/user.entity';
-import { ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
+import { PaymentsService } from '../payments/payments.service';
+import {
+  PaymentPurpose,
+  PaymentStatus,
+} from '../payments/entities/payment.entity';
+import { PaymentStatus as OrderPaymentStatus } from './entities/order.entity';
 
 @Injectable()
 export class ProductsService {
@@ -27,6 +37,7 @@ export class ProductsService {
     private negotiationRepository: Repository<QuoteNegotiation>,
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
@@ -64,6 +75,45 @@ export class ProductsService {
 
     const totalPrice = unitPrice * createOrderDto.quantity;
 
+    let paymentStatus = OrderPaymentStatus.PENDING;
+
+    if (createOrderDto.paymentReference) {
+      // Idempotency check: Ensure reference isn't already used for another order
+      const existingOrder = await this.orderRepository.findOneBy({
+        paymentReference: createOrderDto.paymentReference,
+      });
+      if (existingOrder) {
+        throw new ConflictException(
+          'Order with this payment reference already exists',
+        );
+      }
+
+      const isPaymentValid = await this.paymentsService.verifyTransaction(
+        createOrderDto.paymentReference,
+      );
+
+      if (!isPaymentValid) {
+        throw new BadRequestException('Invalid payment reference');
+      }
+
+      await this.paymentsService.recordPayment({
+        reference: createOrderDto.paymentReference,
+        amount: totalPrice,
+        purpose: PaymentPurpose.ORDER,
+        status: PaymentStatus.SUCCESS,
+        metadata: {
+          productId: product.id,
+          quantity: createOrderDto.quantity,
+        },
+        businessId: user.businessId,
+        userId: user.id,
+      });
+
+      paymentStatus = OrderPaymentStatus.PAID;
+    } else {
+      throw new BadRequestException('Payment is required for direct orders');
+    }
+
     const order = this.orderRepository.create({
       product,
       productId: product.id,
@@ -73,6 +123,8 @@ export class ProductsService {
       user,
       userId: user.id,
       status: OrderStatus.PENDING,
+      paymentStatus,
+      paymentReference: createOrderDto.paymentReference,
     });
 
     return this.orderRepository.save(order);

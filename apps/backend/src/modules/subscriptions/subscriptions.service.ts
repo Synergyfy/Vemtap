@@ -13,8 +13,11 @@ import { Repository } from 'typeorm';
 import { PlansService } from './plans.service';
 import { SubscribeDto } from './dto/subscribe.dto';
 import { Business } from '../businesses/entities/business.entity';
-import { HttpService } from '@nestjs/axios';
-import { firstValueFrom } from 'rxjs';
+import { PaymentsService } from '../payments/payments.service';
+import {
+  PaymentPurpose,
+  PaymentStatus,
+} from '../payments/entities/payment.entity';
 
 @Injectable()
 export class SubscriptionsService {
@@ -24,7 +27,7 @@ export class SubscriptionsService {
     @InjectRepository(Business)
     private readonly businessRepository: Repository<Business>,
     private readonly plansService: PlansService,
-    private readonly httpService: HttpService,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   async activeSubscription(businessId: string): Promise<Subscription | null> {
@@ -46,35 +49,6 @@ export class SubscriptionsService {
     }
 
     return sub;
-  }
-
-  async verifyPaystackPayment(reference: string): Promise<boolean> {
-    try {
-      const secretKey = process.env.PAYSTACK_SECRET_KEY;
-      if (!secretKey) {
-        throw new Error('PAYSTACK_SECRET_KEY not configured');
-      }
-
-      const response = await firstValueFrom(
-        this.httpService.get(
-          `https://api.paystack.co/transaction/verify/${reference}`,
-          {
-            headers: {
-              Authorization: `Bearer ${secretKey}`,
-            },
-          },
-        ),
-      );
-
-      const data = response.data;
-      if (data.status && data.data.status === 'success') {
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Paystack Verification Error:', error.message);
-      return false;
-    }
   }
 
   async subscribe(subscribeDto: SubscribeDto): Promise<Subscription> {
@@ -100,10 +74,21 @@ export class SubscriptionsService {
           'Payment reference is required for paid plans',
         );
       }
-      const isPaymentValid = await this.verifyPaystackPayment(paymentReference);
+      const isPaymentValid =
+        await this.paymentsService.verifyTransaction(paymentReference);
       if (!isPaymentValid) {
         throw new BadRequestException('Payment verification failed');
       }
+
+      await this.paymentsService.recordPayment({
+        reference: paymentReference,
+        amount: plan.monthlyPrice, // Ideally calculate based on period
+        purpose: PaymentPurpose.SUBSCRIPTION,
+        status: PaymentStatus.SUCCESS,
+        metadata: { planId, billingPeriod },
+        businessId,
+        userId: business.ownerId, // Assuming business has ownerId
+      });
     }
 
     // Deactivate previous subscriptions

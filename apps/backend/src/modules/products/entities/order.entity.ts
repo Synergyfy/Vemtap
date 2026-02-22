@@ -19,6 +19,12 @@ export enum OrderStatus {
   COMPLETED = 'Completed', // Optional mapping
 }
 
+export enum PaymentStatus {
+  PENDING = 'Pending',
+  PAID = 'Paid',
+  FAILED = 'Failed',
+}
+
 @Entity('orders')
 export class Order extends AbstractBaseEntity {
   @OneToOne(() => Quote, (quote) => quote.order, {
@@ -62,6 +68,18 @@ export class Order extends AbstractBaseEntity {
     default: OrderStatus.PENDING,
   })
   status: OrderStatus;
+
+  @ApiProperty({ enum: PaymentStatus, default: PaymentStatus.PENDING })
+  @Column({
+    type: 'simple-enum',
+    enum: PaymentStatus,
+    default: PaymentStatus.PENDING,
+  })
+  paymentStatus: PaymentStatus;
+
+  @ApiProperty({ example: 'T123456789', required: false })
+  @Column({ nullable: true })
+  paymentReference: string;
 
   @ManyToOne(() => User, { onDelete: 'SET NULL' })
   user: User;

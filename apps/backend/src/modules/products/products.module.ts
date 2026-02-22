@@ -6,10 +6,12 @@ import { Product } from './entities/product.entity';
 import { Quote } from './entities/quote.entity';
 import { QuoteNegotiation } from './entities/quote-negotiation.entity';
 import { Order } from './entities/order.entity';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Product, Quote, QuoteNegotiation, Order]),
+    PaymentsModule,
   ],
   controllers: [ProductsController],
   providers: [ProductsService],
