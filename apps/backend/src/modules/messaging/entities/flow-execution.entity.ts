@@ -50,7 +50,11 @@ export class FlowExecution extends AbstractBaseEntity {
   @Column({ type: 'jsonb', default: {} })
   state: any; // Stores context, variable values, etc.
 
-  @Column({ type: 'enum', enum: ExecutionStatus, default: ExecutionStatus.PENDING })
+  @Column({
+    type: 'enum',
+    enum: ExecutionStatus,
+    default: ExecutionStatus.PENDING,
+  })
   status: ExecutionStatus;
 
   @Column({ nullable: true })

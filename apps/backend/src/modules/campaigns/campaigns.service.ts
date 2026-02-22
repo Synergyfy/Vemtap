@@ -11,6 +11,11 @@ import { PointTransaction } from './entities/point-transaction.entity';
 import { LoyaltyRule } from './entities/loyalty-rule.entity';
 import { Reward } from './entities/reward.entity';
 import { Redemption } from './entities/redemption.entity';
+import { User } from '../users/entities/user.entity';
+import { Contact } from '../contacts/entities/contact.entity';
+import { BranchesService } from '../branches/branches.service';
+import { AutomationService } from '../messaging/services/automation.service';
+import { TriggerType } from '../messaging/enums/automation.enum';
 import {
   CreateRewardDto,
   UpdateRewardDto,
@@ -36,6 +41,12 @@ export class CampaignsService {
     private rewardRepository: Repository<Reward>,
     @InjectRepository(Redemption)
     private redemptionRepository: Repository<Redemption>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
+    @InjectRepository(Contact)
+    private contactRepo: Repository<Contact>,
+    private branchesService: BranchesService,
+    private automationService: AutomationService,
   ) {}
 
   async create(
@@ -59,8 +70,12 @@ export class CampaignsService {
     status?: CampaignStatus,
   ): Promise<Campaign[]> {
     const where: any = { branchId };
-    if (status) where.status = status;
+    if (status) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      where.status = status;
+    }
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     return this.campaignRepository.find({
       where,
       order: { createdAt: 'DESC' },
@@ -234,7 +249,7 @@ export class CampaignsService {
     const profile = await this.getLoyaltyProfile(dto.userId, branchId);
 
     let earned = 0;
-    const breakdown: any = {};
+    const breakdown: Record<string, number> = {};
 
     if (dto.isVisit) {
       earned += rule.visitPoints || 0;
@@ -268,11 +283,61 @@ export class CampaignsService {
     profile.lastVisitDate = new Date();
     profile.lastRewardedAt = new Date();
 
-    if (profile.totalPointsEarned >= 5000) profile.tierLevel = 'platinum';
-    else if (profile.totalPointsEarned >= 2000) profile.tierLevel = 'gold';
-    else if (profile.totalPointsEarned >= 500) profile.tierLevel = 'silver';
+    let milestoneReached = false;
+    if (profile.totalPointsEarned >= 5000 && profile.tierLevel !== 'platinum') {
+      profile.tierLevel = 'platinum';
+      milestoneReached = true;
+    } else if (
+      profile.totalPointsEarned >= 2000 &&
+      profile.tierLevel !== 'gold' &&
+      profile.tierLevel !== 'platinum'
+    ) {
+      profile.tierLevel = 'gold';
+      milestoneReached = true;
+    } else if (
+      profile.totalPointsEarned >= 500 &&
+      profile.tierLevel !== 'silver' &&
+      profile.tierLevel !== 'gold' &&
+      profile.tierLevel !== 'platinum'
+    ) {
+      profile.tierLevel = 'silver';
+      milestoneReached = true;
+    }
 
     await this.profileRepository.save(profile);
+
+    // Trigger automation if milestone reached
+    if (milestoneReached) {
+      // Resolve user and contact
+      const user = await this.userRepo.findOne({ where: { id: dto.userId } });
+      if (user) {
+        const branch = await this.branchesService.findOne(branchId);
+        if (branch) {
+          let contact = await this.contactRepo.findOne({
+            where: [
+              { businessId: branch.businessId, email: user.email },
+              { businessId: branch.businessId, phone: user.phone },
+            ],
+          });
+          if (!contact) {
+            // Should create? Yes if missing.
+            contact = this.contactRepo.create({
+              businessId: branch.businessId,
+              email: user.email,
+              phone: user.phone,
+              name: `${user.firstName} ${user.lastName}`,
+            });
+            await this.contactRepo.save(contact);
+          }
+
+          await this.automationService.trigger(TriggerType.REWARD_EARNED, {
+            businessId: branch.businessId,
+            branchId,
+            contactId: contact.id,
+          });
+        }
+      }
+    }
 
     const transaction = this.transactionRepository.create({
       loyaltyProfileId: profile.id,

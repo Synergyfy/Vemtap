@@ -12,21 +12,23 @@ interface FlowDelayJobData {
 export class FlowDelayProcessor extends WorkerHost {
   private readonly logger = new Logger(FlowDelayProcessor.name);
 
-  constructor(
-    private readonly flowEngine: FlowEngineService,
-  ) {
+  constructor(private readonly flowEngine: FlowEngineService) {
     super();
   }
 
   async process(job: Job<FlowDelayJobData, any, string>): Promise<any> {
     const { executionId, nodeId } = job.data;
-    this.logger.log(`Processing delayed execution ${executionId} at node ${nodeId}`);
+    this.logger.log(
+      `Processing delayed execution ${executionId} at node ${nodeId}`,
+    );
 
     try {
-        await this.flowEngine.resumeExecution(executionId);
+      await this.flowEngine.resumeExecution(executionId);
     } catch (error) {
-        this.logger.error(`Failed to resume execution ${executionId}: ${error.message}`);
-        throw error;
+      this.logger.error(
+        `Failed to resume execution ${executionId}: ${error.message}`,
+      );
+      throw error;
     }
   }
 }

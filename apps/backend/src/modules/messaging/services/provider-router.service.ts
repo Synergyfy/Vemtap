@@ -9,9 +9,7 @@ import { TermiiProvider } from '../providers/termii.provider';
 
 @Injectable()
 export class ProviderRouterService {
-  constructor(
-    private readonly termiiProvider: TermiiProvider,
-  ) {}
+  constructor(private readonly termiiProvider: TermiiProvider) {}
 
   public getProvider(channel: Channel): MessagingProvider {
     switch (channel) {
