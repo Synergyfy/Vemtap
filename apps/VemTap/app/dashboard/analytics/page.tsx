@@ -12,6 +12,8 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
+import { exportToCSV } from '@/lib/utils/export';
+import { toast } from 'react-hot-toast';
 
 const STATS = [
     { label: 'Total Visits', value: '12,842', trend: '+14%', isUp: true, icon: Users, color: 'text-primary', bg: 'bg-primary/5' },
@@ -59,7 +61,14 @@ export default function AnalyticsDashboardPage() {
                         <button className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main rounded-lg transition-all">30D</button>
                         <button className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main rounded-lg transition-all">90D</button>
                     </div>
-                    <button className="flex items-center gap-2 px-4 py-2.5 bg-text-main text-white font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-black transition-all shadow-lg shadow-text-main/10">
+                    <button
+                        onClick={() => {
+                            const exportData = STATS.map(s => ({ Metric: s.label, Value: s.value, Trend: s.trend }));
+                            exportToCSV(exportData, `analytics_report_${new Date().toISOString().split('T')[0]}`);
+                            toast.success('Analytics report exported');
+                        }}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-text-main text-white font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-black transition-all shadow-lg shadow-text-main/10"
+                    >
                         <Download size={14} />
                         Export
                     </button>

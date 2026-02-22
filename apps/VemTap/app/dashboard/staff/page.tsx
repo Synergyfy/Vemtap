@@ -8,8 +8,9 @@ import { dashboardApi } from '@/lib/api/dashboard';
 import { Staff } from '@/lib/store/mockDashboardStore';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useBusinessStore } from '@/store/useBusinessStore';
 import toast from 'react-hot-toast';
-import { UserPlus, Shield, Edit3, Trash2, Eye, MessageSquare, BarChart3, Users as UsersIcon, Settings as SettingsIcon } from 'lucide-react';
+import { UserPlus, Shield, Edit3, Trash2, Eye, MessageSquare, BarChart3, Users as UsersIcon, Settings as SettingsIcon, Building2 } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 
 const PERMISSIONS = [
@@ -30,8 +31,10 @@ export default function StaffManagementPage() {
     const [staffToDelete, setStaffToDelete] = useState<{ id: string, name: string } | null>(null);
     const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['dashboard', 'visitors']);
 
+    const { activeBranchId, branches } = useBusinessStore();
+
     const { data: storeData, isLoading } = useQuery({
-        queryKey: ['dashboard'],
+        queryKey: ['dashboard', activeBranchId],
         queryFn: dashboardApi.fetchDashboardData,
     });
 
@@ -58,7 +61,7 @@ export default function StaffManagementPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['dashboard'] });
             setEditingStaff(null);
-            toast.success('Staff role updated');
+            toast.success('Staff details updated');
         }
     });
 
@@ -79,6 +82,7 @@ export default function StaffManagementPage() {
             role: formData.get('role') as any,
             jobTitle: formData.get('jobTitle') as string,
             permissions: selectedPermissions,
+            branchId: formData.get('branchId') as string,
         };
         addStaffMutation.mutate(staffData);
         setSelectedPermissions(['dashboard', 'visitors']);
@@ -86,6 +90,10 @@ export default function StaffManagementPage() {
 
     const handleUpdateRole = (id: string, role: string) => {
         updateStaffMutation.mutate({ id, updates: { role: role as any } });
+    };
+
+    const handleUpdateBranch = (id: string, branchId: string) => {
+        updateStaffMutation.mutate({ id, updates: { branchId } });
     };
 
     const handleDelete = (id: string, name: string) => {
@@ -129,6 +137,18 @@ export default function StaffManagementPage() {
             )
         },
         {
+            header: 'Branch',
+            accessor: (item: Staff) => {
+                const branch = branches.find(b => b.id === item.branchId);
+                return (
+                    <div className="flex items-center gap-2">
+                        <Building2 size={14} className="text-gray-400" />
+                        <span className="text-sm font-bold text-text-main leading-none">{branch?.name || 'Main Branch'}</span>
+                    </div>
+                );
+            }
+        },
+        {
             header: 'Status',
             accessor: (item: Staff) => (
                 <div className="flex items-center gap-2">
@@ -148,7 +168,7 @@ export default function StaffManagementPage() {
                     <button
                         onClick={() => setEditingStaff(item)}
                         className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
-                        title="Change Role"
+                        title="Edit Staff Access"
                     >
                         <Edit3 size={18} />
                     </button>
@@ -248,13 +268,23 @@ export default function StaffManagementPage() {
                         </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Access Level</label>
-                        <select name="role" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none">
-                            <option value="Staff">Staff Member (Limited Access)</option>
-                            <option value="Manager">Manager (Full Dashboard)</option>
-                            <option value="Owner">Business Owner (Admin)</option>
-                        </select>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Access Level</label>
+                            <select name="role" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none">
+                                <option value="Staff">Staff Member (Limited Access)</option>
+                                <option value="Manager">Manager (Full Dashboard)</option>
+                                <option value="Owner">Business Owner (Admin)</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Assign to Branch</label>
+                            <select name="branchId" required className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none">
+                                {branches.map(b => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
                     <div className="space-y-3">
@@ -314,6 +344,19 @@ export default function StaffManagementPage() {
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Assigned Branch</label>
+                        <select
+                            value={editingStaff?.branchId}
+                            onChange={(e) => handleUpdateBranch(editingStaff!.id, e.target.value)}
+                            className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none"
+                        >
+                            {branches.map(b => (
+                                <option key={b.id} value={b.id}>{b.name}</option>
+                            ))}
+                        </select>
                     </div>
 
                     <div className="space-y-3">

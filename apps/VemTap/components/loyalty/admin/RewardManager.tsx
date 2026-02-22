@@ -331,17 +331,25 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                             )}
                                         >
                                             {formData.imageUrl ? (
-                                                <>
-                                                    <img src={formData.imageUrl} alt="Reward Preview" className="w-full h-full object-cover" />
-                                                    <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                                                        <button onClick={() => fileInputRef.current?.click()} className="p-3 bg-white text-slate-900 rounded-2xl hover:scale-110 transition-transform">
-                                                            <Upload size={20} />
+                                                <div className="w-full h-full relative group">
+                                                    <img src={formData.imageUrl} alt="Reward Preview" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                        <button
+                                                            onClick={() => fileInputRef.current?.click()}
+                                                            className="p-2 bg-white rounded-lg text-primary hover:bg-gray-50 transition-colors"
+                                                            title="Change Image"
+                                                        >
+                                                            <Plus size={18} />
                                                         </button>
-                                                        <button onClick={() => setFormData(p => ({ ...p, imageUrl: '' }))} className="p-3 bg-rose-500 text-white rounded-2xl hover:scale-110 transition-transform">
-                                                            <Trash2 size={20} />
+                                                        <button
+                                                            onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
+                                                            className="p-2 bg-white rounded-lg text-red-500 hover:bg-gray-50 transition-colors"
+                                                            title="Remove Image"
+                                                        >
+                                                            <Trash2 size={18} />
                                                         </button>
                                                     </div>
-                                                </>
+                                                </div>
                                             ) : (
                                                 <div
                                                     className="flex flex-col items-center gap-3 cursor-pointer p-8 w-full h-full"

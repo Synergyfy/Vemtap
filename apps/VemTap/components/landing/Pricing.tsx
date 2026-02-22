@@ -42,8 +42,8 @@ export default function Pricing() {
         </div>
     );
 
-    const mainPlans = plans.filter(plan => plan.id !== 'white-label' && plan.id !== 'enterprise').slice(0, 4);
-    const enterprisePlan = plans.find(plan => plan.id === 'white-label');
+    const mainPlans = plans.filter(plan => ['free', 'personal', 'basic', 'premium'].includes(plan.id));
+    const enterprisePlan = plans.find(plan => plan.id === 'white-label' || plan.id === 'enterprise');
 
     const getBasePrice = (priceStr: string) => {
         if (priceStr === 'Custom') return null;

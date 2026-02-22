@@ -1,17 +1,32 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { toast } from 'react-hot-toast';
-import { Plus, Trash2, GripVertical, CheckCircle2, Layout, Settings, Eye, Save, Type, Star, List } from 'lucide-react';
+import { Plus, Trash2, GripVertical, CheckCircle2, Layout, Settings, Eye, Save, Type, Star, List, BarChart3 } from 'lucide-react';
 import { motion, Reorder, AnimatePresence } from 'framer-motion';
+import { useSurvey, useCreateOrUpdateSurvey } from '@/services/surveys/hooks';
+import { SurveyTriggerType, TargetAudience } from '@/services/surveys/types';
 
 export default function SurveyBuilderPage() {
+    const { data: serverSurvey, isLoading } = useSurvey();
+    const { mutate: saveSurvey, isPending: isSaving } = useCreateOrUpdateSurvey();
+
     const { surveyQuestions } = useCustomerFlowStore();
-    const [questions, setQuestions] = useState(surveyQuestions);
+    const [questions, setQuestions] = useState<any[]>(surveyQuestions);
     const [previewMode, setPreviewMode] = useState(false);
     const [activeTab, setActiveTab] = useState<'editor' | 'settings'>('editor');
+    const [triggerType, setTriggerType] = useState<SurveyTriggerType>(SurveyTriggerType.INSTANT);
+    const [targetAudience, setTargetAudience] = useState<TargetAudience>({ new: true, returning: true });
+
+    useEffect(() => {
+        if (serverSurvey && Object.keys(serverSurvey).length > 0) {
+            if (serverSurvey.questions?.length) setQuestions(serverSurvey.questions);
+            if (serverSurvey.triggerType) setTriggerType(serverSurvey.triggerType);
+            if (serverSurvey.targetAudience) setTargetAudience(serverSurvey.targetAudience);
+        }
+    }, [serverSurvey]);
 
     const addQuestion = () => {
         if (questions.length >= 3) {
@@ -35,15 +50,45 @@ export default function SurveyBuilderPage() {
     };
 
     const handleSave = () => {
-        useCustomerFlowStore.setState({ surveyQuestions: questions });
-        toast.success('Survey configuration saved!');
+        saveSurvey({
+            questions,
+            triggerType,
+            targetAudience,
+            isActive: true,
+            triggerDelay: 0
+        }, {
+            onSuccess: () => {
+                useCustomerFlowStore.setState({ surveyQuestions: questions });
+                toast.success('Survey configuration saved!');
+            },
+            onError: () => {
+                toast.error('Failed to save survey configuration');
+            }
+        });
     };
+
+    if (isLoading) {
+        return (
+            <div className="p-8 flex items-center justify-center min-h-[60vh]">
+                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-8">
             <PageHeader
                 title="Survey Builder"
                 description="Design quick touch-friendly surveys to capture customer insights"
+                actions={
+                    <button
+                        onClick={() => window.location.href = '/dashboard/surveys/analytics'}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm shadow-sm"
+                    >
+                        <BarChart3 size={18} />
+                        Analytics
+                    </button>
+                }
             />
 
             <div className="flex flex-col lg:flex-row gap-8 max-w-6xl">
@@ -161,14 +206,14 @@ export default function SurveyBuilderPage() {
                                 <h3 className="text-sm font-black uppercase tracking-widest text-text-main">Target Audience</h3>
                                 <div className="space-y-3">
                                     <label className="flex items-center gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50/50 cursor-pointer hover:bg-white transition-all">
-                                        <input type="checkbox" defaultChecked className="size-4 accent-primary" />
+                                        <input type="checkbox" checked={targetAudience.new} onChange={(e) => setTargetAudience({ ...targetAudience, new: e.target.checked })} className="size-4 accent-primary" />
                                         <div>
                                             <p className="text-xs font-bold text-text-secondary">First-time visitors</p>
                                             <p className="text-[10px] text-text-secondary font-medium">New customers tagging for the first time</p>
                                         </div>
                                     </label>
                                     <label className="flex items-center gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50/50 cursor-pointer hover:bg-white transition-all">
-                                        <input type="checkbox" defaultChecked className="size-4 accent-primary" />
+                                        <input type="checkbox" checked={targetAudience.returning} onChange={(e) => setTargetAudience({ ...targetAudience, returning: e.target.checked })} className="size-4 accent-primary" />
                                         <div>
                                             <p className="text-xs font-bold text-text-secondary">Repeat visitors</p>
                                             <p className="text-[10px] text-text-secondary font-medium">Returning loyal customers</p>
@@ -189,10 +234,11 @@ export default function SurveyBuilderPage() {
                         </button>
                         <button
                             onClick={handleSave}
-                            className="h-12 px-8 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all flex items-center gap-2"
+                            disabled={isSaving}
+                            className="h-12 px-8 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-50 disabled:hover:scale-100"
                         >
-                            <Save size={16} />
-                            Save Survey
+                            {isSaving ? <span className="material-icons-round animate-spin text-sm">refresh</span> : <Save size={16} />}
+                            {isSaving ? 'Saving...' : 'Save Survey'}
                         </button>
                     </div>
                 </div>

@@ -56,6 +56,19 @@ const DEFAULT_PLANS: PricingPlan[] = [
         tagLimit: Infinity
     },
     {
+        id: 'personal',
+        name: 'Personal Plan',
+        price: '₦20,000',
+        period: '/mo',
+        billingPeriod: 'monthly',
+        description: 'A tailored plan that scales exactly with your business needs.',
+        features: ['Flexible visitors', 'Flexible Tag Licenses', 'Growth Analytics', 'Email & Chat Support'],
+        buttonText: 'Get Personal',
+        color: 'emerald',
+        visitorLimit: 200,
+        tagLimit: 1
+    },
+    {
         id: 'enterprise',
         name: 'Custom Pricing',
         price: 'Custom',

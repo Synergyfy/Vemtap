@@ -16,7 +16,9 @@ export interface Quote {
     estimatedValue: number | 'quote';
     status: 'Pending' | 'Approved' | 'Rejected' | 'Expired';
     createdAt: Date;
-    nfcLinksGenerated?: number; // tracks how many NFC links have been generated against this quote
+    nfcLinksGenerated?: number;
+    businessId?: string; // For admin-granted quotes
+    businessName?: string; // For admin-granted quotes
 }
 
 interface QuoteStore {

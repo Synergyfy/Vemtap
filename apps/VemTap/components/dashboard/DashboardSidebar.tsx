@@ -5,16 +5,18 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { useBusinessStore } from '@/store/useBusinessStore';
 import defaultLogo from '@/assets/logos/logo.png';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
 import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Nfc, Send, Gift, BarChart, Users2, Settings,
-    ChevronDown, LogOut, Bell, Search, HelpCircle, Menu, X, Zap, MessageSquare, Smartphone, Building2
+    ChevronDown, LogOut, Bell, Search, HelpCircle, Menu, X, Zap, MessageSquare, Smartphone, Building2, ShieldCheck
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
+import { useMyBusiness } from '@/services/businesses/hooks';
 
 interface SidebarProps {
     children: React.ReactNode;
@@ -24,7 +26,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
     const { user, logout } = useAuthStore();
-    const { storeName, logoUrl: businessLogo } = useCustomerFlowStore();
+    const { data: myBusiness } = useMyBusiness();
 
     // Auto-expand the menu corresponding to the current path
     const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
@@ -38,9 +40,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const [showNotifications, setShowNotifications] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const queryClient = useQueryClient();
+    const { activeBranchId } = useBusinessStore();
 
     const { data } = useQuery({
-        queryKey: ['dashboard'],
+        queryKey: ['dashboard', activeBranchId],
         queryFn: dashboardApi.fetchDashboardData,
         refetchInterval: 5000,
     });
@@ -213,6 +216,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             icon: Users2,
             href: '/dashboard/staff',
             roles: ['owner']
+        },
+        {
+            id: 'admin-nfc',
+            label: 'Admin NFC Grants',
+            icon: ShieldCheck,
+            href: '/admin/nfc-grants',
+            roles: ['admin']
         },
 
         {
@@ -399,14 +409,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 {/* User Profile */}
                 <div className="border-t border-gray-200 p-4">
                     <Link
-                        href={`/business/${(storeName || user?.businessName || 'profile').toLowerCase().replace(/\s+/g, '-')}`}
+                        href={`/business/${(myBusiness?.name || user?.businessName || 'profile').toLowerCase().replace(/\s+/g, '-')}`}
                         className="flex items-center gap-3 mb-3 hover:bg-gray-50 p-2 rounded-xl transition-colors group"
                     >
                         <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-gray-100 group-hover:scale-105 transition-transform">
-                            {businessLogo || defaultLogo ? (
+                            {myBusiness?.logoUrl || defaultLogo ? (
                                 <img
-                                    src={businessLogo || defaultLogo.src}
-                                    alt={storeName}
+                                    src={myBusiness?.logoUrl || defaultLogo.src}
+                                    alt={myBusiness?.name || 'Store'}
                                     className="w-full h-full object-contain p-1"
                                 />
                             ) : (
@@ -415,7 +425,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-text-main truncate">{user?.name || 'Business Owner'}</p>
-                            <p className="text-xs text-text-secondary truncate">{storeName || user?.businessName || 'Business Profile'}</p>
+                            <p className="text-xs text-text-secondary truncate">{myBusiness?.name || user?.businessName || 'Business Profile'}</p>
                         </div>
                     </Link>
                     <button

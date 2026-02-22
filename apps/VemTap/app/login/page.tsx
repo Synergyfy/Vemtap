@@ -50,7 +50,7 @@ export default function LoginPage() {
         <div className="h-screen bg-white flex overflow-hidden font-sans">
             {/* Left Side: Login Form */}
             <div className="w-full lg:w-1/2 flex flex-col overflow-y-auto">
-                <div className="p-8 md:p-12 lg:p-20 flex flex-col min-h-full">
+                <div className="p-8 md:p-12 lg:p-20 pb-20 md:pb-28 lg:pb-32 flex flex-col min-h-full">
                     <Link href="/" className="mb-12 md:mb-20 block w-fit">
                         <Logo />
                     </Link>
