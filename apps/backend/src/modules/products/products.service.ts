@@ -8,8 +8,11 @@ import {
   OfferedByRole,
 } from './entities/quote-negotiation.entity';
 import { Order, OrderStatus } from './entities/order.entity';
+import { ProductType } from './entities/product-type.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { CreateProductTypeDto } from './dto/create-product-type.dto';
+import { UpdateProductTypeDto } from './dto/update-product-type.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { RequestQuoteDto } from './dto/request-quote.dto';
 import { NegotiateQuoteDto } from './dto/negotiate-quote.dto';
@@ -37,13 +40,67 @@ export class ProductsService {
     private negotiationRepository: Repository<QuoteNegotiation>,
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
+    @InjectRepository(ProductType)
+    private productTypeRepository: Repository<ProductType>,
     private readonly paymentsService: PaymentsService,
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     const product = this.productRepository.create(createProductDto);
+
+    if (createProductDto.productTypeId) {
+      const type = await this.productTypeRepository.findOneBy({
+        id: createProductDto.productTypeId,
+      });
+      if (!type) throw new NotFoundException('Product type not found');
+      product.productType = type;
+    }
+
     return this.productRepository.save(product);
   }
+
+  // --- Product Type Methods ---
+
+  async createProductType(dto: CreateProductTypeDto): Promise<ProductType> {
+    const existing = await this.productTypeRepository.findOne({
+      where: [{ name: dto.name }, { slug: dto.slug }],
+    });
+    if (existing) {
+      throw new ConflictException('Product type with name or slug already exists');
+    }
+    const productType = this.productTypeRepository.create(dto);
+    return this.productTypeRepository.save(productType);
+  }
+
+  async findAllProductTypes(): Promise<ProductType[]> {
+    return this.productTypeRepository.find({
+      order: { name: 'ASC' },
+    });
+  }
+
+  async findOneProductType(id: string): Promise<ProductType> {
+    const productType = await this.productTypeRepository.findOneBy({ id });
+    if (!productType) {
+      throw new NotFoundException('Product type not found');
+    }
+    return productType;
+  }
+
+  async updateProductType(
+    id: string,
+    dto: UpdateProductTypeDto,
+  ): Promise<ProductType> {
+    const productType = await this.findOneProductType(id);
+    Object.assign(productType, dto);
+    return this.productTypeRepository.save(productType);
+  }
+
+  async removeProductType(id: string): Promise<void> {
+    const productType = await this.findOneProductType(id);
+    await this.productTypeRepository.remove(productType);
+  }
+
+  // --- End Product Type Methods ---
 
   async createDirectOrder(
     user: User,
@@ -130,9 +187,14 @@ export class ProductsService {
     return this.orderRepository.save(order);
   }
 
-  async findAllPublished(): Promise<Product[]> {
+  async findAllPublished(productTypeId?: string): Promise<Product[]> {
+    const where: any = { status: ProductStatus.PUBLISHED };
+    if (productTypeId) {
+      where.productTypeId = productTypeId;
+    }
     return this.productRepository.find({
-      where: { status: ProductStatus.PUBLISHED },
+      where,
+      relations: ['productType'],
       order: { createdAt: 'DESC' },
     });
   }

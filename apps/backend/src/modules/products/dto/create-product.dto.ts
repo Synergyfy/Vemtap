@@ -73,4 +73,9 @@ export class CreateProductDto {
   @IsEnum(ProductStatus)
   @IsOptional()
   status?: ProductStatus;
+
+  @ApiProperty({ example: 'type-uuid', required: false })
+  @IsString()
+  @IsOptional()
+  productTypeId?: string;
 }

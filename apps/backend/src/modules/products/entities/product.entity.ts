@@ -1,7 +1,8 @@
-import { Entity, Column, OneToMany } from 'typeorm';
+import { Entity, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Quote } from './quote.entity';
+import { ProductType } from './product-type.entity';
 
 export enum ProductStatus {
   PUBLISHED = 'Published',
@@ -57,6 +58,16 @@ export class Product extends AbstractBaseEntity {
   })
   @Column({ nullable: true })
   requestQuoteThreshold: number;
+
+  @ManyToOne(() => ProductType, (productType) => productType.products, {
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'productTypeId' })
+  productType: ProductType;
+
+  @ApiProperty({ example: 'type-uuid' })
+  @Column({ nullable: true })
+  productTypeId: string;
 
   @ApiProperty({ enum: ProductStatus, default: ProductStatus.PUBLISHED })
   @Column({

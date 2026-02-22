@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Request,
+  Query,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -14,7 +15,10 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { RequestQuoteDto } from './dto/request-quote.dto';
 import { NegotiateQuoteDto } from './dto/negotiate-quote.dto';
+import { CreateProductTypeDto } from './dto/create-product-type.dto';
+import { UpdateProductTypeDto } from './dto/update-product-type.dto';
 import { Product } from './entities/product.entity';
+import { ProductType } from './entities/product-type.entity';
 import { Quote } from './entities/quote.entity';
 import { Order } from './entities/order.entity';
 import { User, UserRole } from '../users/entities/user.entity';
@@ -54,9 +58,51 @@ export class ProductsController {
     description: 'Return all published products.',
     type: [Product],
   })
-  findAll() {
-    return this.productsService.findAllPublished();
+  findAll(@Query('productTypeId') productTypeId?: string) {
+    return this.productsService.findAllPublished(productTypeId);
   }
+
+  // --- Product Types Endpoints ---
+
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Post('types')
+  @ApiOperation({ summary: 'Create a new product type (Admin only)' })
+  @ApiResponse({ status: 201, type: ProductType })
+  createProductType(@Body() dto: CreateProductTypeDto) {
+    return this.productsService.createProductType(dto);
+  }
+
+  @Public()
+  @Get('types')
+  @ApiOperation({ summary: 'Get all product types (Public)' })
+  @ApiResponse({ status: 200, type: [ProductType] })
+  findAllProductTypes() {
+    return this.productsService.findAllProductTypes();
+  }
+
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Patch('types/:id')
+  @ApiOperation({ summary: 'Update product type (Admin only)' })
+  @ApiResponse({ status: 200, type: ProductType })
+  updateProductType(
+    @Param('id') id: string,
+    @Body() dto: UpdateProductTypeDto,
+  ) {
+    return this.productsService.updateProductType(id, dto);
+  }
+
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Delete('types/:id')
+  @ApiOperation({ summary: 'Delete product type (Admin only)' })
+  @ApiResponse({ status: 200 })
+  removeProductType(@Param('id') id: string) {
+    return this.productsService.removeProductType(id);
+  }
+
+  // --- End Product Types Endpoints ---
 
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
