@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { HttpModule } from '@nestjs/axios';
 import { Business } from '../businesses/entities/business.entity';
 import { Branch } from '../branches/entities/branch.entity';
 
@@ -16,9 +17,6 @@ import { BusinessesModule } from '../businesses/businesses.module';
 import { SettingsModule } from '../settings/settings.module';
 
 import { MessagingEngineService } from './services/messaging-engine.service';
-import { SmsService } from './services/sms.service';
-import { WhatsappService } from './services/whatsapp.service';
-import { EmailService } from './services/email.service';
 import { TemplateService } from './services/template.service';
 import { ComplianceService } from './services/compliance.service';
 import { CreditService } from './services/credit.service';
@@ -26,6 +24,12 @@ import { CampaignService } from './services/campaign.service';
 import { InboxService } from './services/inbox.service';
 import { AnalyticsService } from './services/analytics.service';
 import { MessagingController } from './controllers/messaging.controller';
+import { TermiiWebhookController } from './controllers/termii.controller';
+import { WapsChatWebhookController } from './controllers/wapschat.controller';
+import { TermiiProvider } from './providers/termii.provider';
+import { WapsChatProvider } from './providers/wapschat.provider';
+import { ProviderRouterService } from './services/provider-router.service';
+import { BatchSendProcessor } from './processors/batch-send.processor';
 
 @Module({
   imports: [
@@ -38,6 +42,7 @@ import { MessagingController } from './controllers/messaging.controller';
       Business,
       Branch,
     ]),
+    HttpModule,
     ContactsModule,
     BusinessesModule,
     SettingsModule,
@@ -57,29 +62,34 @@ import { MessagingController } from './controllers/messaging.controller';
   ],
   providers: [
     MessagingEngineService,
-    SmsService,
-    WhatsappService,
-    EmailService,
     TemplateService,
     ComplianceService,
     CreditService,
     CampaignService,
     InboxService,
     AnalyticsService,
+    TermiiProvider,
+    WapsChatProvider,
+    ProviderRouterService,
+    BatchSendProcessor,
   ],
-  controllers: [MessagingController],
+  controllers: [
+    MessagingController,
+    TermiiWebhookController,
+    WapsChatWebhookController,
+  ],
   exports: [
     TypeOrmModule,
     MessagingEngineService,
-    SmsService,
-    WhatsappService,
-    EmailService,
     TemplateService,
     ComplianceService,
     CreditService,
     CampaignService,
     InboxService,
     AnalyticsService,
+    TermiiProvider,
+    WapsChatProvider,
+    ProviderRouterService,
   ],
 })
 export class MessagingModule {}

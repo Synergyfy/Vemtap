@@ -2,9 +2,6 @@ import {
   Injectable,
   Logger,
   BadRequestException,
-  NotFoundException,
-  forwardRef,
-  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
@@ -35,10 +32,9 @@ import { ComplianceService } from './compliance.service';
 import { CreditService } from './credit.service';
 import { TemplateService } from './template.service';
 import { CampaignService } from './campaign.service';
-import { SmsService } from './sms.service';
-import { WhatsappService } from './whatsapp.service';
-import { EmailService } from './email.service';
 import { SettingsService } from '../../settings/settings.service';
+import { ProviderRouterService } from './provider-router.service';
+import { InboundMessage, DeliveryReport } from '../interfaces/messaging-provider.interface';
 
 @Injectable()
 export class MessagingEngineService {
@@ -62,10 +58,8 @@ export class MessagingEngineService {
     private readonly creditService: CreditService,
     private readonly templateService: TemplateService,
     private readonly campaignService: CampaignService,
-    private readonly smsService: SmsService,
-    private readonly whatsappService: WhatsappService,
-    private readonly emailService: EmailService,
     private readonly settingsService: SettingsService,
+    private readonly providerRouter: ProviderRouterService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -175,69 +169,44 @@ export class MessagingEngineService {
     return null;
   }
 
-  public async handleInbound(payload: any, channel: Channel): Promise<void> {
-    // 1. Map payload to incoming values based on channel
-    let incomingFrom = '',
-      incomingTo = '',
-      text = '',
-      infobipMessageId: string | undefined = undefined;
+  public async handleInbound(message: InboundMessage): Promise<void> {
+    this.logger.log(`Inbound ${message.channel} from ${message.from} to ${message.to}`);
 
-    if (channel === Channel.SMS || channel === Channel.WHATSAPP) {
-      // Assuming Infobip common inbound format: payload.results[0]
-      const msg = payload.results?.[0];
-      if (!msg) return;
-
-      incomingFrom = msg.from;
-      incomingTo = msg.to;
-      text = msg.message?.text || '';
-      infobipMessageId = msg.messageId;
-    } else if (channel === Channel.EMAIL) {
-      incomingFrom = payload.from;
-      incomingTo = payload.to;
-      text = payload.text || '';
-      infobipMessageId = payload.messageId;
-    }
-
-    this.logger.log(`Inbound ${channel} from ${incomingFrom} to ${incomingTo}`);
-
-    // 2. Identify business by "to" (business mapped sender ID or email)
-    // Note: In real scenarios, we must have a mapping table: BusinessChannels { businessId, value, channel }
-    // As a simplification for the PRD, we assume we find business by matching the generic logic or fallback.
-    // Given no schema for sender routing mapping, we fallback to first business or custom logic.
     const business = await this.businessRepo.findOne({
       order: { createdAt: 'ASC' },
     });
-    if (!business) return;
+    if (!business) {
+        this.logger.warn(`No business found for inbound message to ${message.to}`);
+        return;
+    }
 
-    // 3. Find or Create Contact for the business
     let contact = await this.contactRepo.findOne({
-      where: { businessId: business.id, phone: incomingFrom },
+      where: { businessId: business.id, phone: message.from },
     });
-    if (!contact && channel === Channel.EMAIL) {
+    if (!contact && message.channel === Channel.EMAIL) {
       contact = await this.contactRepo.findOne({
-        where: { businessId: business.id, email: incomingFrom },
+        where: { businessId: business.id, email: message.from },
       });
     }
     if (!contact) {
       const newContact = this.contactRepo.create({
         businessId: business.id,
-        name: 'Unknown ' + incomingFrom,
-        optInChannels: [channel],
+        name: 'Unknown ' + message.from,
+        optInChannels: [message.channel],
       });
-      if (channel !== Channel.EMAIL) {
-        newContact.phone = incomingFrom;
+      if (message.channel !== Channel.EMAIL) {
+        newContact.phone = message.from;
       } else {
-        newContact.email = incomingFrom;
+        newContact.email = message.from;
       }
       contact = await this.contactRepo.save(newContact);
     }
 
     const safeContact = contact;
 
-    // Handle Opt-Out (STOP, UNSUBSCRIBE)
     if (
-      text.trim().toUpperCase() === 'STOP' ||
-      text.trim().toUpperCase() === 'UNSUBSCRIBE'
+      message.content.trim().toUpperCase() === 'STOP' ||
+      message.content.trim().toUpperCase() === 'UNSUBSCRIBE'
     ) {
       this.complianceService.handleOptOut(safeContact);
       await this.contactRepo.save(safeContact);
@@ -246,66 +215,50 @@ export class MessagingEngineService {
       );
     }
 
-    // 4. Find or Create Thread
     let thread = await this.threadRepo.findOne({
-      where: { businessId: business.id, contactId: safeContact.id, channel },
+      where: { businessId: business.id, contactId: safeContact.id, channel: message.channel },
     });
     if (!thread) {
       thread = this.threadRepo.create({
         businessId: business.id,
         contactId: safeContact.id,
-        channel,
+        channel: message.channel,
       });
     }
     thread.lastActivityAt = new Date();
     thread.status = ThreadStatus.OPEN;
     thread = await this.threadRepo.save(thread);
 
-    // 5. Create Message
-    const message = this.messageRepo.create({
+    const msgEntity = this.messageRepo.create({
       businessId: business.id,
       contactId: safeContact.id,
       threadId: thread.id,
       direction: MessageDirection.INBOUND,
-      content: text,
+      content: message.content,
       status: MessageStatus.DELIVERED,
-      infobipMessageId,
+      providerMessageId: message.providerMessageId,
+      channel: message.channel,
+      timestamp: message.timestamp,
     });
-    await this.messageRepo.save(message);
+    await this.messageRepo.save(msgEntity);
 
-    // 6. Socket emit to business room
-    // Assuming a global websocket gateway listens to 'business-{id}'
-    // e.g., webhooks / gateways handle it, here we'd inject EventEmitter or direct Socket
     this.logger.log(
       `[SocketEmit] 'inbox:new-message' to room business-${business.id}`,
     );
   }
 
-  public async updateDeliveryStatus(payload: any): Promise<void> {
-    const results = payload.results || [];
-    for (const result of results) {
-      const msgId = result.messageId;
-      const statusName = result.status?.name; // PENDING, DELIVERED, REJECTED etc.
+  public async updateDeliveryStatus(report: DeliveryReport): Promise<void> {
+    const msgId = report.messageId;
+    const statusName = report.status;
 
-      if (!msgId || !statusName) continue;
+    if (!msgId || !statusName) return;
 
-      const message = await this.messageRepo.findOne({
-        where: { infobipMessageId: msgId },
-      });
-      if (message) {
-        message.status = this.mapInfobipStatus(statusName);
-        await this.messageRepo.save(message);
-
-        const log = await this.logRepo.findOne({
-          where: { infobipMessageId: msgId } as any,
-        }); // If we stored it
-        if (log) {
-          log.status = message.status;
-          await this.logRepo.save(log);
-        }
-
-        // If part of campaign, we could update metrics here or periodically.
-      }
+    const message = await this.messageRepo.findOne({
+      where: { providerMessageId: msgId },
+    });
+    if (message) {
+      message.status = this.mapProviderStatus(statusName);
+      await this.messageRepo.save(message);
     }
   }
 
@@ -327,29 +280,15 @@ export class MessagingEngineService {
         });
       }
 
-      let infobipId: string | undefined = undefined;
-      const senderId = business.name || 'VemTap'; // Or mapping
+      const senderId = business.name || 'VemTap';
+      const from = (dto.channel === Channel.WHATSAPP && business.whatsappNumber) ? business.whatsappNumber : senderId;
 
-      if (dto.channel === Channel.SMS) {
-        infobipId = await this.smsService.sendSingle(
-          senderId,
-          contact.phone,
-          finalContent,
-        );
-      } else if (dto.channel === Channel.WHATSAPP) {
-        infobipId = await this.whatsappService.sendSingle(
-          senderId,
-          contact.phone,
-          finalContent,
-        );
-      } else if (dto.channel === Channel.EMAIL) {
-        infobipId = await this.emailService.sendSingle(
-          'no-reply@vemtap.com',
-          contact.email,
-          'Message',
-          finalContent,
-        );
-      }
+      const response = await this.providerRouter.sendMessage({
+        to: (dto.channel === Channel.EMAIL) ? contact.email : contact.phone,
+        from,
+        content: finalContent,
+        channel: dto.channel,
+      });
 
       const message = await this.messageRepo.save(
         this.messageRepo.create({
@@ -358,7 +297,14 @@ export class MessagingEngineService {
           direction: MessageDirection.OUTBOUND,
           content: finalContent,
           status: MessageStatus.SENT,
-          infobipMessageId: infobipId,
+          providerMessageId: response.messageId,
+          channel: dto.channel,
+          cost: await this.providerRouter.estimateCost({
+              to: (dto.channel === Channel.EMAIL) ? contact.email : contact.phone,
+              from,
+              content: finalContent,
+              channel: dto.channel
+          })
         }),
       );
 
@@ -398,15 +344,11 @@ export class MessagingEngineService {
     if (dto.contactIds && dto.contactIds.length > 0) {
       return this.contactRepo.findBy({ id: In(dto.contactIds) });
     }
-    // Very basic audience resolution stub based on PRD
-    // If ALL, get all matching the optIn parameter.
     return this.contactRepo.find({ where: { businessId: dto.businessId } });
   }
 
   public async calculateCost(count: number, channel: Channel): Promise<number> {
     const settings = await this.settingsService.getGlobalSettings();
-
-    // Settings returns default decimals based on the DB schema if unset
     switch (channel) {
       case Channel.SMS:
         return count * (Number(settings.messagingCostSms) || 0.05);
@@ -419,18 +361,14 @@ export class MessagingEngineService {
     }
   }
 
-  private mapInfobipStatus(status: string): MessageStatus {
-    switch (status.toUpperCase()) {
-      case 'DELIVERED_TO_HANDSET':
-        return MessageStatus.DELIVERED;
-      case 'REJECTED':
-        return MessageStatus.REJECTED;
-      case 'PENDING':
-        return MessageStatus.PENDING;
-      case 'DELIVERED':
-        return MessageStatus.DELIVERED;
-      default:
-        return MessageStatus.SENT;
-    }
+  private mapProviderStatus(status: string): MessageStatus {
+      switch(status.toUpperCase()) {
+          case 'DELIVERED': return MessageStatus.DELIVERED;
+          case 'SENT': return MessageStatus.SENT;
+          case 'FAILED': return MessageStatus.FAILED;
+          case 'PENDING': return MessageStatus.PENDING;
+          case 'REJECTED': return MessageStatus.REJECTED;
+          default: return MessageStatus.SENT;
+      }
   }
 }

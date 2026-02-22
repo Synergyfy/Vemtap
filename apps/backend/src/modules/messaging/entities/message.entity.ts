@@ -4,6 +4,7 @@ import { Business } from '../../businesses/entities/business.entity';
 import { Contact } from '../../contacts/entities/contact.entity';
 import { ConversationThread } from './conversation-thread.entity';
 import { MessageCampaign } from './message-campaign.entity';
+import { Channel } from '../enums/channel.enum';
 
 export enum MessageDirection {
   INBOUND = 'INBOUND',
@@ -12,6 +13,7 @@ export enum MessageDirection {
 
 export enum MessageStatus {
   PENDING = 'PENDING',
+  QUEUED = 'QUEUED',
   SENT = 'SENT',
   DELIVERED = 'DELIVERED',
   FAILED = 'FAILED',
@@ -27,6 +29,9 @@ export class Message extends AbstractBaseEntity {
 
   @Column()
   businessId: string;
+
+  @Column({ type: 'enum', enum: Channel })
+  channel: Channel;
 
   @ManyToOne(() => Contact, (contact) => contact.messages, {
     nullable: true,
@@ -62,7 +67,10 @@ export class Message extends AbstractBaseEntity {
   status: MessageStatus;
 
   @Column({ nullable: true })
-  infobipMessageId: string;
+  providerMessageId: string;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  cost: number;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   timestamp: Date;
