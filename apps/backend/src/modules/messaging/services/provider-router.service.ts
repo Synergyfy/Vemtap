@@ -6,22 +6,19 @@ import {
   ProviderResponse,
 } from '../interfaces/messaging-provider.interface';
 import { TermiiProvider } from '../providers/termii.provider';
-import { WapsChatProvider } from '../providers/wapschat.provider';
 
 @Injectable()
 export class ProviderRouterService {
   constructor(
     private readonly termiiProvider: TermiiProvider,
-    private readonly wapsChatProvider: WapsChatProvider,
   ) {}
 
   public getProvider(channel: Channel): MessagingProvider {
     switch (channel) {
       case Channel.SMS:
       case Channel.EMAIL:
+      case Channel.WHATSAPP: // Route WhatsApp to Termii
         return this.termiiProvider;
-      case Channel.WHATSAPP:
-        return this.wapsChatProvider;
       default:
         throw new Error(`No provider found for channel ${channel}`);
     }
