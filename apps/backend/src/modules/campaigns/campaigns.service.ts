@@ -311,7 +311,7 @@ export class CampaignsService {
       // Resolve user and contact
       const user = await this.userRepo.findOne({ where: { id: dto.userId } });
       if (user) {
-        const branch = await this.branchesService.findOne(branchId);
+        const branch = await this.branchesService.findById(branchId);
         if (branch) {
           let contact = await this.contactRepo.findOne({
             where: [
