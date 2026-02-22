@@ -19,6 +19,8 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { SettingsModule } from './modules/settings/settings.module';
 import { BranchesModule } from './modules/branches/branches.module';
+import { LoyaltyModule } from './modules/loyalty/loyalty.module';
+import { SupportModule } from './modules/support/support.module';
 
 @Module({
   imports: [
@@ -68,6 +70,8 @@ import { BranchesModule } from './modules/branches/branches.module';
     SubscriptionsModule,
     SettingsModule,
     BranchesModule,
+    LoyaltyModule,
+    SupportModule,
   ],
   controllers: [AppController],
   providers: [

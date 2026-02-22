@@ -42,6 +42,51 @@ export class UsersController {
     private readonly branchesService: BranchesService,
   ) {}
 
+  @Get('me')
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.ADMIN,
+  )
+  @ApiOperation({ summary: 'Get current logged-in user profile' })
+  async getMe(@Request() req) {
+    const user = await this.usersService.findOne(req.user.id);
+    if (!user) throw new BadRequestException('User not found');
+    const { password, ...rest } = user;
+    return rest;
+  }
+
+  @Patch('me')
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.ADMIN,
+  )
+  @ApiOperation({ summary: 'Update current logged-in user profile' })
+  async updateMe(@Request() req, @Body() body: any) {
+    // Prevent sensitive updates like role or status via this endpoint
+    const { role, status, password, ...allowedUpdates } = body;
+    return this.usersService.updateProfile(req.user.id, allowedUpdates);
+  }
+
+  @Delete('me')
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.ADMIN,
+  )
+  @ApiOperation({ summary: 'Deactivate current user account' })
+  async deleteMe(@Request() req) {
+    // We treat deletion as suspension
+    return this.usersService.adminDeleteUser(req.user.id);
+  }
+
   @Get('staff')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @Permissions('staff')
