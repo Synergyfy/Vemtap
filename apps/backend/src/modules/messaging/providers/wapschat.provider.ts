@@ -62,7 +62,7 @@ export class WapsChatProvider implements MessagingProvider {
         error.response?.data || error.message,
       );
       return {
-        messageId: null,
+        messageId: '',
         status: 'failed',
         rawResponse: error.response?.data,
       };
