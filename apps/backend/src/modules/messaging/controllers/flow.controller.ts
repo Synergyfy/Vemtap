@@ -1,5 +1,21 @@
-import { Controller, Post, Body, Get, Param, Query, UseGuards, Request, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiResponse } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+  BadRequestException,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiBody,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -35,9 +51,11 @@ export class FlowController {
 
     let branchId = dto.branchId;
     if (user.role === UserRole.MANAGER || user.role === UserRole.STAFF) {
-        branchId = user.branchId;
+      branchId = user.branchId;
     } else if (user.role === UserRole.OWNER && !branchId) {
-        throw new BadRequestException('branchId is required for flows created by Owner');
+      throw new BadRequestException(
+        'branchId is required for flows created by Owner',
+      );
     }
 
     const flow = this.flowRepo.create({
@@ -71,9 +89,15 @@ export class FlowController {
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Update flow status (active/draft/paused)' })
-  async updateStatus(@Param('id') id: string, @Body('status') status: FlowStatus, @Request() req: any) {
+  async updateStatus(
+    @Param('id') id: string,
+    @Body('status') status: FlowStatus,
+    @Request() req: any,
+  ) {
     const user = req.user as User;
-    const flow = await this.flowRepo.findOne({ where: { id, businessId: user.businessId } });
+    const flow = await this.flowRepo.findOne({
+      where: { id, businessId: user.businessId },
+    });
     if (!flow) throw new BadRequestException('Flow not found');
 
     flow.status = status;
