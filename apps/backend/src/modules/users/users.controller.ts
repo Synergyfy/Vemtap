@@ -29,6 +29,7 @@ import {
 } from '@nestjs/swagger';
 import { InviteStaffDto } from './dto/invite-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import * as bcrypt from 'bcrypt';
 
 @ApiTags('users')
@@ -67,10 +68,8 @@ export class UsersController {
     UserRole.ADMIN,
   )
   @ApiOperation({ summary: 'Update current logged-in user profile' })
-  async updateMe(@Request() req, @Body() body: any) {
-    // Prevent sensitive updates like role or status via this endpoint
-    const { role, status, password, ...allowedUpdates } = body;
-    return this.usersService.updateProfile(req.user.id, allowedUpdates);
+  async updateMe(@Request() req, @Body() body: UpdateProfileDto) {
+    return this.usersService.updateProfile(req.user.id, body);
   }
 
   @Delete('me')

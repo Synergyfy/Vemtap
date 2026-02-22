@@ -6,6 +6,7 @@ import { LoyaltyProfile } from './entities/loyalty-profile.entity';
 import { Reward } from './entities/reward.entity';
 import { LoyaltyTransaction } from './entities/loyalty-transaction.entity';
 import { Redemption } from './entities/redemption.entity';
+import { DevicesModule } from '../devices/devices.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { Redemption } from './entities/redemption.entity';
       LoyaltyTransaction,
       Redemption,
     ]),
+    DevicesModule,
   ],
   controllers: [LoyaltyController],
   providers: [LoyaltyService],

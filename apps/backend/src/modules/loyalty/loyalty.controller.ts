@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Query,
+  Param,
   UseGuards,
   Request,
   BadRequestException,
@@ -30,6 +31,20 @@ import { UserRole } from '../users/entities/user.entity';
 @Controller('loyalty')
 export class LoyaltyController {
   constructor(private readonly loyaltyService: LoyaltyService) {}
+
+  @Get('analytics')
+  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
+  @ApiOperation({ summary: 'Get customer analytics (visits, points, savings)' })
+  async getAnalytics(@Request() req) {
+    return this.loyaltyService.getAnalytics(req.user.id);
+  }
+
+  @Post('tap/:code')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Process a device tap (Record visit/earn points)' })
+  async tap(@Request() req, @Param('code') code: string) {
+    return this.loyaltyService.processTap(req.user.id, code);
+  }
 
   @Get('profile')
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
