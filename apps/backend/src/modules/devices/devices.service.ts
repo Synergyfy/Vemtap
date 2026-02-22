@@ -56,6 +56,10 @@ export class DevicesService {
     return device;
   }
 
+  async findByCode(code: string): Promise<Device | null> {
+    return this.devicesRepository.findOneBy({ code });
+  }
+
   async update(
     id: string,
     businessId: string,
