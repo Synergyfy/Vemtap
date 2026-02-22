@@ -1,9 +1,11 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 import { Contact } from '../../contacts/entities/contact.entity';
 import { ConversationThread } from './conversation-thread.entity';
 import { MessageCampaign } from './message-campaign.entity';
+import { Channel } from '../enums/channel.enum';
 
 export enum MessageDirection {
   INBOUND = 'INBOUND',
@@ -12,6 +14,7 @@ export enum MessageDirection {
 
 export enum MessageStatus {
   PENDING = 'PENDING',
+  QUEUED = 'QUEUED',
   SENT = 'SENT',
   DELIVERED = 'DELIVERED',
   FAILED = 'FAILED',
@@ -27,6 +30,16 @@ export class Message extends AbstractBaseEntity {
 
   @Column()
   businessId: string;
+
+  @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'branchId' })
+  branch: Branch;
+
+  @Column({ nullable: true })
+  branchId: string;
+
+  @Column({ type: 'enum', enum: Channel })
+  channel: Channel;
 
   @ManyToOne(() => Contact, (contact) => contact.messages, {
     nullable: true,
@@ -62,7 +75,10 @@ export class Message extends AbstractBaseEntity {
   status: MessageStatus;
 
   @Column({ nullable: true })
-  infobipMessageId: string;
+  providerMessageId: string;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  cost: number;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   timestamp: Date;

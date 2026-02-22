@@ -36,7 +36,7 @@ describe('CreditService', () => {
 
   describe('deduct', () => {
     it('should deduct credits if balance is sufficient', async () => {
-      const mockBusiness = { id: 'b1', credits: 10 } as any;
+      const mockBusiness = { id: 'b1', balance: 10 } as any;
       const mockManager = {
         findOne: jest.fn().mockResolvedValue(mockBusiness),
         save: jest.fn().mockImplementation((b) => Promise.resolve(b)),
@@ -50,11 +50,11 @@ describe('CreditService', () => {
 
       expect(mockManager.findOne).toHaveBeenCalled();
       expect(mockManager.save).toHaveBeenCalled();
-      expect(mockBusiness.credits).toBe(5);
+      expect(mockBusiness.balance).toBe(5);
     });
 
     it('should throw BadRequestException if balance is insufficient', async () => {
-      const mockBusiness = { id: 'b1', credits: 2 } as any;
+      const mockBusiness = { id: 'b1', balance: 2 } as any;
       const mockManager = {
         findOne: jest.fn().mockResolvedValue(mockBusiness),
         save: jest.fn(),

@@ -14,7 +14,7 @@ export class Reward {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'uuid' })
   businessId: string;
 
   @ManyToOne(() => Business)
@@ -33,6 +33,12 @@ export class Reward {
   @Column({ default: 'discount' }) // discount, free_item, etc.
   rewardType: string;
 
+  @Column({ nullable: true })
+  imageUrl: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  branchId: string;
+
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   value: number;
 
@@ -47,6 +53,9 @@ export class Reward {
 
   @Column({ type: 'int', default: 0 })
   totalRedeemed: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  deletedAt: Date;
 
   @CreateDateColumn()
   createdAt: Date;
