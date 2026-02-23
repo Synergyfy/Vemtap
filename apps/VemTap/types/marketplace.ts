@@ -91,6 +91,7 @@ export interface MarketplaceQuote {
         name: string;
         image: string;
     };
+    productName?: string;
 }
 
 export interface MarketplaceOrder {
@@ -107,6 +108,7 @@ export interface MarketplaceOrder {
     };
     quote?: {
         quantity: number;
+        productName?: string;
     };
     devices?: any[];
 }
