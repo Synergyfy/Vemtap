@@ -1,22 +1,51 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { notify } from '@/lib/notify';
-import { User, Mail, Phone, Bell, Shield, Trash2, Camera, Check, LogOut, ChevronRight, Laptop, Smartphone } from 'lucide-react';
+import { User, Mail, Phone, Bell, Shield, Trash2, Camera, Check, LogOut, ChevronRight, Laptop, Smartphone, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { useRouter } from 'next/navigation';
 
 export default function CustomerSettingsPage() {
-    const { logout } = useAuthStore();
+    const { user, logout, updateUser } = useAuthStore();
+    const { profiles, fetchLoyaltyProfile } = useLoyaltyStore();
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
+    const [name, setName] = useState(user?.name || '');
+    const [phone, setPhone] = useState(user?.phone || '');
 
-    const handleSave = () => {
+    // TODO: This should eventually come from a 'current business context' or 'last visited'
+    const branchId = 'bistro_001';
+    const profile = profiles[branchId];
+
+    useEffect(() => {
+        if (user?.id) {
+            fetchLoyaltyProfile(user.id, branchId);
+        }
+    }, [user, branchId, fetchLoyaltyProfile]);
+
+    useEffect(() => {
+        if (user) {
+            setName(user.name || '');
+            setPhone(user.phone || '');
+        }
+    }, [user]);
+
+    const handleSave = async () => {
         setIsLoading(true);
-        setTimeout(() => {
+        try {
+            const result = await updateUser({ name, phone });
+            if (result.success) {
+                notify.success('Platform sync: Your profile has been updated!');
+            } else {
+                notify.error(result.error || 'Failed to update profile');
+            }
+        } catch (error) {
+            notify.error('An unexpected error occurred');
+        } finally {
             setIsLoading(false);
-            notify.success('Platform sync: Your profile has been updated!');
-        }, 800);
+        }
     };
 
     const handleLogout = () => {
@@ -24,8 +53,12 @@ export default function CustomerSettingsPage() {
         router.push('/login');
     };
 
+    const joinedDate = user?.createdAt
+        ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }).toUpperCase()
+        : 'JAN 24';
+
     return (
-        <div className="max-w-4xl mx-auto space-y-10 pb-20">
+        <div className="max-w-4xl mx-auto space-y-10 pb-20 p-4 md:p-0">
 
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -52,18 +85,18 @@ export default function CustomerSettingsPage() {
                             </button>
                         </div>
 
-                        <h2 className="text-xl font-display font-bold text-text-main">Daniel Customer</h2>
-                        <p className="text-xs font-black uppercase tracking-widest text-text-secondary mt-1">Gold Tier Member</p>
+                        <h2 className="text-xl font-display font-bold text-text-main">{user?.name || 'Customer'}</h2>
+                        <p className="text-xs font-black uppercase tracking-widest text-text-secondary mt-1 capitalize">{profile?.tierLevel || 'Bronze'} Member</p>
 
                         <div className="mt-8 pt-8 border-t border-gray-50 flex items-center justify-center gap-8">
                             <div>
                                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Loyalty</p>
-                                <p className="text-lg font-bold text-primary">LVL 4</p>
+                                <p className="text-lg font-bold text-primary">LVL {profile?.tierLevel === 'bronze' ? 1 : profile?.tierLevel === 'silver' ? 2 : profile?.tierLevel === 'gold' ? 3 : 4}</p>
                             </div>
                             <div className="w-px h-8 bg-gray-100"></div>
                             <div>
                                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Joined</p>
-                                <p className="text-lg font-bold text-text-main">JAN 24</p>
+                                <p className="text-lg font-bold text-text-main">{joinedDate}</p>
                             </div>
                         </div>
                     </div>
@@ -101,7 +134,7 @@ export default function CustomerSettingsPage() {
                 {/* Right Column: Active Form */}
                 <div className="lg:col-span-2 space-y-10">
                     {/* Profile Details */}
-                    <div className="bg-white rounded-lg border border-gray-100 p-10 shadow-sm relative overflow-hidden">
+                    <div className="bg-white rounded-lg border border-gray-100 p-6 md:p-10 shadow-sm relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full translate-x-32 -translate-y-32 blur-3xl"></div>
 
                         <h3 className="text-lg font-display font-bold text-text-main mb-8 flex items-center gap-3">
@@ -117,7 +150,8 @@ export default function CustomerSettingsPage() {
                                 </label>
                                 <input
                                     type="text"
-                                    defaultValue="Daniel Customer"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
                                     className="w-full h-14 px-5 border border-gray-200 rounded-lg text-sm font-bold bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                 />
                             </div>
@@ -128,8 +162,9 @@ export default function CustomerSettingsPage() {
                                 </label>
                                 <input
                                     type="email"
-                                    defaultValue="customer@vemtap.com"
-                                    className="w-full h-14 px-5 border border-gray-200 rounded-2xl text-sm font-bold bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                    value={user?.email || ''}
+                                    disabled
+                                    className="w-full h-14 px-5 border border-gray-200 rounded-2xl text-sm font-bold bg-gray-100/50 text-text-secondary focus:outline-none transition-all outline-none cursor-not-allowed"
                                 />
                             </div>
                             <div className="space-y-3 md:col-span-2">
@@ -139,7 +174,8 @@ export default function CustomerSettingsPage() {
                                 </label>
                                 <input
                                     type="tel"
-                                    defaultValue="+234 801 234 5678"
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value)}
                                     className="w-full h-14 px-5 border border-gray-200 rounded-2xl text-sm font-bold bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                 />
                             </div>
@@ -179,7 +215,7 @@ export default function CustomerSettingsPage() {
                                 className="w-full h-16 bg-primary text-white font-black uppercase tracking-[0.2em] text-xs rounded-lg hover:bg-primary-hover transition-all shadow-2xl shadow-primary/30 active:scale-95 flex items-center justify-center gap-3"
                             >
                                 {isLoading ? (
-                                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/50 border-t-white" />
+                                    <Loader2 className="animate-spin" size={20} />
                                 ) : (
                                     <>
                                         Update Profile Structure
@@ -191,7 +227,7 @@ export default function CustomerSettingsPage() {
                     </div>
 
                     {/* Security / Danger Zone */}
-                    <div className="bg-red-50/50 border-2 border-dashed border-red-100 rounded-lg p-10 relative overflow-hidden group">
+                    <div className="bg-red-50/50 border-2 border-dashed border-red-100 rounded-lg p-6 md:p-10 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-red-100/50 rounded-full translate-x-16 -translate-y-16 group-hover:scale-150 transition-transform duration-700"></div>
                         <div className="relative z-10">
                             <div className="flex items-center gap-4 mb-6 text-red-800">

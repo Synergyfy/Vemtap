@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import PageHeader from '@/components/dashboard/PageHeader';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { adminMessagingApi } from '@/lib/api/admin';
+import { format } from 'date-fns';
 import {
     MessageSquare,
     CheckCircle,
@@ -9,77 +11,58 @@ import {
     Clock,
     Eye,
     Search,
-    Filter,
     Check,
     X,
-    ExternalLink,
     AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-
-interface Template {
-    id: string;
-    businessName: string;
-    templateName: string;
-    category: string;
-    language: string;
-    content: string;
-    status: 'pending' | 'approved' | 'rejected';
-    submittedAt: string;
-}
-
-const MOCK_TEMPLATES: Template[] = [
-    {
-        id: '1',
-        businessName: 'Green Terrace Cafe',
-        templateName: 'welcome_discount_v1',
-        category: 'MARKETING',
-        language: 'English (US)',
-        content: 'Hi {{1}}, thanks for visiting Green Terrace! Enjoy 10% off your next meal with code: WELCOME10.',
-        status: 'pending',
-        submittedAt: '2024-03-21 14:30'
-    },
-    {
-        id: '2',
-        businessName: 'Lagos Tech Hub',
-        templateName: 'event_reminder',
-        category: 'UTILITY',
-        language: 'English (UK)',
-        content: 'Hello {{1}}, just a reminder for the {{2}} event starting at {{3}}. See you there!',
-        status: 'pending',
-        submittedAt: '2024-03-21 15:45'
-    },
-    {
-        id: '3',
-        businessName: 'Fashion Boutique',
-        templateName: 'order_confirmed',
-        category: 'AUTHENTICATION',
-        language: 'English (US)',
-        content: 'Your order {{1}} has been confirmed and is being prepared for shipping.',
-        status: 'approved',
-        submittedAt: '2024-03-20 09:12'
-    }
-];
+import PageHeader from '@/components/dashboard/PageHeader';
 
 export default function TemplateApprovalPage() {
-    const [templates, setTemplates] = useState<Template[]>(MOCK_TEMPLATES);
+    const queryClient = useQueryClient();
     const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
-    const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+    const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const filteredTemplates = templates.filter(t => {
+    // Fetch all templates
+    const { data: templatesResponse, isLoading } = useQuery({
+        queryKey: ['admin-templates'],
+        queryFn: () => adminMessagingApi.getAllTemplates(),
+    });
+
+    const allTemplates = (templatesResponse?.data || templatesResponse || []) as any[];
+
+    // status mutation
+    const statusMutation = useMutation({
+        mutationFn: ({ id, status }: { id: string, status: string }) =>
+            adminMessagingApi.updateTemplateStatus(id, status),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
+            toast.success('Template status updated');
+            setSelectedTemplate(null);
+        },
+        onError: () => toast.error('Failed to update status'),
+    });
+
+    const filteredTemplates = allTemplates.filter(t => {
         const matchesFilter = filter === 'all' || t.status === filter;
-        const matchesSearch = t.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            t.templateName.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = (t.business?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            t.name.toLowerCase().includes(searchTerm.toLowerCase());
         return matchesFilter && matchesSearch;
     });
 
-    const handleAction = (id: string, newStatus: 'approved' | 'rejected') => {
-        setTemplates(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
-        toast.success(`Template ${newStatus === 'approved' ? 'Approved' : 'Rejected'} successfully`);
-        setSelectedTemplate(null);
+    const handleAction = (id: string, newStatus: string) => {
+        statusMutation.mutate({ id, status: newStatus });
     };
+
+    if (isLoading) {
+        return (
+            <div className="p-8 flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-8">
@@ -95,8 +78,8 @@ export default function TemplateApprovalPage() {
                             key={s}
                             onClick={() => setFilter(s)}
                             className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all ${filter === s
-                                    ? 'bg-white text-primary shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                ? 'bg-white text-primary shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             {s}
@@ -133,17 +116,19 @@ export default function TemplateApprovalPage() {
                             <tr key={t.id} className="hover:bg-gray-50/50 transition-colors group">
                                 <td className="px-6 py-4">
                                     <div className="flex flex-col">
-                                        <span className="font-bold text-sm text-slate-900">{t.businessName}</span>
-                                        <span className="text-[10px] font-black text-primary uppercase tracking-tight">{t.templateName}</span>
+                                        <span className="font-bold text-sm text-slate-900">{t.business?.name || 'Unknown Business'}</span>
+                                        <span className="text-[10px] font-black text-primary uppercase tracking-tight">{t.name}</span>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 text-sm text-slate-600 font-medium">{t.category}</td>
                                 <td className="px-6 py-4 text-sm text-slate-600 font-medium">{t.language}</td>
-                                <td className="px-6 py-4 text-sm text-slate-500 font-medium">{t.submittedAt}</td>
+                                <td className="px-6 py-4 text-sm text-slate-500 font-medium">
+                                    {format(new Date(t.createdAt), 'yyyy-MM-dd HH:mm')}
+                                </td>
                                 <td className="px-6 py-4">
                                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${t.status === 'approved' ? 'bg-green-100 text-green-700' :
-                                            t.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                                                'bg-orange-100 text-orange-700'
+                                        t.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                                            'bg-orange-100 text-orange-700'
                                         }`}>
                                         {t.status === 'approved' ? <CheckCircle size={14} /> :
                                             t.status === 'rejected' ? <XCircle size={14} /> :
@@ -210,7 +195,7 @@ export default function TemplateApprovalPage() {
                                     </div>
                                     <div>
                                         <h3 className="font-black text-text-main text-sm uppercase tracking-tight">Template Review</h3>
-                                        <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">{selectedTemplate.templateName}</p>
+                                        <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">{selectedTemplate.name}</p>
                                     </div>
                                 </div>
                                 <button onClick={() => setSelectedTemplate(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -229,7 +214,7 @@ export default function TemplateApprovalPage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="p-4 bg-gray-50 rounded-xl">
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Business</p>
-                                        <p className="text-sm font-bold text-slate-700">{selectedTemplate.businessName}</p>
+                                        <p className="text-sm font-bold text-slate-700">{selectedTemplate.business?.name || 'Unknown'}</p>
                                     </div>
                                     <div className="p-4 bg-gray-50 rounded-xl">
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Category</p>

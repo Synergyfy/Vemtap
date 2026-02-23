@@ -18,6 +18,8 @@ export interface LoyaltyProfile {
   lastRewardedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  totalVisits?: number;
+  totalSavings?: number;
 }
 
 export interface PointTransaction {
@@ -73,7 +75,7 @@ export interface Redemption {
   userId?: string;
   loyaltyProfileId: string;
   rewardId: string;
-  reward?: Reward; 
+  reward?: Reward;
   redemptionCode: string;
   pointsSpent: number;
   status: RedemptionStatus;
@@ -103,7 +105,8 @@ export interface LoyaltyPromotion {
 
 export interface PointEarnRequest {
   userId: string;
-  businessId: string;
+  branchId: string;
+  businessId?: string;
   amountSpent?: number;
   isVisit: boolean;
   metadata?: Record<string, any>;
@@ -124,6 +127,7 @@ export interface PointEarnResponse {
 export interface RewardRedeemRequest {
   loyaltyProfileId: string;
   rewardId: string;
+  branchId: string;
 }
 
 export interface RewardRedeemResponse {

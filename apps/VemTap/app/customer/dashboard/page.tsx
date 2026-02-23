@@ -6,7 +6,8 @@ import AnimatedRewardModal from '@/components/customer/AnimatedRewardModal';
 import Link from 'next/link';
 import {
     History, Star, PiggyBank, Coffee, Smartphone, Dumbbell,
-    QrCode, Scan, X, ExternalLink, ArrowRight, ChevronRight
+    QrCode, Scan, X, ExternalLink, ArrowRight, ChevronRight,
+    Loader2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -15,64 +16,93 @@ import { notify } from '@/lib/notify';
 
 export default function CustomerDashboardPage() {
     const { user, isAuthenticated } = useAuthStore();
-    const { profiles, fetchLoyaltyProfile } = useLoyaltyStore();
+    const {
+        profiles,
+        fetchLoyaltyProfile,
+        availableRewards,
+        fetchRewards,
+        recentTransactions,
+        fetchTransactions,
+        isLoading,
+        redeemReward
+    } = useLoyaltyStore();
+
     const router = useRouter();
     const [showIdModal, setShowIdModal] = useState(false);
     const [showRewardAnimation, setShowRewardAnimation] = useState(false);
     const [currentReward, setCurrentReward] = useState<{ name: string; points: number; icon?: React.ReactNode } | null>(null);
 
+    // TODO: This should eventually come from a 'current business context' or 'last visited'
     const businessId = 'bistro_001';
     const profile = profiles[businessId];
-    // Local state for demo purposes as found in the existing logic
-    const [localPoints, setLocalPoints] = useState(0);
 
     useEffect(() => {
-        if (profile) {
-            setLocalPoints(profile.currentPointsBalance);
-        }
-    }, [profile]);
-
-    const userPoints = localPoints;
-
-    useEffect(() => {
-        if (!isAuthenticated || user?.role !== 'customer') {
+        if (!isAuthenticated) {
             router.push('/login');
-        } else if (user?.id) {
-            fetchLoyaltyProfile(user.id, businessId);
-        }
-    }, [isAuthenticated, user, router, fetchLoyaltyProfile]);
-
-    if (!isAuthenticated || user?.role !== 'customer') {
-        return null;
-    }
-
-    const recentVisits = [
-        { id: 1, place: 'Green Terrace Cafe', date: 'Today, 10:30 AM', points: '+50', icon: Coffee },
-        { id: 2, place: 'NextGen Tech Store', date: 'Yesterday, 4:15 PM', points: '+120', icon: Smartphone },
-        { id: 3, place: 'Fitness Center', date: 'Feb 1, 9:00 AM', points: '+30', icon: Dumbbell },
-        { id: 4, place: 'Green Terrace Cafe', date: 'Jan 28, 11:00 AM', points: '+50', icon: Coffee },
-    ];
-
-    const handleRedeem = (reward: string, points: number, icon?: React.ReactNode) => {
-        if (points > userPoints) {
-            notify.error(`Insufficient points to redeem ${reward}`);
             return;
         }
 
-        // Show animated modal
-        setCurrentReward({ name: reward, points, icon });
-        setShowRewardAnimation(true);
+        if (user?.role?.toLowerCase() !== 'customer') {
+            router.push('/dashboard'); // Or appropriate non-customer dashboard
+            return;
+        }
 
-        // Deduct points (UI only for simulation)
-        setLocalPoints((prev: number) => prev - points);
+        const initializeDashboard = async () => {
+            if (user?.id) {
+                const loadedProfile = await fetchLoyaltyProfile(user.id, businessId);
+                fetchRewards(businessId);
+                if (loadedProfile?.id) {
+                    fetchTransactions(loadedProfile.id);
+                }
+            }
+        };
 
-        // Close animation after some time
-        setTimeout(() => {
-            setShowRewardAnimation(false);
-            setCurrentReward(null);
-        }, 5000);
+        initializeDashboard();
+    }, [isAuthenticated, user, router, fetchLoyaltyProfile, fetchRewards, fetchTransactions]);
+
+    if (!isAuthenticated || user?.role?.toLowerCase() !== 'customer') {
+        return null;
+    }
+
+    const userPoints = profile?.currentPointsBalance || 0;
+
+    const handleRedeem = async (rewardId: string, name: string, points: number, icon?: React.ReactNode) => {
+        if (points > userPoints) {
+            notify.error(`Insufficient points to redeem ${name}`);
+            return;
+        }
+
+        try {
+            const result = await redeemReward(profile!.id, rewardId);
+            if (result.success) {
+                // Show animated modal
+                setCurrentReward({ name, points, icon });
+                setShowRewardAnimation(true);
+
+                // Close animation after some time
+                setTimeout(() => {
+                    setShowRewardAnimation(false);
+                    setCurrentReward(null);
+                }, 5000);
+            } else {
+                notify.error(result.error || 'Redemption failed');
+            }
+        } catch (error) {
+            notify.error('An error occurred during redemption');
+        }
     };
 
+    // Helper to get icon for transaction type
+    const getTransactionIcon = (type: string, reason: string) => {
+        if (reason.toLowerCase().includes('coffee')) return Coffee;
+        if (reason.toLowerCase().includes('tech') || reason.toLowerCase().includes('phone')) return Smartphone;
+        if (reason.toLowerCase().includes('fitness') || reason.toLowerCase().includes('gym')) return Dumbbell;
+        return Star;
+    };
+
+    // Calculate dynamic stats
+    const totalVisitsCount = recentTransactions.filter(tx => tx.transactionType === 'earn').length;
+    const netSavingsValue = recentTransactions.filter(tx => tx.transactionType === 'redeem').length * 2500; // Estimated ₦2500 per reward or use actual points redeemed value if possible
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
@@ -86,7 +116,7 @@ export default function CustomerDashboardPage() {
                         <div className="text-center md:text-left flex-1">
                             <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/20 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 backdrop-blur-md border border-white/10">
                                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                                Member ID: EC-{user?.id || '2847'}
+                                Member ID: LP-{profile?.id ? profile.id.substring(0, 8).toUpperCase() : '....'}
                             </span>
                             <h1 className="text-4xl md:text-5xl font-display font-bold mb-4 tracking-tight leading-tight">
                                 Welcome back, <br />
@@ -127,9 +157,9 @@ export default function CustomerDashboardPage() {
                 {/* Quick Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {[
-                        { label: 'Total Visits', value: '42', icon: History, color: 'blue' },
+                        { label: 'Total Visits', value: totalVisitsCount || '0', icon: History, color: 'blue' },
                         { label: 'Reward Points', value: userPoints.toLocaleString(), icon: Star, color: 'orange' },
-                        { label: 'Net Savings', value: '₦15,000', icon: PiggyBank, color: 'green' },
+                        { label: 'Net Savings', value: `₦${netSavingsValue.toLocaleString()}`, icon: PiggyBank, color: 'green' },
                     ].map((stat, index) => {
                         const IconComponent = stat.icon;
                         return (
@@ -161,23 +191,39 @@ export default function CustomerDashboardPage() {
                             </Link>
                         </div>
                         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                            {recentVisits.map((visit, index) => {
-                                const IconComp = visit.icon;
-                                return (
-                                    <div key={visit.id} className={`p-4 flex items-center justify-between ${index !== recentVisits.length - 1 ? 'border-b border-gray-50' : ''}`}>
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-text-secondary">
-                                                <IconComp size={20} />
+                            {(isLoading && recentTransactions.length === 0) ? (
+                                <div className="p-12 flex flex-col items-center justify-center text-text-secondary gap-3">
+                                    <Loader2 className="animate-spin" />
+                                    <p className="text-sm font-medium">Syncing your activity...</p>
+                                </div>
+                            ) : recentTransactions.length > 0 ? (
+                                recentTransactions.slice(0, 5).map((tx, index) => {
+                                    const IconComp = getTransactionIcon(tx.transactionType, tx.reason);
+                                    return (
+                                        <div key={tx.id} className={`p-4 flex items-center justify-between ${index !== recentTransactions.length - 1 ? 'border-b border-gray-50' : ''}`}>
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-text-secondary">
+                                                    <IconComp size={20} />
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-text-main text-sm">{tx.reason}</p>
+                                                    <p className="text-xs text-text-secondary font-medium">
+                                                        {new Date(tx.createdAt).toLocaleDateString()} at {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="font-bold text-text-main text-sm">{visit.place}</p>
-                                                <p className="text-xs text-text-secondary font-medium">{visit.date}</p>
-                                            </div>
+                                            <span className={`font-black text-sm ${tx.pointsAmount > 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                                                {tx.pointsAmount > 0 ? '+' : ''}{tx.pointsAmount} pts
+                                            </span>
                                         </div>
-                                        <span className="text-green-600 font-black text-sm">{visit.points} pts</span>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })
+                            ) : (
+                                <div className="p-12 text-center text-text-secondary">
+                                    <p className="text-sm font-medium">No recent activity found.</p>
+                                    <p className="text-xs mt-1">Start tapping to earn points!</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -188,28 +234,30 @@ export default function CustomerDashboardPage() {
                             <span className="text-primary font-black text-xs uppercase tracking-widest">{userPoints.toLocaleString()} PTS</span>
                         </div>
                         <div className="space-y-4">
-                            {[
-                                { name: 'Free Coffee', points: 250, icon: <Coffee size={18} /> },
-                                { name: '10% Discount', points: 500, icon: <Star size={18} /> },
-                                { name: 'Welcome Pack', points: 1000, icon: <History size={18} /> }
-                            ].map((reward, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => handleRedeem(reward.name, reward.points, reward.icon)}
-                                    className="w-full p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-primary/20 transition-all flex items-center gap-4 group"
-                                >
-                                    <div className="w-10 h-10 rounded-lg bg-primary/5 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                                        {reward.icon}
-                                    </div>
-                                    <div className="flex-1 text-left">
-                                        <p className="font-bold text-text-main text-sm">{reward.name}</p>
-                                        <p className="text-xs text-text-secondary font-bold">{reward.points} pts</p>
-                                    </div>
-                                    <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:text-primary group-hover:bg-primary/5 transition-all">
-                                        <ArrowRight size={16} />
-                                    </div>
-                                </button>
-                            ))}
+                            {availableRewards.length > 0 ? (
+                                availableRewards.slice(0, 3).map((reward, idx) => (
+                                    <button
+                                        key={reward.id}
+                                        onClick={() => handleRedeem(reward.id, reward.name, reward.pointCost, <Star size={18} />)}
+                                        className="w-full p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-primary/20 transition-all flex items-center gap-4 group"
+                                    >
+                                        <div className="w-10 h-10 rounded-lg bg-primary/5 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+                                            <Star size={18} />
+                                        </div>
+                                        <div className="flex-1 text-left">
+                                            <p className="font-bold text-text-main text-sm">{reward.name}</p>
+                                            <p className="text-xs text-text-secondary font-bold">{reward.pointCost} pts</p>
+                                        </div>
+                                        <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:text-primary group-hover:bg-primary/5 transition-all">
+                                            <ArrowRight size={16} />
+                                        </div>
+                                    </button>
+                                ))
+                            ) : (
+                                <div className="p-8 bg-white rounded-2xl border border-dashed border-gray-200 text-center text-text-secondary">
+                                    <p className="text-xs font-bold">No perks available yet.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -228,7 +276,7 @@ export default function CustomerDashboardPage() {
                         <QrCode size={180} className="mx-auto text-slate-900 relative z-10" />
                         <div className="mt-6">
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Scan at Terminal</p>
-                            <p className="text-sm font-bold text-slate-900">EC-{user?.id || '2847'}</p>
+                            <p className="text-sm font-bold text-slate-900">LP-{profile?.id ? profile.id.substring(0, 8).toUpperCase() : '....'}</p>
                         </div>
                     </div>
 
@@ -248,8 +296,8 @@ export default function CustomerDashboardPage() {
                         </div>
                         <div className="text-right">
                             <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Membership</p>
-                            <p className="text-lg font-display font-bold text-slate-900 flex items-center gap-1 justify-end">
-                                Gold Elite
+                            <p className="text-lg font-display font-bold text-slate-900 flex items-center gap-1 justify-end capitalize">
+                                {profile?.tierLevel || 'Bronze'}
                             </p>
                         </div>
                     </div>

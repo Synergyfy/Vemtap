@@ -54,9 +54,19 @@ export default function MultiDeviceTapPage() {
             }
 
             if (business) {
+                // Simulate mapping deviceId to branchId
+                const branchMapping: Record<string, string> = {
+                    'DEV-001': 'head-office',
+                    'DEV-002': 'head-office',
+                    'DEV-003': 'ikeja-branch',
+                    'DEV-004': 'abuja-branch'
+                };
+                const assignedBranchId = branchMapping[deviceId as string] || 'head-office';
+
                 // Initialize store with both business and specific device context
                 initializeFromBusiness({
                     ...business,
+                    branchId: assignedBranchId,
                     currentDeviceId: deviceId as string
                 });
 
@@ -75,40 +85,30 @@ export default function MultiDeviceTapPage() {
                     useCustomerFlowStore.getState().setUserData(identity);
                 }
 
-                if (identity) {
-                    // Simulate mapping deviceId to branchId
-                    const branchMapping: Record<string, string> = {
-                        'DEV-001': 'head-office',
-                        'DEV-002': 'head-office',
-                        'DEV-003': 'ikeja-branch',
-                        'DEV-004': 'abuja-branch'
-                    };
-                    const assignedBranchId = branchMapping[deviceId as string] || 'head-office';
+                recordVisit();
+                recordExternalTap({
+                    ...identity,
+                    phone: (identity as any).phone || '',
+                    branchId: assignedBranchId
+                });
 
-                    recordVisit();
-                    recordExternalTap({
-                        ...identity,
-                        phone: (identity as any).phone || '',
-                        branchId: assignedBranchId
-                    });
+                // Loyalty Integration: Earn points if user is logged in
+                if (user) {
+                    const { earnPoints } = useLoyaltyStore.getState();
+                    earnPoints({
+                        userId: user.id || 'current-user',
+                        businessId: business.id,
+                        branchId: assignedBranchId,
+                        isVisit: true
+                    }).catch(err => console.error('Failed to earn loyalty points:', err));
+                }
 
-                    // Loyalty Integration: Earn points if user is logged in
-                    if (user) {
-                        const { earnPoints } = useLoyaltyStore.getState();
-                        earnPoints({
-                            userId: user.id || 'current-user',
-                            businessId: business.id,
-                            isVisit: true
-                        }).catch(err => console.error('Failed to earn loyalty points:', err));
-                    }
-
-                    // If it was a known user, go to welcome back
-                    if (userDataStore || storedIdentity) {
-                        router.push('/user-step');
-                    } else {
-                        // For new anonymous taps, user-step will handle the journey
-                        router.push('/user-step');
-                    }
+                // If it was a known user, go to welcome back
+                if (userDataStore || storedIdentity) {
+                    router.push('/user-step');
+                } else {
+                    // For new anonymous taps, user-step will handle the journey
+                    router.push('/user-step');
                 }
             } else {
                 setError(true);

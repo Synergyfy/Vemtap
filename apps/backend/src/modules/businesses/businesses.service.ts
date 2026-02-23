@@ -13,7 +13,7 @@ export class BusinessesService {
   constructor(
     @InjectRepository(Business)
     private businessesRepository: Repository<Business>,
-  ) {}
+  ) { }
 
   async create(businessData: Partial<Business>): Promise<Business> {
     if (businessData.ownerId) {
@@ -89,6 +89,27 @@ export class BusinessesService {
       where: { status: BusinessStatus.SUSPENDED },
     });
 
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const approvedToday = await this.businessesRepository
+      .createQueryBuilder('business')
+      .where('business.status = :status', { status: BusinessStatus.ACTIVE })
+      .andWhere('business.updatedAt >= :today', { today: todayStart })
+      .getCount();
+
+    // Calculate Average Wait Time for businesses approved today (Postgres)
+    const waitTimeData = await this.businessesRepository
+      .createQueryBuilder('business')
+      .select('AVG(EXTRACT(EPOCH FROM (business.updatedAt - business.createdAt)))', 'avgSeconds')
+      .where('business.status = :status', { status: BusinessStatus.ACTIVE })
+      .andWhere('business.updatedAt >= :today', { today: todayStart })
+      .getRawOne();
+
+    const avgWaitHours = waitTimeData?.avgSeconds
+      ? (parseFloat(waitTimeData.avgSeconds) / 3600).toFixed(1)
+      : '0.0';
+
     return {
       data: businesses,
       meta: {
@@ -101,6 +122,8 @@ export class BusinessesService {
         active: activeCount,
         pending: pendingCount,
         suspended: suspendedCount,
+        approvedToday,
+        avgWaitTime: avgWaitHours,
       },
     };
   }

@@ -14,7 +14,7 @@ export class AnalyticsService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Business)
     private readonly businessRepository: Repository<Business>,
-  ) {}
+  ) { }
 
   private async resolveBusinessContext(
     branchId: string | undefined,
@@ -223,44 +223,84 @@ export class AnalyticsService {
 
   // --- Admin Methods ---
 
-  getAdminLoyaltyStats() {
+  async getAdminSummary() {
+    // 1. Platform Stats
+    const totalBusinesses = await this.businessRepository.count();
+    const totalVisits = await this.visitRepository.count();
+    const totalCustomers = await this.userRepository.count({
+      where: { role: UserRole.CUSTOMER },
+    });
+
+    // 2. Growth Trend (Last 12 Months)
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
+    twelveMonthsAgo.setDate(1);
+    twelveMonthsAgo.setHours(0, 0, 0, 0);
+
+    const growthTrendRaw = await this.visitRepository
+      .createQueryBuilder('visit')
+      .select("TO_CHAR(visit.createdAt, 'Mon')", 'month')
+      .addSelect("TO_CHAR(visit.createdAt, 'YYYY-MM')", 'sortKey')
+      .addSelect('COUNT(visit.id)', 'count')
+      .where('visit.createdAt >= :date', { date: twelveMonthsAgo })
+      .groupBy('sortKey')
+      .addGroupBy('month')
+      .orderBy('sortKey', 'ASC')
+      .getRawMany();
+
+    const monthlyData = growthTrendRaw.map((item) => ({
+      month: item.month,
+      value: parseInt(item.count, 10),
+    }));
+
+    // 3. Sector Split
+    const sectorSplitRaw = await this.businessRepository
+      .createQueryBuilder('business')
+      .select('business.category', 'label')
+      .addSelect('COUNT(business.id)', 'count')
+      .groupBy('business.category')
+      .getRawMany();
+
+    const totalBizForSplit = sectorSplitRaw.reduce(
+      (sum, item) => sum + parseInt(item.count, 10),
+      0,
+    );
+    const sectorSplit = sectorSplitRaw.map((item) => ({
+      label: item.label || 'Other',
+      value: totalBizForSplit
+        ? Math.round((parseInt(item.count, 10) / totalBizForSplit) * 100)
+        : 0,
+    }));
+
+    // 4. Security Alerts (Last 5 suspended or recent risks)
+    const suspendedBusinesses = await this.businessRepository.find({
+      where: { status: 'suspended' as any },
+      take: 3,
+      order: { updatedAt: 'DESC' },
+    });
+
+    const securityAlerts = suspendedBusinesses.map((biz) => ({
+      msg: `Business ${biz.name} was suspended: ${biz.suspensionReason || 'No reason provided'}`,
+      type: 'risk',
+    }));
+
+    if (securityAlerts.length === 0) {
+      securityAlerts.push({
+        msg: 'No critical security alerts in the last 24 hours.',
+        type: 'info',
+      });
+    }
+
     return {
       stats: [
-        { label: 'Total Issuers', value: '452', change: 15.2, trend: 'up' },
-        {
-          label: 'Active Members',
-          value: '124,802',
-          change: 24.5,
-          trend: 'up',
-        },
-        {
-          label: 'Points in Circulation',
-          value: '8.4M',
-          change: 8.2,
-          trend: 'up',
-        },
-        { label: 'Fraud Alerts', value: '12', change: -45.0, trend: 'down' },
+        { label: 'Total Businesses', value: totalBusinesses.toLocaleString(), change: 0, trend: 'up' },
+        { label: 'Total Customers', value: totalCustomers.toLocaleString(), change: 0, trend: 'up' },
+        { label: 'Total Platform Taps', value: totalVisits.toLocaleString(), change: 0, trend: 'up' },
+        { label: 'Active Devices', value: 'Live', change: 0, trend: 'up' },
       ],
-      securityAlerts: [
-        {
-          msg: 'Abnormal check-in velocity detected at BISTRO_001',
-          type: 'risk',
-        },
-        {
-          msg: 'Point inflation threshold exceeded in sector: RETAIL',
-          type: 'warn',
-        },
-        {
-          msg: '3 duplicate redemption codes invalidated by Core',
-          type: 'info',
-        },
-      ],
-      sectorSplit: [
-        { label: 'Hospitality', value: 42 },
-        { label: 'Retail', value: 35 },
-        { label: 'Entertainment', value: 15 },
-        { label: 'Corporate', value: 8 },
-      ],
+      monthlyData,
+      sectorSplit,
+      securityAlerts,
     };
   }
 }
