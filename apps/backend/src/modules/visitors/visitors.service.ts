@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
@@ -37,7 +37,7 @@ export class VisitorsService {
     private messagingService: MessagingEngineService,
     private campaignsService: CampaignsService,
     private automationService: AutomationService,
-  ) {}
+  ) { }
 
   // --- Main/All Visitors ---
 
@@ -221,9 +221,18 @@ export class VisitorsService {
       if (device) resolvedBranchId = device.branchId;
     }
     if (!resolvedBranchId) {
-      throw new Error(
+      throw new BadRequestException(
         'branchId is required (provide directly or via deviceId for a device with branchId)',
       );
+    }
+
+    // Validate that branch exists before creating the visit
+    const branch = await this.branchRepository.findOne({
+      where: { id: resolvedBranchId },
+    });
+
+    if (!branch) {
+      throw new NotFoundException(`Branch with ID ${resolvedBranchId} not found`);
     }
 
     const visit = this.visitRepository.create({
@@ -235,9 +244,6 @@ export class VisitorsService {
     await this.visitRepository.save(visit);
 
     // Automation Trigger
-    const branch = await this.branchRepository.findOne({
-      where: { id: resolvedBranchId },
-    });
     if (branch) {
       // Find or create Contact
       let contact = await this.contactRepository.findOne({
