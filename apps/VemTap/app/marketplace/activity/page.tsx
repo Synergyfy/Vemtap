@@ -102,14 +102,14 @@ export default function MarketplaceActivityPage() {
                         onClick={() => setActiveTab('quotes')}
                         className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'quotes' ? 'text-primary' : 'text-text-secondary hover:text-text-main'}`}
                     >
-                        My Quotes {quotes?.length > 0 && `(${quotes.length})`}
+                        My Quotes {(quotes?.length ?? 0) > 0 && `(${quotes?.length})`}
                         {activeTab === 'quotes' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
                     </button>
                     <button
                         onClick={() => setActiveTab('orders')}
                         className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'orders' ? 'text-primary' : 'text-text-secondary hover:text-text-main'}`}
                     >
-                        Order History {orders?.length > 0 && `(${orders.length})`}
+                        Order History {(orders?.length ?? 0) > 0 && `(${orders?.length})`}
                         {activeTab === 'orders' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
                     </button>
                 </div>

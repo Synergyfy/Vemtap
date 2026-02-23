@@ -163,7 +163,7 @@ export default function ProductClient({ id }: { id: string }) {
 
         const quantity = parseInt(quoteData.quantity);
         if (isNaN(quantity) || quantity < 1) {
-            toast.info('Please select a quantity in the Request Quote form (or we will use the MOQ)');
+            toast('Please select a quantity in the Request Quote form (or we will use the MOQ)');
             // Fallback to MOQ if not specified in form
         }
 
