@@ -1,16 +1,16 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type CustomerStep = 
+export type CustomerStep =
     | 'SELECT_TYPE'
-    | 'SCANNING' 
-    | 'IDENTIFYING' 
-    | 'SUCCESS_LINKED' 
-    | 'ERROR_NOT_FOUND' 
-    | 'WELCOME' 
+    | 'SCANNING'
+    | 'IDENTIFYING'
+    | 'SUCCESS_LINKED'
+    | 'ERROR_NOT_FOUND'
+    | 'WELCOME'
     | 'WELCOME_BACK'
-    | 'PRIVACY' 
-    | 'FORM' 
+    | 'PRIVACY'
+    | 'FORM'
     | 'OUTCOME'
     | 'SURVEY'
     | 'FINAL_SUCCESS';
@@ -102,9 +102,10 @@ interface CustomerFlowState {
         uniqueId?: string;
     } | null;
     isReturningUser: boolean;
-    
+
     // Dynamic Customization
     businessId: string | null;
+    branchId: string | null;
     customWelcomeMessage: string | null;
     customWelcomeTitle: string | null;
     customWelcomeButton: string | null;
@@ -140,9 +141,9 @@ interface CustomerFlowState {
         type: 'rating' | 'choice' | 'text';
         options?: string[];
     }>;
-    
+
     redirects: Record<string, string>;
-    
+
     // Actions
     setStep: (step: CustomerStep) => void;
     setUserData: (data: { name: string; email?: string; phone?: string; uniqueId?: string }) => void;
@@ -183,159 +184,162 @@ interface CustomerFlowState {
 export const useCustomerFlowStore = create<CustomerFlowState>()(
     persist(
         (set, get) => ({
-    currentStep: 'SELECT_TYPE',
-    serialNumber: 'LT-8829-X',
-    storeName: 'VemTap Venue',
-    businessType: 'RESTAURANT',
-    visitCount: 1,
-    rewardVisitThreshold: 5,
-    hasRewardSetup: true,
-    showFeedback: false,
-    userData: null,
-    isReturningUser: false,
-    
-    businessId: null,
-    customWelcomeMessage: null,
-    customWelcomeTitle: null,
-    customWelcomeButton: null,
-    customWelcomeTag: null,
-    customNewUserWelcomeMessage: null,
-    customNewUserWelcomeTitle: null,
-    customNewUserWelcomeTag: null,
-    customSuccessMessage: null,
-    customSuccessTitle: null,
-    customSuccessButton: null,
-    customSuccessTag: null,
-    customPrivacyMessage: null,
-    customRewardMessage: null,
-    logoUrl: null,
-    redemptionStatus: 'none',
-    lastRedemptionId: null,
+            currentStep: 'SELECT_TYPE',
+            serialNumber: 'LT-8829-X',
+            storeName: 'VemTap Venue',
+            businessType: 'RESTAURANT',
+            visitCount: 1,
+            rewardVisitThreshold: 5,
+            hasRewardSetup: true,
+            showFeedback: false,
+            userData: null,
+            isReturningUser: false,
 
-    engagementSettings: {
-        showReview: true,
-        showSocial: true,
-        showFeedback: true,
-        reviewUrl: 'https://g.page/review/vemtap',
-        socialUrl: 'https://instagram.com/vemtap',
-        instagram: 'https://instagram.com/vemtap',
-        twitter: '',
-        facebook: '',
-        linkedin: ''
-    },
-    surveyQuestions: [
-        { id: 'q3', text: 'Any other feedback?', type: 'text' }
-    ],
-    redirects: {},
+            businessId: null,
+            branchId: null,
+            customWelcomeMessage: null,
+            customWelcomeTitle: null,
+            customWelcomeButton: null,
+            customWelcomeTag: null,
+            customNewUserWelcomeMessage: null,
+            customNewUserWelcomeTitle: null,
+            customNewUserWelcomeTag: null,
+            customSuccessMessage: null,
+            customSuccessTitle: null,
+            customSuccessButton: null,
+            customSuccessTag: null,
+            customPrivacyMessage: null,
+            customRewardMessage: null,
+            logoUrl: null,
+            redemptionStatus: 'none',
+            lastRedemptionId: null,
 
-    setStep: (step) => set({ currentStep: step }),
-    setUserData: (data) => {
-        const uniqueId = data.uniqueId || `LT-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
-        set({ userData: { ...data, uniqueId }, visitCount: 1 });
-    },
-    resetFlow: () => set({ 
-        currentStep: 'SELECT_TYPE', 
-        userData: null, 
-        isReturningUser: false,
-        visitCount: 1,
-        showFeedback: false,
-        businessId: null,
-        customWelcomeMessage: null,
-        customWelcomeTitle: null,
-        customWelcomeButton: null,
-        customSuccessMessage: null,
-        customSuccessTitle: null,
-        customSuccessButton: null,
-        customPrivacyMessage: null,
-        customRewardMessage: null,
-        logoUrl: null,
-        redemptionStatus: 'none',
-        lastRedemptionId: null
-    }),
-    toggleFeedback: (show) => set({ showFeedback: show }),
-    setRewardSetup: (has) => set({ hasRewardSetup: has }),
-    simulateReturningUser: (visits = 3) => {
-        const type = get().businessType;
-        const config = businessConfigs[type];
-        set({ 
-            isReturningUser: true, 
-            currentStep: 'IDENTIFYING',
-            visitCount: visits,
-            storeName: config.storeName,
-            logoUrl: config.logoUrl || null,
-            userData: { 
-                name: 'Sarah Jordan', 
-                email: 'sarah@example.com', 
-                phone: '+234 801 234 5678',
-                uniqueId: 'LT-SARAH-99'
-            }
-        });
-    },
-    setBusinessType: (type) => set({ 
-        businessType: type, 
-        storeName: businessConfigs[type].storeName,
-        logoUrl: businessConfigs[type].logoUrl || null 
-    }),
-    getBusinessConfig: () => businessConfigs[get().businessType],
-    initializeFromBusiness: (business) => set({
-        businessId: business.id,
-        storeName: business.name,
-        businessType: business.type,
-        customWelcomeMessage: business.welcomeMessage,
-        customWelcomeTitle: business.welcomeTitle,
-        customWelcomeButton: business.welcomeButton,
-        customWelcomeTag: business.welcomeTag,
-        customSuccessMessage: business.successMessage,
-        customSuccessTitle: business.successTitle,
-        customSuccessButton: business.successButton,
-        customSuccessTag: business.successTag,
-        customPrivacyMessage: business.privacyMessage,
-        customRewardMessage: business.rewardMessage,
-        hasRewardSetup: business.rewardEnabled,
-        logoUrl: business.logoUrl,
-        currentStep: 'SCANNING'
-    }),
-    updateCustomSettings: (settings) => set((state) => ({
-        customWelcomeMessage: settings.welcomeMessage ?? state.customWelcomeMessage,
-        customWelcomeTitle: settings.welcomeTitle ?? state.customWelcomeTitle,
-        customWelcomeButton: settings.welcomeButton ?? state.customWelcomeButton,
-        customWelcomeTag: settings.welcomeTag ?? state.customWelcomeTag,
-        customNewUserWelcomeMessage: settings.newUserWelcomeMessage ?? state.customNewUserWelcomeMessage,
-        customNewUserWelcomeTitle: settings.newUserWelcomeTitle ?? state.customNewUserWelcomeTitle,
-        customNewUserWelcomeTag: settings.newUserWelcomeTag ?? state.customNewUserWelcomeTag,
-        customSuccessMessage: settings.successMessage ?? state.customSuccessMessage,
-        customSuccessTitle: settings.successTitle ?? state.customSuccessTitle,
-        customSuccessButton: settings.successButton ?? state.customSuccessButton,
-        customSuccessTag: settings.successTag ?? state.customSuccessTag,
-        customPrivacyMessage: settings.privacyMessage ?? state.customPrivacyMessage,
-        customRewardMessage: settings.rewardMessage ?? state.customRewardMessage,
-        hasRewardSetup: settings.rewardEnabled ?? state.hasRewardSetup,
-        logoUrl: settings.logoUrl ?? state.logoUrl,
-        rewardVisitThreshold: settings.rewardVisitThreshold ?? state.rewardVisitThreshold
-    })),
-    updateEngagementSettings: (settings) => set((state) => ({
-        engagementSettings: {
-            ...state.engagementSettings,
-            ...settings
-        }
-    })),
-    recordVisit: () => set((state) => ({ 
-        isReturningUser: true,
-        currentStep: 'WELCOME_BACK',
-        visitCount: state.visitCount + 1 
-    })),
-    incrementVisits: () => set((state) => ({
-        visitCount: state.visitCount + 1
-    })),
-    requestRedemption: (rewardTitle) => set({
-        redemptionStatus: 'pending',
-        lastRedemptionId: `RR-${Date.now()}`
-    }),
-    setRedemptionStatus: (status) => set({ redemptionStatus: status }),
-    resetVisitCountAfterRedemption: (threshold) => set((state) => ({
-        visitCount: Math.max(0, state.visitCount - threshold)
-    })),
-    setRedirect: (id, url) => set((state) => ({
-        redirects: { ...state.redirects, [id]: url }
-    })),
-}), { name: 'customer-flow-storage' }));
+            engagementSettings: {
+                showReview: true,
+                showSocial: true,
+                showFeedback: true,
+                reviewUrl: 'https://g.page/review/vemtap',
+                socialUrl: 'https://instagram.com/vemtap',
+                instagram: 'https://instagram.com/vemtap',
+                twitter: '',
+                facebook: '',
+                linkedin: ''
+            },
+            surveyQuestions: [
+                { id: 'q3', text: 'Any other feedback?', type: 'text' }
+            ],
+            redirects: {},
+
+            setStep: (step) => set({ currentStep: step }),
+            setUserData: (data) => {
+                const uniqueId = data.uniqueId || `LT-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+                set({ userData: { ...data, uniqueId }, visitCount: 1 });
+            },
+            resetFlow: () => set({
+                currentStep: 'SELECT_TYPE',
+                userData: null,
+                isReturningUser: false,
+                visitCount: 1,
+                showFeedback: false,
+                businessId: null,
+                branchId: null,
+                customWelcomeMessage: null,
+                customWelcomeTitle: null,
+                customWelcomeButton: null,
+                customSuccessMessage: null,
+                customSuccessTitle: null,
+                customSuccessButton: null,
+                customPrivacyMessage: null,
+                customRewardMessage: null,
+                logoUrl: null,
+                redemptionStatus: 'none',
+                lastRedemptionId: null
+            }),
+            toggleFeedback: (show) => set({ showFeedback: show }),
+            setRewardSetup: (has) => set({ hasRewardSetup: has }),
+            simulateReturningUser: (visits = 3) => {
+                const type = get().businessType;
+                const config = businessConfigs[type];
+                set({
+                    isReturningUser: true,
+                    currentStep: 'IDENTIFYING',
+                    visitCount: visits,
+                    storeName: config.storeName,
+                    logoUrl: config.logoUrl || null,
+                    userData: {
+                        name: 'Sarah Jordan',
+                        email: 'sarah@example.com',
+                        phone: '+234 801 234 5678',
+                        uniqueId: 'LT-SARAH-99'
+                    }
+                });
+            },
+            setBusinessType: (type) => set({
+                businessType: type,
+                storeName: businessConfigs[type].storeName,
+                logoUrl: businessConfigs[type].logoUrl || null
+            }),
+            getBusinessConfig: () => businessConfigs[get().businessType],
+            initializeFromBusiness: (business) => set({
+                businessId: business.id,
+                branchId: business.branchId || 'head-office',
+                storeName: business.name,
+                businessType: business.type,
+                customWelcomeMessage: business.welcomeMessage,
+                customWelcomeTitle: business.welcomeTitle,
+                customWelcomeButton: business.welcomeButton,
+                customWelcomeTag: business.welcomeTag,
+                customSuccessMessage: business.successMessage,
+                customSuccessTitle: business.successTitle,
+                customSuccessButton: business.successButton,
+                customSuccessTag: business.successTag,
+                customPrivacyMessage: business.privacyMessage,
+                customRewardMessage: business.rewardMessage,
+                hasRewardSetup: business.rewardEnabled,
+                logoUrl: business.logoUrl,
+                currentStep: 'SCANNING'
+            }),
+            updateCustomSettings: (settings) => set((state) => ({
+                customWelcomeMessage: settings.welcomeMessage ?? state.customWelcomeMessage,
+                customWelcomeTitle: settings.welcomeTitle ?? state.customWelcomeTitle,
+                customWelcomeButton: settings.welcomeButton ?? state.customWelcomeButton,
+                customWelcomeTag: settings.welcomeTag ?? state.customWelcomeTag,
+                customNewUserWelcomeMessage: settings.newUserWelcomeMessage ?? state.customNewUserWelcomeMessage,
+                customNewUserWelcomeTitle: settings.newUserWelcomeTitle ?? state.customNewUserWelcomeTitle,
+                customNewUserWelcomeTag: settings.newUserWelcomeTag ?? state.customNewUserWelcomeTag,
+                customSuccessMessage: settings.successMessage ?? state.customSuccessMessage,
+                customSuccessTitle: settings.successTitle ?? state.customSuccessTitle,
+                customSuccessButton: settings.successButton ?? state.customSuccessButton,
+                customSuccessTag: settings.successTag ?? state.customSuccessTag,
+                customPrivacyMessage: settings.privacyMessage ?? state.customPrivacyMessage,
+                customRewardMessage: settings.rewardMessage ?? state.customRewardMessage,
+                hasRewardSetup: settings.rewardEnabled ?? state.hasRewardSetup,
+                logoUrl: settings.logoUrl ?? state.logoUrl,
+                rewardVisitThreshold: settings.rewardVisitThreshold ?? state.rewardVisitThreshold
+            })),
+            updateEngagementSettings: (settings) => set((state) => ({
+                engagementSettings: {
+                    ...state.engagementSettings,
+                    ...settings
+                }
+            })),
+            recordVisit: () => set((state) => ({
+                isReturningUser: true,
+                currentStep: 'WELCOME_BACK',
+                visitCount: state.visitCount + 1
+            })),
+            incrementVisits: () => set((state) => ({
+                visitCount: state.visitCount + 1
+            })),
+            requestRedemption: (rewardTitle) => set({
+                redemptionStatus: 'pending',
+                lastRedemptionId: `RR-${Date.now()}`
+            }),
+            setRedemptionStatus: (status) => set({ redemptionStatus: status }),
+            resetVisitCountAfterRedemption: (threshold) => set((state) => ({
+                visitCount: Math.max(0, state.visitCount - threshold)
+            })),
+            setRedirect: (id, url) => set((state) => ({
+                redirects: { ...state.redirects, [id]: url }
+            })),
+        }), { name: 'customer-flow-storage' }));

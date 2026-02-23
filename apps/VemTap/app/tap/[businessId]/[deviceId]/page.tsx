@@ -57,6 +57,7 @@ export default function MultiDeviceTapPage() {
                 // Initialize store with both business and specific device context
                 initializeFromBusiness({
                     ...business,
+                    branchId: assignedBranchId,
                     currentDeviceId: deviceId as string
                 });
 
@@ -98,6 +99,7 @@ export default function MultiDeviceTapPage() {
                         earnPoints({
                             userId: user.id || 'current-user',
                             businessId: business.id,
+                            branchId: assignedBranchId,
                             isVisit: true
                         }).catch(err => console.error('Failed to earn loyalty points:', err));
                     }
