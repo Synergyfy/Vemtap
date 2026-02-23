@@ -91,7 +91,7 @@ export class BusinessesController {
       }
     }
   })
-  async adminCreate(@Body() createBusinessDto: AdminCreateBusinessDto) {
+  async adminCreateBusinessUser(@Body() createBusinessDto: AdminCreateBusinessDto) {
     return this.businessesService.adminCreate(createBusinessDto);
   }
 

@@ -4,6 +4,7 @@ import {
     IsOptional,
     IsEnum,
     IsNotEmpty,
+    IsUUID,
 } from 'class-validator';
 import { BusinessType, BusinessStatus } from '../entities/business.entity';
 
@@ -13,10 +14,30 @@ export class AdminCreateBusinessDto {
     @IsNotEmpty()
     name: string;
 
-    @ApiProperty({ example: 'owner-uuid-here', description: 'The user ID of the business owner' })
+    @ApiProperty({ example: 'John', description: 'The first name of the business owner' })
     @IsString()
     @IsNotEmpty()
-    ownerId: string;
+    ownerFirstName: string;
+
+    @ApiProperty({ example: 'Doe', description: 'The last name of the business owner' })
+    @IsString()
+    @IsNotEmpty()
+    ownerLastName: string;
+
+    @ApiProperty({ example: 'john@example.com', description: 'The email address of the business owner' })
+    @IsString()
+    @IsNotEmpty()
+    ownerEmail: string;
+
+    @ApiProperty({ example: 'password123', description: 'The password for the new business owner' })
+    @IsString()
+    @IsNotEmpty()
+    ownerPassword: string;
+
+    @ApiPropertyOptional({ example: '+2348000000000', description: 'The phone number of the business owner' })
+    @IsString()
+    @IsOptional()
+    ownerPhone?: string;
 
     @ApiPropertyOptional({ enum: BusinessType, example: BusinessType.RETAIL })
     @IsEnum(BusinessType)
