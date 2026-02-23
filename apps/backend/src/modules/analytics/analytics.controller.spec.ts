@@ -11,7 +11,15 @@ describe('AnalyticsController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AnalyticsController],
       providers: [
-        AnalyticsService,
+        {
+          provide: AnalyticsService,
+          useValue: {
+            getDashboardAnalytics: jest.fn(),
+            getFootfallAnalytics: jest.fn(),
+            getPeakTimesAnalytics: jest.fn(),
+            getAdminSummary: jest.fn(),
+          },
+        },
         {
           provide: JwtService,
           useValue: {

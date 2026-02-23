@@ -30,16 +30,16 @@ export default function LoyaltyPage() {
     const [activeTab, setActiveTab] = useState<'rewards' | 'history'>('rewards');
     const [selectedRedemption, setSelectedRedemption] = useState<{ redemption: Redemption, reward: Reward } | null>(null);
 
-    // Business ID is hardcoded for MVP demo purposes
-    const businessId = 'bistro_001';
-    const profile = profiles[businessId];
+    // Branch ID is hardcoded for MVP demo purposes
+    const branchId = 'bistro_001';
+    const profile = profiles[branchId];
 
     useEffect(() => {
         if (user?.id) {
-            fetchLoyaltyProfile(user.id, businessId);
-            fetchRewards(businessId);
+            fetchLoyaltyProfile(user.id, branchId);
+            fetchRewards(branchId);
         }
-    }, [user, businessId]);
+    }, [user, branchId]);
 
     useEffect(() => {
         if (profile?.id) {

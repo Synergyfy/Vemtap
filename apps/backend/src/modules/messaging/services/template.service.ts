@@ -13,7 +13,7 @@ export class TemplateService {
   constructor(
     @InjectRepository(MessageTemplate)
     private readonly templateRepo: Repository<MessageTemplate>,
-  ) {}
+  ) { }
 
   async createTemplate(
     businessId: string,
@@ -49,6 +49,23 @@ export class TemplateService {
       throw new NotFoundException('Template not found');
     }
     return template;
+  }
+
+  // --- Admin Methods ---
+
+  async findAllAdmin(): Promise<MessageTemplate[]> {
+    return this.templateRepo.find({
+      relations: ['business'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async updateStatus(id: string, status: any): Promise<MessageTemplate> {
+    const template = await this.templateRepo.findOne({ where: { id } });
+    if (!template) throw new NotFoundException('Template not found');
+
+    template.status = status;
+    return this.templateRepo.save(template);
   }
 
   render(content: string, vars: Record<string, string>): string {

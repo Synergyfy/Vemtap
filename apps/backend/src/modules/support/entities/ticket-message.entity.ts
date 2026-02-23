@@ -14,14 +14,14 @@ export class TicketMessage {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'uuid' })
   ticketId: string;
 
   @ManyToOne(() => SupportTicket, (ticket) => ticket.messages)
   @JoinColumn({ name: 'ticketId' })
   ticket: SupportTicket;
 
-  @Column()
+  @Column({ type: 'uuid' })
   senderId: string;
 
   @ManyToOne(() => User)

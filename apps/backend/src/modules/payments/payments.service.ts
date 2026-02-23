@@ -51,10 +51,15 @@ export class PaymentsService {
     if (existing) {
       // Idempotency: If exact same payment is recorded, return it.
       // If conflicting details, throw error.
-      if (existing.amount == createPaymentDto.amount && existing.purpose == createPaymentDto.purpose) {
+      if (
+        existing.amount == createPaymentDto.amount &&
+        existing.purpose == createPaymentDto.purpose
+      ) {
         return existing;
       }
-      throw new ConflictException('Payment reference already exists with different details');
+      throw new ConflictException(
+        'Payment reference already exists with different details',
+      );
     }
 
     const payment = this.paymentRepository.create(createPaymentDto);

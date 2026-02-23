@@ -45,7 +45,10 @@ describe('ProductsService - Pricing & Payment', () => {
         { provide: getRepositoryToken(Product), useValue: mockProductRepo },
         { provide: getRepositoryToken(Order), useValue: mockOrderRepo },
         { provide: getRepositoryToken(Quote), useValue: mockQuoteRepo },
-        { provide: getRepositoryToken(QuoteNegotiation), useValue: mockNegotiationRepo },
+        {
+          provide: getRepositoryToken(QuoteNegotiation),
+          useValue: mockNegotiationRepo,
+        },
         { provide: PaymentsService, useValue: mockPaymentsService },
       ],
     }).compile();
@@ -61,14 +64,18 @@ describe('ProductsService - Pricing & Payment', () => {
   });
 
   describe('createDirectOrder', () => {
-    const user = { id: 'user-1', role: UserRole.OWNER, businessId: 'biz-1' } as User;
+    const user = {
+      id: 'user-1',
+      role: UserRole.OWNER,
+      businessId: 'biz-1',
+    } as User;
     const productId = 'prod-1';
     const product = {
-        id: productId,
-        price: 1000,
-        priceTiers: [],
-        requestQuoteThreshold: 1000,
-      } as unknown as Product;
+      id: productId,
+      price: 1000,
+      priceTiers: [],
+      requestQuoteThreshold: 1000,
+    } as unknown as Product;
 
     it('should create PAID order if payment verified', async () => {
       mockProductRepo.findOne.mockResolvedValue(product);
@@ -76,7 +83,9 @@ describe('ProductsService - Pricing & Payment', () => {
       mockPaymentsService.verifyTransaction.mockResolvedValue(true);
       mockPaymentsService.recordPayment.mockResolvedValue({ id: 'pay-1' });
       mockOrderRepo.create.mockImplementation((dto) => dto);
-      mockOrderRepo.save.mockImplementation((order) => Promise.resolve({ id: 'order-1', ...order }));
+      mockOrderRepo.save.mockImplementation((order) =>
+        Promise.resolve({ id: 'order-1', ...order }),
+      );
 
       const dto = { productId, quantity: 50, paymentReference: 'ref_valid' };
       const result = await service.createDirectOrder(user, dto);
@@ -90,7 +99,9 @@ describe('ProductsService - Pricing & Payment', () => {
       mockProductRepo.findOne.mockResolvedValue(product);
       const dto = { productId, quantity: 50 }; // No ref
 
-      await expect(service.createDirectOrder(user, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.createDirectOrder(user, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw error if payment verification fails', async () => {
@@ -100,16 +111,20 @@ describe('ProductsService - Pricing & Payment', () => {
 
       const dto = { productId, quantity: 50, paymentReference: 'ref_invalid' };
 
-      await expect(service.createDirectOrder(user, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.createDirectOrder(user, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw conflict if order with same reference exists', async () => {
-       mockProductRepo.findOne.mockResolvedValue(product);
-       mockOrderRepo.findOneBy.mockResolvedValue({ id: 'existing_order' });
+      mockProductRepo.findOne.mockResolvedValue(product);
+      mockOrderRepo.findOneBy.mockResolvedValue({ id: 'existing_order' });
 
-       const dto = { productId, quantity: 50, paymentReference: 'ref_used' };
+      const dto = { productId, quantity: 50, paymentReference: 'ref_used' };
 
-       await expect(service.createDirectOrder(user, dto)).rejects.toThrow(ConflictException);
+      await expect(service.createDirectOrder(user, dto)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 });

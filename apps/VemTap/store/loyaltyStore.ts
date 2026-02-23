@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { loyaltyApi } from '@/lib/api/loyalty';
-import { 
-  LoyaltyProfile, 
-  PointTransaction, 
-  Reward, 
+import {
+  LoyaltyProfile,
+  PointTransaction,
+  Reward,
   Redemption,
   PointEarnRequest,
   LoyaltyRule
@@ -12,16 +12,16 @@ import {
 interface LoyaltyState {
   // Current user's loyalty profiles (one per business)
   profiles: Record<string, LoyaltyProfile>; // key: businessId
-  
+
   // Recent transactions for current viewed business
   recentTransactions: PointTransaction[];
-  
+
   // Available rewards for current business
   availableRewards: Reward[];
-  
+
   // User's redemptions
   redemptions: Redemption[];
-  
+
   // Last earned points info for modal
   lastEarnedResponse: {
     pointsEarned: number;
@@ -29,29 +29,31 @@ interface LoyaltyState {
     message: string;
     breakdown?: any;
   } | null;
-  
+
   // Loading & Error states
   isLoading: boolean;
   error: string | null;
-  
+
   // Admin State
   rules: LoyaltyRule | null;
-  
+  allProfiles: LoyaltyProfile[];
+
   // Actions
-  fetchLoyaltyProfile: (userId: string, businessId: string) => Promise<LoyaltyProfile | null>;
-  fetchRewards: (businessId: string) => Promise<void>;
+  fetchLoyaltyProfile: (userId: string, branchId: string) => Promise<LoyaltyProfile | null>;
+  fetchAllProfiles: (branchId: string) => Promise<void>;
+  fetchRewards: (branchId: string) => Promise<void>;
   fetchTransactions: (profileId: string) => Promise<void>;
   earnPoints: (request: PointEarnRequest) => Promise<{ success: boolean; pointsEarned: number; message: string; newBalance?: number; breakdown?: any }>;
   redeemReward: (loyaltyProfileId: string, rewardId: string) => Promise<{ success: boolean; redemption?: Redemption; error?: string }>;
   setLastEarnedResponse: (response: LoyaltyState['lastEarnedResponse']) => void;
   clearLoyaltyData: () => void;
-  
+
   // Admin Actions
-  fetchRules: (businessId: string) => Promise<void>;
-  updateRules: (businessId: string, updates: Partial<LoyaltyRule>) => Promise<void>;
-  createReward: (businessId: string, reward: Partial<Reward>) => Promise<void>;
-  updateReward: (businessId: string, id: string, updates: Partial<Reward>) => Promise<void>;
-  verifyRedemption: (businessId: string, code: string) => Promise<{ success: boolean; redemption?: Redemption; reward?: Reward; error?: string }>;
+  fetchRules: (branchId: string) => Promise<void>;
+  updateRules: (branchId: string, updates: Partial<LoyaltyRule>) => Promise<void>;
+  createReward: (branchId: string, reward: Partial<Reward>) => Promise<void>;
+  updateReward: (branchId: string, id: string, updates: Partial<Reward>) => Promise<void>;
+  verifyRedemption: (branchId: string, code: string) => Promise<{ success: boolean; redemption?: Redemption; reward?: Reward; error?: string }>;
 }
 
 export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
@@ -63,14 +65,15 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
   isLoading: false,
   error: null,
   rules: null,
-  
-  fetchLoyaltyProfile: async (userId: string, businessId: string) => {
+  allProfiles: [],
+
+  fetchLoyaltyProfile: async (userId: string, branchId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const profile = await loyaltyApi.fetchProfile(userId, businessId);
+      const profile = await loyaltyApi.fetchProfile(userId, branchId);
       if (profile) {
         set(state => ({
-          profiles: { ...state.profiles, [businessId]: profile },
+          profiles: { ...state.profiles, [branchId]: profile },
           isLoading: false
         }));
       } else {
@@ -83,18 +86,28 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
       return null;
     }
   },
-  
-  fetchRewards: async (businessId: string) => {
+
+  fetchAllProfiles: async (branchId: string) => {
+    set({ isLoading: true });
+    try {
+      const profiles = await loyaltyApi.fetchAllProfiles(branchId);
+      set({ allProfiles: profiles, isLoading: false });
+    } catch (error) {
+      set({ isLoading: false, error: 'Failed to fetch customer directory' });
+    }
+  },
+
+  fetchRewards: async (branchId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const rewards = await loyaltyApi.fetchRewardsByBusiness(businessId);
+      const rewards = await loyaltyApi.fetchRewardsByBusiness(branchId);
       set({ availableRewards: rewards, isLoading: false });
     } catch (error) {
       console.error('Failed to fetch rewards:', error);
       set({ isLoading: false, error: 'Failed to load rewards' });
     }
   },
-  
+
   fetchTransactions: async (profileId: string) => {
     set({ isLoading: true, error: null });
     try {
@@ -105,17 +118,17 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
       set({ isLoading: false, error: 'Failed to load transactions' });
     }
   },
-  
+
   earnPoints: async (request: PointEarnRequest) => {
     set({ isLoading: true, error: null });
     try {
       const response = await loyaltyApi.earnPoints(request);
       if (response.success) {
         // Refresh profile to get updated balance
-        await get().fetchLoyaltyProfile(request.userId, request.businessId);
-        
+        await get().fetchLoyaltyProfile(request.userId, request.branchId);
+
         // Store for UI modal
-        set({ 
+        set({
           lastEarnedResponse: {
             pointsEarned: response.pointsEarned,
             newBalance: response.newBalance || 0,
@@ -132,18 +145,27 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
       return { success: false, pointsEarned: 0, message: 'Server error occurred', newBalance: 0 };
     }
   },
-  
+
   redeemReward: async (loyaltyProfileId: string, rewardId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await loyaltyApi.redeemReward({ loyaltyProfileId, rewardId });
+      // Find the profile and the branchId key it's stored under
+      const profilesMap = get().profiles;
+      const branchId = Object.keys(profilesMap).find(k => profilesMap[k].id === loyaltyProfileId);
+      const profile = branchId ? profilesMap[branchId] : undefined;
+
+      if (!profile || !branchId) return { success: false, error: 'Profile not found' };
+
+      const response = await loyaltyApi.redeemReward({
+        loyaltyProfileId,
+        rewardId,
+        branchId // Correctly using the branchId key from profiles map
+      });
+
       if (response.success && response.redemption) {
-        // Refresh data
-        const profile = Object.values(get().profiles).find(p => p.id === loyaltyProfileId);
-        if (profile) {
-          await get().fetchLoyaltyProfile(profile.userId, profile.businessId);
-          await get().fetchTransactions(loyaltyProfileId);
-        }
+        // Refresh profile balance and transaction history
+        await get().fetchLoyaltyProfile(profile.userId, branchId);
+        await get().fetchTransactions(loyaltyProfileId);
       }
       set({ isLoading: false });
       return response;
@@ -155,64 +177,64 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
   },
 
   setLastEarnedResponse: (response) => set({ lastEarnedResponse: response }),
-  
-  fetchRules: async (businessId: string) => {
+
+  fetchRules: async (branchId: string) => {
     set({ isLoading: true });
     try {
-      const rules = await loyaltyApi.fetchRules(businessId);
+      const rules = await loyaltyApi.fetchRules(branchId);
       set({ rules, isLoading: false });
     } catch (error) {
       set({ isLoading: false, error: 'Failed to fetch rules' });
     }
   },
 
-  updateRules: async (businessId: string, updates: Partial<LoyaltyRule>) => {
+  updateRules: async (branchId: string, updates: Partial<LoyaltyRule>) => {
     set({ isLoading: true });
     try {
-      await loyaltyApi.updateRules(businessId, updates);
-      await get().fetchRules(businessId);
+      await loyaltyApi.updateRules(branchId, updates);
+      await get().fetchRules(branchId);
       set({ isLoading: false });
     } catch (error) {
       set({ isLoading: false, error: 'Failed to update rules' });
     }
   },
 
-  createReward: async (businessId: string, reward: Partial<Reward>) => {
+  createReward: async (branchId: string, reward: Partial<Reward>) => {
     set({ isLoading: true });
     try {
-      await loyaltyApi.createReward(businessId, reward);
-      await get().fetchRewards(businessId);
+      await loyaltyApi.createReward(branchId, reward);
+      await get().fetchRewards(branchId);
       set({ isLoading: false });
     } catch (error) {
       set({ isLoading: false, error: 'Failed to create reward' });
     }
   },
 
-  updateReward: async (businessId: string, id: string, updates: Partial<Reward>) => {
+  updateReward: async (branchId: string, id: string, updates: Partial<Reward>) => {
     set({ isLoading: true });
     try {
-      await loyaltyApi.updateReward(businessId, id, updates);
-      await get().fetchRewards(businessId);
+      await loyaltyApi.updateReward(branchId, id, updates);
+      await get().fetchRewards(branchId);
       set({ isLoading: false });
     } catch (error) {
       set({ isLoading: false, error: 'Failed to update reward' });
     }
   },
 
-  verifyRedemption: async (businessId: string, code: string) => {
+  verifyRedemption: async (branchId: string, code: string) => {
     set({ isLoading: true });
     try {
-      const result = await loyaltyApi.verifyRedemption(code, businessId);
+      const result = await loyaltyApi.verifyRedemption(code, branchId);
       set({ isLoading: false });
-      
+
       if (result.success && result.redemption) {
-        const reward = (get().availableRewards.length > 0) 
+        const reward = (get().availableRewards.length > 0)
           ? get().availableRewards.find(r => r.id === result.redemption?.rewardId)
           : undefined;
-          
+
         return { ...result, reward };
       }
-      
+
       return result;
     } catch (error) {
       set({ isLoading: false });

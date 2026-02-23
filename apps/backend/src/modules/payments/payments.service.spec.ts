@@ -43,25 +43,31 @@ describe('PaymentsService', () => {
 
   describe('verifyTransaction', () => {
     it('should return true if paystack status is success', async () => {
-      mockHttpService.get.mockReturnValue(of({
-        data: { status: true, data: { status: 'success' } },
-      }));
+      mockHttpService.get.mockReturnValue(
+        of({
+          data: { status: true, data: { status: 'success' } },
+        }),
+      );
 
       const result = await service.verifyTransaction('ref_123');
       expect(result).toBe(true);
     });
 
     it('should return false if paystack status is not success', async () => {
-      mockHttpService.get.mockReturnValue(of({
-        data: { status: true, data: { status: 'failed' } },
-      }));
+      mockHttpService.get.mockReturnValue(
+        of({
+          data: { status: true, data: { status: 'failed' } },
+        }),
+      );
 
       const result = await service.verifyTransaction('ref_123');
       expect(result).toBe(false);
     });
 
     it('should return false on error', async () => {
-      mockHttpService.get.mockImplementation(() => { throw new Error('Network error'); });
+      mockHttpService.get.mockImplementation(() => {
+        throw new Error('Network error');
+      });
       const result = await service.verifyTransaction('ref_123');
       expect(result).toBe(false);
     });
@@ -85,7 +91,7 @@ describe('PaymentsService', () => {
     });
 
     it('should handle idempotency (return existing if identical)', async () => {
-       const dto = {
+      const dto = {
         reference: 'ref_123',
         amount: 5000,
         purpose: PaymentPurpose.ORDER,
@@ -98,14 +104,16 @@ describe('PaymentsService', () => {
     });
 
     it('should throw conflict if reference exists with different details', async () => {
-       const dto = {
+      const dto = {
         reference: 'ref_123',
         amount: 5000,
         purpose: PaymentPurpose.ORDER,
       };
       mockPaymentRepo.findOneBy.mockResolvedValue({ ...dto, amount: 9000 }); // Different amount
 
-      await expect(service.recordPayment(dto as any)).rejects.toThrow(ConflictException);
+      await expect(service.recordPayment(dto as any)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 });

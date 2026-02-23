@@ -1,54 +1,76 @@
 'use client';
 
 import React, { useState } from 'react';
-import { MessageCircle, User, Clock, Check, Send, Search, Users, Settings, LogOut } from 'lucide-react';
+import { MessageCircle, User, Clock, Check, Send, Search, LogOut, Activity } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { notify } from '@/lib/notify';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { adminSupportApi } from '@/lib/api/admin';
+import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function AgentDashboard() {
     const { logout, user } = useAuthStore();
-    const [activeChat, setActiveChat] = useState<any>(null);
+    const queryClient = useQueryClient();
+    const [activeChatId, setActiveChatId] = useState<string | null>(null);
     const [replyText, setReplyText] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
 
-    const [chats, setChats] = useState([
-        {
-            id: 'CH-102', user: 'Guest_2847', lastMessage: 'How do I link my NFC tag?', time: '2 mins ago', status: 'active', messages: [
-                { sender: 'user', text: 'How do I link my NFC tag?', time: '10:02 AM' }
-            ]
+    // Fetch all tickets
+    const { data: ticketsResponse, isLoading: isLoadingTickets } = useQuery({
+        queryKey: ['admin-tickets'],
+        queryFn: () => adminSupportApi.getAllTickets(),
+    });
+
+    const allTickets = (ticketsResponse?.data || ticketsResponse || []) as any[];
+
+    // Fetch active ticket details
+    const { data: activeTicketResponse, isLoading: isLoadingDetails } = useQuery({
+        queryKey: ['admin-ticket', activeChatId],
+        queryFn: () => adminSupportApi.getTicketDetails(activeChatId!),
+        enabled: !!activeChatId,
+    });
+
+    const activeTicket = (activeTicketResponse?.data || activeTicketResponse) as any;
+
+    // reply mutation
+    const replyMutation = useMutation({
+        mutationFn: ({ id, message }: { id: string, message: string }) => adminSupportApi.replyToTicket(id, message),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-ticket', activeChatId] });
+            setReplyText('');
+            notify.success('Reply sent successfully');
         },
-        {
-            id: 'CH-105', user: 'Daniel Admin', lastMessage: 'Is the API down?', time: '15 mins ago', status: 'active', messages: [
-                { sender: 'user', text: 'Is the API down?', time: '09:48 AM' }
-            ]
+        onError: () => notify.error('Failed to send reply'),
+    });
+
+    // resolve mutation
+    const resolveMutation = useMutation({
+        mutationFn: (id: string) => adminSupportApi.resolveTicket(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-tickets'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-ticket', activeChatId] });
+            notify.success('Ticket resolved successfully');
         },
-        {
-            id: 'CH-101', user: 'Sarah J.', lastMessage: 'Thanks for the help!', time: '1 hour ago', status: 'resolved', messages: [
-                { sender: 'user', text: 'Thanks for the help!', time: '08:12 AM' }
-            ]
-        },
-    ]);
+        onError: () => notify.error('Failed to resolve ticket'),
+    });
 
     const handleSendReply = () => {
-        if (!replyText.trim() || !activeChat) return;
-
-        const updatedChat = {
-            ...activeChat,
-            messages: [...activeChat.messages, { sender: 'agent', text: replyText, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }],
-            lastMessage: replyText,
-            time: 'Just now'
-        };
-
-        setChats(chats.map(c => c.id === activeChat.id ? updatedChat : c));
-        setActiveChat(updatedChat);
-        setReplyText('');
-        notify.success('Reply sent successfully.');
+        if (!replyText.trim() || !activeChatId) return;
+        replyMutation.mutate({ id: activeChatId, message: replyText });
     };
 
     const handleLogout = () => {
         logout();
-        notify.success('Logged out and local data cleared.');
+        notify.success('Logged out successfully');
         window.location.href = '/login';
     };
+
+    const filteredTickets = allTickets.filter((t: any) =>
+        t.user?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.id?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     return (
         <div className="flex h-[calc(100vh-64px)] bg-gray-50 border-t border-gray-200">
@@ -57,9 +79,11 @@ export default function AgentDashboard() {
                 <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                     <h2 className="font-display font-bold text-text-main flex items-center gap-2">
                         <MessageCircle size={20} className="text-primary" />
-                        Live Chats
+                        Live Tickets
                     </h2>
-                    <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-0.5 rounded-full">{chats.filter(c => c.status === 'active').length}</span>
+                    <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-0.5 rounded-full">
+                        {isLoadingTickets ? '...' : allTickets.filter((c: any) => c.status !== 'Closed').length}
+                    </span>
                 </div>
 
                 <div className="p-4 border-b border-gray-100">
@@ -67,31 +91,59 @@ export default function AgentDashboard() {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                         <input
                             type="text"
-                            placeholder="Search active chats..."
+                            placeholder="Search tickets..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
-                    {chats.map((chat) => (
+                    {isLoadingTickets ? (
+                        <div className="p-8 text-center animate-pulse">
+                            <Clock className="w-8 h-8 mx-auto text-gray-200 mb-2" />
+                            <p className="text-[10px] font-black uppercase text-gray-300">Loading stream...</p>
+                        </div>
+                    ) : filteredTickets.length > 0 ? filteredTickets.map((ticket: any) => (
                         <button
-                            key={chat.id}
-                            onClick={() => setActiveChat(chat)}
-                            className={`w-full p-4 flex gap-3 text-left hover:bg-gray-50 transition-colors ${activeChat?.id === chat.id ? 'bg-primary/5 border-l-4 border-primary' : ''}`}
+                            key={ticket.id}
+                            onClick={() => setActiveChatId(ticket.id)}
+                            className={cn(
+                                "w-full p-4 flex gap-3 text-left hover:bg-gray-50 transition-colors",
+                                activeChatId === ticket.id ? 'bg-primary/5 border-l-4 border-primary' : ''
+                            )}
                         >
                             <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
                                 <User size={18} className="text-gray-400" />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-center mb-1">
-                                    <p className="font-bold text-sm text-text-main truncate">{chat.user}</p>
-                                    <p className="text-[10px] text-text-secondary font-bold">{chat.time}</p>
+                                    <p className="font-bold text-sm text-text-main truncate">{ticket.user?.name || 'Customer'}</p>
+                                    <p className="text-[10px] text-text-secondary font-bold">
+                                        {formatDistanceToNow(new Date(ticket.updatedAt), { addSuffix: true }).replace('about ', '')}
+                                    </p>
                                 </div>
-                                <p className="text-xs text-text-secondary truncate font-medium">{chat.lastMessage}</p>
+                                <p className="text-xs text-text-secondary truncate font-medium">{ticket.subject}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className={cn(
+                                        "text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full border",
+                                        ticket.status === 'Open' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                            ticket.status === 'In Progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                    )}>
+                                        {ticket.status}
+                                    </span>
+                                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{ticket.category}</span>
+                                </div>
                             </div>
                         </button>
-                    ))}
+                    )) : (
+                        <div className="p-12 text-center">
+                            <Activity className="w-8 h-8 mx-auto text-gray-100 mb-2" />
+                            <p className="text-[10px] font-black uppercase text-gray-300 tracking-widest">No tickets found</p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Agent Profile & Logout */}
@@ -103,7 +155,7 @@ export default function AgentDashboard() {
                         <div className="min-w-0">
                             <p className="text-xs font-bold text-text-main truncate">{user?.name || 'Agent'}</p>
                             <p className="text-[10px] text-green-600 font-bold flex items-center gap-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                                 Online
                             </p>
                         </div>
@@ -120,7 +172,7 @@ export default function AgentDashboard() {
 
             {/* Chat View */}
             <div className="flex-1 flex flex-col bg-white">
-                {activeChat ? (
+                {activeChatId ? (
                     <>
                         {/* Chat Header */}
                         <div className="h-16 px-6 border-b border-gray-100 flex items-center justify-between bg-white shadow-sm z-10">
@@ -129,29 +181,52 @@ export default function AgentDashboard() {
                                     <User size={20} className="text-gray-400" />
                                 </div>
                                 <div>
-                                    <p className="font-bold text-text-main">{activeChat.user}</p>
-                                    <p className="text-xs text-text-secondary font-medium">Chatting since {activeChat.time}</p>
+                                    <p className="font-bold text-text-main">{activeTicket?.user?.name || 'Customer'}</p>
+                                    <p className="text-xs text-text-secondary font-medium">{activeTicket?.subject} • {activeTicket?.category}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4">
-                                <button className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-primary transition-colors">Assign to Me</button>
-                                <button className="px-4 py-2 bg-green-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-green-600 shadow-lg shadow-green-100 transition-all flex items-center gap-2">
-                                    <Check size={14} />
-                                    Resolve Chat
-                                </button>
+                                {activeTicket?.status !== 'Closed' && (
+                                    <button
+                                        onClick={() => resolveMutation.mutate(activeTicket.id)}
+                                        disabled={resolveMutation.isPending}
+                                        className="px-4 py-2 bg-green-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-green-600 shadow-lg shadow-green-100 transition-all flex items-center gap-2 disabled:opacity-50"
+                                    >
+                                        <Check size={14} />
+                                        Resolve Ticket
+                                    </button>
+                                )}
                             </div>
                         </div>
 
                         {/* Messages Area */}
                         <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-gray-50/30">
-                            {activeChat.messages.map((m: any, idx: number) => (
-                                <div key={idx} className={`flex ${m.sender === 'agent' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[70%] ${m.sender === 'agent' ? 'bg-primary text-white rounded-2xl rounded-tr-none' : 'bg-white border border-gray-100 text-text-main rounded-2xl rounded-tl-none'} px-4 py-3 shadow-sm`}>
-                                        <p className="text-sm leading-relaxed">{m.text}</p>
-                                        <p className={`text-[10px] mt-1 text-right ${m.sender === 'agent' ? 'text-white/60' : 'text-text-secondary'} font-bold`}>{m.time}</p>
-                                    </div>
+                            {isLoadingDetails ? (
+                                <div className="flex flex-col items-center justify-center h-full gap-4 animate-pulse">
+                                    <Activity className="w-12 h-12 text-primary/20" />
+                                    <p className="text-[10px] font-black uppercase text-primary/40 tracking-[0.2em]">Synchronizing Logs...</p>
                                 </div>
-                            ))}
+                            ) : activeTicket?.messages?.map((m: any, idx: number) => {
+                                const isAgent = m.sender?.role === 'ADMIN' || m.sender?.role === 'STAFF';
+                                return (
+                                    <div key={idx} className={cn("flex", isAgent ? 'justify-end' : 'justify-start')}>
+                                        <div className={cn(
+                                            "max-w-[70%] px-4 py-3 shadow-sm rounded-2xl",
+                                            isAgent ? 'bg-primary text-white rounded-tr-none' : 'bg-white border border-gray-100 text-text-main rounded-tl-none'
+                                        )}>
+                                            <p className="text-sm leading-relaxed">{m.message}</p>
+                                            <div className={cn("flex items-center gap-2 mt-1 justify-end opacity-60")}>
+                                                <span className="text-[8px] font-bold uppercase tracking-widest">
+                                                    {isAgent ? 'VemTap Intelligence' : m.sender?.name || 'Customer'}
+                                                </span>
+                                                <span className="text-[8px] font-bold">
+                                                    {formatDistanceToNow(new Date(m.createdAt), { addSuffix: true })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         {/* Input Area */}
@@ -174,10 +249,10 @@ export default function AgentDashboard() {
                                 </div>
                                 <button
                                     onClick={handleSendReply}
-                                    disabled={!replyText.trim()}
+                                    disabled={!replyText.trim() || replyMutation.isPending}
                                     className="size-14 bg-primary text-white rounded-2xl flex items-center justify-center shadow-xl shadow-primary/20 hover:bg-primary-hover transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <Send size={24} />
+                                    {replyMutation.isPending ? <Activity className="animate-spin" size={24} /> : <Send size={24} />}
                                 </button>
                             </div>
                         </div>
@@ -187,8 +262,10 @@ export default function AgentDashboard() {
                         <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
                             <MessageCircle size={48} className="text-gray-200" />
                         </div>
-                        <h3 className="text-xl font-display font-bold text-text-main">Select a conversation</h3>
-                        <p className="text-sm text-text-secondary mt-2 max-w-sm">Choose an active chat from the sidebar to start assisting visitors in real-time.</p>
+                        <h3 className="text-xl font-display font-bold text-text-main uppercase tracking-tight">Support Terminal</h3>
+                        <p className="text-xs text-text-secondary mt-2 max-w-sm font-bold uppercase tracking-widest opacity-60">
+                            Select an active data stream from the sidebar to start assisting visitors in real-time.
+                        </p>
                     </div>
                 )}
             </div>

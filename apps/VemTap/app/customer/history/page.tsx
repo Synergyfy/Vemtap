@@ -1,34 +1,55 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Search, Filter, Download, ExternalLink, Calendar, Clock, MapPin, Receipt, Star, MoreVertical, X, Coffee, Smartphone, Dumbbell } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Filter, Download, ExternalLink, Calendar, Clock, MapPin, Receipt, Star, MoreVertical, X, Coffee, Smartphone, Dumbbell, Loader2 } from 'lucide-react';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useLoyaltyStore } from '@/store/loyaltyStore';
+import { PointTransaction } from '@/types/loyalty';
+import { cn } from '@/lib/utils';
 
 export default function CustomerHistoryPage() {
+    const { user } = useAuthStore();
+    const { profiles, fetchLoyaltyProfile, recentTransactions, fetchTransactions, isLoading } = useLoyaltyStore();
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedVisit, setSelectedVisit] = useState<any>(null);
+    const [selectedVisit, setSelectedVisit] = useState<PointTransaction | null>(null);
 
-    const visits = [
-        { id: 1, place: 'Green Terrace Cafe', date: 'Feb 3, 2024', time: '10:30 AM', points: 50, amount: '₦2,500', status: 'Completed', icon: 'coffee', category: 'Dining', address: '12 Admiralty Way, Lekki Phase 1', receiptId: 'TXN-908271' },
-        { id: 2, place: 'NextGen Tech Store', date: 'Feb 2, 2024', time: '4:15 PM', points: 120, amount: '₦15,000', status: 'Completed', icon: 'devices', category: 'Electronics', address: 'Mall of Africa, Victoria Island', receiptId: 'TXN-112233' },
-        { id: 3, place: 'Fitness Center', date: 'Feb 1, 2024', time: '9:00 AM', points: 30, amount: 'Subscription', status: 'Completed', icon: 'fitness_center', category: 'Health', address: '48 Bourdillon Rd, Ikoyi', receiptId: 'MEM-445566' },
-        { id: 4, place: 'Green Terrace Cafe', date: 'Jan 28, 2024', time: '11:00 AM', points: 50, amount: '₦3,200', status: 'Completed', icon: 'coffee', category: 'Dining', address: '12 Admiralty Way, Lekki Phase 1', receiptId: 'TXN-778899' },
-        { id: 5, place: 'Mega Plaza', date: 'Jan 25, 2024', time: '6:30 PM', points: 20, amount: '₦12,000', status: 'Completed', icon: 'shopping_bag', category: 'Shopping', address: 'Idowu Martins St, VI, Lagos', receiptId: 'TXN-334455' },
-        { id: 6, place: 'Club 54', date: 'Jan 24, 2024', time: '10:00 PM', points: 100, amount: '₦25,000', status: 'Completed', icon: 'nightlife', category: 'Entertainment', address: 'Adeola Hopewell, VI', receiptId: 'TXN-667788' },
-    ];
+    // TODO: This should eventually come from context or last visited
+    const branchId = 'bistro_001';
+    const profile = profiles[branchId];
 
-    const filteredVisits = visits.filter(v =>
-        v.place.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        v.category.toLowerCase().includes(searchQuery.toLowerCase())
+    useEffect(() => {
+        const initialize = async () => {
+            if (user?.id) {
+                const loadedProfile = await fetchLoyaltyProfile(user.id, branchId);
+                if (loadedProfile?.id) {
+                    fetchTransactions(loadedProfile.id);
+                }
+            }
+        };
+        initialize();
+    }, [user, branchId, fetchLoyaltyProfile, fetchTransactions]);
+
+    const getTransactionIcon = (reason: string) => {
+        const r = reason.toLowerCase();
+        if (r.includes('coffee') || r.includes('cafe')) return Coffee;
+        if (r.includes('tech') || r.includes('device') || r.includes('phone')) return Smartphone;
+        if (r.includes('gym') || r.includes('fitness')) return Dumbbell;
+        if (r.includes('reward') || r.includes('redeem')) return Star;
+        return Clock;
+    };
+
+    const filteredTransactions = recentTransactions.filter(tx =>
+        tx.reason.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
-        <div className="max-w-5xl mx-auto space-y-8 pb-12">
+        <div className="max-w-5xl mx-auto space-y-8 pb-12 p-4 md:p-0">
 
             {/* Header & Controls */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
                     <h1 className="text-3xl font-display font-bold text-text-main mb-2">Check-in Ledger</h1>
-                    <p className="text-text-secondary font-medium text-base">You've visited <span className="text-primary font-black">12 venues</span> in the last 30 days.</p>
+                    <p className="text-text-secondary font-medium text-base">You've had <span className="text-primary font-black">{recentTransactions.length} activities</span> in this branch.</p>
                 </div>
                 <div className="flex gap-3 w-full md:w-auto">
                     <div className="relative flex-1 md:w-64">
@@ -41,13 +62,6 @@ export default function CustomerHistoryPage() {
                             className="w-full h-12 pl-12 pr-4 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                         />
                     </div>
-                    <button className="h-12 w-12 bg-white border border-gray-200 rounded-lg flex items-center justify-center text-text-secondary hover:bg-gray-50 transition-all shadow-sm">
-                        <Filter size={18} />
-                    </button>
-                    <button className="h-12 px-6 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-lg flex items-center justify-center gap-2 hover:bg-primary-hover transition-all shadow-lg shadow-primary/20">
-                        <Download size={16} />
-                        Export
-                    </button>
                 </div>
             </div>
 
@@ -59,72 +73,82 @@ export default function CustomerHistoryPage() {
                             <tr>
                                 <th className="text-left py-6 px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Venue & Identity</th>
                                 <th className="text-left py-6 px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Date & Time</th>
-                                <th className="text-left py-6 px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Category</th>
-                                <th className="text-right py-6 px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Amount & Points</th>
+                                <th className="text-right py-6 px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Points</th>
                                 <th className="text-center py-6 px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {filteredVisits.map((visit) => (
-                                <tr
-                                    key={visit.id}
-                                    className="hover:bg-gray-50/50 transition-all group cursor-pointer"
-                                    onClick={() => setSelectedVisit(visit)}
-                                >
-                                    <td className="py-6 px-8">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center text-text-secondary group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                                                {visit.icon === 'coffee' ? <Coffee size={24} /> :
-                                                    visit.icon === 'devices' ? <Smartphone size={24} /> :
-                                                        visit.icon === 'fitness_center' ? <Dumbbell size={24} /> :
-                                                            visit.icon === 'shopping_bag' ? <Receipt size={24} /> :
-                                                                visit.icon === 'nightlife' ? <Star size={24} /> :
-                                                                    <Clock size={24} />}
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-sm text-text-main group-hover:text-primary transition-colors">{visit.place}</p>
-                                                <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest mt-0.5">{visit.receiptId}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="py-6 px-8">
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-1.5 text-xs text-text-main font-bold">
-                                                <Calendar size={12} className="text-primary" />
-                                                {visit.date}
-                                            </div>
-                                            <div className="flex items-center gap-1.5 text-xs text-text-secondary font-medium">
-                                                <Clock size={12} />
-                                                {visit.time}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="py-6 px-8">
-                                        <span className="px-3 py-1 bg-gray-100 text-[10px] font-black uppercase tracking-widest text-text-secondary rounded-full">
-                                            {visit.category}
-                                        </span>
-                                    </td>
-                                    <td className="py-6 px-8 text-right">
-                                        <div className="space-y-1">
-                                            <p className="font-display font-bold text-sm text-text-main">{visit.amount}</p>
-                                            <p className="text-xs font-black text-green-600">+{visit.points} Points</p>
-                                        </div>
-                                    </td>
-                                    <td className="py-6 px-8">
-                                        <div className="flex justify-center">
-                                            <button className="p-2 text-gray-300 hover:text-text-main hover:bg-white hover:shadow-sm rounded-lg transition-all">
-                                                <MoreVertical size={18} />
-                                            </button>
-                                        </div>
+                            {isLoading && filteredTransactions.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="py-20 text-center">
+                                        <Loader2 className="animate-spin mx-auto text-primary" size={32} />
+                                        <p className="text-sm text-text-secondary mt-4 font-bold">Retrieving your activity log...</p>
                                     </td>
                                 </tr>
-                            ))}
+                            ) : filteredTransactions.length > 0 ? (
+                                filteredTransactions.map((tx) => {
+                                    const Icon = getTransactionIcon(tx.reason);
+                                    const date = new Date(tx.createdAt);
+                                    return (
+                                        <tr
+                                            key={tx.id}
+                                            className="hover:bg-gray-50/50 transition-all group cursor-pointer"
+                                            onClick={() => setSelectedVisit(tx)}
+                                        >
+                                            <td className="py-6 px-8">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center text-text-secondary group-hover:bg-primary group-hover:text-white transition-all duration-300">
+                                                        <Icon size={24} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-sm text-text-main group-hover:text-primary transition-colors">{tx.reason}</p>
+                                                        <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest mt-0.5">#{tx.id.substring(0, 8)}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-6 px-8">
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-1.5 text-xs text-text-main font-bold">
+                                                        <Calendar size={12} className="text-primary" />
+                                                        {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-xs text-text-secondary font-medium">
+                                                        <Clock size={12} />
+                                                        {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-6 px-8 text-right">
+                                                <p className={cn(
+                                                    "font-display font-bold text-sm",
+                                                    tx.pointsAmount > 0 ? "text-green-600" : "text-orange-600"
+                                                )}>
+                                                    {tx.pointsAmount > 0 ? '+' : ''}{tx.pointsAmount.toLocaleString()} pts
+                                                </p>
+                                            </td>
+                                            <td className="py-6 px-8">
+                                                <div className="flex justify-center">
+                                                    <button className="p-2 text-gray-300 hover:text-text-main hover:bg-white hover:shadow-sm rounded-lg transition-all">
+                                                        <MoreVertical size={18} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            ) : (
+                                <tr>
+                                    <td colSpan={4} className="py-20 text-center text-text-secondary">
+                                        <p className="text-sm font-medium">No recent activity found.</p>
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            {/* Visit Detail Modal */}
+            {/* Visit Detail Modal Content (Simplified for real data) */}
             {selectedVisit && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-text-main/80 backdrop-blur-xl animate-in fade-in" onClick={() => setSelectedVisit(null)}></div>
@@ -132,12 +156,7 @@ export default function CustomerHistoryPage() {
                         <div className="p-10">
                             <div className="flex justify-between items-start mb-10">
                                 <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                    {selectedVisit.icon === 'coffee' ? <Coffee size={32} /> :
-                                        selectedVisit.icon === 'devices' ? <Smartphone size={32} /> :
-                                            selectedVisit.icon === 'fitness_center' ? <Dumbbell size={32} /> :
-                                                selectedVisit.icon === 'shopping_bag' ? <Receipt size={32} /> :
-                                                    selectedVisit.icon === 'nightlife' ? <Star size={32} /> :
-                                                        <Clock size={32} />}
+                                    <Clock size={32} />
                                 </div>
                                 <button
                                     onClick={() => setSelectedVisit(null)}
@@ -148,26 +167,35 @@ export default function CustomerHistoryPage() {
                             </div>
 
                             <div className="space-y-1 mb-8">
-                                <h2 className="text-3xl font-display font-bold text-text-main">{selectedVisit.place}</h2>
-                                <p className="text-sm font-bold text-primary uppercase tracking-widest">{selectedVisit.category}</p>
+                                <h2 className="text-3xl font-display font-bold text-text-main">{selectedVisit.reason}</h2>
+                                <p className="text-sm font-bold text-primary uppercase tracking-widest">LOYALTY ACTIVITY</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-8 py-8 border-y border-gray-100 mb-8">
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-black uppercase text-text-secondary tracking-widest">Transaction Date</p>
-                                    <p className="text-sm font-bold text-text-main">{selectedVisit.date} at {selectedVisit.time}</p>
+                                    <p className="text-sm font-bold text-text-main">
+                                        {new Date(selectedVisit.createdAt).toLocaleDateString()} at {new Date(selectedVisit.createdAt).toLocaleTimeString()}
+                                    </p>
                                 </div>
                                 <div className="space-y-1 text-right">
-                                    <p className="text-[10px] font-black uppercase text-text-secondary tracking-widest">Receipt ID</p>
-                                    <p className="text-sm font-bold font-mono text-text-main">{selectedVisit.receiptId}</p>
+                                    <p className="text-[10px] font-black uppercase text-text-secondary tracking-widest">Transaction ID</p>
+                                    <p className="text-sm font-bold font-mono text-text-main">#{selectedVisit.id.substring(0, 8)}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-black uppercase text-text-secondary tracking-widest">Amount Spent</p>
-                                    <p className="text-xl font-display font-bold text-text-main">{selectedVisit.amount}</p>
+                                    <p className="text-[10px] font-black uppercase text-text-secondary tracking-widest">Points Change</p>
+                                    <p className={cn(
+                                        "text-xl font-display font-bold",
+                                        selectedVisit.pointsAmount > 0 ? "text-green-600" : "text-orange-600"
+                                    )}>
+                                        {selectedVisit.pointsAmount > 0 ? '+' : ''}{selectedVisit.pointsAmount} pts
+                                    </p>
                                 </div>
                                 <div className="space-y-1 text-right">
-                                    <p className="text-[10px] font-black uppercase text-text-secondary tracking-widest">Points Earned</p>
-                                    <p className="text-xl font-display font-bold text-green-600">+{selectedVisit.points} pts</p>
+                                    <p className="text-[10px] font-black uppercase text-text-secondary tracking-widest">Status</p>
+                                    <p className="text-xl font-display font-bold text-green-600 flex items-center gap-1 justify-end">
+                                        <Star size={18} /> Verified
+                                    </p>
                                 </div>
                             </div>
 
@@ -177,44 +205,22 @@ export default function CustomerHistoryPage() {
                                         <MapPin size={20} />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black uppercase text-text-secondary tracking-widest">Location</p>
-                                        <p className="text-sm font-bold text-text-main leading-snug">{selectedVisit.address}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-start gap-4">
-                                    <div className="p-3 bg-orange-50 rounded-lg text-orange-600">
-                                        <Star size={20} />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase text-text-secondary tracking-widest">Loyalty Status</p>
-                                        <p className="text-sm font-bold text-text-main leading-snug">Elite Silver Member (Level 4)</p>
+                                        <p className="text-[10px] font-black uppercase text-text-secondary tracking-widest">Branch Access</p>
+                                        <p className="text-sm font-bold text-text-main leading-snug">Synced across VemTap Network</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 mt-12">
-                                <button className="h-14 bg-gray-100 text-text-secondary font-black uppercase tracking-widest text-[10px] rounded-lg hover:bg-gray-200 transition-all flex items-center justify-center gap-2">
-                                    <Receipt size={16} />
-                                    PDF Receipt
-                                </button>
-                                <button className="h-14 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-lg hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-2">
-                                    <ExternalLink size={16} />
-                                    Venue Profile
+                            <div className="mt-12">
+                                <button
+                                    onClick={() => setSelectedVisit(null)}
+                                    className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-lg hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-2"
+                                >
+                                    Dismiss Detailed View
                                 </button>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-
-            {/* Empty State Mock */}
-            {filteredVisits.length === 0 && (
-                <div className="bg-white rounded-lg border border-gray-100 p-20 text-center">
-                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Search className="text-gray-300" size={32} />
-                    </div>
-                    <h3 className="text-xl font-bold text-text-main mb-2">No visits found</h3>
-                    <p className="text-sm text-text-secondary max-w-xs mx-auto">We couldn't find any check-ins matching your search. Try different keywords.</p>
                 </div>
             )}
         </div>

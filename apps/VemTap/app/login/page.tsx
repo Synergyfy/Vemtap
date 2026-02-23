@@ -33,7 +33,7 @@ export default function LoginPage() {
             // Set global state using the retrieved user and token
             await signup(response.user, response.access_token);
 
-            const role = response.user?.role || 'owner';
+            const role = (response.user?.role || 'owner').toLowerCase();
             if (role === 'admin') {
                 router.push('/admin/dashboard');
             } else if (role === 'customer') {

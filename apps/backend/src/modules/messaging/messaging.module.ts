@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { HttpModule } from '@nestjs/axios';
 import { Business } from '../businesses/entities/business.entity';
 import { Branch } from '../branches/entities/branch.entity';
 
@@ -10,22 +11,35 @@ import { MessageCampaign } from './entities/message-campaign.entity';
 import { ConversationThread } from './entities/conversation-thread.entity';
 import { Message } from './entities/message.entity';
 import { MessageLog } from './entities/message-log.entity';
+import { Flow } from './entities/flow.entity';
+import { FlowExecution } from './entities/flow-execution.entity';
+import { AutomationRule } from './entities/automation-rule.entity';
+import { AutomationLog } from './entities/automation-log.entity';
 
 import { ContactsModule } from '../contacts/contacts.module';
 import { BusinessesModule } from '../businesses/businesses.module';
 import { SettingsModule } from '../settings/settings.module';
 
 import { MessagingEngineService } from './services/messaging-engine.service';
-import { SmsService } from './services/sms.service';
-import { WhatsappService } from './services/whatsapp.service';
-import { EmailService } from './services/email.service';
 import { TemplateService } from './services/template.service';
 import { ComplianceService } from './services/compliance.service';
 import { CreditService } from './services/credit.service';
 import { CampaignService } from './services/campaign.service';
 import { InboxService } from './services/inbox.service';
 import { AnalyticsService } from './services/analytics.service';
+import { FlowEngineService } from './services/flow-engine.service';
+import { AutomationService } from './services/automation.service';
+
 import { MessagingController } from './controllers/messaging.controller';
+import { FlowController } from './controllers/flow.controller';
+import { TermiiWebhookController } from './controllers/termii.controller';
+import { AutomationsController } from './controllers/automations.controller';
+
+import { TermiiProvider } from './providers/termii.provider';
+import { ProviderRouterService } from './services/provider-router.service';
+import { BatchSendProcessor } from './processors/batch-send.processor';
+import { FlowDelayProcessor } from './processors/flow-delay.processor';
+import { AutomationProcessor } from './processors/automation.processor';
 
 @Module({
   imports: [
@@ -35,9 +49,14 @@ import { MessagingController } from './controllers/messaging.controller';
       ConversationThread,
       Message,
       MessageLog,
+      Flow,
+      FlowExecution,
       Business,
       Branch,
+      AutomationRule,
+      AutomationLog,
     ]),
+    HttpModule,
     ContactsModule,
     BusinessesModule,
     SettingsModule,
@@ -51,35 +70,53 @@ import { MessagingController } from './controllers/messaging.controller';
       }),
       inject: [ConfigService],
     }),
-    BullModule.registerQueue({
-      name: 'messaging-batch-send',
-    }),
+    BullModule.registerQueue(
+      {
+        name: 'messaging-batch-send',
+      },
+      {
+        name: 'messaging-flow-delay',
+      },
+      {
+        name: 'messaging-automation',
+      },
+    ),
   ],
   providers: [
     MessagingEngineService,
-    SmsService,
-    WhatsappService,
-    EmailService,
     TemplateService,
     ComplianceService,
     CreditService,
     CampaignService,
     InboxService,
     AnalyticsService,
+    FlowEngineService,
+    AutomationService,
+    TermiiProvider,
+    ProviderRouterService,
+    BatchSendProcessor,
+    FlowDelayProcessor,
+    AutomationProcessor,
   ],
-  controllers: [MessagingController],
+  controllers: [
+    MessagingController,
+    FlowController,
+    TermiiWebhookController,
+    AutomationsController,
+  ],
   exports: [
     TypeOrmModule,
     MessagingEngineService,
-    SmsService,
-    WhatsappService,
-    EmailService,
     TemplateService,
     ComplianceService,
     CreditService,
     CampaignService,
     InboxService,
     AnalyticsService,
+    FlowEngineService,
+    AutomationService,
+    TermiiProvider,
+    ProviderRouterService,
   ],
 })
 export class MessagingModule {}

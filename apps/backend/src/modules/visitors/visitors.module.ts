@@ -8,12 +8,14 @@ import { Device } from '../devices/entities/device.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { CampaignsModule } from '../campaigns/campaigns.module';
 import { MessagingModule } from '../messaging/messaging.module';
+import { ContactsModule } from '../contacts/contacts.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Visit, User, Device, Branch]),
     CampaignsModule,
     MessagingModule,
+    ContactsModule,
   ],
   controllers: [VisitorsController],
   providers: [VisitorsService],

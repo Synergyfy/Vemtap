@@ -15,14 +15,14 @@ export class Redemption {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'uuid' })
   loyaltyProfileId: string;
 
   @ManyToOne(() => LoyaltyProfile, (profile) => profile.redemptions)
   @JoinColumn({ name: 'loyaltyProfileId' })
   loyaltyProfile: LoyaltyProfile;
 
-  @Column()
+  @Column({ type: 'uuid' })
   rewardId: string;
 
   @ManyToOne(() => Reward)
@@ -42,10 +42,19 @@ export class Redemption {
   branchId: string;
 
   @Column({ type: 'timestamp', nullable: true })
+  verifiedAt: Date;
+
+  @Column({ nullable: true })
+  verifiedByUserId: string;
+
+  @Column({ type: 'timestamp', nullable: true })
   redeemedAt: Date;
 
   @Column({ type: 'timestamp' })
   expiresAt: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  deletedAt: Date;
 
   @CreateDateColumn()
   createdAt: Date;
