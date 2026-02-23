@@ -1,4 +1,4 @@
-export type UserRole = 'owner' | 'manager' | 'staff' | 'customer' | 'admin';
+export type UserRole = 'Owner' | 'Manager' | 'Staff' | 'Customer' | 'Admin';
 
 export interface StaffMember {
     id: string;
@@ -21,6 +21,7 @@ export interface InviteStaffRequest {
     role: UserRole;
     businessId: string;
     branchId: string;
+    jobTitle?: string;
     permissions?: string[];
 }
 

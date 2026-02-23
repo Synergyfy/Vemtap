@@ -8,7 +8,8 @@ interface SubscriptionState {
     isLoading: boolean;
     getPlan: (planId?: string) => PricingPlan | undefined;
     canAddTag: (currentTagCount: number) => boolean;
-    hasReachedVisitorLimit: (currentVisitorCountValue: number) => boolean;
+    hasReachedTeamLimit: (currentTeamCount: number) => boolean;
+    hasReachedVisitorLimit: (currentVisitorCount: number) => boolean;
     fetchPlans: () => Promise<void>;
 }
 
@@ -35,15 +36,19 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     canAddTag: (currentTagCount) => {
         const plan = get().getPlan();
         if (!plan) return false;
-        if (plan.tagLimit === Infinity) return true;
-        return currentTagCount < plan.tagLimit;
+        return currentTagCount < plan.tagsLimit;
     },
 
-    hasReachedVisitorLimit: (currentVisitorCountValue) => {
+    hasReachedTeamLimit: (currentTeamCount) => {
         const plan = get().getPlan();
         if (!plan) return false;
-        if (plan.visitorLimit === Infinity) return false;
-        return currentVisitorCountValue >= plan.visitorLimit;
+        return currentTeamCount >= plan.teamMembersLimit;
+    },
+
+    hasReachedVisitorLimit: (currentVisitorCount) => {
+        const plan = get().getPlan();
+        if (!plan) return false;
+        return currentVisitorCount >= (plan.teamMembersLimit * 100);
     }
 }));
 

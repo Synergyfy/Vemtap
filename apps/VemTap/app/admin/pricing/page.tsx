@@ -10,9 +10,28 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchPricingPlans, updatePricingPlan, addPricingPlan, deletePricingPlan } from '@/lib/api/pricing';
 import { PricingPlan } from '@/types/pricing';
 
+const defaultNewPlan: Omit<PricingPlan, 'id'> = {
+    name: '',
+    monthlyPrice: 0,
+    quarterlyPrice: 0,
+    yearlyPrice: 0,
+    currency: 'NGN',
+    isFree: false,
+    freeDurationDays: 30,
+    teamMembersLimit: 5,
+    loyaltyLimit: 10,
+    tagsLimit: 100,
+    branchLimit: 3,
+    analyticsLevel: 'basic',
+    isActive: true,
+    description: '',
+    isPopular: false
+};
+
 export default function AdminPricingPage() {
     const queryClient = useQueryClient();
     const [editingPlan, setEditingPlan] = useState<PricingPlan | null>(null);
+    const [isAddingNew, setIsAddingNew] = useState(false);
 
     // Queries
     const { data: plans = [], isLoading: plansLoading } = useQuery({
@@ -34,6 +53,7 @@ export default function AdminPricingPage() {
         mutationFn: addPricingPlan,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
+            setIsAddingNew(false);
             notify.success('New plan added successfully');
         }
     });
@@ -53,18 +73,11 @@ export default function AdminPricingPage() {
     };
 
     const handleAddPlan = () => {
-        addMutation.mutate({
-            name: 'New Plan',
-            price: '₦0',
-            period: '/mo',
-            description: 'New plan description',
-            features: ['Feature 1'],
-            buttonText: 'Get Started',
-            color: 'slate',
-            visitorLimit: 100,
-            tagLimit: 1,
-            billingPeriod: 'monthly'
-        });
+        setIsAddingNew(true);
+    };
+
+    const handleCreatePlan = (planData: Omit<PricingPlan, 'id'>) => {
+        addMutation.mutate(planData);
     };
 
     const handleDelete = (id: string) => {
@@ -72,6 +85,14 @@ export default function AdminPricingPage() {
             deleteMutation.mutate(id);
         }
     };
+
+    const formatPrice = (price: number) => {
+        return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(price);
+    };
+
+    const isModalOpen = editingPlan !== null || isAddingNew;
+    const currentPlan = editingPlan;
+    const isNewPlanMode = isAddingNew;
 
     return (
         <>
@@ -135,25 +156,37 @@ export default function AdminPricingPage() {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-6">
+                                    <div className="space-y-4 mb-6">
                                         <div className="flex items-baseline gap-1">
-                                            <span className="text-3xl font-display font-black text-text-main">{plan.price}</span>
-                                            <span className="text-sm font-bold text-text-secondary">{plan.period}</span>
+                                            <span className="text-3xl font-display font-black text-text-main">{formatPrice(plan.monthlyPrice)}</span>
+                                            <span className="text-sm font-bold text-text-secondary">/mo</span>
                                         </div>
+                                        <div className="flex gap-4 text-xs">
+                                            <span className="text-text-secondary">Quarterly: {formatPrice(plan.quarterlyPrice)}</span>
+                                            <span className="text-text-secondary">Yearly: {formatPrice(plan.yearlyPrice)}</span>
+                                        </div>
+                                    </div>
 
-                                        <p className="text-sm text-text-secondary font-medium leading-relaxed">
-                                            {plan.description}
-                                        </p>
+                                    <p className="text-sm text-text-secondary font-medium leading-relaxed mb-6">
+                                        {plan.description}
+                                    </p>
 
-                                        <div className="pt-6 border-t border-gray-100">
-                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-4">Included Features</h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-6">
-                                                {plan.features.map((feature, i) => (
-                                                    <div key={i} className="flex items-center gap-2 text-sm font-bold text-text-main">
-                                                        <CheckCircle2 size={16} className="text-green-500 shrink-0" />
-                                                        <span className="line-clamp-1">{feature}</span>
-                                                    </div>
-                                                ))}
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div className="space-y-2">
+                                            <p className="font-bold text-text-main">Limits</p>
+                                            <div className="space-y-1 text-text-secondary">
+                                                <p>Team Members: {plan.teamMembersLimit}</p>
+                                                <p>Loyalty: {plan.loyaltyLimit}</p>
+                                                <p>Tags: {plan.tagsLimit}</p>
+                                                <p>Branches: {plan.branchLimit}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <p className="font-bold text-text-main">Features</p>
+                                            <div className="space-y-1 text-text-secondary">
+                                                <p>Analytics: {plan.analyticsLevel}</p>
+                                                <p>Free Days: {plan.freeDurationDays}</p>
+                                                <p>Active: {plan.isActive ? 'Yes' : 'No'}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -162,131 +195,264 @@ export default function AdminPricingPage() {
                         ))}
                     </div>
                 )}
+            </div>
 
-                {/* Edit Modal / Slide-over (Plans Only) */}
-                {editingPlan && (
-                    <div className="fixed inset-0 z-100 flex items-center justify-end p-4">
-                        <div className="absolute inset-0 bg-text-main/20 backdrop-blur-sm" onClick={() => setEditingPlan(null)} />
-                        <div className="relative w-full max-w-xl bg-white h-full rounded-2xl shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-                            <div className="p-8 border-b border-gray-100 flex items-center justify-between">
-                                <div>
-                                    <h2 className="text-2xl font-bold text-text-main">Edit Plan</h2>
-                                    <p className="text-sm text-text-secondary font-medium uppercase tracking-widest mt-1">Plan Configuration</p>
-                                </div>
-                                <button onClick={() => setEditingPlan(null)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                                    <X size={24} />
-                                </button>
+            {/* Add/Edit Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-100 flex items-center justify-end p-4">
+                    <div className="absolute inset-0 bg-text-main/20 backdrop-blur-sm" onClick={() => { setEditingPlan(null); setIsAddingNew(false); }} />
+                    <div className="relative w-full max-w-xl bg-white h-full rounded-2xl shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+                        <div className="p-8 border-b border-gray-100 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-2xl font-bold text-text-main">{isNewPlanMode ? 'Add New Plan' : 'Edit Plan'}</h2>
+                                <p className="text-sm text-text-secondary font-medium uppercase tracking-widest mt-1">Plan Configuration</p>
+                            </div>
+                            <button onClick={() => { setEditingPlan(null); setIsAddingNew(false); }} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-8 space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Plan Name</label>
+                                <input
+                                    type="text"
+                                    value={currentPlan?.name || ''}
+                                    onChange={(e) => {
+                                        if (isNewPlanMode) {
+                                            const newPlan = { ...defaultNewPlan, name: e.target.value };
+                                            setEditingPlan(newPlan as PricingPlan);
+                                        } else {
+                                            setEditingPlan({ ...currentPlan!, name: e.target.value });
+                                        }
+                                    }}
+                                    className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                />
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-8 space-y-8">
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Plan Name</label>
-                                        <input
-                                            type="text"
-                                            value={editingPlan.name}
-                                            onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })}
-                                            className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Price Label</label>
-                                        <input
-                                            type="text"
-                                            value={editingPlan.price}
-                                            onChange={(e) => setEditingPlan({ ...editingPlan, price: e.target.value })}
-                                            className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Visitor Limit</label>
-                                        <input
-                                            type="number"
-                                            value={editingPlan.visitorLimit === Infinity ? 999999 : editingPlan.visitorLimit}
-                                            onChange={(e) => setEditingPlan({ ...editingPlan, visitorLimit: parseInt(e.target.value) })}
-                                            className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Tag Limit</label>
-                                        <input
-                                            type="number"
-                                            value={editingPlan.tagLimit === Infinity ? 999 : editingPlan.tagLimit}
-                                            onChange={(e) => setEditingPlan({ ...editingPlan, tagLimit: parseInt(e.target.value) })}
-                                            className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                                        />
-                                    </div>
-                                </div>
-
+                            <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Description</label>
-                                    <textarea
-                                        rows={3}
-                                        value={editingPlan.description}
-                                        onChange={(e) => setEditingPlan({ ...editingPlan, description: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none resize-none"
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Monthly</label>
+                                    <input
+                                        type="number"
+                                        value={currentPlan?.monthlyPrice || 0}
+                                        onChange={(e) => {
+                                            if (isNewPlanMode) {
+                                                setEditingPlan({ ...defaultNewPlan, monthlyPrice: parseInt(e.target.value) } as PricingPlan);
+                                            } else {
+                                                setEditingPlan({ ...currentPlan!, monthlyPrice: parseInt(e.target.value) });
+                                            }
+                                        }}
+                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
                                     />
                                 </div>
-
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Features List</label>
-                                        <button
-                                            onClick={() => setEditingPlan({ ...editingPlan, features: [...editingPlan.features, 'New Feature'] })}
-                                            className="text-[10px] font-bold text-primary flex items-center gap-1 hover:underline"
-                                        >
-                                            <Plus size={12} /> Add Feature
-                                        </button>
-                                    </div>
-                                    <div className="space-y-3">
-                                        {editingPlan.features.map((feature, i) => (
-                                            <div key={i} className="flex gap-3">
-                                                <input
-                                                    type="text"
-                                                    value={feature}
-                                                    onChange={(e) => {
-                                                        const newFeatures = [...editingPlan.features];
-                                                        newFeatures[i] = e.target.value;
-                                                        setEditingPlan({ ...editingPlan, features: newFeatures });
-                                                    }}
-                                                    className="flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                                                />
-                                                <button
-                                                    onClick={() => {
-                                                        const newFeatures = editingPlan.features.filter((_, idx) => idx !== i);
-                                                        setEditingPlan({ ...editingPlan, features: newFeatures });
-                                                    }}
-                                                    className="p-2 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg transition-all"
-                                                >
-                                                    <Trash2 size={20} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Quarterly</label>
+                                    <input
+                                        type="number"
+                                        value={currentPlan?.quarterlyPrice || 0}
+                                        onChange={(e) => {
+                                            if (isNewPlanMode) {
+                                                setEditingPlan({ ...defaultNewPlan, quarterlyPrice: parseInt(e.target.value) } as PricingPlan);
+                                            } else {
+                                                setEditingPlan({ ...currentPlan!, quarterlyPrice: parseInt(e.target.value) });
+                                            }
+                                        }}
+                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Yearly</label>
+                                    <input
+                                        type="number"
+                                        value={currentPlan?.yearlyPrice || 0}
+                                        onChange={(e) => {
+                                            if (isNewPlanMode) {
+                                                setEditingPlan({ ...defaultNewPlan, yearlyPrice: parseInt(e.target.value) } as PricingPlan);
+                                            } else {
+                                                setEditingPlan({ ...currentPlan!, yearlyPrice: parseInt(e.target.value) });
+                                            }
+                                        }}
+                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                    />
                                 </div>
                             </div>
 
-                            <div className="p-8 border-t border-gray-100 flex gap-4">
-                                <button
-                                    onClick={() => setEditingPlan(null)}
-                                    className="flex-1 h-14 border border-gray-200 rounded-xl font-bold text-sm hover:bg-gray-50 transition-all"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleSave}
-                                    className="flex-2 h-14 bg-primary text-white rounded-xl font-bold text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                                >
-                                    <Save size={20} /> Save Changes
-                                </button>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Team Members Limit</label>
+                                    <input
+                                        type="number"
+                                        value={currentPlan?.teamMembersLimit || 0}
+                                        onChange={(e) => {
+                                            if (isNewPlanMode) {
+                                                setEditingPlan({ ...defaultNewPlan, teamMembersLimit: parseInt(e.target.value) } as PricingPlan);
+                                            } else {
+                                                setEditingPlan({ ...currentPlan!, teamMembersLimit: parseInt(e.target.value) });
+                                            }
+                                        }}
+                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Loyalty Limit</label>
+                                    <input
+                                        type="number"
+                                        value={currentPlan?.loyaltyLimit || 0}
+                                        onChange={(e) => {
+                                            if (isNewPlanMode) {
+                                                setEditingPlan({ ...defaultNewPlan, loyaltyLimit: parseInt(e.target.value) } as PricingPlan);
+                                            } else {
+                                                setEditingPlan({ ...currentPlan!, loyaltyLimit: parseInt(e.target.value) });
+                                            }
+                                        }}
+                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Tags Limit</label>
+                                    <input
+                                        type="number"
+                                        value={currentPlan?.tagsLimit || 0}
+                                        onChange={(e) => {
+                                            if (isNewPlanMode) {
+                                                setEditingPlan({ ...defaultNewPlan, tagsLimit: parseInt(e.target.value) } as PricingPlan);
+                                            } else {
+                                                setEditingPlan({ ...currentPlan!, tagsLimit: parseInt(e.target.value) });
+                                            }
+                                        }}
+                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Branch Limit</label>
+                                    <input
+                                        type="number"
+                                        value={currentPlan?.branchLimit || 0}
+                                        onChange={(e) => {
+                                            if (isNewPlanMode) {
+                                                setEditingPlan({ ...defaultNewPlan, branchLimit: parseInt(e.target.value) } as PricingPlan);
+                                            } else {
+                                                setEditingPlan({ ...currentPlan!, branchLimit: parseInt(e.target.value) });
+                                            }
+                                        }}
+                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Free Duration (Days)</label>
+                                    <input
+                                        type="number"
+                                        value={currentPlan?.freeDurationDays || 0}
+                                        onChange={(e) => {
+                                            if (isNewPlanMode) {
+                                                setEditingPlan({ ...defaultNewPlan, freeDurationDays: parseInt(e.target.value) } as PricingPlan);
+                                            } else {
+                                                setEditingPlan({ ...currentPlan!, freeDurationDays: parseInt(e.target.value) });
+                                            }
+                                        }}
+                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Analytics Level</label>
+                                    <select
+                                        value={currentPlan?.analyticsLevel || 'basic'}
+                                        onChange={(e) => {
+                                            if (isNewPlanMode) {
+                                                setEditingPlan({ ...defaultNewPlan, analyticsLevel: e.target.value as 'basic' | 'advanced' | 'none' } as PricingPlan);
+                                            } else {
+                                                setEditingPlan({ ...currentPlan!, analyticsLevel: e.target.value as 'basic' | 'advanced' | 'none' });
+                                            }
+                                        }}
+                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                    >
+                                        <option value="basic">Basic</option>
+                                        <option value="advanced">Advanced</option>
+                                        <option value="none">None</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={currentPlan?.isPopular || false}
+                                        onChange={(e) => {
+                                            if (isNewPlanMode) {
+                                                setEditingPlan({ ...defaultNewPlan, isPopular: e.target.checked } as PricingPlan);
+                                            } else {
+                                                setEditingPlan({ ...currentPlan!, isPopular: e.target.checked });
+                                            }
+                                        }}
+                                        className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                    <label className="text-sm font-bold text-text-main">Most Popular</label>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={currentPlan?.isActive ?? true}
+                                        onChange={(e) => {
+                                            if (isNewPlanMode) {
+                                                setEditingPlan({ ...defaultNewPlan, isActive: e.target.checked } as PricingPlan);
+                                            } else {
+                                                setEditingPlan({ ...currentPlan!, isActive: e.target.checked });
+                                            }
+                                        }}
+                                        className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                    <label className="text-sm font-bold text-text-main">Active</label>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Description</label>
+                                <textarea
+                                    rows={3}
+                                    value={currentPlan?.description || ''}
+                                    onChange={(e) => {
+                                        if (isNewPlanMode) {
+                                            setEditingPlan({ ...defaultNewPlan, description: e.target.value } as PricingPlan);
+                                        } else {
+                                            setEditingPlan({ ...currentPlan!, description: e.target.value });
+                                        }
+                                    }}
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none resize-none"
+                                />
                             </div>
                         </div>
+
+                        <div className="p-8 border-t border-gray-100 flex gap-4">
+                            <button
+                                onClick={() => { setEditingPlan(null); setIsAddingNew(false); }}
+                                className="flex-1 h-14 border border-gray-200 rounded-xl font-bold text-sm hover:bg-gray-50 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (isNewPlanMode && currentPlan) {
+                                        handleCreatePlan(currentPlan);
+                                    } else {
+                                        handleSave();
+                                    }
+                                }}
+                                className="flex-2 h-14 bg-primary text-white rounded-xl font-bold text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                            >
+                                <Save size={20} /> {isNewPlanMode ? 'Create Plan' : 'Save Changes'}
+                            </button>
+                        </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </>
     );
 }
