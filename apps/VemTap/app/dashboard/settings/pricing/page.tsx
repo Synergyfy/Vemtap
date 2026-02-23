@@ -54,10 +54,10 @@ export default function DashboardPricingPage() {
             return;
         }
 
-        if (plan.id === 'free') {
+        if (plan.isFree) {
             subscribeMutation.mutate({
                 businessId: user?.businessId || '',
-                planId: 'free',
+                planId: plan.id,
                 billingPeriod: 'monthly'
             }, {
                 onSuccess: () => {
@@ -196,9 +196,14 @@ export default function DashboardPricingPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {plans.filter((p: PricingPlan) => p.id !== 'white-label' && p.id !== 'enterprise').map((plan: PricingPlan) => {
+                {plans.filter((p: PricingPlan) =>
+                    p.id !== 'white-label' &&
+                    p.id !== 'enterprise' &&
+                    !p.name.toLowerCase().includes('enterprise') &&
+                    !p.name.toLowerCase().includes('white label')
+                ).map((plan: PricingPlan) => {
                     const isCurrent = plan.id === activePlanId;
-                    const isPersonal = plan.id === 'personal';
+                    const isPersonal = plan.id === 'personal' || plan.name.toLowerCase().includes('personal');
                     const price = getPriceByCycle(plan, billingPeriod);
                     const features = getPlanFeatures(plan);
                     return (
