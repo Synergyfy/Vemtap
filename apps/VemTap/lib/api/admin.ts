@@ -96,3 +96,7 @@ export const adminMessagingApi = {
     getAllTemplates: () => api.get('/messaging/admin/templates'),
     updateTemplateStatus: (id: string, status: string) => api.post(`/messaging/admin/templates/${id}/status`, { status }),
 };
+
+export const adminHealthApi = {
+    getSystemHealth: () => api.get('/admin/system/health'),
+};
