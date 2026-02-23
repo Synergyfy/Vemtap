@@ -2,16 +2,20 @@
 export interface PricingPlan {
     id: string;
     name: string;
-    price: string;
-    period: string;
-    billingPeriod: 'monthly' | 'yearly' | 'quarterly';
+    monthlyPrice: number;
+    quarterlyPrice: number;
+    yearlyPrice: number;
+    currency: string;
+    isFree: boolean;
+    freeDurationDays: number;
+    teamMembersLimit: number;
+    loyaltyLimit: number;
+    tagsLimit: number;
+    branchLimit: number;
+    analyticsLevel: 'basic' | 'advanced' | 'none';
+    isActive: boolean;
     description: string;
-    features: string[];
     isPopular?: boolean;
-    buttonText: string;
-    color: string;
-    visitorLimit: number;
-    tagLimit: number;
 }
 
 export interface HardwareOption {

@@ -901,8 +901,14 @@ export default function GetStarted() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                         {plans.filter(p => ['free', 'personal', 'basic', 'premium'].includes(p.id)).map((plan) => {
                                             const isPersonal = plan.id === 'personal';
-                                            const priceVal = isPersonal ? calculatePersonalPrice() : parseInt(plan.price.replace(/[^0-9]/g, ''));
-                                            const displayPrice = isPersonal ? `₦${priceVal.toLocaleString()}` : plan.price;
+                                            const priceVal = isPersonal ? calculatePersonalPrice() : plan.monthlyPrice;
+                                            const displayPrice = `₦${priceVal.toLocaleString()}`;
+                                            const features = plan.teamMembersLimit ? [
+                                                `${plan.teamMembersLimit} Team Members`,
+                                                `${plan.loyaltyLimit} Loyalty Points`,
+                                                `${plan.tagsLimit} Tags`,
+                                                `${plan.branchLimit} Branches`,
+                                            ] : [];
 
                                             return (
                                                 <div key={plan.id} className="p-6 rounded-3xl border border-gray-100 bg-white hover:border-primary/20 transition-all flex flex-col shadow-sm hover:shadow-xl">
@@ -915,7 +921,7 @@ export default function GetStarted() {
                                                     </div>
 
                                                     <ul className="space-y-3 mb-8 flex-1">
-                                                        {plan.features.slice(0, 4).map((f: string, i: number) => (
+                                                        {features.slice(0, 4).map((f: string, i: number) => (
                                                             <li key={i} className="flex items-center gap-2 text-[11px] font-bold text-slate-500">
                                                                 <CheckCircle2 className="size-3.5 text-primary" />
                                                                 {f}

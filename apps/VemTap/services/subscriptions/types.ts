@@ -6,6 +6,7 @@ export interface Subscription {
     status: 'active' | 'cancelled' | 'expired' | 'pending';
     currentPeriodStart: string;
     currentPeriodEnd: string;
+    billingPeriod?: 'monthly' | 'quarterly' | 'yearly';
     createdAt: string;
 }
 
@@ -24,4 +25,5 @@ export interface SubscribeRequest {
     businessId: string;
     planId: string;
     billingCycle: 'monthly' | 'quarterly' | 'yearly';
+    paymentReference?: string;
 }
