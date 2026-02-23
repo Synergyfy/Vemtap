@@ -10,16 +10,18 @@ import toast from 'react-hot-toast';
 import Logo from '@/components/brand/Logo';
 import { SanitizedInput } from '@/components/ui/SanitizedInput';
 import { sanitizeFormData } from '@/lib/utils/sanitize';
-import { useRegisterOwner, useOtp } from '@/services/auth/hooks';
+import { useRegisterOwner, useOtp, useRegister } from '@/services/auth/hooks';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPricingPlans } from '@/lib/api/pricing';
 import { CheckCircle2 } from 'lucide-react';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 export default function GetStarted() {
     const { registerOwner, isLoading: isRegistering } = useRegisterOwner();
+    const { registerUser, isLoading: isRegisteringGeneric } = useRegister();
     const { sendOtp, verifyOtp, isLoading: isOtpLoading } = useOtp();
     const router = useRouter();
-    const { signup, subscribe } = useAuthStore();
+    const { signup } = useAuthStore();
     const [step, setStep] = useState(1);
     const [subStep, setSubStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +41,7 @@ export default function GetStarted() {
         businessName: '',
         businessLogo: null as string | null,
         category: '',
-        roles: ['Owner'] as ('Owner' | 'Manager')[],
+        selectedRole: 'Owner' as 'Owner' | 'Manager',
         branchCount: '',
         visitors: '',
         whatsappNumber: '',
@@ -49,6 +51,7 @@ export default function GetStarted() {
         businessWebsite: '',
         goals: [] as string[],
         serialNumber: '',
+        businessId: '', // For Manager flow: join existing business
         otp: '',
         agreeToTerms: false
     });
@@ -56,12 +59,22 @@ export default function GetStarted() {
     const categories = ['Retail', 'Hospitality', 'Events & Booths', 'Service Centers', 'Professional Office'];
     const goals = ['Capture Leads', 'Automated Rewards', 'Customer Feedback', 'Digital Loyalty'];
 
+    // Manager skips business-detail sub-steps (4-10) and jumps to a businessId step
+    const isManager = formData.selectedRole === 'Manager';
+    const maxSubStep = isManager ? 4 : 10; // Manager: 1=name, 2=logo, 3=role, 4=businessId; Owner: 1-10
+
     const nextStep = () => {
-        if (step === 3 && subStep < 10) {
+        if (step === 3 && subStep < maxSubStep) {
             setSubStep(prev => prev + 1);
-        } else if (step === 3 && subStep === 10) {
-            setStep(4);
-            setSubStep(1);
+        } else if (step === 3 && subStep === maxSubStep) {
+            if (isManager) {
+                // Managers skip plan selection (step 4) and go straight to review (step 5)
+                setStep(5);
+                setSubStep(1);
+            } else {
+                setStep(4);
+                setSubStep(1);
+            }
         } else {
             setStep(prev => prev + 1);
             setSubStep(1);
@@ -144,46 +157,67 @@ export default function GetStarted() {
     const handleFinalize = async () => {
         setIsLoading(true);
         try {
-            // Sanitize all form data before submission
             const cleanData = sanitizeFormData(formData);
+            let response: any;
 
-            const payload = {
-                firstName: cleanData.firstName,
-                lastName: cleanData.lastName,
-                email: cleanData.email,
-                password: formData.password, // Prevent sanitize from touching the password if it does
-                businessName: cleanData.businessName,
-                businessLogo: cleanData.businessLogo || undefined,
-                category: cleanData.category || undefined,
-                visitors: cleanData.visitors || undefined,
-                goals: cleanData.goals && cleanData.goals.length > 0 ? cleanData.goals : undefined,
-                whatsappNumber: cleanData.whatsappNumber || undefined,
-                officialEmail: cleanData.officialEmail || undefined,
-                businessNumber: cleanData.businessNumber || undefined,
-                businessAddress: cleanData.businessAddress || undefined,
-                businessWebsite: cleanData.businessWebsite || undefined,
-            };
+            let businessLogoUrl = cleanData.businessLogo;
 
-            // Register Owner on Backend
-            const response = await registerOwner(payload);
+            if (!isManager && cleanData.businessLogo && cleanData.businessLogo.startsWith('data:image')) {
+                try {
+                    // Upload to Cloudinary and get secure URL
+                    businessLogoUrl = await uploadToCloudinary(cleanData.businessLogo);
+                } catch (uploadError: any) {
+                    console.error('Logo upload failed:', uploadError);
+                    toast.error('Failed to upload business logo. Proceeding without it.');
+                    businessLogoUrl = null;
+                }
+            }
+
+            if (isManager) {
+                // Manager flow: POST /auth/register with role=Manager and businessId
+                const payload = {
+                    firstName: cleanData.firstName,
+                    lastName: cleanData.lastName,
+                    email: cleanData.email,
+                    password: formData.password,
+                    role: 'Manager',
+                    businessId: cleanData.businessId || undefined,
+                };
+                response = await registerUser(payload);
+            } else {
+                // Owner flow: POST /auth/register/owner (creates business)
+                const payload = {
+                    firstName: cleanData.firstName,
+                    lastName: cleanData.lastName,
+                    email: cleanData.email,
+                    password: formData.password,
+                    businessName: cleanData.businessName,
+                    businessLogo: businessLogoUrl || undefined,
+                    category: cleanData.category || undefined,
+                    visitors: cleanData.visitors || undefined,
+                    goals: cleanData.goals && cleanData.goals.length > 0 ? cleanData.goals : undefined,
+                    whatsappNumber: cleanData.whatsappNumber || undefined,
+                    officialEmail: cleanData.officialEmail || undefined,
+                    businessNumber: cleanData.businessNumber || undefined,
+                    businessAddress: cleanData.businessAddress || undefined,
+                    businessWebsite: cleanData.businessWebsite || undefined,
+                };
+                response = await registerOwner(payload);
+            }
 
             const userData = {
                 email: cleanData.email,
                 name: `${cleanData.firstName} ${cleanData.lastName}`,
-                role: cleanData.roles.join(', ').toLowerCase() as any,
-                businessName: cleanData.businessName,
-                businessLogo: cleanData.businessLogo || undefined,
-                businessGoals: cleanData.goals,
-                branchCount: cleanData.branchCount,
-                businessId: response?.user?.businessId || 'new_' + Math.random().toString(36).substr(2, 6)
+                role: cleanData.selectedRole.toLowerCase() as any,
+                businessName: cleanData.businessName || response?.user?.businessName,
+                businessId: response?.user?.businessId || undefined,
             };
 
             await signup(userData as any, response.access_token);
             setStep(6);
 
-            // Auto redirect to Plan Selection after 3 seconds
             setTimeout(() => {
-                router.push('/pricing');
+                router.push(isManager ? '/dashboard' : '/pricing');
             }, 3000);
         } catch (error: any) {
             toast.error(error.message || 'Failed to create account. Please try again.');
@@ -477,30 +511,46 @@ export default function GetStarted() {
 
                                         {subStep === 3 && (
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Your Role (Select all that apply)</label>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Your Role</label>
                                                 <div className="grid grid-cols-1 gap-3">
-                                                    {['Owner', 'Manager'].map((r) => (
+                                                    {(['Owner', 'Manager'] as const).map((r) => (
                                                         <button
                                                             key={r}
-                                                            onClick={() => {
-                                                                const newRoles = formData.roles.includes(r as any)
-                                                                    ? formData.roles.filter(role => role !== r)
-                                                                    : [...formData.roles, r as any];
-                                                                // Ensure at least one role is selected
-                                                                if (newRoles.length > 0) {
-                                                                    setFormData({ ...formData, roles: newRoles });
-                                                                }
-                                                            }}
-                                                            className={`h-16 rounded-2xl text-xs font-bold transition-all border flex items-center justify-between px-6 ${formData.roles.includes(r as any) ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-gray-50 border-gray-100 text-text-secondary hover:bg-gray-100'}`}
+                                                            onClick={() => setFormData({ ...formData, selectedRole: r })}
+                                                            className={`h-20 rounded-2xl text-xs font-bold transition-all border flex items-center justify-between px-6 ${formData.selectedRole === r ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-gray-50 border-gray-100 text-text-secondary hover:bg-gray-100'}`}
                                                         >
                                                             <div className="flex items-center gap-3">
                                                                 <span className="material-icons-round text-xl">{r === 'Owner' ? 'grade' : 'badge'}</span>
-                                                                Business {r}
+                                                                <div className="text-left">
+                                                                    <p className="font-bold">Business {r}</p>
+                                                                    <p className="text-[10px] font-medium text-text-secondary mt-0.5">
+                                                                        {r === 'Owner' ? 'Create and manage your own business' : 'Join an existing business as a manager'}
+                                                                    </p>
+                                                                </div>
                                                             </div>
-                                                            {formData.roles.includes(r as any) && <span className="material-icons-round text-primary text-sm">check_circle</span>}
+                                                            {formData.selectedRole === r && <span className="material-icons-round text-primary text-sm">check_circle</span>}
                                                         </button>
                                                     ))}
                                                 </div>
+                                            </motion.div>
+                                        )}
+
+                                        {/* Manager-only: Business Invite Code */}
+                                        {subStep === 4 && isManager && (
+                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                                                <div>
+                                                    <h1 className="text-2xl font-display font-bold text-text-main mb-2 leading-tight tracking-tight">Join a Business</h1>
+                                                    <p className="text-[13px] text-text-secondary font-medium leading-relaxed">Enter the Business ID provided by the business owner to join their team.</p>
+                                                </div>
+                                                <SanitizedInput
+                                                    label="Business ID / Invite Code"
+                                                    value={formData.businessId}
+                                                    onChange={(v) => setFormData({ ...formData, businessId: v })}
+                                                    icon="vpn_key"
+                                                    placeholder="e.g. abc123-def456-ghi789"
+                                                    required
+                                                    tooltip="The Business ID is provided by the business owner from their dashboard settings"
+                                                />
                                             </motion.div>
                                         )}
 
@@ -651,18 +701,19 @@ export default function GetStarted() {
                                                 onClick={nextStep}
                                                 disabled={
                                                     (subStep === 1 && !formData.businessName) ||
-                                                    (subStep === 3 && formData.roles.length === 0) ||
-                                                    (subStep === 4 && !formData.branchCount) ||
-                                                    (subStep === 5 && !formData.category) ||
-                                                    (subStep === 6 && (!formData.whatsappNumber || !formData.officialEmail)) ||
-                                                    (subStep === 7 && !formData.businessNumber) ||
-                                                    (subStep === 8 && !formData.visitors) ||
-                                                    (subStep === 9 && formData.goals.length === 0) ||
-                                                    (subStep === 10 && (!formData.businessAddress || !formData.businessWebsite))
+                                                    (subStep === 3 && !formData.selectedRole) ||
+                                                    (subStep === 4 && isManager && !formData.businessId) ||
+                                                    (!isManager && subStep === 4 && !formData.branchCount) ||
+                                                    (!isManager && subStep === 5 && !formData.category) ||
+                                                    (!isManager && subStep === 6 && (!formData.whatsappNumber || !formData.officialEmail)) ||
+                                                    (!isManager && subStep === 7 && !formData.businessNumber) ||
+                                                    (!isManager && subStep === 8 && !formData.visitors) ||
+                                                    (!isManager && subStep === 9 && formData.goals.length === 0) ||
+                                                    (!isManager && subStep === 10 && (!formData.businessAddress || !formData.businessWebsite))
                                                 }
                                                 className="flex-1 h-12 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all text-sm disabled:opacity-50"
                                             >
-                                                {subStep === 10 ? "Review Your Application" : "Next Question"}
+                                                {subStep === maxSubStep ? (isManager ? "Review Your Application" : "Review Your Application") : "Next Question"}
                                             </button>
                                         </div>
                                     </div>
@@ -790,7 +841,7 @@ export default function GetStarted() {
                                                 </div>
                                                 <div>
                                                     <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Role</p>
-                                                    <p className="text-xs font-bold text-text-main">{formData.roles.join(', ')}</p>
+                                                    <p className="text-xs font-bold text-text-main">{formData.selectedRole}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Branches</p>
@@ -816,7 +867,7 @@ export default function GetStarted() {
                                         <button onClick={prevStep} className="h-12 px-8 border border-gray-100 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm">Back</button>
                                         <button
                                             onClick={handleFinalize}
-                                            disabled={isLoading}
+                                            disabled={isLoading || isRegistering || isRegisteringGeneric}
                                             className="flex-1 h-12 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all text-sm flex items-center justify-center gap-2"
                                         >
                                             {isLoading ? (
@@ -875,7 +926,6 @@ export default function GetStarted() {
                                                     <button
                                                         onClick={async () => {
                                                             if (plan.id === 'free') {
-                                                                await subscribe('free');
                                                                 toast.success('Joined Free Plan!');
                                                             } else {
                                                                 // For other plans, we'll set it and redirect to dashboard billing

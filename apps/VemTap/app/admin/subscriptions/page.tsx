@@ -5,6 +5,8 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import { CreditCard, Package, CheckCircle2, AlertCircle, Clock, Edit2, X, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { useQuery } from '@tanstack/react-query';
+import { adminSubscriptionsApi } from '@/lib/api/admin';
 
 const ShieldLocal = ({ size }: { size: number }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -16,11 +18,20 @@ export default function AdminSubscriptionsPage() {
     const [selectedSub, setSelectedSub] = React.useState<any>(null);
     const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
 
-    const [subscriptions, setSubscriptions] = React.useState([
-        { id: '1', business: 'Green Terrace Cafe', plan: 'Premium', status: 'active', renewal: '2024-05-12', amount: '₦25,000' },
-        { id: '2', business: 'Tech Hub Lagos', plan: 'Enterprise', status: 'active', renewal: '2024-06-01', amount: '₦75,000' },
-        { id: '3', business: 'Fashion Boutique', plan: 'Basic', status: 'past_due', renewal: '2024-03-20', amount: '₦10,000' },
-    ]);
+    const { data: subscriptionsData, isLoading: isLoadingSubs } = useQuery({
+        queryKey: ['admin-subscriptions'],
+        queryFn: () => adminSubscriptionsApi.getAll()
+    });
+
+    const { data: statsData, isLoading: isLoadingStats } = useQuery({
+        queryKey: ['admin-subscriptions-stats'],
+        queryFn: () => adminSubscriptionsApi.getStats()
+    });
+
+    const subscriptions = Array.isArray(subscriptionsData) ? subscriptionsData : (subscriptionsData?.data || []);
+
+    // Default fallback stats if backend doesn't return them immediately or is loading
+    const statsObj = statsData?.data || statsData || { activeSubscriptions: 0, expiringSoon: 0, pastDue: 0 };
 
     const handleEdit = (sub: any) => {
         setSelectedSub({ ...sub });
@@ -28,9 +39,9 @@ export default function AdminSubscriptionsPage() {
     };
 
     const handleSave = () => {
-        setSubscriptions(prev => prev.map(s => s.id === selectedSub.id ? selectedSub : s));
+        // Since there is no mock endpoint or real endpoint for override yet, we just show a toast
+        toast.success(`API for manual override coming soon. Override intent registered for ${selectedSub.business}`);
         setIsEditModalOpen(false);
-        toast.success(`Subscription for ${selectedSub.business} updated manually`);
     };
 
     return (
@@ -42,9 +53,9 @@ export default function AdminSubscriptionsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 {[
-                    { label: 'Active Subscriptions', value: '842', icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50' },
-                    { label: 'Expiring Soon', value: '45', icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
-                    { label: 'Past Due', value: '12', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
+                    { label: 'Active Subscriptions', value: isLoadingStats ? '...' : statsObj.activeSubscriptions || 0, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50' },
+                    { label: 'Expiring Soon', value: isLoadingStats ? '...' : statsObj.expiringSoon || 0, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
+                    { label: 'Past Due', value: isLoadingStats ? '...' : statsObj.pastDue || 0, icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
                 ].map((stat, i) => (
                     <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center`}>
@@ -71,7 +82,19 @@ export default function AdminSubscriptionsPage() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {subscriptions.map((sub) => (
+                        {isLoadingSubs ? (
+                            <tr>
+                                <td colSpan={6} className="px-6 py-12 text-center text-gray-400 font-medium">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                                </td>
+                            </tr>
+                        ) : subscriptions.length === 0 ? (
+                            <tr>
+                                <td colSpan={6} className="px-6 py-12 text-center text-gray-400 font-medium">
+                                    No subscriptions found.
+                                </td>
+                            </tr>
+                        ) : subscriptions.map((sub: any) => (
                             <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors">
                                 <td className="px-6 py-4 font-bold text-sm text-slate-900">{sub.business}</td>
                                 <td className="px-6 py-4">
@@ -83,7 +106,7 @@ export default function AdminSubscriptionsPage() {
                                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${sub.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                                         }`}>
                                         <div className={`w-1.5 h-1.5 rounded-full ${sub.status === 'active' ? 'bg-green-500' : 'bg-red-500'}`} />
-                                        {sub.status.replace('_', ' ')}
+                                        {(sub.status || 'unknown').replace('_', ' ')}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 text-sm text-slate-500 font-medium">{sub.renewal}</td>
@@ -105,7 +128,7 @@ export default function AdminSubscriptionsPage() {
             {/* Manual Override Modal */}
             <AnimatePresence>
                 {isEditModalOpen && (
-                    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}

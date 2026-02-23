@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { useAuthStore, SubscriptionPlan } from './useAuthStore';
+import { useAuthStore } from './useAuthStore';
 import { fetchPricingPlans } from '@/lib/api/pricing';
 import { PricingPlan } from '@/types/pricing';
 

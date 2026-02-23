@@ -80,6 +80,10 @@ export class BranchesService {
     return branch;
   }
 
+  async findById(id: string): Promise<Branch | null> {
+    return this.branchesRepository.findOne({ where: { id } });
+  }
+
   async update(
     ownerId: string,
     id: string,

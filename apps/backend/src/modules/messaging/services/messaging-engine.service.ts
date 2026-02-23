@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -34,7 +30,10 @@ import { TemplateService } from './template.service';
 import { CampaignService } from './campaign.service';
 import { SettingsService } from '../../settings/settings.service';
 import { ProviderRouterService } from './provider-router.service';
-import { InboundMessage, DeliveryReport } from '../interfaces/messaging-provider.interface';
+import {
+  InboundMessage,
+  DeliveryReport,
+} from '../interfaces/messaging-provider.interface';
 
 @Injectable()
 export class MessagingEngineService {
@@ -74,12 +73,14 @@ export class MessagingEngineService {
     // Ensure branchId is resolved
     let branchId = dto.branchId;
     if (!branchId) {
-       // Find a default branch or require it.
-       // For better robustness, if single send, we might want to infer from context (e.g. user's branch)
-       // But this method might be called by a system process too.
-       // Let's try to find the first active branch for the business if not provided.
-       const branch = await this.branchRepo.findOne({ where: { businessId: dto.businessId, isActive: true }});
-       if (branch) branchId = branch.id;
+      // Find a default branch or require it.
+      // For better robustness, if single send, we might want to infer from context (e.g. user's branch)
+      // But this method might be called by a system process too.
+      // Let's try to find the first active branch for the business if not provided.
+      const branch = await this.branchRepo.findOne({
+        where: { businessId: dto.businessId, isActive: true },
+      });
+      if (branch) branchId = branch.id;
     }
 
     // For campaign (multiple contacts), branchId is crucial for data segmentation.
@@ -87,7 +88,7 @@ export class MessagingEngineService {
     // Or just let it be null on Message entity? But ConversationThread requires branchId.
     // So we MUST have a branchId for ConversationThread.
     if (!branchId) {
-        throw new BadRequestException('Branch ID is required for messaging.');
+      throw new BadRequestException('Branch ID is required for messaging.');
     }
     dto.branchId = branchId; // Update DTO for downstream use
 
@@ -178,36 +179,51 @@ export class MessagingEngineService {
   }
 
   public async handleInbound(message: InboundMessage): Promise<void> {
-    this.logger.log(`Inbound ${message.channel} from ${message.from} to ${message.to}`);
+    this.logger.log(
+      `Inbound ${message.channel} from ${message.from} to ${message.to}`,
+    );
 
     // Resolve Branch by 'to' number (assuming distinct numbers per branch)
-    let branch = await this.branchRepo.findOne({ where: { phone: message.to } });
+    let branch = await this.branchRepo.findOne({
+      where: { phone: message.to },
+    });
 
     let business: Business | null = null;
 
     if (branch) {
-        business = await this.businessRepo.findOne({ where: { id: branch.businessId } });
+      business = await this.businessRepo.findOne({
+        where: { id: branch.businessId },
+      });
     } else {
-        // Fallback: Find business by generic number/email and assign to default branch
-        // This is tricky if multiple businesses use shared numbers (like shortcodes),
-        // but typically the provider gives us a unique destination or we look up the keyword.
-        // For now, assuming 'message.to' matches a business identifier if not a branch phone.
-        business = await this.businessRepo.findOne({ where: { whatsappNumber: message.to } }); // Example fallback
+      // Fallback: Find business by generic number/email and assign to default branch
+      // This is tricky if multiple businesses use shared numbers (like shortcodes),
+      // but typically the provider gives us a unique destination or we look up the keyword.
+      // For now, assuming 'message.to' matches a business identifier if not a branch phone.
+      business = await this.businessRepo.findOne({
+        where: { whatsappNumber: message.to },
+      }); // Example fallback
 
-        if (!business) {
-             // Absolute fallback for dev/demo: Pick the first business
-             business = await this.businessRepo.findOne({ order: { createdAt: 'ASC' } });
-        }
+      if (!business) {
+        // Absolute fallback for dev/demo: Pick the first business
+        business = await this.businessRepo.findOne({
+          order: { createdAt: 'ASC' },
+        });
+      }
 
-        if (business) {
-            // Pick default branch (e.g. first active)
-            branch = await this.branchRepo.findOne({ where: { businessId: business.id, isActive: true }, order: { createdAt: 'ASC' } });
-        }
+      if (business) {
+        // Pick default branch (e.g. first active)
+        branch = await this.branchRepo.findOne({
+          where: { businessId: business.id, isActive: true },
+          order: { createdAt: 'ASC' },
+        });
+      }
     }
 
     if (!business || !branch) {
-        this.logger.warn(`Could not resolve business or branch for inbound message to ${message.to}`);
-        return;
+      this.logger.warn(
+        `Could not resolve business or branch for inbound message to ${message.to}`,
+      );
+      return;
     }
 
     // Ensure contact exists (Contact is Business-level)
@@ -248,7 +264,11 @@ export class MessagingEngineService {
 
     // Find thread by Branch + Contact + Channel
     let thread = await this.threadRepo.findOne({
-      where: { branchId: branch.id, contactId: safeContact.id, channel: message.channel },
+      where: {
+        branchId: branch.id,
+        contactId: safeContact.id,
+        channel: message.channel,
+      },
     });
     if (!thread) {
       thread = this.threadRepo.create({
@@ -318,16 +338,21 @@ export class MessagingEngineService {
       // If we have a branchId, and that branch has a specific number, use it.
       let from = business.name || 'VemTap';
       if (dto.branchId) {
-          const branch = await this.branchRepo.findOne({ where: { id: dto.branchId } });
-          if (branch && branch.phone && dto.channel === Channel.WHATSAPP) {
-              from = branch.phone;
-          } else if (business.whatsappNumber && dto.channel === Channel.WHATSAPP) {
-              from = business.whatsappNumber;
-          }
+        const branch = await this.branchRepo.findOne({
+          where: { id: dto.branchId },
+        });
+        if (branch && branch.phone && dto.channel === Channel.WHATSAPP) {
+          from = branch.phone;
+        } else if (
+          business.whatsappNumber &&
+          dto.channel === Channel.WHATSAPP
+        ) {
+          from = business.whatsappNumber;
+        }
       }
 
       const response = await this.providerRouter.sendMessage({
-        to: (dto.channel === Channel.EMAIL) ? contact.email : contact.phone,
+        to: dto.channel === Channel.EMAIL ? contact.email : contact.phone,
         from,
         content: finalContent,
         channel: dto.channel,
@@ -341,14 +366,14 @@ export class MessagingEngineService {
           direction: MessageDirection.OUTBOUND,
           content: finalContent,
           status: MessageStatus.SENT,
-          providerMessageId: response.messageId,
+          providerMessageId: response.messageId || undefined,
           channel: dto.channel,
           cost: await this.providerRouter.estimateCost({
-              to: (dto.channel === Channel.EMAIL) ? contact.email : contact.phone,
-              from,
-              content: finalContent,
-              channel: dto.channel
-          })
+            to: dto.channel === Channel.EMAIL ? contact.email : contact.phone,
+            from,
+            content: finalContent,
+            channel: dto.channel,
+          }),
         }),
       );
 
@@ -406,13 +431,19 @@ export class MessagingEngineService {
   }
 
   private mapProviderStatus(status: string): MessageStatus {
-      switch(status.toUpperCase()) {
-          case 'DELIVERED': return MessageStatus.DELIVERED;
-          case 'SENT': return MessageStatus.SENT;
-          case 'FAILED': return MessageStatus.FAILED;
-          case 'PENDING': return MessageStatus.PENDING;
-          case 'REJECTED': return MessageStatus.REJECTED;
-          default: return MessageStatus.SENT;
-      }
+    switch (status.toUpperCase()) {
+      case 'DELIVERED':
+        return MessageStatus.DELIVERED;
+      case 'SENT':
+        return MessageStatus.SENT;
+      case 'FAILED':
+        return MessageStatus.FAILED;
+      case 'PENDING':
+        return MessageStatus.PENDING;
+      case 'REJECTED':
+        return MessageStatus.REJECTED;
+      default:
+        return MessageStatus.SENT;
+    }
   }
 }

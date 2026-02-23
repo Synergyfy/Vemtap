@@ -38,8 +38,8 @@ export default function ProductClient({ id }: { id: string }) {
         firstName: user?.name?.split(' ')[0] || '',
         lastName: user?.name?.split(' ').slice(1).join(' ') || '',
         email: user?.email || '',
-        phone: user?.phone || '',
-        company: user?.businessName || '',
+        phone: (user as any)?.phone || '',
+        company: (user as any)?.businessName || '',
         quantity: '',
         location: '',
         notes: ''
@@ -52,8 +52,8 @@ export default function ProductClient({ id }: { id: string }) {
                 firstName: user.name?.split(' ')[0] || '',
                 lastName: user.name?.split(' ').slice(1).join(' ') || '',
                 email: user.email || '',
-                phone: user.phone || '',
-                company: user.businessName || ''
+                phone: (user as any).phone || '',
+                company: (user as any).businessName || ''
             }));
         }
     }, [user]);
@@ -150,7 +150,6 @@ export default function ProductClient({ id }: { id: string }) {
                 try {
                     // Create prompt user account
                     const userData = {
-                        id: `guest_${Date.now()}`,
                         email: quoteData.email,
                         name: `${quoteData.firstName} ${quoteData.lastName}`,
                         businessName: quoteData.company,
@@ -162,7 +161,7 @@ export default function ProductClient({ id }: { id: string }) {
                     // We generate a random password for them in a real app, or send a magic link
                     // For this demo, we'll assume the store handles the "guest conversion"
                     const { useAuthStore } = await import('@/store/useAuthStore');
-                    useAuthStore.getState().signup(userData, 'guest_signup_token');
+                    await useAuthStore.getState().signup(userData as any, '');
 
                     // 2. Send verification email
                     await sendVerificationEmail(quoteData.email, userData.name);
@@ -190,8 +189,8 @@ export default function ProductClient({ id }: { id: string }) {
             firstName: user?.name?.split(' ')[0] || '',
             lastName: user?.name?.split(' ').slice(1).join(' ') || '',
             email: user?.email || '',
-            phone: user?.phone || '',
-            company: user?.businessName || '',
+            phone: (user as any)?.phone || '',
+            company: (user as any)?.businessName || '',
             quantity: '',
             location: '',
             notes: ''

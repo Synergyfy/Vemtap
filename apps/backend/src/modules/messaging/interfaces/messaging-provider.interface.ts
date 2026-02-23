@@ -9,7 +9,7 @@ export interface SendMessagePayload {
 }
 
 export interface ProviderResponse {
-  messageId: string;
+  messageId: string | null;
   status: 'queued' | 'sent' | 'failed';
   rawResponse?: any;
 }
@@ -36,6 +36,9 @@ export interface MessagingProvider {
    * Parses a webhook payload and identifies if it is an inbound message or delivery report.
    * Returns the parsed object or null if it's irrelevant/unparseable.
    */
-  parseWebhook(payload: any): Promise<{ type: 'inbound' | 'delivery'; data: InboundMessage | DeliveryReport } | null>;
+  parseWebhook(payload: any): Promise<{
+    type: 'inbound' | 'delivery';
+    data: InboundMessage | DeliveryReport;
+  } | null>;
   estimateCost(payload: SendMessagePayload): number;
 }

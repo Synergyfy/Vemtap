@@ -55,7 +55,7 @@ export class MessagingController {
     private readonly campaignService: CampaignService,
     private readonly analyticsService: AnalyticsService,
     private readonly inboxService: InboxService,
-  ) {}
+  ) { }
 
   @Post('send')
   @ApiBearerAuth()
@@ -76,14 +76,14 @@ export class MessagingController {
     // Use user's branchId if available, unless overridden (e.g. by owner sending on behalf of branch)
     // Staff should always use their branch.
     if (req.user.role === UserRole.STAFF) {
-        dto.branchId = req.user.branchId;
+      dto.branchId = req.user.branchId;
     } else if (!dto.branchId && req.user.branchId) {
-        // Default to user's branch if not provided
-        dto.branchId = req.user.branchId;
+      // Default to user's branch if not provided
+      dto.branchId = req.user.branchId;
     }
 
     if (!dto.branchId) {
-        throw new BadRequestException('branchId is required');
+      throw new BadRequestException('branchId is required');
     }
 
     return this.messagingEngine.sendMessage(dto);
@@ -172,46 +172,31 @@ export class MessagingController {
     @Body() dto: ReplyDto,
     @Request() req: { user: User },
   ) {
-    const resolved = req.user.branchId; // Staff/Managers replying usually do so from their context.
-    // If Owner, they might need to specify branchId, but usually reply is to a thread which has branchId.
-    // However, InboxService.sendReply uses threadId to look up the thread.
-    // We pass req.user.branchId as security check (if provided).
-    // If user is Owner (no branchId), we might need to skip this check or fetch thread first.
-    // Ideally, sendReply(threadId) is enough, but we should verify ownership.
+    const resolved = req.user.branchId;
 
-    // For now, let's assume if user has branchId, we enforce it.
-    // If user is owner (branchId undefined), we might need to allow it.
-    // InboxService.sendReply expects a branchId.
-    // If owner, we need to get branchId from the thread first? Or just pass undefined?
-
-    if (!resolved && (req.user.role === UserRole.OWNER || req.user.role === UserRole.MANAGER)) {
-         // We can't validate branch ownership easily without fetching thread first.
-         // Let's rely on InboxService to fetch thread and maybe we trust it belongs to business?
-         // InboxService currently expects branchId to filter.
-         // Let's modify InboxService to find thread by ID and then check businessId/branchId?
-         // For now, I'll update InboxService.sendReply to be more flexible or we require branchId in query/body for reply too if not staff.
-         // But wait, the previous code passed `req.user.businessId` to `inboxService.sendReply`.
-         // `InboxService` now expects `branchId`.
-         // If I am owner, I don't have branchId.
-         // I should probably fetch the thread by ID and BusinessID, then get the branchId from it.
-    }
-
-    // FIX: Update InboxService to finding thread by businessId (for owners) OR branchId (for staff).
-    // But I already updated InboxService to take `branchId`.
-    // Let's just require branchId in query for reply if not present in user.
-    // Or better, let's update InboxService to allow finding by ThreadID + BusinessID.
-
-    // Actually, let's just stick to what I wrote: `InboxService.sendReply` takes `branchId`.
-    // So `MessagingController` must provide it.
-    // If `req.user.branchId` is null, throw error "branchId required".
     if (!resolved) {
-         throw new BadRequestException('branchId is required to reply. Please switch to a branch context.');
+      throw new BadRequestException(
+        'branchId is required to reply. Please switch to a branch context.',
+      );
     }
 
-    return this.inboxService.sendReply(
-      resolved,
-      threadId,
-      dto.content,
-    );
+    return this.inboxService.sendReply(resolved, threadId, dto.content);
+  }
+
+  // --- Admin Endpoints ---
+
+  @Get('admin/templates')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get all messaging templates' })
+  async getAllTemplates() {
+    return this.templateService.findAllAdmin();
+  }
+
+  @Post('admin/templates/:id/status')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Update template status' })
+  @ApiBody({ schema: { type: 'object', properties: { status: { type: 'string', enum: ['pending', 'approved', 'rejected'] } } } })
+  async updateTemplateStatus(@Param('id') id: string, @Body('status') status: string) {
+    return this.templateService.updateStatus(id, status);
   }
 }

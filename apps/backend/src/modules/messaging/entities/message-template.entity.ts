@@ -3,6 +3,18 @@ import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Channel } from '../enums/channel.enum';
 
+export enum TemplateStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}
+
+export enum TemplateCategory {
+  MARKETING = 'MARKETING',
+  UTILITY = 'UTILITY',
+  AUTHENTICATION = 'AUTHENTICATION',
+}
+
 @Entity('message_templates')
 @Unique(['businessId', 'name', 'channel'])
 export class MessageTemplate extends AbstractBaseEntity {
@@ -21,4 +33,21 @@ export class MessageTemplate extends AbstractBaseEntity {
 
   @Column({ type: 'text' })
   content: string;
+
+  @Column({
+    type: 'enum',
+    enum: TemplateStatus,
+    default: TemplateStatus.PENDING,
+  })
+  status: TemplateStatus;
+
+  @Column({
+    type: 'enum',
+    enum: TemplateCategory,
+    default: TemplateCategory.MARKETING,
+  })
+  category: TemplateCategory;
+
+  @Column({ default: 'English (US)' })
+  language: string;
 }

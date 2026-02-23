@@ -21,7 +21,7 @@ export class DevicesService {
     private orderRepository: Repository<Order>,
     @InjectRepository(Branch)
     private branchRepository: Repository<Branch>,
-  ) {}
+  ) { }
 
   async create(
     businessId: string,
@@ -128,7 +128,8 @@ export class DevicesService {
       const potentialCodes: string[] = [];
 
       // Generate a batch of random codes
-      for (let i = 0; i < batchSize + 10; i++) { // Generate a few extras to account for collisions
+      for (let i = 0; i < batchSize + 10; i++) {
+        // Generate a few extras to account for collisions
         potentialCodes.push(this.generateRandomCode());
       }
 
@@ -138,7 +139,7 @@ export class DevicesService {
         select: ['code'],
       });
 
-      const existingCodes = new Set(existingDevices.map(d => d.code));
+      const existingCodes = new Set(existingDevices.map((d) => d.code));
 
       // Add non-conflicting codes to our set
       for (const code of potentialCodes) {
@@ -325,12 +326,16 @@ export class DevicesService {
       .createQueryBuilder('d')
       .where('d.businessId IS NULL')
       .getCount();
+    const alerts = await this.devicesRepository
+      .createQueryBuilder('d')
+      .where('d.batteryLevel < :lowBattery', { lowBattery: 20 })
+      .getCount();
 
     return {
       total,
       active,
       inventory,
-      alerts: 0, // Mocking alerts for now
+      alerts,
     };
   }
 

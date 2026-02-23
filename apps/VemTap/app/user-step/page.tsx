@@ -26,7 +26,7 @@ export default function UserStepPage() {
         currentStep, setStep, storeName, setUserData, resetFlow,
         getBusinessConfig, customWelcomeMessage, customSuccessMessage,
         customPrivacyMessage, customRewardMessage, hasRewardSetup,
-        setBusinessType, userData, logoUrl, visitCount, rewardVisitThreshold,
+        setBusinessType, userData, branchId, logoUrl, visitCount, rewardVisitThreshold,
         redemptionStatus, lastRedemptionId, requestRedemption, setRedemptionStatus, resetVisitCountAfterRedemption,
         engagementSettings, surveyQuestions,
         customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag
@@ -133,6 +133,7 @@ export default function UserStepPage() {
             earnPoints({
                 userId: data.email || data.phone || data.uniqueId || 'anonymous',
                 businessId: businessId,
+                branchId: branchId || 'head-office',
                 isVisit: true
             }).catch(err => console.error('Failed to earn points after form submit:', err));
         }
@@ -255,6 +256,7 @@ export default function UserStepPage() {
                                     earnPoints({
                                         userId: identity.email || identity.phone || identity.uniqueId || 'recognized-visitor',
                                         businessId: businessId,
+                                        branchId: branchId || 'head-office',
                                         isVisit: true
                                     }).catch(err => console.error('Failed to earn points on welcome back:', err));
                                 }

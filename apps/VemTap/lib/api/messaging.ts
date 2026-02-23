@@ -24,11 +24,11 @@ export const messagingApi = {
 
     sendMessage: async (threadId: string, content: string, channel: MessageChannel) => {
         await delay(400);
-        
+
         // 1. Check Credits
         const store = useMessagingStore.getState();
         const cost = channel === 'SMS' ? 2.5 : channel === 'WhatsApp' ? 4.0 : 0.5;
-        
+
         if (store.wallets[channel].credits < cost) {
             throw new Error('Insufficient credits');
         }
@@ -91,10 +91,10 @@ export const messagingApi = {
 
     createTemplate: async (template: Omit<Template, 'id' | 'status'>) => {
         await delay(500);
-        const newTemplate: Template = { 
-            ...template, 
+        const newTemplate: Template = {
+            ...template,
             id: `tpl_${Date.now()}`,
-            status: 'approved' 
+            status: 'approved'
         };
         useMessagingStore.getState().addTemplate(newTemplate);
         return newTemplate;
@@ -103,30 +103,30 @@ export const messagingApi = {
     // Broadcasts (Internal logic)
     sendBroadcast: async (name: string, channel: MessageChannel, audienceSize: number, content: string) => {
         await delay(1500);
-         const store = useMessagingStore.getState();
-         const costPerMsg = channel === 'SMS' ? 2.5 : channel === 'WhatsApp' ? 4.0 : 0.5;
-         const totalCost = costPerMsg * audienceSize;
- 
-         if (store.wallets[channel].credits < totalCost) {
-             throw new Error(`Insufficient credits. Need ${totalCost}, have ${store.wallets[channel].credits}`);
-         }
- 
-         store.deductCredits(channel, totalCost);
-         
-         // Log the Broadcast internally
-         const broadcastId = `brd_${Date.now()}`;
-         store.addBroadcast({
-             id: broadcastId,
-             branchId: 'head-office', // Fallback or retrieve from context if available
-             name,
-             channel,
-             audienceSize,
-             sent: audienceSize,
-             delivered: Math.floor(audienceSize * 0.95),
-             status: 'Completed',
-             timestamp: Date.now()
-         });
- 
-         return broadcastId;
+        const store = useMessagingStore.getState();
+        const costPerMsg = channel === 'SMS' ? 2.5 : channel === 'WhatsApp' ? 4.0 : 0.5;
+        const totalCost = costPerMsg * audienceSize;
+
+        if (store.wallets[channel].credits < totalCost) {
+            throw new Error(`Insufficient credits. Need ${totalCost}, have ${store.wallets[channel].credits}`);
+        }
+
+        store.deductCredits(channel, totalCost);
+
+        // Log the Broadcast internally
+        const broadcastId = `brd_${Date.now()}`;
+        store.addBroadcast({
+            id: broadcastId,
+            branchId: 'head-office',
+            name,
+            channel,
+            audienceSize,
+            sent: audienceSize,
+            delivered: Math.floor(audienceSize * 0.95),
+            status: 'Completed',
+            timestamp: Date.now()
+        });
+
+        return broadcastId;
     }
 };

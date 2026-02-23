@@ -2,18 +2,24 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Business, BusinessStatus } from './entities/business.entity';
 import { UpdateBusinessDto } from './dto/update-business.dto';
+import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
+import { User, UserRole } from '../users/entities/user.entity';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class BusinessesService {
   constructor(
     @InjectRepository(Business)
     private businessesRepository: Repository<Business>,
-  ) {}
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
+  ) { }
 
   async create(businessData: Partial<Business>): Promise<Business> {
     if (businessData.ownerId) {
@@ -89,6 +95,27 @@ export class BusinessesService {
       where: { status: BusinessStatus.SUSPENDED },
     });
 
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const approvedToday = await this.businessesRepository
+      .createQueryBuilder('business')
+      .where('business.status = :status', { status: BusinessStatus.ACTIVE })
+      .andWhere('business.updatedAt >= :today', { today: todayStart })
+      .getCount();
+
+    // Calculate Average Wait Time for businesses approved today (Postgres)
+    const waitTimeData = await this.businessesRepository
+      .createQueryBuilder('business')
+      .select('AVG(EXTRACT(EPOCH FROM (business.updatedAt - business.createdAt)))', 'avgSeconds')
+      .where('business.status = :status', { status: BusinessStatus.ACTIVE })
+      .andWhere('business.updatedAt >= :today', { today: todayStart })
+      .getRawOne();
+
+    const avgWaitHours = waitTimeData?.avgSeconds
+      ? (parseFloat(waitTimeData.avgSeconds) / 3600).toFixed(1)
+      : '0.0';
+
     return {
       data: businesses,
       meta: {
@@ -101,14 +128,52 @@ export class BusinessesService {
         active: activeCount,
         pending: pendingCount,
         suspended: suspendedCount,
+        approvedToday,
+        avgWaitTime: avgWaitHours,
       },
     };
   }
 
-  async adminCreate(businessData: Partial<Business>): Promise<Business> {
-    const business = this.businessesRepository.create(businessData);
-    business.status = BusinessStatus.ACTIVE; // Admins create active businesses instantly
-    return this.businessesRepository.save(business);
+  async adminCreate(dto: AdminCreateBusinessDto): Promise<Business> {
+    const existingUser = await this.usersRepository.findOne({
+      where: { email: dto.ownerEmail },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('A user with that email already exists');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.ownerPassword, 10);
+    const ownerUser = this.usersRepository.create({
+      firstName: dto.ownerFirstName,
+      lastName: dto.ownerLastName,
+      email: dto.ownerEmail,
+      password: hashedPassword,
+      phone: dto.ownerPhone,
+      role: UserRole.OWNER,
+    });
+
+    const savedUser = await this.usersRepository.save(ownerUser);
+
+    const business = this.businessesRepository.create({
+      name: dto.name,
+      ownerId: savedUser.id,
+      type: dto.type,
+      status: dto.status || BusinessStatus.ACTIVE,
+      logoUrl: dto.logoUrl,
+      address: dto.address,
+      website: dto.website,
+      whatsappNumber: dto.whatsappNumber,
+      officialEmail: dto.officialEmail,
+    });
+
+    const savedBusiness = await this.businessesRepository.save(business);
+
+    // Link businessId back to user for proper context
+    savedUser.businessId = savedBusiness.id;
+    await this.usersRepository.save(savedUser);
+
+    return savedBusiness;
   }
 
   async adminDelete(id: string): Promise<void> {

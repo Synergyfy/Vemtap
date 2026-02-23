@@ -1,529 +1,329 @@
 'use client';
 
-import React, { useState } from 'react';
-import Modal from '@/components/ui/Modal';
+import React, { useState, useEffect, useCallback } from 'react';
 import { notify } from '@/lib/notify';
-import Link from 'next/link';
+import { adminBusinessesApi } from '@/lib/api/admin';
+import { Search, Plus, RefreshCw, Loader2, Edit2, Trash2, CheckCircle, XCircle, Ban, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
+
+interface Business {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string;
+    address?: string;
+    status: string;
+    planId?: string;
+    createdAt: string;
+    owner?: { firstName: string; lastName: string; email: string };
+    branches?: any[];
+    devices?: any[];
+}
 
 export default function AdminBusinessesPage() {
+    const [businesses, setBusinesses] = useState<Business[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterStatus, setFilterStatus] = useState('all');
-    const [filterPlan, setFilterPlan] = useState('all');
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [selectedBusiness, setSelectedBusiness] = useState<any>(null);
-    const [expandedBusinessId, setExpandedBusinessId] = useState<number | null>(null);
+    const [filterStatus, setFilterStatus] = useState('');
+    const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const [businesses, setBusinesses] = useState([
-        { id: 1, name: 'Green Terrace Cafe', owner: 'John Smith', email: 'john@greenterrace.com', phone: '+234 802 345 6789', address: '14 Admiralty Way, Lekki Phase 1, Lagos', plan: 'Premium', devices: 5, visitors: 2847, status: 'active', joined: '2024-01-15', lastActivity: '12 mins ago', nextBilling: '2024-03-15' },
-        { id: 2, name: 'Tech Hub Lagos', owner: 'Sarah Johnson', email: 'sarah@techhub.ng', phone: '+234 803 456 7890', address: '82 Herbert Macaulay Way, Yaba, Lagos', plan: 'Enterprise', devices: 12, visitors: 8921, status: 'active', joined: '2024-01-10', lastActivity: '2 hours ago', nextBilling: '2024-03-10' },
-        { id: 3, name: 'Fashion Boutique', owner: 'Mike Williams', email: 'mike@fashion.com', phone: '+234 804 567 8901', address: 'Unit 4, Palms Mall, Lekki, Lagos', plan: 'Basic', devices: 2, visitors: 456, status: 'pending', joined: '2024-02-01', lastActivity: '1 day ago', nextBilling: '2024-03-01' },
-        { id: 4, name: 'Fitness Center', owner: 'Emily Davis', email: 'emily@fitness.ng', phone: '+234 805 678 9012', address: '12 Isaac John St, Ikeja GRA, Lagos', plan: 'Premium', devices: 8, visitors: 3421, status: 'active', joined: '2024-01-20', lastActivity: '5 mins ago', nextBilling: '2024-03-20' },
-        { id: 5, name: 'Restaurant 360', owner: 'David Brown', email: 'david@restaurant360.com', phone: '+234 806 789 0123', address: 'Plot 12, Victoria Island, Lagos', plan: 'Basic', devices: 3, visitors: 1234, status: 'suspended', joined: '2023-12-05', lastActivity: '3 weeks ago', nextBilling: '2024-02-05' },
-        { id: 6, name: 'Beauty Spa', owner: 'Lisa Anderson', email: 'lisa@beautyspa.ng', phone: '+234 807 890 1234', address: '56 Adeniran Ogunsanya St, Surulere, Lagos', plan: 'Free', devices: 1, visitors: 89, status: 'active', joined: '2024-01-28', lastActivity: '4 hours ago', nextBilling: 'N/A' },
-    ]);
+    const fetchBusinesses = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const data = await adminBusinessesApi.getAll({
+                search: searchQuery || undefined,
+                status: filterStatus || undefined,
+            });
+            setBusinesses(Array.isArray(data) ? data : (data.businesses || []));
+        } catch (err: any) {
+            notify.error(err.message || 'Failed to load businesses');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [searchQuery, filterStatus]);
+
+    useEffect(() => {
+        const t = setTimeout(() => fetchBusinesses(), 400);
+        return () => clearTimeout(t);
+    }, [fetchBusinesses]);
 
     const stats = [
-        { label: 'Total Businesses', value: businesses.length.toString(), icon: 'store', color: 'blue' },
-        { label: 'Active', value: businesses.filter(b => b.status === 'active').length.toString(), icon: 'check_circle', color: 'green' },
-        { label: 'Pending Approval', value: businesses.filter(b => b.status === 'pending').length.toString(), icon: 'pending', color: 'yellow' },
-        { label: 'Suspended', value: businesses.filter(b => b.status === 'suspended').length.toString(), icon: 'block', color: 'red' },
+        { label: 'Total', value: businesses.length, icon: 'store', color: 'blue' },
+        { label: 'Active', value: businesses.filter(b => b.status === 'Active').length, icon: 'check_circle', color: 'green' },
+        { label: 'Pending', value: businesses.filter(b => b.status === 'Pending').length, icon: 'pending', color: 'yellow' },
+        { label: 'Suspended', value: businesses.filter(b => b.status === 'Suspended').length, icon: 'block', color: 'red' },
     ];
 
-    const handleDelete = (id: number) => {
-        const business = businesses.find(b => b.id === id);
-        setBusinesses(businesses.filter(b => b.id !== id));
-        notify.success(`${business?.name} has been removed from the platform.`);
-    };
-
-    const handleToggleStatus = (id: number) => {
-        setBusinesses(businesses.map(b => {
-            if (b.id === id) {
-                const newStatus = b.status === 'suspended' ? 'active' : 'suspended';
-                notify.success(`Business ${newStatus === 'active' ? 'activated' : 'suspended'} successfully`);
-                return { ...b, status: newStatus };
-            }
-            return b;
-        }));
-    };
-
-    const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        const formData = new FormData(e.currentTarget);
-        const businessData = {
-            name: formData.get('name') as string,
-            plan: formData.get('plan') as string,
-            owner: formData.get('owner') as string,
-            email: formData.get('email') as string,
-            phone: formData.get('phone') as string,
-            address: formData.get('address') as string,
-            status: selectedBusiness?.status || 'active',
-            joined: selectedBusiness?.joined || new Date().toISOString().split('T')[0],
-            devices: selectedBusiness?.devices || 0,
-            visitors: selectedBusiness?.visitors || 0,
-            lastActivity: selectedBusiness?.lastActivity || 'Just now',
-            nextBilling: selectedBusiness?.nextBilling || (formData.get('plan') === 'Free' ? 'N/A' : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-        };
-
-        if (selectedBusiness) {
-            setBusinesses(businesses.map(b => b.id === selectedBusiness.id ? { ...b, ...businessData } : b));
-            notify.success('Business details updated successfully');
-        } else {
-            const newId = businesses.length > 0 ? Math.max(...businesses.map(b => b.id)) + 1 : 1;
-            setBusinesses([{ id: newId, ...businessData }, ...businesses]);
-            notify.success('New business registered successfully');
+    const handleAction = async (action: 'approve' | 'reject' | 'suspend' | 'reactivate' | 'delete', business: Business) => {
+        const labels = { approve: 'Approve', reject: 'Reject', suspend: 'Suspend', reactivate: 'Reactivate', delete: 'Delete' };
+        if (!window.confirm(`${labels[action]} "${business.name}"?`)) return;
+        try {
+            if (action === 'approve') await adminBusinessesApi.approve(business.id);
+            else if (action === 'reject') await adminBusinessesApi.reject(business.id);
+            else if (action === 'suspend') await adminBusinessesApi.suspend(business.id);
+            else if (action === 'reactivate') await adminBusinessesApi.reactivate(business.id);
+            else if (action === 'delete') await adminBusinessesApi.delete(business.id);
+            notify.success(`Business ${labels[action].toLowerCase()}d successfully`);
+            fetchBusinesses();
+        } catch (err: any) {
+            notify.error(err.message || 'Action failed');
         }
-        setIsAddModalOpen(false);
-        setSelectedBusiness(null);
     };
 
-    const filteredBusinesses = businesses.filter(b => {
-        const matchesSearch = b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            b.owner.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            b.email.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = filterStatus === 'all' || b.status === filterStatus;
-        const matchesPlan = filterPlan === 'all' || b.plan.toLowerCase() === filterPlan.toLowerCase();
-        return matchesSearch && matchesStatus && matchesPlan;
-    });
+    const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        const fd = new FormData(e.currentTarget);
+        const payload = {
+            name: fd.get('name') as string,
+            email: fd.get('email') as string,
+            phone: fd.get('phone') as string,
+            address: fd.get('address') as string,
+        };
+        try {
+            await adminBusinessesApi.create(payload);
+            notify.success('Business registered successfully');
+            setIsModalOpen(false);
+            fetchBusinesses();
+        } catch (err: any) {
+            notify.error(err.message || 'Failed to create business');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const getStatusBadge = (status: string) => {
+        const map: Record<string, string> = {
+            Active: 'bg-green-50 text-green-600',
+            Pending: 'bg-yellow-50 text-yellow-700',
+            Suspended: 'bg-red-50 text-red-600',
+            Rejected: 'bg-gray-100 text-gray-500',
+        };
+        return map[status] || 'bg-gray-100 text-gray-500';
+    };
 
     return (
-        <>
-            <div className="p-4 md:p-8">
-                {/* Page Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-3xl font-display font-bold text-text-main mb-2">Businesses Management</h1>
-                        <p className="text-text-secondary font-medium">Manage all registered businesses on the platform</p>
-                    </div>
+        <div className="p-4 md:p-8 space-y-8">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-display font-bold text-text-main mb-1">Business Management</h1>
+                    <p className="text-text-secondary font-medium text-sm">Manage all registered businesses on the platform</p>
+                </div>
+                <div className="flex gap-3">
+                    <button onClick={fetchBusinesses} className="p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors" title="Refresh">
+                        <RefreshCw size={18} className="text-text-secondary" />
+                    </button>
                     <button
-                        onClick={() => { setSelectedBusiness(null); setIsAddModalOpen(true); }}
-                        className="px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all flex items-center gap-2 shadow-lg shadow-primary/20 active:scale-95"
+                        onClick={() => { setSelectedBusiness(null); setIsModalOpen(true); }}
+                        className="px-5 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all flex items-center gap-2 shadow-lg shadow-primary/20 active:scale-95"
                     >
-                        <span className="material-icons-round">add</span>
+                        <Plus size={18} />
                         Add Business
                     </button>
                 </div>
+            </div>
 
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    {stats.map((stat, index) => (
-                        <div key={index} className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-                            <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color === 'green' ? 'bg-green-50 text-green-600' :
-                                    stat.color === 'yellow' ? 'bg-yellow-50 text-yellow-600' :
-                                        stat.color === 'red' ? 'bg-red-50 text-red-600' :
-                                            'bg-primary/10 text-primary'
-                                    }`}>
-                                    <span className="material-icons-round text-xl">{stat.icon}</span>
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold uppercase tracking-wider text-text-secondary mb-1">{stat.label}</p>
-                                    <p className="text-2xl font-display font-bold text-text-main">{stat.value}</p>
-                                </div>
+            {/* Stats */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {stats.map((stat, i) => (
+                    <div key={i} className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${stat.color === 'green' ? 'bg-green-50 text-green-600' : stat.color === 'yellow' ? 'bg-yellow-50 text-yellow-700' : stat.color === 'red' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
+                                <span className="material-icons-round text-lg">{stat.icon}</span>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-wider text-text-secondary">{stat.label}</p>
+                                <p className="text-2xl font-display font-bold text-text-main">{isLoading ? '—' : stat.value}</p>
                             </div>
                         </div>
-                    ))}
-                </div>
-
-                {/* Filters and Search */}
-                <div className="bg-white rounded-xl p-6 border border-gray-200 mb-6 shadow-sm">
-                    <div className="flex flex-col md:flex-row gap-4">
-                        <div className="flex-1 relative">
-                            <span className="material-icons-round absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
-                                search
-                            </span>
-                            <input
-                                type="text"
-                                placeholder="Search by business name, owner, or email..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full h-12 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all shadow-inner"
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                            <select
-                                value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
-                                className="h-12 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
-                            >
-                                <option value="all">All Status</option>
-                                <option value="active">Active</option>
-                                <option value="pending">Pending</option>
-                                <option value="suspended">Suspended</option>
-                            </select>
-                            <select
-                                value={filterPlan}
-                                onChange={(e) => setFilterPlan(e.target.value)}
-                                className="h-12 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
-                            >
-                                <option value="all">All Plans</option>
-                                <option value="free">Free</option>
-                                <option value="basic">Basic</option>
-                                <option value="premium">Premium</option>
-                                <option value="enterprise">Enterprise</option>
-                            </select>
-                            <button
-                                onClick={() => notify.info('Exporting business data...')}
-                                className="h-12 px-6 bg-white border border-gray-200 text-text-main font-bold rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
-                            >
-                                <span className="material-icons-round text-lg">file_download</span>
-                                Export
-                            </button>
-                        </div>
                     </div>
-                </div>
+                ))}
+            </div>
 
-                {/* Businesses Table */}
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th className="text-left py-4 px-6 text-xs font-black uppercase tracking-wider text-text-secondary">
-                                        <input type="checkbox" className="rounded accent-primary" />
-                                    </th>
-                                    <th className="text-left py-4 px-6 text-xs font-black uppercase tracking-wider text-text-secondary">Business</th>
-                                    <th className="text-left py-4 px-6 text-xs font-black uppercase tracking-wider text-text-secondary">Owner</th>
-                                    <th className="text-left py-4 px-6 text-xs font-black uppercase tracking-wider text-text-secondary">Plan</th>
-                                    <th className="text-left py-4 px-6 text-xs font-black uppercase tracking-wider text-text-secondary">Devices</th>
-                                    <th className="text-left py-4 px-6 text-xs font-black uppercase tracking-wider text-text-secondary">Visitors</th>
-                                    <th className="text-left py-4 px-6 text-xs font-black uppercase tracking-wider text-text-secondary">Status</th>
-                                    <th className="text-left py-4 px-6 text-xs font-black uppercase tracking-wider text-text-secondary">Joined</th>
-                                    <th className="text-right py-4 px-6 text-xs font-black uppercase tracking-wider text-text-secondary">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {filteredBusinesses.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={9} className="py-12 text-center text-text-secondary font-medium">
-                                            No businesses found matching your criteria.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredBusinesses.map((business) => (
-                                        <React.Fragment key={business.id}>
-                                            <tr
-                                                onClick={() => setExpandedBusinessId(expandedBusinessId === business.id ? null : business.id)}
-                                                className="hover:bg-gray-50 transition-colors group cursor-pointer"
-                                            >
-                                                <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
-                                                    <input type="checkbox" className="rounded accent-primary" />
-                                                </td>
-                                                <td className="py-4 px-6">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary transition-colors">
-                                                            <span className="material-icons-round text-primary text-sm group-hover:text-white">store</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-bold text-sm text-text-main">{business.name}</span>
-                                                            <span className="material-icons-round text-gray-400 text-sm group-hover:text-primary transition-colors">
-                                                                {expandedBusinessId === business.id ? 'expand_less' : 'expand_more'}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="py-4 px-6">
-                                                    <div className="text-sm">
-                                                        <p className="font-bold text-text-main">{business.owner}</p>
-                                                        <p className="text-text-secondary text-xs font-medium">{business.email}</p>
-                                                    </div>
-                                                </td>
-                                                <td className="py-4 px-6">
-                                                    <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${business.plan === 'Enterprise' ? 'bg-purple-50 text-purple-600' :
-                                                        business.plan === 'Premium' ? 'bg-blue-50 text-blue-600' :
-                                                            business.plan === 'Basic' ? 'bg-green-50 text-green-600' :
-                                                                'bg-gray-100 text-gray-500'
-                                                        }`}>
-                                                        {business.plan}
-                                                    </span>
-                                                </td>
-                                                <td className="py-4 px-6 font-bold text-sm text-text-main">{business.devices}</td>
-                                                <td className="py-4 px-6 font-bold text-sm text-text-main">{business.visitors.toLocaleString()}</td>
-                                                <td className="py-4 px-6">
-                                                    <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${business.status === 'active' ? 'bg-green-50 text-green-600' :
-                                                        business.status === 'pending' ? 'bg-yellow-50 text-yellow-600' :
-                                                            'bg-red-50 text-red-600'
-                                                        }`}>
-                                                        {business.status}
-                                                    </span>
-                                                </td>
-                                                <td className="py-4 px-6 text-sm text-text-secondary font-bold">{business.joined}</td>
-                                                <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
-                                                    <div className="flex items-center justify-end gap-1">
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedBusiness(business);
-                                                                setIsAddModalOpen(true);
-                                                            }}
-                                                            className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
-                                                            title="Edit"
-                                                        >
-                                                            <span className="material-icons-round text-lg">edit</span>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleToggleStatus(business.id)}
-                                                            className={`p-2 rounded-lg transition-all ${business.status === 'suspended'
-                                                                ? 'text-green-500 hover:bg-green-50'
-                                                                : 'text-orange-500 hover:bg-orange-50'
-                                                                }`}
-                                                            title={business.status === 'suspended' ? 'Activate' : 'Suspend'}
-                                                        >
-                                                            <span className="material-icons-round text-lg">
-                                                                {business.status === 'suspended' ? 'check_circle' : 'block'}
-                                                            </span>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDelete(business.id)}
-                                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                                            title="Delete"
-                                                        >
-                                                            <span className="material-icons-round text-lg">delete</span>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            {/* Expanded Details Row */}
-                                            {expandedBusinessId === business.id && (
-                                                <tr className="bg-gray-50">
-                                                    <td colSpan={9} className="p-0">
-                                                        <div className="p-6 animate-in slide-in-from-top-2 duration-300">
-                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                                {/* Contact Information */}
-                                                                <div className="bg-white rounded-xl p-6 border border-gray-200">
-                                                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">
-                                                                        Contact Information
-                                                                    </h4>
-                                                                    <div className="space-y-3">
-                                                                        <div>
-                                                                            <p className="text-xs text-gray-400 font-bold mb-1">Business Name</p>
-                                                                            <p className="text-sm font-bold text-text-main">{business.name}</p>
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-xs text-gray-400 font-bold mb-1">Owner</p>
-                                                                            <p className="text-sm font-bold text-text-main">{business.owner}</p>
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-xs text-gray-400 font-bold mb-1">Email</p>
-                                                                            <p className="text-sm font-medium text-primary">{business.email}</p>
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-xs text-gray-400 font-bold mb-1">Phone</p>
-                                                                            <p className="text-sm font-medium text-text-secondary">{business.phone}</p>
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-xs text-gray-400 font-bold mb-1">Address</p>
-                                                                            <p className="text-sm font-medium text-text-secondary">
-                                                                                {business.address}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Subscription Details */}
-                                                                <div className="bg-white rounded-xl p-6 border border-gray-200">
-                                                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">
-                                                                        Subscription Details
-                                                                    </h4>
-                                                                    <div className="space-y-3">
-                                                                        <div>
-                                                                            <p className="text-xs text-gray-400 font-bold mb-1">Current Plan</p>
-                                                                            <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${business.plan === 'Enterprise' ? 'bg-purple-50 text-purple-600' :
-                                                                                business.plan === 'Premium' ? 'bg-blue-50 text-blue-600' :
-                                                                                    business.plan === 'Basic' ? 'bg-green-50 text-green-600' :
-                                                                                        'bg-gray-100 text-gray-500'
-                                                                                }`}>
-                                                                                {business.plan}
-                                                                            </span>
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-xs text-gray-400 font-bold mb-1">Status</p>
-                                                                            <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${business.status === 'active' ? 'bg-green-50 text-green-600' :
-                                                                                business.status === 'pending' ? 'bg-yellow-50 text-yellow-600' :
-                                                                                    'bg-red-50 text-red-600'
-                                                                                }`}>
-                                                                                {business.status}
-                                                                            </span>
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-xs text-gray-400 font-bold mb-1">Joined Date</p>
-                                                                            <p className="text-sm font-bold text-text-main">{business.joined}</p>
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-xs text-gray-400 font-bold mb-1">Next Billing</p>
-                                                                            <p className="text-sm font-medium text-text-secondary">{business.nextBilling}</p>
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-xs text-gray-400 font-bold mb-1">Monthly Revenue</p>
-                                                                            <p className="text-sm font-bold text-green-600">
-                                                                                {business.plan === 'Enterprise' ? '₦150,000' :
-                                                                                    business.plan === 'Premium' ? '₦45,000' :
-                                                                                        business.plan === 'Basic' ? '₦15,000' : '₦0'}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Activity & Devices */}
-                                                                <div className="bg-white rounded-xl p-6 border border-gray-200">
-                                                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">
-                                                                        Activity & Devices
-                                                                    </h4>
-                                                                    <div className="space-y-3">
-                                                                        <div>
-                                                                            <p className="text-xs text-gray-400 font-bold mb-1">Total Visitors</p>
-                                                                            <p className="text-2xl font-bold text-primary">{business.visitors.toLocaleString()}</p>
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-xs text-gray-400 font-bold mb-1">Active Devices</p>
-                                                                            <p className="text-2xl font-bold text-text-main">{business.devices}</p>
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-xs text-gray-400 font-bold mb-1">Last Activity</p>
-                                                                            <p className="text-sm font-medium text-text-secondary">{business.lastActivity}</p>
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-xs text-gray-400 font-bold mb-1">Avg. Daily Visitors</p>
-                                                                            <p className="text-sm font-bold text-text-main">
-                                                                                {Math.floor(business.visitors / 30).toLocaleString()}
-                                                                            </p>
-                                                                        </div>
-                                                                        <div className="pt-2">
-                                                                            <Link
-                                                                                href={`/admin/analytics?businessId=${business.id}`}
-                                                                                className="block w-full py-2 px-4 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary-hover transition-all text-center"
-                                                                            >
-                                                                                View Full Analytics
-                                                                            </Link>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </React.Fragment>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+            {/* Filters */}
+            <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+                <div className="flex flex-col md:flex-row gap-3">
+                    <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search by name, owner or email..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full h-11 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                        />
                     </div>
-
-                    {/* Pagination */}
-                    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
-                        <p className="text-xs text-text-secondary font-black uppercase tracking-widest">
-                            Showing {filteredBusinesses.length} of {businesses.length} businesses
-                        </p>
-                        <div className="flex gap-2">
-                            <button className="px-4 py-2 border border-gray-200 rounded-lg text-xs font-black uppercase tracking-widest text-text-secondary hover:bg-white transition-all disabled:opacity-50">
-                                Previous
-                            </button>
-                            <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-black uppercase tracking-widest text-text-main hover:border-primary/50 transition-all">
-                                Next
-                            </button>
-                        </div>
-                    </div>
+                    <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20">
+                        <option value="">All Status</option>
+                        <option value="Active">Active</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Suspended">Suspended</option>
+                    </select>
                 </div>
             </div>
 
-            {/* Add / Edit Business Modal */}
-            <Modal
-                isOpen={isAddModalOpen}
-                onClose={() => { setIsAddModalOpen(false); setSelectedBusiness(null); }}
-                title={selectedBusiness ? 'Update Business' : 'Register New Venue'}
-                description={selectedBusiness ? 'Modify account credentials and access' : 'Enter the details of the new business partner'}
-                size="lg"
-            >
-                <form onSubmit={handleFormSubmit} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Business Name</label>
-                            <input
-                                name="name"
-                                defaultValue={selectedBusiness?.name}
-                                required
-                                className="w-full h-12 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all font-bold text-sm"
-                                placeholder="e.g. Skyline Lounge"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Licensing Plan</label>
-                            <select
-                                name="plan"
-                                defaultValue={selectedBusiness?.plan}
-                                className="w-full h-12 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all font-bold text-sm appearance-none cursor-pointer"
-                            >
-                                <option value="Free">Free Tier</option>
-                                <option value="Basic">Basic Plan</option>
-                                <option value="Premium">Premium Account</option>
-                                <option value="Enterprise">Enterprise License</option>
-                            </select>
-                        </div>
-                    </div>
+            {/* Table */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Business</th>
+                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Owner</th>
+                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Branches</th>
+                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Status</th>
+                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Joined</th>
+                                <th className="text-right py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {isLoading ? (
+                                <tr><td colSpan={6} className="py-16 text-center"><Loader2 className="animate-spin mx-auto text-primary" size={32} /><p className="text-text-secondary text-sm mt-3 font-bold">Loading businesses...</p></td></tr>
+                            ) : businesses.length === 0 ? (
+                                <tr><td colSpan={6} className="py-16 text-center text-text-secondary text-sm font-medium">No businesses found.</td></tr>
+                            ) : (
+                                businesses.map((biz) => (
+                                    <React.Fragment key={biz.id}>
+                                        <tr
+                                            className="hover:bg-gray-50 transition-colors group cursor-pointer"
+                                            onClick={() => setExpandedId(expandedId === biz.id ? null : biz.id)}
+                                        >
+                                            <td className="py-4 px-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary transition-colors">
+                                                        <span className="material-icons-round text-primary text-sm group-hover:text-white">store</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <p className="font-bold text-sm text-text-main">{biz.name}</p>
+                                                        {expandedId === biz.id ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-6">
+                                                {biz.owner ? (
+                                                    <div>
+                                                        <p className="font-bold text-sm text-text-main">{biz.owner.firstName} {biz.owner.lastName}</p>
+                                                        <p className="text-xs text-text-secondary">{biz.owner.email}</p>
+                                                    </div>
+                                                ) : <span className="text-sm text-text-secondary">—</span>}
+                                            </td>
+                                            <td className="py-4 px-6 text-sm font-bold text-text-main">{biz.branches?.length ?? 0}</td>
+                                            <td className="py-4 px-6">
+                                                <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${getStatusBadge(biz.status)}`}>
+                                                    {biz.status}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-6 text-sm text-text-secondary font-medium">
+                                                {new Date(biz.createdAt).toLocaleDateString()}
+                                            </td>
+                                            <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex items-center justify-end gap-1">
+                                                    {biz.status === 'Pending' && <>
+                                                        <button onClick={() => handleAction('approve', biz)} className="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-all" title="Approve"><CheckCircle size={16} /></button>
+                                                        <button onClick={() => handleAction('reject', biz)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Reject"><XCircle size={16} /></button>
+                                                    </>}
+                                                    {biz.status === 'Active' && (
+                                                        <button onClick={() => handleAction('suspend', biz)} className="p-2 text-orange-500 hover:bg-orange-50 rounded-lg transition-all" title="Suspend"><Ban size={16} /></button>
+                                                    )}
+                                                    {biz.status === 'Suspended' && (
+                                                        <button onClick={() => handleAction('reactivate', biz)} className="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-all" title="Reactivate"><RotateCcw size={16} /></button>
+                                                    )}
+                                                    <button onClick={() => handleAction('delete', biz)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete"><Trash2 size={16} /></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {expandedId === biz.id && (
+                                            <tr className="bg-gray-50/80">
+                                                <td colSpan={6} className="px-16 py-6 animate-in slide-in-from-top-2 duration-200">
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                        <div className="bg-white rounded-xl p-5 border border-gray-200">
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Contact Details</p>
+                                                            <div className="space-y-2">
+                                                                <p className="text-xs text-gray-400 font-bold">Email</p>
+                                                                <p className="text-sm font-medium text-primary">{biz.email}</p>
+                                                                {biz.phone && <><p className="text-xs text-gray-400 font-bold mt-2">Phone</p><p className="text-sm font-medium text-text-secondary">{biz.phone}</p></>}
+                                                                {biz.address && <><p className="text-xs text-gray-400 font-bold mt-2">Address</p><p className="text-sm font-medium text-text-secondary">{biz.address}</p></>}
+                                                            </div>
+                                                        </div>
+                                                        <div className="bg-white rounded-xl p-5 border border-gray-200">
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Business Stats</p>
+                                                            <div className="space-y-2">
+                                                                <div className="flex justify-between"><p className="text-xs text-gray-400 font-bold">Branches</p><p className="text-sm font-bold text-text-main">{biz.branches?.length ?? 0}</p></div>
+                                                                <div className="flex justify-between"><p className="text-xs text-gray-400 font-bold">Devices</p><p className="text-sm font-bold text-text-main">{biz.devices?.length ?? 0}</p></div>
+                                                                <div className="flex justify-between"><p className="text-xs text-gray-400 font-bold">Status</p><span className={`text-xs font-black px-2 py-0.5 rounded-full ${getStatusBadge(biz.status)}`}>{biz.status}</span></div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="bg-white rounded-xl p-5 border border-gray-200">
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Quick Actions</p>
+                                                            <div className="space-y-2">
+                                                                {biz.status === 'Pending' && <button onClick={() => handleAction('approve', biz)} className="w-full py-2 px-4 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-all">Approve Business</button>}
+                                                                {biz.status === 'Active' && <button onClick={() => handleAction('suspend', biz)} className="w-full py-2 px-4 bg-orange-500 text-white text-xs font-bold rounded-lg hover:bg-orange-600 transition-all">Suspend Business</button>}
+                                                                {biz.status === 'Suspended' && <button onClick={() => handleAction('reactivate', biz)} className="w-full py-2 px-4 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary-hover transition-all">Reactivate</button>}
+                                                                <button onClick={() => handleAction('delete', biz)} className="w-full py-2 px-4 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition-all">Delete Permanently</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+                    <p className="text-xs text-text-secondary font-black uppercase tracking-widest">
+                        {isLoading ? 'Loading...' : `${businesses.length} business${businesses.length !== 1 ? 'es' : ''} found`}
+                    </p>
+                </div>
+            </div>
 
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Business Owner Name</label>
-                        <input
-                            name="owner"
-                            defaultValue={selectedBusiness?.owner}
-                            required
-                            className="w-full h-12 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all font-bold text-sm"
-                            placeholder="Full legal name"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Business Physical Address</label>
-                        <input
-                            name="address"
-                            defaultValue={selectedBusiness?.address}
-                            required
-                            className="w-full h-12 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all font-bold text-sm"
-                            placeholder="Street, City, State"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Primary Email Address</label>
-                            <input
-                                name="email"
-                                defaultValue={selectedBusiness?.email}
-                                type="email"
-                                required
-                                className="w-full h-12 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all font-bold text-sm"
-                                placeholder="billing@business.com"
-                            />
+            {/* Add Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsModalOpen(false)} />
+                    <div className="relative w-full max-w-lg bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
+                        <div className="flex items-center justify-between mb-7">
+                            <div>
+                                <h2 className="text-2xl font-display font-bold text-text-main">Register Business</h2>
+                                <p className="text-sm text-text-secondary font-medium mt-1">Add a new business to the platform</p>
+                            </div>
+                            <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><span className="material-icons-round text-gray-400">close</span></button>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Phone Number</label>
-                            <input
-                                name="phone"
-                                defaultValue={selectedBusiness?.phone || '+234 '}
-                                type="tel"
-                                required
-                                className="w-full h-12 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all font-bold text-sm"
-                                placeholder="+234 800 000 0000"
-                            />
-                        </div>
+                        <form onSubmit={handleFormSubmit} className="space-y-5">
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Business Name</label>
+                                <input name="name" required placeholder="e.g. Skyline Lounge" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Business Email</label>
+                                <input name="email" type="email" required placeholder="business@example.com" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Phone</label>
+                                    <input name="phone" type="tel" placeholder="+234 800 000 0000" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Address</label>
+                                    <input name="address" placeholder="City, State" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                </div>
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 h-12 bg-gray-100 text-text-secondary font-bold rounded-xl hover:bg-gray-200 transition-all text-sm">Cancel</button>
+                                <button type="submit" disabled={isSubmitting} className="flex-1 h-12 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-sm active:scale-95 disabled:opacity-70">
+                                    {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                                    Register Business
+                                </button>
+                            </div>
+                        </form>
                     </div>
-
-                    <div className="pt-4 flex gap-4">
-                        <button
-                            type="button"
-                            onClick={() => { setIsAddModalOpen(false); setSelectedBusiness(null); }}
-                            className="flex-1 h-14 bg-slate-50 text-slate-500 font-bold rounded-2xl hover:bg-slate-100 transition-all text-sm active:scale-95"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="flex-2 h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3 active:scale-95"
-                        >
-                            {selectedBusiness ? 'Update Business' : 'Launch Venue'}
-                        </button>
-                    </div>
-                </form>
-            </Modal>
-        </>
+                </div>
+            )}
+        </div>
     );
 }

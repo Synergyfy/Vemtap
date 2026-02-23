@@ -30,34 +30,26 @@ function OnboardingContent() {
                 await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate work
 
                 const signupData = {
-                    id: `temp_${Date.now()}`,
                     email,
                     name,
                     businessName,
                     role: 'owner' as const,
                     planId: 'free' as const,
-                    status: 'active',
                 };
 
-                await signup(signupData, 'onboarding_auto_token');
+                await signup(signupData as any, '');
 
-                const result = { success: true, error: undefined as string | undefined }; // signup in store is void and assumed successful if it completes
+                setMessage('Setting up your dashboard workspace...');
+                await new Promise(resolve => setTimeout(resolve, 1000));
 
-                if (result.success) {
-                    setMessage('Setting up your dashboard workspace...');
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                setStatus('success');
+                setMessage('Success! Redirecting you to your new dashboard...');
 
-                    setStatus('success');
-                    setMessage('Success! Redirecting you to your new dashboard...');
+                toast.success('Account created successfully! Welcome to VemTap.');
 
-                    toast.success('Account created successfully! Welcome to VemTap.');
-
-                    setTimeout(() => {
-                        router.push('/dashboard');
-                    }, 2000);
-                } else {
-                    throw new Error(result.error || 'Signup failed');
-                }
+                setTimeout(() => {
+                    router.push('/dashboard');
+                }, 2000);
             } catch (error) {
                 console.error('Onboarding error:', error);
                 setStatus('error');

@@ -56,4 +56,29 @@ describe('TemplateService', () => {
       expect(template.id).toBe('t1');
     });
   });
+
+  describe('findAllAdmin', () => {
+    it('should return all templates with business details', async () => {
+      const templates = [{ id: 't1' }, { id: 't2' }];
+      repoMock.find.mockResolvedValue(templates);
+
+      const result = await service.findAllAdmin();
+      expect(result).toEqual(templates);
+      expect(repoMock.find).toHaveBeenCalledWith({
+        relations: ['business'],
+        order: { createdAt: 'DESC' },
+      });
+    });
+  });
+
+  describe('updateStatus', () => {
+    it('should update template status', async () => {
+      const template = { id: 't1', status: 'pending' };
+      repoMock.findOne.mockResolvedValue(template);
+      repoMock.save.mockResolvedValue({ ...template, status: 'approved' });
+
+      const result = await service.updateStatus('t1', 'approved');
+      expect(result.status).toBe('approved');
+    });
+  });
 });
