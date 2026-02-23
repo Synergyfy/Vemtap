@@ -11,7 +11,7 @@ import { Check, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CreateProductPage() {
-    const { currentStep, setStep } = useProductFormStore();
+    const { currentStep, setStep, editingProductId } = useProductFormStore();
 
     const steps = [
         { id: 1, label: 'Details' },
@@ -27,19 +27,19 @@ export default function CreateProductPage() {
                 <div className="flex items-center gap-2 mb-4 text-xs font-bold text-gray-400 uppercase tracking-widest">
                     <Link href="/admin/products" className="hover:text-primary transition-colors">Products</Link>
                     <ChevronRight size={14} />
-                    <span className="text-text-secodnary">Add New Hardware</span>
+                    <span className="text-text-secodnary">{editingProductId ? 'Edit Hardware' : 'Add New Hardware'}</span>
                 </div>
 
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                     <div>
                         <h1 className="text-4xl md:text-5xl font-display font-bold mb-4 bg-clip-text text-transparent bg-linear-to-r from-gray-900 to-gray-600">
-                            {currentStep === 4 ? 'Success!' : 'Add New Product'}
+                            {currentStep === 4 ? 'Success!' : editingProductId ? 'Edit Product' : 'Add New Product'}
                         </h1>
                         <p className="text-lg text-text-secondary font-medium">
-                            {currentStep === 1 && 'Enter the basic product details below.'}
+                            {currentStep === 1 && `Enter the ${editingProductId ? 'updated' : 'basic'} product details below.`}
                             {currentStep === 2 && 'Upload high-quality images and specifications.'}
                             {currentStep === 3 && 'Configure pricing tiers and review.'}
-                            {currentStep === 4 && 'Your product is now live on the marketplace.'}
+                            {currentStep === 4 && `Your product has been ${editingProductId ? 'updated' : 'published'} successfully.`}
                         </p>
                     </div>
 

@@ -29,7 +29,8 @@ interface ProductFormData {
   tagColor: string;
   sku: string;
   description: string;
-  
+  productTypeId: string;
+
   // Step 2
   images: {
     primary: File | string | null;
@@ -44,7 +45,7 @@ interface ProductFormData {
   };
   specs: Spec[];
   howToSteps: Step[];
-  
+
   // Step 3
   msrp: number;
   originalPrice: number;
@@ -58,8 +59,10 @@ interface ProductFormData {
 interface ProductFormState {
   currentStep: number;
   formData: ProductFormData;
+  editingProductId: string | null;
   setStep: (step: number) => void;
   updateFormData: (data: Partial<ProductFormData>) => void;
+  loadProductForEditing: (product: any) => void;
   nextStep: () => void;
   prevStep: () => void;
   resetForm: () => void;
@@ -73,6 +76,7 @@ const initialFormData: ProductFormData = {
   tagColor: 'bg-primary',
   sku: '',
   description: '',
+  productTypeId: '',
   images: { primary: null, side: null, detail: null, packaging: null },
   video: { file: null, url: '', autoplay: false },
   specs: [
@@ -98,9 +102,32 @@ const initialFormData: ProductFormData = {
 export const useProductFormStore = create<ProductFormState>((set) => ({
   currentStep: 1,
   formData: initialFormData,
+  editingProductId: null,
   setStep: (step) => set({ currentStep: step }),
   updateFormData: (data) => set((state) => ({ formData: { ...state.formData, ...data } })),
+  loadProductForEditing: (product) => set({
+    editingProductId: product.id,
+    currentStep: 1,
+    formData: {
+      ...initialFormData,
+      title: product.name,
+      manufacturer: product.manufacturer || '',
+      category: product.category || 'NFC Hardware',
+      tag: product.tag || 'New Arrival',
+      tagColor: product.tagColor || 'bg-primary',
+      sku: product.sku || '',
+      description: product.description || '',
+      productTypeId: product.productTypeId || '',
+      msrp: Number(product.price) || 450,
+      images: {
+        primary: product.image || null,
+        side: null,
+        detail: null,
+        packaging: null
+      }
+    }
+  }),
   nextStep: () => set((state) => ({ currentStep: Math.min(state.currentStep + 1, 4) })),
   prevStep: () => set((state) => ({ currentStep: Math.max(state.currentStep - 1, 1) })),
-  resetForm: () => set({ currentStep: 1, formData: initialFormData }),
+  resetForm: () => set({ currentStep: 1, formData: initialFormData, editingProductId: null }),
 }));
