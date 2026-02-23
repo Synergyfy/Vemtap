@@ -50,8 +50,18 @@ export default function Pricing() {
         </div>
     );
 
-    const mainPlans = plans.filter(plan => ['free', 'personal', 'basic', 'premium'].includes(plan.id));
-    const enterprisePlan = plans.find(plan => plan.id === 'white-label' || plan.id === 'enterprise');
+    // Identify enterprise/white-label plan dynamically
+    const enterprisePlan = plans.find(plan =>
+        plan.id === 'white-label' ||
+        plan.id === 'enterprise' ||
+        plan.name.toLowerCase().includes('enterprise') ||
+        plan.name.toLowerCase().includes('white label')
+    );
+
+    // Main plans are all active plans except the enterprise one
+    const mainPlans = plans.filter(plan =>
+        plan.isActive && plan.id !== enterprisePlan?.id
+    );
 
     const getPriceByCycle = (plan: any, cycle: string) => {
         if (cycle === 'yearly') return plan.yearlyPrice;
