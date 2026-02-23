@@ -60,6 +60,17 @@ export const adminDevicesApi = {
 };
 
 // =====================
+// PRODUCTS (Admin)
+// =====================
+export const adminProductsApi = {
+    getAll: () => api.get('/products/admin'),
+    getStats: () => api.get('/products/admin/stats'),
+    create: (data: any) => api.post('/products', data),
+    update: (id: string, data: any) => api.patch(`/products/${id}`, data),
+    delete: (id: string) => api.delete(`/products/${id}`),
+};
+
+// =====================
 // SUBSCRIPTIONS (Admin)
 // =====================
 export const adminSubscriptionsApi = {
@@ -71,5 +82,17 @@ export const adminSubscriptionsApi = {
 // ANALYTICS (Admin)
 // =====================
 export const adminAnalyticsApi = {
-    getLoyaltyStats: () => api.get('/analytics/admin/loyalty/stats'),
+    getAdminSummary: () => api.get('/analytics/admin/summary'),
+};
+
+export const adminSupportApi = {
+    getAllTickets: () => api.get('/support/admin/tickets'),
+    getTicketDetails: (id: string) => api.get(`/support/admin/tickets/${id}`),
+    replyToTicket: (id: string, message: string) => api.post(`/support/admin/tickets/${id}/message`, { message }),
+    resolveTicket: (id: string) => api.post(`/support/admin/tickets/${id}/status`, { status: 'Closed' }),
+};
+
+export const adminMessagingApi = {
+    getAllTemplates: () => api.get('/messaging/admin/templates'),
+    updateTemplateStatus: (id: string, status: string) => api.post(`/messaging/admin/templates/${id}/status`, { status }),
 };

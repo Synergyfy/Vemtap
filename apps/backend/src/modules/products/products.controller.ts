@@ -34,7 +34,7 @@ import {
 @ApiTags('products')
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(private readonly productsService: ProductsService) { }
 
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
@@ -118,6 +118,14 @@ export class ProductsController {
   @ApiResponse({ status: 403, description: 'Forbidden.' })
   findAllAdmin() {
     return this.productsService.findAllAdmin();
+  }
+
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Get('admin/stats')
+  @ApiOperation({ summary: 'Get product statistics (Admin only)' })
+  getAdminStats() {
+    return this.productsService.getAdminStats();
   }
 
   @Public()

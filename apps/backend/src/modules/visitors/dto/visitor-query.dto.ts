@@ -39,4 +39,9 @@ export class VisitorQueryDto {
   @IsOptional()
   @IsString()
   ownerId?: string;
+
+  @ApiPropertyOptional({ example: 'branch-id', description: 'Filter by specific branch ID' })
+  @IsOptional()
+  @IsString()
+  branchId?: string;
 }

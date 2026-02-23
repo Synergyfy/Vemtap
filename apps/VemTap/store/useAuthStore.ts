@@ -105,3 +105,15 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+/**
+ * Hook to check if the current user has access based on their role.
+ * @param allowedRoles Array of roles that are allowed to access the resource.
+ * @returns boolean
+ */
+export function useCanAccess(allowedRoles: UserRole[]): boolean {
+    const userRole = useAuthStore((state) => state.user?.role);
+    if (!userRole) return false;
+    return allowedRoles.includes(userRole.toLowerCase() as UserRole);
+}
+

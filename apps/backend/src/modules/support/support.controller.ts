@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { SupportService } from './support.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
+import { SupportTicket, TicketStatus } from './entities/support-ticket.entity';
 import {
   ApiTags,
   ApiOperation,
@@ -26,7 +27,7 @@ import { UserRole } from '../users/entities/user.entity';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('support')
 export class SupportController {
-  constructor(private readonly supportService: SupportService) {}
+  constructor(private readonly supportService: SupportService) { }
 
   @Post('tickets')
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
@@ -55,5 +56,37 @@ export class SupportController {
   @ApiBody({ schema: { type: 'object', properties: { message: { type: 'string' } } } })
   async addMessage(@Request() req, @Param('id') id: string, @Body('message') message: string) {
     return this.supportService.addMessage(id, req.user.id, message);
+  }
+
+  // --- Admin Endpoints ---
+
+  @Get('admin/tickets')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get all support tickets' })
+  async getAllTickets() {
+    return this.supportService.findAllAdmin();
+  }
+
+  @Get('admin/tickets/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get ticket details with messages' })
+  async getAdminTicket(@Param('id') id: string) {
+    return this.supportService.findOneAdmin(id);
+  }
+
+  @Post('admin/tickets/:id/status')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Update ticket status' })
+  @ApiBody({ schema: { type: 'object', properties: { status: { type: 'string', enum: ['Open', 'In Progress', 'Closed'] } } } })
+  async updateTicketStatus(@Param('id') id: string, @Body('status') status: TicketStatus) {
+    return this.supportService.updateStatus(id, status);
+  }
+
+  @Post('admin/tickets/:id/message')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Reply to any ticket' })
+  @ApiBody({ schema: { type: 'object', properties: { message: { type: 'string' } } } })
+  async addAdminMessage(@Request() req, @Param('id') id: string, @Body('message') message: string) {
+    return this.supportService.addAdminMessage(id, req.user.id, message);
   }
 }

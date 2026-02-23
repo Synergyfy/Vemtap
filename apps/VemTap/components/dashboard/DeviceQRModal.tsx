@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DynamicQRCode from '@/components/shared/DynamicQRCode';
-import { Device } from '@/lib/store/mockDashboardStore';
+import { Device } from '@/services/devices/types';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 

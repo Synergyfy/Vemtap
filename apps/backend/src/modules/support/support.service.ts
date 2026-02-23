@@ -12,7 +12,7 @@ export class SupportService {
     private ticketRepository: Repository<SupportTicket>,
     @InjectRepository(TicketMessage)
     private messageRepository: Repository<TicketMessage>,
-  ) {}
+  ) { }
 
   async create(userId: string, dto: CreateTicketDto): Promise<SupportTicket> {
     const ticket = this.ticketRepository.create({
@@ -58,9 +58,52 @@ export class SupportService {
       message: messageText,
     });
 
-    // If ticket was closed, maybe reopen it? Or just add message.
     if (ticket.status === TicketStatus.CLOSED) {
-      ticket.status = TicketStatus.IN_PROGRESS; // Reopen if user replies
+      ticket.status = TicketStatus.IN_PROGRESS;
+      await this.ticketRepository.save(ticket);
+    }
+
+    return this.messageRepository.save(message);
+  }
+
+  // --- Admin Methods ---
+
+  async findAllAdmin(): Promise<SupportTicket[]> {
+    return this.ticketRepository.find({
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findOneAdmin(id: string): Promise<SupportTicket> {
+    const ticket = await this.ticketRepository.findOne({
+      where: { id },
+      relations: ['messages', 'messages.sender', 'user'],
+    });
+    if (!ticket) throw new NotFoundException('Ticket not found');
+    return ticket;
+  }
+
+  async updateStatus(id: string, status: TicketStatus): Promise<SupportTicket> {
+    const ticket = await this.ticketRepository.findOne({ where: { id } });
+    if (!ticket) throw new NotFoundException('Ticket not found');
+
+    ticket.status = status;
+    return this.ticketRepository.save(ticket);
+  }
+
+  async addAdminMessage(ticketId: string, adminId: string, messageText: string): Promise<TicketMessage> {
+    const ticket = await this.ticketRepository.findOne({ where: { id: ticketId } });
+    if (!ticket) throw new NotFoundException('Ticket not found');
+
+    const message = this.messageRepository.create({
+      ticketId: ticket.id,
+      senderId: adminId,
+      message: messageText,
+    });
+
+    if (ticket.status === TicketStatus.OPEN) {
+      ticket.status = TicketStatus.IN_PROGRESS;
       await this.ticketRepository.save(ticket);
     }
 

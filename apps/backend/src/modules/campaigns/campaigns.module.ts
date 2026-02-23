@@ -9,6 +9,12 @@ import { PointTransaction } from './entities/point-transaction.entity';
 import { LoyaltyRule } from './entities/loyalty-rule.entity';
 import { Reward } from './entities/reward.entity';
 import { Redemption } from './entities/redemption.entity';
+import { MessagingModule } from '../messaging/messaging.module';
+import { UsersModule } from '../users/users.module';
+import { ContactsModule } from '../contacts/contacts.module';
+import { BranchesModule } from '../branches/branches.module';
+import { User } from '../users/entities/user.entity';
+import { Contact } from '../contacts/entities/contact.entity';
 
 @Module({
   imports: [
@@ -20,7 +26,13 @@ import { Redemption } from './entities/redemption.entity';
       LoyaltyRule,
       Reward,
       Redemption,
+      User,
+      Contact,
     ]),
+    MessagingModule,
+    UsersModule,
+    ContactsModule,
+    BranchesModule,
   ],
   controllers: [CampaignsController],
   providers: [CampaignsService],

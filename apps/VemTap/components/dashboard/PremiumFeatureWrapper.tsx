@@ -15,7 +15,7 @@ export default function PremiumFeatureWrapper({ children, featureName, descripti
     const { user } = useAuthStore();
 
     // Check if user has a premium plan or active trial
-    const isPremium = user?.planId === 'premium' || user?.planId === 'white-label' || user?.planId === 'enterprise' || user?.subscriptionStatus === 'trialing';
+    const isPremium = user?.planId === 'premium' || user?.planId === 'white-label' || user?.planId === 'enterprise' || (user as any)?.subscriptionStatus === 'trialing';
 
     if (isPremium) {
         return <>{children}</>;

@@ -35,27 +35,21 @@ function OnboardingContent() {
                     businessName,
                     role: 'owner' as const,
                     planId: 'free' as const,
-                    subscriptionStatus: 'trialing' as const,
-                    trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
                 };
 
-                const result = await signup(signupData);
+                await signup(signupData as any, '');
 
-                if (result.success) {
-                    setMessage('Setting up your dashboard workspace...');
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                setMessage('Setting up your dashboard workspace...');
+                await new Promise(resolve => setTimeout(resolve, 1000));
 
-                    setStatus('success');
-                    setMessage('Success! Redirecting you to your new dashboard...');
+                setStatus('success');
+                setMessage('Success! Redirecting you to your new dashboard...');
 
-                    toast.success('Account created successfully! Welcome to VemTap.');
+                toast.success('Account created successfully! Welcome to VemTap.');
 
-                    setTimeout(() => {
-                        router.push('/dashboard');
-                    }, 2000);
-                } else {
-                    throw new Error(result.error || 'Signup failed');
-                }
+                setTimeout(() => {
+                    router.push('/dashboard');
+                }, 2000);
             } catch (error) {
                 console.error('Onboarding error:', error);
                 setStatus('error');

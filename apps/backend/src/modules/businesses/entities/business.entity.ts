@@ -99,6 +99,21 @@ export class Business extends AbstractBaseEntity {
   @Column({ default: 5 })
   rewardVisitThreshold: number;
 
+  @Column({ nullable: true })
+  linkedinUrl: string;
+
+  @Column({ nullable: true })
+  reviewUrl: string;
+
+  @Column({ default: true })
+  showReview: boolean;
+
+  @Column({ default: true })
+  showSocial: boolean;
+
+  @Column({ default: true })
+  showFeedback: boolean;
+
   // Relation to the owner
   @OneToOne(() => User, (user) => user.ownedBusiness, {
     onDelete: 'CASCADE',

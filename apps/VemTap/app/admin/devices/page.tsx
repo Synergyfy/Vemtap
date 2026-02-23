@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminDevicesApi } from '@/lib/api/admin';
 import { notify } from '@/lib/notify';
-import { Plus, Search, Filter, Download, Cpu, Activity, Link as LinkIcon, Edit3, Copy, Trash2 } from 'lucide-react';
+import { Plus, Search, Filter, Download, MoreVertical, Trash2, Cpu, Battery, Activity, Link as LinkIcon, Edit3, Copy } from 'lucide-react';
 import EditDeviceModal from '@/components/dashboard/EditDeviceModal';
+import { Device } from '@/services/devices/types';
 
 export default function AdminDevicesPage() {
     const queryClient = useQueryClient();
@@ -22,11 +23,18 @@ export default function AdminDevicesPage() {
     }, []);
 
     // Fetch Devices from live API
-    const { data: devicesData, isLoading } = useQuery({
+    const { data: devicesData, isLoading: isDevicesLoading } = useQuery({
         queryKey: ['admin-devices'],
         queryFn: () => adminDevicesApi.getAll({ limit: 1000 }),
     });
 
+    // Fetch Stats from live API
+    const { data: statsData, isLoading: isStatsLoading } = useQuery({
+        queryKey: ['admin-device-stats'],
+        queryFn: () => adminDevicesApi.getStats(),
+    });
+
+    const isLoading = isDevicesLoading || isStatsLoading;
     const rawDevices = Array.isArray(devicesData) ? devicesData : (devicesData?.devices || devicesData?.data || []);
 
     // Map devices to the structure expected by the UI
@@ -100,10 +108,10 @@ export default function AdminDevicesPage() {
     };
 
     const stats = [
-        { label: 'Total Hardware', value: devices.length.toLocaleString(), icon: 'nfc', color: 'blue' },
-        { label: 'Active Links', value: devices.filter((d: any) => d.status === 'active').length.toLocaleString(), icon: 'check_circle', color: 'green' },
-        { label: 'Inventory', value: devices.filter((d: any) => d.assignedTo === 'Unassigned').length.toLocaleString(), icon: 'inventory_2', color: 'orange' },
-        { label: 'Alerts', value: devices.filter((d: any) => (d.batteryLevel || 0) < 20).length.toLocaleString(), icon: 'battery_alert', color: 'red' },
+        { label: 'Total Hardware', value: statsData?.total?.toLocaleString() || '0', icon: 'nfc', color: 'blue' },
+        { label: 'Active Links', value: statsData?.active?.toLocaleString() || '0', icon: 'check_circle', color: 'green' },
+        { label: 'Inventory', value: statsData?.inventory?.toLocaleString() || '0', icon: 'inventory_2', color: 'orange' },
+        { label: 'Alerts', value: statsData?.alerts?.toLocaleString() || '0', icon: 'battery_alert', color: 'red' },
     ];
 
     const filteredDevices = devices.filter((device: any) => {

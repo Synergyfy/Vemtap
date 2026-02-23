@@ -5,6 +5,7 @@ import { User, UserRole } from '../users/entities/user.entity';
 import { Visit } from './entities/visit.entity';
 import { Device } from '../devices/entities/device.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { Contact } from '../contacts/entities/contact.entity';
 import { VisitorQueryDto } from './dto/visitor-query.dto';
 import {
   VisitorResponseDto,
@@ -15,6 +16,8 @@ import {
 import { VisitorStatsResponseDto } from './dto/visitor-stats.dto';
 import { CreateVisitorDto } from './dto/create-visitor.dto';
 import { MessagingEngineService } from '../messaging/services/messaging-engine.service';
+import { AutomationService } from '../messaging/services/automation.service';
+import { TriggerType } from '../messaging/enums/automation.enum';
 import { Channel } from '../messaging/enums/channel.enum';
 import { CampaignsService } from '../campaigns/campaigns.service';
 
@@ -29,8 +32,11 @@ export class VisitorsService {
     private deviceRepository: Repository<Device>,
     @InjectRepository(Branch)
     private branchRepository: Repository<Branch>,
+    @InjectRepository(Contact)
+    private contactRepository: Repository<Contact>,
     private messagingService: MessagingEngineService,
     private campaignsService: CampaignsService,
+    private automationService: AutomationService,
   ) {}
 
   // --- Main/All Visitors ---
@@ -228,6 +234,44 @@ export class VisitorsService {
     });
     await this.visitRepository.save(visit);
 
+    // Automation Trigger
+    const branch = await this.branchRepository.findOne({
+      where: { id: resolvedBranchId },
+    });
+    if (branch) {
+      // Find or create Contact
+      let contact = await this.contactRepository.findOne({
+        where: [
+          { businessId: branch.businessId, email: user.email },
+          { businessId: branch.businessId, phone: user.phone },
+        ],
+      });
+
+      if (!contact) {
+        contact = this.contactRepository.create({
+          businessId: branch.businessId,
+          email: user.email,
+          phone: user.phone,
+          name: `${user.firstName} ${user.lastName}`,
+          optInChannels: [Channel.SMS, Channel.EMAIL, Channel.WHATSAPP], // Default opt-in
+        });
+        await this.contactRepository.save(contact);
+      }
+
+      const visitCount = await this.visitRepository.count({
+        where: { customer: { id: user.id }, branchId: resolvedBranchId },
+      });
+
+      const triggerType =
+        visitCount === 1 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG;
+
+      await this.automationService.trigger(triggerType, {
+        businessId: branch.businessId,
+        branchId: resolvedBranchId,
+        contactId: contact.id,
+      });
+    }
+
     // Re-fetch to get full structure
     const updatedUser = await this.userRepository.findOne({
       where: { id: user.id },
@@ -400,7 +444,7 @@ export class VisitorsService {
         'MAX(visit.createdAt) as last_visit',
       ]);
 
-    const rawData = await qb
+    const rawData: any[] = await qb
       .orderBy('user.createdAt', 'DESC')
       .offset(skip)
       .limit(limit)
@@ -502,7 +546,7 @@ export class VisitorsService {
     const visitors = await this.findAll({ page: 1, limit: 1000 }, branchId);
     let csv = 'Name,Email,Phone,Visits,Last Visit,Status\n';
     visitors.data.forEach((v) => {
-      csv += `"${v.name}","${v.email}","${v.phone}",${v.visits},"${v.lastVisit}",${v.status}\n`;
+      csv += `"${v.name}","${v.email}","${v.phone}",${v.visits},"${v.lastVisit.toISOString()}",${v.status}\n`;
     });
     return {
       message: 'Export successful',
@@ -519,12 +563,17 @@ export class VisitorsService {
     const visitors = await this.findAll({ page: 1, limit: 1000 }, branchId);
     const contactIds = visitors.data.map((v) => v.id);
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const channel = (body.channel as Channel) || Channel.SMS;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const content = body.message as string;
+
     return this.messagingService.sendMessage({
       businessId: branch.businessId,
       branchId,
-      channel: body.channel || Channel.SMS,
+      channel,
       contactIds,
-      content: body.message,
+      content,
     });
   }
 
