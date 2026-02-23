@@ -43,7 +43,7 @@ export class ProductsService {
     @InjectRepository(ProductType)
     private productTypeRepository: Repository<ProductType>,
     private readonly paymentsService: PaymentsService,
-  ) {}
+  ) { }
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     const product = this.productRepository.create(createProductDto);
@@ -389,5 +389,32 @@ export class ProductsService {
 
     order.status = OrderStatus.READY;
     return this.orderRepository.save(order);
+  }
+
+  async getAdminStats() {
+    const total = await this.productRepository.count();
+    const published = await this.productRepository.count({
+      where: { status: ProductStatus.PUBLISHED },
+    });
+
+    // Strategy for Low Stock: Count product types that have very few unlinked devices
+    const lowStockThreshold = 10;
+    const productTypes = await this.productTypeRepository.find({
+      relations: ['devices'],
+    });
+
+    let lowStockCount = 0;
+    for (const type of productTypes) {
+      const availableDevices = type.devices?.filter((d) => !d.businessId).length || 0;
+      if (availableDevices < lowStockThreshold) {
+        lowStockCount++;
+      }
+    }
+
+    return {
+      total,
+      published,
+      lowStock: lowStockCount,
+    };
   }
 }

@@ -14,6 +14,7 @@ import { useRegisterOwner, useOtp, useRegister } from '@/services/auth/hooks';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPricingPlans } from '@/lib/api/pricing';
 import { CheckCircle2 } from 'lucide-react';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 export default function GetStarted() {
     const { registerOwner, isLoading: isRegistering } = useRegisterOwner();
@@ -159,6 +160,19 @@ export default function GetStarted() {
             const cleanData = sanitizeFormData(formData);
             let response: any;
 
+            let businessLogoUrl = cleanData.businessLogo;
+
+            if (!isManager && cleanData.businessLogo && cleanData.businessLogo.startsWith('data:image')) {
+                try {
+                    // Upload to Cloudinary and get secure URL
+                    businessLogoUrl = await uploadToCloudinary(cleanData.businessLogo);
+                } catch (uploadError: any) {
+                    console.error('Logo upload failed:', uploadError);
+                    toast.error('Failed to upload business logo. Proceeding without it.');
+                    businessLogoUrl = null;
+                }
+            }
+
             if (isManager) {
                 // Manager flow: POST /auth/register with role=Manager and businessId
                 const payload = {
@@ -178,7 +192,7 @@ export default function GetStarted() {
                     email: cleanData.email,
                     password: formData.password,
                     businessName: cleanData.businessName,
-                    businessLogo: cleanData.businessLogo || undefined,
+                    businessLogo: businessLogoUrl || undefined,
                     category: cleanData.category || undefined,
                     visitors: cleanData.visitors || undefined,
                     goals: cleanData.goals && cleanData.goals.length > 0 ? cleanData.goals : undefined,

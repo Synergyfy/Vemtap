@@ -25,7 +25,7 @@ import { PermissionsGuard } from '../../common/guards/permissions.guard';
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Controller('analytics')
 export class AnalyticsController {
-  constructor(private readonly analyticsService: AnalyticsService) {}
+  constructor(private readonly analyticsService: AnalyticsService) { }
 
   @Get('dashboard')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
@@ -56,14 +56,14 @@ export class AnalyticsController {
 
   // --- Admin Endpoints ---
 
-  @Get('admin/loyalty/stats')
+  @Get('admin/summary')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get loyalty metrics and ecosystem stats' })
+  @ApiOperation({ summary: 'Admin: Get comprehensive platform summary' })
   @ApiResponse({
     status: 200,
-    description: 'Ecosystem stats, alerts, and sector split',
+    description: 'Platform stats, growth trend, and sector split',
   })
-  getAdminLoyaltyStats() {
-    return this.analyticsService.getAdminLoyaltyStats();
+  getAdminSummary() {
+    return this.analyticsService.getAdminSummary();
   }
 }

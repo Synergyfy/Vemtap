@@ -21,7 +21,7 @@ export class DevicesService {
     private orderRepository: Repository<Order>,
     @InjectRepository(Branch)
     private branchRepository: Repository<Branch>,
-  ) {}
+  ) { }
 
   async create(
     businessId: string,
@@ -326,12 +326,16 @@ export class DevicesService {
       .createQueryBuilder('d')
       .where('d.businessId IS NULL')
       .getCount();
+    const alerts = await this.devicesRepository
+      .createQueryBuilder('d')
+      .where('d.batteryLevel < :lowBattery', { lowBattery: 20 })
+      .getCount();
 
     return {
       total,
       active,
       inventory,
-      alerts: 0, // Mocking alerts for now
+      alerts,
     };
   }
 
