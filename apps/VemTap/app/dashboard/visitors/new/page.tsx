@@ -22,10 +22,9 @@ export default function NewVisitorsPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<Visitor | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
 
-    const userBranchId = useAuthStore((state) => state.user?.businessId);
-
-    const { data: paginatedData, isLoading } = useNewVisitors(userBranchId);
-    const { data: statsData } = useNewVisitorStats(userBranchId);
+    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const { data: paginatedData, isLoading } = useNewVisitors(activeBranchId === 'all' || !activeBranchId ? undefined : activeBranchId);
+    const { data: statsData } = useNewVisitorStats(activeBranchId === 'all' || !activeBranchId ? undefined : activeBranchId);
 
     const newVisitors = paginatedData?.data || [];
 

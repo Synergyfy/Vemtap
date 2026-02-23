@@ -1,128 +1,5 @@
-import { Product, ProductDetail } from '@/types/marketplace';
-
-// Mock Data Source
-const allProducts: Product[] = [
-    {
-        id: 'nfc-plate-white',
-        name: 'VemTap NFC Plate (White)',
-        brand: 'VemTap',
-        category: 'NFC Plates',
-        rating: 4.9,
-        price: 500,
-        originalPrice: 700,
-        image: "/assets/nfc/Card NFC Plate White.avif",
-        desc: 'Premium white NFC plate for desks and counters.',
-        tag: 'Best Seller',
-        tagColor: 'bg-emerald-500',
-        action: 'quote',
-        moq: 1
-    },
-    {
-        id: 'nfc-plate-white-pack',
-        name: 'VemTap NFC Plate White (Pack of 5)',
-        brand: 'VemTap',
-        category: 'NFC Plates',
-        rating: 5.0,
-        price: 450,
-        originalPrice: 600,
-        image: "/assets/nfc/Card_NFC_Plate_White Pack.avif",
-        desc: 'Value pack of 5 white NFC plates.',
-        tag: 'Value Pack',
-        tagColor: 'bg-blue-500',
-        action: 'quote',
-        moq: 1
-    },
-    {
-        id: 'round-nfc-plate-white',
-        name: 'Round NFC Plate (White)',
-        brand: 'VemTap',
-        category: 'NFC Plates',
-        rating: 4.8,
-        price: 550,
-        originalPrice: 750,
-        image: "/assets/nfc/Round Card NFC Plate White 1.avif",
-        desc: 'Sleek round NFC plate for modern spaces.',
-        tag: 'New',
-        tagColor: 'bg-purple-500',
-        action: 'quote',
-        moq: 1
-    },
-    {
-        id: 'small-round-nfc',
-        name: 'Small Round NFC Tag',
-        brand: 'VemTap',
-        category: 'NFC Tags',
-        rating: 4.7,
-        price: 300,
-        originalPrice: 500,
-        image: "/assets/nfc/Small Round Card NFC.avif",
-        desc: 'Compact NFC tag for versatile use.',
-        tag: 'In Stock',
-        tagColor: 'bg-emerald-500',
-        action: 'quote',
-        moq: 5
-    },
-    {
-        id: 'square-nfc-plate',
-        name: 'Square NFC Plate',
-        brand: 'VemTap',
-        category: 'NFC Plates',
-        rating: 4.8,
-        price: 600,
-        originalPrice: 800,
-        image: "/assets/nfc/Square Card NFC Plate.avif",
-        desc: 'Modern square design with high-range NFC.',
-        tag: 'Trending',
-        tagColor: 'bg-orange-500',
-        action: 'quote',
-        moq: 1
-    },
-    {
-        id: 'standing-nfc-plate-black',
-        name: 'Standing NFC Plate (Black)',
-        brand: 'VemTap',
-        category: 'NFC Stands',
-        rating: 4.9,
-        price: 800,
-        originalPrice: 1200,
-        image: "/assets/nfc/Standing NFC Plate Black.avif",
-        desc: 'Elegant black standing NFC plate for tables.',
-        tag: 'Premium',
-        tagColor: 'bg-zinc-800',
-        action: 'quote',
-        moq: 1
-    },
-    {
-        id: 'standing-nfc-plate-qr',
-        name: 'Standing NFC Plate with QR',
-        brand: 'VemTap',
-        category: 'NFC Stands',
-        rating: 5.0,
-        price: 1000,
-        originalPrice: 1500,
-        image: "/assets/nfc/Standing NFC Plate with QR.avif",
-        desc: 'Dual-tech standing plate with NFC and QR code.',
-        tag: 'Hybrid',
-        tagColor: 'bg-indigo-500',
-        action: 'quote',
-        moq: 1
-    },
-    {
-        id: 'chip-tag-nfc215',
-        name: 'NTAG215 Chip Tag',
-        brand: 'NXP',
-        category: 'Components',
-        rating: 4.6,
-        price: 800,
-        originalPrice: 1000,
-        image: "/assets/nfc/Chip_tag_NFC215.avif",
-        desc: 'Raw NTAG215 chip for custom implementations.',
-        tag: 'DIY',
-        tagColor: 'bg-gray-500',
-        action: 'quote',
-        moq: 50
-    }
-];
+import { api } from '@/lib/api';
+import { Product, ProductDetail, ProductsResponse } from '@/types/marketplace';
 
 export const fetchProducts = async (
     page: number = 1,
@@ -131,16 +8,38 @@ export const fetchProducts = async (
     priceRange: [number, number] = [0, 1000000],
     brands: string[] = [],
     searchQuery: string = ''
-) => {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 800));
+): Promise<ProductsResponse> => {
+    // The current backend doesn't support pagination, filtering, or search directly in the findAllPublished endpoint
+    // We'll fetch all and filter in memory for now, or update the backend if possible.
+    // However, for "integrating endpoints", I should at least call the real endpoint.
 
-    let filtered = allProducts.filter(p => {
+    // Fetch all published products
+    const allProducts: any[] = await api.get('/products');
+
+    // Map backend product to frontend Product interface
+    let mappedProducts: Product[] = allProducts.map(p => ({
+        id: p.id,
+        name: p.name,
+        brand: p.productType?.name || 'VemTap',
+        category: p.productType?.name || 'NFC Hardware',
+        rating: p.rating || 5,
+        price: Number(p.price),
+        originalPrice: Number(p.price) * 1.2, // Mocking original price
+        image: p.image || "/assets/nfc/Card NFC Plate White.avif",
+        desc: p.description,
+        tag: p.tag || 'New',
+        tagColor: p.tagColor || 'bg-emerald-500',
+        action: p.requestQuoteThreshold ? 'quote' : 'cart',
+        moq: p.moq || 1
+    }));
+
+    // Apply filtering (same as mock implementation but on real data)
+    let filtered = mappedProducts.filter(p => {
         const matchesCategory = category === 'All Products' || p.category === category;
         const matchesPrice = p.price >= priceRange[0] && p.price <= priceRange[1];
         const matchesBrand = brands.length === 0 || brands.includes(p.brand);
-        const matchesSearch = searchQuery === '' || 
-            p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        const matchesSearch = searchQuery === '' ||
+            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             p.desc.toLowerCase().includes(searchQuery.toLowerCase());
 
         return matchesCategory && matchesPrice && matchesBrand && matchesSearch;
@@ -160,23 +59,25 @@ export const fetchProducts = async (
 };
 
 export const fetchProductDetail = async (id: string): Promise<ProductDetail | null> => {
-    await new Promise(resolve => setTimeout(resolve, 800));
+    try {
+        const p: any = await api.get(`/products/${id}`);
 
-    const product = allProducts.find(p => p.id === id);
-
-    if (product) {
         return {
-            ...product,
-            sku: `VEM-${id.toUpperCase()}`,
-            description: product.desc,
-            longDescription: `Experience the future of connectivity with the ${product.name}. Designed for reliability and style, this NFC solution integrates seamlessly into any environment. Perfect for businesses looking to enhance customer engagement through tap-to-action technology.`,
+            id: p.id,
+            sku: `VEM-${p.id.toUpperCase().split('-')[0]}`,
+            name: p.name,
+            brand: p.productType?.name || 'VemTap',
+            price: Number(p.price),
+            description: p.description,
+            longDescription: p.description + "\n\nExperience the future of connectivity with the " + p.name + ". Designed for reliability and style, this NFC solution integrates seamlessly into any environment. Perfect for businesses looking to enhance customer engagement through tap-to-action technology.",
             images: [
-                product.image,
-                // Add varied images if available, otherwise repeat or use generic
+                p.image,
                 "/assets/nfc/Reading position.avif",
                 "/assets/nfc/Card NFC Plate White spread.avif"
             ],
-            mainImage: product.image,
+            mainImage: p.image,
+            tag: p.tag || 'Premium',
+            tagColor: p.tagColor || 'bg-zinc-800',
             specifications: {
                 'Material': 'Premium PVC / Acrylic',
                 'Frequency': '13.56 MHz',
@@ -187,16 +88,51 @@ export const fetchProductDetail = async (id: string): Promise<ProductDetail | nu
             documents: [
                 { name: 'User Guide', size: '1.2 MB', date: '2024', downloads: 120, type: 'pdf' }
             ],
-            relatedProducts: allProducts.filter(p => p.id !== id).slice(0, 2),
+            relatedProducts: [], // Can be fetched if there's a related endpoint
             features: ['Instant Setup', 'Durable Build', 'Cloud Compatible'],
-            tieredPricing: [
-                { minQuantity: 1, maxQuantity: 49, price: product.price },
-                { minQuantity: 50, maxQuantity: 100, price: Math.floor(product.price * 0.9) },
-                { minQuantity: 101, price: 'quote' }
-            ]
+            tieredPricing: p.priceTiers?.map((t: any) => ({
+                minQuantity: t.min,
+                maxQuantity: t.max,
+                price: t.price
+            })) || [
+                    { minQuantity: 1, maxQuantity: 49, price: Number(p.price) },
+                    { minQuantity: 50, maxQuantity: 100, price: Math.floor(Number(p.price) * 0.9) },
+                    { minQuantity: 101, price: 'quote' }
+                ],
+            moq: p.moq || 1,
+            rating: p.rating || 5,
+            reviews: 124 // Mocked for now
         };
+    } catch (e) {
+        console.error('Error fetching product detail', e);
+        return null;
     }
-
-    return null;
 };
 
+export const requestQuote = async (productId: string, data: any) => {
+    return await api.post(`/products/${productId}/quote`, data);
+};
+
+export const createOrder = async (data: { productId: string; quantity: number; paymentReference?: string }) => {
+    return await api.post('/products/orders', data);
+};
+
+export const fetchMyQuotes = async () => {
+    return await api.get('/products/quotes/my');
+};
+
+export const fetchMyOrders = async () => {
+    return await api.get('/products/orders/my');
+};
+
+export const acceptQuote = async (quoteId: string) => {
+    return await api.post(`/products/quotes/${quoteId}/accept`, {});
+};
+
+export const rejectQuote = async (quoteId: string) => {
+    return await api.post(`/products/quotes/${quoteId}/reject`, {});
+};
+
+export const negotiateQuote = async (quoteId: string, data: { priceOffered: number, message?: string }) => {
+    return await api.post(`/products/quotes/${quoteId}/negotiate`, data);
+};
