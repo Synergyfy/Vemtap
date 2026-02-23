@@ -48,17 +48,23 @@ export default function StaffManagementPage() {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         const roleValue = formData.get('role') as string;
-        const role: UserRole = roleValue === 'Manager' ? 'manager' : 'staff';
+        const branchId = formData.get('branchId') as string;
 
         const staffData = {
             firstName: formData.get('firstName') as string,
             lastName: formData.get('lastName') as string,
             email: formData.get('email') as string,
-            role,
+            jobTitle: formData.get('jobTitle') as string || undefined,
+            role: roleValue as UserRole,
             businessId: user?.businessId || '',
-            branchId: formData.get('branchId') as string || user?.branchId || '',
+            branchId: branchId || (activeBranchId !== 'all' ? activeBranchId : '') || user?.branchId || '',
             permissions: selectedPermissions,
         };
+
+        if (!staffData.branchId) {
+            toast.error('Please select a branch for the staff member');
+            return;
+        }
 
         inviteMutation.mutate(staffData, {
             onSuccess: () => {
@@ -66,19 +72,20 @@ export default function StaffManagementPage() {
                 setSelectedPermissions(['dashboard', 'visitors']);
                 toast.success('Staff member invited successfully');
             },
-            onError: () => {
-                toast.error('Failed to invite staff member');
+            onError: (error: any) => {
+                const message = error.response?.data?.message || 'Failed to invite staff member';
+                toast.error(Array.isArray(message) ? message[0] : message);
             }
         });
     };
 
     const handleUpdateRole = (id: string, role: string) => {
         const roleMap: Record<string, UserRole> = {
-            'Owner': 'owner',
-            'Manager': 'manager',
-            'Staff': 'staff',
+            'Owner': 'Owner',
+            'Manager': 'Manager',
+            'Staff': 'Staff',
         };
-        updateMutation.mutate({ id, updates: { role: roleMap[role] || 'staff' } }, {
+        updateMutation.mutate({ id, updates: { role: roleMap[role] || 'Staff' } }, {
             onSuccess: () => {
                 toast.success('Staff role updated');
             }
@@ -115,9 +122,9 @@ export default function StaffManagementPage() {
             header: 'Role',
             accessor: (item: StaffMember) => (
                 <div className="flex items-center gap-2">
-                    <Shield size={14} className={item.role === 'owner' ? 'text-primary' : 'text-gray-400'} />
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${item.role === 'owner' ? 'bg-primary/10 text-primary' :
-                        item.role === 'manager' ? 'bg-blue-50 text-blue-600' :
+                    <Shield size={14} className={item.role?.toLowerCase() === 'owner' ? 'text-primary' : 'text-gray-400'} />
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${item.role?.toLowerCase() === 'owner' ? 'bg-primary/10 text-primary' :
+                        item.role?.toLowerCase() === 'manager' ? 'bg-blue-50 text-blue-600' :
                             'bg-gray-100 text-gray-700'
                         }`}>
                         {item.role}
@@ -259,12 +266,28 @@ export default function StaffManagementPage() {
                         </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Access Level</label>
-                        <select name="role" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none">
-                            <option value="Staff">Staff Member (Limited Access)</option>
-                            <option value="Manager">Manager (Full Dashboard)</option>
-                        </select>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Access Level</label>
+                            <select name="role" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none">
+                                <option value="Staff">Staff Member (Limited Access)</option>
+                                <option value="Manager">Manager (Full Dashboard)</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Assign to Branch</label>
+                            <select
+                                name="branchId"
+                                required
+                                defaultValue={activeBranchId !== 'all' ? activeBranchId : branches[0]?.id}
+                                className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none"
+                            >
+                                <option value="">Select a branch</option>
+                                {branches.map((b) => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
                     <div className="space-y-3">
@@ -321,10 +344,10 @@ export default function StaffManagementPage() {
                                             handleUpdateRole(editingStaff.id, role);
                                         }
                                     }}
-                                    className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${editingStaff?.role === role.toLowerCase() ? 'border-primary bg-primary/5' : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'}`}
+                                    className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${editingStaff?.role?.toLowerCase() === role.toLowerCase() ? 'border-primary bg-primary/5' : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'}`}
                                 >
-                                    <Shield size={20} className={editingStaff?.role === role.toLowerCase() ? 'text-primary' : 'text-gray-300'} />
-                                    <span className={`text-[11px] font-black uppercase mt-2 ${editingStaff?.role === role.toLowerCase() ? 'text-primary' : 'text-text-secondary'}`}>{role}</span>
+                                    <Shield size={20} className={editingStaff?.role?.toLowerCase() === role.toLowerCase() ? 'text-primary' : 'text-gray-300'} />
+                                    <span className={`text-[11px] font-black uppercase mt-2 ${editingStaff?.role?.toLowerCase() === role.toLowerCase() ? 'text-primary' : 'text-text-secondary'}`}>{role}</span>
                                 </button>
                             ))}
                         </div>

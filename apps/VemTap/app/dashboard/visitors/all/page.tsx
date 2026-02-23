@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { Visitor } from '@/services/visitors/types';
 import { useVisitors, useVisitorStats } from '@/services/visitors/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useBusinessStore } from '@/store/useBusinessStore';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import PageHeader from '@/components/dashboard/PageHeader';
 import StatsCard from '@/components/dashboard/StatsCard';
@@ -38,8 +39,9 @@ export default function AllVisitorsPage() {
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
     const userBranchId = useAuthStore((state) => state.user?.businessId);
+    const { branches, activeBranchId } = useBusinessStore();
 
-    const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(userBranchId, {
+    const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(activeBranchId === 'all' ? undefined : activeBranchId, {
         search: searchQuery,
         status: filterStatus !== 'all' ? filterStatus : undefined
     });
@@ -63,7 +65,7 @@ export default function AllVisitorsPage() {
                 name: data.name,
                 phone: data.phone,
                 email: data.email,
-                branchId: userBranchId,
+                branchId: data.branchId,
             };
             return await api.post('/visitors', newVisitor);
         },
@@ -289,6 +291,8 @@ export default function AllVisitorsPage() {
                 onClose={() => setIsAddModalOpen(false)}
                 onSubmit={handleAddVisitor}
                 isLoading={isLoading || addVisitorMutation.isPending}
+                branches={branches}
+                defaultBranchId={activeBranchId !== 'all' ? activeBranchId : branches[0]?.id}
             />
 
             <ImportContactsModal
