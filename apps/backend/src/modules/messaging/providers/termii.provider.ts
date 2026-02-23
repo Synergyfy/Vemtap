@@ -14,12 +14,14 @@ import { Channel } from '../enums/channel.enum';
 @Injectable()
 export class TermiiProvider implements MessagingProvider {
   private readonly logger = new Logger(TermiiProvider.name);
-  private readonly baseUrl = 'https://api.ng.termii.com/api';
+  private readonly baseUrl: string;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
-  ) {}
+  ) {
+    this.baseUrl = this.configService.get<string>('TERMII_BASE_URL') || 'https://v3.api.termii.com/api';
+  }
 
   async sendMessage(payload: SendMessagePayload): Promise<ProviderResponse> {
     const apiKey = this.configService.get<string>('TERMII_API_KEY');
