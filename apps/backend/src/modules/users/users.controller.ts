@@ -105,14 +105,52 @@ export class UsersController {
     return this.usersService.findByBusiness(req.user.businessId, targetBranchId);
   }
 
+  @Get('staff/my-permissions')
+  @Roles(UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({ summary: 'Get permissions for the currently logged-in staff or manager' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of permissions',
+    schema: {
+      type: 'object',
+      example: {
+        permissions: ['dashboard', 'visitors'],
+      },
+    },
+  })
+  async getMyPermissions(@Request() req) {
+    const user = await this.usersService.findOne(req.user.id);
+    if (!user) throw new BadRequestException('User not found');
+    return { permissions: user.permissions || [] };
+  }
+
   @Post('staff/invite')
-  @Roles(UserRole.OWNER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('staff')
   @ApiOperation({
     summary: 'Invite a new staff member or manager',
     description:
-      'Use the `role` field in the body to specify "Staff" or "Manager".',
+      'Use the `role` field in the body to specify "Staff" or "Manager". Requires "staff" permission.',
   })
   @ApiBody({ type: InviteStaffDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Staff invited successfully',
+    schema: {
+      type: 'object',
+      example: {
+        id: 'user-uuid',
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'staff@example.com',
+        role: 'Staff',
+        permissions: ['dashboard', 'visitors'],
+        businessId: 'business-uuid',
+        branchId: 'branch-uuid',
+        createdAt: '2023-10-10T12:00:00Z',
+      },
+    },
+  })
   async inviteStaff(@Request() req, @Body() inviteDto: InviteStaffDto) {
     if (
       inviteDto.role &&
@@ -128,35 +166,23 @@ export class UsersController {
       throw new BadRequestException('User with this email already exists');
     }
 
-    // Verify the business is owned by the current user (owner)
-    const business = await this.businessesService.findById(
-      inviteDto.businessId,
-    );
-    if (!business || business.ownerId !== req.user.id) {
-      throw new BadRequestException('Business not found or not owned by you');
-    }
-
-    // Verify the branch belongs to the business
-    let targetBranchId = inviteDto.branchId;
-
-    // Handle frontend mock 'head-office' or non-UUID branchIds dynamically
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (targetBranchId && !uuidRegex.test(targetBranchId)) {
-      const branches = await this.branchesService.findAll(req.user.id);
-      if (branches.length > 0) {
-        targetBranchId = branches[0].id; // fallback to the first actual branch
-      } else {
-        throw new BadRequestException(
-          'No valid branch found for this business. Please create a real branch first.',
-        );
+    // Determine business ID based on the logged-in user
+    let businessId = req.user.businessId;
+    if (req.user.role === UserRole.OWNER && !businessId) {
+      const ownedBusiness = await this.businessesService.findByOwner(req.user.id);
+      if (ownedBusiness) {
+        businessId = ownedBusiness.id;
       }
     }
 
-    const branch = await this.branchesService.findOne(
-      req.user.id,
-      targetBranchId,
-    );
-    if (!branch) {
+    if (!businessId) {
+      throw new BadRequestException('Business context not found for the user');
+    }
+
+    // Verify the branch belongs to the user's business
+    let targetBranchId = inviteDto.branchId;
+    const branch = await this.branchesService.findById(targetBranchId);
+    if (!branch || branch.businessId !== businessId) {
       throw new BadRequestException(
         'Branch not found or does not belong to your business',
       );
@@ -166,7 +192,7 @@ export class UsersController {
     const hashedPassword = await bcrypt.hash('staff123', 10);
     return this.usersService.create({
       ...inviteDto,
-      businessId: inviteDto.businessId,
+      businessId,
       branchId: targetBranchId,
       password: hashedPassword,
     });

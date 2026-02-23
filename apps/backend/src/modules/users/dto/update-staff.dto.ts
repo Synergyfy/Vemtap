@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsEnum, IsOptional, IsArray } from 'class-validator';
 import { UserRole, UserStatus } from '../entities/user.entity';
+import { StaffPermission } from './invite-staff.dto';
 
 export class UpdateStaffDto {
   @ApiProperty({ enum: UserRole, required: false })
@@ -14,12 +15,15 @@ export class UpdateStaffDto {
   jobTitle?: string;
 
   @ApiProperty({
-    example: ['dashboard', 'visitors', 'settings'],
+    enum: StaffPermission,
+    isArray: true,
+    example: [StaffPermission.DASHBOARD, StaffPermission.VISITORS],
     required: false,
   })
   @IsArray()
+  @IsEnum(StaffPermission, { each: true })
   @IsOptional()
-  permissions?: string[];
+  permissions?: StaffPermission[];
 
   @ApiProperty({ enum: UserStatus, required: false })
   @IsEnum(UserStatus)
