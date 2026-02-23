@@ -62,12 +62,21 @@ import { AutomationProcessor } from './processors/automation.processor';
     SettingsModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        connection: {
-          host: configService.get('REDIS_HOST', 'localhost'),
-          port: configService.get('REDIS_PORT', 6379),
-        },
-      }),
+      useFactory: async (configService: ConfigService) => {
+        const host = configService.get<string>('REDIS_HOST', 'localhost');
+        const port = configService.get<number>('REDIS_PORT', 6379);
+        const password = configService.get<string>('REDIS_PASSWORD');
+        const useTls = configService.get<string>('REDIS_TLS') === 'true' || host.includes('upstash.io');
+
+        return {
+          connection: {
+            host,
+            port,
+            password,
+            ...(useTls ? { tls: {} } : {}),
+          },
+        };
+      },
       inject: [ConfigService],
     }),
     BullModule.registerQueue(
@@ -119,4 +128,4 @@ import { AutomationProcessor } from './processors/automation.processor';
     ProviderRouterService,
   ],
 })
-export class MessagingModule {}
+export class MessagingModule { }
