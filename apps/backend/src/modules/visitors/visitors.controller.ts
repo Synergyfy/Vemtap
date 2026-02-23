@@ -19,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { VisitorsService } from './visitors.service';
 import { CreateVisitorDto } from './dto/create-visitor.dto';
+import { CreateVisitorRewardDto } from './dto/create-visitor-reward.dto';
 import { VisitorQueryDto } from './dto/visitor-query.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Permissions } from 'src/common/decorators/permissions.decorator';
@@ -183,11 +184,10 @@ export class VisitorsController {
   @ApiOperation({ summary: 'Create a reward for visitors' })
   async createReward(
     @Req() req: any,
-    @Body() body: any,
-    @Query('branchId') branchId?: string,
+    @Body() body: CreateVisitorRewardDto,
   ) {
     return this.campaignsService.createReward(
-      this.getBranchId(req, branchId || body.branchId),
+      this.getBranchId(req, body.branchId),
       body,
     );
   }
