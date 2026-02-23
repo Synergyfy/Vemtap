@@ -28,6 +28,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { InviteStaffDto } from './dto/invite-staff.dto';
+import { GetStaffDto } from './dto/get-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import * as bcrypt from 'bcrypt';
@@ -41,7 +42,7 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly businessesService: BusinessesService,
     private readonly branchesService: BranchesService,
-  ) {}
+  ) { }
 
   @Get('me')
   @Roles(
@@ -92,8 +93,16 @@ export class UsersController {
   @ApiOperation({
     summary: 'Get all staff members for the business (including managers)',
   })
-  async getStaff(@Request() req, @Query('branchId') branchId?: string) {
-    return this.usersService.findByBusiness(req.user.businessId, branchId);
+  async getStaff(@Request() req, @Query() queryDto: GetStaffDto) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let targetBranchId: string | undefined = queryDto.branchId;
+
+    if (queryDto.branchId && !uuidRegex.test(queryDto.branchId)) {
+      // If frontend passes mock ID like "head-office", ignore it so we don't crash Postgres
+      targetBranchId = undefined;
+    }
+
+    return this.usersService.findByBusiness(req.user.businessId, targetBranchId);
   }
 
   @Post('staff/invite')
@@ -128,9 +137,24 @@ export class UsersController {
     }
 
     // Verify the branch belongs to the business
+    let targetBranchId = inviteDto.branchId;
+
+    // Handle frontend mock 'head-office' or non-UUID branchIds dynamically
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (targetBranchId && !uuidRegex.test(targetBranchId)) {
+      const branches = await this.branchesService.findAll(req.user.id);
+      if (branches.length > 0) {
+        targetBranchId = branches[0].id; // fallback to the first actual branch
+      } else {
+        throw new BadRequestException(
+          'No valid branch found for this business. Please create a real branch first.',
+        );
+      }
+    }
+
     const branch = await this.branchesService.findOne(
       req.user.id,
-      inviteDto.branchId,
+      targetBranchId,
     );
     if (!branch) {
       throw new BadRequestException(
@@ -143,7 +167,7 @@ export class UsersController {
     return this.usersService.create({
       ...inviteDto,
       businessId: inviteDto.businessId,
-      branchId: inviteDto.branchId,
+      branchId: targetBranchId,
       password: hashedPassword,
     });
   }
