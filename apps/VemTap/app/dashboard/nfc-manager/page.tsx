@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { fetchDevices, generateDevices, deleteDevice, updateDevice, fetchDeviceStats } from '@/lib/api/devices';
 import { fetchMyOrders } from '@/lib/api/marketplace';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { MarketplaceOrder } from '@/types/marketplace';
 
 export default function NFCManagerPage() {
     const queryClient = useQueryClient();
@@ -30,17 +31,17 @@ export default function NFCManagerPage() {
         queryFn: fetchDeviceStats
     });
 
-    const { data: orders = [], isLoading: ordersLoading } = useQuery({
+    const { data: orders = [], isLoading: ordersLoading } = useQuery<MarketplaceOrder[]>({
         queryKey: ['my-orders'],
         queryFn: fetchMyOrders
     });
 
     // Filtering for ready-to-generate orders (Allocations)
     // In our backend, devices are generated for orders with status 'Ready'
-    const readyOrders = orders.filter(o => o.status === 'Ready');
+    const readyOrders = orders.filter((o: MarketplaceOrder) => o.status === 'Ready');
 
     // Calculate total remaining quota
-    const totalRemainingQuota = readyOrders.reduce((sum, order) => {
+    const totalRemainingQuota = readyOrders.reduce((sum: number, order: MarketplaceOrder) => {
         const total = order.quantity || (order.quote?.quantity || 0);
         const used = (order as any).devices?.length || 0;
         return sum + Math.max(0, total - used);
@@ -155,7 +156,7 @@ export default function NFCManagerPage() {
                             </button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                            {readyOrders.map(o => {
+                            {readyOrders.map((o: MarketplaceOrder) => {
                                 const total = o.quantity || (o.quote?.quantity || 0);
                                 const used = (o as any).devices?.length || 0;
                                 const remaining = Math.max(0, total - used);

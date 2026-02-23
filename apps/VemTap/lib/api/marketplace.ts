@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import { Product, ProductDetail, ProductsResponse } from '@/types/marketplace';
+import { Product, ProductDetail, ProductsResponse, MarketplaceOrder, MarketplaceQuote } from '@/types/marketplace';
 
 export const fetchProducts = async (
     page: number = 1,
@@ -117,11 +117,11 @@ export const createOrder = async (data: { productId: string; quantity: number; p
     return await api.post('/products/orders', data);
 };
 
-export const fetchMyQuotes = async () => {
+export const fetchMyQuotes = async (): Promise<MarketplaceQuote[]> => {
     return await api.get('/products/quotes/my');
 };
 
-export const fetchMyOrders = async () => {
+export const fetchMyOrders = async (): Promise<MarketplaceOrder[]> => {
     return await api.get('/products/orders/my');
 };
 

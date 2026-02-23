@@ -20,19 +20,20 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import toast from 'react-hot-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { MarketplaceOrder, MarketplaceQuote } from '@/types/marketplace';
 
 export default function MarketplaceActivityPage() {
     const { user, isAuthenticated } = useAuthStore();
     const [activeTab, setActiveTab] = useState<'quotes' | 'orders'>('quotes');
     const queryClient = useQueryClient();
 
-    const { data: quotes, isLoading: quotesLoading } = useQuery({
+    const { data: quotes, isLoading: quotesLoading } = useQuery<MarketplaceQuote[]>({
         queryKey: ['my-quotes'],
         queryFn: fetchMyQuotes,
         enabled: isAuthenticated
     });
 
-    const { data: orders, isLoading: ordersLoading } = useQuery({
+    const { data: orders = [], isLoading: ordersLoading } = useQuery<MarketplaceOrder[]>({
         queryKey: ['my-orders'],
         queryFn: fetchMyOrders,
         enabled: isAuthenticated
@@ -119,8 +120,8 @@ export default function MarketplaceActivityPage() {
                             <div className="py-20 flex justify-center">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                             </div>
-                        ) : quotes && quotes.length > 0 ? (
-                            quotes.map((quote: any) => (
+                        ) : quotes && (quotes as MarketplaceQuote[]).length > 0 ? (
+                            (quotes as MarketplaceQuote[]).map((quote) => (
                                 <div key={quote.id} className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md transition-all group">
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                                         <div className="flex items-center gap-4">
@@ -206,7 +207,7 @@ export default function MarketplaceActivityPage() {
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                             </div>
                         ) : orders && orders.length > 0 ? (
-                            orders.map((order: any) => (
+                            orders.map((order) => (
                                 <div key={order.id} className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md transition-all">
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                                         <div className="flex items-center gap-4">
