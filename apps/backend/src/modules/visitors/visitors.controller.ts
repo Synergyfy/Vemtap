@@ -45,7 +45,7 @@ export class VisitorsController {
     private readonly visitorsService: VisitorsService,
     private readonly campaignsService: CampaignsService,
     private readonly messagingService: MessagingEngineService,
-  ) {}
+  ) { }
 
   private getBranchId(req: any, branchId?: string): string {
     const resolved = branchId || req.user?.branchId;
@@ -202,11 +202,10 @@ export class VisitorsController {
   async create(
     @Body() createVisitorDto: CreateVisitorDto,
     @Req() req: any,
-    @Query('branchId') branchId?: string,
   ) {
     return this.visitorsService.create(
       createVisitorDto,
-      this.getBranchId(req, branchId || createVisitorDto.branchId),
+      this.getBranchId(req, createVisitorDto.branchId),
     );
   }
 
