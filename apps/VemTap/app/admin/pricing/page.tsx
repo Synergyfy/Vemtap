@@ -220,7 +220,7 @@ export default function AdminPricingPage() {
                                     value={currentPlan?.name || ''}
                                     onChange={(e) => {
                                         if (isNewPlanMode) {
-                                            const newPlan = { ...defaultNewPlan, name: e.target.value };
+                                            const newPlan = { ...(currentPlan || defaultNewPlan), name: e.target.value };
                                             setEditingPlan(newPlan as PricingPlan);
                                         } else {
                                             setEditingPlan({ ...currentPlan!, name: e.target.value });
@@ -238,7 +238,7 @@ export default function AdminPricingPage() {
                                         value={currentPlan?.monthlyPrice || 0}
                                         onChange={(e) => {
                                             if (isNewPlanMode) {
-                                                setEditingPlan({ ...defaultNewPlan, monthlyPrice: parseInt(e.target.value) } as PricingPlan);
+                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), monthlyPrice: parseInt(e.target.value) } as PricingPlan);
                                             } else {
                                                 setEditingPlan({ ...currentPlan!, monthlyPrice: parseInt(e.target.value) });
                                             }
@@ -253,7 +253,7 @@ export default function AdminPricingPage() {
                                         value={currentPlan?.quarterlyPrice || 0}
                                         onChange={(e) => {
                                             if (isNewPlanMode) {
-                                                setEditingPlan({ ...defaultNewPlan, quarterlyPrice: parseInt(e.target.value) } as PricingPlan);
+                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), quarterlyPrice: parseInt(e.target.value) } as PricingPlan);
                                             } else {
                                                 setEditingPlan({ ...currentPlan!, quarterlyPrice: parseInt(e.target.value) });
                                             }
@@ -268,7 +268,7 @@ export default function AdminPricingPage() {
                                         value={currentPlan?.yearlyPrice || 0}
                                         onChange={(e) => {
                                             if (isNewPlanMode) {
-                                                setEditingPlan({ ...defaultNewPlan, yearlyPrice: parseInt(e.target.value) } as PricingPlan);
+                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), yearlyPrice: parseInt(e.target.value) } as PricingPlan);
                                             } else {
                                                 setEditingPlan({ ...currentPlan!, yearlyPrice: parseInt(e.target.value) });
                                             }
@@ -286,7 +286,7 @@ export default function AdminPricingPage() {
                                         value={currentPlan?.teamMembersLimit || 0}
                                         onChange={(e) => {
                                             if (isNewPlanMode) {
-                                                setEditingPlan({ ...defaultNewPlan, teamMembersLimit: parseInt(e.target.value) } as PricingPlan);
+                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), teamMembersLimit: parseInt(e.target.value) } as PricingPlan);
                                             } else {
                                                 setEditingPlan({ ...currentPlan!, teamMembersLimit: parseInt(e.target.value) });
                                             }
@@ -301,7 +301,7 @@ export default function AdminPricingPage() {
                                         value={currentPlan?.loyaltyLimit || 0}
                                         onChange={(e) => {
                                             if (isNewPlanMode) {
-                                                setEditingPlan({ ...defaultNewPlan, loyaltyLimit: parseInt(e.target.value) } as PricingPlan);
+                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), loyaltyLimit: parseInt(e.target.value) } as PricingPlan);
                                             } else {
                                                 setEditingPlan({ ...currentPlan!, loyaltyLimit: parseInt(e.target.value) });
                                             }
@@ -319,7 +319,7 @@ export default function AdminPricingPage() {
                                         value={currentPlan?.tagsLimit || 0}
                                         onChange={(e) => {
                                             if (isNewPlanMode) {
-                                                setEditingPlan({ ...defaultNewPlan, tagsLimit: parseInt(e.target.value) } as PricingPlan);
+                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), tagsLimit: parseInt(e.target.value) } as PricingPlan);
                                             } else {
                                                 setEditingPlan({ ...currentPlan!, tagsLimit: parseInt(e.target.value) });
                                             }
@@ -334,7 +334,7 @@ export default function AdminPricingPage() {
                                         value={currentPlan?.branchLimit || 0}
                                         onChange={(e) => {
                                             if (isNewPlanMode) {
-                                                setEditingPlan({ ...defaultNewPlan, branchLimit: parseInt(e.target.value) } as PricingPlan);
+                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), branchLimit: parseInt(e.target.value) } as PricingPlan);
                                             } else {
                                                 setEditingPlan({ ...currentPlan!, branchLimit: parseInt(e.target.value) });
                                             }
@@ -352,7 +352,7 @@ export default function AdminPricingPage() {
                                         value={currentPlan?.freeDurationDays || 0}
                                         onChange={(e) => {
                                             if (isNewPlanMode) {
-                                                setEditingPlan({ ...defaultNewPlan, freeDurationDays: parseInt(e.target.value) } as PricingPlan);
+                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), freeDurationDays: parseInt(e.target.value) } as PricingPlan);
                                             } else {
                                                 setEditingPlan({ ...currentPlan!, freeDurationDays: parseInt(e.target.value) });
                                             }
@@ -366,7 +366,7 @@ export default function AdminPricingPage() {
                                         value={currentPlan?.analyticsLevel || 'basic'}
                                         onChange={(e) => {
                                             if (isNewPlanMode) {
-                                                setEditingPlan({ ...defaultNewPlan, analyticsLevel: e.target.value as 'basic' | 'advanced' | 'none' } as PricingPlan);
+                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), analyticsLevel: e.target.value as 'basic' | 'advanced' | 'none' } as PricingPlan);
                                             } else {
                                                 setEditingPlan({ ...currentPlan!, analyticsLevel: e.target.value as 'basic' | 'advanced' | 'none' });
                                             }
@@ -387,7 +387,7 @@ export default function AdminPricingPage() {
                                         checked={currentPlan?.isPopular || false}
                                         onChange={(e) => {
                                             if (isNewPlanMode) {
-                                                setEditingPlan({ ...defaultNewPlan, isPopular: e.target.checked } as PricingPlan);
+                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), isPopular: e.target.checked } as PricingPlan);
                                             } else {
                                                 setEditingPlan({ ...currentPlan!, isPopular: e.target.checked });
                                             }
@@ -402,7 +402,7 @@ export default function AdminPricingPage() {
                                         checked={currentPlan?.isActive ?? true}
                                         onChange={(e) => {
                                             if (isNewPlanMode) {
-                                                setEditingPlan({ ...defaultNewPlan, isActive: e.target.checked } as PricingPlan);
+                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), isActive: e.target.checked } as PricingPlan);
                                             } else {
                                                 setEditingPlan({ ...currentPlan!, isActive: e.target.checked });
                                             }
@@ -420,7 +420,7 @@ export default function AdminPricingPage() {
                                     value={currentPlan?.description || ''}
                                     onChange={(e) => {
                                         if (isNewPlanMode) {
-                                            setEditingPlan({ ...defaultNewPlan, description: e.target.value } as PricingPlan);
+                                            setEditingPlan({ ...(currentPlan || defaultNewPlan), description: e.target.value } as PricingPlan);
                                         } else {
                                             setEditingPlan({ ...currentPlan!, description: e.target.value });
                                         }

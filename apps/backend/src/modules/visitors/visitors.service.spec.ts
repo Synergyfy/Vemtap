@@ -45,7 +45,32 @@ describe('VisitorsService', () => {
           useValue: {
             create: jest.fn(),
             save: jest.fn(),
+            count: jest.fn().mockResolvedValue(0),
           },
+        },
+        {
+          provide: getRepositoryToken(require('../devices/entities/device.entity').Device),
+          useValue: { findOne: jest.fn() },
+        },
+        {
+          provide: getRepositoryToken(require('../branches/entities/branch.entity').Branch),
+          useValue: { findOne: jest.fn().mockResolvedValue({ id: 'biz-1', businessId: 'biz-1' }) },
+        },
+        {
+          provide: getRepositoryToken(require('../contacts/entities/contact.entity').Contact),
+          useValue: { findOne: jest.fn(), create: jest.fn(), save: jest.fn() },
+        },
+        {
+          provide: require('../messaging/services/messaging-engine.service').MessagingEngineService,
+          useValue: { sendMessage: jest.fn() },
+        },
+        {
+          provide: require('../campaigns/campaigns.service').CampaignsService,
+          useValue: { getRewards: jest.fn() },
+        },
+        {
+          provide: require('../messaging/services/automation.service').AutomationService,
+          useValue: { trigger: jest.fn() },
         },
       ],
     }).compile();
@@ -84,8 +109,8 @@ describe('VisitorsService', () => {
       expect(result.total).toBe(1);
       expect(result.data[0].name).toBe('John Doe');
       expect(mockQueryBuilder.where).toHaveBeenCalledWith(
-        'visit.businessId = :businessId',
-        { businessId: 'biz-1' },
+        'visit.branchId = :branchId',
+        { branchId: 'biz-1' },
       );
     });
   });
@@ -93,7 +118,7 @@ describe('VisitorsService', () => {
   describe('create', () => {
     it('should create a new visitor (user + visit) if user does not exist', async () => {
       const dto = { name: 'New Guy', email: 'new@example.com', phone: '123' };
-      const businessId = 'biz-1';
+      const branchId = 'biz-1';
 
       (userRepository.findOne as jest.Mock).mockResolvedValueOnce(null); // First check: not found
 
@@ -107,7 +132,7 @@ describe('VisitorsService', () => {
       (userRepository.create as jest.Mock).mockReturnValue(savedUser);
       (userRepository.save as jest.Mock).mockResolvedValue(savedUser);
 
-      const savedVisit = { id: 'v1', customer: savedUser, businessId };
+      const savedVisit = { id: 'v1', customer: savedUser, branchId };
       (visitRepository.create as jest.Mock).mockReturnValue(savedVisit);
       (visitRepository.save as jest.Mock).mockResolvedValue(savedVisit);
 
@@ -117,7 +142,7 @@ describe('VisitorsService', () => {
         visits: [savedVisit],
       });
 
-      const result = await service.create(dto, businessId);
+      const result = await service.create(dto, branchId);
 
       expect(userRepository.create).toHaveBeenCalled();
       expect(visitRepository.save).toHaveBeenCalled();
