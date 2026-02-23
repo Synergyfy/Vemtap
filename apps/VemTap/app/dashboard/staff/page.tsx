@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useBusinessStore } from '@/store/useBusinessStore';
 import toast from 'react-hot-toast';
 import { UserPlus, Shield, Edit3, Trash2, Eye, MessageSquare, BarChart3, Users as UsersIcon, Settings as SettingsIcon, Building2 } from 'lucide-react';
+import { useBranches } from '@/services/branches/hooks';
 import Modal from '@/components/ui/Modal';
 
 const PERMISSIONS = [
@@ -29,12 +30,18 @@ export default function StaffManagementPage() {
     const [staffToDelete, setStaffToDelete] = useState<{ id: string, name: string } | null>(null);
     const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['dashboard', 'visitors']);
 
-    const { activeBranchId, branches } = useBusinessStore();
+    const { activeBranchId } = useBusinessStore();
+    const { data: realBranches = [] } = useBranches();
 
-    const { data: staffMembers, isLoading } = useStaff();
+    // We'll use real branches if available, otherwise an empty array (DataTable handles it)
+    const branches = realBranches;
+
+    const { data: staffMembers, isLoading: isStaffLoading } = useStaff(activeBranchId);
     const inviteMutation = useInviteStaff();
     const updateMutation = useUpdateStaff();
     const removeMutation = useRemoveStaff();
+
+    const isLoading = isStaffLoading;
 
     const isOwner = user?.role?.toLowerCase() === 'owner';
 
@@ -56,7 +63,6 @@ export default function StaffManagementPage() {
             email: formData.get('email') as string,
             jobTitle: formData.get('jobTitle') as string || undefined,
             role: roleValue as UserRole,
-            businessId: user?.businessId || '',
             branchId: branchId || (activeBranchId !== 'all' ? activeBranchId : '') || user?.branchId || '',
             permissions: selectedPermissions,
         };
@@ -73,24 +79,12 @@ export default function StaffManagementPage() {
                 toast.success('Staff member invited successfully');
             },
             onError: (error: any) => {
-                const message = error.response?.data?.message || 'Failed to invite staff member';
-                toast.error(Array.isArray(message) ? message[0] : message);
+                const message = error.message || 'Failed to invite staff member';
+                toast.error(message);
             }
         });
     };
 
-    const handleUpdateRole = (id: string, role: string) => {
-        const roleMap: Record<string, UserRole> = {
-            'Owner': 'Owner',
-            'Manager': 'Manager',
-            'Staff': 'Staff',
-        };
-        updateMutation.mutate({ id, updates: { role: roleMap[role] || 'Staff' } }, {
-            onSuccess: () => {
-                toast.success('Staff role updated');
-            }
-        });
-    };
 
     const confirmDelete = () => {
         if (staffToDelete) {
@@ -109,7 +103,7 @@ export default function StaffManagementPage() {
             accessor: (item: StaffMember) => (
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs uppercase border border-primary/20">
-                        {item.firstName[0]}{item.lastName[0]}
+                        {item.firstName?.[0] || '?'}{item.lastName?.[0] || '?'}
                     </div>
                     <div>
                         <p className="font-bold text-text-main leading-none mb-1">{item.firstName} {item.lastName}</p>
@@ -146,12 +140,22 @@ export default function StaffManagementPage() {
         },
         {
             header: 'Status',
-            accessor: (item: StaffMember) => (
-                <div className="flex items-center gap-2">
-                    <div className={`size-1.5 rounded-full ${item.status === 'active' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                    <span className="text-sm font-bold text-text-main capitalize">{item.status}</span>
-                </div>
-            )
+            accessor: (item: StaffMember) => {
+                const statusColors: Record<string, string> = {
+                    'Active': 'bg-green-500',
+                    'Pending': 'bg-amber-500',
+                    'Invited': 'bg-blue-400',
+                    'Suspended': 'bg-red-500',
+                    'Inactive': 'bg-gray-400',
+                };
+
+                return (
+                    <div className="flex items-center gap-2">
+                        <div className={`size-1.5 rounded-full ${statusColors[item.status] || 'bg-gray-300'} ${item.status === 'Active' ? 'animate-pulse' : ''}`}></div>
+                        <span className="text-sm font-bold text-text-main capitalize">{item.status}</span>
+                    </div>
+                );
+            }
         },
         {
             header: 'Actions',
@@ -324,12 +328,12 @@ export default function StaffManagementPage() {
                 </form>
             </Modal>
 
-            {/* Edit Role Modal */}
+            {/* Edit Role & Permissions Modal */}
             <Modal
                 isOpen={!!editingStaff}
                 onClose={() => setEditingStaff(null)}
-                title="Edit Access"
-                description={`Modify role for ${editingStaff?.firstName} ${editingStaff?.lastName}`}
+                title="Edit Access & Permissions"
+                description={`Modify access levels for ${editingStaff?.firstName} ${editingStaff?.lastName}`}
                 size="lg"
             >
                 <div className="space-y-6 py-4">
@@ -341,7 +345,7 @@ export default function StaffManagementPage() {
                                     key={role}
                                     onClick={() => {
                                         if (editingStaff) {
-                                            handleUpdateRole(editingStaff.id, role);
+                                            setEditingStaff({ ...editingStaff, role: role as UserRole });
                                         }
                                     }}
                                     className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${editingStaff?.role?.toLowerCase() === role.toLowerCase() ? 'border-primary bg-primary/5' : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'}`}
@@ -353,9 +357,58 @@ export default function StaffManagementPage() {
                         </div>
                     </div>
 
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Module Access</label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {PERMISSIONS.map((p) => {
+                                const Icon = p.icon;
+                                const isSelected = editingStaff?.permissions?.includes(p.id);
+                                return (
+                                    <button
+                                        key={p.id}
+                                        type="button"
+                                        onClick={() => {
+                                            if (editingStaff) {
+                                                const newPerms = isSelected
+                                                    ? editingStaff.permissions.filter(id => id !== p.id)
+                                                    : [...editingStaff.permissions, p.id];
+                                                setEditingStaff({ ...editingStaff, permissions: newPerms });
+                                            }
+                                        }}
+                                        className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all group ${isSelected ? 'border-primary bg-primary/5' : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'}`}
+                                    >
+                                        <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-primary text-white' : 'bg-white text-text-secondary border border-gray-100'}`}>
+                                            <Icon size={14} />
+                                        </div>
+                                        <span className={`text-[11px] font-bold ${isSelected ? 'text-primary' : 'text-text-secondary'}`}>{p.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
                     <div className="pt-4">
-                        <button onClick={() => setEditingStaff(null)} className="w-full h-14 bg-gray-900 text-white font-bold rounded-2xl hover:bg-black transition-all shadow-xl active:scale-95 text-base">
-                            Done
+                        <button
+                            disabled={updateMutation.isPending}
+                            onClick={() => {
+                                if (editingStaff) {
+                                    updateMutation.mutate({
+                                        id: editingStaff.id,
+                                        updates: {
+                                            role: editingStaff.role,
+                                            permissions: editingStaff.permissions
+                                        }
+                                    }, {
+                                        onSuccess: () => {
+                                            toast.success('Staff access updated');
+                                            setEditingStaff(null);
+                                        }
+                                    });
+                                }
+                            }}
+                            className="w-full h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-all shadow-xl active:scale-95 text-base flex items-center justify-center disabled:opacity-50"
+                        >
+                            {updateMutation.isPending ? 'Updating...' : 'Save Changes'}
                         </button>
                     </div>
                 </div>
