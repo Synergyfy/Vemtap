@@ -9,45 +9,31 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
-import { useLoyaltyStore } from '@/store/loyaltyStore';
-import { useBusinessStore } from '@/store/useBusinessStore';
-import { Reward, Redemption } from '@/types/loyalty';
+import { useVerifyRedemption } from '@/services/loyalty/hooks';
+import { Redemption } from '@/types/loyalty';
 
 export const RedemptionVerifier: React.FC<{ className?: string }> = ({ className }) => {
     const [code, setCode] = useState('');
-    const [isValidating, setIsValidating] = useState(false);
     const [result, setResult] = useState<{
-        userId?: string;
         success: boolean;
         redemption?: Redemption;
-        reward?: Reward;
         error?: string
     } | null>(null);
 
-    const { verifyRedemption } = useLoyaltyStore();
+    const verifyMutation = useVerifyRedemption();
 
     const handleVerify = async (e?: React.FormEvent) => {
         e?.preventDefault();
         if (!code) return;
 
-        setIsValidating(true);
         setResult(null);
 
-        // Use real branch ID from business store
-        const branchId = useBusinessStore.getState().activeBranchId;
-        if (!branchId || branchId === 'all') {
-            notify.error('Please select a specific branch to verify codes');
-            setIsValidating(false);
-            return;
-        }
-
         try {
-            const response = await verifyRedemption(branchId, code);
+            const response = await verifyMutation.mutateAsync(code);
             if (response.success) {
                 setResult({
                     success: true,
-                    redemption: response.redemption,
-                    reward: response.reward
+                    redemption: response.redemption as Redemption,
                 });
                 notify.success('Code verified successfully!');
             } else {
@@ -59,8 +45,6 @@ export const RedemptionVerifier: React.FC<{ className?: string }> = ({ className
             }
         } catch (error) {
             setResult({ success: false, error: 'Network error during verification' });
-        } finally {
-            setIsValidating(false);
         }
     };
 
@@ -103,10 +87,10 @@ export const RedemptionVerifier: React.FC<{ className?: string }> = ({ className
                                 </div>
                                 <button
                                     type="submit"
-                                    disabled={isValidating || !code}
+                                    disabled={verifyMutation.isPending || !code}
                                     className="w-24 h-20 bg-primary text-white flex flex-col items-center justify-center gap-2 font-black text-[10px] uppercase tracking-widest hover:bg-primary-hover transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
                                 >
-                                    {isValidating ? <RefreshCw className="w-6 h-6 animate-spin" /> : <ArrowRight className="w-6 h-6" />}
+                                    {verifyMutation.isPending ? <RefreshCw className="w-6 h-6 animate-spin" /> : <ArrowRight className="w-6 h-6" />}
                                     Verify
                                 </button>
                             </div>
@@ -155,22 +139,21 @@ export const RedemptionVerifier: React.FC<{ className?: string }> = ({ className
                                     {result.success ? 'Redemption Authorized' : 'Verification Rejected'}
                                 </h4>
 
-                                {result.success && result.redemption && result.reward ? (
+                                {result.success && result.redemption ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2">
                                                 <Gift className="w-4 h-4 text-emerald-600" />
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-emerald-900/40">Reward Package</span>
                                             </div>
-                                            <p className="font-display font-black text-slate-900 text-lg uppercase">{result.reward.name}</p>
-                                            <p className="text-xs text-emerald-900/60 font-medium">{result.reward.description}</p>
+                                            <p className="font-display font-black text-slate-900 text-lg uppercase">{result.redemption.reward?.name || 'Reward'}</p>
                                         </div>
                                         <div className="space-y-3 p-4 bg-emerald-500/5 border border-emerald-500/10">
                                             <div className="flex items-center gap-2">
                                                 <User className="w-4 h-4 text-emerald-600" />
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-emerald-900/40">Member ID</span>
                                             </div>
-                                            <p className="font-display font-black text-slate-900 text-lg uppercase"># {result.redemption?.userId?.substring(0, 8)}</p>
+                                            <p className="font-display font-black text-slate-900 text-lg uppercase"># {result.redemption.userId?.substring(0, 8)}</p>
                                             <p className="text-[10px] text-emerald-600 font-black uppercase tracking-widest">Valid Entry Point</p>
                                         </div>
                                     </div>

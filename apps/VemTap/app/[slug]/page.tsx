@@ -9,13 +9,13 @@ import {
     Twitter, Facebook, ExternalLink, Share2, Building2
 } from 'lucide-react';
 import { useBusinessStore } from '@/store/useBusinessStore';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useAuthStore, AuthState } from '../../store/useAuthStore';
 
 export default function BusinessPublicPage() {
     const { slug } = useParams();
     const router = useRouter();
     const { branches } = useBusinessStore();
-    const { user } = useAuthStore();
+    const user = useAuthStore((state: AuthState) => state.user);
 
     // In a real app, we'd fetch business details by slug.
     const businessName = user?.businessName || (slug as string)?.replace(/-/g, ' ') || 'VemTap Business';

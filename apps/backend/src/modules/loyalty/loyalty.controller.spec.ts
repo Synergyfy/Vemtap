@@ -17,6 +17,8 @@ describe('LoyaltyController', () => {
     redeemReward: jest.fn(),
     earnPoints: jest.fn(),
     createReward: jest.fn(),
+    getAnalytics: jest.fn(),
+    processTap: jest.fn(),
   };
 
   const mockUser = { id: 'user-1', role: 'customer' };
@@ -114,6 +116,25 @@ describe('LoyaltyController', () => {
 
       expect(await controller.createReward(dto, businessId)).toBe(result);
       expect(mockLoyaltyService.createReward).toHaveBeenCalledWith(businessId, dto);
+    });
+  });
+
+  describe('getAnalytics', () => {
+    it('should return analytics data', async () => {
+      const result = { totalVisits: 10 };
+      mockLoyaltyService.getAnalytics.mockResolvedValue(result);
+      expect(await controller.getAnalytics(mockReq)).toBe(result);
+      expect(mockLoyaltyService.getAnalytics).toHaveBeenCalledWith(mockUser.id);
+    });
+  });
+
+  describe('tap', () => {
+    it('should process a tap', async () => {
+      const code = 'abc-123';
+      const result = { id: 'profile-1' };
+      mockLoyaltyService.processTap.mockResolvedValue(result);
+      expect(await controller.tap(mockReq, code)).toBe(result);
+      expect(mockLoyaltyService.processTap).toHaveBeenCalledWith(mockUser.id, code);
     });
   });
 });

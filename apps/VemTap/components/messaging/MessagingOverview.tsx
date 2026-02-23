@@ -2,24 +2,23 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { MessageChannel, useMessagingStore } from '@/lib/store/useMessagingStore';
+import { useMessagingAnalytics, useMessagingCampaigns } from '@/services/messaging/hooks';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Send, Users, Activity, BarChart2, MessageSquare, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { useBusinessStore } from '@/store/useBusinessStore';
+
+const CHANNEL_CONFIG = {
+    whatsapp: { label: 'WhatsApp', icon: MessageSquare, colorClasses: 'bg-green-50 text-green-600', barColor: 'bg-green-500' },
+    sms: { label: 'SMS', icon: Send, colorClasses: 'bg-blue-50 text-blue-600', barColor: 'bg-blue-500' },
+    email: { label: 'Email', icon: Mail, colorClasses: 'bg-purple-50 text-purple-600', barColor: 'bg-purple-500' },
+};
 
 export default function MessagingOverview() {
-    const { stats, wallets, broadcasts: allBroadcasts } = useMessagingStore();
-    const { activeBranchId } = useBusinessStore();
+    const { data: analytics, isLoading: analyticsLoading } = useMessagingAnalytics();
+    const { data: campaigns, isLoading: campaignsLoading } = useMessagingCampaigns();
 
-    // Filter broadcasts by branch
-    const broadcasts = allBroadcasts.filter(b =>
-        activeBranchId === 'all' || b.branchId === activeBranchId
-    );
-
-    // Mock data for the chart
-    const data = [
+    const chartData = [
         { name: 'Mon', sent: 400, delivered: 240 },
         { name: 'Tue', sent: 300, delivered: 139 },
         { name: 'Wed', sent: 200, delivered: 980 },
@@ -29,7 +28,13 @@ export default function MessagingOverview() {
         { name: 'Sun', sent: 349, delivered: 430 },
     ];
 
-    const globalStats = stats.Global;
+    const channelStats = analytics?.channelStats || {
+        whatsapp: { totalSent: 0, deliveryRate: 0, growth: 0 },
+        sms: { totalSent: 0, deliveryRate: 0, growth: 0 },
+        email: { totalSent: 0, deliveryRate: 0, growth: 0 },
+    };
+
+    const globalStats = analytics?.globalStats || { totalSent: 0, totalDelivered: 0, openRate: 0, clickRate: 0 };
 
     return (
         <div className="space-y-6">
@@ -43,21 +48,20 @@ export default function MessagingOverview() {
 
             {/* Per-Channel Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {(['WhatsApp', 'SMS', 'Email'] as MessageChannel[]).map((channel) => {
-                    const chStats = stats[channel];
-                    const chWallet = wallets[channel];
-                    const Icon = channel === 'WhatsApp' ? MessageSquare : channel === 'SMS' ? Send : Mail;
-                    const colorClasses = channel === 'WhatsApp' ? 'bg-green-50 text-green-600' : channel === 'SMS' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600';
+                {(['whatsapp', 'sms', 'email'] as const).map((channel) => {
+                    const config = CHANNEL_CONFIG[channel];
+                    const chStats = channelStats[channel] || { totalSent: 0, deliveryRate: 0, growth: 0 };
+                    const Icon = config.icon;
 
                     return (
                         <div key={channel} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative group overflow-hidden">
                             <div className="relative z-10">
                                 <div className="flex justify-between items-start mb-6">
-                                    <div className={cn("p-4 rounded-3xl shadow-lg", colorClasses)}>
+                                    <div className={cn("p-4 rounded-3xl shadow-lg", config.colorClasses)}>
                                         <Icon size={24} />
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{channel} Status</p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{config.label} Status</p>
                                         <p className="text-xl font-mono font-bold text-green-500">ACTIVE</p>
                                     </div>
                                 </div>
@@ -66,45 +70,72 @@ export default function MessagingOverview() {
                                     <div className="flex justify-between items-end">
                                         <div>
                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Sent</p>
-                                            <p className="text-2xl font-black text-slate-900 tracking-tighter">{chStats.totalSent.toLocaleString()}</p>
+                                            <p className="text-2xl font-black text-slate-900 tracking-tighter">{chStats.totalSent?.toLocaleString() || 0}</p>
                                         </div>
                                         <div className={cn(
                                             "px-2 py-0.5 rounded-lg text-[10px] font-black",
-                                            chStats.growth >= 0 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+                                            (chStats.growth || 0) >= 0 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
                                         )}>
-                                            {chStats.growth >= 0 ? '+' : ''}{chStats.growth}%
+                                            {(chStats.growth || 0) >= 0 ? '+' : ''}{chStats.growth || 0}%
                                         </div>
                                     </div>
 
                                     <div className="pt-4 border-t border-slate-50">
                                         <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
                                             <span className="text-slate-400">Delivery Rate</span>
-                                            <span className="text-slate-900">{chStats.deliveryRate}%</span>
+                                            <span className="text-slate-900">{chStats.deliveryRate || 0}%</span>
                                         </div>
                                         <div className="h-1.5 w-full bg-slate-100 rounded-full mt-2 overflow-hidden">
                                             <motion.div
                                                 initial={{ width: 0 }}
-                                                animate={{ width: `${chStats.deliveryRate}%` }}
-                                                className={cn("h-full", channel === 'WhatsApp' ? 'bg-green-500' : channel === 'SMS' ? 'bg-blue-500' : 'bg-purple-500')}
+                                                animate={{ width: `${chStats.deliveryRate || 0}%` }}
+                                                className={cn("h-full", config.barColor)}
                                             />
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div className={cn("absolute -right-8 -bottom-8 size-32 opacity-5 rounded-full", channel === 'WhatsApp' ? 'bg-green-500' : channel === 'SMS' ? 'bg-blue-500' : 'bg-purple-500')} />
+                            <div className={cn("absolute -right-8 -bottom-8 size-32 opacity-5 rounded-full", config.barColor)} />
                         </div>
                     );
                 })}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 opacity-50 shrink-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 shrink-0">
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center gap-4">
-                    <div className="p-3 bg-white text-slate-400 rounded-lg">
+                    <div className="p-3 bg-white text-primary rounded-lg">
                         <Activity size={20} />
                     </div>
                     <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Acquisition</p>
-                        <h3 className="text-lg font-bold text-slate-600">1,240</h3>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Sent</p>
+                        <h3 className="text-lg font-bold text-slate-900">{globalStats.totalSent?.toLocaleString() || 0}</h3>
+                    </div>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center gap-4">
+                    <div className="p-3 bg-white text-green-600 rounded-lg">
+                        <BarChart2 size={20} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Delivered</p>
+                        <h3 className="text-lg font-bold text-slate-900">{globalStats.totalDelivered?.toLocaleString() || 0}</h3>
+                    </div>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center gap-4">
+                    <div className="p-3 bg-white text-blue-600 rounded-lg">
+                        <Users size={20} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Open Rate</p>
+                        <h3 className="text-lg font-bold text-slate-900">{globalStats.openRate || 0}%</h3>
+                    </div>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center gap-4">
+                    <div className="p-3 bg-white text-purple-600 rounded-lg">
+                        <Activity size={20} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Click Rate</p>
+                        <h3 className="text-lg font-bold text-slate-900">{globalStats.clickRate || 0}%</h3>
                     </div>
                 </div>
             </div>
@@ -114,7 +145,7 @@ export default function MessagingOverview() {
                 <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-200 shadow-sm h-[400px]">
                     <h3 className="text-lg font-bold text-text-main mb-4">Traffic Overview</h3>
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data}>
+                        <AreaChart data={chartData}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} dy={10} />
                             <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />

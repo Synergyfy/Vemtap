@@ -7,8 +7,9 @@ import StatsCard from '@/components/dashboard/StatsCard';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import EmptyState from '@/components/dashboard/EmptyState';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dashboardApi } from '@/lib/api/dashboard';
-import { Visitor } from '@/lib/store/mockDashboardStore';
+import { Visitor } from '@/services/visitors/types';
+import { useNewVisitors, useNewVisitorStats } from '@/services/visitors/hooks';
+import { useAuthStore } from '@/store/useAuthStore';
 import { UserPlus, Calendar, TrendingUp, Timer, Send, Hand } from 'lucide-react';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
@@ -21,13 +22,12 @@ export default function NewVisitorsPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<Visitor | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
 
-    const { data: storeData, isLoading } = useQuery({
-        queryKey: ['dashboard'],
-        queryFn: dashboardApi.fetchDashboardData,
-    });
+    const userBranchId = useAuthStore((state) => state.user?.businessId);
 
-    const allVisitors = storeData?.recentVisitors || [];
-    const newVisitors = allVisitors.filter((v: Visitor) => v.status === 'new');
+    const { data: paginatedData, isLoading } = useNewVisitors(userBranchId);
+    const { data: statsData } = useNewVisitorStats(userBranchId);
+
+    const newVisitors = paginatedData?.data || [];
 
     const handleWelcomeVisitor = (visitor: Visitor) => {
         setSelectedVisitorForMsg(visitor);
@@ -41,11 +41,15 @@ export default function NewVisitorsPage() {
         }
     };
 
-    const stats = [
-        { label: 'New Today', value: newVisitors.length.toString(), icon: UserPlus, color: 'green' as const, trend: { value: '+20%', isUp: true } },
-        { label: 'Weekly New', value: '124', icon: Calendar, color: 'blue' as const, trend: { value: '+15%', isUp: true } },
-        { label: 'Conv. Rate', value: '68%', icon: TrendingUp, color: 'purple' as const, trend: { value: '+2%', isUp: true } },
-        { label: 'Avg. Wait', value: '2m', icon: Timer, color: 'yellow' as const, trend: { value: '-30s', isUp: true } },
+    const stats = statsData?.stats && statsData.stats.length > 0 ? statsData.stats.map(s => ({
+        ...s,
+        color: s.color as 'blue' | 'green' | 'purple' | 'red' | 'yellow',
+        icon: s.icon === 'person_add' ? UserPlus : s.icon === 'calendar' ? Calendar : s.icon === 'trending_up' ? TrendingUp : Timer
+    })) : [
+        { label: 'New Today', value: newVisitors.length.toString(), icon: UserPlus, color: 'green' as const, trend: { value: '+0%', isUp: true } },
+        { label: 'Weekly New', value: '0', icon: Calendar, color: 'blue' as const, trend: { value: '+0%', isUp: true } },
+        { label: 'Conv. Rate', value: '0%', icon: TrendingUp, color: 'purple' as const, trend: { value: '+0%', isUp: true } },
+        { label: 'Avg. Wait', value: '0m', icon: Timer, color: 'yellow' as const, trend: { value: '-0s', isUp: true } },
     ];
 
     const columns: Column<Visitor>[] = [
@@ -63,7 +67,7 @@ export default function NewVisitorsPage() {
                 </div>
             )
         },
-        { header: 'Joined', accessor: 'time' },
+        { header: 'Joined', accessor: (item: Visitor) => String(item.lastVisit || item.time || new Date().toISOString().split('T')[0]) },
         {
             header: 'Status',
             accessor: () => (
@@ -123,7 +127,7 @@ export default function NewVisitorsPage() {
             <VisitorDetailsModal
                 isOpen={!!selectedVisitorForDetails}
                 onClose={() => setSelectedVisitorForDetails(null)}
-                visitor={selectedVisitorForDetails}
+                visitor={selectedVisitorForDetails as any}
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

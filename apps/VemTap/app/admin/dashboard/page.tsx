@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
-import { adminUsersApi, adminBusinessesApi } from '@/lib/api/admin';
+import { adminUsersApi, adminBusinessesApi, adminDevicesApi, adminSubscriptionsApi } from '@/lib/api/admin';
 import { Users, Store, Cpu, TrendingUp, ArrowRight, RefreshCw, Loader2, CheckCircle, Clock, Ban } from 'lucide-react';
 import Link from 'next/link';
 
@@ -13,6 +13,8 @@ interface DashboardStats {
     suspendedBusinesses: number;
     totalUsers: number;
     recentBusinesses: any[];
+    activeSubscriptions: number;
+    totalDevices: number;
 }
 
 export default function AdminDashboardPage() {
@@ -24,18 +26,24 @@ export default function AdminDashboardPage() {
         suspendedBusinesses: 0,
         totalUsers: 0,
         recentBusinesses: [],
+        activeSubscriptions: 0,
+        totalDevices: 0,
     });
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchStats = async () => {
         setIsLoading(true);
         try {
-            const [bizData, usersData] = await Promise.all([
+            const [bizData, usersData, subsData, devicesData] = await Promise.all([
                 adminBusinessesApi.getAll({ limit: 50 }),
                 adminUsersApi.getAll({ limit: 200 }),
+                adminSubscriptionsApi.getStats().catch(() => ({ data: { activeSubscriptions: 0 } })),
+                adminDevicesApi.getStats().catch(() => ({ data: { total: 0 } }))
             ]);
             const businesses = Array.isArray(bizData) ? bizData : (bizData.businesses || []);
             const users = Array.isArray(usersData) ? usersData : (usersData.users || []);
+            const subStats = subsData?.data || subsData;
+            const devStats = devicesData?.data || devicesData;
 
             // Sort by most recent
             const sorted = [...businesses].sort((a: any, b: any) =>
@@ -49,6 +57,8 @@ export default function AdminDashboardPage() {
                 suspendedBusinesses: businesses.filter((b: any) => b.status === 'Suspended').length,
                 totalUsers: users.length,
                 recentBusinesses: sorted.slice(0, 5),
+                activeSubscriptions: subStats?.activeSubscriptions || 0,
+                totalDevices: devStats?.total || devStats?.active || 0,
             });
         } catch (err: any) {
             notify.error('Failed to load dashboard data');
@@ -62,8 +72,8 @@ export default function AdminDashboardPage() {
     const platformStats = [
         { label: 'Total Businesses', value: stats.totalBusinesses, icon: Store, color: 'blue', link: '/admin/businesses' },
         { label: 'Total Users', value: stats.totalUsers, icon: Users, color: 'green', link: '/admin/users' },
-        { label: 'Pending Approval', value: stats.pendingBusinesses, icon: Clock, color: 'yellow', link: '/admin/businesses' },
-        { label: 'Suspended', value: stats.suspendedBusinesses, icon: Ban, color: 'red', link: '/admin/businesses' },
+        { label: 'Active Subscriptions', value: stats.activeSubscriptions, icon: TrendingUp, color: 'yellow', link: '/admin/subscriptions' },
+        { label: 'Total Devices', value: stats.totalDevices, icon: Cpu, color: 'red', link: '/admin/devices' },
     ];
 
     const quickActions = [
@@ -112,9 +122,9 @@ export default function AdminDashboardPage() {
                         >
                             <div className="flex items-start justify-between mb-4">
                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${stat.color === 'green' ? 'bg-green-50 text-green-600 group-hover:bg-green-600 group-hover:text-white' :
-                                        stat.color === 'yellow' ? 'bg-yellow-50 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white' :
-                                            stat.color === 'red' ? 'bg-red-50 text-red-600 group-hover:bg-red-600 group-hover:text-white' :
-                                                'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white'
+                                    stat.color === 'yellow' ? 'bg-yellow-50 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white' :
+                                        stat.color === 'red' ? 'bg-red-50 text-red-600 group-hover:bg-red-600 group-hover:text-white' :
+                                            'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white'
                                     }`}>
                                     <Icon size={22} />
                                 </div>
@@ -192,8 +202,8 @@ export default function AdminDashboardPage() {
                                 key={i}
                                 href={action.href}
                                 className={`w-full flex items-center gap-3 p-4 rounded-xl font-bold text-sm transition-all active:scale-95 ${action.primary
-                                        ? 'bg-primary text-white hover:bg-primary-hover shadow-lg shadow-primary/20'
-                                        : 'bg-gray-50 text-text-main hover:bg-gray-100'
+                                    ? 'bg-primary text-white hover:bg-primary-hover shadow-lg shadow-primary/20'
+                                    : 'bg-gray-50 text-text-main hover:bg-gray-100'
                                     }`}
                             >
                                 <span className="material-icons-round">{action.icon}</span>
@@ -209,6 +219,7 @@ export default function AdminDashboardPage() {
                             {[
                                 { label: 'Active Businesses', value: stats.activeBusinesses, color: 'text-green-600' },
                                 { label: 'Awaiting Approval', value: stats.pendingBusinesses, color: 'text-yellow-600' },
+                                { label: 'Suspended Businesses', value: stats.suspendedBusinesses, color: 'text-red-500' },
                                 { label: 'Total Platform Users', value: stats.totalUsers, color: 'text-primary' },
                             ].map((item, i) => (
                                 <div key={i} className="flex justify-between items-center">

@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dashboardApi } from '@/lib/api/dashboard';
+import { adminDevicesApi } from '@/lib/api/admin';
 import { notify } from '@/lib/notify';
-import { Plus, Search, Filter, Download, MoreVertical, Trash2, Cpu, Battery, Activity, Link as LinkIcon, Edit3, Copy } from 'lucide-react';
-import { Device } from '@/lib/store/mockDashboardStore';
+import { Plus, Search, Filter, Download, Cpu, Activity, Link as LinkIcon, Edit3, Copy, Trash2 } from 'lucide-react';
 import EditDeviceModal from '@/components/dashboard/EditDeviceModal';
 
 export default function AdminDevicesPage() {
@@ -13,7 +12,7 @@ export default function AdminDevicesPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
     const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
-    const [editingDevice, setEditingDevice] = useState<Device | null>(null);
+    const [editingDevice, setEditingDevice] = useState<any>(null);
     const [origin, setOrigin] = useState('https://vemtap.com');
 
     useEffect(() => {
@@ -22,42 +21,56 @@ export default function AdminDevicesPage() {
         }
     }, []);
 
-    // Fetch Devices from store
-    const { data: storeData, isLoading } = useQuery({
-        queryKey: ['dashboard'],
-        queryFn: dashboardApi.fetchDashboardData,
+    // Fetch Devices from live API
+    const { data: devicesData, isLoading } = useQuery({
+        queryKey: ['admin-devices'],
+        queryFn: () => adminDevicesApi.getAll({ limit: 1000 }),
     });
 
-    const devices = storeData?.devices || [];
+    const rawDevices = Array.isArray(devicesData) ? devicesData : (devicesData?.devices || devicesData?.data || []);
+
+    // Map devices to the structure expected by the UI
+    const devices = rawDevices.map((d: any) => ({
+        ...d,
+        assignedTo: d.business?.name || d.businessId || 'Unassigned',
+        batteryLevel: d.batteryLevel ?? 100,
+        lastActive: d.lastActive ? new Date(d.lastActive).toLocaleDateString() : 'Never',
+    }));
 
     const addDeviceMutation = useMutation({
-        mutationFn: dashboardApi.addDevice,
+        mutationFn: adminDevicesApi.create,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-devices'] });
             setIsRegisterModalOpen(false);
             notify.success('NFC Device registered and provisioned successfully');
         },
-        onError: () => {
-            notify.error('Failed to register device. Please check the Serial ID.');
+        onError: (err: any) => {
+            notify.error(err.message || 'Failed to register device. Please check the Serial ID.');
         }
     });
 
     const updateDeviceMutation = useMutation({
-        mutationFn: ({ id, updates }: { id: string; updates: Partial<Device> }) =>
-            dashboardApi.updateDevice({ id, updates }),
+        mutationFn: ({ id, updates }: { id: string; updates: any }) =>
+            adminDevicesApi.update(id, updates),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-devices'] });
             setEditingDevice(null);
             notify.success('Device configuration updated');
+        },
+        onError: (err: any) => {
+            notify.error(err.message || 'Failed to update device configuration');
         }
     });
 
     const deleteDeviceMutation = useMutation({
-        mutationFn: dashboardApi.deleteDevice,
+        mutationFn: adminDevicesApi.delete,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-devices'] });
             setEditingDevice(null);
             notify.success('Device decommissioned successfully');
+        },
+        onError: (err: any) => {
+            notify.error(err.message || 'Failed to decommission device');
         }
     });
 
@@ -65,38 +78,36 @@ export default function AdminDevicesPage() {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         const deviceData = {
-            id: formData.get('id') as string,
-            type: formData.get('type') as any,
-            assignedTo: formData.get('assignedTo') as string || 'Unassigned',
+            code: formData.get('code') as string, // Backend relies on code initially
+            name: formData.get('name') as string || 'New Device',
+            type: formData.get('type') as string,
+            businessId: formData.get('businessId') as string || undefined,
         };
 
-        if (devices.some(d => d.id === deviceData.id)) {
-            notify.error('This Device Serial ID is already registered');
-            return;
-        }
+        if (!deviceData.businessId) delete deviceData.businessId;
 
         addDeviceMutation.mutate(deviceData);
     };
 
     const handleDeleteDevice = (id: string) => {
-        if (window.confirm(`Are you sure you want to decommission device ${id}? This action cannot be undone.`)) {
+        if (window.confirm(`Are you sure you want to decommission device? This action cannot be undone.`)) {
             deleteDeviceMutation.mutate(id);
         }
     };
 
-    const handleUpdateDevice = (id: string, updates: Partial<Device>) => {
+    const handleUpdateDevice = (id: string, updates: any) => {
         updateDeviceMutation.mutate({ id, updates });
     };
 
     const stats = [
         { label: 'Total Hardware', value: devices.length.toLocaleString(), icon: 'nfc', color: 'blue' },
-        { label: 'Active Links', value: devices.filter(d => d.status === 'active').length.toLocaleString(), icon: 'check_circle', color: 'green' },
-        { label: 'Inventory', value: devices.filter(d => d.assignedTo === 'Unassigned').length.toLocaleString(), icon: 'inventory_2', color: 'orange' },
-        { label: 'Alerts', value: '0', icon: 'battery_alert', color: 'red' },
+        { label: 'Active Links', value: devices.filter((d: any) => d.status === 'active').length.toLocaleString(), icon: 'check_circle', color: 'green' },
+        { label: 'Inventory', value: devices.filter((d: any) => d.assignedTo === 'Unassigned').length.toLocaleString(), icon: 'inventory_2', color: 'orange' },
+        { label: 'Alerts', value: devices.filter((d: any) => (d.batteryLevel || 0) < 20).length.toLocaleString(), icon: 'battery_alert', color: 'red' },
     ];
 
-    const filteredDevices = devices.filter(device => {
-        const matchesSearch = device.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const filteredDevices = devices.filter((device: any) => {
+        const matchesSearch = String(device.code || device.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
             device.assignedTo.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = filterStatus === 'all' || device.status === filterStatus;
         return matchesSearch && matchesStatus;
@@ -148,7 +159,7 @@ export default function AdminDevicesPage() {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                             <input
                                 type="text"
-                                placeholder="Search by Device ID or assigned venue..."
+                                placeholder="Search by Device UID or assigned venue..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full h-12 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all shadow-inner"
@@ -181,7 +192,7 @@ export default function AdminDevicesPage() {
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-200">
                                 <tr>
-                                    <th className="text-left py-4 px-6 text-xs font-black uppercase tracking-wider text-text-secondary">Device Serial</th>
+                                    <th className="text-left py-4 px-6 text-xs font-black uppercase tracking-wider text-text-secondary">Device ID (UID)</th>
                                     <th className="text-left py-4 px-6 text-xs font-black uppercase tracking-wider text-text-secondary">Form Factor</th>
                                     <th className="text-left py-4 px-6 text-xs font-black uppercase tracking-wider text-text-secondary">Linked Venue</th>
                                     <th className="text-left py-4 px-6 text-xs font-black uppercase tracking-wider text-text-secondary">Tap Link</th>
@@ -193,30 +204,33 @@ export default function AdminDevicesPage() {
                             <tbody className="divide-y divide-gray-100">
                                 {isLoading ? (
                                     <tr>
-                                        <td colSpan={6} className="py-12 text-center">
+                                        <td colSpan={7} className="py-12 text-center">
                                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                                         </td>
                                     </tr>
                                 ) : filteredDevices.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="py-12 text-center text-text-secondary font-medium">
+                                        <td colSpan={7} className="py-12 text-center text-text-secondary font-medium">
                                             No devices found in the current view.
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredDevices.map((device) => (
+                                    filteredDevices.map((device: any) => (
                                         <tr key={device.id} className="hover:bg-gray-50 transition-colors group">
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-3">
                                                     <div className="p-2 bg-gray-100 rounded-lg group-hover:bg-primary group-hover:text-white transition-all">
                                                         <Cpu size={16} />
                                                     </div>
-                                                    <span className="font-bold text-sm text-text-main font-mono tracking-tight">{device.id}</span>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-sm text-text-main tracking-tight">{device.name}</span>
+                                                        <span className="text-[10px] font-mono text-text-secondary">{device.code}</span>
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="py-4 px-6">
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary bg-gray-100 px-2.5 py-1 rounded-md border border-gray-200">
-                                                    {device.type}
+                                                    {device.type || 'Card'}
                                                 </span>
                                             </td>
                                             <td className="py-4 px-6">
@@ -235,11 +249,11 @@ export default function AdminDevicesPage() {
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-[10px] font-mono text-text-secondary truncate max-w-[120px]">
-                                                        {origin.replace(/^https?:\/\//, '')}/tap/{device.id}
+                                                        {origin.replace(/^https?:\/\//, '')}/tap/{device.code || device.id}
                                                     </span>
                                                     <button
                                                         onClick={() => {
-                                                            navigator.clipboard.writeText(`${origin}/tap/${device.id}`);
+                                                            navigator.clipboard.writeText(`${origin}/tap/${device.code || device.id}`);
                                                             notify.success('Link copied');
                                                         }}
                                                         className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-400 hover:text-primary"
@@ -317,11 +331,21 @@ export default function AdminDevicesPage() {
 
                             <form onSubmit={handleRegisterDevice} className="space-y-6">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary ml-1">Serial Number (UID)</label>
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary ml-1">Device Name</label>
+                                    <input
+                                        name="name"
+                                        required
+                                        placeholder="e.g. Front Door Scanner"
+                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 focus:bg-white transition-all text-sm font-bold"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary ml-1">Unique Serial Code (UID)</label>
                                     <div className="relative">
                                         <Cpu className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                         <input
-                                            name="id"
+                                            name="code"
                                             required
                                             placeholder="NFC-XXXX-XXXX"
                                             className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 focus:bg-white transition-all font-mono text-sm font-bold"
@@ -343,12 +367,12 @@ export default function AdminDevicesPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary ml-1">Assign to Business Account (Link)</label>
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary ml-1">Assign to Business ID</label>
                                     <div className="relative">
                                         <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                         <input
-                                            name="assignedTo"
-                                            placeholder="e.g. Green Terrace Cafe"
+                                            name="businessId"
+                                            placeholder="Paste Business ID (UUID)"
                                             className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 focus:bg-white transition-all font-bold text-sm"
                                         />
                                     </div>
@@ -381,7 +405,7 @@ export default function AdminDevicesPage() {
                 onClose={() => setEditingDevice(null)}
                 onSubmit={handleUpdateDevice}
                 onDelete={handleDeleteDevice}
-                device={editingDevice}
+                device={editingDevice as any}
                 isLoading={updateDeviceMutation.isPending || deleteDeviceMutation.isPending}
             />
         </>

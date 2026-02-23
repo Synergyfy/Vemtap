@@ -42,7 +42,7 @@ export default function CustomerDashboardPage() {
             return;
         }
 
-        if (user?.role !== 'customer') {
+        if (user?.role?.toLowerCase() !== 'customer') {
             router.push('/dashboard'); // Or appropriate non-customer dashboard
             return;
         }
@@ -60,7 +60,7 @@ export default function CustomerDashboardPage() {
         initializeDashboard();
     }, [isAuthenticated, user, router, fetchLoyaltyProfile, fetchRewards, fetchTransactions]);
 
-    if (!isAuthenticated || user?.role !== 'customer') {
+    if (!isAuthenticated || user?.role?.toLowerCase() !== 'customer') {
         return null;
     }
 

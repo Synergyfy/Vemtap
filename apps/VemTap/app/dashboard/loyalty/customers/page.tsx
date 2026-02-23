@@ -1,29 +1,18 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
-import { useLoyaltyStore } from '@/store/loyaltyStore';
-import { LoyaltyProfile } from '@/types/loyalty';
+import { useLoyaltyProfiles } from '@/services/loyalty/hooks';
+import { LoyaltyProfile } from '@/services/loyalty/types';
 import { User, Star, Trophy, Search, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function LoyaltyCustomersPage() {
-    const { profiles, isLoading } = useLoyaltyStore();
+    const { data: profiles, isLoading } = useLoyaltyProfiles();
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Business ID is hardcoded for demo
-    const businessId = 'bistro_001';
-
-    // For MVC, we might not have a "list all profiles" API yet,
-    // so we'll simulate some data if the list is empty
-    const customerList: LoyaltyProfile[] = Object.values(profiles).length > 0
-        ? Object.values(profiles).filter(p => p.businessId === businessId)
-        : [
-            { id: '1', userId: 'user_001', businessId, currentPointsBalance: 1250, totalPointsEarned: 5000, pointsRedeemed: 3750, tierLevel: 'platinum', lastVisitDate: new Date().toISOString(), lastRewardedAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-            { id: '2', userId: 'user_002', businessId, currentPointsBalance: 450, totalPointsEarned: 800, pointsRedeemed: 350, tierLevel: 'silver', lastVisitDate: new Date().toISOString(), lastRewardedAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-            { id: '3', userId: 'user_003', businessId, currentPointsBalance: 2100, totalPointsEarned: 3500, pointsRedeemed: 1400, tierLevel: 'gold', lastVisitDate: new Date().toISOString(), lastRewardedAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        ];
+    const customerList: LoyaltyProfile[] = profiles || [];
 
     const columns: Column<LoyaltyProfile>[] = [
         {
@@ -81,6 +70,14 @@ export default function LoyaltyCustomersPage() {
             )
         },
     ];
+
+    if (isLoading) {
+        return (
+            <div className="p-8 flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-8 space-y-8">

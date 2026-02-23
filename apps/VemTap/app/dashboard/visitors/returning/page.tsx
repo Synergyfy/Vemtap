@@ -8,8 +8,11 @@ import DataTable, { Column } from '@/components/dashboard/DataTable';
 import EmptyState from '@/components/dashboard/EmptyState';
 import CreateRewardModal from '@/components/dashboard/CreateRewardModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dashboardApi } from '@/lib/api/dashboard';
-import { Visitor, Reward } from '@/lib/store/mockDashboardStore';
+import { api } from '@/lib/api';
+import { Visitor } from '@/services/visitors/types';
+import { useReturningVisitors, useReturningVisitorStats } from '@/services/visitors/hooks';
+import { useAuthStore } from '@/store/useAuthStore';
+import { Reward } from '@/lib/store/mockDashboardStore';
 import toast from 'react-hot-toast';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
@@ -21,16 +24,22 @@ export default function ReturningVisitorsPage() {
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
     const queryClient = useQueryClient();
 
-    const { data: storeData, isLoading } = useQuery({
-        queryKey: ['dashboard'],
-        queryFn: dashboardApi.fetchDashboardData,
-    });
+    const userBranchId = useAuthStore((state) => state.user?.businessId);
 
-    const allVisitors = storeData?.recentVisitors || [];
-    const returningVisitors = allVisitors.filter((v: Visitor) => v.status === 'returning');
+    const { data: paginatedData, isLoading } = useReturningVisitors(userBranchId);
+    const { data: statsData } = useReturningVisitorStats(userBranchId);
+
+    const returningVisitors = paginatedData?.data || [];
 
     const createRewardMutation = useMutation({
-        mutationFn: dashboardApi.createReward,
+        mutationFn: async (rewardData: Omit<Reward, 'id' | 'active'>) => {
+            const newReward = {
+                ...rewardData,
+                active: true,
+                branchId: userBranchId
+            };
+            return await api.post('/campaigns/rewards', newReward); // Assuming you'd have a reward post, mock it via API here for UI binding compatibility
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['dashboard'] });
             setIsCreateModalOpen(false);
@@ -39,23 +48,22 @@ export default function ReturningVisitorsPage() {
     });
 
     const handleCreateReward = (rewardData: Omit<Reward, 'id' | 'active'>) => {
-        const newReward: Reward = {
-            id: Math.random().toString(36).substr(2, 9),
-            ...rewardData,
-            active: true
-        };
-        createRewardMutation.mutate(newReward);
+        createRewardMutation.mutate(rewardData);
     };
 
     const handleRewardVisitor = (visitor: Visitor) => {
         setSelectedVisitorForMsg(visitor);
     };
 
-    const stats = [
-        { label: 'Return Rate', value: '74%', icon: Repeat, color: 'blue' as const, trend: { value: '+4%', isUp: true } },
-        { label: 'Repeat Count', value: returningVisitors.length.toString(), icon: Users, color: 'green' as const, trend: { value: '+12%', isUp: true } },
-        { label: 'VIP Status', value: '156', icon: Star, color: 'yellow' as const, trend: { value: '+8%', isUp: true } },
-        { label: 'Churn Risk', value: '12', icon: AlertTriangle, color: 'red' as const, trend: { value: '-2', isUp: true } },
+    const stats = statsData?.stats && statsData.stats.length > 0 ? statsData.stats.map(s => ({
+        ...s,
+        color: s.color as 'blue' | 'green' | 'purple' | 'red' | 'yellow',
+        icon: s.icon === 'repeat' ? Repeat : s.icon === 'group' ? Users : s.icon === 'star' ? Star : AlertTriangle
+    })) : [
+        { label: 'Return Rate', value: '0%', icon: Repeat, color: 'blue' as const, trend: { value: '+0%', isUp: true } },
+        { label: 'Repeat Count', value: returningVisitors.length.toString(), icon: Users, color: 'green' as const, trend: { value: '+0%', isUp: true } },
+        { label: 'VIP Status', value: '0', icon: Star, color: 'yellow' as const, trend: { value: '+0%', isUp: true } },
+        { label: 'Churn Risk', value: '0', icon: AlertTriangle, color: 'red' as const, trend: { value: '-0', isUp: true } },
     ];
 
     const columns: Column<Visitor>[] = [
@@ -73,7 +81,7 @@ export default function ReturningVisitorsPage() {
                 </div>
             )
         },
-        { header: 'Last Seen', accessor: 'time' },
+        { header: 'Last Seen', accessor: (item: Visitor) => String(item.lastVisit || item.time || new Date().toISOString().split('T')[0]) },
         {
             header: 'Level',
             accessor: (item: Visitor) => (
@@ -133,7 +141,7 @@ export default function ReturningVisitorsPage() {
             <VisitorDetailsModal
                 isOpen={!!selectedVisitorForDetails}
                 onClose={() => setSelectedVisitorForDetails(null)}
-                visitor={selectedVisitorForDetails}
+                visitor={selectedVisitorForDetails as any}
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

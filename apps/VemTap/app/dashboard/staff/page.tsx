@@ -3,9 +3,8 @@
 import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dashboardApi } from '@/lib/api/dashboard';
-import { Staff } from '@/lib/store/mockDashboardStore';
+import { useStaff, useInviteStaff, useUpdateStaff, useRemoveStaff } from '@/services/users/hooks';
+import { StaffMember, UserRole } from '@/services/users/types';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBusinessStore } from '@/store/useBusinessStore';
@@ -25,98 +24,87 @@ const PERMISSIONS = [
 export default function StaffManagementPage() {
     const router = useRouter();
     const { user } = useAuthStore();
-    const queryClient = useQueryClient();
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-    const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+    const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
     const [staffToDelete, setStaffToDelete] = useState<{ id: string, name: string } | null>(null);
     const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['dashboard', 'visitors']);
 
     const { activeBranchId, branches } = useBusinessStore();
 
-    const { data: storeData, isLoading } = useQuery({
-        queryKey: ['dashboard', activeBranchId],
-        queryFn: dashboardApi.fetchDashboardData,
-    });
+    const { data: staffMembers, isLoading } = useStaff();
+    const inviteMutation = useInviteStaff();
+    const updateMutation = useUpdateStaff();
+    const removeMutation = useRemoveStaff();
 
-    // Protection: Only Owners can manage staff
     React.useEffect(() => {
         if (!isLoading && user && user.role !== 'owner') {
             router.push('/dashboard');
         }
     }, [user, isLoading, router]);
 
-    const staffMembers = storeData?.staffMembers || [];
-
-    const addStaffMutation = useMutation({
-        mutationFn: dashboardApi.addStaff,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            setIsInviteModalOpen(false);
-            toast.success('Staff member invited successfully');
-        }
-    });
-
-    const updateStaffMutation = useMutation({
-        mutationFn: dashboardApi.updateStaffMember,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            setEditingStaff(null);
-            toast.success('Staff details updated');
-        }
-    });
-
-    const deleteStaffMutation = useMutation({
-        mutationFn: dashboardApi.deleteStaff,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            toast.success('Staff member removed');
-        }
-    });
-
     const handleInviteStaff = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
+        const roleValue = formData.get('role') as string;
+        const role: UserRole = roleValue === 'Manager' ? 'manager' : 'staff';
+
         const staffData = {
-            name: `${formData.get('firstName')} ${formData.get('lastName')}`,
+            firstName: formData.get('firstName') as string,
+            lastName: formData.get('lastName') as string,
             email: formData.get('email') as string,
-            role: formData.get('role') as any,
-            jobTitle: formData.get('jobTitle') as string,
+            role,
+            businessId: user?.businessId || '',
+            branchId: user?.branchId || '',
             permissions: selectedPermissions,
             branchId: formData.get('branchId') as string,
         };
-        addStaffMutation.mutate(staffData);
-        setSelectedPermissions(['dashboard', 'visitors']);
+
+        inviteMutation.mutate(staffData, {
+            onSuccess: () => {
+                setIsInviteModalOpen(false);
+                setSelectedPermissions(['dashboard', 'visitors']);
+                toast.success('Staff member invited successfully');
+            },
+            onError: () => {
+                toast.error('Failed to invite staff member');
+            }
+        });
     };
 
     const handleUpdateRole = (id: string, role: string) => {
-        updateStaffMutation.mutate({ id, updates: { role: role as any } });
-    };
-
-    const handleUpdateBranch = (id: string, branchId: string) => {
-        updateStaffMutation.mutate({ id, updates: { branchId } });
-    };
-
-    const handleDelete = (id: string, name: string) => {
-        setStaffToDelete({ id, name });
+        const roleMap: Record<string, UserRole> = {
+            'Owner': 'owner',
+            'Manager': 'manager',
+            'Staff': 'staff',
+        };
+        updateMutation.mutate({ id, updates: { role: roleMap[role] || 'staff' } }, {
+            onSuccess: () => {
+                toast.success('Staff role updated');
+            }
+        });
     };
 
     const confirmDelete = () => {
         if (staffToDelete) {
-            deleteStaffMutation.mutate(staffToDelete.id);
-            setStaffToDelete(null);
+            removeMutation.mutate(staffToDelete.id, {
+                onSuccess: () => {
+                    setStaffToDelete(null);
+                    toast.success('Staff member removed');
+                }
+            });
         }
     };
 
-    const columns: Column<Staff>[] = [
+    const columns: Column<StaffMember>[] = [
         {
             header: 'Staff Member',
-            accessor: (item: Staff) => (
+            accessor: (item: StaffMember) => (
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs uppercase border border-primary/20">
-                        {item.name.split(' ').map((n: string) => n[0]).join('')}
+                        {item.firstName[0]}{item.lastName[0]}
                     </div>
                     <div>
-                        <p className="font-bold text-text-main leading-none mb-1">{item.name}</p>
+                        <p className="font-bold text-text-main leading-none mb-1">{item.firstName} {item.lastName}</p>
                         <p className="text-xs text-text-secondary font-medium">{item.email}</p>
                     </div>
                 </div>
@@ -124,11 +112,11 @@ export default function StaffManagementPage() {
         },
         {
             header: 'Role',
-            accessor: (item: Staff) => (
+            accessor: (item: StaffMember) => (
                 <div className="flex items-center gap-2">
-                    <Shield size={14} className={item.role === 'Owner' ? 'text-primary' : 'text-gray-400'} />
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${item.role === 'Owner' ? 'bg-primary/10 text-primary' :
-                        item.role === 'Manager' ? 'bg-blue-50 text-blue-600' :
+                    <Shield size={14} className={item.role === 'owner' ? 'text-primary' : 'text-gray-400'} />
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${item.role === 'owner' ? 'bg-primary/10 text-primary' :
+                        item.role === 'manager' ? 'bg-blue-50 text-blue-600' :
                             'bg-gray-100 text-gray-700'
                         }`}>
                         {item.role}
@@ -150,20 +138,16 @@ export default function StaffManagementPage() {
         },
         {
             header: 'Status',
-            accessor: (item: Staff) => (
+            accessor: (item: StaffMember) => (
                 <div className="flex items-center gap-2">
-                    <div className={`size-1.5 rounded-full ${item.status === 'Active' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                    <span className="text-sm font-bold text-text-main">{item.status}</span>
+                    <div className={`size-1.5 rounded-full ${item.status === 'active' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-sm font-bold text-text-main capitalize">{item.status}</span>
                 </div>
             )
         },
         {
-            header: 'Last Active',
-            accessor: (item: Staff) => <span className="text-sm text-text-secondary font-medium">{item.lastActive}</span>
-        },
-        {
             header: 'Actions',
-            accessor: (item: Staff) => (
+            accessor: (item: StaffMember) => (
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => setEditingStaff(item)}
@@ -173,7 +157,7 @@ export default function StaffManagementPage() {
                         <Edit3 size={18} />
                     </button>
                     <button
-                        onClick={() => handleDelete(item.id, item.name)}
+                        onClick={() => setStaffToDelete({ id: item.id, name: `${item.firstName} ${item.lastName}` })}
                         className="p-2 text-text-secondary hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                         title="Remove Staff"
                     >
@@ -207,7 +191,7 @@ export default function StaffManagementPage() {
                             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
                         </div>
                     ) : (
-                        <DataTable columns={columns} data={staffMembers} />
+                        <DataTable columns={columns} data={staffMembers || []} />
                     )}
                 </div>
 
@@ -259,8 +243,8 @@ export default function StaffManagementPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Job Title / Role</label>
-                            <input name="jobTitle" required className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm" placeholder="e.g. Head of Sales" />
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Job Title</label>
+                            <input name="jobTitle" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm" placeholder="e.g. Head of Sales" />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Email Address</label>
@@ -268,23 +252,12 @@ export default function StaffManagementPage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Access Level</label>
-                            <select name="role" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none">
-                                <option value="Staff">Staff Member (Limited Access)</option>
-                                <option value="Manager">Manager (Full Dashboard)</option>
-                                <option value="Owner">Business Owner (Admin)</option>
-                            </select>
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Assign to Branch</label>
-                            <select name="branchId" required className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none">
-                                {branches.map(b => (
-                                    <option key={b.id} value={b.id}>{b.name}</option>
-                                ))}
-                            </select>
-                        </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Access Level</label>
+                        <select name="role" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none">
+                            <option value="Staff">Staff Member (Limited Access)</option>
+                            <option value="Manager">Manager (Full Dashboard)</option>
+                        </select>
                     </div>
 
                     <div className="space-y-3">
@@ -314,19 +287,19 @@ export default function StaffManagementPage() {
 
                     <div className="flex gap-3 pt-4">
                         <button type="button" onClick={() => setIsInviteModalOpen(false)} className="flex-1 h-14 border border-gray-100 text-text-main font-bold rounded-2xl hover:bg-gray-50 transition-all text-base active:scale-95">Cancel</button>
-                        <button disabled={addStaffMutation.isPending} className="flex-2 h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 text-base">
-                            {addStaffMutation.isPending ? (<div className="size-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>) : (<><UserPlus size={20} />Send Invitation</>)}
+                        <button disabled={inviteMutation.isPending} className="flex-2 h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 text-base">
+                            {inviteMutation.isPending ? (<div className="size-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>) : (<><UserPlus size={20} />Send Invitation</>)}
                         </button>
                     </div>
                 </form>
             </Modal>
 
-            {/* Edit Role & Permissions Modal */}
+            {/* Edit Role Modal */}
             <Modal
                 isOpen={!!editingStaff}
                 onClose={() => setEditingStaff(null)}
                 title="Edit Access"
-                description={`Modify role and permissions for ${editingStaff?.name}`}
+                description={`Modify role for ${editingStaff?.firstName} ${editingStaff?.lastName}`}
                 size="lg"
             >
                 <div className="space-y-6 py-4">
@@ -336,58 +309,23 @@ export default function StaffManagementPage() {
                             {['Staff', 'Manager', 'Owner'].map((role) => (
                                 <button
                                     key={role}
-                                    onClick={() => handleUpdateRole(editingStaff!.id, role)}
-                                    className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${editingStaff?.role === role ? 'border-primary bg-primary/5' : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'}`}
+                                    onClick={() => {
+                                        if (editingStaff) {
+                                            handleUpdateRole(editingStaff.id, role);
+                                        }
+                                    }}
+                                    className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${editingStaff?.role === role.toLowerCase() ? 'border-primary bg-primary/5' : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'}`}
                                 >
-                                    <Shield size={20} className={editingStaff?.role === role ? 'text-primary' : 'text-gray-300'} />
-                                    <span className={`text-[11px] font-black uppercase mt-2 ${editingStaff?.role === role ? 'text-primary' : 'text-text-secondary'}`}>{role}</span>
+                                    <Shield size={20} className={editingStaff?.role === role.toLowerCase() ? 'text-primary' : 'text-gray-300'} />
+                                    <span className={`text-[11px] font-black uppercase mt-2 ${editingStaff?.role === role.toLowerCase() ? 'text-primary' : 'text-text-secondary'}`}>{role}</span>
                                 </button>
                             ))}
                         </div>
                     </div>
 
-                    <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Assigned Branch</label>
-                        <select
-                            value={editingStaff?.branchId}
-                            onChange={(e) => handleUpdateBranch(editingStaff!.id, e.target.value)}
-                            className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none"
-                        >
-                            {branches.map(b => (
-                                <option key={b.id} value={b.id}>{b.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Update Module Access</label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {PERMISSIONS.map((p) => {
-                                const Icon = p.icon;
-                                const isSelected = selectedPermissions.includes(p.id);
-                                return (
-                                    <button
-                                        key={p.id}
-                                        type="button"
-                                        className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-gray-50 bg-gray-50/50 opacity-60'}`}
-                                        onClick={() => {
-                                            setSelectedPermissions(prev => isSelected ? prev.filter(id => id !== p.id) : [...prev, p.id]);
-                                            toast.success(`${p.label} access updated for ${editingStaff?.name}`);
-                                        }}
-                                    >
-                                        <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-primary text-white' : 'bg-white text-text-secondary'}`}>
-                                            <Icon size={14} />
-                                        </div>
-                                        <span className={`text-[11px] font-bold ${isSelected ? 'text-primary' : 'text-text-secondary'}`}>{p.label}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
                     <div className="pt-4">
                         <button onClick={() => setEditingStaff(null)} className="w-full h-14 bg-gray-900 text-white font-bold rounded-2xl hover:bg-black transition-all shadow-xl active:scale-95 text-base">
-                            Save Changes
+                            Done
                         </button>
                     </div>
                 </div>
@@ -404,8 +342,8 @@ export default function StaffManagementPage() {
                     <button onClick={() => setStaffToDelete(null)} className="flex-1 h-12 border-2 border-primary/20 text-primary font-bold rounded-lg hover:bg-primary/5 hover:border-primary/30 transition-all text-sm">
                         Cancel
                     </button>
-                    <button onClick={confirmDelete} className="flex-1 h-12 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 text-sm">
-                        Remove
+                    <button onClick={confirmDelete} disabled={removeMutation.isPending} className="flex-1 h-12 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 text-sm disabled:opacity-50">
+                        {removeMutation.isPending ? 'Removing...' : 'Remove'}
                     </button>
                 </div>
             </Modal>

@@ -35,3 +35,54 @@ export interface DashboardAnalyticsResponse {
     topPerformers: TopPerformer[];
     recentVisitors: any[]; // Added for dashboard parity
 }
+
+export interface FootfallStat {
+    label: string;
+    value: string;
+}
+
+export interface HourlyFootfall {
+    hour: string;
+    count: number;
+}
+
+export interface TrafficByEntrance {
+    name: string;
+    percentage: string;
+    count: string;
+}
+
+export interface VisitDurationDistribution {
+    label: string;
+    time: string;
+    p: string;
+}
+
+export interface VisitDuration {
+    averageStay: string;
+    trendText: string;
+    distribution: VisitDurationDistribution[];
+}
+
+export interface FootfallAnalyticsResponse {
+    stats: FootfallStat[];
+    hourlyData: HourlyFootfall[];
+    trafficByEntrance: TrafficByEntrance[];
+    visitDuration: VisitDuration;
+}
+
+export interface WeeklyPeakData {
+    day: string;
+    hours: number[];
+}
+
+export interface SmartSuggestion {
+    peakTime: string;
+    recommendation: string;
+}
+
+export interface PeakTimesAnalyticsResponse {
+    weeklyData: WeeklyPeakData[];
+    hoursLabels: string[];
+    smartSuggestion: SmartSuggestion;
+}

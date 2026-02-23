@@ -3,20 +3,19 @@
 import React from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/dashboard/PageHeader';
-import { useMessagingStore } from '@/lib/store/useMessagingStore';
 import { Mail, Send, CheckCircle, Eye, BarChart, Wallet, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import TopUpModal from '@/components/messaging/TopUpModal';
+import { useMessagingAnalytics } from '@/services/messaging/hooks';
 
 export default function EmailOverviewPage() {
-    const { stats, wallets } = useMessagingStore();
+    const { data: analytics } = useMessagingAnalytics('EMAIL');
     const [isTopUpOpen, setIsTopUpOpen] = React.useState(false);
-    const wallet = wallets.Email;
 
     const channelStats = [
-        { label: 'Wallet Balance', value: `${wallet.credits.toLocaleString()} ${wallet.currency}`, icon: Wallet, color: 'text-primary', bg: 'bg-primary/5' },
-        { label: 'Emails Sent', value: '15,820', icon: Send, color: 'text-purple-600', bg: 'bg-purple-50' },
-        { label: 'Open Rate', value: '28.4%', icon: Eye, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: 'Emails Sent', value: analytics?.sent?.toLocaleString() ?? '—', icon: Send, color: 'text-purple-600', bg: 'bg-purple-50' },
+        { label: 'Open Rate', value: analytics?.openRate != null ? `${analytics.openRate.toFixed(1)}%` : '—', icon: Eye, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: 'Delivered', value: analytics?.delivered?.toLocaleString() ?? '—', icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
     ];
 
     return (
