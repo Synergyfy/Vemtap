@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   IsEnum,
+  IsUUID,
 } from 'class-validator';
 
 export class CreateVisitorDto {
@@ -42,6 +43,6 @@ export class CreateVisitorDto {
       'Branch ID where visitor is being registered (required if deviceId not provided)',
     required: false,
   })
-  @IsString()
+  @IsUUID()
   branchId?: string;
 }
