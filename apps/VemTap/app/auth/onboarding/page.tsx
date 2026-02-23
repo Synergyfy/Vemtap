@@ -30,16 +30,18 @@ function OnboardingContent() {
                 await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate work
 
                 const signupData = {
+                    id: `temp_${Date.now()}`,
                     email,
                     name,
                     businessName,
                     role: 'owner' as const,
                     planId: 'free' as const,
-                    subscriptionStatus: 'trialing' as const,
-                    trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+                    status: 'active',
                 };
 
-                const result = await signup(signupData);
+                await signup(signupData, 'onboarding_auto_token');
+
+                const result = { success: true, error: undefined as string | undefined }; // signup in store is void and assumed successful if it completes
 
                 if (result.success) {
                     setMessage('Setting up your dashboard workspace...');

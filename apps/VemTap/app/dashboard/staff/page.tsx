@@ -54,9 +54,8 @@ export default function StaffManagementPage() {
             email: formData.get('email') as string,
             role,
             businessId: user?.businessId || '',
-            branchId: user?.branchId || '',
+            branchId: user?.branchId || formData.get('branchId') as string,
             permissions: selectedPermissions,
-            branchId: formData.get('branchId') as string,
         };
 
         inviteMutation.mutate(staffData, {
@@ -126,7 +125,7 @@ export default function StaffManagementPage() {
         },
         {
             header: 'Branch',
-            accessor: (item: Staff) => {
+            accessor: (item: StaffMember) => {
                 const branch = branches.find(b => b.id === item.branchId);
                 return (
                     <div className="flex items-center gap-2">

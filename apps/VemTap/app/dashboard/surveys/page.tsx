@@ -273,7 +273,7 @@ export default function SurveyBuilderPage() {
 
                                             {questions[0].type === 'choice' && (
                                                 <div className="space-y-2">
-                                                    {(questions[0].options || ['Option 1', 'Option 2']).slice(0, 2).map((opt, i) => (
+                                                    {(questions[0].options || ['Option 1', 'Option 2']).slice(0, 2).map((opt: string, i: number) => (
                                                         <div key={i} className="w-full p-3 rounded-lg bg-gray-50 border border-gray-100 text-xs font-bold text-gray-300">
                                                             {opt}
                                                         </div>

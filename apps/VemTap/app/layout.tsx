@@ -52,8 +52,8 @@ export const metadata: Metadata = {
         images: ["/assets/vemtap_v.png"],
     },
     icons: {
-        icon: "/assets/vemtap_v.png",
-        apple: "/assets/vemtap_v.png",
+        icon: "/icons/icon-192.png",
+        apple: "/icons/icon-192.png",
     },
 };
 
@@ -61,6 +61,7 @@ import QueryProvider from "./providers/QueryProvider";
 import CookieBanner from "@/components/shared/CookieBanner";
 import ToastProvider from "@/components/providers/ToastProvider";
 import SupportChatbot from "@/components/shared/SupportChatbot";
+import InstallPWA from "@/components/shared/InstallPWA";
 
 export default function RootLayout({
     children,
@@ -93,6 +94,7 @@ export default function RootLayout({
                     {children}
                     <CookieBanner />
                     <SupportChatbot />
+                    <InstallPWA />
                 </QueryProvider>
             </body>
         </html>

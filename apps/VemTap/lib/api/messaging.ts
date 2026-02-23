@@ -117,6 +117,7 @@ export const messagingApi = {
          const broadcastId = `brd_${Date.now()}`;
          store.addBroadcast({
              id: broadcastId,
+             branchId: 'head-office', // Fallback or retrieve from context if available
              name,
              channel,
              audienceSize,

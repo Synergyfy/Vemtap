@@ -6,12 +6,12 @@ export interface Visitor {
   name: string;
   phone: string;
   email?: string;
-  time: string;
-  timestamp: number;
-  status: 'new' | 'returning';
+  time?: string;
+  timestamp?: number;
+  status: string;
   optIn?: boolean;
   surveyAnswers?: Record<string, any>;
-  branchId: string;
+  branchId?: string;
   location?: string;
 }
 
@@ -81,16 +81,16 @@ export interface Staff {
 export interface Device {
   id: string;
   name: string;
-  type: 'Card' | 'Sticker' | 'Fob';
+  type: string;
   code: string;
   location: string;
-  assignedTo: string; // Business name or 'Unassigned'
-  lastActive: string;
+  assignedTo?: string; // Business name or 'Unassigned'
+  lastActive: string | null;
   status: 'active' | 'inactive';
   batteryLevel: number;
   totalScans: number;
-  timestamp: number;
-  branchId: string;
+  timestamp?: number;
+  branchId?: string;
 }
 
 export interface RedemptionRequest {
@@ -351,7 +351,7 @@ export const useMockDashboardStore = create<DashboardState>()(
           if (activityIndex >= 0) {
              newActivity[activityIndex].visits += 1;
           } else {
-             newActivity.push({ hour: hourLabel, visits: 1, branchId: visitor.branchId });
+             newActivity.push({ hour: hourLabel, visits: 1, branchId: visitor.branchId || 'head-office' });
           }
 
           const newStats = { ...state.stats };

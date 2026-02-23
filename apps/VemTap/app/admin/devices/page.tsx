@@ -97,7 +97,7 @@ export default function AdminDevicesPage() {
 
     const filteredDevices = devices.filter(device => {
         const matchesSearch = device.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            device.assignedTo.toLowerCase().includes(searchQuery.toLowerCase());
+            (device.assignedTo || '').toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = filterStatus === 'all' || device.status === filterStatus;
         return matchesSearch && matchesStatus;
     });

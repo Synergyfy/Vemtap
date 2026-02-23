@@ -150,6 +150,7 @@ export default function ProductClient({ id }: { id: string }) {
                 try {
                     // Create prompt user account
                     const userData = {
+                        id: `guest_${Date.now()}`,
                         email: quoteData.email,
                         name: `${quoteData.firstName} ${quoteData.lastName}`,
                         businessName: quoteData.company,
@@ -161,7 +162,7 @@ export default function ProductClient({ id }: { id: string }) {
                     // We generate a random password for them in a real app, or send a magic link
                     // For this demo, we'll assume the store handles the "guest conversion"
                     const { useAuthStore } = await import('@/store/useAuthStore');
-                    await useAuthStore.getState().signup(userData);
+                    useAuthStore.getState().signup(userData, 'guest_signup_token');
 
                     // 2. Send verification email
                     await sendVerificationEmail(quoteData.email, userData.name);

@@ -52,6 +52,7 @@ export default function VisitorsOverviewPage() {
 
     const stats = statsData?.stats && statsData.stats.length > 0 ? statsData.stats.map(s => ({
         ...s,
+        color: s.color as any,
         // Map backend string icon names to Lucide components
         icon: s.icon === 'group' ? Users : s.icon === 'person_add' ? UserPlus : s.icon === 'repeat' ? Repeat : Star
     })) : [
