@@ -106,6 +106,8 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             icon: Package,
             submenu: [
                 { label: 'All Products', href: '/admin/products' },
+                { label: 'Hardware Orders', href: '/admin/orders' },
+                { label: 'Product Categories', href: '/admin/products/types' },
                 { label: 'Add New Product', href: '/admin/products/create' },
             ]
         },

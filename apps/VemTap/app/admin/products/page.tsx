@@ -8,9 +8,11 @@ import {
     MoreHorizontal, Edit, Copy, Trash2, ChevronLeft, ChevronRight, TrendingUp, AlertCircle
 } from 'lucide-react';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminProductsApi } from '@/lib/api/admin';
 import { format } from 'date-fns';
+import { useProductFormStore } from '@/store/useProductFormStore';
+import { useRouter } from 'next/navigation';
 
 export default function ProductsPage() {
     const { data: productsData, isLoading: isProductsLoading } = useQuery({
@@ -23,7 +25,35 @@ export default function ProductsPage() {
         queryFn: () => adminProductsApi.getStats(),
     });
 
-    const isLoading = isProductsLoading || isStatsLoading;
+    const queryClient = useQueryClient();
+    const { loadProductForEditing, resetForm } = useProductFormStore();
+    const router = useRouter();
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => adminProductsApi.delete(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-product-stats'] });
+        },
+    });
+
+    const handleDelete = async (id: string) => {
+        if (window.confirm('Are you sure you want to delete this product?')) {
+            try {
+                await deleteMutation.mutateAsync(id);
+            } catch (error) {
+                console.error('Failed to delete product:', error);
+                alert('Failed to delete product. Please try again.');
+            }
+        }
+    };
+
+    const handleEdit = (product: any) => {
+        loadProductForEditing(product);
+        router.push('/admin/products/create');
+    };
+
+    const isLoading = isProductsLoading || isStatsLoading || deleteMutation.isPending;
     const products = Array.isArray(productsData) ? productsData : (productsData?.data || []);
 
     const stats = [
@@ -45,6 +75,7 @@ export default function ProductsPage() {
                     <div className="flex items-center gap-4">
                         <Link
                             href="/admin/products/create"
+                            onClick={() => resetForm()}
                             className="flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-full font-medium transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
                         >
                             <Plus size={20} />
@@ -141,10 +172,17 @@ export default function ProductsPage() {
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button className="size-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-primary/10 hover:text-primary transition-colors">
+                                                        <button
+                                                            onClick={() => handleEdit(product)}
+                                                            className="size-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-primary/10 hover:text-primary transition-colors"
+                                                        >
                                                             <Edit size={16} />
                                                         </button>
-                                                        <button className="size-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors">
+                                                        <button
+                                                            onClick={() => handleDelete(product.id)}
+                                                            disabled={deleteMutation.isPending}
+                                                            className="size-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-50"
+                                                        >
                                                             <Trash2 size={16} />
                                                         </button>
                                                     </div>
@@ -153,6 +191,7 @@ export default function ProductsPage() {
                                         ))
                                     )}
                                 </tbody>
+
                             </table>
                         </div>
                     </div>

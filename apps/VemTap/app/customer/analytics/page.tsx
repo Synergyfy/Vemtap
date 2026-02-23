@@ -1,9 +1,50 @@
 'use client';
 
 import React from 'react';
-import { Coffee, Dumbbell, Smartphone, History, Star, PiggyBank } from 'lucide-react';
+import { Coffee, Dumbbell, Smartphone, History, Star, PiggyBank, Loader2, AlertCircle } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { loyaltyApi } from '@/lib/api/loyalty';
+import { TbCurrencyNaira } from "react-icons/tb";
 
 export default function CustomerAnalyticsPage() {
+    const { data, isLoading, isError, refetch } = useQuery({
+        queryKey: ['customer-analytics'],
+        queryFn: () => loyaltyApi.fetchCustomerAnalytics(),
+    });
+
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                <p className="text-text-secondary font-bold animate-pulse">Loading your analytics...</p>
+            </div>
+        );
+    }
+
+    if (isError) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center">
+                    <AlertCircle size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-text-main">Failed to load analytics</h3>
+                <p className="text-text-secondary">Something went wrong while fetching your data.</p>
+                <button
+                    onClick={() => refetch()}
+                    className="px-6 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition-all"
+                >
+                    Try Again
+                </button>
+            </div>
+        );
+    }
+
+    const stats = [
+        { label: 'Total Visits', value: data?.totalVisits || 0, icon: History, color: 'blue', trend: { value: '+0%', isUp: true, label: 'vs last month' } },
+        { label: 'Reward Points', value: (data?.currentPointsBalance || 0).toLocaleString(), icon: Star, color: 'primary', trend: { value: '0', isUp: true, label: 'this month' } },
+        { label: 'Net Savings', value: data?.netSavings || 0, icon: PiggyBank, color: 'green', isCurrency: true, trend: { value: '+₦0', isUp: true, label: 'this month' } },
+    ];
+
     return (
         <div className="max-w-6xl mx-auto space-y-8">
             <div>
@@ -13,11 +54,7 @@ export default function CustomerAnalyticsPage() {
 
             {/* Stats Grid with Trends */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[
-                    { label: 'Total Visits', value: '42', icon: History, color: 'blue', trend: { value: '+12%', isUp: true, label: 'vs last month' } },
-                    { label: 'Reward Points', value: '1,250', icon: Star, color: 'primary', trend: { value: '+350', isUp: true, label: 'this month' } },
-                    { label: 'Net Savings', value: '₦15,000', icon: PiggyBank, color: 'green', trend: { value: '+₦3,500', isUp: true, label: 'this month' } },
-                ].map((stat, index) => {
+                {stats.map((stat, index) => {
                     const IconComponent = stat.icon;
                     return (
                         <div key={index} className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-all group">
@@ -38,7 +75,10 @@ export default function CustomerAnalyticsPage() {
                                 )}
                             </div>
                             <p className="text-[10px] font-black uppercase text-text-secondary tracking-[0.15em] mb-1">{stat.label}</p>
-                            <p className="text-3xl font-display font-bold text-text-main">{stat.value}</p>
+                            <p className="text-3xl font-display font-bold text-text-main flex items-center gap-1">
+                                {stat.isCurrency && <TbCurrencyNaira />}
+                                {stat.value}
+                            </p>
                         </div>
                     );
                 })}
@@ -67,25 +107,27 @@ export default function CustomerAnalyticsPage() {
                             Visit Trends
                         </h4>
                         <div className="space-y-3">
-                            {[
-                                { month: 'January', visits: 8, max: 15 },
-                                { month: 'February', visits: 12, max: 15 },
-                                { month: 'March', visits: 15, max: 15 },
-                                { month: 'April', visits: 7, max: 15 },
-                            ].map((item) => (
-                                <div key={item.month}>
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="text-xs font-bold text-text-secondary">{item.month}</span>
-                                        <span className="text-xs font-black text-primary">{item.visits} visits</span>
-                                    </div>
-                                    <div className="w-full bg-gray-100 rounded-full h-2">
-                                        <div
-                                            className="bg-primary h-full rounded-full transition-all"
-                                            style={{ width: `${(item.visits / item.max) * 100}%` }}
-                                        ></div>
-                                    </div>
-                                </div>
-                            ))}
+                            {data?.visitTrends.length === 0 ? (
+                                <p className="text-xs text-text-secondary italic">No visit data found yet.</p>
+                            ) : (
+                                data?.visitTrends.map((item) => {
+                                    const maxVisits = Math.max(...data.visitTrends.map(v => v.visits), 1);
+                                    return (
+                                        <div key={item.month}>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-xs font-bold text-text-secondary">{item.month}</span>
+                                                <span className="text-xs font-black text-primary">{item.visits} visits</span>
+                                            </div>
+                                            <div className="w-full bg-gray-100 rounded-full h-2">
+                                                <div
+                                                    className="bg-primary h-full rounded-full transition-all"
+                                                    style={{ width: `${(item.visits / maxVisits) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
                         </div>
                     </div>
 
@@ -93,28 +135,31 @@ export default function CustomerAnalyticsPage() {
                     <div>
                         <h4 className="text-sm font-bold text-text-main mb-4 flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                            Points Earned by Category
+                            Points Earned by Venue
                         </h4>
                         <div className="space-y-3">
-                            {[
-                                { category: 'Food & Dining', points: 650, color: 'bg-orange-500', percentage: 52 },
-                                { category: 'Fitness & Wellness', points: 300, color: 'bg-blue-500', percentage: 24 },
-                                { category: 'Shopping', points: 200, color: 'bg-purple-500', percentage: 16 },
-                                { category: 'Entertainment', points: 100, color: 'bg-pink-500', percentage: 8 },
-                            ].map((item) => (
-                                <div key={item.category}>
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="text-xs font-bold text-text-secondary">{item.category}</span>
-                                        <span className="text-xs font-black text-text-main">{item.points} pts</span>
-                                    </div>
-                                    <div className="w-full bg-gray-100 rounded-full h-2">
-                                        <div
-                                            className={`${item.color} h-full rounded-full transition-all`}
-                                            style={{ width: `${item.percentage}%` }}
-                                        ></div>
-                                    </div>
-                                </div>
-                            ))}
+                            {data?.pointsByVenue.length === 0 ? (
+                                <p className="text-xs text-text-secondary italic">No venue points data found.</p>
+                            ) : (
+                                data?.pointsByVenue.map((item, index) => {
+                                    const colors = ['bg-orange-500', 'bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-emerald-500'];
+                                    const totalPoints = data.pointsByVenue.reduce((sum, p) => sum + p.points, 0) || 1;
+                                    return (
+                                        <div key={item.venueName}>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-xs font-bold text-text-secondary">{item.venueName}</span>
+                                                <span className="text-xs font-black text-text-main">{item.points} pts</span>
+                                            </div>
+                                            <div className="w-full bg-gray-100 rounded-full h-2">
+                                                <div
+                                                    className={`${colors[index % colors.length]} h-full rounded-full transition-all`}
+                                                    style={{ width: `${(item.points / totalPoints) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
                         </div>
                     </div>
 
@@ -125,24 +170,25 @@ export default function CustomerAnalyticsPage() {
                             Most Visited Venues
                         </h4>
                         <div className="space-y-3">
-                            {[
-                                { name: 'Green Terrace Cafe', visits: 18, icon: Coffee },
-                                { name: 'Fitness Center', visits: 12, icon: Dumbbell },
-                                { name: 'NextGen Tech Store', visits: 8, icon: Smartphone },
-                            ].map((venue) => {
-                                const VenueIcon = venue.icon;
-                                return (
-                                    <div key={venue.name} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                                        <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-text-secondary">
-                                            <VenueIcon size={18} />
+                            {data?.topVenues.length === 0 ? (
+                                <p className="text-xs text-text-secondary italic">No venue data available.</p>
+                            ) : (
+                                data?.topVenues.map((venue) => {
+                                    // Map some icons based on name or just use Coffee as default
+                                    const VenueIcon = Coffee;
+                                    return (
+                                        <div key={venue.venueName} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-text-secondary text-primary">
+                                                <VenueIcon size={18} />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-xs font-bold text-text-main">{venue.venueName}</p>
+                                                <p className="text-[10px] text-text-secondary font-medium">{venue.points} total points earned</p>
+                                            </div>
                                         </div>
-                                        <div className="flex-1">
-                                            <p className="text-xs font-bold text-text-main">{venue.name}</p>
-                                            <p className="text-[10px] text-text-secondary font-medium">{venue.visits} visits</p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })
+                            )}
                         </div>
                     </div>
 
@@ -150,26 +196,23 @@ export default function CustomerAnalyticsPage() {
                     <div>
                         <h4 className="text-sm font-bold text-text-main mb-4 flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                            Savings Breakdown
+                            Savings Summary
                         </h4>
                         <div className="space-y-3">
                             <div className="p-4 bg-green-50 rounded-lg border border-green-100">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-xs font-bold text-green-900">Total Saved</span>
-                                    <span className="text-2xl font-display font-bold text-green-600">₦15,000</span>
+                                    <span className="text-2xl font-display font-bold text-green-600 flex items-center gap-1">
+                                        <TbCurrencyNaira />
+                                        {(data?.netSavings || 0).toLocaleString()}
+                                    </span>
                                 </div>
-                                <div className="text-[10px] text-green-700 font-medium">Through rewards & discounts</div>
+                                <div className="text-[10px] text-green-700 font-medium">Through rewards & redemptions across all venues</div>
                             </div>
-                            {[
-                                { type: 'Reward Redemptions', amount: '₦8,500' },
-                                { type: 'Member Discounts', amount: '₦4,200' },
-                                { type: 'Bonus Offers', amount: '₦2,300' },
-                            ].map((item) => (
-                                <div key={item.type} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                    <span className="text-xs font-bold text-text-secondary">{item.type}</span>
-                                    <span className="text-sm font-black text-text-main">{item.amount}</span>
-                                </div>
-                            ))}
+
+                            <p className="text-[10px] text-text-secondary italic mt-4">
+                                Keep tapping at more venues to increase your total savings and rewards!
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -177,3 +220,4 @@ export default function CustomerAnalyticsPage() {
         </div>
     );
 }
+
