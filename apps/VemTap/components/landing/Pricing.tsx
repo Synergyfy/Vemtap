@@ -17,7 +17,7 @@ export default function Pricing() {
     const isAuthenticated = useAuthStore((state: AuthState) => state.isAuthenticated);
     const subscribeMutation = useSubscribe();
     const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
-    const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
+    const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
 
     const { data: plans = [], isLoading } = useQuery({
         queryKey: ['subscription-plans'],
@@ -34,13 +34,13 @@ export default function Pricing() {
             subscribeMutation.mutate({
                 businessId: user?.businessId || '',
                 planId: 'free',
-                billingCycle
+                billingPeriod
             }, {
                 onSuccess: () => toast.success('Switched to Free plan!'),
                 onError: () => toast.error('Failed to update plan')
             });
         } else {
-            setCheckoutPlan({ ...plan, billingCycle });
+            setCheckoutPlan({ ...plan, billingPeriod });
         }
     };
 
@@ -105,10 +105,10 @@ export default function Pricing() {
                         {(['monthly', 'quarterly', 'yearly'] as const).map((cycle) => (
                             <button
                                 key={cycle}
-                                onClick={() => setBillingCycle(cycle)}
+                                onClick={() => setBillingPeriod(cycle)}
                                 className={`
                                     px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all
-                                    ${billingCycle === cycle
+                                    ${billingPeriod === cycle
                                         ? 'bg-white text-primary shadow-sm scale-105'
                                         : 'text-text-secondary hover:text-text-main'
                                     }
@@ -127,9 +127,9 @@ export default function Pricing() {
                     {mainPlans.map((plan, index) => {
                         const highlight = plan.isPopular;
                         const isCurrentPlan = user?.planId === plan.id;
-                        const price = getPriceByCycle(plan, billingCycle);
-                        const perMonthPrice = getPerMonthPrice(price, billingCycle);
-                        const billingTotal = getBillingTotal(price, billingCycle);
+                        const price = getPriceByCycle(plan, billingPeriod);
+                        const perMonthPrice = getPerMonthPrice(price, billingPeriod);
+                        const billingTotal = getBillingTotal(price, billingPeriod);
                         const features = getDefaultFeatures(plan);
 
                         return (
@@ -169,9 +169,9 @@ export default function Pricing() {
                                                     /mo
                                                 </span>
                                             </div>
-                                            {billingCycle !== 'monthly' && (
+                                            {billingPeriod !== 'monthly' && (
                                                 <p className={`text-[10px] font-medium mt-1 ${highlight ? 'text-white/60' : 'text-text-secondary'}`}>
-                                                    ₦{billingTotal.toLocaleString()} {getBillingLabel(billingCycle)}
+                                                    ₦{billingTotal.toLocaleString()} {getBillingLabel(billingPeriod)}
                                                 </p>
                                             )}
                                         </>
@@ -209,8 +209,8 @@ export default function Pricing() {
                 {enterprisePlan && (() => {
                     const isCurrentPlan = user?.planId === enterprisePlan.id;
                     const features = getDefaultFeatures(enterprisePlan);
-                    const price = getPriceByCycle(enterprisePlan, billingCycle);
-                    
+                    const price = getPriceByCycle(enterprisePlan, billingPeriod);
+
                     return (
                         <div className="max-w-5xl mx-auto">
                             <div className="relative flex flex-col md:flex-row items-center gap-8 p-6 md:p-8 rounded-2xl bg-primary text-white shadow-xl shadow-primary/10 border border-white/10">
@@ -262,7 +262,7 @@ export default function Pricing() {
                         isOpen={!!checkoutPlan}
                         onClose={() => setCheckoutPlan(null)}
                         plan={checkoutPlan}
-                        billingCycle={checkoutPlan.billingCycle}
+                        billingPeriod={checkoutPlan.billingPeriod}
                         businessId={user?.businessId}
                     />
                 )}

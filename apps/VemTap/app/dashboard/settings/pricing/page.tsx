@@ -13,7 +13,7 @@ import { PricingPlan } from '@/types/pricing';
 
 export default function DashboardPricingPage() {
     const { user } = useAuthStore();
-    const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
+    const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
     const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
 
     const { data: plans = [], isLoading: plansLoading } = useQuery({
@@ -58,7 +58,7 @@ export default function DashboardPricingPage() {
             subscribeMutation.mutate({
                 businessId: user?.businessId || '',
                 planId: 'free',
-                billingCycle: 'monthly' as any
+                billingPeriod: 'monthly'
             }, {
                 onSuccess: () => {
                     toast.success('Switched to Free plan!');
@@ -67,7 +67,7 @@ export default function DashboardPricingPage() {
                 onError: () => toast.error('Failed to update plan')
             });
         } else {
-            setCheckoutPlan({ ...plan, billingCycle });
+            setCheckoutPlan({ ...plan, billingPeriod });
         }
     };
 
@@ -185,8 +185,8 @@ export default function DashboardPricingPage() {
                     {(['monthly', 'quarterly', 'yearly'] as const).map((cycle) => (
                         <button
                             key={cycle}
-                            onClick={() => setBillingCycle(cycle)}
-                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${billingCycle === cycle ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                            onClick={() => setBillingPeriod(cycle)}
+                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${billingPeriod === cycle ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-900'
                                 }`}
                         >
                             {cycle}
@@ -199,7 +199,7 @@ export default function DashboardPricingPage() {
                 {plans.filter((p: PricingPlan) => p.id !== 'white-label' && p.id !== 'enterprise').map((plan: PricingPlan) => {
                     const isCurrent = plan.id === activePlanId;
                     const isPersonal = plan.id === 'personal';
-                    const price = getPriceByCycle(plan, billingCycle);
+                    const price = getPriceByCycle(plan, billingPeriod);
                     const features = getPlanFeatures(plan);
                     return (
                         <div key={plan.id} className={`p-8 rounded-4xl border transition-all flex flex-col ${isCurrent ? 'bg-primary/5 border-primary shadow-xl shadow-primary/5' : 'bg-white border-slate-100 hover:border-primary/20'
@@ -258,7 +258,7 @@ export default function DashboardPricingPage() {
                     isOpen={!!checkoutPlan}
                     onClose={() => setCheckoutPlan(null)}
                     plan={checkoutPlan}
-                    billingPeriod={checkoutPlan.billingCycle}
+                    billingPeriod={checkoutPlan.billingPeriod}
                 />
             )}
         </div>
