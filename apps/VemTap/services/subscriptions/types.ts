@@ -24,6 +24,6 @@ export interface SubscriptionCapabilities {
 export interface SubscribeRequest {
     businessId: string;
     planId: string;
-    billingCycle: 'monthly' | 'quarterly' | 'yearly';
+    billingPeriod: 'monthly' | 'quarterly' | 'yearly';
     paymentReference?: string;
 }

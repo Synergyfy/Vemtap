@@ -12,11 +12,11 @@ interface Props {
     isOpen: boolean;
     onClose: () => void;
     plan: PricingPlan;
-    billingCycle?: 'monthly' | 'quarterly' | 'yearly';
+    billingPeriod?: 'monthly' | 'quarterly' | 'yearly';
     businessId?: string;
 }
 
-export default function SubscriptionCheckout({ isOpen, onClose, plan, billingCycle = 'monthly', businessId }: Props) {
+export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPeriod = 'monthly', businessId }: Props) {
     const { user } = useAuthStore();
     const subscribeMutation = useSubscribe();
     const [isProcessing, setIsProcessing] = useState(false);
@@ -44,7 +44,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingCyc
                 subscribeMutation.mutate({
                     businessId: businessId || user?.businessId || '',
                     planId: plan.id,
-                    billingCycle,
+                    billingPeriod,
                     paymentReference: `mock-ref-${Date.now()}`
                 }, {
                     onSuccess: () => {
@@ -67,7 +67,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingCyc
             email: email,
             amount: breakdown.total * 100, // Paystack amount is in kobo
             currency: 'NGN',
-            ref: `SUB-${businessId}-${Date.now()}`,
+            ref: `SUB-${businessId || user?.businessId || 'anon'}-${Date.now()}`,
             onClose: () => {
                 setIsProcessing(false);
                 toast.error('Payment window closed');
@@ -77,7 +77,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingCyc
                 subscribeMutation.mutate({
                     businessId: businessId || user?.businessId || '',
                     planId: plan.id,
-                    billingCycle,
+                    billingPeriod,
                     paymentReference: response.reference
                 }, {
                     onSuccess: () => {
@@ -97,8 +97,8 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingCyc
     };
 
     const getPriceByCycle = () => {
-        if (billingCycle === 'yearly') return plan.yearlyPrice;
-        if (billingCycle === 'quarterly') return plan.quarterlyPrice;
+        if (billingPeriod === 'yearly') return plan.yearlyPrice;
+        if (billingPeriod === 'quarterly') return plan.quarterlyPrice;
         return plan.monthlyPrice;
     };
 
@@ -110,7 +110,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingCyc
         const base = getPriceByCycle();
         if (base === undefined) return null;
 
-        if (billingCycle === 'quarterly') {
+        if (billingPeriod === 'quarterly') {
             const perMonth = Math.floor(base * 0.9 / 3);
             const total = perMonth * 3;
             return {
@@ -121,7 +121,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingCyc
                 months: 3,
             };
         }
-        if (billingCycle === 'yearly') {
+        if (billingPeriod === 'yearly') {
             const perMonth = Math.floor(base * 0.8 / 12);
             const total = perMonth * 12;
             return {
@@ -153,7 +153,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingCyc
                             <h4 className="text-xl font-black text-text-main tracking-tight">{plan.name}</h4>
                             <div className="flex items-center gap-2 mt-1">
                                 <span className="px-2 py-0.5 bg-white border border-primary/10 rounded text-[9px] font-black uppercase tracking-widest text-primary">
-                                    {billingCycle}
+                                    {billingPeriod}
                                 </span>
                             </div>
                         </div>
@@ -178,7 +178,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingCyc
                                 <ShieldCheck size={14} />
                             </div>
                             <p className="text-xs font-bold text-emerald-800">
-                                You save <span className="underline decoration-emerald-500 decoration-2 underline-offset-2">₦{breakdown.savings.toLocaleString()}</span> with {billingCycle} billing.
+                                You save <span className="underline decoration-emerald-500 decoration-2 underline-offset-2">₦{breakdown.savings.toLocaleString()}</span> with {billingPeriod} billing.
                             </p>
                         </div>
                     )}

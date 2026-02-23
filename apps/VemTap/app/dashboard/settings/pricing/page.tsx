@@ -258,7 +258,7 @@ export default function DashboardPricingPage() {
                     isOpen={!!checkoutPlan}
                     onClose={() => setCheckoutPlan(null)}
                     plan={checkoutPlan}
-                    billingCycle={checkoutPlan.billingCycle}
+                    billingPeriod={checkoutPlan.billingCycle}
                 />
             )}
         </div>
