@@ -23,11 +23,10 @@ export default function ReturningVisitorsPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<Visitor | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
     const queryClient = useQueryClient();
+    const { user, activeBranchId } = useAuthStore();
 
-    const userBranchId = useAuthStore((state) => state.user?.businessId);
-
-    const { data: paginatedData, isLoading } = useReturningVisitors(userBranchId);
-    const { data: statsData } = useReturningVisitorStats(userBranchId);
+    const { data: paginatedData, isLoading } = useReturningVisitors(activeBranchId === 'all' || !activeBranchId ? undefined : activeBranchId);
+    const { data: statsData } = useReturningVisitorStats(activeBranchId === 'all' || !activeBranchId ? undefined : activeBranchId);
 
     const returningVisitors = paginatedData?.data || [];
 
@@ -36,7 +35,7 @@ export default function ReturningVisitorsPage() {
             const newReward = {
                 ...rewardData,
                 active: true,
-                branchId: userBranchId
+                branchId: activeBranchId === 'all' ? undefined : activeBranchId
             };
             return await api.post('/campaigns/rewards', newReward); // Assuming you'd have a reward post, mock it via API here for UI binding compatibility
         },

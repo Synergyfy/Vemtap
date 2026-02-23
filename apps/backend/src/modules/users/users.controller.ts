@@ -41,7 +41,7 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly businessesService: BusinessesService,
     private readonly branchesService: BranchesService,
-  ) {}
+  ) { }
 
   @Get('me')
   @Roles(
@@ -119,14 +119,6 @@ export class UsersController {
       throw new BadRequestException('User with this email already exists');
     }
 
-    // Verify the business is owned by the current user (owner)
-    const business = await this.businessesService.findById(
-      inviteDto.businessId,
-    );
-    if (!business || business.ownerId !== req.user.id) {
-      throw new BadRequestException('Business not found or not owned by you');
-    }
-
     // Verify the branch belongs to the business
     const branch = await this.branchesService.findOne(
       req.user.id,
@@ -138,11 +130,13 @@ export class UsersController {
       );
     }
 
+    const businessId = req.user.businessId;
+
     // In a real app, we'd send an invite email. For this MVP, we create them with a default password.
     const hashedPassword = await bcrypt.hash('staff123', 10);
     return this.usersService.create({
       ...inviteDto,
-      businessId: inviteDto.businessId,
+      businessId,
       branchId: inviteDto.branchId,
       password: hashedPassword,
     });

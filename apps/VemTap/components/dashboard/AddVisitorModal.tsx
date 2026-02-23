@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
-import { Branch } from '@/store/useBusinessStore';
+import { Branch } from '@/services/branches/types';
 
 interface AddVisitorModalProps {
     isOpen: boolean;

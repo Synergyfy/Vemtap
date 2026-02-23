@@ -10,8 +10,10 @@ export const useStaff = (branchId?: string) => {
         queryKey: ['staff', branchId],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (branchId) params.append('branchId', branchId);
-            return await api.get(`/users/staff?${params.toString()}`);
+            if (branchId && branchId !== 'all') {
+                params.append('branchId', branchId);
+            }
+            return await api.get(`/users/staff${params.toString() ? `?${params.toString()}` : ''}`);
         },
         enabled: !!userBusinessId,
     });
