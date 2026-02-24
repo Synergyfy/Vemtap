@@ -56,6 +56,6 @@ export class Subscription extends AbstractBaseEntity {
   paystackReference: string;
 
   // Store authorization code for recurring charges
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   paystackAuthorizationCode: string | null;
 }
