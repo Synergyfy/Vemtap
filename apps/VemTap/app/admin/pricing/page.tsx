@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import { notify } from '@/lib/notify';
 import {
     Tag, Plus, Trash2, Edit3, Save, X,
