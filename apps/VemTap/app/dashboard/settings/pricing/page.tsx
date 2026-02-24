@@ -15,6 +15,7 @@ export default function DashboardPricingPage() {
     const { user } = useAuthStore();
     const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
     const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
+    const [isTrialSelection, setIsTrialSelection] = useState(false);
 
     const { data: plans = [], isLoading: plansLoading } = useQuery({
         queryKey: ['subscription-plans'],
@@ -54,19 +55,20 @@ export default function DashboardPricingPage() {
             return;
         }
 
-        if (plan.isFree || useTrial) {
+        if (plan.isFree) {
             subscribeMutation.mutate({
                 businessId: user?.businessId || '',
                 planId: plan.id,
-                billingPeriod: useTrial ? billingPeriod : 'monthly'
+                billingPeriod: 'monthly'
             }, {
                 onSuccess: () => {
-                    toast.success(useTrial ? `Started ${plan.trialDurationDays}-day free trial!` : 'Switched to Free plan!');
+                    toast.success('Switched to Free plan!');
                     refetchSub();
                 },
                 onError: () => toast.error('Failed to update plan')
             });
         } else {
+            setIsTrialSelection(useTrial);
             setCheckoutPlan({ ...plan, billingPeriod });
         }
     };
@@ -249,7 +251,7 @@ export default function DashboardPricingPage() {
                                                 : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg'
                                         }`}
                                 >
-                                    {isCurrent ? isPersonal && isOwner ? 'Update Configuration' : 'Current Plan' : isOwner ? plan.isFree ? 'Get Started' : 'Subscribe Now' : 'Restricted'}
+                                    {isCurrent ? isPersonal && isOwner ? 'Update Configuration' : 'Current Plan' : isOwner ? plan.isFree ? 'Get Started' : 'Select Plan' : 'Restricted'}
                                 </button>
                             </div>
                         </div>
@@ -274,8 +276,12 @@ export default function DashboardPricingPage() {
             {checkoutPlan && (
                 <SubscriptionCheckout
                     isOpen={!!checkoutPlan}
-                    onClose={() => setCheckoutPlan(null)}
+                    onClose={() => {
+                        setCheckoutPlan(null);
+                        setIsTrialSelection(false);
+                    }}
                     plan={checkoutPlan}
+                    isTrial={isTrialSelection}
                     billingPeriod={checkoutPlan.billingPeriod}
                 />
             )}

@@ -17,6 +17,7 @@ export default function Pricing() {
     const isAuthenticated = useAuthStore((state: AuthState) => state.isAuthenticated);
     const subscribeMutation = useSubscribe();
     const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
+    const [isTrialSelection, setIsTrialSelection] = useState(false);
     const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
 
     const { data: plans = [], isLoading } = useQuery({
@@ -30,16 +31,17 @@ export default function Pricing() {
             return;
         }
 
-        if (plan.id === 'free' || useTrial) {
+        if (plan.id === 'free') {
             subscribeMutation.mutate({
                 businessId: user?.businessId || '',
                 planId: plan.id,
                 billingPeriod
             }, {
-                onSuccess: () => toast.success(useTrial ? `Started ${plan.trialDurationDays}-day free trial!` : 'Switched to Free plan!'),
+                onSuccess: () => toast.success('Switched to Free plan!'),
                 onError: () => toast.error('Failed to update plan')
             });
         } else {
+            setIsTrialSelection(useTrial);
             setCheckoutPlan({ ...plan, billingPeriod });
         }
     };
@@ -302,8 +304,12 @@ export default function Pricing() {
                 {checkoutPlan && (
                     <SubscriptionCheckout
                         isOpen={!!checkoutPlan}
-                        onClose={() => setCheckoutPlan(null)}
+                        onClose={() => {
+                            setCheckoutPlan(null);
+                            setIsTrialSelection(false);
+                        }}
                         plan={checkoutPlan}
+                        isTrial={isTrialSelection}
                         billingPeriod={checkoutPlan.billingPeriod}
                         businessId={user?.businessId}
                     />

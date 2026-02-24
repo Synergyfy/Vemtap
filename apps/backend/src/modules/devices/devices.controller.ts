@@ -27,7 +27,7 @@ import {
 @Controller('devices')
 @Roles(UserRole.OWNER, UserRole.MANAGER) // Only Owners and Managers can manage devices
 export class DevicesController {
-  constructor(private readonly devicesService: DevicesService) {}
+  constructor(private readonly devicesService: DevicesService) { }
 
   @Get()
   @ApiOperation({ summary: 'Get all devices for the business' })
@@ -76,6 +76,20 @@ export class DevicesController {
     @Body() dto: UpdateAssetNamesDto,
   ) {
     return this.devicesService.updateAssetNames(req.user.businessId, dto);
+  }
+
+  @Post('generate')
+  @ApiOperation({ summary: 'Generate devices for ready orders (Business Owner)' })
+  @ApiResponse({
+    status: 201,
+    description: 'Devices generated for pending ready orders.',
+    type: [Device],
+  })
+  generate(@Request() req: { user: User }) {
+    return this.devicesService.generateDevicesForReadyOrders(
+      req.user.id,
+      req.user.businessId,
+    );
   }
 
   @Patch(':id')
