@@ -18,6 +18,7 @@ export interface PricingPlan {
     isActive: boolean;
     description: string;
     isPopular?: boolean;
+    features: string[];
 }
 
 export const fetchPricingPlans = async (): Promise<PricingPlan[]> => {
