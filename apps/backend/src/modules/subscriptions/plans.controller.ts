@@ -24,11 +24,12 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { Plan } from './entities/plan.entity';
+import { Public } from 'src/common/decorators/public.decorator';
 
 @ApiTags('Plans (Admin Pricing Page)')
 @Controller('plans')
 export class PlansController {
-  constructor(private readonly plansService: PlansService) {}
+  constructor(private readonly plansService: PlansService) { }
 
   @Post('admin')
   @ApiBearerAuth()
@@ -45,6 +46,7 @@ export class PlansController {
   }
 
   @Get()
+  @Public()
   @ApiOperation({ summary: 'Get all pricing plans' })
   @ApiQuery({ name: 'onlyActive', required: false, type: Boolean })
   @ApiResponse({ status: 200, description: 'Return all plans', type: [Plan] })
@@ -54,6 +56,7 @@ export class PlansController {
   }
 
   @Get(':id')
+  @Public()
   @ApiOperation({ summary: 'Get a pricing plan by ID' })
   @ApiResponse({ status: 200, description: 'Return plan details', type: Plan })
   findOne(@Param('id') id: string) {
