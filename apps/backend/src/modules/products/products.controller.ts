@@ -128,6 +128,14 @@ export class ProductsController {
     return this.productsService.getAdminStats();
   }
 
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Get('admin/count-by-type/:id')
+  @ApiOperation({ summary: 'Count products by type (Admin only)' })
+  countByProductType(@Param('id') id: string) {
+    return this.productsService.countByProductType(id);
+  }
+
   @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get product by ID' })

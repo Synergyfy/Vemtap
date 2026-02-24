@@ -115,4 +115,5 @@ export class CreatePlanDto {
   @IsBoolean()
   @IsOptional()
   isPopular?: boolean;
+
 }
