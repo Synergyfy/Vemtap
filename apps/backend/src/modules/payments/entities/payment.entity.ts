@@ -11,6 +11,7 @@ export enum PaymentStatus {
 export enum PaymentPurpose {
   ORDER = 'Order',
   SUBSCRIPTION = 'Subscription',
+  CREDIT_TOPUP = 'Credit Topup',
 }
 
 @Entity('payments')

@@ -14,7 +14,7 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-  ) {}
+  ) { }
 
   findOne(id: string): Promise<User | null> {
     return this.usersRepository.findOneBy({ id });
@@ -98,6 +98,7 @@ export class UsersService {
       const roleMap: any = {
         admin: UserRole.ADMIN,
         business_owner: UserRole.OWNER,
+        manager: UserRole.MANAGER,
         staff: UserRole.STAFF,
         customer: UserRole.CUSTOMER,
       };
@@ -146,6 +147,7 @@ export class UsersService {
         email: user.email,
         role: user.role === UserRole.OWNER ? 'Business Owner' : user.role,
         status: user.status.toLowerCase(),
+        permissions: user.permissions || [],
         lastLogin: user.lastActive
           ? new Date(user.lastActive).toLocaleString()
           : 'Never',
@@ -233,6 +235,10 @@ export class UsersService {
       };
       if (statusMapping[updates.status])
         user.status = statusMapping[updates.status];
+    }
+
+    if (updates.permissions) {
+      user.permissions = updates.permissions;
     }
 
     return this.usersRepository.save(user);

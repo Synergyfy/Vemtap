@@ -2,10 +2,10 @@
 
 import React, { useState, useCallback, InputHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import Tooltip from '@/components/ui/Tooltip';
-import { sanitizeText, sanitizeEmail, sanitizePhone, sanitizeUrl } from '@/lib/utils/sanitize';
+import { sanitizeText, sanitizeEmail, sanitizePhone, sanitizeUrl, sanitizeBusinessName } from '@/lib/utils/sanitize';
 import { HelpCircle } from 'lucide-react';
 
-type InputType = 'text' | 'email' | 'tel' | 'url' | 'password' | 'number';
+type InputType = 'text' | 'email' | 'tel' | 'url' | 'password' | 'number' | 'businessName';
 
 interface SanitizedInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
     /** Label text displayed above the input */
@@ -24,6 +24,14 @@ interface SanitizedInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>
     type?: InputType;
     /** Custom class for the wrapper */
     wrapperClassName?: string;
+    /** Error message to display inline */
+    error?: string;
+    /** Show password visibility toggle */
+    showPasswordToggle?: boolean;
+    /** Controlled password visibility state */
+    showPassword?: boolean;
+    /** Callback for toggling password visibility */
+    onTogglePassword?: () => void;
 }
 
 interface SanitizedTextareaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'onChange'> {
@@ -45,6 +53,8 @@ function getSanitizer(type: InputType) {
             return sanitizeUrl;
         case 'password':
             return (v: string) => v; // Don't sanitize passwords
+        case 'businessName':
+            return sanitizeBusinessName;
         default:
             return sanitizeText;
     }
@@ -67,6 +77,10 @@ export function SanitizedInput({
     type = 'text',
     wrapperClassName = '',
     className,
+    error,
+    showPasswordToggle = false,
+    showPassword = false,
+    onTogglePassword,
     ...rest
 }: SanitizedInputProps) {
     const sanitize = getSanitizer(type);
@@ -99,13 +113,27 @@ export function SanitizedInput({
                     </span>
                 )}
                 <input
-                    type={type}
+                    type={showPasswordToggle ? (showPassword ? 'text' : 'password') : type}
                     value={value}
                     onChange={handleChange}
-                    className={`w-full h-12 bg-gray-50 border border-gray-100 rounded-xl ${icon ? 'pl-12' : 'pl-4'} pr-5 font-medium outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-sm ${className || ''}`}
+                    className={`w-full h-12 bg-gray-50 border rounded-xl ${icon ? 'pl-12' : 'pl-4'} ${showPasswordToggle ? 'pr-12' : 'pr-5'} font-medium outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-sm ${error ? 'border-red-400 focus:ring-red-200' : 'border-gray-100'} ${className || ''}`}
                     {...rest}
                 />
+                {showPasswordToggle && (
+                    <button
+                        type="button"
+                        onClick={onTogglePassword}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
+                    >
+                        <span className="material-icons-round text-xl">
+                            {showPassword ? 'visibility_off' : 'visibility'}
+                        </span>
+                    </button>
+                )}
             </div>
+            {error && (
+                <p className="text-xs text-red-500 font-medium ml-1">{error}</p>
+            )}
         </div>
     );
 }

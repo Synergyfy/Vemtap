@@ -15,11 +15,14 @@ import { Flow } from './entities/flow.entity';
 import { FlowExecution } from './entities/flow-execution.entity';
 import { AutomationRule } from './entities/automation-rule.entity';
 import { AutomationLog } from './entities/automation-log.entity';
+import { CreditPlan } from './entities/credit-plan.entity';
+import { BusinessCredit } from './entities/business-credit.entity';
 
 import { ContactsModule } from '../contacts/contacts.module';
 import { BusinessesModule } from '../businesses/businesses.module';
 import { SettingsModule } from '../settings/settings.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+import { PaymentsModule } from '../payments/payments.module';
 
 import { MessagingEngineService } from './services/messaging-engine.service';
 import { TemplateService } from './services/template.service';
@@ -35,7 +38,9 @@ import { MessagingController } from './controllers/messaging.controller';
 import { FlowController } from './controllers/flow.controller';
 import { TermiiWebhookController } from './controllers/termii.controller';
 import { AutomationsController } from './controllers/automations.controller';
+import { CreditPlanController } from './controllers/credit-plan.controller';
 
+import { CreditPlanService } from './services/credit-plan.service';
 import { TermiiProvider } from './providers/termii.provider';
 import { ProviderRouterService } from './services/provider-router.service';
 import { BatchSendProcessor } from './processors/batch-send.processor';
@@ -56,12 +61,15 @@ import { AutomationProcessor } from './processors/automation.processor';
       Branch,
       AutomationRule,
       AutomationLog,
+      CreditPlan,
+      BusinessCredit,
     ]),
     HttpModule,
     ContactsModule,
     BusinessesModule,
     SettingsModule,
     SubscriptionsModule,
+    PaymentsModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
@@ -110,12 +118,14 @@ import { AutomationProcessor } from './processors/automation.processor';
     BatchSendProcessor,
     FlowDelayProcessor,
     AutomationProcessor,
+    CreditPlanService,
   ],
   controllers: [
     MessagingController,
     FlowController,
     TermiiWebhookController,
     AutomationsController,
+    CreditPlanController,
   ],
   exports: [
     TypeOrmModule,

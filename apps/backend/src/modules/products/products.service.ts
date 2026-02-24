@@ -23,10 +23,6 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PaymentsService } from '../payments/payments.service';
-import {
-  PaymentPurpose,
-  PaymentStatus,
-} from '../payments/entities/payment.entity';
 import { PaymentStatus as OrderPaymentStatus } from './entities/order.entity';
 
 @Injectable()
@@ -134,44 +130,9 @@ export class ProductsService {
 
     const totalPrice = unitPrice * createOrderDto.quantity;
 
-    let paymentStatus = OrderPaymentStatus.PENDING;
-
-    if (createOrderDto.paymentReference) {
-      // Idempotency check: Ensure reference isn't already used for another order
-      const existingOrder = await this.orderRepository.findOneBy({
-        paymentReference: createOrderDto.paymentReference,
-      });
-      if (existingOrder) {
-        throw new ConflictException(
-          'Order with this payment reference already exists',
-        );
-      }
-
-      const isPaymentValid = await this.paymentsService.verifyTransaction(
-        createOrderDto.paymentReference,
-      );
-
-      if (!isPaymentValid) {
-        throw new BadRequestException('Invalid payment reference');
-      }
-
-      await this.paymentsService.recordPayment({
-        reference: createOrderDto.paymentReference,
-        amount: totalPrice,
-        purpose: PaymentPurpose.ORDER,
-        status: PaymentStatus.SUCCESS,
-        metadata: {
-          productId: product.id,
-          quantity: createOrderDto.quantity,
-        },
-        businessId: user.businessId,
-        userId: user.id,
-      });
-
-      paymentStatus = OrderPaymentStatus.PAID;
-    } else {
-      throw new BadRequestException('Payment is required for direct orders');
-    }
+    // For Owners, we skip online payment. Payment is physical.
+    // We default to PENDING.
+    const paymentStatus = OrderPaymentStatus.PENDING;
 
     const order = this.orderRepository.create({
       product,
@@ -227,6 +188,10 @@ export class ProductsService {
   async remove(id: string): Promise<void> {
     const product = await this.findOne(id);
     await this.productRepository.remove(product);
+  }
+
+  async countByProductType(productTypeId: string): Promise<number> {
+    return this.productRepository.count({ where: { productTypeId } });
   }
 
   async requestQuote(
@@ -388,6 +353,18 @@ export class ProductsService {
     if (!order) throw new NotFoundException('Order not found');
 
     order.status = OrderStatus.READY;
+    return this.orderRepository.save(order);
+  }
+
+  async markOrderCompleted(orderId: string): Promise<Order> {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+
+    order.status = OrderStatus.COMPLETED;
+    order.paymentStatus = OrderPaymentStatus.PAID; // Mark as Paid when Completed
     return this.orderRepository.save(order);
   }
 

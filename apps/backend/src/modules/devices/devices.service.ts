@@ -21,7 +21,7 @@ export class DevicesService {
     private orderRepository: Repository<Order>,
     @InjectRepository(Branch)
     private branchRepository: Repository<Branch>,
-  ) {}
+  ) { }
 
   async create(
     businessId: string,
@@ -41,6 +41,30 @@ export class DevicesService {
     return this.devicesRepository.save(device);
   }
 
+  async createAutoDevice(businessId: string): Promise<Device> {
+    let code = '';
+    let isUnique = false;
+
+    // Retry loop to ensure unique code
+    while (!isUnique) {
+      code = this.generateRandomCode();
+      const existing = await this.devicesRepository.findOneBy({ code });
+      if (!existing) {
+        isUnique = true;
+      }
+    }
+
+    const device = this.devicesRepository.create({
+      name: 'Primary Business Device',
+      code,
+      status: DeviceStatus.ACTIVE,
+      businessId,
+      type: 'Card', // Default type
+    });
+
+    return this.devicesRepository.save(device);
+  }
+
   async findAllByBusiness(businessId: string): Promise<Device[]> {
     return this.devicesRepository.find({
       where: { businessId },
@@ -48,8 +72,15 @@ export class DevicesService {
     });
   }
 
-  async findOne(id: string, businessId: string): Promise<Device> {
-    const device = await this.devicesRepository.findOneBy({ id, businessId });
+  async findOne(id: string, businessId?: string): Promise<Device> {
+    const where: any = { id };
+    if (businessId) where.businessId = businessId;
+
+    const device = await this.devicesRepository.findOne({
+      where,
+      relations: ['business', 'branch'],
+    });
+
     if (!device) {
       throw new NotFoundException('Device not found');
     }

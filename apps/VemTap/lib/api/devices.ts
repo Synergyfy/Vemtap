@@ -11,8 +11,10 @@ export interface Device {
     batteryLevel: number;
     lastActive?: string;
     businessId: string;
+    business?: any; // Added to support tap flow metadata
     orderId?: string;
     branchId?: string;
+    branch?: any; // Added to support tap flow metadata
     productTypeId?: string;
     createdAt: string;
     updatedAt: string;
@@ -56,3 +58,4 @@ export const deleteDevice = async (id: string): Promise<void> => {
 export const createDevice = async (data: any): Promise<Device> => {
     return await api.post('/devices', data);
 };
+

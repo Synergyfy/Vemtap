@@ -12,13 +12,17 @@ import { fetchDevices, generateDevices, deleteDevice, updateDevice, fetchDeviceS
 import { fetchMyOrders } from '@/lib/api/marketplace';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MarketplaceOrder } from '@/types/marketplace';
+import { useBranches } from '@/services/branches/hooks';
+import { Building2 } from 'lucide-react';
 
 export default function NFCManagerPage() {
     const queryClient = useQueryClient();
     const { user } = useAuthStore();
     const [selectedLink, setSelectedLink] = useState<any | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [editData, setEditData] = useState({ name: '', location: '' });
+    const [editData, setEditData] = useState({ name: '', location: '', branchId: '' });
+
+    const { data: branches = [] } = useBranches();
 
     // API Data
     const { data: devices = [], isLoading: devicesLoading } = useQuery({
@@ -89,7 +93,11 @@ export default function NFCManagerPage() {
 
     const openEditModal = (device: any) => {
         setSelectedLink(device);
-        setEditData({ name: device.name, location: device.location || '' });
+        setEditData({
+            name: device.name,
+            location: device.location || '',
+            branchId: device.branchId || ''
+        });
         setIsEditModalOpen(true);
     };
 
@@ -125,19 +133,7 @@ export default function NFCManagerPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Trial Allocation Card */}
 
-                {readyOrders.length === 0 ? (
-                    <div className="col-span-3 bg-amber-50 border border-amber-200 rounded-[2.5rem] p-8 flex items-start gap-5">
-                        <div className="size-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center shrink-0">
-                            <ShieldAlert size={24} />
-                        </div>
-                        <div>
-                            <h3 className="font-display font-bold text-amber-900 mb-1">No Ready Allocations</h3>
-                            <p className="text-sm text-amber-700 font-medium max-w-xl">
-                                You don't have any hardware orders ready for activation. Buy NFC hardware in the <strong>Marketplace</strong>. Once your order is ready, you can generate assets here.
-                            </p>
-                        </div>
-                    </div>
-                ) : (
+                {readyOrders.length > 0 ? (
                     <div className="col-span-3 bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
                         <div className="mb-6 flex justify-between items-end">
                             <div>
@@ -190,7 +186,19 @@ export default function NFCManagerPage() {
                             })}
                         </div>
                     </div>
-                )}
+                ) : devices.length === 0 && !devicesLoading ? (
+                    <div className="col-span-3 bg-amber-50 border border-amber-200 rounded-[2.5rem] p-8 flex items-start gap-5">
+                        <div className="size-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center shrink-0">
+                            <ShieldAlert size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-display font-bold text-amber-900 mb-1">No Ready Allocations</h3>
+                            <p className="text-sm text-amber-700 font-medium max-w-xl">
+                                You don't have any hardware orders ready for activation. Buy NFC hardware in the <strong>Marketplace</strong>. Once your order is ready, you can generate assets here.
+                            </p>
+                        </div>
+                    </div>
+                ) : null}
             </div>
 
             {/* Fleet Analytics Stats */}
@@ -253,7 +261,8 @@ export default function NFCManagerPage() {
                             <tbody className="divide-y divide-gray-50">
                                 <AnimatePresence mode="popLayout">
                                     {devices.map((device: any) => {
-                                        const deviceUrl = `${window.location.origin}/s/${device.code}`;
+                                        const deviceUrl = `${window.location.origin}/tap/${device.id}`;
+                                        const deviceBranch = branches.find((b: any) => b.id === device.branchId);
                                         return (
                                             <motion.tr
                                                 key={device.id}
@@ -318,7 +327,15 @@ export default function NFCManagerPage() {
                                                             <div className={`w-2 h-2 rounded-full ${device.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'}`} />
                                                             <span className="text-xs font-bold text-text-main uppercase tracking-tighter">{device.status}</span>
                                                         </div>
-                                                        <span className="text-[10px] text-text-secondary font-medium uppercase">{device.location || 'No location set'}</span>
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <span className="text-[10px] text-text-secondary font-medium uppercase">{device.location || 'No location set'}</span>
+                                                            {deviceBranch && (
+                                                                <div className="flex items-center gap-1 text-[9px] text-primary font-bold uppercase">
+                                                                    <Building2 size={10} />
+                                                                    {deviceBranch.name}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6 text-right">
@@ -392,7 +409,7 @@ export default function NFCManagerPage() {
                                     <div className="p-4 bg-white border-2 border-primary/10 rounded-3xl shadow-inner group relative">
                                         <QRCodeCanvas
                                             id={`qr-modal-${selectedLink.id}`}
-                                            value={`${window.location.origin}/s/${selectedLink.code}`}
+                                            value={`${window.location.origin}/tap/${selectedLink.id}`}
                                             size={180}
                                             level="H"
                                             includeMargin={true}
@@ -426,6 +443,22 @@ export default function NFCManagerPage() {
                                             className="w-full h-12 bg-gray-50 border border-slate-200 rounded-2xl px-4 text-sm font-bold focus:bg-white focus:border-primary transition-all outline-none"
                                             placeholder="e.g. Ground Floor, Lobby"
                                         />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 ml-1">Assign to Branch</label>
+                                        <select
+                                            value={editData.branchId}
+                                            onChange={(e) => setEditData({ ...editData, branchId: e.target.value })}
+                                            className="w-full h-12 bg-gray-50 border border-slate-200 rounded-2xl px-4 text-sm font-bold focus:bg-white focus:border-primary transition-all outline-none appearance-none"
+                                        >
+                                            <option value="">Unassigned (Main Business)</option>
+                                            {branches.map((branch: any) => (
+                                                <option key={branch.id} value={branch.id}>
+                                                    {branch.name}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </div>
 

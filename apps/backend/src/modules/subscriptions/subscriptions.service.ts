@@ -55,8 +55,13 @@ export class SubscriptionsService {
   }
 
   async subscribe(subscribeDto: SubscribeDto): Promise<Subscription> {
-    const { planId, businessId, billingPeriod, paymentReference } =
-      subscribeDto;
+    const {
+      planId,
+      businessId,
+      billingPeriod,
+      paymentReference,
+      isTrial = false,
+    } = subscribeDto;
 
     const plan = await this.plansService.findOne(planId);
     if (!plan.isActive) {
@@ -95,17 +100,22 @@ export class SubscriptionsService {
       // Paid plan
       const trialDays = plan.trialDurationDays || 0;
 
-      if (trialDays > 0) {
+      if (isTrial) {
+        if (trialDays <= 0) {
+          throw new BadRequestException(
+            'This plan does not offer a trial period.',
+          );
+        }
         status = SubscriptionStatus.TRIAL;
         const trialEnd = new Date(startDate);
         trialEnd.setDate(trialEnd.getDate() + trialDays);
         trialEndDate = trialEnd;
         endDate = trialEnd;
       } else {
-        // Immediate charge required
+        // Direct Payment (Immediate charge required)
         if (!paymentReference) {
           throw new BadRequestException(
-            'Payment reference is required for paid plans',
+            'Payment reference is required for direct subscription',
           );
         }
         // Verification already done above
@@ -152,6 +162,27 @@ export class SubscriptionsService {
     return this.subscriptionRepository.save(newSub);
   }
 
+  async getSubscriptionStatus(
+    businessId: string,
+  ): Promise<SubscriptionStatus | null> {
+    // Check for active/trial first (and update if expired)
+    const active = await this.activeSubscription(businessId);
+    if (active) return active.status;
+
+    // If no active, find the latest one to see if it expired
+    const lastSub = await this.subscriptionRepository.findOne({
+      where: { businessId },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (lastSub) {
+      // It might be EXPIRED or CANCELED
+      return lastSub.status;
+    }
+
+    return null; // Never subscribed
+  }
+
   async processExpiredTrials() {
     const now = new Date();
     const expiredTrials = await this.subscriptionRepository.find({
@@ -182,9 +213,9 @@ export class SubscriptionsService {
         amount = sub.plan.yearlyPrice;
 
       if (amount <= 0) {
-           this.activateSubscription(sub);
-           await this.subscriptionRepository.save(sub);
-           continue;
+        this.activateSubscription(sub);
+        await this.subscriptionRepository.save(sub);
+        continue;
       }
 
       const ownerEmail = 'unknown@latap.com';
@@ -201,13 +232,13 @@ export class SubscriptionsService {
         );
 
         await this.paymentsService.recordPayment({
-            reference: charge.reference,
-            amount: amount,
-            purpose: PaymentPurpose.SUBSCRIPTION,
-            status: PaymentStatus.SUCCESS,
-            metadata: { subscriptionId: sub.id, planId: sub.planId },
-            businessId: sub.businessId,
-            userId: sub.business?.ownerId,
+          reference: charge.reference,
+          amount: amount,
+          purpose: PaymentPurpose.SUBSCRIPTION,
+          status: PaymentStatus.SUCCESS,
+          metadata: { subscriptionId: sub.id, planId: sub.planId },
+          businessId: sub.businessId,
+          userId: sub.business?.ownerId,
         });
 
         this.activateSubscription(sub);
