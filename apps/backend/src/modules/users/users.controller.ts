@@ -32,6 +32,7 @@ import { GetStaffDto } from './dto/get-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import * as bcrypt from 'bcrypt';
+import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -45,6 +46,7 @@ export class UsersController {
   ) {}
 
   @Get('me')
+  @SkipSubscriptionCheck()
   @Roles(
     UserRole.CUSTOMER,
     UserRole.OWNER,
@@ -61,6 +63,7 @@ export class UsersController {
   }
 
   @Patch('me')
+  @SkipSubscriptionCheck()
   @Roles(
     UserRole.CUSTOMER,
     UserRole.OWNER,
@@ -74,6 +77,7 @@ export class UsersController {
   }
 
   @Delete('me')
+  @SkipSubscriptionCheck()
   @Roles(
     UserRole.CUSTOMER,
     UserRole.OWNER,
