@@ -5,9 +5,14 @@ export interface PricingPlan {
     monthlyPrice: number;
     quarterlyPrice: number;
     yearlyPrice: number;
+    features: string[];
     currency: string;
     isFree: boolean;
-    freeDurationDays: number;
+    trialDurationDays: number;
+    freeDurationDays?: number;
+    smsCredits: number;
+    whatsappCredits: number;
+    emailCredits: number;
     teamMembersLimit: number;
     loyaltyLimit: number;
     tagsLimit: number;
