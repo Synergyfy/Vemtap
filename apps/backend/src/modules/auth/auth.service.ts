@@ -55,7 +55,8 @@ export class AuthService {
     return { message: 'OTP sent successfully' };
   }
 
-  async sendOtp(email: string) {
+  async sendOtp(dto: any) {
+    const email = typeof dto === 'string' ? dto : dto.email;
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
       throw new ConflictException('User with this email already exists');
@@ -65,11 +66,12 @@ export class AuthService {
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 min expiry
 
-    // Save OTP
+    // Save OTP with optional metadata
     const otp = this.otpRepository.create({
       email,
       code,
       expiresAt,
+      metadata: typeof dto === 'object' ? dto : undefined,
     });
     await this.otpRepository.save(otp);
 
@@ -123,6 +125,24 @@ export class AuthService {
 
   // --- Original Generic Register (Kept for compatibility) ---
   async register(registrationData: any) {
+    // 0. Verify OTP first (Mandatory for Customers now)
+    const otpRecord = await this.otpRepository.findOne({
+      where: { email: registrationData.email },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!otpRecord) {
+      throw new BadRequestException('Verification session not found');
+    }
+
+    if (!otpRecord.isVerified) {
+      throw new BadRequestException(
+        'OTP must be verified before completing registration',
+      );
+    }
+
+    const metadata = otpRecord.metadata || {};
+
     const existingUser = await this.usersService.findByEmail(
       registrationData.email,
     );
@@ -145,12 +165,12 @@ export class AuthService {
     // 1. Create User
     const hashedPassword = await bcrypt.hash(registrationData.password, 10);
     const user = await this.usersService.create({
-      firstName: registrationData.firstName,
-      lastName: registrationData.lastName,
+      firstName: registrationData.firstName || metadata.firstName,
+      lastName: registrationData.lastName || metadata.lastName,
       email: registrationData.email,
       password: hashedPassword,
       role: role as UserRole,
-      phone: registrationData.phone,
+      phone: registrationData.phone || metadata.phone,
       businessId: registrationData.businessId, // For staff/managers joining existing business
     });
 
@@ -168,6 +188,9 @@ export class AuthService {
       user.businessId = business.id;
       await this.usersService.create(user); // Save update
     }
+
+    // Consume OTP session
+    await this.otpRepository.remove(otpRecord);
 
     const { password: _password, ...result } = user;
     return this.login(result);
