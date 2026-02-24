@@ -16,7 +16,6 @@ export interface PricingPlan {
     isActive: boolean;
     description: string;
     isPopular?: boolean;
-    features: string[];
 }
 
 export interface HardwareOption {

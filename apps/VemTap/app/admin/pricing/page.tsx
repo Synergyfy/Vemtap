@@ -25,8 +25,7 @@ const defaultNewPlan: Omit<PricingPlan, 'id'> = {
     analyticsLevel: 'basic',
     isActive: true,
     description: '',
-    isPopular: false,
-    features: []
+    isPopular: false
 };
 
 export default function AdminPricingPage() {
@@ -192,19 +191,6 @@ export default function AdminPricingPage() {
                                         </div>
                                     </div>
 
-                                    {(plan.features || []).length > 0 && (
-                                        <div className="mt-6 pt-6 border-t border-gray-50">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Custom Features</p>
-                                            <div className="space-y-2">
-                                                {plan.features.map((feature, idx) => (
-                                                    <div key={idx} className="flex items-center gap-2 text-xs font-medium text-text-secondary">
-                                                        <CheckCircle2 size={12} className="text-primary" />
-                                                        <span>{feature}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         ))}
@@ -428,79 +414,6 @@ export default function AdminPricingPage() {
                                 </div>
                             </div>
 
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Plan Features</label>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            placeholder="New feature..."
-                                            className="h-9 px-3 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold outline-none focus:ring-1 focus:ring-primary/30"
-                                            id="newFeatureInput"
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    const input = e.currentTarget;
-                                                    if (input.value.trim()) {
-                                                        const currentFeatures = currentPlan?.features || [];
-                                                        const updatedFeatures = [...currentFeatures, input.value.trim()];
-                                                        if (isNewPlanMode) {
-                                                            setEditingPlan({ ...(currentPlan || defaultNewPlan), features: updatedFeatures } as PricingPlan);
-                                                        } else {
-                                                            setEditingPlan({ ...currentPlan!, features: updatedFeatures });
-                                                        }
-                                                        input.value = '';
-                                                    }
-                                                }
-                                            }}
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                const input = document.getElementById('newFeatureInput') as HTMLInputElement;
-                                                if (input.value.trim()) {
-                                                    const currentFeatures = currentPlan?.features || [];
-                                                    const updatedFeatures = [...currentFeatures, input.value.trim()];
-                                                    if (isNewPlanMode) {
-                                                        setEditingPlan({ ...(currentPlan || defaultNewPlan), features: updatedFeatures } as PricingPlan);
-                                                    } else {
-                                                        setEditingPlan({ ...currentPlan!, features: updatedFeatures });
-                                                    }
-                                                    input.value = '';
-                                                }
-                                            }}
-                                            className="h-9 px-3 bg-primary/10 text-primary rounded-lg text-xs font-bold hover:bg-primary/20 transition-all flex items-center gap-1"
-                                        >
-                                            <Plus size={14} /> Add Feature
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    {(currentPlan?.features || []).map((feature, idx) => (
-                                        <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-xl">
-                                            <div className="flex items-center gap-2">
-                                                <CheckCircle2 size={16} className="text-primary" />
-                                                <span className="text-sm font-medium text-text-main">{feature}</span>
-                                            </div>
-                                            <button
-                                                onClick={() => {
-                                                    const updatedFeatures = (currentPlan?.features || []).filter((_, i) => i !== idx);
-                                                    if (isNewPlanMode) {
-                                                        setEditingPlan({ ...(currentPlan || defaultNewPlan), features: updatedFeatures } as PricingPlan);
-                                                    } else {
-                                                        setEditingPlan({ ...currentPlan!, features: updatedFeatures });
-                                                    }
-                                                }}
-                                                className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-all"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {(currentPlan?.features || []).length === 0 && (
-                                        <p className="text-xs text-center text-gray-400 py-4 border-2 border-dashed border-gray-50 rounded-xl">No custom features added yet.</p>
-                                    )}
-                                </div>
-                            </div>
 
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Description</label>
