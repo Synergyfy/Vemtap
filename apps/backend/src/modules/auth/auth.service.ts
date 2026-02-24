@@ -25,7 +25,7 @@ export class AuthService {
     private jwtService: JwtService,
     @InjectRepository(Otp)
     private otpRepository: Repository<Otp>,
-  ) { }
+  ) {}
 
   async sendOtp(email: string) {
     const existingUser = await this.usersService.findByEmail(email);
@@ -199,7 +199,9 @@ export class AuthService {
 
     // Safety check just in case env code is not set, don't allow open registration
     if (!envCode) {
-      throw new BadRequestException('Admin registration is not correctly configured on the server');
+      throw new BadRequestException(
+        'Admin registration is not correctly configured on the server',
+      );
     }
 
     if (dto.adminAccountCode !== envCode) {

@@ -27,7 +27,11 @@ export class Product extends AbstractBaseEntity {
   @Column('simple-array')
   images: string[];
 
-  @ApiProperty({ example: ['https://example.com/video.mp4'], type: [String], required: false })
+  @ApiProperty({
+    example: ['https://example.com/video.mp4'],
+    type: [String],
+    required: false,
+  })
   @Column('simple-array', { nullable: true })
   videos: string[];
 

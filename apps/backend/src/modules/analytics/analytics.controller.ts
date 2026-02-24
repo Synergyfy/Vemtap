@@ -25,7 +25,7 @@ import { PermissionsGuard } from '../../common/guards/permissions.guard';
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Controller('analytics')
 export class AnalyticsController {
-  constructor(private readonly analyticsService: AnalyticsService) { }
+  constructor(private readonly analyticsService: AnalyticsService) {}
 
   @Get('dashboard')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)

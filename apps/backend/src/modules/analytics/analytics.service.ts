@@ -14,7 +14,7 @@ export class AnalyticsService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Business)
     private readonly businessRepository: Repository<Business>,
-  ) { }
+  ) {}
 
   private async resolveBusinessContext(
     branchId: string | undefined,
@@ -293,9 +293,24 @@ export class AnalyticsService {
 
     return {
       stats: [
-        { label: 'Total Businesses', value: totalBusinesses.toLocaleString(), change: 0, trend: 'up' },
-        { label: 'Total Customers', value: totalCustomers.toLocaleString(), change: 0, trend: 'up' },
-        { label: 'Total Platform Taps', value: totalVisits.toLocaleString(), change: 0, trend: 'up' },
+        {
+          label: 'Total Businesses',
+          value: totalBusinesses.toLocaleString(),
+          change: 0,
+          trend: 'up',
+        },
+        {
+          label: 'Total Customers',
+          value: totalCustomers.toLocaleString(),
+          change: 0,
+          trend: 'up',
+        },
+        {
+          label: 'Total Platform Taps',
+          value: totalVisits.toLocaleString(),
+          change: 0,
+          trend: 'up',
+        },
         { label: 'Active Devices', value: 'Live', change: 0, trend: 'up' },
       ],
       monthlyData,

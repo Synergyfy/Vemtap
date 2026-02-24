@@ -75,7 +75,6 @@ export class CampaignsService {
       where.status = status;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     return this.campaignRepository.find({
       where,
       order: { createdAt: 'DESC' },

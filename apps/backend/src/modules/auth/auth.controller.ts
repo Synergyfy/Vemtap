@@ -22,7 +22,7 @@ import { LocalAuthGuard } from './guards/local-auth.guard';
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService) {}
 
   @Public()
   @Post('otp/send')
@@ -104,8 +104,14 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Bad Request (validation error or configuration error)' })
-  @ApiResponse({ status: 401, description: 'Unauthorized (invalid admin account code)' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request (validation error or configuration error)',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized (invalid admin account code)',
+  })
   @ApiResponse({ status: 409, description: 'Conflict (email already exists)' })
   async registerAdmin(@Body() registerAdminDto: RegisterAdminDto) {
     return this.authService.registerAdmin(registerAdminDto);
