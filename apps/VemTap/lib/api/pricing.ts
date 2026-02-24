@@ -2,6 +2,7 @@
 import { api } from '@/lib/api';
 
 import { PricingPlan } from '@/types/pricing';
+export type { PricingPlan };
 
 export const fetchPricingPlans = async (): Promise<PricingPlan[]> => {
     return await api.get('/plans?onlyActive=true');
