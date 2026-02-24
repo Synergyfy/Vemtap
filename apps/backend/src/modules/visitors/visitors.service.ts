@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
@@ -37,7 +41,7 @@ export class VisitorsService {
     private messagingService: MessagingEngineService,
     private campaignsService: CampaignsService,
     private automationService: AutomationService,
-  ) { }
+  ) {}
 
   // --- Main/All Visitors ---
 
@@ -232,7 +236,9 @@ export class VisitorsService {
     });
 
     if (!branch) {
-      throw new NotFoundException(`Branch with ID ${resolvedBranchId} not found`);
+      throw new NotFoundException(
+        `Branch with ID ${resolvedBranchId} not found`,
+      );
     }
 
     const visit = this.visitRepository.create({

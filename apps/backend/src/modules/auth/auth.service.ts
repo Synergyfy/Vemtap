@@ -9,23 +9,51 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { BusinessesService } from '../businesses/businesses.service';
+import { DevicesService } from '../devices/devices.service';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
-import { User, UserRole } from '../users/entities/user.entity';
+import { UserRole } from '../users/entities/user.entity';
 import { Otp } from './entities/otp.entity';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
 import { RegisterAdminDto } from './dto/register-admin.dto';
+import { RequestOtpDto } from './dto/request-otp.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     private businessesService: BusinessesService,
+    private devicesService: DevicesService,
     private mailService: MailService,
     private jwtService: JwtService,
     @InjectRepository(Otp)
     private otpRepository: Repository<Otp>,
-  ) { }
+  ) {}
+
+  async requestOwnerOtp(dto: RequestOtpDto) {
+    const existingUser = await this.usersService.findByEmail(dto.email);
+    if (existingUser) {
+      throw new ConflictException('User with this email already exists');
+    }
+
+    const code = Math.floor(1000 + Math.random() * 9000).toString(); // 4 digit OTP
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 min expiry
+
+    // Save OTP with metadata
+    const otp = this.otpRepository.create({
+      email: dto.email,
+      code,
+      expiresAt,
+      metadata: dto,
+    });
+    await this.otpRepository.save(otp);
+
+    // Send Email
+    await this.mailService.sendOtp(dto.email, code);
+
+    return { message: 'OTP sent successfully' };
+  }
 
   async sendOtp(email: string) {
     const existingUser = await this.usersService.findByEmail(email);
@@ -77,7 +105,7 @@ export class AuthService {
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.usersService.findByEmail(email);
     if (user && (await bcrypt.compare(pass, user.password))) {
-      const { password, ...result } = user;
+      const { password: _password, ...result } = user;
       return result;
     }
     return null;
@@ -139,32 +167,52 @@ export class AuthService {
       await this.usersService.create(user); // Save update
     }
 
-    const { password, ...result } = user;
+    const { password: _password, ...result } = user;
     return this.login(result);
   }
 
   // --- New Dedicated Owner Registration ---
   async registerOwner(dto: RegisterOwnerDto) {
+    // 1. Verify OTP and Retrieve Metadata
+    const otpRecord = await this.otpRepository.findOne({
+      where: { email: dto.email },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!otpRecord) {
+      throw new BadRequestException('OTP not found');
+    }
+
+    if (otpRecord.code !== dto.otp) {
+      throw new BadRequestException('Invalid OTP');
+    }
+
+    if (new Date() > otpRecord.expiresAt) {
+      throw new BadRequestException('OTP expired');
+    }
+
+    const registrationData = otpRecord.metadata as RequestOtpDto;
+    if (!registrationData) {
+      throw new BadRequestException('Registration session expired or invalid');
+    }
+
     const existingUser = await this.usersService.findByEmail(dto.email);
     if (existingUser) {
       throw new ConflictException('Email already exists');
     }
 
-    // 1. Create User (Owner)
+    // 2. Create User (Owner)
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = await this.usersService.create({
-      firstName: dto.firstName,
-      lastName: dto.lastName,
+      firstName: registrationData.firstName || dto.firstName,
+      lastName: registrationData.lastName || dto.lastName,
       email: dto.email,
       password: hashedPassword,
-      role: UserRole.OWNER, // Explicitly OWNER
-      phone: dto.businessNumber || undefined, // Use business number as user phone if generic phone not provided? Frontend sends 'businessNumber' and 'whatsappNumber'
-      // Frontend doesn't explicitly send user phone, just business phone. Using businessNumber for now.
+      role: UserRole.OWNER,
+      phone: registrationData.phone || dto.businessNumber,
     });
 
-    // 2. Create Business with detailed info
-    // Join array goals to string if needed, or update Business entity to support array.
-    // Current entity 'goal' is a string. We can join them or pick the first.
+    // 3. Create Business with detailed info
     const goalString = Array.isArray(dto.goals)
       ? dto.goals.join(', ')
       : dto.goals;
@@ -172,23 +220,26 @@ export class AuthService {
     const business = await this.businessesService.create({
       name: dto.businessName,
       category: dto.category,
-      monthlyVisitors: dto.visitors, // Frontend field mapped to entity
+      monthlyVisitors: dto.visitors,
       goal: goalString,
       logoUrl: dto.businessLogo,
       ownerId: user.id,
-      // New fields
       address: dto.businessAddress,
       website: dto.businessWebsite,
       whatsappNumber: dto.whatsappNumber,
       officialEmail: dto.officialEmail,
     });
 
-    // 3. Link User to Business
+    // 4. Link User to Business
     user.businessId = business.id;
-    await this.usersService.create(user); // Update user with businessId
+    await this.usersService.create(user);
 
-    // Return auth response (token + user) or just user?
-    // Usually auto-login after register is good UX.
+    // 5. Auto-Generate Device for Business
+    await this.devicesService.createAutoDevice(business.id);
+
+    // Consume OTP
+    await this.otpRepository.remove(otpRecord);
+
     return this.login(user);
   }
 
@@ -199,7 +250,9 @@ export class AuthService {
 
     // Safety check just in case env code is not set, don't allow open registration
     if (!envCode) {
-      throw new BadRequestException('Admin registration is not correctly configured on the server');
+      throw new BadRequestException(
+        'Admin registration is not correctly configured on the server',
+      );
     }
 
     if (dto.adminAccountCode !== envCode) {

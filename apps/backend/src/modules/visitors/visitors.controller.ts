@@ -46,7 +46,7 @@ export class VisitorsController {
     private readonly visitorsService: VisitorsService,
     private readonly campaignsService: CampaignsService,
     private readonly messagingService: MessagingEngineService,
-  ) { }
+  ) {}
 
   private getBranchId(req: any, branchId?: string): string {
     const resolved = branchId || req.user?.branchId;
@@ -182,10 +182,7 @@ export class VisitorsController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @Permissions('dashboard') // Rewards might fall under campaigns/loyalty/dashboard
   @ApiOperation({ summary: 'Create a reward for visitors' })
-  async createReward(
-    @Req() req: any,
-    @Body() body: CreateVisitorRewardDto,
-  ) {
+  async createReward(@Req() req: any, @Body() body: CreateVisitorRewardDto) {
     return this.campaignsService.createReward(
       this.getBranchId(req, body.branchId),
       body,
@@ -199,10 +196,7 @@ export class VisitorsController {
   @Permissions('visitors')
   @ApiOperation({ summary: 'Create a new visitor' })
   @ApiResponse({ type: VisitorResponseDto })
-  async create(
-    @Body() createVisitorDto: CreateVisitorDto,
-    @Req() req: any,
-  ) {
+  async create(@Body() createVisitorDto: CreateVisitorDto, @Req() req: any) {
     return this.visitorsService.create(
       createVisitorDto,
       this.getBranchId(req, createVisitorDto.branchId),

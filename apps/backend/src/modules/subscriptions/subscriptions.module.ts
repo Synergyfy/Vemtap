@@ -10,6 +10,7 @@ import { SubscriptionsController } from './subscriptions.controller';
 import { PlansService } from './plans.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { PaymentsModule } from '../payments/payments.module';
+import { TrialRestrictionGuard } from './guards/trial-restriction.guard';
 
 @Module({
   imports: [
@@ -18,7 +19,7 @@ import { PaymentsModule } from '../payments/payments.module';
     PaymentsModule,
   ],
   controllers: [PlansController, SubscriptionsController],
-  providers: [PlansService, SubscriptionsService],
-  exports: [PlansService, SubscriptionsService],
+  providers: [PlansService, SubscriptionsService, TrialRestrictionGuard],
+  exports: [PlansService, SubscriptionsService, TrialRestrictionGuard],
 })
 export class SubscriptionsModule {}

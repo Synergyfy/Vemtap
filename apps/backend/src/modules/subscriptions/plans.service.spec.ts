@@ -3,6 +3,7 @@ import { PlansService } from './plans.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Plan } from './entities/plan.entity';
 import { Repository } from 'typeorm';
+import { PricingUtil } from './utils/pricing.util';
 
 describe('PlansService', () => {
   let service: PlansService;
@@ -12,11 +13,18 @@ describe('PlansService', () => {
     id: '1',
     name: 'Test Plan',
     monthlyPrice: 1000,
+    quarterlyPrice: PricingUtil.calculateQuarterlyPrice(1000),
+    yearlyPrice: PricingUtil.calculateYearlyPrice(1000),
     isActive: true,
+    features: ['basic'],
+    trialDurationDays: 30,
+    smsCredits: 100,
+    emailCredits: 100,
+    whatsappCredits: 100,
   };
 
   const mockPlanRepository = {
-    create: jest.fn().mockImplementation((dto) => dto),
+    create: jest.fn().mockImplementation((dto) => ({ ...dto })), // Mock create returning object similar to DTO
     save: jest
       .fn()
       .mockImplementation((plan) => Promise.resolve({ id: '1', ...plan })),
@@ -44,10 +52,18 @@ describe('PlansService', () => {
     expect(service).toBeDefined();
   });
 
-  it('should create a new plan', async () => {
-    const dto = { name: 'New Plan', monthlyPrice: 2000, isActive: true };
+  it('should create a new plan and calculate derived prices', async () => {
+    const dto = {
+      name: 'New Plan',
+      monthlyPrice: 2000,
+      isActive: true,
+      features: ['feature1'],
+      trialDurationDays: 30,
+    };
     const plan = await service.create(dto as any);
-    expect(plan).toEqual({ id: '1', ...dto });
+
+    expect(plan.quarterlyPrice).toBe(PricingUtil.calculateQuarterlyPrice(2000));
+    expect(plan.yearlyPrice).toBe(PricingUtil.calculateYearlyPrice(2000));
     expect(mockPlanRepository.create).toHaveBeenCalledWith(dto);
     expect(mockPlanRepository.save).toHaveBeenCalled();
   });
@@ -66,10 +82,24 @@ describe('PlansService', () => {
     });
   });
 
-  it('should update a plan', async () => {
-    const dto = { name: 'Updated Plan' };
+  it('should update a plan and recalculate prices', async () => {
+    const dto = { name: 'Updated Plan', monthlyPrice: 5000 };
+
+    // We expect the service to call findOne (returning mockPlan), then update it.
+    // mockPlan has monthlyPrice 1000.
+    // update overwrites with 5000.
+    // service recalculates derived prices based on 5000.
+
     const updatedPlan = await service.update('1', dto);
-    expect(updatedPlan).toEqual({ ...mockPlan, ...dto });
+
+    expect(updatedPlan.monthlyPrice).toBe(5000);
+    expect(updatedPlan.quarterlyPrice).toBe(
+      PricingUtil.calculateQuarterlyPrice(5000),
+    );
+    expect(updatedPlan.yearlyPrice).toBe(
+      PricingUtil.calculateYearlyPrice(5000),
+    );
+
     expect(mockPlanRepository.save).toHaveBeenCalled();
   });
 

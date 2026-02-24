@@ -20,7 +20,9 @@ export class TermiiProvider implements MessagingProvider {
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
   ) {
-    this.baseUrl = this.configService.get<string>('TERMII_BASE_URL') || 'https://v3.api.termii.com/api';
+    this.baseUrl =
+      this.configService.get<string>('TERMII_BASE_URL') ||
+      'https://v3.api.termii.com/api';
   }
 
   async sendMessage(payload: SendMessagePayload): Promise<ProviderResponse> {

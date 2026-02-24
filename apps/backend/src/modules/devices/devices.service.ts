@@ -21,7 +21,7 @@ export class DevicesService {
     private orderRepository: Repository<Order>,
     @InjectRepository(Branch)
     private branchRepository: Repository<Branch>,
-  ) { }
+  ) {}
 
   async create(
     businessId: string,
@@ -38,6 +38,30 @@ export class DevicesService {
       ...createDeviceDto,
       businessId,
     });
+    return this.devicesRepository.save(device);
+  }
+
+  async createAutoDevice(businessId: string): Promise<Device> {
+    let code = '';
+    let isUnique = false;
+
+    // Retry loop to ensure unique code
+    while (!isUnique) {
+      code = this.generateRandomCode();
+      const existing = await this.devicesRepository.findOneBy({ code });
+      if (!existing) {
+        isUnique = true;
+      }
+    }
+
+    const device = this.devicesRepository.create({
+      name: 'Primary Business Device',
+      code,
+      status: DeviceStatus.ACTIVE,
+      businessId,
+      type: 'Card', // Default type
+    });
+
     return this.devicesRepository.save(device);
   }
 

@@ -17,12 +17,13 @@ import { RegisterDto } from './dto/register.dto';
 import { VerifyOtpDto } from './dto/otp.dto';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
 import { RegisterAdminDto } from './dto/register-admin.dto';
+import { RequestOtpDto } from './dto/request-otp.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService) {}
 
   @Public()
   @Post('otp/send')
@@ -55,6 +56,14 @@ export class AuthController {
   @ApiBody({ type: RegisterDto })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
+  }
+
+  @Public()
+  @Post('register/owner/request-otp')
+  @ApiOperation({ summary: 'Request OTP for Owner Registration' })
+  @ApiBody({ type: RequestOtpDto })
+  async requestOwnerOtp(@Body() dto: RequestOtpDto) {
+    return this.authService.requestOwnerOtp(dto);
   }
 
   @Public()
@@ -104,8 +113,14 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Bad Request (validation error or configuration error)' })
-  @ApiResponse({ status: 401, description: 'Unauthorized (invalid admin account code)' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request (validation error or configuration error)',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized (invalid admin account code)',
+  })
   @ApiResponse({ status: 409, description: 'Conflict (email already exists)' })
   async registerAdmin(@Body() registerAdminDto: RegisterAdminDto) {
     return this.authService.registerAdmin(registerAdminDto);

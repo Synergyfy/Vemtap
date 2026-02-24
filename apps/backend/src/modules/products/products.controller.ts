@@ -34,7 +34,7 @@ import {
 @ApiTags('products')
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) { }
+  constructor(private readonly productsService: ProductsService) {}
 
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
@@ -408,5 +408,18 @@ export class ProductsController {
   })
   markOrderReady(@Param('id') id: string) {
     return this.productsService.markOrderReady(id);
+  }
+
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Patch('orders/:id/complete')
+  @ApiOperation({ summary: 'Mark an order as completed and paid (Admin only)' })
+  @ApiResponse({
+    status: 200,
+    type: Order,
+    description: 'Order status updated to Completed and PaymentStatus to Paid',
+  })
+  markOrderCompleted(@Param('id') id: string) {
+    return this.productsService.markOrderCompleted(id);
   }
 }

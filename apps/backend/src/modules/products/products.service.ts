@@ -23,10 +23,6 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PaymentsService } from '../payments/payments.service';
-import {
-  PaymentPurpose,
-  PaymentStatus,
-} from '../payments/entities/payment.entity';
 import { PaymentStatus as OrderPaymentStatus } from './entities/order.entity';
 
 @Injectable()
@@ -43,7 +39,7 @@ export class ProductsService {
     @InjectRepository(ProductType)
     private productTypeRepository: Repository<ProductType>,
     private readonly paymentsService: PaymentsService,
-  ) { }
+  ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     const product = this.productRepository.create(createProductDto);
@@ -134,44 +130,9 @@ export class ProductsService {
 
     const totalPrice = unitPrice * createOrderDto.quantity;
 
-    let paymentStatus = OrderPaymentStatus.PENDING;
-
-    if (createOrderDto.paymentReference) {
-      // Idempotency check: Ensure reference isn't already used for another order
-      const existingOrder = await this.orderRepository.findOneBy({
-        paymentReference: createOrderDto.paymentReference,
-      });
-      if (existingOrder) {
-        throw new ConflictException(
-          'Order with this payment reference already exists',
-        );
-      }
-
-      const isPaymentValid = await this.paymentsService.verifyTransaction(
-        createOrderDto.paymentReference,
-      );
-
-      if (!isPaymentValid) {
-        throw new BadRequestException('Invalid payment reference');
-      }
-
-      await this.paymentsService.recordPayment({
-        reference: createOrderDto.paymentReference,
-        amount: totalPrice,
-        purpose: PaymentPurpose.ORDER,
-        status: PaymentStatus.SUCCESS,
-        metadata: {
-          productId: product.id,
-          quantity: createOrderDto.quantity,
-        },
-        businessId: user.businessId,
-        userId: user.id,
-      });
-
-      paymentStatus = OrderPaymentStatus.PAID;
-    } else {
-      throw new BadRequestException('Payment is required for direct orders');
-    }
+    // For Owners, we skip online payment. Payment is physical.
+    // We default to PENDING.
+    const paymentStatus = OrderPaymentStatus.PENDING;
 
     const order = this.orderRepository.create({
       product,
@@ -395,6 +356,18 @@ export class ProductsService {
     return this.orderRepository.save(order);
   }
 
+  async markOrderCompleted(orderId: string): Promise<Order> {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+
+    order.status = OrderStatus.COMPLETED;
+    order.paymentStatus = OrderPaymentStatus.PAID; // Mark as Paid when Completed
+    return this.orderRepository.save(order);
+  }
+
   async getAdminStats() {
     const total = await this.productRepository.count();
     const published = await this.productRepository.count({
@@ -409,7 +382,8 @@ export class ProductsService {
 
     let lowStockCount = 0;
     for (const type of productTypes) {
-      const availableDevices = type.devices?.filter((d) => !d.businessId).length || 0;
+      const availableDevices =
+        type.devices?.filter((d) => !d.businessId).length || 0;
       if (availableDevices < lowStockThreshold) {
         lowStockCount++;
       }

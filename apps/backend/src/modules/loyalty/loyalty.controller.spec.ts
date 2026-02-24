@@ -50,7 +50,10 @@ describe('LoyaltyController', () => {
       mockLoyaltyService.getProfile.mockResolvedValue(result);
 
       expect(await controller.getProfile(mockReq, businessId)).toBe(result);
-      expect(mockLoyaltyService.getProfile).toHaveBeenCalledWith(mockUser.id, businessId);
+      expect(mockLoyaltyService.getProfile).toHaveBeenCalledWith(
+        mockUser.id,
+        businessId,
+      );
     });
 
     it('should return all profiles if no businessId', async () => {
@@ -58,7 +61,9 @@ describe('LoyaltyController', () => {
       mockLoyaltyService.getAllProfiles.mockResolvedValue(result);
 
       expect(await controller.getProfile(mockReq)).toBe(result);
-      expect(mockLoyaltyService.getAllProfiles).toHaveBeenCalledWith(mockUser.id);
+      expect(mockLoyaltyService.getAllProfiles).toHaveBeenCalledWith(
+        mockUser.id,
+      );
     });
   });
 
@@ -68,7 +73,10 @@ describe('LoyaltyController', () => {
       mockLoyaltyService.getHistory.mockResolvedValue(result);
 
       expect(await controller.getHistory(mockReq, 'biz-1')).toBe(result);
-      expect(mockLoyaltyService.getHistory).toHaveBeenCalledWith(mockUser.id, 'biz-1');
+      expect(mockLoyaltyService.getHistory).toHaveBeenCalledWith(
+        mockUser.id,
+        'biz-1',
+      );
     });
   });
 
@@ -90,8 +98,14 @@ describe('LoyaltyController', () => {
       const result = { id: 'redemption-1' };
       mockLoyaltyService.redeemReward.mockResolvedValue(result);
 
-      expect(await controller.redeemReward(mockReq, dto, businessId)).toBe(result);
-      expect(mockLoyaltyService.redeemReward).toHaveBeenCalledWith(mockUser.id, businessId, dto.rewardId);
+      expect(await controller.redeemReward(mockReq, dto, businessId)).toBe(
+        result,
+      );
+      expect(mockLoyaltyService.redeemReward).toHaveBeenCalledWith(
+        mockUser.id,
+        businessId,
+        dto.rewardId,
+      );
     });
   });
 
@@ -103,7 +117,10 @@ describe('LoyaltyController', () => {
       mockLoyaltyService.earnPoints.mockResolvedValue(result);
 
       expect(await controller.earnPoints(dto, businessId)).toBe(result);
-      expect(mockLoyaltyService.earnPoints).toHaveBeenCalledWith(businessId, dto);
+      expect(mockLoyaltyService.earnPoints).toHaveBeenCalledWith(
+        businessId,
+        dto,
+      );
     });
   });
 
@@ -115,7 +132,10 @@ describe('LoyaltyController', () => {
       mockLoyaltyService.createReward.mockResolvedValue(result);
 
       expect(await controller.createReward(dto, businessId)).toBe(result);
-      expect(mockLoyaltyService.createReward).toHaveBeenCalledWith(businessId, dto);
+      expect(mockLoyaltyService.createReward).toHaveBeenCalledWith(
+        businessId,
+        dto,
+      );
     });
   });
 
@@ -134,7 +154,10 @@ describe('LoyaltyController', () => {
       const result = { id: 'profile-1' };
       mockLoyaltyService.processTap.mockResolvedValue(result);
       expect(await controller.tap(mockReq, code)).toBe(result);
-      expect(mockLoyaltyService.processTap).toHaveBeenCalledWith(mockUser.id, code);
+      expect(mockLoyaltyService.processTap).toHaveBeenCalledWith(
+        mockUser.id,
+        code,
+      );
     });
   });
 });

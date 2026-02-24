@@ -1,7 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayNotEmpty,
+  IsArray,
   IsBoolean,
-  IsEnum,
   IsNumber,
   IsOptional,
   IsString,
@@ -19,17 +20,14 @@ export class CreatePlanDto {
   @Min(0)
   monthlyPrice?: number;
 
-  @ApiPropertyOptional({ description: 'Quarterly price', example: 140000 })
-  @IsNumber()
-  @IsOptional()
-  @Min(0)
-  quarterlyPrice?: number;
-
-  @ApiPropertyOptional({ description: 'Yearly price', example: 500000 })
-  @IsNumber()
-  @IsOptional()
-  @Min(0)
-  yearlyPrice?: number;
+  @ApiProperty({
+    description: 'Features included in the plan',
+    example: ['Analytics', 'Unlimited Messages'],
+  })
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  features: string[];
 
   @ApiPropertyOptional({ description: 'Currency', example: 'NGN' })
   @IsString()
@@ -45,12 +43,27 @@ export class CreatePlanDto {
   isFree?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Free duration in days (null for unlimited)',
+    description: 'Trial duration in days (default 30)',
     example: 30,
   })
   @IsNumber()
   @IsOptional()
-  freeDurationDays?: number;
+  trialDurationDays?: number;
+
+  @ApiPropertyOptional({ description: 'SMS credits', example: 100 })
+  @IsNumber()
+  @IsOptional()
+  smsCredits?: number;
+
+  @ApiPropertyOptional({ description: 'WhatsApp credits', example: 50 })
+  @IsNumber()
+  @IsOptional()
+  whatsappCredits?: number;
+
+  @ApiPropertyOptional({ description: 'Email credits', example: 1000 })
+  @IsNumber()
+  @IsOptional()
+  emailCredits?: number;
 
   @ApiPropertyOptional({
     description: 'Maximum team members limit (null for unlimited)',
