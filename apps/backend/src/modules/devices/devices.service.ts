@@ -41,6 +41,30 @@ export class DevicesService {
     return this.devicesRepository.save(device);
   }
 
+  async createAutoDevice(businessId: string): Promise<Device> {
+    let code = '';
+    let isUnique = false;
+
+    // Retry loop to ensure unique code
+    while (!isUnique) {
+      code = this.generateRandomCode();
+      const existing = await this.devicesRepository.findOneBy({ code });
+      if (!existing) {
+        isUnique = true;
+      }
+    }
+
+    const device = this.devicesRepository.create({
+      name: 'Primary Business Device',
+      code,
+      status: DeviceStatus.ACTIVE,
+      businessId,
+      type: 'Card', // Default type
+    });
+
+    return this.devicesRepository.save(device);
+  }
+
   async findAllByBusiness(businessId: string): Promise<Device[]> {
     return this.devicesRepository.find({
       where: { businessId },
