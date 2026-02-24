@@ -67,54 +67,6 @@ export default function LoginPage() {
                                     <p className="text-base text-text-secondary font-medium leading-relaxed max-w-lg">Login to manage your business and check your customer data in real-time.</p>
                                 </div>
 
-                                {/* Demo Credentials */}
-                                <div className="bg-primary/5 border border-primary/10 rounded-2xl p-8 shadow-sm overflow-hidden relative group">
-                                    <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 rounded-full translate-x-10 -translate-y-10 blur-3xl group-hover:bg-primary/20 transition-all"></div>
-
-                                    <p className="text-xs font-black underline decoration-primary/30 underline-offset-4 text-primary mb-6 uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <span className="material-icons-round text-base">explore</span>
-                                        Instant Quick Access Demo
-                                    </p>
-
-                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 relative z-10">
-                                        {[
-                                            { id: 'owner', label: 'Business Owner', icon: 'storefront', email: 'business@vemtap.com', pass: 'business123', route: '/dashboard' },
-                                            { id: 'manager', label: 'Store Manager', icon: 'supervisor_account', email: 'manager@vemtap.com', pass: 'manager123', route: '/dashboard' },
-                                            { id: 'staff', label: 'Staff Member', icon: 'badge', email: 'staff@vemtap.com', pass: 'staff123', route: '/dashboard' },
-                                            { id: 'customer', label: 'Customer/User', icon: 'person', email: 'customer@vemtap.com', pass: 'customer123', route: '/customer/dashboard' },
-                                            { id: 'admin', label: 'Platform Admin', icon: 'admin_panel_settings', email: 'admin@vemtap.com', pass: 'admin123', route: '/admin/dashboard' }
-                                        ].map((demo) => (
-                                            <button
-                                                key={demo.id}
-                                                type="button"
-                                                onClick={async (e) => {
-                                                    e.preventDefault();
-                                                    setFormData({ email: demo.email, password: demo.pass, rememberMe: true });
-                                                    setError('');
-                                                    try {
-                                                        const response = await loginUser({ email: demo.email.trim(), password: demo.pass.trim() });
-                                                        await signup(response.user, response.access_token);
-                                                        notify.success(`Logged in as ${demo.label}`);
-                                                        router.push(demo.route);
-                                                    } catch (err: any) {
-                                                        setError(err.message || 'Demo login failed');
-                                                    }
-                                                }}
-                                                disabled={isLoggingIn}
-                                                className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-white border border-gray-100 rounded-2xl hover:border-primary/40 hover:shadow-xl hover:-translate-y-1 transition-all disabled:opacity-50"
-                                            >
-                                                <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center group-hover/btn:bg-primary/10 transition-colors">
-                                                    <span className="material-icons-round text-2xl text-gray-400 group-hover/btn:text-primary">{demo.icon}</span>
-                                                </div>
-                                                <span className="text-[11px] font-bold text-text-main group-hover/btn:text-primary text-center leading-tight">{demo.label}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <p className="text-xs text-text-secondary text-center mt-6 font-medium opacity-70">
-                                        Click any account card above to start a live demo session
-                                    </p>
-                                </div>
-
                                 <form onSubmit={handleLogin} className="space-y-8">
                                     {error && (
                                         <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3 animate-shake">
@@ -203,7 +155,7 @@ export default function LoginPage() {
                                 </form>
                             </motion.div>
 
-                            <p className="text-xs text-center lg:text-left text-text-secondary font-bold uppercase tracking-[0.2em] mt-16">
+                            <p className="text-xs text-center lg:text-left text-text-secondary font-bold uppercase tracking-[0.2em] mt-8">
                                 Don't have an VemTap business account? <Link href="/get-started" className="text-primary hover:underline underline-offset-4">Join now</Link>
                             </p>
                         </div>

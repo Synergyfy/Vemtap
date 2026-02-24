@@ -55,6 +55,8 @@ export default function GetStarted() {
         otp: '',
         agreeToTerms: false
     });
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const categories = ['Retail', 'Hospitality', 'Events & Booths', 'Service Centers', 'Professional Office'];
     const goals = ['Capture Leads', 'Automated Rewards', 'Customer Feedback', 'Digital Loyalty'];
@@ -67,14 +69,8 @@ export default function GetStarted() {
         if (step === 3 && subStep < maxSubStep) {
             setSubStep(prev => prev + 1);
         } else if (step === 3 && subStep === maxSubStep) {
-            if (isManager) {
-                // Managers skip plan selection (step 4) and go straight to review (step 5)
-                setStep(5);
-                setSubStep(1);
-            } else {
-                setStep(4);
-                setSubStep(1);
-            }
+            setStep(5);
+            setSubStep(1);
         } else {
             setStep(prev => prev + 1);
             setSubStep(1);
@@ -82,16 +78,12 @@ export default function GetStarted() {
     };
     const prevStep = () => {
         if (step === 5) {
-            setStep(4);
-            setSubStep(1);
-        } else if (step === 4) {
             setStep(3);
             setSubStep(10);
         } else if (step === 3 && subStep > 1) {
             setSubStep(prev => prev - 1);
         } else {
             setStep(prev => prev - 1);
-            if (step === 4) setSubStep(10);
         }
     };
 
@@ -110,24 +102,36 @@ export default function GetStarted() {
     };
 
     const handleCreateAccount = async () => {
-        if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
-            toast.error('Please fill in all fields.');
-            return;
+        const errors: Record<string, string> = {};
+        
+        if (!formData.firstName) errors.firstName = 'First name is required';
+        if (!formData.lastName) errors.lastName = 'Last name is required';
+        if (!formData.email) errors.email = 'Email is required';
+        if (!formData.password) errors.password = 'Password is required';
+        
+        if (formData.password && formData.password.length < 6) {
+            errors.password = 'Password must be at least 6 characters';
         }
         if (formData.password !== formData.confirmPassword) {
-            toast.error('Passwords do not match.');
+            errors.confirmPassword = 'Passwords do not match';
+        }
+        
+        if (Object.keys(errors).length > 0) {
+            setFieldErrors(errors);
             return;
         }
-        if (formData.password.length < 6) {
-            toast.error('Password must be at least 6 characters.');
-            return;
-        }
+        
+        setFieldErrors({});
         try {
             await sendOtp({ email: formData.email });
             toast.success('Verification code sent to your email.');
             nextStep();
         } catch (error: any) {
-            toast.error(error.message || 'Failed to send verification code.');
+            if (error.message?.includes('already exist')) {
+                setFieldErrors({ email: 'An account with this email already exists' });
+            } else {
+                toast.error(error.message || 'Failed to send verification code.');
+            }
         }
     };
 
@@ -273,52 +277,63 @@ export default function GetStarted() {
                                             <SanitizedInput
                                                 label="First Name"
                                                 value={formData.firstName}
-                                                onChange={(v) => setFormData({ ...formData, firstName: v })}
+                                                onChange={(v) => { setFormData({ ...formData, firstName: v }); setFieldErrors(prev => ({ ...prev, firstName: '' })); }}
                                                 icon="person"
                                                 placeholder="Daniel"
                                                 required
                                                 tooltip="Your legal first name as it will appear on your account"
+                                                error={fieldErrors.firstName}
                                             />
                                             <SanitizedInput
                                                 label="Last Name"
                                                 value={formData.lastName}
-                                                onChange={(v) => setFormData({ ...formData, lastName: v })}
+                                                onChange={(v) => { setFormData({ ...formData, lastName: v }); setFieldErrors(prev => ({ ...prev, lastName: '' })); }}
                                                 icon="person"
                                                 placeholder="Smith"
                                                 required
                                                 tooltip="Your legal last name"
+                                                error={fieldErrors.lastName}
                                             />
                                         </div>
                                         <SanitizedInput
                                             label="Business Email"
                                             type="email"
                                             value={formData.email}
-                                            onChange={(v) => setFormData({ ...formData, email: v })}
+                                            onChange={(v) => { setFormData({ ...formData, email: v }); setFieldErrors(prev => ({ ...prev, email: '' })); }}
                                             icon="mail"
                                             placeholder="daniel@company.com"
                                             required
                                             tooltip="We'll send verification codes and account updates to this email"
+                                            error={fieldErrors.email}
                                         />
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <SanitizedInput
                                                 label="Password"
                                                 type="password"
                                                 value={formData.password}
-                                                onChange={(v) => setFormData({ ...formData, password: v })}
+                                                onChange={(v) => { setFormData({ ...formData, password: v }); setFieldErrors(prev => ({ ...prev, password: '' })); }}
                                                 icon="lock"
                                                 placeholder="••••••••"
                                                 required
                                                 tooltip="Min 8 characters with at least one number and symbol"
+                                                error={fieldErrors.password}
+                                                showPasswordToggle
+                                                showPassword={showPassword}
+                                                onTogglePassword={() => setShowPassword(!showPassword)}
                                             />
                                             <SanitizedInput
                                                 label="Confirm Password"
                                                 type="password"
                                                 value={formData.confirmPassword}
-                                                onChange={(v) => setFormData({ ...formData, confirmPassword: v })}
+                                                onChange={(v) => { setFormData({ ...formData, confirmPassword: v }); setFieldErrors(prev => ({ ...prev, confirmPassword: '' })); }}
                                                 icon="lock_reset"
                                                 placeholder="••••••••"
                                                 required
                                                 tooltip="Re-enter your password to confirm"
+                                                error={fieldErrors.confirmPassword}
+                                                showPasswordToggle
+                                                showPassword={showConfirmPassword}
+                                                onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
                                             />
                                         </div>
 
@@ -331,7 +346,7 @@ export default function GetStarted() {
                                                 onChange={(e) => setFormData({ ...formData, agreeToTerms: e.target.checked })}
                                             />
                                             <label htmlFor="terms" className="text-[11px] font-medium text-text-secondary leading-normal">
-                                                I agree to the <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link> and <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
+                                                I agree to the <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Terms of Service</Link> and <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Privacy Policy</Link>.
                                             </label>
                                         </div>
 
@@ -462,6 +477,7 @@ export default function GetStarted() {
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                                                 <SanitizedInput
                                                     label="Business Name"
+                                                    type="businessName"
                                                     value={formData.businessName}
                                                     onChange={(v) => setFormData({ ...formData, businessName: v })}
                                                     icon="storefront"
@@ -649,7 +665,10 @@ export default function GetStarted() {
 
                                         {subStep === 9 && (
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Select Goals</label>
+                                                <div>
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Select Goals</label>
+                                                    <p className="text-[11px] text-gray-400 ml-1 mt-1">You can select multiple options</p>
+                                                </div>
                                                 <div className="grid grid-cols-1 gap-2">
                                                     {goals.map(goal => (
                                                         <button
@@ -675,6 +694,7 @@ export default function GetStarted() {
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                                                 <SanitizedInput
                                                     label="Business Address"
+                                                    type="businessName"
                                                     value={formData.businessAddress}
                                                     onChange={(v) => setFormData({ ...formData, businessAddress: v })}
                                                     icon="location_on"
@@ -720,69 +740,6 @@ export default function GetStarted() {
                                 </motion.div>
                             )}
 
-
-                            {step === 4 && (
-                                <motion.div
-                                    key="step4"
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: 20 }}
-                                    className="space-y-8"
-                                >
-                                    <div className="text-center md:text-left">
-                                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-4">
-                                            <span className="material-icons-round text-sm">auto_awesome</span>
-                                            Recommended for you
-                                        </div>
-                                        <h1 className="text-2xl font-display font-bold text-text-main mb-2 leading-tight tracking-tight">Your Personal Plan is ready</h1>
-                                        <p className="text-[13px] text-text-secondary font-medium leading-relaxed">Based on your {formData.branchCount} branches and {formData.visitors} visitors.</p>
-                                    </div>
-
-                                    <div className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden border border-white/10 shadow-2xl">
-                                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/20 blur-[50px] rounded-full -mr-16 -mt-16" />
-
-                                        <div className="relative z-10">
-                                            <div className="flex justify-between items-start mb-6">
-                                                <div>
-                                                    <h3 className="text-xl font-black mb-1">Personal Plan</h3>
-                                                    <p className="text-white/50 text-xs font-bold uppercase tracking-widest">Tailored Business Tier</p>
-                                                </div>
-                                                <div className="p-3 bg-white/10 rounded-2xl">
-                                                    <span className="material-icons-round text-emerald-400">verified</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-baseline gap-1 mb-8">
-                                                <span className="text-4xl font-black">₦{calculatePersonalPrice().toLocaleString()}</span>
-                                                <span className="text-white/40 text-sm font-bold">/mo</span>
-                                            </div>
-
-                                            <ul className="space-y-4 mb-8">
-                                                {['Custom Visitor Limit', 'Branch Syncing', 'Global CRM Access', 'Priority Onboarding'].map((f, i) => (
-                                                    <li key={i} className="flex items-center gap-3 text-xs font-bold text-white/70">
-                                                        <span className="material-icons-round text-emerald-400 text-sm">check_circle</span>
-                                                        {f}
-                                                    </li>
-                                                ))}
-                                            </ul>
-
-                                            <button onClick={nextStep} className="w-full h-14 bg-emerald-500 text-white rounded-xl font-black text-sm uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20">
-                                                Select Personal Plan
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="text-center">
-                                        <button onClick={nextStep} className="text-xs font-black text-text-secondary uppercase tracking-widest hover:text-primary transition-colors">
-                                            Or browse all standard plans
-                                        </button>
-                                    </div>
-
-                                    <div className="flex gap-4 pt-4 border-t border-gray-100">
-                                        <button onClick={prevStep} className="h-12 px-8 border border-gray-100 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm">Back</button>
-                                    </div>
-                                </motion.div>
-                            )}
                             {step === 5 && (
                                 <motion.div
                                     key="step5"

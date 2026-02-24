@@ -56,6 +56,21 @@ export function removeDangerousPatterns(str: string): string {
 }
 
 /**
+ * Sanitize for business names - preserves spaces and allows more characters.
+ * Only strips HTML and dangerous patterns, no trimming.
+ */
+export function sanitizeBusinessName(input: string): string {
+    if (!input || typeof input !== 'string') return '';
+    return removeDangerousPatterns(stripHtmlNoTrim(input));
+}
+
+function stripHtmlNoTrim(str: string): string {
+    return str
+        .replace(SCRIPT_REGEX, '')
+        .replace(HTML_TAG_REGEX, '');
+}
+
+/**
  * Main sanitize function for general text inputs.
  * Strips HTML, removes dangerous patterns, and trims whitespace.
  */
