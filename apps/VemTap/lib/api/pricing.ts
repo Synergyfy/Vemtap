@@ -1,24 +1,7 @@
 
 import { api } from '@/lib/api';
 
-export interface PricingPlan {
-    id: string;
-    name: string;
-    monthlyPrice: number;
-    quarterlyPrice: number;
-    yearlyPrice: number;
-    currency: string;
-    isFree: boolean;
-    freeDurationDays: number;
-    teamMembersLimit: number;
-    loyaltyLimit: number;
-    tagsLimit: number;
-    branchLimit: number;
-    analyticsLevel: 'basic' | 'advanced' | 'none';
-    isActive: boolean;
-    description: string;
-    isPopular?: boolean;
-}
+import { PricingPlan } from '@/types/pricing';
 
 export const fetchPricingPlans = async (): Promise<PricingPlan[]> => {
     return await api.get('/plans?onlyActive=true');
