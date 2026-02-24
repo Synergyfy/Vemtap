@@ -21,7 +21,7 @@ export class DevicesService {
     private orderRepository: Repository<Order>,
     @InjectRepository(Branch)
     private branchRepository: Repository<Branch>,
-  ) { }
+  ) {}
 
   async create(
     businessId: string,

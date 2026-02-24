@@ -22,8 +22,20 @@ export class Plan extends AbstractBaseEntity {
   @Column({ default: false })
   isFree: boolean;
 
-  @Column({ nullable: true })
-  freeDurationDays: number; // null implies free forever
+  @Column({ type: 'int', default: 30 })
+  trialDurationDays: number;
+
+  @Column('text', { array: true, default: [] })
+  features: string[];
+
+  @Column({ type: 'int', default: 0 })
+  smsCredits: number;
+
+  @Column({ type: 'int', default: 0 })
+  emailCredits: number;
+
+  @Column({ type: 'int', default: 0 })
+  whatsappCredits: number;
 
   // Feature Limits (-1 or null will imply unlimited natively but let's just stick to -1 as unlimited or use nullable)
   @Column({ type: 'int', nullable: true })

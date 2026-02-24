@@ -27,7 +27,7 @@ import { UserRole } from '../users/entities/user.entity';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('support')
 export class SupportController {
-  constructor(private readonly supportService: SupportService) { }
+  constructor(private readonly supportService: SupportService) {}
 
   @Post('tickets')
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
@@ -53,8 +53,14 @@ export class SupportController {
   @Post('tickets/:id/message')
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
   @ApiOperation({ summary: 'Reply to a ticket' })
-  @ApiBody({ schema: { type: 'object', properties: { message: { type: 'string' } } } })
-  async addMessage(@Request() req, @Param('id') id: string, @Body('message') message: string) {
+  @ApiBody({
+    schema: { type: 'object', properties: { message: { type: 'string' } } },
+  })
+  async addMessage(
+    @Request() req,
+    @Param('id') id: string,
+    @Body('message') message: string,
+  ) {
     return this.supportService.addMessage(id, req.user.id, message);
   }
 
@@ -77,16 +83,32 @@ export class SupportController {
   @Post('admin/tickets/:id/status')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Update ticket status' })
-  @ApiBody({ schema: { type: 'object', properties: { status: { type: 'string', enum: ['Open', 'In Progress', 'Closed'] } } } })
-  async updateTicketStatus(@Param('id') id: string, @Body('status') status: TicketStatus) {
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['Open', 'In Progress', 'Closed'] },
+      },
+    },
+  })
+  async updateTicketStatus(
+    @Param('id') id: string,
+    @Body('status') status: TicketStatus,
+  ) {
     return this.supportService.updateStatus(id, status);
   }
 
   @Post('admin/tickets/:id/message')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Reply to any ticket' })
-  @ApiBody({ schema: { type: 'object', properties: { message: { type: 'string' } } } })
-  async addAdminMessage(@Request() req, @Param('id') id: string, @Body('message') message: string) {
+  @ApiBody({
+    schema: { type: 'object', properties: { message: { type: 'string' } } },
+  })
+  async addAdminMessage(
+    @Request() req,
+    @Param('id') id: string,
+    @Body('message') message: string,
+  ) {
     return this.supportService.addAdminMessage(id, req.user.id, message);
   }
 }

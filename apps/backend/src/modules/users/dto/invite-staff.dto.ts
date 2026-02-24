@@ -6,8 +6,20 @@ import {
   IsEnum,
   IsOptional,
   IsArray,
+  IsUUID,
 } from 'class-validator';
 import { UserRole } from '../entities/user.entity';
+
+export enum StaffPermission {
+  DASHBOARD = 'dashboard',
+  VISITORS = 'visitors',
+  MESSAGES = 'messages',
+  MESSAGING = 'messaging', // Add both since they might be used
+  STAFF = 'staff',
+  ANALYTICS = 'analytics',
+  CAMPAIGNS = 'campaigns',
+  REWARDS = 'rewards',
+}
 
 export class InviteStaffDto {
   @ApiProperty({ example: 'John' })
@@ -37,14 +49,19 @@ export class InviteStaffDto {
   @IsOptional()
   jobTitle?: string;
 
-  @ApiProperty({ example: ['dashboard', 'visitors'], required: false })
+  @ApiProperty({
+    enum: StaffPermission,
+    isArray: true,
+    example: [StaffPermission.DASHBOARD, StaffPermission.VISITORS],
+    required: false,
+  })
   @IsArray()
+  @IsEnum(StaffPermission, { each: true })
   @IsOptional()
-  permissions?: string[];
+  permissions?: StaffPermission[];
 
-
-  @ApiProperty({ example: 'branch-uuid' })
-  @IsString()
+  @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000' })
+  @IsUUID()
   @IsNotEmpty()
   branchId: string;
 }

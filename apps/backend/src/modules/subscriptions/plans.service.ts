@@ -4,6 +4,7 @@ import { Plan } from './entities/plan.entity';
 import { Repository } from 'typeorm';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
+import { PricingUtil } from './utils/pricing.util';
 
 @Injectable()
 export class PlansService {
@@ -14,6 +15,12 @@ export class PlansService {
 
   async create(createPlanDto: CreatePlanDto): Promise<Plan> {
     const plan = this.planRepository.create(createPlanDto);
+
+    const monthly = Number(plan.monthlyPrice) || 0;
+    plan.monthlyPrice = monthly;
+    plan.quarterlyPrice = PricingUtil.calculateQuarterlyPrice(monthly);
+    plan.yearlyPrice = PricingUtil.calculateYearlyPrice(monthly);
+
     return this.planRepository.save(plan);
   }
 
@@ -33,6 +40,12 @@ export class PlansService {
   async update(id: string, updatePlanDto: UpdatePlanDto): Promise<Plan> {
     const plan = await this.findOne(id);
     Object.assign(plan, updatePlanDto);
+
+    const monthly = Number(plan.monthlyPrice) || 0;
+    plan.monthlyPrice = monthly;
+    plan.quarterlyPrice = PricingUtil.calculateQuarterlyPrice(monthly);
+    plan.yearlyPrice = PricingUtil.calculateYearlyPrice(monthly);
+
     return this.planRepository.save(plan);
   }
 

@@ -22,6 +22,7 @@ import { RolesGuard } from '../../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
+import { TrialRestrictionGuard } from '../../subscriptions/guards/trial-restriction.guard';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { AutomationService } from '../services/automation.service';
 import {
@@ -32,7 +33,7 @@ import {
 @ApiTags('Messaging Automations')
 @Controller('automations')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
 @Permissions('messaging')
 export class AutomationsController {
   constructor(private readonly automationService: AutomationService) {}

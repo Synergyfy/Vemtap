@@ -23,6 +23,7 @@ import { RolesGuard } from '../../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { User, UserRole } from '../../users/entities/user.entity';
+import { TrialRestrictionGuard } from '../../subscriptions/guards/trial-restriction.guard';
 import { Flow, FlowStatus, FlowTriggerType } from '../entities/flow.entity';
 
 export class CreateFlowDto {
@@ -42,7 +43,7 @@ export class FlowController {
 
   @Post()
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Create a new flow' })
   @ApiBody({ type: CreateFlowDto })
@@ -71,7 +72,7 @@ export class FlowController {
 
   @Get()
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @ApiOperation({ summary: 'Get flows by branch' })
   async findAll(@Query('branchId') branchId: string, @Request() req: any) {
     const user = req.user as User;
@@ -86,7 +87,7 @@ export class FlowController {
 
   @Post(':id/status')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Update flow status (active/draft/paused)' })
   async updateStatus(

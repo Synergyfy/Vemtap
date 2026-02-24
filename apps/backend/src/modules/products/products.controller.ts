@@ -34,7 +34,7 @@ import {
 @ApiTags('products')
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) { }
+  constructor(private readonly productsService: ProductsService) {}
 
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()

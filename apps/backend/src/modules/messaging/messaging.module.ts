@@ -19,6 +19,7 @@ import { AutomationLog } from './entities/automation-log.entity';
 import { ContactsModule } from '../contacts/contacts.module';
 import { BusinessesModule } from '../businesses/businesses.module';
 import { SettingsModule } from '../settings/settings.module';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 import { MessagingEngineService } from './services/messaging-engine.service';
 import { TemplateService } from './services/template.service';
@@ -60,13 +61,16 @@ import { AutomationProcessor } from './processors/automation.processor';
     ContactsModule,
     BusinessesModule,
     SettingsModule,
+    SubscriptionsModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
         const host = configService.get<string>('REDIS_HOST', 'localhost');
         const port = configService.get<number>('REDIS_PORT', 6379);
         const password = configService.get<string>('REDIS_PASSWORD');
-        const useTls = configService.get<string>('REDIS_TLS') === 'true' || host.includes('upstash.io');
+        const useTls =
+          configService.get<string>('REDIS_TLS') === 'true' ||
+          host.includes('upstash.io');
 
         return {
           connection: {

@@ -25,6 +25,7 @@ import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { User, UserRole } from '../../users/entities/user.entity';
+import { TrialRestrictionGuard } from '../../subscriptions/guards/trial-restriction.guard';
 
 import { MessagingEngineService } from '../services/messaging-engine.service';
 import { TemplateService } from '../services/template.service';
@@ -55,11 +56,11 @@ export class MessagingController {
     private readonly campaignService: CampaignService,
     private readonly analyticsService: AnalyticsService,
     private readonly inboxService: InboxService,
-  ) { }
+  ) {}
 
   @Post('send')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Send a single message or start a campaign' })
   @ApiResponse({
@@ -91,7 +92,7 @@ export class MessagingController {
 
   @Post('templates')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Create a new message template' })
   async createTemplate(
@@ -108,7 +109,7 @@ export class MessagingController {
 
   @Get('campaigns')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @ApiOperation({ summary: 'Get all messaging campaigns for a branch' })
   async getCampaigns(
     @Query('branchId') branchId: string,
@@ -121,7 +122,7 @@ export class MessagingController {
 
   @Get('analytics')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @ApiOperation({ summary: 'Get messaging analytics by branch' })
   async getAnalytics(
     @Query('channel') channel: Channel,
@@ -135,7 +136,7 @@ export class MessagingController {
 
   @Get('inbox/:channel')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @ApiParam({ name: 'channel', enum: Channel })
   @ApiOperation({ summary: 'Get conversation threads by channel for a branch' })
   async getInboxThreads(
@@ -150,7 +151,7 @@ export class MessagingController {
 
   @Get('inbox/threads/:threadId')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @ApiOperation({ summary: 'Get messages in a specific thread' })
   async getThreadMessages(
     @Param('threadId') threadId: string,
@@ -164,7 +165,7 @@ export class MessagingController {
 
   @Post('inbox/threads/:threadId/reply')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Send a reply to an active thread' })
   async replyToThread(
@@ -195,8 +196,18 @@ export class MessagingController {
   @Post('admin/templates/:id/status')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Update template status' })
-  @ApiBody({ schema: { type: 'object', properties: { status: { type: 'string', enum: ['pending', 'approved', 'rejected'] } } } })
-  async updateTemplateStatus(@Param('id') id: string, @Body('status') status: string) {
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['pending', 'approved', 'rejected'] },
+      },
+    },
+  })
+  async updateTemplateStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
     return this.templateService.updateStatus(id, status);
   }
 }

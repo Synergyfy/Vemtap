@@ -13,6 +13,7 @@ export enum SubscriptionStatus {
   ACTIVE = 'active',
   CANCELED = 'canceled',
   EXPIRED = 'expired',
+  TRIAL = 'trial',
 }
 
 @Entity('subscriptions')
@@ -40,6 +41,9 @@ export class Subscription extends AbstractBaseEntity {
   @Column({ type: 'timestamp' })
   endDate: Date;
 
+  @Column({ type: 'timestamp', nullable: true })
+  trialEndDate: Date | null;
+
   @Column({
     type: 'simple-enum',
     enum: SubscriptionStatus,
@@ -50,4 +54,8 @@ export class Subscription extends AbstractBaseEntity {
   // Track the paystack payment ref
   @Column({ nullable: true })
   paystackReference: string;
+
+  // Store authorization code for recurring charges
+  @Column({ type: 'text', nullable: true })
+  paystackAuthorizationCode: string | null;
 }
