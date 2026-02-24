@@ -17,6 +17,12 @@ import {
     ActionType
 } from './types';
 
+const toUiChannel = (channel?: string): 'WhatsApp' | 'SMS' | 'Email' => {
+    if (channel === 'WHATSAPP') return 'WhatsApp';
+    if (channel === 'EMAIL') return 'Email';
+    return 'SMS';
+};
+
 // ─── Analytics ───────────────────────────────────────────────────────────────
 
 export const useMessagingAnalytics = (channel?: Channel) => {
@@ -31,7 +37,26 @@ export const useMessagingAnalytics = (channel?: Channel) => {
             const params = new URLSearchParams();
             if (branchId) params.append('branchId', branchId);
             if (channel) params.append('channel', channel);
-            return await api.get(`/messaging/analytics?${params.toString()}`);
+            const response = await api.get(`/messaging/analytics?${params.toString()}`);
+
+            const totalSent = response?.totalSent ?? response?.sent ?? 0;
+            const totalDelivered = response?.totalDelivered ?? response?.delivered ?? 0;
+            const deliveryRate = response?.deliveryRate ?? 0;
+
+            return {
+                sent: totalSent,
+                delivered: totalDelivered,
+                failed: Math.max(0, totalSent - totalDelivered),
+                deliveryRate,
+                openRate: response?.openRate,
+                channelStats: response?.channelStats,
+                globalStats: response?.globalStats || {
+                    totalSent,
+                    totalDelivered,
+                    openRate: response?.openRate ?? 0,
+                    clickRate: response?.clickRate ?? 0,
+                },
+            } as MessagingAnalytics;
         },
         enabled: !!branchId,
     });
@@ -50,7 +75,19 @@ export const useMessagingCampaigns = () => {
         queryFn: async () => {
             const params = new URLSearchParams();
             if (branchId) params.append('branchId', branchId);
-            return await api.get(`/messaging/campaigns?${params.toString()}`);
+            const campaigns = await api.get(`/messaging/campaigns?${params.toString()}`);
+            return (campaigns || []).map((campaign: any) => ({
+                ...campaign,
+                channel: campaign?.channel || 'SMS',
+                status:
+                    campaign?.status === 'SENT'
+                        ? 'Completed'
+                        : campaign?.status === 'PROCESSING'
+                            ? 'Running'
+                            : campaign?.status === 'FAILED'
+                                ? 'Draft'
+                                : campaign?.status || 'Draft',
+            }));
         },
         enabled: !!branchId,
     });
@@ -62,6 +99,7 @@ export const useSendMessage = () => {
     const queryClient = useQueryClient();
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const userBranchId = useAuthStore((state) => state.user?.branchId);
+    const businessId = useAuthStore((state) => state.user?.businessId);
     return useMutation<any, Error, SendMessageRequest>({
         mutationFn: async (dto) => {
             const resolvedBranchId =
@@ -70,8 +108,13 @@ export const useSendMessage = () => {
             const normalizedAudienceType =
                 dto.audienceType === 'ALL_CUSTOMERS' ? 'ALL' : dto.audienceType;
 
+            if (!businessId) {
+                throw new Error('Missing businessId in user session');
+            }
+
             return await api.post('/messaging/send', {
                 ...dto,
+                businessId,
                 branchId: resolvedBranchId,
                 audienceType: normalizedAudienceType,
             });
@@ -87,12 +130,15 @@ export const useSendMessage = () => {
 
 export const useMessagingTemplates = (channel?: Channel) => {
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const role = useAuthStore((state) => state.user?.role);
     return useQuery<Template[], Error>({
         queryKey: ['messaging', 'templates', channel],
         queryFn: async () => {
-            // Listing endpoint is admin-scoped in current backend.
             try {
-                const templates = await api.get('/messaging/admin/templates');
+                const templates =
+                    role === 'admin'
+                        ? await api.get('/messaging/admin/templates')
+                        : [];
                 if (!channel) {
                     return templates;
                 }
@@ -125,8 +171,19 @@ export const useInboxThreads = (channel: Channel) => {
     );
     return useQuery<InboxThread[], Error>({
         queryKey: ['messaging', 'inbox', channel, branchId],
-        queryFn: async () =>
-            await api.get(`/messaging/inbox/${channel}?${new URLSearchParams({ branchId: branchId || '' }).toString()}`),
+        queryFn: async () => {
+            const response = await api.get(`/messaging/inbox/${channel}?${new URLSearchParams({ branchId: branchId || '' }).toString()}`);
+            return (response || []).map((thread: any) => ({
+                id: thread.id,
+                contactName: thread?.contact?.name || 'Unknown Contact',
+                contactPhone: thread?.contact?.phone,
+                contactEmail: thread?.contact?.email,
+                lastMessage: thread?.lastMessage || 'No messages yet',
+                channel: toUiChannel(thread?.channel),
+                unread: thread?.unreadCount || 0,
+                updatedAt: thread?.lastActivityAt || thread?.updatedAt || thread?.createdAt,
+            }));
+        },
         enabled: !!branchId && !!channel,
     });
 };
@@ -138,8 +195,16 @@ export const useThreadMessages = (threadId: string) => {
     );
     return useQuery<ThreadMessage[], Error>({
         queryKey: ['messaging', 'thread', threadId, branchId],
-        queryFn: async () =>
-            await api.get(`/messaging/inbox/threads/${threadId}?${new URLSearchParams({ branchId: branchId || '' }).toString()}`),
+        queryFn: async () => {
+            const response = await api.get(`/messaging/inbox/threads/${threadId}?${new URLSearchParams({ branchId: branchId || '' }).toString()}`);
+            return (response || []).map((message: any) => ({
+                id: message.id,
+                threadId: message.threadId,
+                content: message.content,
+                direction: message.direction,
+                createdAt: message.timestamp || message.createdAt,
+            }));
+        },
         enabled: !!branchId && !!threadId,
     });
 };
