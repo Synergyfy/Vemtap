@@ -27,7 +27,7 @@ export default function Navbar() {
 
     return (
         <>
-            <div className="fixed top-6 left-0 right-0 z-50 flex justify-center px-4">
+            <div className="fixed left-0 right-0 z-50 flex justify-center px-4" style={{ top: 'calc(1.5rem + var(--pwa-banner-offset, 0px))' }}>
                 <nav className={`bg-white/80 text-text-main rounded-full py-0 px-6 flex items-center shadow-xl shadow-gray-200/20 border border-gray-200/50 max-w-5xl w-full justify-between backdrop-blur-xl transition-all duration-300`}>
                     <div className="flex items-center">
                         <Link href="/" className="flex items-center -my-2">
