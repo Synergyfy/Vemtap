@@ -60,7 +60,7 @@ export class MessagingEngineService {
     private readonly settingsService: SettingsService,
     private readonly providerRouter: ProviderRouterService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   public async sendMessage(
     dto: SendMessageDto,
@@ -110,11 +110,11 @@ export class MessagingEngineService {
       dto.channel,
     );
 
-    // Check credits and deduct upfront (transacted)
-    await this.creditService.deduct(
+    // Check credits and deduct upfront (plan first, then top-up)
+    await this.creditService.deductChannelCredit(
       dto.businessId,
-      estimatedCost,
-      `Send ${contacts.length} messages via ${dto.channel}`,
+      dto.channel,
+      contacts.length,
     );
 
     if (contacts.length === 1) {
