@@ -1,6 +1,12 @@
-export interface RegisterOwnerRequest {
+export interface RequestOwnerOtpRequest {
     firstName: string;
     lastName: string;
+    email: string;
+    phone: string;
+    role: 'Owner';
+}
+
+export interface RegisterOwnerRequest {
     email: string;
     password: string;
     businessName: string;
