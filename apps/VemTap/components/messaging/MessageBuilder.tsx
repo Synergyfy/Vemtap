@@ -1,15 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useMessagingStore, Template, MessageChannel } from '@/lib/store/useMessagingStore';
-import { messagingApi } from '@/lib/api/messaging';
-import { Users, FileText, Send, CheckCircle, Smartphone, MessageSquare, Mail } from 'lucide-react';
+import { MessageChannel } from '@/lib/store/useMessagingStore';
+import { useMessagingTemplates, useSendMessage } from '@/services/messaging/hooks';
+import { Channel, AudienceType } from '@/services/messaging/types';
+import { Users, Send, CheckCircle, Smartphone, MessageSquare, Mail } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import Image from 'next/image';
-import { useMockDashboardStore } from '@/lib/store/mockDashboardStore';
-import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 
 interface MessageBuilderProps {
     /** When set, skip channel selection and go straight to compose */
@@ -178,13 +177,14 @@ function PhonePreview({
 export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) {
     const router = useRouter();
     const { user } = useAuthStore();
-    const { templates, wallets } = useMessagingStore();
-    const currentBranchId = user?.businessId || 'bistro_001';
+    const sendMessage = useSendMessage();
     const [channel, setChannel] = useState<MessageChannel>(defaultChannel || 'SMS');
-    const wallet = wallets[channel];
-
-    // Get audience data from mock store
-    const { getFilteredVisitors } = useMockDashboardStore();
+    const channelApiMap: Record<MessageChannel, Channel> = {
+        WhatsApp: 'WHATSAPP',
+        SMS: 'SMS',
+        Email: 'EMAIL',
+    };
+    const { data: templates = [] } = useMessagingTemplates(channelApiMap[channel]);
 
     // Business Branding Helper
     const businessName = user?.businessName || 'Your Business';
@@ -196,33 +196,34 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
     const [messageName, setMessageName] = useState('');
     const [audience, setAudience] = useState('all');
     const [selectedTemplate, setSelectedTemplate] = useState<string>('');
-    const [templateCategory, setTemplateCategory] = useState('All');
     const [customContent, setCustomContent] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [isLiveEdit, setIsLiveEdit] = useState(false);
-
-    // Dynamic Audience counts based on branch
-    const getAudienceCount = () => {
-        const branchVisitors = getFilteredVisitors(currentBranchId);
-        if (audience === 'returning') return branchVisitors.filter((v: any) => v.status === 'returning').length;
-        if (audience === 'new') return branchVisitors.filter((v: any) => v.status === 'new').length;
-        if (audience === 'premium') return branchVisitors.filter((v: any) => v.status === 'returning' && (v.timestamp < Date.now() - 86400000)).length; // Mock logic
-        return branchVisitors.length;
-    };
-
-    const count = getAudienceCount();
-    const costPerMsg = channel === 'SMS' ? 2.5 : channel === 'WhatsApp' ? 4.0 : 0.5;
-    const totalCost = count * costPerMsg;
+    const countLabel = audience === 'all' ? 'All Contacts' : 'Segmented Contacts';
 
     const handleSend = async () => {
+        if (!customContent.trim() && !selectedTemplate) {
+            toast.error('Please add content or select a template');
+            return;
+        }
+
+        const audienceType: AudienceType =
+            audience === 'all'
+                ? 'ALL_CUSTOMERS'
+                : audience === 'new'
+                    ? 'RECENT'
+                    : audience === 'premium'
+                        ? 'TAGGED'
+                        : 'GROUP';
+
         setIsSending(true);
         try {
-            await messagingApi.sendBroadcast(
-                messageName || 'Untitled Message',
-                channel,
-                count,
-                selectedTemplate ? (templates.find(t => t.id === selectedTemplate)?.content || '') : customContent
-            );
+            await sendMessage.mutateAsync({
+                channel: channelApiMap[channel],
+                audienceType,
+                templateId: selectedTemplate || undefined,
+                content: selectedTemplate ? undefined : customContent,
+            });
             toast.success('Message launched successfully!');
             router.push('/dashboard/messaging');
         } catch (error: any) {
@@ -269,10 +270,10 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                 <div>
                     <label className="block text-xs font-bold uppercase text-text-secondary mb-3">Target Audience</label>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {[
-                            { id: 'returning', label: 'Returning Users', sub: `(${getFilteredVisitors(currentBranchId).filter((v: any) => v.status === 'returning').length})`, icon: Users },
-                            { id: 'new', label: 'New Users', sub: `(${getFilteredVisitors(currentBranchId).filter((v: any) => v.status === 'new').length})`, icon: Smartphone },
-                            { id: 'premium', label: 'Premium Users', sub: `(${getFilteredVisitors(currentBranchId).filter((v: any) => v.status === 'returning').length})`, icon: CheckCircle }
+                        {[ 
+                            { id: 'all', label: 'All Contacts', sub: '(Business-wide)', icon: Users },
+                            { id: 'new', label: 'Recent Contacts', sub: '(Recent)', icon: Smartphone },
+                            { id: 'premium', label: 'Tagged Contacts', sub: '(Tagged)', icon: CheckCircle }
                         ].map(opt => (
                             <button
                                 key={opt.id}
@@ -329,7 +330,7 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                             >
                                 <option value="">Write Custom Message...</option>
                                 {templates
-                                    .filter(t => (t.channel === channel || t.channel === 'Any') && (!t.branchId || t.branchId === currentBranchId))
+                                    .filter(t => t.channel === channelApiMap[channel])
                                     .map(t => (
                                         <option key={t.id} value={t.id}>{t.name}</option>
                                     ))}
@@ -340,9 +341,9 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                             <label className="block text-[10px] font-black uppercase text-text-secondary mb-2 tracking-widest ml-1">Target Audience</label>
                             <div className="grid grid-cols-3 gap-2">
                                 {[
-                                    { id: 'returning', label: 'Returning', sub: getFilteredVisitors(currentBranchId).filter((v: any) => v.status === 'returning').length, icon: Users },
-                                    { id: 'new', label: 'New', sub: getFilteredVisitors(currentBranchId).filter((v: any) => v.status === 'new').length, icon: Smartphone },
-                                    { id: 'premium', label: 'Premium', sub: getFilteredVisitors(currentBranchId).filter((v: any) => v.status === 'returning').length, icon: CheckCircle }
+                                    { id: 'all', label: 'All', sub: 'All contacts', icon: Users },
+                                    { id: 'new', label: 'Recent', sub: 'Recent', icon: Smartphone },
+                                    { id: 'premium', label: 'Tagged', sub: 'Tagged', icon: CheckCircle }
                                 ].map(opt => (
                                     <button
                                         key={opt.id}
@@ -436,12 +437,12 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                     <span className="text-sm font-bold text-text-secondary">Audience Size</span>
                     <div className="flex items-center gap-2">
                         <Users size={16} className="text-primary" />
-                        <span className="font-bold text-text-main">{count.toLocaleString()} Contacts</span>
+                        <span className="font-bold text-text-main">{countLabel}</span>
                     </div>
                 </div>
                 <div className="flex justify-between items-center pb-4 border-b border-gray-200">
                     <span className="text-sm font-bold text-text-secondary">Estimated Cost</span>
-                    <span className="font-mono font-bold text-text-main">{totalCost.toLocaleString()} {wallet.currency}</span>
+                    <span className="font-mono font-bold text-text-main">Calculated by backend</span>
                 </div>
                 <div className="pt-2">
                     <div className="flex items-center justify-between mb-3 px-1">
@@ -471,7 +472,7 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                 <button onClick={() => setStep(2)} className="px-6 py-3 text-text-secondary hover:text-text-main font-bold">Back</button>
                 <button
                     onClick={handleSend}
-                    disabled={isSending || wallet.credits < totalCost}
+                    disabled={isSending}
                     className="px-8 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {isSending ? (
@@ -479,7 +480,7 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                     ) : (
                         <Send size={18} />
                     )}
-                    {wallet.credits < totalCost ? 'Insufficient Funds' : 'Launch Message'}
+                    {'Launch Message'}
                 </button>
             </div>
         </div>

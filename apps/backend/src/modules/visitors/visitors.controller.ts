@@ -46,7 +46,7 @@ export class VisitorsController {
     private readonly visitorsService: VisitorsService,
     private readonly campaignsService: CampaignsService,
     private readonly messagingService: MessagingEngineService,
-  ) {}
+  ) { }
 
   private getBranchId(req: any, branchId?: string): string {
     const resolved = branchId || req.user?.branchId;

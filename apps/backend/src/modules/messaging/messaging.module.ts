@@ -132,4 +132,4 @@ import { AutomationProcessor } from './processors/automation.processor';
     ProviderRouterService,
   ],
 })
-export class MessagingModule {}
+export class MessagingModule { }

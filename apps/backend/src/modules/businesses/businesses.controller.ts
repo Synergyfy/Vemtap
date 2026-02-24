@@ -27,7 +27,7 @@ import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
 @ApiBearerAuth()
 @Controller('businesses')
 export class BusinessesController {
-  constructor(private readonly businessesService: BusinessesService) {}
+  constructor(private readonly businessesService: BusinessesService) { }
 
   @Get('my-business')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)

@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useMessagingStore, Thread, Message } from '@/lib/store/useMessagingStore';
-import { messagingApi } from '@/lib/api/messaging';
-import { Search, Send, Paperclip, MoreVertical, Check, CheckCheck, Phone, Video, User, MessageSquare } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useInboxThreads, useReplyToThread, useThreadMessages } from '@/services/messaging/hooks';
+import { Channel } from '@/services/messaging/types';
+import { Search, Send, Paperclip, MoreVertical, Phone, Video, User, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 
@@ -11,61 +11,60 @@ interface ChannelInboxProps {
     channel: 'SMS' | 'WhatsApp' | 'Email';
 }
 
+const channelApiMap: Record<ChannelInboxProps['channel'], Channel> = {
+    WhatsApp: 'WHATSAPP',
+    SMS: 'SMS',
+    Email: 'EMAIL',
+};
+
 export default function ChannelInbox({ channel }: ChannelInboxProps) {
-    const { threads, messages, updateThread } = useMessagingStore();
+    const apiChannel = channelApiMap[channel];
+    const { data: threads = [] } = useInboxThreads(apiChannel);
     const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-    const [filteredThreads, setFilteredThreads] = useState<Thread[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [replyContent, setReplyContent] = useState('');
-    const [isSending, setIsSending] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // Filter threads by channel
-    useEffect(() => {
-        const relevant = threads.filter(t => t.channel === channel);
-        setFilteredThreads(relevant);
-        if (!activeThreadId && relevant.length > 0) {
-            setActiveThreadId(relevant[0].id);
-        }
-    }, [threads, channel, activeThreadId]);
+    const filteredThreads = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return threads;
+        return threads.filter((thread) =>
+            `${thread.contactName} ${thread.lastMessage}`.toLowerCase().includes(query),
+        );
+    }, [threads, searchQuery]);
 
-    // Scroll to bottom of chat
+    useEffect(() => {
+        if (!activeThreadId && filteredThreads.length > 0) {
+            setActiveThreadId(filteredThreads[0].id);
+        }
+    }, [filteredThreads, activeThreadId]);
+
+    const activeThread = filteredThreads.find((thread) => thread.id === activeThreadId) || null;
+    const { data: activeMessages = [] } = useThreadMessages(activeThreadId || '');
+    const replyMutation = useReplyToThread(activeThreadId || '');
+    const isSending = replyMutation.isPending;
+
     useEffect(() => {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [messages, activeThreadId]);
-
-    const activeThread = threads.find(t => t.id === activeThreadId);
-    const activeMessages = messages.filter(m => m.threadId === activeThreadId).sort((a, b) => a.timestamp - b.timestamp);
+    }, [activeMessages, activeThreadId]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!replyContent.trim() || !activeThreadId) return;
 
-        setIsSending(true);
         try {
-            await messagingApi.sendMessage(activeThreadId, replyContent, channel);
+            await replyMutation.mutateAsync({ content: replyContent.trim() });
             setReplyContent('');
-        } catch (error) {
-            toast.error('Failed to send message. Check your credits.');
-        } finally {
-            setIsSending(false);
-        }
-    };
-
-    const handleSelectThread = (id: string) => {
-        setActiveThreadId(id);
-        // Mark as read potentially
-        const thread = threads.find(t => t.id === id);
-        if (thread && thread.unreadCount > 0) {
-            updateThread(id, { unreadCount: 0 });
+            toast.success('Reply sent');
+        } catch {
+            toast.error('Failed to send reply');
         }
     };
 
     return (
         <div className="flex h-[calc(100vh-200px)] bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            {/* Sidebar List */}
             <div className="w-80 border-r border-gray-200 flex flex-col">
                 <div className="p-4 border-b border-gray-100">
                     <div className="relative">
@@ -86,10 +85,10 @@ export default function ChannelInbox({ channel }: ChannelInboxProps) {
                             No conversations yet.
                         </div>
                     ) : (
-                        filteredThreads.map(thread => (
+                        filteredThreads.map((thread) => (
                             <button
                                 key={thread.id}
-                                onClick={() => handleSelectThread(thread.id)}
+                                onClick={() => setActiveThreadId(thread.id)}
                                 className={cn(
                                     "w-full p-4 flex items-start gap-3 border-b border-gray-50 transition-colors hover:bg-gray-50 text-left",
                                     activeThreadId === thread.id && "bg-blue-50/50 hover:bg-blue-50/50"
@@ -101,19 +100,19 @@ export default function ChannelInbox({ channel }: ChannelInboxProps) {
                                 <div className="flex-1 min-w-0">
                                     <div className="flex justify-between items-start mb-1">
                                         <h4 className={cn("font-bold text-sm truncate", activeThreadId === thread.id ? "text-primary" : "text-text-main")}>
-                                            {thread.customerName}
+                                            {thread.contactName}
                                         </h4>
                                         <span className="text-[10px] text-gray-400">
-                                            {new Date(thread.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {thread.updatedAt ? new Date(thread.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                                         </span>
                                     </div>
-                                    <p className={cn("text-xs truncate", thread.unreadCount > 0 ? "font-bold text-text-main" : "text-text-secondary")}>
+                                    <p className={cn("text-xs truncate", thread.unread > 0 ? "font-bold text-text-main" : "text-text-secondary")}>
                                         {thread.lastMessage}
                                     </p>
                                 </div>
-                                {thread.unreadCount > 0 && (
+                                {thread.unread > 0 && (
                                     <div className="min-w-[18px] h-[18px] rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">
-                                        {thread.unreadCount}
+                                        {thread.unread}
                                     </div>
                                 )}
                             </button>
@@ -122,20 +121,18 @@ export default function ChannelInbox({ channel }: ChannelInboxProps) {
                 </div>
             </div>
 
-            {/* Chat Area */}
             <div className="flex-1 flex flex-col">
                 {activeThread ? (
                     <>
-                        {/* Chat Header */}
                         <div className="h-16 border-b border-gray-200 flex items-center justify-between px-6 bg-gray-50/50">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                                    {activeThread.customerName.charAt(0)}
+                                    {activeThread.contactName.charAt(0)}
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-text-main text-sm">{activeThread.customerName}</h3>
+                                    <h3 className="font-bold text-text-main text-sm">{activeThread.contactName}</h3>
                                     <p className="text-xs text-text-secondary">
-                                        {channel === 'Email' ? activeThread.customerEmail : activeThread.customerPhone}
+                                        {channel === 'Email' ? activeThread.contactEmail : activeThread.contactPhone}
                                     </p>
                                 </div>
                             </div>
@@ -152,10 +149,9 @@ export default function ChannelInbox({ channel }: ChannelInboxProps) {
                             </div>
                         </div>
 
-                        {/* Messages List */}
                         <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#F0F2F5]">
                             {activeMessages.map((msg) => {
-                                const isMe = msg.direction === 'outbound';
+                                const isMe = msg.direction === 'OUTBOUND';
                                 return (
                                     <div key={msg.id} className={cn("flex w-full", isMe ? "justify-end" : "justify-start")}>
                                         <div className={cn(
@@ -165,11 +161,8 @@ export default function ChannelInbox({ channel }: ChannelInboxProps) {
                                             <p className="text-sm text-text-main leading-relaxed">{msg.content}</p>
                                             <div className="flex items-center justify-end gap-1 mt-1">
                                                 <span className="text-[10px] text-gray-400">
-                                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                                                 </span>
-                                                {isMe && (
-                                                    msg.status === 'read' ? <CheckCheck size={12} className="text-blue-500" /> : <Check size={12} className="text-gray-400" />
-                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -178,7 +171,6 @@ export default function ChannelInbox({ channel }: ChannelInboxProps) {
                             <div ref={messagesEndRef} />
                         </div>
 
-                        {/* Input Area */}
                         <div className="p-4 bg-white border-t border-gray-200">
                             <form onSubmit={handleSendMessage} className="flex gap-4">
                                 <button type="button" className="p-2 text-text-secondary hover:bg-gray-100 rounded-full transition-colors">

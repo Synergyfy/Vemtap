@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { StaffMember, InviteStaffRequest, UpdateStaffRequest } from './types';
+import { StaffMember, InviteStaffRequest, UpdateStaffRequest, AdminUser, AdminUsersResponse } from './types';
 import { useAuthStore, AuthState } from '../../store/useAuthStore';
 
 export const useStaff = (branchId?: string) => {
@@ -54,7 +54,7 @@ export const useRemoveStaff = () => {
 // --- Admin Hooks ---
 
 export const useAdminUsers = (query?: { search?: string; role?: string; status?: string; page?: number; limit?: number }) => {
-    return useQuery<any, Error>({
+    return useQuery<AdminUsersResponse, Error>({
         queryKey: ['admin-users', query],
         queryFn: async () => {
             const params = new URLSearchParams();
@@ -70,7 +70,7 @@ export const useAdminUsers = (query?: { search?: string; role?: string; status?:
 
 export const useAdminCreateUser = () => {
     const queryClient = useQueryClient();
-    return useMutation<any, Error, any>({
+    return useMutation<AdminUser, Error, any>({
         mutationFn: async (dto) => await api.post('/users/admin', dto),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-users'] });
@@ -80,7 +80,7 @@ export const useAdminCreateUser = () => {
 
 export const useAdminUpdateUser = () => {
     const queryClient = useQueryClient();
-    return useMutation<any, Error, { id: string; updates: any }>({
+    return useMutation<AdminUser, Error, { id: string; updates: any }>({
         mutationFn: async ({ id, updates }) => await api.patch(`/users/admin/${id}`, updates),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-users'] });

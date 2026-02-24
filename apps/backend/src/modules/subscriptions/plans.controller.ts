@@ -29,7 +29,7 @@ import { Public } from 'src/common/decorators/public.decorator';
 @ApiTags('Plans (Admin Pricing Page)')
 @Controller('plans')
 export class PlansController {
-  constructor(private readonly plansService: PlansService) {}
+  constructor(private readonly plansService: PlansService) { }
 
   @Post('admin')
   @ApiBearerAuth()

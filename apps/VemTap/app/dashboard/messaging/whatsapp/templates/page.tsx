@@ -2,20 +2,22 @@
 
 import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
-import { useMessagingStore, Template, MessageChannel } from '@/lib/store/useMessagingStore';
-import { Plus, Copy, Trash2, Edit, X, Save, MessageSquare, Search } from 'lucide-react';
+import { useCreateTemplate, useMessagingTemplates } from '@/services/messaging/hooks';
+import { Template } from '@/services/messaging/types';
+import { Plus, Copy, Edit, X, Save, MessageSquare, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function WhatsAppTemplatesPage() {
-    const { templates, addTemplate, updateTemplate, deleteTemplate } = useMessagingStore();
+    const { data: templates = [] } = useMessagingTemplates('WHATSAPP');
+    const createTemplateMutation = useCreateTemplate();
     const [searchQuery, setSearchQuery] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState<Partial<Template> | null>(null);
 
     const whatsappTemplates = templates
-        .filter(t => t.channel === 'WhatsApp' || t.channel === 'Any')
-        .filter(t =>
+        .filter((t) => t.channel === 'WHATSAPP')
+        .filter((t) =>
             t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             t.content.toLowerCase().includes(searchQuery.toLowerCase())
         );
@@ -30,38 +32,40 @@ export default function WhatsAppTemplatesPage() {
             setEditingTemplate(template);
         } else {
             setEditingTemplate({
-                id: Math.random().toString(36).substr(2, 9),
+                id: Math.random().toString(36).slice(2, 9),
                 name: '',
                 content: '',
-                channel: 'WhatsApp',
-                status: 'pending'
+                channel: 'WHATSAPP',
+                status: 'pending',
             });
         }
         setIsModalOpen(true);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!editingTemplate?.name || !editingTemplate?.content) {
             toast.error('Please fill in all fields');
             return;
         }
 
-        const existing = templates.find(t => t.id === editingTemplate.id);
+        const existing = templates.find((t) => t.id === editingTemplate.id);
         if (existing) {
-            updateTemplate(editingTemplate.id!, editingTemplate);
-            toast.success('Template updated');
-        } else {
-            addTemplate({
-                id: editingTemplate.id || Math.random().toString(36).substr(2, 9),
-                name: editingTemplate.name!,
-                content: editingTemplate.content!,
-                channel: 'WhatsApp',
-                status: 'approved'
+            toast.error('Template editing is managed by admin workflow');
+            return;
+        }
+
+        try {
+            await createTemplateMutation.mutateAsync({
+                name: editingTemplate.name,
+                channel: 'WHATSAPP',
+                content: editingTemplate.content,
             });
             toast.success('Template created');
+            setIsModalOpen(false);
+            setEditingTemplate(null);
+        } catch {
+            toast.error('Failed to create template');
         }
-        setIsModalOpen(false);
-        setEditingTemplate(null);
     };
 
     return (
@@ -109,13 +113,6 @@ export default function WhatsAppTemplatesPage() {
                                     >
                                         <Copy size={16} />
                                     </button>
-                                    <button
-                                        onClick={() => deleteTemplate(template.id)}
-                                        className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
-                                        title="Delete"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
                                 </div>
                             </div>
                             <h3 className="font-bold text-text-main mb-2">{template.name}</h3>
@@ -128,7 +125,7 @@ export default function WhatsAppTemplatesPage() {
                             className="w-full mt-4 py-2.5 bg-gray-50 text-text-main font-bold rounded-xl hover:bg-gray-100 transition-colors text-xs flex items-center justify-center gap-2"
                         >
                             <Edit size={14} />
-                            Edit Template
+                            View Template
                         </button>
                     </div>
                 ))}
@@ -141,7 +138,6 @@ export default function WhatsAppTemplatesPage() {
                 )}
             </div>
 
-            {/* Template Modal */}
             <AnimatePresence>
                 {isModalOpen && (
                     <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
@@ -160,7 +156,7 @@ export default function WhatsAppTemplatesPage() {
                         >
                             <div className="p-8 border-b border-gray-100 bg-green-50/50 flex items-center justify-between">
                                 <h3 className="text-xl font-display font-black text-slate-900 uppercase">
-                                    {templates.some(t => t.id === editingTemplate?.id) ? 'Edit Template' : 'New WhatsApp Template'}
+                                    {templates.some((t) => t.id === editingTemplate?.id) ? 'Template Details' : 'New WhatsApp Template'}
                                 </h3>
                                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white rounded-xl transition-colors">
                                     <X size={20} />
@@ -173,7 +169,7 @@ export default function WhatsAppTemplatesPage() {
                                     <input
                                         type="text"
                                         value={editingTemplate?.name || ''}
-                                        onChange={(e) => setEditingTemplate(prev => ({ ...prev, name: e.target.value }))}
+                                        onChange={(e) => setEditingTemplate((prev) => ({ ...prev, name: e.target.value }))}
                                         placeholder="e.g. Order Confirmation"
                                         className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-xl transition-all font-bold outline-none"
                                     />
@@ -183,22 +179,10 @@ export default function WhatsAppTemplatesPage() {
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Content</label>
                                     <textarea
                                         value={editingTemplate?.content || ''}
-                                        onChange={(e) => setEditingTemplate(prev => ({ ...prev, content: e.target.value }))}
+                                        onChange={(e) => setEditingTemplate((prev) => ({ ...prev, content: e.target.value }))}
                                         placeholder="Write your WhatsApp message... use {Name} for variables"
                                         className="w-full h-32 p-4 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-medium outline-none resize-none"
                                     />
-                                    <div className="flex gap-2 mt-2">
-                                        {['{Name}', '{BusinessName}', '{Points}'].map(variable => (
-                                            <button
-                                                key={variable}
-                                                type="button"
-                                                onClick={() => setEditingTemplate(prev => ({ ...prev, content: (prev?.content || '') + variable }))}
-                                                className="px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-[10px] font-black hover:bg-green-100 transition-all border border-green-200"
-                                            >
-                                                + {variable.replace(/{|}/g, '')}
-                                            </button>
-                                        ))}
-                                    </div>
                                 </div>
 
                                 <button
