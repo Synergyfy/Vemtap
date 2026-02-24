@@ -188,8 +188,6 @@ export class UsersController {
       );
     }
 
-    const businessId = req.user.businessId;
-
     // In a real app, we'd send an invite email. For this MVP, we create them with a default password.
     const hashedPassword = await bcrypt.hash('staff123', 10);
     return this.usersService.create({
