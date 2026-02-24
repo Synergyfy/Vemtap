@@ -68,6 +68,18 @@ export const adminProductsApi = {
     create: (data: any) => api.post('/products', data),
     update: (id: string, data: any) => api.patch(`/products/${id}`, data),
     delete: (id: string) => api.delete(`/products/${id}`),
+
+    // Orders & Quotes
+    getAllOrders: () => api.get('/products/orders/all'),
+    getAllQuotes: () => api.get('/products/quotes/all'),
+    markOrderReady: (id: string) => api.patch(`/products/orders/${id}/ready`, {}),
+    negotiateQuote: (id: string, data: any) => api.post(`/products/quotes/${id}/negotiate`, data),
+
+    // Product Types
+    getAllTypes: () => api.get('/products/types'),
+    createType: (data: any) => api.post('/products/types', data),
+    updateType: (id: string, data: any) => api.patch(`/products/types/${id}`, data),
+    deleteType: (id: string) => api.delete(`/products/types/${id}`),
 };
 
 // =====================

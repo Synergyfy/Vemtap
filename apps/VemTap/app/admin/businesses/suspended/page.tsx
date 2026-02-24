@@ -18,7 +18,7 @@ export default function AdminSuspendedBusinessesPage() {
                 search: searchQuery || undefined,
                 status: 'Suspended',
             });
-            const bizList = Array.isArray(data) ? data : (data.businesses || []);
+            const bizList = Array.isArray(data) ? data : (data.data || data.businesses || []);
             setBusinesses(bizList);
         } catch (err: any) {
             notify.error(err.message || 'Failed to load suspended businesses');

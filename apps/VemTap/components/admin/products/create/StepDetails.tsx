@@ -3,6 +3,8 @@
 import React from 'react';
 import { useProductFormStore } from '@/store/useProductFormStore';
 import { Factory, QrCode, ArrowRight, Save, Plus, Trash2, GripVertical, ListOrdered } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { adminProductsApi } from '@/lib/api/admin';
 
 export default function StepDetails() {
     const { formData, updateFormData, nextStep } = useProductFormStore();
@@ -25,6 +27,11 @@ export default function StepDetails() {
         const newSteps = formData.howToSteps.map(s => s.id === id ? { ...s, [field]: value } : s);
         updateFormData({ howToSteps: newSteps });
     };
+
+    const { data: types } = useQuery({
+        queryKey: ['admin-product-types'],
+        queryFn: () => adminProductsApi.getAllTypes(),
+    });
 
     return (
         <div className="grid grid-cols-12 gap-8">
@@ -87,15 +94,24 @@ export default function StepDetails() {
                                 <label className="block text-sm font-bold text-text-secondary mb-2" htmlFor="category">Category</label>
                                 <select
                                     className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-medium text-text-main appearance-none cursor-pointer"
-                                    id="category"
-                                    name="category"
-                                    value={formData.category}
-                                    onChange={handleChange}
+                                    id="productTypeId"
+                                    name="productTypeId"
+                                    value={formData.productTypeId}
+                                    onChange={(e) => {
+                                        const selectedType = types?.find((t: any) => t.id === e.target.value);
+                                        updateFormData({
+                                            productTypeId: e.target.value,
+                                            category: selectedType?.name || ''
+                                        });
+                                    }}
                                 >
-                                    <option value="NFC Hardware">NFC Hardware</option>
-                                    <option value="Smart Cards">Smart Cards</option>
-                                    <option value="NFC Readers">NFC Readers</option>
-                                    <option value="Accessories">Accessories</option>
+                                    <option value="" disabled>Select Category</option>
+                                    {types?.map((type: any) => (
+                                        <option key={type.id} value={type.id}>{type.name}</option>
+                                    ))}
+                                    {(!types || types.length === 0) && (
+                                        <option value="">No Categories Available</option>
+                                    )}
                                 </select>
                             </div>
 

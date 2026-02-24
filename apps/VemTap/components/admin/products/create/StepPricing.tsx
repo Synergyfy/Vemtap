@@ -2,10 +2,61 @@
 
 import React from 'react';
 import { useProductFormStore } from '@/store/useProductFormStore';
-import { Percent, Trash2, Plus, Info, LayoutGrid, CheckCircle, Sparkles } from 'lucide-react';
+import { Percent, Trash2, Plus, Info, LayoutGrid, CheckCircle, Sparkles, Loader2 } from 'lucide-react';
 import { TbCurrencyNaira } from "react-icons/tb";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { adminProductsApi } from '@/lib/api/admin';
+
 export default function StepPricing() {
-    const { formData, updateFormData, nextStep, prevStep } = useProductFormStore();
+    const { formData, updateFormData, nextStep, prevStep, editingProductId } = useProductFormStore();
+    const queryClient = useQueryClient();
+
+    const mutation = useMutation({
+        mutationFn: async () => {
+            // Map frontend form data to backend DTO
+            const payload = {
+                name: formData.title,
+                description: formData.description,
+                manufacturer: formData.manufacturer,
+                productTypeId: formData.productTypeId,
+                price: formData.msrp,
+                image: typeof formData.images.primary === 'string' && formData.images.primary.startsWith('http')
+                    ? formData.images.primary
+                    : 'https://placehold.co/600x400/png?text=Hardware+Product',
+                tag: formData.tag,
+                tagColor: formData.tagColor,
+                moq: formData.volumeDiscounts[0]?.minQty || 1,
+                priceTiers: formData.volumeDiscounts.map(tier => ({
+                    min: tier.minQty,
+                    max: tier.maxQty,
+                    price: parseFloat((formData.msrp * (1 - tier.discountPercent / 100)).toFixed(2))
+                })),
+                status: 'Published'
+            };
+
+            if (editingProductId) {
+                return adminProductsApi.update(editingProductId, payload);
+            }
+            return adminProductsApi.create(payload);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-product-stats'] });
+            nextStep();
+        },
+        onError: (error) => {
+            console.error('Operation failed:', error);
+            alert(`Failed to ${editingProductId ? 'update' : 'publish'} product. Please check your connection and try again.`);
+        }
+    });
+
+    const handlePublish = async () => {
+        if (!formData.title || !formData.description) {
+            alert('Please fill in the basic product details in Step 1.');
+            return;
+        }
+        mutation.mutate();
+    };
 
     const handleDiscountChange = (id: string, field: 'minQty' | 'maxQty' | 'discountPercent', value: string) => {
         const numValue = value === '' ? null : parseInt(value);
@@ -269,15 +320,26 @@ export default function StepPricing() {
 
                     <div className="mt-8 pt-8 border-t border-gray-100">
                         <button
-                            onClick={nextStep}
-                            className="w-full bg-primary hover:bg-primary-hover text-white py-4 rounded-full font-bold text-lg shadow-xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 group mb-3"
+                            onClick={handlePublish}
+                            disabled={mutation.isPending}
+                            className="w-full bg-primary hover:bg-primary-hover text-white py-4 rounded-full font-bold text-lg shadow-xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 group mb-3 disabled:opacity-50 disabled:scale-100"
                         >
-                            Publish to Marketplace
-                            <CheckCircle className="ml-1" size={20} />
+                            {mutation.isPending ? (
+                                <>
+                                    {editingProductId ? 'Saving Changes...' : 'Publishing...'}
+                                    <Loader2 className="ml-1 animate-spin" size={20} />
+                                </>
+                            ) : (
+                                <>
+                                    {editingProductId ? 'Save Changes' : 'Publish to Marketplace'}
+                                    <CheckCircle className="ml-1" size={20} />
+                                </>
+                            )}
                         </button>
                         <button
                             onClick={prevStep}
-                            className="w-full bg-white hover:bg-gray-50 text-text-secondary py-3 rounded-full font-bold border border-gray-200 transition-colors text-sm"
+                            disabled={mutation.isPending}
+                            className="w-full bg-white hover:bg-gray-50 text-text-secondary py-3 rounded-full font-bold border border-gray-200 transition-colors text-sm disabled:opacity-50"
                         >
                             Back to Media
                         </button>

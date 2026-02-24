@@ -26,17 +26,31 @@ export default function AdminUsersPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [serverStats, setServerStats] = useState<any>(null);
 
     const fetchUsers = useCallback(async () => {
         setIsLoading(true);
         try {
-            const data = await adminUsersApi.getAll({
+            const response = await adminUsersApi.getAll({
                 search: searchQuery || undefined,
                 role: filterRole || undefined,
                 status: filterStatus || undefined,
             });
-            // Backend returns { users, total, stats } or just array
-            setUsers(Array.isArray(data) ? data : (data.users || []));
+
+            // Backend returns { data: [...], meta: {...}, stats: {...} }
+            const userList = Array.isArray(response) ? response : (response.data || response.users || []);
+
+            // Map backend fields to frontend interface
+            const mappedUsers = userList.map((u: any) => ({
+                ...u,
+                firstName: u.firstName || (u.name ? u.name.split(' ')[0] : ''),
+                lastName: u.lastName || (u.name ? u.name.split(' ').slice(1).join(' ') : ''),
+                lastActive: u.lastActive || (u.lastLogin && u.lastLogin !== 'Never' ? u.lastLogin : null),
+                createdAt: u.createdAt || u.joined || new Date().toISOString()
+            }));
+
+            setUsers(mappedUsers);
+            if (response.stats) setServerStats(response.stats);
         } catch (error: any) {
             notify.error(error.message || 'Failed to load users');
         } finally {
@@ -50,10 +64,10 @@ export default function AdminUsersPage() {
     }, [fetchUsers]);
 
     const stats = [
-        { label: 'Total Users', value: users.length, icon: 'people', color: 'blue' },
-        { label: 'Owners', value: users.filter(u => u.role === 'Owner').length, icon: 'store', color: 'purple' },
-        { label: 'Customers', value: users.filter(u => u.role === 'Customer').length, icon: 'person', color: 'green' },
-        { label: 'Staff', value: users.filter(u => u.role === 'Staff' || u.role === 'Manager').length, icon: 'badge', color: 'orange' },
+        { label: 'Total Users', value: serverStats?.total ?? users.length, icon: 'people', color: 'blue' },
+        { label: 'Owners', value: serverStats?.owners ?? users.filter(u => u.role === 'Owner').length, icon: 'store', color: 'purple' },
+        { label: 'Customers', value: serverStats?.customers ?? users.filter(u => u.role === 'Customer').length, icon: 'person', color: 'green' },
+        { label: 'Staff', value: serverStats?.staff ?? users.filter(u => u.role === 'Staff' || u.role === 'Manager').length, icon: 'badge', color: 'orange' },
     ];
 
     const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -120,14 +134,15 @@ export default function AdminUsersPage() {
     };
 
     const getStatusBadge = (status: string) => {
+        const s = status?.toLowerCase();
         const map: Record<string, string> = {
-            Active: 'bg-green-50 text-green-600',
-            Invited: 'bg-yellow-50 text-yellow-600',
-            Pending: 'bg-yellow-50 text-yellow-600',
-            Suspended: 'bg-red-50 text-red-600',
-            Inactive: 'bg-gray-100 text-gray-500',
+            active: 'bg-green-50 text-green-600',
+            invited: 'bg-yellow-50 text-yellow-600',
+            pending: 'bg-yellow-50 text-yellow-600',
+            suspended: 'bg-red-50 text-red-600',
+            inactive: 'bg-gray-100 text-gray-500',
         };
-        return map[status] || 'bg-gray-100 text-gray-500';
+        return map[s] || 'bg-gray-100 text-gray-500';
     };
 
     return (
@@ -235,7 +250,9 @@ export default function AdminUsersPage() {
                                                     <span className="material-icons-round text-primary text-sm group-hover:text-white">person</span>
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-sm text-text-main">{user.firstName} {user.lastName}</p>
+                                                    <p className="font-bold text-sm text-text-main">
+                                                        {user.firstName || user.lastName ? `${user.firstName} ${user.lastName}`.trim() : user.email.split('@')[0]}
+                                                    </p>
                                                     <p className="text-text-secondary text-xs font-medium">{user.email}</p>
                                                 </div>
                                             </div>

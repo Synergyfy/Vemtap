@@ -207,7 +207,7 @@ export default function AgentDashboard() {
                                     <p className="text-[10px] font-black uppercase text-primary/40 tracking-[0.2em]">Synchronizing Logs...</p>
                                 </div>
                             ) : activeTicket?.messages?.map((m: any, idx: number) => {
-                                const isAgent = m.sender?.role === 'ADMIN' || m.sender?.role === 'STAFF';
+                                const isAgent = ['Admin', 'Staff', 'Manager', 'Owner'].includes(m.sender?.role);
                                 return (
                                     <div key={idx} className={cn("flex", isAgent ? 'justify-end' : 'justify-start')}>
                                         <div className={cn(

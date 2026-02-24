@@ -65,5 +65,17 @@ export const loyaltyApi = {
 
   updateReward: async (branchId: string, rewardId: string, updates: Partial<Reward>): Promise<Reward | null> => {
     return api.patch(`/campaigns/loyalty/rewards/${rewardId}?branchId=${branchId}`, updates);
+  },
+
+  // Fetch customer overall analytics (visits, points, savings)
+  fetchCustomerAnalytics: async (): Promise<{
+    totalVisits: number;
+    currentPointsBalance: number;
+    netSavings: number;
+    visitTrends: { month: string; visits: number }[];
+    pointsByVenue: { venueName: string; points: number }[];
+    topVenues: { venueName: string; points: number }[];
+  }> => {
+    return api.get('/loyalty/analytics');
   }
 };
