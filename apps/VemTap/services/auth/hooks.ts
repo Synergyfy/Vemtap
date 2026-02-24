@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '@/lib/api';
-import { RegisterOwnerRequest, AuthResponse, LoginRequest, RegisterRequest } from './types';
+import { RegisterOwnerRequest, AuthResponse, LoginRequest, RegisterRequest, RequestOwnerOtpRequest } from './types';
 
 export const useRegisterOwner = () => {
     const [isLoading, setIsLoading] = useState(false);
@@ -21,8 +21,24 @@ export const useRegisterOwner = () => {
         }
     };
 
+    const requestOwnerOtp = async (payload: RequestOwnerOtpRequest): Promise<any> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/register/owner/request-otp', payload);
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Failed to request registration OTP';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return {
         registerOwner,
+        requestOwnerOtp,
         isLoading,
         error
     };

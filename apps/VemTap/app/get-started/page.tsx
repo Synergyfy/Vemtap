@@ -17,7 +17,7 @@ import { CheckCircle2 } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 
 export default function GetStarted() {
-    const { registerOwner, isLoading: isRegistering } = useRegisterOwner();
+    const { registerOwner, requestOwnerOtp, isLoading: isRegistering } = useRegisterOwner();
     const { registerUser, isLoading: isRegisteringGeneric } = useRegister();
     const { sendOtp, verifyOtp, isLoading: isOtpLoading } = useOtp();
     const router = useRouter();
@@ -45,6 +45,7 @@ export default function GetStarted() {
         branchCount: '',
         visitors: '',
         whatsappNumber: '',
+        phone: '', // Added for Phase 1 OTP request
         officialEmail: '',
         businessNumber: '',
         businessAddress: '',
@@ -103,27 +104,38 @@ export default function GetStarted() {
 
     const handleCreateAccount = async () => {
         const errors: Record<string, string> = {};
-        
+
         if (!formData.firstName) errors.firstName = 'First name is required';
         if (!formData.lastName) errors.lastName = 'Last name is required';
         if (!formData.email) errors.email = 'Email is required';
+        if (!formData.phone) errors.phone = 'Phone number is required';
         if (!formData.password) errors.password = 'Password is required';
-        
+
         if (formData.password && formData.password.length < 6) {
             errors.password = 'Password must be at least 6 characters';
         }
         if (formData.password !== formData.confirmPassword) {
             errors.confirmPassword = 'Passwords do not match';
         }
-        
+
         if (Object.keys(errors).length > 0) {
             setFieldErrors(errors);
             return;
         }
-        
+
         setFieldErrors({});
         try {
-            await sendOtp({ email: formData.email });
+            if (formData.selectedRole === 'Owner') {
+                await requestOwnerOtp({
+                    firstName: formData.firstName,
+                    lastName: formData.lastName,
+                    email: formData.email,
+                    phone: formData.phone,
+                    role: 'Owner'
+                });
+            } else {
+                await sendOtp({ email: formData.email });
+            }
             toast.success('Verification code sent to your email.');
             nextStep();
         } catch (error: any) {
@@ -190,9 +202,8 @@ export default function GetStarted() {
                 response = await registerUser(payload);
             } else {
                 // Owner flow: POST /auth/register/owner (creates business)
+                // NO personal info (names, phone) in this payload! retrieved from session.
                 const payload = {
-                    firstName: cleanData.firstName,
-                    lastName: cleanData.lastName,
                     email: cleanData.email,
                     password: formData.password,
                     businessName: cleanData.businessName,
@@ -200,13 +211,13 @@ export default function GetStarted() {
                     category: cleanData.category || undefined,
                     visitors: cleanData.visitors || undefined,
                     goals: cleanData.goals && cleanData.goals.length > 0 ? cleanData.goals : undefined,
-                    whatsappNumber: cleanData.whatsappNumber || undefined,
+                    whatsappNumber: cleanData.whatsappNumber || cleanData.phone || undefined,
                     officialEmail: cleanData.officialEmail || undefined,
                     businessNumber: cleanData.businessNumber || undefined,
                     businessAddress: cleanData.businessAddress || undefined,
                     businessWebsite: cleanData.businessWebsite || undefined,
                 };
-                response = await registerOwner(payload);
+                response = await registerOwner(payload as any);
             }
 
             const userData = {
@@ -306,6 +317,18 @@ export default function GetStarted() {
                                             tooltip="We'll send verification codes and account updates to this email"
                                             error={fieldErrors.email}
                                         />
+                                        <SanitizedInput
+                                            label="Phone Number"
+                                            type="tel"
+                                            value={formData.phone}
+                                            onChange={(v) => { setFormData({ ...formData, phone: v }); setFieldErrors(prev => ({ ...prev, phone: '' })); }}
+                                            icon="phone"
+                                            placeholder="+234 801 234 5678"
+                                            required
+                                            tooltip="Required for identity verification and account recovery"
+                                            error={fieldErrors.phone}
+                                        />
+
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <SanitizedInput
                                                 label="Password"
@@ -352,7 +375,7 @@ export default function GetStarted() {
 
                                         <button
                                             onClick={handleCreateAccount}
-                                            disabled={!formData.agreeToTerms || isOtpLoading || !formData.email || !formData.password || !formData.firstName || !formData.lastName}
+                                            disabled={!formData.agreeToTerms || isOtpLoading || !formData.email || !formData.password || !formData.firstName || !formData.lastName || !formData.phone}
                                             className="w-full h-14 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all flex items-center justify-center gap-2 text-sm mt-4 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                                         >
                                             {isOtpLoading ? (

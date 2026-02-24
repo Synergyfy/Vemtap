@@ -25,6 +25,7 @@ const defaultNewPlan: Omit<PricingPlan, 'id'> = {
     analyticsLevel: 'basic',
     isActive: true,
     description: '',
+    trialDurationDays: 0,
     isPopular: false
 };
 
