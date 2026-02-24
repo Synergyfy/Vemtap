@@ -7,20 +7,30 @@ import {
   MinLength,
   IsUrl,
   IsArray,
-  IsEnum,
 } from 'class-validator';
 
 export class RegisterOwnerDto {
-  // --- User Details ---
-  @ApiProperty({ example: 'Daniel', description: 'First name of the owner' })
+  @ApiProperty({ example: '1234', description: 'OTP Code' })
   @IsString()
   @IsNotEmpty()
-  firstName: string;
+  otp: string;
 
-  @ApiProperty({ example: 'Smith', description: 'Last name of the owner' })
+  // --- User Details ---
+  @ApiPropertyOptional({
+    example: 'Daniel',
+    description: 'First name of the owner',
+  })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  lastName: string;
+  firstName?: string;
+
+  @ApiPropertyOptional({
+    example: 'Smith',
+    description: 'Last name of the owner',
+  })
+  @IsOptional()
+  @IsString()
+  lastName?: string;
 
   @ApiProperty({
     example: 'daniel@company.com',
