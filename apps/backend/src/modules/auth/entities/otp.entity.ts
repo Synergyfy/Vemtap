@@ -14,4 +14,7 @@ export class Otp extends AbstractBaseEntity {
 
   @Column({ type: 'jsonb', nullable: true })
   metadata: any;
+
+  @Column({ default: false })
+  isVerified: boolean;
 }

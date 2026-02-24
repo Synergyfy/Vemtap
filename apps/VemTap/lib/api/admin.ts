@@ -80,6 +80,7 @@ export const adminProductsApi = {
     createType: (data: any) => api.post('/products/types', data),
     updateType: (id: string, data: any) => api.patch(`/products/types/${id}`, data),
     deleteType: (id: string) => api.delete(`/products/types/${id}`),
+    getCountByType: (productTypeId: string) => api.get(`/products/count-by-type/${productTypeId}`),
 };
 
 // =====================

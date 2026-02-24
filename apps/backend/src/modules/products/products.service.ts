@@ -190,6 +190,10 @@ export class ProductsService {
     await this.productRepository.remove(product);
   }
 
+  async countByProductType(productTypeId: string): Promise<number> {
+    return this.productRepository.count({ where: { productTypeId } });
+  }
+
   async requestQuote(
     user: User,
     productId: string,

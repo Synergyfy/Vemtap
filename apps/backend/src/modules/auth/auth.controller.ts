@@ -14,28 +14,45 @@ import { Public } from '../../common/decorators/public.decorator';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { VerifyOtpDto } from './dto/otp.dto';
+import { VerifyOtpDto, SendOtpDto } from './dto/otp.dto';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
 import { RegisterAdminDto } from './dto/register-admin.dto';
 import { RequestOtpDto } from './dto/request-otp.dto';
+import {
+  AuthResponseDto,
+  MessageResponseDto,
+  VerifyOtpResponseDto,
+} from './dto/responses.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
+import { User } from '../users/entities/user.entity';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   @Public()
   @Post('otp/send')
   @ApiOperation({ summary: 'Send OTP to email' })
-  async sendOtp(@Body('email') email: string) {
-    return this.authService.sendOtp(email);
+  @ApiBody({ type: SendOtpDto })
+  @ApiResponse({
+    status: 201,
+    description: 'OTP sent successfully',
+    type: MessageResponseDto,
+  })
+  async sendOtp(@Body() dto: SendOtpDto) {
+    return this.authService.sendOtp(dto.email);
   }
 
   @Public()
   @Post('otp/verify')
   @ApiOperation({ summary: 'Verify OTP' })
   @ApiBody({ type: VerifyOtpDto })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP verified successfully',
+    type: VerifyOtpResponseDto,
+  })
   async verifyOtp(@Body() otpDto: VerifyOtpDto) {
     return this.authService.verifyOtp(otpDto.email, otpDto.code);
   }
@@ -46,6 +63,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiBody({ type: LoginDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Login successful',
+    type: AuthResponseDto,
+  })
   async login(@Request() req) {
     return this.authService.login(req.user);
   }
@@ -54,6 +76,11 @@ export class AuthController {
   @Post('register')
   @ApiOperation({ summary: 'Register a new user (Generic)' })
   @ApiBody({ type: RegisterDto })
+  @ApiResponse({
+    status: 201,
+    description: 'User registered successfully',
+    type: AuthResponseDto,
+  })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
@@ -62,6 +89,11 @@ export class AuthController {
   @Post('register/owner/request-otp')
   @ApiOperation({ summary: 'Request OTP for Owner Registration' })
   @ApiBody({ type: RequestOtpDto })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP sent successfully',
+    type: MessageResponseDto,
+  })
   async requestOwnerOtp(@Body() dto: RequestOtpDto) {
     return this.authService.requestOwnerOtp(dto);
   }
@@ -70,6 +102,11 @@ export class AuthController {
   @Post('register/owner')
   @ApiOperation({ summary: 'Register a Business Owner (Full Onboarding)' })
   @ApiBody({ type: RegisterOwnerDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Owner registered successfully',
+    type: AuthResponseDto,
+  })
   async registerOwner(@Body() registerOwnerDto: RegisterOwnerDto) {
     return this.authService.registerOwner(registerOwnerDto);
   }
@@ -96,22 +133,7 @@ export class AuthController {
   @ApiResponse({
     status: 201,
     description: 'Admin created successfully',
-    schema: {
-      example: {
-        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-        user: {
-          id: 'uuid-string-here',
-          email: 'admin@latap.com',
-          firstName: 'Admin',
-          lastName: 'User',
-          role: 'Admin',
-          phone: '+1234567890',
-          status: 'Invited',
-          createdAt: '2023-10-25T10:00:00.000Z',
-          updatedAt: '2023-10-25T10:00:00.000Z',
-        },
-      },
-    },
+    type: AuthResponseDto,
   })
   @ApiResponse({
     status: 400,
@@ -129,6 +151,11 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({
+    status: 200,
+    description: 'Profile retrieved successfully',
+    type: User,
+  })
   getProfile(@Request() req) {
     return req.user;
   }

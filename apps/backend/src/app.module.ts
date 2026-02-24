@@ -22,6 +22,7 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { BranchesModule } from './modules/branches/branches.module';
 import { LoyaltyModule } from './modules/loyalty/loyalty.module';
 import { SupportModule } from './modules/support/support.module';
+import { SystemModule } from './modules/system/system.module';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { SupportModule } from './modules/support/support.module';
     BranchesModule,
     LoyaltyModule,
     SupportModule,
+    SystemModule,
   ],
   controllers: [AppController],
   providers: [
@@ -91,4 +93,4 @@ import { SupportModule } from './modules/support/support.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }
