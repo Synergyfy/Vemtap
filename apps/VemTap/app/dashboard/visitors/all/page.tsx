@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { Visitor } from '@/services/visitors/types';
 import { useVisitors, useVisitorStats } from '@/services/visitors/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useBranches } from '@/services/branches/hooks';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import PageHeader from '@/components/dashboard/PageHeader';
 import StatsCard from '@/components/dashboard/StatsCard';
@@ -37,13 +38,15 @@ export default function AllVisitorsPage() {
     const [deleteVisitorId, setDeleteVisitorId] = useState<string | null>(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
-    const userBranchId = useAuthStore((state) => state.user?.businessId);
+    const userBusinessId = useAuthStore((state) => state.user?.businessId);
+    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const { data: branches = [] } = useBranches();
 
-    const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(userBranchId, {
+    const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(activeBranchId === 'all' || !activeBranchId ? undefined : activeBranchId, {
         search: searchQuery,
         status: filterStatus !== 'all' ? filterStatus : undefined
     });
-    const { data: statsData } = useVisitorStats(userBranchId);
+    const { data: statsData } = useVisitorStats(userBusinessId);
 
     const visitors = paginatedData?.data || [];
     const isLoading = isLoadingVisitors;
@@ -63,7 +66,7 @@ export default function AllVisitorsPage() {
                 name: data.name,
                 phone: data.phone,
                 email: data.email,
-                branchId: userBranchId,
+                branchId: data.branchId,
             };
             return await api.post('/visitors', newVisitor);
         },
@@ -289,6 +292,8 @@ export default function AllVisitorsPage() {
                 onClose={() => setIsAddModalOpen(false)}
                 onSubmit={handleAddVisitor}
                 isLoading={isLoading || addVisitorMutation.isPending}
+                branches={branches}
+                defaultBranchId={activeBranchId && activeBranchId !== 'all' ? activeBranchId : branches[0]?.id}
             />
 
             <ImportContactsModal

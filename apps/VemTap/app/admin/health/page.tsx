@@ -8,51 +8,59 @@ import {
     RefreshCw, Cpu, HardDrive
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const SERVICES = [
-    { name: 'Core API', status: 'operational', uptime: '99.99%', latency: '45ms', load: 12 },
-    { name: 'Messaging Engine', status: 'operational', uptime: '99.95%', latency: '820ms', load: 45 },
-    { name: 'Redirection Service', status: 'operational', uptime: '100%', latency: '12ms', load: 8 },
-    { name: 'Database Cluster', status: 'operational', uptime: '99.99%', latency: '5ms', load: 22 },
-    { name: 'Media Storage (S3)', status: 'operational', uptime: '100%', latency: '120ms', load: 15 },
-    { name: 'Auth Service', status: 'degraded', uptime: '98.5%', latency: '250ms', load: 88 }
-];
-
-const METRICS = [
-    { label: 'CPU Usage', value: '24%', icon: Cpu, color: 'text-blue-500' },
-    { label: 'Memory Usage', value: '4.2GB / 8GB', icon: Activity, color: 'text-purple-500' },
-    { label: 'Disk Space', value: '120GB / 500GB', icon: HardDrive, color: 'text-emerald-500' },
-    { label: 'Active Webhook Subs', value: '1,240', icon: Globe, color: 'text-primary' },
-];
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { adminHealthApi } from '@/lib/api/admin';
 
 export default function SystemHealthPage() {
+    const queryClient = useQueryClient();
+    const { data: health, isLoading, isError, refetch, isRefetching } = useQuery({
+        queryKey: ['admin-system-health'],
+        queryFn: () => adminHealthApi.getSystemHealth(),
+        refetchInterval: 30000, // Auto refresh every 30s
+    });
+
+    const METRICS = [
+        { label: 'CPU Usage', value: health ? `${health.metrics.cpu}%` : '...', icon: Cpu, color: 'text-blue-500' },
+        { label: 'Memory Usage', value: health ? `${health.metrics.memory}%` : '...', icon: Activity, color: 'text-purple-500' },
+        { label: 'Disk Space', value: health ? `${health.metrics.disk}%` : '...', icon: HardDrive, color: 'text-emerald-500' },
+        { label: 'System Uptime', value: health ? `${Math.floor(health.metrics.uptime / 3600)}h ${Math.floor((health.metrics.uptime % 3600) / 60)}m` : '...', icon: Zap, color: 'text-primary' },
+    ];
+
     return (
         <div className="p-8">
             <PageHeader
                 title="System Health Monitor"
                 description="Real-time monitoring of VemTap infrastructure and services"
                 actions={
-                    <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm shadow-sm">
-                        <RefreshCw size={18} />
+                    <button
+                        onClick={() => refetch()}
+                        disabled={isRefetching}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm shadow-sm disabled:opacity-50"
+                    >
+                        <RefreshCw size={18} className={isRefetching ? 'animate-spin' : ''} />
                         Refresh Status
                     </button>
                 }
             />
 
             {/* Overall Status Banner */}
-            <div className="mt-8 p-6 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center justify-between mb-10">
+            <div className={`mt-8 p-6 ${health?.status === 'operational' ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'} rounded-2xl border flex items-center justify-between mb-10`}>
                 <div className="flex items-center gap-4">
-                    <div className="size-12 bg-white rounded-xl flex items-center justify-center text-emerald-500 shadow-sm">
+                    <div className={`size-12 bg-white rounded-xl flex items-center justify-center ${health?.status === 'operational' ? 'text-emerald-500' : 'text-amber-500'} shadow-sm`}>
                         <ShieldCheck size={24} />
                     </div>
                     <div>
-                        <h3 className="text-emerald-900 font-bold text-lg">All Systems Operational</h3>
-                        <p className="text-emerald-700/70 text-sm font-medium">Last verified 2 minutes ago</p>
+                        <h3 className={`${health?.status === 'operational' ? 'text-emerald-900' : 'text-amber-900'} font-bold text-lg`}>
+                            {health?.status === 'operational' ? 'All Systems Operational' : 'Systems Degraded'}
+                        </h3>
+                        <p className={`${health?.status === 'operational' ? 'text-emerald-700/70' : 'text-amber-700/70'} text-sm font-medium`}>
+                            Last verified {health ? new Date(health.timestamp).toLocaleTimeString() : '...'}
+                        </p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="size-2 bg-emerald-500 rounded-full animate-pulse" />
-                    <span className="text-emerald-600 font-black uppercase tracking-widest text-[10px]">Live Monitoring Active</span>
+                    <span className={`size-2 ${health?.status === 'operational' ? 'bg-emerald-500' : 'bg-amber-500'} rounded-full animate-pulse`} />
+                    <span className={`${health?.status === 'operational' ? 'text-emerald-600' : 'text-amber-600'} font-black uppercase tracking-widest text-[10px]`}>Live Monitoring Active</span>
                 </div>
             </div>
 
@@ -75,7 +83,7 @@ export default function SystemHealthPage() {
             <h3 className="text-sm font-black uppercase tracking-[0.2em] text-text-secondary mb-6 ml-1">Service Status Breakdown</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {SERVICES.map((service, i) => (
+                {(health?.services || []).map((service: any, i: number) => (
                     <motion.div
                         key={service.name}
                         initial={{ opacity: 0, scale: 0.95 }}
@@ -90,36 +98,21 @@ export default function SystemHealthPage() {
                                 </div>
                                 <span className="font-black text-xs text-text-main uppercase tracking-tight">{service.name}</span>
                             </div>
-                            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${service.status === 'operational' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${service.status === 'operational' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
                                 }`}>
-                                <div className={`size-1.5 rounded-full ${service.status === 'operational' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                <div className={`size-1.5 rounded-full ${service.status === 'operational' ? 'bg-emerald-500' : 'bg-red-500'}`} />
                                 {service.status}
                             </div>
                         </div>
                         <div className="p-6 space-y-4">
                             <div className="flex justify-between items-end">
                                 <div>
-                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Latency</p>
-                                    <p className="text-lg font-black text-text-main">{service.latency}</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Uptime</p>
-                                    <p className="text-sm font-bold text-text-secondary">{service.uptime}</p>
-                                </div>
-                            </div>
-
-                            <div>
-                                <div className="flex justify-between items-center mb-1.5">
-                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Resource Load</p>
-                                    <p className="text-[10px] font-bold text-text-main">{service.load}%</p>
-                                </div>
-                                <div className="h-1.5 bg-gray-50 rounded-full overflow-hidden">
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${service.load}%` }}
-                                        className={`h-full rounded-full ${service.load > 80 ? 'bg-red-500' : service.load > 40 ? 'bg-amber-500' : 'bg-emerald-500'
-                                            }`}
-                                    />
+                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                                        {service.latency ? 'Latency' : service.threadUsage ? 'Thread Usage' : service.lastSync ? 'Last Sync' : 'Version'}
+                                    </p>
+                                    <p className="text-lg font-black text-text-main">
+                                        {service.latency || service.threadUsage || service.lastSync || service.version}
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -127,7 +120,7 @@ export default function SystemHealthPage() {
                 ))}
             </div>
 
-            {/* Security Audit Log - Minimal */}
+            {/* Audit Log (Simulated for UI depth) */}
             <div className="mt-12 bg-gray-900 rounded-3xl p-8 border border-white/5 overflow-hidden relative">
                 <div className="absolute top-0 right-0 p-12 py-24 opacity-10 pointer-events-none">
                     <ShieldCheck size={200} className="text-primary" />
@@ -145,17 +138,13 @@ export default function SystemHealthPage() {
 
                     <div className="space-y-4 max-w-2xl">
                         {[
-                            { event: 'Database scaling triggered', time: '14:22:10', type: 'info' },
-                            { event: 'SSL Certificate renewed (vemtap.com)', time: '12:00:01', type: 'success' },
-                            { event: 'High latency detected in Auth Service', time: '11:45:30', type: 'warning' },
-                            { event: 'New admin login from 192.168.1.1', time: '09:30:15', type: 'security' },
+                            { event: 'Health check verified successfully', time: new Date().toLocaleTimeString(), type: 'success' },
+                            { event: 'SSL Certificate active', time: 'Today', type: 'success' },
+                            { event: 'System metrics sync completed', time: 'Just now', type: 'info' },
                         ].map((log, i) => (
                             <div key={i} className="flex items-center gap-4 py-3 px-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
                                 <span className="font-mono text-[10px] text-white/30">{log.time}</span>
-                                <div className={`size-1.5 rounded-full ${log.type === 'success' ? 'bg-emerald-500' :
-                                        log.type === 'warning' ? 'bg-amber-500' :
-                                            log.type === 'security' ? 'bg-primary' : 'bg-blue-500'
-                                    }`} />
+                                <div className={`size-1.5 rounded-full ${log.type === 'success' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
                                 <span className="text-[11px] font-bold text-white/80">{log.event}</span>
                             </div>
                         ))}

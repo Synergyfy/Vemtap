@@ -10,15 +10,14 @@ import {
     Share2, X, CheckCircle2, Play
 } from 'lucide-react';
 import LogoIcon from '@/components/brand/LogoIcon';
-import { fetchProductDetail } from '@/lib/api/marketplace';
+import { fetchProductDetail, requestQuote, createOrder } from '@/lib/api/marketplace';
 import { ProductDetailSkeleton } from '@/components/marketplace/Skeletons';
 import useEmblaCarousel from 'embla-carousel-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useQuoteStore } from '@/store/quoteStore';
 import { calculateQuotePrice } from '@/lib/utils/calculateQuotePrice';
-import { sendVerificationEmail } from '@/lib/api/notifications';
 import Logo from '@/components/brand/Logo';
+import { Loader2 } from 'lucide-react';
 
 export default function ProductClient({ id }: { id: string }) {
     const router = useRouter();
@@ -29,10 +28,10 @@ export default function ProductClient({ id }: { id: string }) {
     });
 
     const { user } = useAuthStore();
-    const addQuote = useQuoteStore((state) => state.addQuote);
     const [selectedImage, setSelectedImage] = useState(0);
     const [activeTab, setActiveTab] = useState<'specs' | 'quote' | 'reviews'>('specs');
     const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [quoteData, setQuoteData] = useState({
         firstName: user?.name?.split(' ')[0] || '',
@@ -113,11 +112,11 @@ export default function ProductClient({ id }: { id: string }) {
 
 
 
-    const handleQuoteSubmit = (e: React.FormEvent) => {
+    const handleQuoteSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!quoteData.firstName || !quoteData.lastName || !quoteData.email || !quoteData.quantity) {
-            toast.error('Please fill in all required fields');
+        if (!user) {
+            toast.error('Please login to request a quote');
             return;
         }
 
@@ -127,74 +126,92 @@ export default function ProductClient({ id }: { id: string }) {
             return;
         }
 
-        // Calculate estimated value based on tiered pricing
-        const estimatedValue = calculateQuotePrice(product.tieredPricing || [], quantity);
-
-        addQuote({
-            productId: product.id,
-            productName: product.name,
-            productImage: product.mainImage || product.images?.[0] || '',
-            firstName: quoteData.firstName,
-            lastName: quoteData.lastName,
-            email: quoteData.email,
-            phone: quoteData.phone,
-            company: quoteData.company,
-            quantity,
-            message: quoteData.notes,
-            estimatedValue,
-        });
-
-        // Auto-signup logic for guest users
-        if (!user) {
-            const signupPromise = async () => {
-                try {
-                    // Create prompt user account
-                    const userData = {
-                        email: quoteData.email,
-                        name: `${quoteData.firstName} ${quoteData.lastName}`,
-                        businessName: quoteData.company,
-                        phone: quoteData.phone,
-                        role: 'owner' as any
-                    };
-
-                    // 1. Sign up the user (this also logs them in via useAuthStore)
-                    // We generate a random password for them in a real app, or send a magic link
-                    // For this demo, we'll assume the store handles the "guest conversion"
-                    const { useAuthStore } = await import('@/store/useAuthStore');
-                    await useAuthStore.getState().signup(userData as any, '');
-
-                    // 2. Send verification email
-                    await sendVerificationEmail(quoteData.email, userData.name);
-
-                    return "Account created & verification email sent";
-                } catch (error) {
-                    console.error("Auto-signup failed", error);
-                    throw new Error("Failed to create account");
-                }
-            };
-
-            toast.promise(signupPromise(), {
-                loading: 'Creating your account...',
-                success: (msg) => `${msg}`,
-                error: 'Could not create account automatically',
+        setIsSubmitting(true);
+        try {
+            await requestQuote(product.id, {
+                quantity,
+                location: quoteData.location,
+                businessName: quoteData.company,
+                notes: quoteData.notes || 'Interested in this product'
             });
+
+            toast.success(`Quote request sent for ${product.name}!`);
+            setIsQuoteModalOpen(false);
+            setActiveTab('specs');
+            setQuoteData({
+                firstName: user?.name?.split(' ')[0] || '',
+                lastName: user?.name?.split(' ').slice(1).join(' ') || '',
+                email: user?.email || '',
+                phone: (user as any)?.phone || '',
+                company: (user as any)?.businessName || '',
+                quantity: '',
+                location: '',
+                notes: ''
+            });
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to submit quote request');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleBuyNow = async () => {
+        if (!user) {
+            toast.error('Please login to place an order');
+            return;
         }
 
+        const quantity = parseInt(quoteData.quantity);
+        if (isNaN(quantity) || quantity < 1) {
+            toast('Please select a quantity in the Request Quote form (or we will use the MOQ)');
+            // Fallback to MOQ if not specified in form
+        }
 
+        const finalQuantity = quantity || product.moq || 1;
+        const totalAmount = finalQuantity * product.price;
 
-        toast.success(`Quote request sent for ${product.name}!`);
-        setIsQuoteModalOpen(false); // Auto-close modal
-        setActiveTab('specs');
-        setQuoteData({
-            firstName: user?.name?.split(' ')[0] || '',
-            lastName: user?.name?.split(' ').slice(1).join(' ') || '',
-            email: user?.email || '',
-            phone: (user as any)?.phone || '',
-            company: (user as any)?.businessName || '',
-            quantity: '',
-            location: '',
-            notes: ''
-        });
+        const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+
+        if (!publicKey || publicKey.includes('placeholder')) {
+            toast.error('Payment gateway not configured');
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            // @ts-ignore
+            const handler = window.PaystackPop.setup({
+                key: publicKey,
+                email: user.email,
+                amount: totalAmount * 100,
+                currency: 'NGN',
+                ref: `ORD-${user.id}-${Date.now()}`,
+                onClose: () => {
+                    setIsSubmitting(false);
+                    toast.error('Payment cancelled');
+                },
+                callback: async (response: any) => {
+                    try {
+                        await createOrder({
+                            productId: product.id,
+                            quantity: finalQuantity,
+                            paymentReference: response.reference
+                        });
+                        toast.success('Order placed successfully!');
+                        router.push('/dashboard/hardware');
+                    } catch (err: any) {
+                        toast.error(err.message || 'Failed to complete order after payment. Please contact support.');
+                    } finally {
+                        setIsSubmitting(false);
+                    }
+                }
+            });
+            handler.openIframe();
+        } catch (err) {
+            setIsSubmitting(false);
+            toast.error('Failed to initialize payment');
+        }
     };
 
     return (
@@ -357,11 +374,12 @@ export default function ProductClient({ id }: { id: string }) {
                                 </div>
                             </div>
                             <button
-                                onClick={() => setIsQuoteModalOpen(true)}
-                                className="w-full mt-4 py-4 bg-primary text-white font-bold rounded-2xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 group"
+                                onClick={handleBuyNow}
+                                disabled={isSubmitting}
+                                className="w-full mt-4 py-4 bg-primary text-white font-bold rounded-2xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 group disabled:opacity-50"
                             >
-                                Request Bulk Quote
-                                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Buy Now'}
+                                {!isSubmitting && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
                             </button>
                         </div>
 
@@ -575,8 +593,12 @@ export default function ProductClient({ id }: { id: string }) {
                                                     className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium resize-none"
                                                 ></textarea>
                                             </div>
-                                            <button type="submit" className="w-full py-5 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98]">
-                                                Submit Request
+                                            <button
+                                                type="submit"
+                                                disabled={isSubmitting}
+                                                className="w-full py-5 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                                            >
+                                                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Submit Request'}
                                             </button>
                                         </form>
                                     </div>

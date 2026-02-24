@@ -36,7 +36,7 @@ export default function AdminBusinessesPage() {
                 search: searchQuery || undefined,
                 status: filterStatus || undefined,
             });
-            setBusinesses(Array.isArray(data) ? data : (data.businesses || []));
+            setBusinesses(Array.isArray(data) ? data : (data.data || data.businesses || []));
         } catch (err: any) {
             notify.error(err.message || 'Failed to load businesses');
         } finally {

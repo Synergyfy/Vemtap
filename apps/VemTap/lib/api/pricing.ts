@@ -4,15 +4,19 @@ import { api } from '@/lib/api';
 export interface PricingPlan {
     id: string;
     name: string;
-    price: string;
-    period: string;
-    billingPeriod: 'monthly' | 'quarterly' | 'yearly';
+    monthlyPrice: number;
+    quarterlyPrice: number;
+    yearlyPrice: number;
+    currency: string;
+    isFree: boolean;
+    freeDurationDays: number;
+    teamMembersLimit: number;
+    loyaltyLimit: number;
+    tagsLimit: number;
+    branchLimit: number;
+    analyticsLevel: 'basic' | 'advanced' | 'none';
+    isActive: boolean;
     description: string;
-    features: string[];
-    buttonText: string;
-    color: string;
-    visitorLimit: number;
-    tagLimit: number;
     isPopular?: boolean;
 }
 

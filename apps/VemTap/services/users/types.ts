@@ -1,4 +1,4 @@
-export type UserRole = 'owner' | 'manager' | 'staff' | 'customer' | 'admin';
+export type UserRole = 'Owner' | 'Manager' | 'Staff' | 'Customer' | 'Admin';
 
 export interface StaffMember {
     id: string;
@@ -9,7 +9,7 @@ export interface StaffMember {
     businessId: string;
     branchId?: string;
     permissions: string[];
-    status: 'active' | 'inactive' | 'pending';
+    status: 'Active' | 'Inactive' | 'Invited' | 'Pending' | 'Suspended';
     createdAt: string;
     updatedAt: string;
 }
@@ -19,8 +19,8 @@ export interface InviteStaffRequest {
     firstName: string;
     lastName: string;
     role: UserRole;
-    businessId: string;
     branchId: string;
+    jobTitle?: string;
     permissions?: string[];
 }
 
@@ -30,5 +30,5 @@ export interface UpdateStaffRequest {
     role?: UserRole;
     branchId?: string;
     permissions?: string[];
-    status?: 'active' | 'inactive';
+    status?: 'Active' | 'Inactive' | 'Suspended';
 }

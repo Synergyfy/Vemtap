@@ -1,189 +1,21 @@
- Creating an optimized production build ...
-Turbopack build encountered 3 warnings:
-./apps/VemTap/assets/nfc/Card NFC Plate White Spec branded.avif
-AVIF image not supported
-This version of Turbopack does not support AVIF images, will emit without optimization or encoding
+## Error Type
+Runtime TypeError
 
-Import trace:
-  Client Component SSR:
-    ./apps/VemTap/assets/nfc/Card NFC Plate White Spec branded.avif
-    ./apps/VemTap/app/solutions/hardware/page.tsx [Client Component SSR]
-    ./apps/VemTap/app/solutions/hardware/page.tsx [Server Component]
+## Error Message
+Cannot read properties of undefined (reading 'map')
 
 
-./apps/VemTap/assets/nfc/Chip_tag_NFC215.avif
-AVIF image not supported
-This version of Turbopack does not support AVIF images, will emit without optimization or encoding
+    at <unknown> (app/admin/pricing/page.tsx:151:64)
+    at Array.map (<anonymous>:null:null)
+    at AdminPricingPage (app/admin/pricing/page.tsx:103:32)
 
-Import trace:
-  Client Component SSR:
-    ./apps/VemTap/assets/nfc/Chip_tag_NFC215.avif
-    ./apps/VemTap/app/solutions/hardware/page.tsx [Client Component SSR]
-    ./apps/VemTap/app/solutions/hardware/page.tsx [Server Component]
+## Code Frame
+  149 |                                             <h4 className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-4">Included Features</h4>
+  150 |                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-6">
+> 151 |                                                 {plan.features.map((feature, i) => (
+      |                                                                ^
+  152 |                                                     <div key={i} className="flex items-center gap-2 text-sm font-bold text-text-main">
+  153 |                                                         <CheckCircle2 size={16} className="text-green-500 shrink-0" />
+  154 |                                                         <span className="line-clamp-1">{feature}</span>
 
-
-./apps/VemTap/assets/nfc/Reading position.avif
-AVIF image not supported
-This version of Turbopack does not support AVIF images, will emit without optimization or encoding
-
-Import trace:
-  Client Component SSR:
-    ./apps/VemTap/assets/nfc/Reading position.avif
-    ./apps/VemTap/app/solutions/hardware/page.tsx [Client Component SSR]
-    ./apps/VemTap/app/solutions/hardware/page.tsx [Server Component]
-
-
-
-> Build error occurred
-Error: Turbopack build failed with 6 errors:
-./apps/VemTap/app/admin/pricing/page.tsx:10:1
-Export addPricingPlan doesn't exist in target module
-   8 | } from 'lucide-react';
-   9 | import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-> 10 | import { fetchPricingPlans, updatePricingPlan, addPricingPlan, deletePricingPlan } from '@/lib/api/pricing';
-     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  11 | import { fetchHardwarePricing, updateHardwarePrice } from '@/lib/api/hardware-pricing';
-  12 | import { PricingPlan, HardwareOption } from '@/types/pricing';
-  13 |
-
-The export addPricingPlan was not found in module [project]/apps/VemTap/lib/api/pricing.ts [app-client] (ecmascript).
-Did you mean to import fetchPricingPlans?
-All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
-
-Import traces:
-  Client Component Browser:
-    ./apps/VemTap/app/admin/pricing/page.tsx [Client Component Browser]
-    ./apps/VemTap/app/admin/pricing/page.tsx [Server Component]
-
-  Client Component SSR:
-    ./apps/VemTap/app/admin/pricing/page.tsx [Client Component SSR]
-    ./apps/VemTap/app/admin/pricing/page.tsx [Server Component]
-
-
-./apps/VemTap/app/admin/pricing/page.tsx:10:1
-Export addPricingPlan doesn't exist in target module
-   8 | } from 'lucide-react';
-   9 | import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-> 10 | import { fetchPricingPlans, updatePricingPlan, addPricingPlan, deletePricingPlan } from '@/lib/api/pricing';
-     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  11 | import { fetchHardwarePricing, updateHardwarePrice } from '@/lib/api/hardware-pricing';
-  12 | import { PricingPlan, HardwareOption } from '@/types/pricing';
-  13 |
-
-The export addPricingPlan was not found in module [project]/apps/VemTap/lib/api/pricing.ts [app-ssr] (ecmascript).
-Did you mean to import fetchPricingPlans?
-All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
-
-Import traces:
-  Client Component Browser:
-    ./apps/VemTap/app/admin/pricing/page.tsx [Client Component Browser]
-    ./apps/VemTap/app/admin/pricing/page.tsx [Server Component]
-
-  Client Component SSR:
-    ./apps/VemTap/app/admin/pricing/page.tsx [Client Component SSR]
-    ./apps/VemTap/app/admin/pricing/page.tsx [Server Component]
-
-
-./apps/VemTap/app/admin/pricing/page.tsx:10:1
-Export deletePricingPlan doesn't exist in target module
-   8 | } from 'lucide-react';
-   9 | import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-> 10 | import { fetchPricingPlans, updatePricingPlan, addPricingPlan, deletePricingPlan } from '@/lib/api/pricing';
-     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  11 | import { fetchHardwarePricing, updateHardwarePrice } from '@/lib/api/hardware-pricing';
-  12 | import { PricingPlan, HardwareOption } from '@/types/pricing';
-  13 |
-
-The export deletePricingPlan was not found in module [project]/apps/VemTap/lib/api/pricing.ts [app-client] (ecmascript).
-Did you mean to import fetchPricingPlans?
-All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
-
-Import traces:
-  Client Component Browser:
-    ./apps/VemTap/app/admin/pricing/page.tsx [Client Component Browser]
-    ./apps/VemTap/app/admin/pricing/page.tsx [Server Component]
-
-  Client Component SSR:
-    ./apps/VemTap/app/admin/pricing/page.tsx [Client Component SSR]
-    ./apps/VemTap/app/admin/pricing/page.tsx [Server Component]
-
-
-./apps/VemTap/app/admin/pricing/page.tsx:10:1
-Export deletePricingPlan doesn't exist in target module
-   8 | } from 'lucide-react';
-   9 | import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-> 10 | import { fetchPricingPlans, updatePricingPlan, addPricingPlan, deletePricingPlan } from '@/lib/api/pricing';
-     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  11 | import { fetchHardwarePricing, updateHardwarePrice } from '@/lib/api/hardware-pricing';
-  12 | import { PricingPlan, HardwareOption } from '@/types/pricing';
-  13 |
-
-The export deletePricingPlan was not found in module [project]/apps/VemTap/lib/api/pricing.ts [app-ssr] (ecmascript).
-Did you mean to import fetchPricingPlans?
-All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
-
-Import traces:
-  Client Component Browser:
-    ./apps/VemTap/app/admin/pricing/page.tsx [Client Component Browser]
-    ./apps/VemTap/app/admin/pricing/page.tsx [Server Component]
-
-  Client Component SSR:
-    ./apps/VemTap/app/admin/pricing/page.tsx [Client Component SSR]
-    ./apps/VemTap/app/admin/pricing/page.tsx [Server Component]
-
-
-./apps/VemTap/app/admin/pricing/page.tsx:10:1
-Export updatePricingPlan doesn't exist in target module
-   8 | } from 'lucide-react';
-   9 | import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-> 10 | import { fetchPricingPlans, updatePricingPlan, addPricingPlan, deletePricingPlan } from '@/lib/api/pricing';
-     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  11 | import { fetchHardwarePricing, updateHardwarePrice } from '@/lib/api/hardware-pricing';
-  12 | import { PricingPlan, HardwareOption } from '@/types/pricing';
-  13 |
-
-The export updatePricingPlan was not found in module [project]/apps/VemTap/lib/api/pricing.ts [app-client] (ecmascript).
-Did you mean to import fetchPricingPlans?
-All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
-
-Import traces:
-  Client Component Browser:
-    ./apps/VemTap/app/admin/pricing/page.tsx [Client Component Browser]
-    ./apps/VemTap/app/admin/pricing/page.tsx [Server Component]
-
-  Client Component SSR:
-    ./apps/VemTap/app/admin/pricing/page.tsx [Client Component SSR]
-    ./apps/VemTap/app/admin/pricing/page.tsx [Server Component]
-
-
-./apps/VemTap/app/admin/pricing/page.tsx:10:1
-Export updatePricingPlan doesn't exist in target module
-   8 | } from 'lucide-react';
-   9 | import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-> 10 | import { fetchPricingPlans, updatePricingPlan, addPricingPlan, deletePricingPlan } from '@/lib/api/pricing';
-     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  11 | import { fetchHardwarePricing, updateHardwarePrice } from '@/lib/api/hardware-pricing';
-  12 | import { PricingPlan, HardwareOption } from '@/types/pricing';
-  13 |
-
-The export updatePricingPlan was not found in module [project]/apps/VemTap/lib/api/pricing.ts [app-ssr] (ecmascript).
-Did you mean to import fetchPricingPlans?
-All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
-
-Import traces:
-  Client Component Browser:
-    ./apps/VemTap/app/admin/pricing/page.tsx [Client Component Browser]
-    ./apps/VemTap/app/admin/pricing/page.tsx [Server Component]
-
-  Client Component SSR:
-    ./apps/VemTap/app/admin/pricing/page.tsx [Client Component SSR]
-    ./apps/VemTap/app/admin/pricing/page.tsx [Server Component]
-
-
-    at <unknown> (./apps/VemTap/app/admin/pricing/page.tsx:10:1)
-    at <unknown> (./apps/VemTap/app/admin/pricing/page.tsx:10:1)
-    at <unknown> (./apps/VemTap/app/admin/pricing/page.tsx:10:1)
-    at <unknown> (./apps/VemTap/app/admin/pricing/page.tsx:10:1)
-    at <unknown> (./apps/VemTap/app/admin/pricing/page.tsx:10:1)
-    at <unknown> (./apps/VemTap/app/admin/pricing/page.tsx:10:1)
- ELIFECYCLE  Command failed with exit code 1.
+Next.js version: 16.1.6 (Turbopack)
