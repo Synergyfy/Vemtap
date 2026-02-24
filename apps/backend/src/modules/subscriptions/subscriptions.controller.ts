@@ -11,6 +11,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { SkipSubscriptionCheck } from './decorators/skip-subscription-check.decorator';
 
 @ApiTags('Subscriptions (Owner / Capabilities)')
 @Controller('subscriptions')
@@ -20,6 +21,7 @@ export class SubscriptionsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
 
   @Post('subscribe')
+  @SkipSubscriptionCheck()
   @Roles(UserRole.OWNER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Subscribe to a pricing plan' })
   @ApiResponse({ status: 201, description: 'Successfully subscribed' })
@@ -28,6 +30,7 @@ export class SubscriptionsController {
   }
 
   @Get('active/:businessId')
+  @SkipSubscriptionCheck()
   @Roles(UserRole.OWNER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get current active plan for a specific business' })
   @ApiResponse({
@@ -39,6 +42,7 @@ export class SubscriptionsController {
   }
 
   @Get('capabilities/:businessId')
+  @SkipSubscriptionCheck()
   @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({
     summary:
