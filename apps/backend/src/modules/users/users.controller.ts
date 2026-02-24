@@ -42,7 +42,7 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly businessesService: BusinessesService,
     private readonly branchesService: BranchesService,
-  ) { }
+  ) {}
 
   @Get('me')
   @Roles(
@@ -94,7 +94,8 @@ export class UsersController {
     summary: 'Get all staff members for the business (including managers)',
   })
   async getStaff(@Request() req, @Query() queryDto: GetStaffDto) {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     let targetBranchId: string | undefined = queryDto.branchId;
 
     if (queryDto.branchId && !uuidRegex.test(queryDto.branchId)) {
@@ -102,12 +103,17 @@ export class UsersController {
       targetBranchId = undefined;
     }
 
-    return this.usersService.findByBusiness(req.user.businessId, targetBranchId);
+    return this.usersService.findByBusiness(
+      req.user.businessId,
+      targetBranchId,
+    );
   }
 
   @Get('staff/my-permissions')
   @Roles(UserRole.MANAGER, UserRole.STAFF)
-  @ApiOperation({ summary: 'Get permissions for the currently logged-in staff or manager' })
+  @ApiOperation({
+    summary: 'Get permissions for the currently logged-in staff or manager',
+  })
   @ApiResponse({
     status: 200,
     description: 'List of permissions',
@@ -169,7 +175,9 @@ export class UsersController {
     // Determine business ID based on the logged-in user
     let businessId = req.user.businessId;
     if (req.user.role === UserRole.OWNER && !businessId) {
-      const ownedBusiness = await this.businessesService.findByOwner(req.user.id);
+      const ownedBusiness = await this.businessesService.findByOwner(
+        req.user.id,
+      );
       if (ownedBusiness) {
         businessId = ownedBusiness.id;
       }
@@ -180,7 +188,7 @@ export class UsersController {
     }
 
     // Verify the branch belongs to the user's business
-    let targetBranchId = inviteDto.branchId;
+    const targetBranchId = inviteDto.branchId;
     const branch = await this.branchesService.findById(targetBranchId);
     if (!branch || branch.businessId !== businessId) {
       throw new BadRequestException(

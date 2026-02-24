@@ -13,7 +13,7 @@ export class TemplateService {
   constructor(
     @InjectRepository(MessageTemplate)
     private readonly templateRepo: Repository<MessageTemplate>,
-  ) { }
+  ) {}
 
   async createTemplate(
     businessId: string,

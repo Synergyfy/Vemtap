@@ -19,7 +19,7 @@ export class BusinessesService {
     private businessesRepository: Repository<Business>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-  ) { }
+  ) {}
 
   async create(businessData: Partial<Business>): Promise<Business> {
     if (businessData.ownerId) {
@@ -107,7 +107,10 @@ export class BusinessesService {
     // Calculate Average Wait Time for businesses approved today (Postgres)
     const waitTimeData = await this.businessesRepository
       .createQueryBuilder('business')
-      .select('AVG(EXTRACT(EPOCH FROM (business.updatedAt - business.createdAt)))', 'avgSeconds')
+      .select(
+        'AVG(EXTRACT(EPOCH FROM (business.updatedAt - business.createdAt)))',
+        'avgSeconds',
+      )
       .where('business.status = :status', { status: BusinessStatus.ACTIVE })
       .andWhere('business.updatedAt >= :today', { today: todayStart })
       .getRawOne();

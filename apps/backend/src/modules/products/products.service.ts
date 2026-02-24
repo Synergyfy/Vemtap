@@ -43,7 +43,7 @@ export class ProductsService {
     @InjectRepository(ProductType)
     private productTypeRepository: Repository<ProductType>,
     private readonly paymentsService: PaymentsService,
-  ) { }
+  ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     const product = this.productRepository.create(createProductDto);
@@ -405,7 +405,8 @@ export class ProductsService {
 
     let lowStockCount = 0;
     for (const type of productTypes) {
-      const availableDevices = type.devices?.filter((d) => !d.businessId).length || 0;
+      const availableDevices =
+        type.devices?.filter((d) => !d.businessId).length || 0;
       if (availableDevices < lowStockThreshold) {
         lowStockCount++;
       }

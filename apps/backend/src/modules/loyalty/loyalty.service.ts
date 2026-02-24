@@ -30,7 +30,10 @@ export class LoyaltyService {
 
   // --- Profile Management ---
 
-  async getProfile(userId: string, businessId: string): Promise<LoyaltyProfile> {
+  async getProfile(
+    userId: string,
+    businessId: string,
+  ): Promise<LoyaltyProfile> {
     let profile = await this.loyaltyProfileRepository.findOne({
       where: { userId, businessId },
       relations: ['transactions', 'redemptions'],
@@ -64,7 +67,10 @@ export class LoyaltyService {
     });
   }
 
-  async createReward(businessId: string, createRewardDto: CreateRewardDto): Promise<Reward> {
+  async createReward(
+    businessId: string,
+    createRewardDto: CreateRewardDto,
+  ): Promise<Reward> {
     const reward = this.rewardRepository.create({
       ...createRewardDto,
       businessId,
@@ -74,7 +80,10 @@ export class LoyaltyService {
 
   // --- Points Logic ---
 
-  async earnPoints(businessId: string, dto: EarnPointsDto): Promise<LoyaltyProfile> {
+  async earnPoints(
+    businessId: string,
+    dto: EarnPointsDto,
+  ): Promise<LoyaltyProfile> {
     return this.dataSource.transaction(async (manager) => {
       // Find profile with pessimistic lock to prevent concurrent updates
       let profile = await manager.findOne(LoyaltyProfile, {
@@ -113,7 +122,11 @@ export class LoyaltyService {
     });
   }
 
-  async redeemReward(userId: string, businessId: string, rewardId: string): Promise<Redemption> {
+  async redeemReward(
+    userId: string,
+    businessId: string,
+    rewardId: string,
+  ): Promise<Redemption> {
     return this.dataSource.transaction(async (manager) => {
       const reward = await manager.findOne(Reward, { where: { id: rewardId } });
 
@@ -152,10 +165,15 @@ export class LoyaltyService {
       const redemption = manager.create(Redemption, {
         loyaltyProfileId: profile.id,
         rewardId: reward.id,
-        redemptionCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
+        redemptionCode: Math.random()
+          .toString(36)
+          .substring(2, 10)
+          .toUpperCase(),
         pointsSpent: reward.pointCost,
         status: 'pending',
-        expiresAt: new Date(Date.now() + reward.validityDays * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(
+          Date.now() + reward.validityDays * 24 * 60 * 60 * 1000,
+        ),
         redeemedAt: new Date(),
       });
 
@@ -163,29 +181,36 @@ export class LoyaltyService {
     });
   }
 
-  async getHistory(userId: string, businessId?: string): Promise<LoyaltyTransaction[]> {
-     const query = this.transactionRepository.createQueryBuilder('transaction')
+  async getHistory(
+    userId: string,
+    businessId?: string,
+  ): Promise<LoyaltyTransaction[]> {
+    const query = this.transactionRepository
+      .createQueryBuilder('transaction')
       .leftJoinAndSelect('transaction.loyaltyProfile', 'profile')
       .where('profile.userId = :userId', { userId })
       .orderBy('transaction.createdAt', 'DESC');
 
     if (businessId) {
-        query.andWhere('profile.businessId = :businessId', { businessId });
+      query.andWhere('profile.businessId = :businessId', { businessId });
     }
 
     return query.getMany();
   }
 
-  async processTap(userId: string, deviceCode: string): Promise<LoyaltyProfile> {
+  async processTap(
+    userId: string,
+    deviceCode: string,
+  ): Promise<LoyaltyProfile> {
     // 1. Find device
     const device = await this.devicesService.findByCode(deviceCode);
     if (!device) {
-        throw new NotFoundException('Device not found');
+      throw new NotFoundException('Device not found');
     }
 
     // 2. Validate device (e.g. check if active)
     if (device.status !== 'active') {
-        throw new BadRequestException('Device is inactive');
+      throw new BadRequestException('Device is inactive');
     }
 
     // 3. Earn points (Visit)
@@ -193,9 +218,9 @@ export class LoyaltyService {
     const pointsAmount = 10;
 
     return this.earnPoints(device.businessId, {
-        userId,
-        amount: pointsAmount,
-        reason: 'Visit Tap',
+      userId,
+      amount: pointsAmount,
+      reason: 'Visit Tap',
     });
   }
 
@@ -203,28 +228,38 @@ export class LoyaltyService {
     const profiles = await this.getAllProfiles(userId);
     const transactions = await this.getHistory(userId);
     const redemptions = await this.redemptionRepository.find({
-        where: { loyaltyProfile: { userId } },
-        relations: ['reward'],
+      where: { loyaltyProfile: { userId } },
+      relations: ['reward'],
     });
 
-    const totalVisits = transactions.filter(t => t.transactionType === 'earn').length;
+    const totalVisits = transactions.filter(
+      (t) => t.transactionType === 'earn',
+    ).length;
 
-    const currentPointsBalance = profiles.reduce((sum, p) => sum + p.currentPointsBalance, 0);
+    const currentPointsBalance = profiles.reduce(
+      (sum, p) => sum + p.currentPointsBalance,
+      0,
+    );
 
     // Net Savings: Value of all redeemed rewards
     // Assuming Reward entity has a 'value' field (which we added).
-    const netSavings = redemptions.reduce((sum, r) => sum + (Number(r.reward?.value) || 0), 0);
+    const netSavings = redemptions.reduce(
+      (sum, r) => sum + (Number(r.reward?.value) || 0),
+      0,
+    );
 
     // Points by Category (Mocking categories for now based on Business Type if available, else generic)
     // In a real app, Business entity would have a category.
     // For now, let's group by Business Name (or ID)
-    const pointsByVenue = profiles.map(p => ({
-        venueName: p.business?.name || 'Unknown Venue', // Business name requires relation load in getAllProfiles
-        points: p.totalPointsEarned
+    const pointsByVenue = profiles.map((p) => ({
+      venueName: p.business?.name || 'Unknown Venue', // Business name requires relation load in getAllProfiles
+      points: p.totalPointsEarned,
     }));
 
     // Top Venues
-    const topVenues = [...pointsByVenue].sort((a, b) => b.points - a.points).slice(0, 5);
+    const topVenues = [...pointsByVenue]
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 5);
 
     // Visit Trends (Last 6 months)
     const now = new Date();
@@ -234,22 +269,27 @@ export class LoyaltyService {
     const monthlyVisits = new Map<string, number>();
 
     transactions
-        .filter(t => t.transactionType === 'earn' && new Date(t.createdAt) >= sixMonthsAgo)
-        .forEach(t => {
-            const date = new Date(t.createdAt);
-            const key = `${date.toLocaleString('default', { month: 'short' })}`;
-            monthlyVisits.set(key, (monthlyVisits.get(key) || 0) + 1);
-        });
+      .filter(
+        (t) =>
+          t.transactionType === 'earn' && new Date(t.createdAt) >= sixMonthsAgo,
+      )
+      .forEach((t) => {
+        const date = new Date(t.createdAt);
+        const key = `${date.toLocaleString('default', { month: 'short' })}`;
+        monthlyVisits.set(key, (monthlyVisits.get(key) || 0) + 1);
+      });
 
-    const visitTrends = Array.from(monthlyVisits.entries()).map(([month, visits]) => ({ month, visits }));
+    const visitTrends = Array.from(monthlyVisits.entries()).map(
+      ([month, visits]) => ({ month, visits }),
+    );
 
     return {
-        totalVisits,
-        currentPointsBalance,
-        netSavings,
-        visitTrends,
-        pointsByVenue, // Renamed from category for now as we don't have business categories easily accessible
-        topVenues
+      totalVisits,
+      currentPointsBalance,
+      netSavings,
+      visitTrends,
+      pointsByVenue, // Renamed from category for now as we don't have business categories easily accessible
+      topVenues,
     };
   }
 

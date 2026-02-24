@@ -67,7 +67,10 @@ export class LoyaltyProfile {
   @Column({ type: 'timestamp', nullable: true })
   lastRewardedAt: Date;
 
-  @OneToMany(() => LoyaltyTransaction, (transaction) => transaction.loyaltyProfile)
+  @OneToMany(
+    () => LoyaltyTransaction,
+    (transaction) => transaction.loyaltyProfile,
+  )
   transactions: LoyaltyTransaction[];
 
   @OneToMany(() => Redemption, (redemption) => redemption.loyaltyProfile)
