@@ -10,38 +10,17 @@ import {
 } from 'class-validator';
 
 export class RegisterOwnerDto {
-  @ApiProperty({ example: '1234', description: 'OTP Code' })
-  @IsString()
-  @IsNotEmpty()
-  otp: string;
-
-  // --- User Details ---
-  @ApiPropertyOptional({
-    example: 'Daniel',
-    description: 'First name of the owner',
-  })
-  @IsOptional()
-  @IsString()
-  firstName?: string;
-
-  @ApiPropertyOptional({
-    example: 'Smith',
-    description: 'Last name of the owner',
-  })
-  @IsOptional()
-  @IsString()
-  lastName?: string;
 
   @ApiProperty({
     example: 'daniel@company.com',
-    description: 'Email address (used for login)',
+    description: 'Email address (must match the one used for OTP)',
   })
   @IsEmail()
   email: string;
 
   @ApiProperty({
     example: 'securePass123',
-    description: 'Password (min 6 chars)',
+    description: 'Password for your account (min 6 chars)',
   })
   @IsString()
   @MinLength(6)

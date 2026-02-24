@@ -28,7 +28,7 @@ export class AuthService {
     private jwtService: JwtService,
     @InjectRepository(Otp)
     private otpRepository: Repository<Otp>,
-  ) {}
+  ) { }
 
   async requestOwnerOtp(dto: RequestOtpDto) {
     const existingUser = await this.usersService.findByEmail(dto.email);
@@ -98,7 +98,9 @@ export class AuthService {
     }
 
     // OTP Valid
-    await this.otpRepository.remove(otpRecord); // Consume OTP
+    otpRecord.isVerified = true;
+    await this.otpRepository.save(otpRecord);
+
     return { message: 'OTP verified successfully' };
   }
 
@@ -180,20 +182,22 @@ export class AuthService {
     });
 
     if (!otpRecord) {
-      throw new BadRequestException('OTP not found');
+      throw new BadRequestException('Verification session not found');
     }
 
-    if (otpRecord.code !== dto.otp) {
-      throw new BadRequestException('Invalid OTP');
+    if (!otpRecord.isVerified) {
+      throw new BadRequestException(
+        'OTP must be verified before completing registration',
+      );
     }
 
     if (new Date() > otpRecord.expiresAt) {
-      throw new BadRequestException('OTP expired');
+      throw new BadRequestException('Registration session expired');
     }
 
     const registrationData = otpRecord.metadata as RequestOtpDto;
     if (!registrationData) {
-      throw new BadRequestException('Registration session expired or invalid');
+      throw new BadRequestException('Registration metadata missing');
     }
 
     const existingUser = await this.usersService.findByEmail(dto.email);
@@ -204,12 +208,12 @@ export class AuthService {
     // 2. Create User (Owner)
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = await this.usersService.create({
-      firstName: registrationData.firstName || dto.firstName,
-      lastName: registrationData.lastName || dto.lastName,
+      firstName: registrationData.firstName,
+      lastName: registrationData.lastName,
       email: dto.email,
       password: hashedPassword,
       role: UserRole.OWNER,
-      phone: registrationData.phone || dto.businessNumber,
+      phone: registrationData.phone,
     });
 
     // 3. Create Business with detailed info

@@ -12,6 +12,7 @@ import { Business } from '../../businesses/entities/business.entity';
 import { Notification } from '../../notifications/entities/notification.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Branch } from '../../branches/entities/branch.entity';
+import { ApiProperty } from '@nestjs/swagger';
 
 export enum UserRole {
   OWNER = 'Owner',
@@ -31,6 +32,7 @@ export enum UserStatus {
 
 @Entity('users')
 export class User extends AbstractBaseEntity {
+  @ApiProperty({ example: 'user@example.com' })
   @Column({ unique: true })
   email: string;
 
@@ -38,12 +40,15 @@ export class User extends AbstractBaseEntity {
   @Exclude()
   password: string;
 
+  @ApiProperty({ example: 'John' })
   @Column()
   firstName: string;
 
+  @ApiProperty({ example: 'Doe' })
   @Column()
   lastName: string;
 
+  @ApiProperty({ enum: UserRole, example: UserRole.OWNER })
   @Column({
     type: 'simple-enum',
     enum: UserRole,
@@ -51,15 +56,19 @@ export class User extends AbstractBaseEntity {
   })
   role: UserRole;
 
+  @ApiProperty({ example: '+2348012345678', nullable: true })
   @Column({ nullable: true })
   phone: string;
 
+  @ApiProperty({ example: 'Store Manager', nullable: true })
   @Column({ nullable: true })
   jobTitle: string;
 
+  @ApiProperty({ example: ['view_reports', 'manage_staff'], nullable: true })
   @Column({ type: 'simple-array', nullable: true })
   permissions: string[];
 
+  @ApiProperty({ enum: UserStatus, example: UserStatus.ACTIVE })
   @Column({
     type: 'simple-enum',
     enum: UserStatus,
@@ -67,6 +76,7 @@ export class User extends AbstractBaseEntity {
   })
   status: UserStatus;
 
+  @ApiProperty({ example: '2023-10-25T10:00:00.000Z', nullable: true })
   @Column({ type: 'timestamp', nullable: true })
   lastActive: Date;
 
@@ -78,6 +88,7 @@ export class User extends AbstractBaseEntity {
   @JoinColumn({ name: 'businessId' })
   business: Business;
 
+  @ApiProperty({ example: 'uuid-string', nullable: true })
   @Column({ nullable: true })
   businessId: string;
 
@@ -89,6 +100,7 @@ export class User extends AbstractBaseEntity {
   @JoinColumn({ name: 'branchId' })
   branch: Branch;
 
+  @ApiProperty({ example: 'uuid-string', nullable: true })
   @Column({ nullable: true })
   branchId: string;
 
