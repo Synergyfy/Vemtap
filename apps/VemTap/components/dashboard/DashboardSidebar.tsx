@@ -112,13 +112,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         },
         {
             id: 'devices',
-            label: 'Devices',
+            label: 'NFC Hub',
             icon: Nfc,
             roles: ['owner', 'manager', 'staff'],
             submenu: [
-                { label: 'Asset List', href: '/dashboard/devices' },
-                { label: 'Manage NFC', href: '/dashboard/nfc-manager' },
-                { label: 'Real-time Stats', href: '/dashboard/devices/stats' },
+                { label: 'NFC Asset Hub', href: '/dashboard/nfc-manager' },
             ]
         },
         {
