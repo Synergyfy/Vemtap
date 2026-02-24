@@ -133,19 +133,7 @@ export default function NFCManagerPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Trial Allocation Card */}
 
-                {readyOrders.length === 0 ? (
-                    <div className="col-span-3 bg-amber-50 border border-amber-200 rounded-[2.5rem] p-8 flex items-start gap-5">
-                        <div className="size-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center shrink-0">
-                            <ShieldAlert size={24} />
-                        </div>
-                        <div>
-                            <h3 className="font-display font-bold text-amber-900 mb-1">No Ready Allocations</h3>
-                            <p className="text-sm text-amber-700 font-medium max-w-xl">
-                                You don't have any hardware orders ready for activation. Buy NFC hardware in the <strong>Marketplace</strong>. Once your order is ready, you can generate assets here.
-                            </p>
-                        </div>
-                    </div>
-                ) : (
+                {readyOrders.length > 0 ? (
                     <div className="col-span-3 bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
                         <div className="mb-6 flex justify-between items-end">
                             <div>
@@ -198,7 +186,19 @@ export default function NFCManagerPage() {
                             })}
                         </div>
                     </div>
-                )}
+                ) : devices.length === 0 && !devicesLoading ? (
+                    <div className="col-span-3 bg-amber-50 border border-amber-200 rounded-[2.5rem] p-8 flex items-start gap-5">
+                        <div className="size-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center shrink-0">
+                            <ShieldAlert size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-display font-bold text-amber-900 mb-1">No Ready Allocations</h3>
+                            <p className="text-sm text-amber-700 font-medium max-w-xl">
+                                You don't have any hardware orders ready for activation. Buy NFC hardware in the <strong>Marketplace</strong>. Once your order is ready, you can generate assets here.
+                            </p>
+                        </div>
+                    </div>
+                ) : null}
             </div>
 
             {/* Fleet Analytics Stats */}
