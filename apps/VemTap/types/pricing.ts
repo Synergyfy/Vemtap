@@ -8,6 +8,7 @@ export interface PricingPlan {
     currency: string;
     isFree: boolean;
     freeDurationDays: number;
+    trialDurationDays: number;
     teamMembersLimit: number;
     loyaltyLimit: number;
     tagsLimit: number;

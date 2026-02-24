@@ -7,31 +7,20 @@ import {
   MinLength,
   IsUrl,
   IsArray,
-  IsEnum,
 } from 'class-validator';
 
 export class RegisterOwnerDto {
-  // --- User Details ---
-  @ApiProperty({ example: 'Daniel', description: 'First name of the owner' })
-  @IsString()
-  @IsNotEmpty()
-  firstName: string;
-
-  @ApiProperty({ example: 'Smith', description: 'Last name of the owner' })
-  @IsString()
-  @IsNotEmpty()
-  lastName: string;
 
   @ApiProperty({
     example: 'daniel@company.com',
-    description: 'Email address (used for login)',
+    description: 'Email address (must match the one used for OTP)',
   })
   @IsEmail()
   email: string;
 
   @ApiProperty({
     example: 'securePass123',
-    description: 'Password (min 6 chars)',
+    description: 'Password for your account (min 6 chars)',
   })
   @IsString()
   @MinLength(6)

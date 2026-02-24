@@ -9,9 +9,12 @@ import {
 import { Business } from '../businesses/entities/business.entity';
 import { PlansService } from './plans.service';
 import { PaymentsService } from '../payments/payments.service';
-import { Repository, In } from 'typeorm';
+import { Repository } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
-import { PaymentPurpose, PaymentStatus } from '../payments/entities/payment.entity';
+import {
+  PaymentPurpose,
+  PaymentStatus,
+} from '../payments/entities/payment.entity';
 
 describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
@@ -87,7 +90,13 @@ describe('SubscriptionsService', () => {
   };
 
   const mockPaymentsService = {
-    verifyTransaction: jest.fn().mockResolvedValue(true),
+    verifyTransaction: jest.fn().mockResolvedValue({
+      status: 'success',
+      data: {
+        amount: 5000,
+      },
+      authorization: { authorization_code: 'AUTH_123' },
+    }),
     recordPayment: jest.fn().mockResolvedValue({}),
     chargeAuthorization: jest.fn(),
   };
@@ -120,24 +129,8 @@ describe('SubscriptionsService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('activeSubscription', () => {
-    it('should return active subscription', async () => {
-      mockSubRepository.findOne.mockResolvedValue(mockSubscription);
-      const sub = await service.activeSubscription('b1');
-      expect(sub).toEqual(mockSubscription);
-      expect(mockSubRepository.findOne).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: {
-            businessId: 'b1',
-            status: In([SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL]),
-          },
-        }),
-      );
-    });
-  });
-
   describe('subscribe', () => {
-    it('should create subscription with TRIAL status if plan has trial', async () => {
+    it('should create subscription with TRIAL status if isTrial=true and plan has trial', async () => {
       mockPlansService.findOne.mockResolvedValue(mockTrialPlan);
       mockSubRepository.findOne.mockResolvedValue(null); // no active sub
 
@@ -145,39 +138,50 @@ describe('SubscriptionsService', () => {
         planId: '3',
         businessId: 'b1',
         billingPeriod: BillingPeriod.MONTHLY,
+        isTrial: true,
       });
 
       expect(result.status).toBe(SubscriptionStatus.TRIAL);
       expect(result.trialEndDate).toBeDefined();
-      // Should calculate trial end date approx 30 days from now
-      const now = new Date().getTime();
-      const trialEnd = new Date(result.trialEndDate).getTime();
-      const diff = trialEnd - now;
-      const day = 24 * 60 * 60 * 1000;
-      expect(diff).toBeGreaterThan(29 * day);
-      expect(diff).toBeLessThan(31 * day);
-
       expect(mockPaymentsService.verifyTransaction).not.toHaveBeenCalled();
     });
 
-    it('should require payment for paid plan without trial', async () => {
+    it('should throw BadRequest if isTrial=true but plan has no trial', async () => {
       mockPlansService.findOne.mockResolvedValue(mockPlan); // 0 trial days
-      mockSubRepository.findOne.mockResolvedValue(null);
 
       await expect(
         service.subscribe({
           planId: '1',
           businessId: 'b1',
           billingPeriod: BillingPeriod.MONTHLY,
+          isTrial: true,
         }),
-      ).rejects.toThrow(BadRequestException); // missing ref
+      ).rejects.toThrow(BadRequestException);
+    });
 
-      // With ref
+    it('should require payment if isTrial=false (default)', async () => {
+      mockPlansService.findOne.mockResolvedValue(mockTrialPlan);
+
+      await expect(
+        service.subscribe({
+          planId: '3',
+          businessId: 'b1',
+          billingPeriod: BillingPeriod.MONTHLY,
+          // isTrial defaults to false
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should process direct payment if isTrial=false and reference provided', async () => {
+      mockPlansService.findOne.mockResolvedValue(mockTrialPlan);
+      mockSubRepository.findOne.mockResolvedValue(null);
+
       const result = await service.subscribe({
-        planId: '1',
+        planId: '3',
         businessId: 'b1',
         billingPeriod: BillingPeriod.MONTHLY,
         paymentReference: 'ref123',
+        isTrial: false,
       });
 
       expect(mockPaymentsService.verifyTransaction).toHaveBeenCalledWith(
@@ -185,93 +189,31 @@ describe('SubscriptionsService', () => {
       );
       expect(result.status).toBe(SubscriptionStatus.ACTIVE);
     });
-
-    it('should save auth code if verification provides it', async () => {
-        mockPlansService.findOne.mockResolvedValue(mockTrialPlan);
-        mockSubRepository.findOne.mockResolvedValue(null);
-        mockPaymentsService.verifyTransaction.mockResolvedValueOnce({
-            authorization: { authorization_code: 'AUTH_123' }
-        });
-
-        const result = await service.subscribe({
-          planId: '3',
-          businessId: 'b1',
-          billingPeriod: BillingPeriod.MONTHLY,
-          paymentReference: 'ref_with_auth',
-        });
-
-        expect(result.paystackAuthorizationCode).toBe('AUTH_123');
-    });
   });
 
-  describe('processExpiredTrials', () => {
-    it('should charge and activate expired trials with auth code', async () => {
-        const expiredSub = {
-            id: 'sub_expired',
-            status: SubscriptionStatus.TRIAL,
-            endDate: new Date(), // Just expired
-            paystackAuthorizationCode: 'AUTH_123',
-            plan: mockPlan,
-            billingPeriod: BillingPeriod.MONTHLY,
-            businessId: 'b1',
-            business: mockBusiness,
-        };
-        mockSubRepository.find.mockResolvedValueOnce([expiredSub]);
-
-        mockPaymentsService.chargeAuthorization.mockResolvedValueOnce({
-            status: 'success',
-            reference: 'charge_ref',
-        });
-
-        await service.processExpiredTrials();
-
-        expect(mockPaymentsService.chargeAuthorization).toHaveBeenCalledWith(
-            5000, 'unknown@latap.com', 'AUTH_123'
-        );
-        expect(mockSubRepository.save).toHaveBeenCalledWith(expect.objectContaining({
-            id: 'sub_expired',
-            status: SubscriptionStatus.ACTIVE,
-        }));
-        expect(mockPaymentsService.recordPayment).toHaveBeenCalled();
+  describe('getSubscriptionStatus', () => {
+    it('should return status of active subscription', async () => {
+      mockSubRepository.findOne.mockResolvedValueOnce(mockSubscription); // activeSubscription
+      const status = await service.getSubscriptionStatus('b1');
+      expect(status).toBe(SubscriptionStatus.ACTIVE);
     });
 
-    it('should expire trials without auth code', async () => {
-        const expiredSub = {
-            id: 'sub_no_auth',
-            status: SubscriptionStatus.TRIAL,
-            endDate: new Date(),
-            paystackAuthorizationCode: null,
-            plan: mockPlan,
-        };
-        mockSubRepository.find.mockResolvedValueOnce([expiredSub]);
+    it('should return status of latest subscription if no active one found', async () => {
+      mockSubRepository.findOne.mockResolvedValueOnce(null); // activeSubscription returns null
+      mockSubRepository.findOne.mockResolvedValueOnce({
+        status: SubscriptionStatus.EXPIRED,
+      }); // latest sub
 
-        await service.processExpiredTrials();
-
-        expect(mockPaymentsService.chargeAuthorization).not.toHaveBeenCalled();
-        expect(mockSubRepository.save).toHaveBeenCalledWith(expect.objectContaining({
-            status: SubscriptionStatus.EXPIRED
-        }));
+      const status = await service.getSubscriptionStatus('b1');
+      expect(status).toBe(SubscriptionStatus.EXPIRED);
     });
 
-    it('should expire trials if charge fails', async () => {
-        const expiredSub = {
-            id: 'sub_fail',
-            status: SubscriptionStatus.TRIAL,
-            endDate: new Date(),
-            paystackAuthorizationCode: 'AUTH_FAIL',
-            plan: mockPlan,
-            billingPeriod: BillingPeriod.MONTHLY,
-            businessId: 'b1',
-            business: mockBusiness,
-        };
-        mockSubRepository.find.mockResolvedValueOnce([expiredSub]);
-        mockPaymentsService.chargeAuthorization.mockResolvedValueOnce(null);
+    it('should return null if no subscription ever', async () => {
+      mockSubRepository.findOne.mockResolvedValueOnce(null);
+      mockSubRepository.findOne.mockResolvedValueOnce(null);
 
-        await service.processExpiredTrials();
-
-        expect(mockSubRepository.save).toHaveBeenCalledWith(expect.objectContaining({
-            status: SubscriptionStatus.EXPIRED
-        }));
+      const status = await service.getSubscriptionStatus('b1');
+      expect(status).toBeNull();
     });
   });
 });

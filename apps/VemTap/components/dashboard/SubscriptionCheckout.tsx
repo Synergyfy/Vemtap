@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { PricingPlan } from '@/types/pricing';
 
 interface Props {
+    isTrial?: boolean;
     isOpen: boolean;
     onClose: () => void;
     plan: PricingPlan;
@@ -16,7 +17,7 @@ interface Props {
     businessId?: string;
 }
 
-export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPeriod = 'monthly', businessId }: Props) {
+export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPeriod = 'monthly', businessId, isTrial = false }: Props) {
     const { user } = useAuthStore();
     const subscribeMutation = useSubscribe();
     const [isProcessing, setIsProcessing] = useState(false);
@@ -61,11 +62,13 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             return;
         }
 
+        const amountToCharge = isTrial ? 0 : breakdown.total;
+
         // @ts-ignore
         const handler = window.PaystackPop.setup({
             key: publicKey,
             email: email,
-            amount: breakdown.total * 100, // Paystack amount is in kobo
+            amount: amountToCharge * 100, // Paystack amount is in kobo
             currency: 'NGN',
             ref: `SUB-${businessId || user?.businessId || 'anon'}-${Date.now()}`,
             onClose: () => {
@@ -82,7 +85,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                 }, {
                     onSuccess: () => {
                         setIsProcessing(false);
-                        toast.success(`Welcome to the ${plan.name} plan!`);
+                        toast.success(isTrial ? `Trial started! You won't be charged for ${plan.trialDurationDays} days.` : `Welcome to the ${plan.name} plan!`);
                         onClose();
                     },
                     onError: () => {
@@ -158,7 +161,12 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                             </div>
                         </div>
                         <div className="text-right">
-                            {breakdown ? (
+                            {isTrial ? (
+                                <>
+                                    <p className="text-2xl font-black text-primary tracking-tighter">₦0</p>
+                                    <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest">Due Today</p>
+                                </>
+                            ) : breakdown ? (
                                 <>
                                     <p className="text-2xl font-black text-primary tracking-tighter">₦{breakdown.total.toLocaleString()}</p>
                                     <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest">{breakdown.label}</p>
@@ -217,11 +225,14 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                     {isProcessing ? (
                         <>
                             <Loader2 className="animate-spin" size={18} />
-                            Securing Transaction...
+                            Securing {isTrial ? 'Trial' : 'Transaction'}...
                         </>
                     ) : (
                         <>
-                            Pay {breakdown ? `₦${breakdown.total.toLocaleString()}` : formatPrice(plan.monthlyPrice)} & Activate
+                            {isTrial
+                                ? `Start ${plan.trialDurationDays}-Day Trial`
+                                : `Pay ${breakdown ? `₦${breakdown.total.toLocaleString()}` : formatPrice(plan.monthlyPrice)} & Activate`
+                            }
                             <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                         </>
                     )}

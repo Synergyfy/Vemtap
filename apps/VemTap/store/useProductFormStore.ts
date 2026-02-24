@@ -23,7 +23,6 @@ interface VolumeDiscount {
 interface ProductFormData {
   // Step 1
   title: string;
-  manufacturer: string;
   category: string;
   tag: string;
   tagColor: string;
@@ -70,7 +69,6 @@ interface ProductFormState {
 
 const initialFormData: ProductFormData = {
   title: '',
-  manufacturer: '',
   category: 'NFC Hardware',
   tag: 'New Arrival',
   tagColor: 'bg-primary',
@@ -111,7 +109,6 @@ export const useProductFormStore = create<ProductFormState>((set) => ({
     formData: {
       ...initialFormData,
       title: product.name,
-      manufacturer: product.manufacturer || '',
       category: product.category || 'NFC Hardware',
       tag: product.tag || 'New Arrival',
       tagColor: product.tagColor || 'bg-primary',

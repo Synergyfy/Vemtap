@@ -25,6 +25,7 @@ const defaultNewPlan: Omit<PricingPlan, 'id'> = {
     analyticsLevel: 'basic',
     isActive: true,
     description: '',
+    trialDurationDays: 0,
     isPopular: false
 };
 
@@ -190,6 +191,7 @@ export default function AdminPricingPage() {
                                             </div>
                                         </div>
                                     </div>
+
                                 </div>
                             </div>
                         ))}
@@ -412,6 +414,7 @@ export default function AdminPricingPage() {
                                     <label className="text-sm font-bold text-text-main">Active</label>
                                 </div>
                             </div>
+
 
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Description</label>

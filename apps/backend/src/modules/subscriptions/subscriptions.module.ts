@@ -20,6 +20,6 @@ import { TrialRestrictionGuard } from './guards/trial-restriction.guard';
   ],
   controllers: [PlansController, SubscriptionsController],
   providers: [PlansService, SubscriptionsService, TrialRestrictionGuard],
-  exports: [PlansService, SubscriptionsService, TrialRestrictionGuard],
+  exports: [TypeOrmModule, PlansService, SubscriptionsService, TrialRestrictionGuard],
 })
-export class SubscriptionsModule {}
+export class SubscriptionsModule { }

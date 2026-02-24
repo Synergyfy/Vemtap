@@ -17,10 +17,12 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { SubscriptionGuard } from './modules/subscriptions/guards/subscription.guard';
 import { SettingsModule } from './modules/settings/settings.module';
 import { BranchesModule } from './modules/branches/branches.module';
 import { LoyaltyModule } from './modules/loyalty/loyalty.module';
 import { SupportModule } from './modules/support/support.module';
+import { SystemModule } from './modules/system/system.module';
 
 @Module({
   imports: [
@@ -72,6 +74,7 @@ import { SupportModule } from './modules/support/support.module';
     BranchesModule,
     LoyaltyModule,
     SupportModule,
+    SystemModule,
   ],
   controllers: [AppController],
   providers: [
@@ -84,6 +87,10 @@ import { SupportModule } from './modules/support/support.module';
       provide: APP_GUARD,
       useClass: RolesGuard,
     },
+    {
+      provide: APP_GUARD,
+      useClass: SubscriptionGuard,
+    },
   ],
 })
-export class AppModule {}
+export class AppModule { }

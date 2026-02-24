@@ -128,6 +128,14 @@ export class ProductsController {
     return this.productsService.getAdminStats();
   }
 
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Get('admin/count-by-type/:id')
+  @ApiOperation({ summary: 'Count products by type (Admin only)' })
+  countByProductType(@Param('id') id: string) {
+    return this.productsService.countByProductType(id);
+  }
+
   @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get product by ID' })
@@ -400,5 +408,18 @@ export class ProductsController {
   })
   markOrderReady(@Param('id') id: string) {
     return this.productsService.markOrderReady(id);
+  }
+
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Patch('orders/:id/complete')
+  @ApiOperation({ summary: 'Mark an order as completed and paid (Admin only)' })
+  @ApiResponse({
+    status: 200,
+    type: Order,
+    description: 'Order status updated to Completed and PaymentStatus to Paid',
+  })
+  markOrderCompleted(@Param('id') id: string) {
+    return this.productsService.markOrderCompleted(id);
   }
 }

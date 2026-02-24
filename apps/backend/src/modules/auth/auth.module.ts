@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
 import { BusinessesModule } from '../businesses/businesses.module';
 import { MailModule } from '../mail/mail.module';
+import { DevicesModule } from '../devices/devices.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { Otp } from './entities/otp.entity';
@@ -16,6 +17,7 @@ import { Otp } from './entities/otp.entity';
   imports: [
     UsersModule,
     BusinessesModule,
+    DevicesModule,
     MailModule,
     PassportModule,
     TypeOrmModule.forFeature([Otp]),

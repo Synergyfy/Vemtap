@@ -22,6 +22,7 @@ import {
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
+import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
 
 @ApiTags('businesses')
 @ApiBearerAuth()
@@ -30,6 +31,7 @@ export class BusinessesController {
   constructor(private readonly businessesService: BusinessesService) {}
 
   @Get('my-business')
+  @SkipSubscriptionCheck()
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get details of the business for current user' })
   async getMyBusiness(@Request() req) {
