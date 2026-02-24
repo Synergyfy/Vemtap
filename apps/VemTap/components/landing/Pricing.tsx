@@ -24,19 +24,19 @@ export default function Pricing() {
         queryFn: fetchPricingPlans
     });
 
-    const handleSubscription = async (plan: any) => {
+    const handleSubscription = async (plan: any, useTrial: boolean = false) => {
         if (!isAuthenticated) {
             router.push('/login');
             return;
         }
 
-        if (plan.id === 'free') {
+        if (plan.id === 'free' || useTrial) {
             subscribeMutation.mutate({
                 businessId: user?.businessId || '',
-                planId: 'free',
+                planId: plan.id,
                 billingPeriod
             }, {
-                onSuccess: () => toast.success('Switched to Free plan!'),
+                onSuccess: () => toast.success(useTrial ? `Started ${plan.trialDurationDays}-day free trial!` : 'Switched to Free plan!'),
                 onError: () => toast.error('Failed to update plan')
             });
         } else {
@@ -198,18 +198,38 @@ export default function Pricing() {
                                     ))}
                                 </ul>
 
-                                <button
-                                    onClick={() => handleSubscription(plan)}
-                                    className={`
-                                        w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center transition-all cursor-pointer shadow-lg active:scale-[0.98]
-                                        ${highlight
-                                            ? 'bg-white text-primary hover:bg-gray-50 shadow-white/10'
-                                            : 'bg-primary text-white hover:bg-primary-hover shadow-primary/20'
-                                        }
-                                    `}
-                                >
-                                    {plan.isFree ? 'Get Started' : isCurrentPlan ? 'Manage Sub' : 'Select Plan'}
-                                </button>
+                                <div className="flex flex-col gap-3">
+                                    {plan.trialDurationDays > 0 && !plan.isFree && !isCurrentPlan && (
+                                        <button
+                                            onClick={() => handleSubscription(plan, true)}
+                                            className={`
+                                                w-full py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center transition-all cursor-pointer shadow-lg active:scale-[0.98]
+                                                ${highlight
+                                                    ? 'bg-white text-primary hover:bg-gray-50 shadow-white/10'
+                                                    : 'bg-primary text-white hover:bg-primary-hover shadow-primary/20'
+                                                }
+                                            `}
+                                        >
+                                            Start {plan.trialDurationDays}-Day Free Trial
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => handleSubscription(plan)}
+                                        className={`
+                                            w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center transition-all cursor-pointer shadow-lg active:scale-[0.98]
+                                            ${highlight
+                                                ? plan.trialDurationDays > 0
+                                                    ? 'bg-primary border border-white/20 text-white hover:bg-primary-hover shadow-none'
+                                                    : 'bg-white text-primary hover:bg-gray-50 shadow-white/10'
+                                                : plan.trialDurationDays > 0
+                                                    ? 'bg-slate-100 text-slate-900 hover:bg-slate-200 shadow-none'
+                                                    : 'bg-primary text-white hover:bg-primary-hover shadow-primary/20'
+                                            }
+                                        `}
+                                    >
+                                        {plan.isFree ? 'Get Started' : isCurrentPlan ? 'Manage Sub' : 'Subscribe Now'}
+                                    </button>
+                                </div>
                             </div>
                         );
                     })}
@@ -248,19 +268,31 @@ export default function Pricing() {
                                         <span className="text-3xl md:text-4xl font-bold block leading-none">{formatPrice(price)}</span>
                                         <span className="text-xs font-bold opacity-60 mt-1 block tracking-wider">/mo</span>
                                     </div>
-                                    <button
-                                        onClick={() => isCurrentPlan ? null : handleSubscription(enterprisePlan)}
-                                        disabled={isCurrentPlan}
-                                        className={`
-                                            px-8 py-3 rounded-xl text-sm font-bold text-center transition-all bg-white text-primary shadow-lg shadow-white/10 hover:scale-[1.02] active:scale-[0.98]
-                                            ${isCurrentPlan
-                                                ? 'opacity-50 cursor-not-allowed shadow-none'
-                                                : ''
-                                            }
-                                        `}
-                                    >
-                                        {isCurrentPlan ? 'Current Plan' : 'Contact Sales'}
-                                    </button>
+                                    <div className="flex flex-col gap-3 min-w-[200px]">
+                                        {enterprisePlan.trialDurationDays > 0 && !enterprisePlan.isFree && !isCurrentPlan && (
+                                            <button
+                                                onClick={() => handleSubscription(enterprisePlan, true)}
+                                                className="px-8 py-3 rounded-xl text-sm font-bold text-center transition-all bg-white text-primary shadow-lg shadow-white/10 hover:scale-[1.02] active:scale-[0.98]"
+                                            >
+                                                Start {enterprisePlan.trialDurationDays}-Day Free Trial
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => isCurrentPlan ? null : handleSubscription(enterprisePlan)}
+                                            disabled={isCurrentPlan}
+                                            className={`
+                                                px-8 py-3 rounded-xl text-sm font-bold text-center transition-all shadow-lg hover:scale-[1.02] active:scale-[0.98]
+                                                ${isCurrentPlan
+                                                    ? 'opacity-50 cursor-not-allowed shadow-none bg-white text-primary'
+                                                    : enterprisePlan.trialDurationDays > 0
+                                                        ? 'bg-primary border border-white/20 text-white hover:bg-primary-hover'
+                                                        : 'bg-white text-primary'
+                                                }
+                                            `}
+                                        >
+                                            {isCurrentPlan ? 'Current Plan' : 'Contact Sales'}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

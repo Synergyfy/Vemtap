@@ -42,7 +42,7 @@ export default function DashboardPricingPage() {
     const activeBillingPeriod = (subscription as any)?.billingPeriod || 'monthly';
     const isOwner = user?.role?.toLowerCase() === 'owner';
 
-    const handlePlanSelect = async (plan: PricingPlan) => {
+    const handlePlanSelect = async (plan: PricingPlan, useTrial: boolean = false) => {
         if (!isOwner) {
             toast.error('Only business owners can manage subscriptions');
             return;
@@ -54,14 +54,14 @@ export default function DashboardPricingPage() {
             return;
         }
 
-        if (plan.isFree) {
+        if (plan.isFree || useTrial) {
             subscribeMutation.mutate({
                 businessId: user?.businessId || '',
                 planId: plan.id,
-                billingPeriod: 'monthly'
+                billingPeriod: useTrial ? billingPeriod : 'monthly'
             }, {
                 onSuccess: () => {
-                    toast.success('Switched to Free plan!');
+                    toast.success(useTrial ? `Started ${plan.trialDurationDays}-day free trial!` : 'Switched to Free plan!');
                     refetchSub();
                 },
                 onError: () => toast.error('Failed to update plan')
@@ -229,16 +229,29 @@ export default function DashboardPricingPage() {
                                     </li>
                                 ))}
                             </ul>
-                            <button
-                                onClick={() => handlePlanSelect(plan)}
-                                disabled={(isCurrent && !isPersonal) || !isOwner}
-                                className={`w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${isCurrent
-                                    ? isPersonal && isOwner ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                    : !isOwner ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg'
-                                    }`}
-                            >
-                                {isCurrent ? isPersonal && isOwner ? 'Update Configuration' : 'Current Plan' : isOwner ? 'Switch Plan' : 'Restricted'}
-                            </button>
+                            <div className="mt-auto flex flex-col gap-2">
+                                {plan.trialDurationDays > 0 && !plan.isFree && !isCurrent && isOwner && (
+                                    <button
+                                        onClick={() => handlePlanSelect(plan, true)}
+                                        className="w-full h-11 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all bg-primary text-white hover:bg-primary-hover shadow-lg shadow-primary/20"
+                                    >
+                                        Start {plan.trialDurationDays}-Day Free Trial
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => handlePlanSelect(plan)}
+                                    disabled={(isCurrent && !isPersonal) || !isOwner}
+                                    className={`w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${isCurrent
+                                        ? isPersonal && isOwner ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                        : !isOwner ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                            : plan.trialDurationDays > 0
+                                                ? 'bg-slate-100 text-slate-900 hover:bg-slate-200'
+                                                : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg'
+                                        }`}
+                                >
+                                    {isCurrent ? isPersonal && isOwner ? 'Update Configuration' : 'Current Plan' : isOwner ? plan.isFree ? 'Get Started' : 'Subscribe Now' : 'Restricted'}
+                                </button>
+                            </div>
                         </div>
                     );
                 })}
