@@ -10,6 +10,11 @@ import {
     SendMessageRequest,
     Template,
     ThreadMessage,
+    AutomationRule,
+    CreateAutomationRequest,
+    UpdateAutomationRequest,
+    TriggerType,
+    ActionType
 } from './types';
 
 // ─── Analytics ───────────────────────────────────────────────────────────────
@@ -146,6 +151,54 @@ export const useReplyToThread = (threadId: string) => {
             await api.post(`/messaging/inbox/threads/${threadId}/reply`, dto),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['messaging', 'thread', threadId] });
+        },
+    });
+};
+
+// ─── Automations ─────────────────────────────────────────────────────────────
+
+export const useAutomations = (branchId?: string) => {
+    const businessId = useAuthStore((state) => state.user?.businessId);
+    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const targetBranchId = branchId || (activeBranchId && activeBranchId !== 'all' ? activeBranchId : undefined);
+
+    return useQuery<AutomationRule[], Error>({
+        queryKey: ['messaging', 'automations', businessId, targetBranchId],
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            if (targetBranchId) params.append('branchId', targetBranchId);
+            return await api.get(`/automations?${params.toString()}`);
+        },
+        enabled: !!businessId,
+    });
+};
+
+export const useCreateAutomation = () => {
+    const queryClient = useQueryClient();
+    return useMutation<AutomationRule, Error, CreateAutomationRequest>({
+        mutationFn: async (dto) => await api.post('/automations', dto),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messaging', 'automations'] });
+        },
+    });
+};
+
+export const useUpdateAutomation = (id: string) => {
+    const queryClient = useQueryClient();
+    return useMutation<AutomationRule, Error, UpdateAutomationRequest>({
+        mutationFn: async (dto) => await api.patch(`/automations/${id}`, dto),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messaging', 'automations'] });
+        },
+    });
+};
+
+export const useDeleteAutomation = () => {
+    const queryClient = useQueryClient();
+    return useMutation<void, Error, string>({
+        mutationFn: async (id) => await api.delete(`/automations/${id}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messaging', 'automations'] });
         },
     });
 };

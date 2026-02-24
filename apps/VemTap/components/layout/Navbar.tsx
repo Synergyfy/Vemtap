@@ -3,14 +3,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Logo from '@/components/brand/Logo';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useMyBusiness } from '@/services/businesses/hooks';
 
 export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isSolutionsOpen, setIsSolutionsOpen] = useState(false);
-    const { user, isAuthenticated } = useAuthStore();
+    const { isAuthenticated } = useAuthStore();
+    const { data: business } = useMyBusiness();
     const solutionsRef = useRef<HTMLDivElement>(null);
 
-    const getInitials = (name: string) => {
+    const getInitials = (name?: string) => {
+        if (!name) return 'U';
         return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
     };
 
@@ -100,15 +103,19 @@ export default function Navbar() {
                     </div>
 
                     <div className="hidden md:flex items-center gap-3">
-                        {isAuthenticated && user ? (
+                        {isAuthenticated && business ? (
                             <div className="relative group">
                                 <Link href="/dashboard" className="flex items-center gap-2 pl-2 pr-4 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-full border border-gray-200 transition-all">
-                                    <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold ring-2 ring-white">
-                                        {getInitials(user.name)}
+                                    <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold ring-2 ring-white overflow-hidden">
+                                        {business.logoUrl ? (
+                                            <img src={business.logoUrl} alt={business.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            getInitials(business.name)
+                                        )}
                                     </div>
                                     <div className="flex flex-col text-left">
                                         <span className="text-xs font-bold text-text-main leading-tight group-hover:text-primary transition-colors">
-                                            {user.businessName || user.name.split(' ')[0]}
+                                            {business.name}
                                         </span>
                                         <span className="text-[10px] text-text-secondary font-medium leading-tight">Dashboard</span>
                                     </div>

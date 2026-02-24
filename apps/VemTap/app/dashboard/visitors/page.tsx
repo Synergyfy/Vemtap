@@ -21,12 +21,12 @@ export default function VisitorsOverviewPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' | 'general' } | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
 
-    const userBranchId = useAuthStore((state) => state.user?.businessId);
-    const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(userBranchId, {
+    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(activeBranchId === 'all' || !activeBranchId ? undefined : activeBranchId, {
         search: searchQuery,
         status: filterStatus !== 'all' ? filterStatus : undefined
     });
-    const { data: statsData } = useVisitorStats(userBranchId);
+    const { data: statsData } = useVisitorStats(activeBranchId === 'all' || !activeBranchId ? undefined : activeBranchId);
 
     const visitors = paginatedData?.data || [];
     const isLoading = isLoadingVisitors;

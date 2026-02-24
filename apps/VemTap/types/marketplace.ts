@@ -80,3 +80,35 @@ export interface CartSummary {
     shipping: number;
     total: number;
 }
+export interface MarketplaceQuote {
+    id: string;
+    productId: string;
+    quantity: number;
+    currentPrice?: number;
+    status: 'Pending' | 'Accepted' | 'Rejected' | 'Negotiating';
+    createdAt: string;
+    product?: {
+        name: string;
+        image: string;
+    };
+    productName?: string;
+}
+
+export interface MarketplaceOrder {
+    id: string;
+    productId: string;
+    quantity: number;
+    totalPrice: number;
+    status: 'Processing' | 'Ready' | 'Shipped' | 'Delivered' | 'Cancelled';
+    paymentStatus: 'Pending' | 'Paid' | 'Failed';
+    createdAt: string;
+    product?: {
+        name: string;
+        image: string;
+    };
+    quote?: {
+        quantity: number;
+        productName?: string;
+    };
+    devices?: any[];
+}

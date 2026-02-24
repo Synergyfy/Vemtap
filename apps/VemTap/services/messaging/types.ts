@@ -80,3 +80,53 @@ export interface ThreadMessage {
     direction: 'INBOUND' | 'OUTBOUND';
     createdAt: string;
 }
+
+// ─── Automations ─────────────────────────────────────────────────────────────
+
+export enum TriggerType {
+    FIRST_TAG = 'first_tag',
+    REPEAT_TAG = 'repeat_tag',
+    REWARD_EARNED = 'reward_earned',
+    SURVEY_COMPLETED = 'survey_completed',
+}
+
+export enum ActionType {
+    SEND_SMS = 'send_sms',
+    SEND_WHATSAPP = 'send_whatsapp',
+    SEND_EMAIL = 'send_email',
+    PUSH_REVIEW = 'push_review',
+}
+
+export interface AutomationRule {
+    id: string;
+    businessId: string;
+    branchId?: string;
+    name: string;
+    triggerType: TriggerType;
+    delaySeconds?: number;
+    actionType: ActionType;
+    actionConfig?: Record<string, any>;
+    isActive: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CreateAutomationRequest {
+    businessId: string;
+    branchId?: string;
+    name: string;
+    triggerType: TriggerType;
+    delaySeconds?: number;
+    actionType: ActionType;
+    actionConfig?: Record<string, any>;
+    isActive?: boolean;
+}
+
+export interface UpdateAutomationRequest {
+    name?: string;
+    triggerType?: TriggerType;
+    delaySeconds?: number;
+    actionType?: ActionType;
+    actionConfig?: Record<string, any>;
+    isActive?: boolean;
+}

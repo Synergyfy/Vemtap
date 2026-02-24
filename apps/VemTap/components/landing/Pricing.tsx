@@ -17,7 +17,7 @@ export default function Pricing() {
     const isAuthenticated = useAuthStore((state: AuthState) => state.isAuthenticated);
     const subscribeMutation = useSubscribe();
     const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
-    const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
+    const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
 
     const { data: plans = [], isLoading } = useQuery({
         queryKey: ['subscription-plans'],
@@ -34,13 +34,13 @@ export default function Pricing() {
             subscribeMutation.mutate({
                 businessId: user?.businessId || '',
                 planId: 'free',
-                billingCycle
+                billingPeriod
             }, {
                 onSuccess: () => toast.success('Switched to Free plan!'),
                 onError: () => toast.error('Failed to update plan')
             });
         } else {
-            setCheckoutPlan({ ...plan, billingCycle });
+            setCheckoutPlan({ ...plan, billingPeriod });
         }
     };
 
@@ -50,32 +50,55 @@ export default function Pricing() {
         </div>
     );
 
-    const mainPlans = plans.filter(plan => ['free', 'personal', 'basic', 'premium'].includes(plan.id));
-    const enterprisePlan = plans.find(plan => plan.id === 'white-label' || plan.id === 'enterprise');
+    // Identify enterprise/white-label plan dynamically
+    const enterprisePlan = plans.find(plan =>
+        plan.id === 'white-label' ||
+        plan.id === 'enterprise' ||
+        plan.name.toLowerCase().includes('enterprise') ||
+        plan.name.toLowerCase().includes('white label')
+    );
 
-    const getBasePrice = (priceStr: string) => {
-        if (priceStr === 'Custom') return null;
-        return parseInt(priceStr.replace(/[^0-9]/g, ''));
+    // Main plans are all active plans except the enterprise one
+    const mainPlans = plans.filter(plan =>
+        plan.isActive && plan.id !== enterprisePlan?.id
+    );
+
+    const getPriceByCycle = (plan: any, cycle: string) => {
+        if (cycle === 'yearly') return plan.yearlyPrice;
+        if (cycle === 'quarterly') return plan.quarterlyPrice;
+        return plan.monthlyPrice;
     };
 
-    // Returns the per-month equivalent price to show on the card
-    const getPerMonthPrice = (basePrice: number, cycle: string) => {
-        if (cycle === 'yearly') return Math.floor(basePrice * 0.8); // 20% off per month
-        if (cycle === 'quarterly') return Math.floor(basePrice * 0.9); // 10% off per month
-        return basePrice;
+    const getPerMonthPrice = (price: number, cycle: string) => {
+        if (cycle === 'yearly') return Math.floor(price * 0.8 / 12);
+        if (cycle === 'quarterly') return Math.floor(price * 0.9 / 3);
+        return price;
     };
 
-    // Returns the actual total charged at billing
-    const getBillingTotal = (basePrice: number, cycle: string) => {
-        if (cycle === 'yearly') return Math.floor(basePrice * 12 * 0.8);
-        if (cycle === 'quarterly') return Math.floor(basePrice * 3 * 0.9);
-        return basePrice;
+    const getBillingTotal = (price: number, cycle: string) => {
+        if (cycle === 'yearly') return Math.floor(price * 12 * 0.8);
+        if (cycle === 'quarterly') return Math.floor(price * 3 * 0.9);
+        return price;
     };
 
     const getBillingLabel = (cycle: string) => {
         if (cycle === 'yearly') return 'billed annually';
         if (cycle === 'quarterly') return 'billed quarterly';
         return 'billed monthly';
+    };
+
+    const formatPrice = (price: number) => {
+        return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(price);
+    };
+
+    const getDefaultFeatures = (plan: any) => {
+        const features = [];
+        if (plan.teamMembersLimit) features.push(`${plan.teamMembersLimit} Team Members`);
+        if (plan.loyaltyLimit) features.push(`${plan.loyaltyLimit} Loyalty Points`);
+        if (plan.tagsLimit) features.push(`${plan.tagsLimit} Tags`);
+        if (plan.branchLimit) features.push(`${plan.branchLimit} Branches`);
+        if (plan.analyticsLevel && plan.analyticsLevel !== 'none') features.push(`${plan.analyticsLevel} Analytics`);
+        return features;
     };
 
     return (
@@ -92,10 +115,10 @@ export default function Pricing() {
                         {(['monthly', 'quarterly', 'yearly'] as const).map((cycle) => (
                             <button
                                 key={cycle}
-                                onClick={() => setBillingCycle(cycle)}
+                                onClick={() => setBillingPeriod(cycle)}
                                 className={`
                                     px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all
-                                    ${billingCycle === cycle
+                                    ${billingPeriod === cycle
                                         ? 'bg-white text-primary shadow-sm scale-105'
                                         : 'text-text-secondary hover:text-text-main'
                                     }
@@ -114,9 +137,10 @@ export default function Pricing() {
                     {mainPlans.map((plan, index) => {
                         const highlight = plan.isPopular;
                         const isCurrentPlan = user?.planId === plan.id;
-                        const basePrice = getBasePrice(plan.price);
-                        const perMonthPrice = basePrice ? getPerMonthPrice(basePrice, billingCycle) : null;
-                        const billingTotal = basePrice ? getBillingTotal(basePrice, billingCycle) : null;
+                        const price = getPriceByCycle(plan, billingPeriod);
+                        const perMonthPrice = getPerMonthPrice(price, billingPeriod);
+                        const billingTotal = getBillingTotal(price, billingPeriod);
+                        const features = getDefaultFeatures(plan);
 
                         return (
                             <div
@@ -143,9 +167,9 @@ export default function Pricing() {
                                     </p>
                                 </div>
                                 <div className="mb-2">
-                                    {plan.id === 'free' ? (
+                                    {plan.isFree ? (
                                         <span className="text-4xl font-display font-bold">₦0</span>
-                                    ) : perMonthPrice ? (
+                                    ) : (
                                         <>
                                             <div className="flex items-end gap-1">
                                                 <span className="text-4xl font-display font-bold">
@@ -155,18 +179,16 @@ export default function Pricing() {
                                                     /mo
                                                 </span>
                                             </div>
-                                            {billingCycle !== 'monthly' && billingTotal && (
+                                            {billingPeriod !== 'monthly' && (
                                                 <p className={`text-[10px] font-medium mt-1 ${highlight ? 'text-white/60' : 'text-text-secondary'}`}>
-                                                    ₦{billingTotal.toLocaleString()} {getBillingLabel(billingCycle)}
+                                                    ₦{billingTotal.toLocaleString()} {getBillingLabel(billingPeriod)}
                                                 </p>
                                             )}
                                         </>
-                                    ) : (
-                                        <span className="text-4xl font-display font-bold">{plan.price}</span>
                                     )}
                                 </div>
                                 <ul className="space-y-4 mb-8 flex-1 mt-4">
-                                    {plan.features.map((feature, fIndex) => (
+                                    {features.map((feature: string, fIndex: number) => (
                                         <li key={fIndex} className="flex items-start gap-3 text-xs font-semibold leading-relaxed">
                                             <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${highlight ? 'text-white' : 'text-primary'}`} />
                                             <span className={highlight ? 'text-white/90' : 'text-text-secondary'}>
@@ -186,7 +208,7 @@ export default function Pricing() {
                                         }
                                     `}
                                 >
-                                    {plan.id === 'free' ? 'Get Started' : isCurrentPlan ? 'Manage Sub' : 'Select Plan'}
+                                    {plan.isFree ? 'Get Started' : isCurrentPlan ? 'Manage Sub' : 'Select Plan'}
                                 </button>
                             </div>
                         );
@@ -196,6 +218,9 @@ export default function Pricing() {
                 {/* White Label Plan - Separate Row */}
                 {enterprisePlan && (() => {
                     const isCurrentPlan = user?.planId === enterprisePlan.id;
+                    const features = getDefaultFeatures(enterprisePlan);
+                    const price = getPriceByCycle(enterprisePlan, billingPeriod);
+
                     return (
                         <div className="max-w-5xl mx-auto">
                             <div className="relative flex flex-col md:flex-row items-center gap-8 p-6 md:p-8 rounded-2xl bg-primary text-white shadow-xl shadow-primary/10 border border-white/10">
@@ -210,7 +235,7 @@ export default function Pricing() {
                                         {enterprisePlan.description}
                                     </p>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
-                                        {enterprisePlan.features.slice(0, 4).map((item, i) => (
+                                        {features.slice(0, 4).map((item: string, i: number) => (
                                             <li key={i} className="flex items-center text-xs font-semibold gap-2.5 list-none justify-center md:justify-start">
                                                 <CheckCircle2 size={14} className="text-white shrink-0" />
                                                 <span className="text-white/90">{item}</span>
@@ -220,8 +245,8 @@ export default function Pricing() {
                                 </div>
                                 <div className="flex flex-col items-center md:items-end gap-5 shrink-0">
                                     <div className="text-center md:text-right">
-                                        <span className="text-3xl md:text-4xl font-bold block leading-none">{enterprisePlan.price}</span>
-                                        {enterprisePlan.period && <span className="text-xs font-bold opacity-60 mt-1 block tracking-wider">{enterprisePlan.period}</span>}
+                                        <span className="text-3xl md:text-4xl font-bold block leading-none">{formatPrice(price)}</span>
+                                        <span className="text-xs font-bold opacity-60 mt-1 block tracking-wider">/mo</span>
                                     </div>
                                     <button
                                         onClick={() => isCurrentPlan ? null : handleSubscription(enterprisePlan)}
@@ -247,7 +272,7 @@ export default function Pricing() {
                         isOpen={!!checkoutPlan}
                         onClose={() => setCheckoutPlan(null)}
                         plan={checkoutPlan}
-                        billingCycle={checkoutPlan.billingCycle}
+                        billingPeriod={checkoutPlan.billingPeriod}
                         businessId={user?.businessId}
                     />
                 )}

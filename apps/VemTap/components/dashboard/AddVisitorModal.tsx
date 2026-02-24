@@ -4,11 +4,15 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
+import { Branch } from '@/services/branches/types';
+
 interface AddVisitorModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (data: VisitorFormData) => void;
     isLoading?: boolean;
+    branches?: Branch[];
+    defaultBranchId?: string;
 }
 
 export interface VisitorFormData {
@@ -16,12 +20,17 @@ export interface VisitorFormData {
     email: string;
     phone: string;
     status: string;
+    branchId: string;
 }
 
 import Modal from '@/components/ui/Modal';
 
-export default function AddVisitorModal({ isOpen, onClose, onSubmit, isLoading }: AddVisitorModalProps) {
-    const { register, handleSubmit, formState: { errors }, reset } = useForm<VisitorFormData>();
+export default function AddVisitorModal({ isOpen, onClose, onSubmit, isLoading, branches = [], defaultBranchId }: AddVisitorModalProps) {
+    const { register, handleSubmit, formState: { errors }, reset } = useForm<VisitorFormData>({
+        defaultValues: {
+            branchId: defaultBranchId
+        }
+    });
 
     const handleFormSubmit = (data: VisitorFormData) => {
         onSubmit(data);
@@ -115,6 +124,25 @@ export default function AddVisitorModal({ isOpen, onClose, onSubmit, isLoading }
                         </select>
                         {errors.status && (
                             <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.status.message}</p>
+                        )}
+                    </div>
+
+                    {/* Branch */}
+                    <div className="space-y-2">
+                        <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 ml-1">
+                            Assign to Branch
+                        </label>
+                        <select
+                            {...register('branchId', { required: 'Branch is required' })}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/5 focus:bg-white focus:border-primary/20 transition-all appearance-none cursor-pointer"
+                        >
+                            <option value="">Select branch</option>
+                            {branches.map(branch => (
+                                <option key={branch.id} value={branch.id}>{branch.name}</option>
+                            ))}
+                        </select>
+                        {errors.branchId && (
+                            <p className="text-red-500 text-[10px] font-bold mt-1 ml-1">{errors.branchId.message}</p>
                         )}
                     </div>
                 </div>

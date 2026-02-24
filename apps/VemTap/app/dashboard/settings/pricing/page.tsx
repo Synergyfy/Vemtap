@@ -9,10 +9,11 @@ import { fetchPricingPlans } from '@/lib/api/pricing';
 import { useActiveSubscription, useSubscribe } from '@/services/subscriptions/hooks';
 import SubscriptionCheckout from '@/components/dashboard/SubscriptionCheckout';
 import toast from 'react-hot-toast';
+import { PricingPlan } from '@/types/pricing';
 
 export default function DashboardPricingPage() {
     const { user } = useAuthStore();
-    const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
+    const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
     const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
 
     const { data: plans = [], isLoading: plansLoading } = useQuery({
@@ -32,32 +33,62 @@ export default function DashboardPricingPage() {
         return base + visitorCost + tagCost;
     };
 
-    const { data: subscription, isLoading: subLoading } = useActiveSubscription();
+    const { data: subscription, isLoading: subLoading, refetch: refetchSub } = useActiveSubscription();
     const subscribeMutation = useSubscribe();
 
     const isLoading = plansLoading || subLoading;
     const activePlanId = subscription?.planId || 'free';
-    const activePlan = plans.find((p: any) => p.id === activePlanId);
+    const activePlan = plans.find((p: PricingPlan) => p.id === activePlanId);
+    const activeBillingPeriod = (subscription as any)?.billingPeriod || 'monthly';
+    const isOwner = user?.role?.toLowerCase() === 'owner';
 
-    const handlePlanSelect = async (plan: any) => {
+    const handlePlanSelect = async (plan: PricingPlan) => {
+        if (!isOwner) {
+            toast.error('Only business owners can manage subscriptions');
+            return;
+        }
+
         localStorage.setItem('has_selected_plan', 'true');
         if (plan.id === activePlanId && plan.id !== 'personal') {
             toast.error('You are already on this plan');
             return;
         }
 
-        if (plan.id === 'free') {
+        if (plan.isFree) {
             subscribeMutation.mutate({
                 businessId: user?.businessId || '',
-                planId: 'free',
-                billingCycle
+                planId: plan.id,
+                billingPeriod: 'monthly'
             }, {
-                onSuccess: () => toast.success('Switched to Free plan!'),
+                onSuccess: () => {
+                    toast.success('Switched to Free plan!');
+                    refetchSub();
+                },
                 onError: () => toast.error('Failed to update plan')
             });
         } else {
-            setCheckoutPlan({ ...plan, billingCycle });
+            setCheckoutPlan({ ...plan, billingPeriod });
         }
+    };
+
+    const getPriceByCycle = (plan: PricingPlan, cycle: string) => {
+        if (cycle === 'yearly') return plan.yearlyPrice;
+        if (cycle === 'quarterly') return plan.quarterlyPrice;
+        return plan.monthlyPrice;
+    };
+
+    const formatPrice = (price: number) => {
+        return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(price);
+    };
+
+    const getPlanFeatures = (plan: PricingPlan) => {
+        const features = [];
+        if (plan.teamMembersLimit) features.push(`${plan.teamMembersLimit} Team Members`);
+        if (plan.loyaltyLimit) features.push(`${plan.loyaltyLimit} Loyalty Points`);
+        if (plan.tagsLimit) features.push(`${plan.tagsLimit} Tags`);
+        if (plan.branchLimit) features.push(`${plan.branchLimit} Branches`);
+        if (plan.analyticsLevel && plan.analyticsLevel !== 'none') features.push(`${plan.analyticsLevel} Analytics`);
+        return features;
     };
 
     if (isLoading) return (
@@ -84,6 +115,18 @@ export default function DashboardPricingPage() {
                 }
             />
 
+            {!isOwner && (
+                <div className="mb-8 p-4 rounded-2xl bg-amber-50 border border-amber-100 flex items-center gap-3">
+                    <div className="size-8 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
+                        <ShieldCheck size={18} />
+                    </div>
+                    <div>
+                        <p className="text-sm font-bold text-amber-900">Read-only Access</p>
+                        <p className="text-[10px] font-medium text-amber-700 uppercase tracking-widest">Only the business owner can upgrade or change plans.</p>
+                    </div>
+                </div>
+            )}
+
             {/* Current Plan Overview */}
             <div className="bg-slate-900 rounded-4xl p-8 mb-12 text-white relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 blur-[100px] rounded-full -mr-32 -mt-32" />
@@ -104,11 +147,11 @@ export default function DashboardPricingPage() {
                             <div className="flex flex-wrap gap-4 pt-2">
                                 <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl text-sm font-bold">
                                     <Zap size={16} className="text-primary" />
-                                    {activePlan?.visitorLimit === Infinity ? 'Unlimited' : activePlan?.visitorLimit} Visitors/mo
+                                    {activePlan?.teamMembersLimit || 0} Team Members
                                 </div>
                                 <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl text-sm font-bold">
                                     <ShieldCheck size={16} className="text-primary" />
-                                    {activePlan?.tagLimit === Infinity ? 'Unlimited' : activePlan?.tagLimit} Tag Licenses
+                                    {activePlan?.tagsLimit || 0} Tags
                                 </div>
                             </div>
                         </div>
@@ -121,11 +164,11 @@ export default function DashboardPricingPage() {
                                 </span>
                             </div>
                             <div className="flex items-end gap-1 mb-1">
-                                <span className="text-2xl font-black">{activePlan?.price || '₦0'}</span>
-                                {activePlan?.id !== 'free' && <span className="text-xs font-bold opacity-40 mb-1">/mo</span>}
+                                <span className="text-2xl font-black">{activePlan ? formatPrice(activePlan.monthlyPrice) : '₦0'}</span>
+                                {activePlan?.id !== 'free' && <span className="text-xs font-bold opacity-40 mb-1">/{activeBillingPeriod === 'yearly' ? 'yr' : activeBillingPeriod === 'quarterly' ? 'qtr' : 'mo'}</span>}
                             </div>
                             <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest mb-6 border-b border-white/10 pb-4">
-                                {subscription?.currentPeriodEnd ? `Next billing on ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}` : 'No upcoming billing'}
+                                {subscription?.currentPeriodEnd ? `Next billing on ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}` : 'No upcoming billing period'}
                             </p>
                             <button className="w-full h-11 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all">
                                 Manage Payment
@@ -142,8 +185,8 @@ export default function DashboardPricingPage() {
                     {(['monthly', 'quarterly', 'yearly'] as const).map((cycle) => (
                         <button
                             key={cycle}
-                            onClick={() => setBillingCycle(cycle)}
-                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${billingCycle === cycle ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                            onClick={() => setBillingPeriod(cycle)}
+                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${billingPeriod === cycle ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-900'
                                 }`}
                         >
                             {cycle}
@@ -153,9 +196,16 @@ export default function DashboardPricingPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {plans.filter((p: any) => p.id !== 'white-label' && p.id !== 'enterprise').map((plan: any) => {
+                {plans.filter((p: PricingPlan) =>
+                    p.id !== 'white-label' &&
+                    p.id !== 'enterprise' &&
+                    !p.name.toLowerCase().includes('enterprise') &&
+                    !p.name.toLowerCase().includes('white label')
+                ).map((plan: PricingPlan) => {
                     const isCurrent = plan.id === activePlanId;
-                    const isPersonal = plan.id === 'personal';
+                    const isPersonal = plan.id === 'personal' || plan.name.toLowerCase().includes('personal');
+                    const price = getPriceByCycle(plan, billingPeriod);
+                    const features = getPlanFeatures(plan);
                     return (
                         <div key={plan.id} className={`p-8 rounded-4xl border transition-all flex flex-col ${isCurrent ? 'bg-primary/5 border-primary shadow-xl shadow-primary/5' : 'bg-white border-slate-100 hover:border-primary/20'
                             }`}>
@@ -168,26 +218,26 @@ export default function DashboardPricingPage() {
                                 )}
                             </div>
                             <div className="mb-6">
-                                <span className="text-3xl font-black text-slate-900 tracking-tight">{plan.price}</span>
+                                <span className="text-3xl font-black text-slate-900 tracking-tight">{formatPrice(price)}</span>
                                 {plan.id !== 'free' && <span className="text-sm font-bold text-slate-400">/mo</span>}
                             </div>
                             <ul className="space-y-4 mb-8">
-                                {plan.features?.map((f: string, i: number) => (
+                                {features.map((feature: string, i: number) => (
                                     <li key={i} className="flex items-start gap-2.5 text-xs font-bold text-slate-600 leading-snug">
                                         <CheckCircle2 size={14} className="text-primary mt-0.5 shrink-0" />
-                                        {f}
+                                        {feature}
                                     </li>
                                 ))}
                             </ul>
                             <button
                                 onClick={() => handlePlanSelect(plan)}
-                                disabled={isCurrent && !isPersonal}
+                                disabled={(isCurrent && !isPersonal) || !isOwner}
                                 className={`w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${isCurrent
-                                    ? isPersonal ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                    : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg'
+                                    ? isPersonal && isOwner ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                    : !isOwner ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg'
                                     }`}
                             >
-                                {isCurrent ? isPersonal ? 'Update Configuration' : 'Current Plan' : 'Switch Plan'}
+                                {isCurrent ? isPersonal && isOwner ? 'Update Configuration' : 'Current Plan' : isOwner ? 'Switch Plan' : 'Restricted'}
                             </button>
                         </div>
                     );
@@ -213,7 +263,7 @@ export default function DashboardPricingPage() {
                     isOpen={!!checkoutPlan}
                     onClose={() => setCheckoutPlan(null)}
                     plan={checkoutPlan}
-                    billingCycle={checkoutPlan.billingCycle}
+                    billingPeriod={checkoutPlan.billingPeriod}
                 />
             )}
         </div>

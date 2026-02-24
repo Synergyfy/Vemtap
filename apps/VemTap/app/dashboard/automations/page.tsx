@@ -1,95 +1,106 @@
 'use client';
 
-import React, { useState } from 'react'
+import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { toast } from 'react-hot-toast';
 import {
     Zap, Plus, Trash2, Play, Pause, ChevronRight,
-    MessageSquare, Mail, Share2, Star, Timer, Users, Award
+    MessageSquare, Mail, Star, Users, Award, Loader2
 } from 'lucide-react';
-import { Gift } from 'lucide-react';
+import { Gift, Timer } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-interface Rule {
-    id: string;
-    name: string;
-    event: string;
-    condition: string;
-    action: string;
-    active: boolean;
-}
+import {
+    useAutomations,
+    useCreateAutomation,
+    useUpdateAutomation,
+    useDeleteAutomation
+} from '@/services/messaging/hooks';
+import {
+    TriggerType,
+    ActionType,
+    AutomationRule
+} from '@/services/messaging/types';
+import { useAuthStore } from '@/store/useAuthStore';
 
 const EVENT_OPTIONS = [
-    { id: 'first_tag', label: 'First-time Tag', icon: Users, desc: 'When a new customer taps' },
-    { id: 'repeat_tag', label: 'Repeat Tag', icon: Zap, desc: 'When a returning customer taps' },
-    { id: 'reward_earned', label: 'Reward Earned', icon: Award, desc: 'When loyalty threshold is reached' },
-    { id: 'survey_completed', label: 'Survey Completed', icon: MessageSquare, desc: 'When a survey is submitted' },
+    { id: TriggerType.FIRST_TAG, label: 'First-time Tag', icon: Users, desc: 'When a new customer taps' },
+    { id: TriggerType.REPEAT_TAG, label: 'Repeat Tag', icon: Zap, desc: 'When a returning customer taps' },
+    { id: TriggerType.REWARD_EARNED, label: 'Reward Earned', icon: Award, desc: 'When loyalty threshold is reached' },
+    { id: TriggerType.SURVEY_COMPLETED, label: 'Survey Completed', icon: MessageSquare, desc: 'When a survey is submitted' },
 ];
 
 const ACTION_OPTIONS = [
-    { id: 'send_sms', label: 'Send SMS', icon: MessageSquare, color: 'bg-blue-500' },
-    { id: 'send_whatsapp', label: 'Send WhatsApp', icon: MessageSquare, color: 'bg-emerald-500' },
-    { id: 'send_email', label: 'Send Email', icon: Mail, color: 'bg-purple-500' },
-    { id: 'push_review', label: 'Push Review Link', icon: Star, color: 'bg-amber-500' },
+    { id: ActionType.SEND_SMS, label: 'Send SMS', icon: MessageSquare, color: 'bg-blue-500' },
+    { id: ActionType.SEND_WHATSAPP, label: 'Send WhatsApp', icon: MessageSquare, color: 'bg-emerald-500' },
+    { id: ActionType.SEND_EMAIL, label: 'Send Email', icon: Mail, color: 'bg-purple-500' },
+    { id: ActionType.PUSH_REVIEW, label: 'Push Review Link', icon: Star, color: 'bg-amber-500' },
+];
+
+const DELAY_OPTIONS = [
+    { id: 'immediate', label: 'Immediately', seconds: 0 },
+    { id: '1_hour', label: 'After 1 Hour', seconds: 3600 },
+    { id: '24_hours', label: 'After 24 Hours', seconds: 86400 },
+    { id: '3_days', label: 'After 3 Days', seconds: 259200 },
+    { id: '7_days', label: 'After 7 Days', seconds: 604800 },
+    { id: '30_days', label: 'After 30 Days', seconds: 2592000 },
 ];
 
 export default function AutomationsPage() {
-    const [rules, setRules] = useState<Rule[]>([
-        {
-            id: '1',
-            name: 'Review Booster (2h)',
-            event: 'first_tag',
-            condition: 'delay: 2 hours',
-            action: 'push_review',
-            active: true
-        },
-        {
-            id: '2',
-            name: 'Feedback Survey (24h)',
-            event: 'first_tag',
-            condition: 'delay: 24 hours',
-            action: 'push_review', // Survey action
-            active: true
-        },
-        {
-            id: '3',
-            name: 'Loyalty Promo (7d)',
-            event: 'repeat_tag',
-            condition: 'delay: 7 days',
-            action: 'send_whatsapp',
-            active: true
-        }
-    ]);
+    const { user, activeBranchId } = useAuthStore();
+    const { data: rules = [], isLoading } = useAutomations();
+
+    const createMutation = useCreateAutomation();
+    const deleteMutation = useDeleteAutomation();
 
     const [isAdding, setIsAdding] = useState(false);
-    const [newRule, setNewRule] = useState<Partial<Rule>>({
-        event: 'first_tag',
-        action: 'send_sms',
-        condition: 'any',
-        active: true
+    const [newRule, setNewRule] = useState({
+        name: '',
+        triggerType: TriggerType.FIRST_TAG,
+        actionType: ActionType.SEND_SMS,
+        delayId: 'immediate',
     });
 
     const addRule = () => {
-        const rule: Rule = {
-            id: Date.now().toString(),
-            name: newRule.name || 'Untitled Rule',
-            event: newRule.event || 'first_tag',
-            condition: newRule.condition || 'any',
-            action: newRule.action || 'send_sms',
-            active: true
-        };
-        setRules([...rules, rule]);
-        setIsAdding(false);
-        toast.success('Automation rule created!');
-    };
+        if (!newRule.name) {
+            toast.error('Please enter a name for the automation');
+            return;
+        }
 
-    const toggleRule = (id: string) => {
-        setRules(rules.map(r => r.id === id ? { ...r, active: !r.active } : r));
+        if (!user?.businessId) return;
+
+        const delay = DELAY_OPTIONS.find(d => d.id === newRule.delayId);
+
+        createMutation.mutate({
+            businessId: user.businessId,
+            branchId: activeBranchId && activeBranchId !== 'all' ? activeBranchId : undefined,
+            name: newRule.name,
+            triggerType: newRule.triggerType,
+            actionType: newRule.actionType,
+            delaySeconds: delay?.seconds || 0,
+            isActive: true,
+            actionConfig: {}
+        }, {
+            onSuccess: () => {
+                setIsAdding(false);
+                setNewRule({
+                    name: '',
+                    triggerType: TriggerType.FIRST_TAG,
+                    actionType: ActionType.SEND_SMS,
+                    delayId: 'immediate',
+                });
+                toast.success('Automation rule created!');
+            }
+        });
     };
 
     const deleteRule = (id: string) => {
-        setRules(rules.filter(r => r.id !== id));
-        toast.success('Rule deleted');
+        if (confirm('Are you sure you want to delete this automation?')) {
+            deleteMutation.mutate(id, {
+                onSuccess: () => {
+                    toast.success('Rule deleted');
+                }
+            });
+        }
     };
 
     return (
@@ -111,58 +122,61 @@ export default function AutomationsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Rules List */}
                 <div className="lg:col-span-2 space-y-4">
-                    <AnimatePresence>
-                        {rules.map((rule) => {
-                            const eventInfo = EVENT_OPTIONS.find(e => e.id === rule.event);
-                            const actionInfo = ACTION_OPTIONS.find(a => a.id === rule.action);
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
+                    ) : (
+                        <AnimatePresence>
+                            {rules.map((rule) => {
+                                const eventInfo = EVENT_OPTIONS.find(e => e.id === rule.triggerType);
+                                const actionInfo = ACTION_OPTIONS.find(a => a.id === rule.actionType);
+                                const delayInfo = DELAY_OPTIONS.find(d => d.seconds === rule.delaySeconds) || DELAY_OPTIONS[0];
 
-                            return (
-                                <motion.div
-                                    key={rule.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, x: -20 }}
-                                    className={`bg-white rounded-lg border ${rule.active ? 'border-gray-200 shadow-sm' : 'border-gray-100 opacity-60'} p-6 transition-all`}
-                                >
-                                    <div className="flex items-center justify-between gap-6">
-                                        <div className="flex items-center gap-6 flex-1">
-                                            <div className={`size-12 rounded-lg ${rule.active ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-400'} flex items-center justify-center shrink-0`}>
-                                                {eventInfo?.icon && <eventInfo.icon size={24} />}
-                                            </div>
-                                            <div className="flex-1">
-                                                <h3 className="font-bold text-text-main flex items-center gap-2">
-                                                    {rule.name}
-                                                    {!rule.active && <span className="text-[8px] font-black uppercase tracking-widest bg-gray-200 text-text-secondary px-2 py-0.5 rounded">Paused</span>}
-                                                </h3>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">If {eventInfo?.label}</span>
-                                                    <ChevronRight size={12} className="text-gray-200" />
-                                                    <span className={`text-[10px] font-black uppercase tracking-widest ${actionInfo?.color.replace('bg-', 'text-')}`}>Then {actionInfo?.label}</span>
+                                return (
+                                    <motion.div
+                                        key={rule.id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, x: -20 }}
+                                        className={`bg-white rounded-lg border ${rule.isActive ? 'border-gray-200 shadow-sm' : 'border-gray-100 opacity-60'} p-6 transition-all`}
+                                    >
+                                        <div className="flex items-center justify-between gap-6">
+                                            <div className="flex items-center gap-6 flex-1">
+                                                <div className={`size-12 rounded-lg ${rule.isActive ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-400'} flex items-center justify-center shrink-0`}>
+                                                    {eventInfo?.icon && <eventInfo.icon size={24} />}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h3 className="font-bold text-text-main flex items-center gap-2">
+                                                        {rule.name}
+                                                        {!rule.isActive && <span className="text-[8px] font-black uppercase tracking-widest bg-gray-200 text-text-secondary px-2 py-0.5 rounded">Paused</span>}
+                                                    </h3>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">If {eventInfo?.label}</span>
+                                                        <ChevronRight size={12} className="text-gray-200" />
+                                                        <span className={`text-[10px] font-black uppercase tracking-widest ${actionInfo?.color.replace('bg-', 'text-')}`}>Then {actionInfo?.label}</span>
+                                                        <span className="text-[9px] font-bold text-gray-400 ml-2 italic">({delayInfo.label})</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        <div className="flex items-center gap-4">
-                                            <button
-                                                onClick={() => toggleRule(rule.id)}
-                                                className={`size-10 rounded-lg flex items-center justify-center transition-all ${rule.active ? 'bg-amber-50 text-amber-500 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-500 hover:bg-emerald-100'}`}
-                                            >
-                                                {rule.active ? <Pause size={18} /> : <Play size={18} />}
-                                            </button>
-                                            <button
-                                                onClick={() => deleteRule(rule.id)}
-                                                className="size-10 rounded-lg bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-100 transition-all"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
+                                            <div className="flex items-center gap-4">
+                                                <RuleToggle rule={rule} />
+                                                <button
+                                                    onClick={() => deleteRule(rule.id)}
+                                                    className="size-10 rounded-lg bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-100 transition-all"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                </motion.div>
-                            );
-                        })}
-                    </AnimatePresence>
+                                    </motion.div>
+                                );
+                            })}
+                        </AnimatePresence>
+                    )}
 
-                    {rules.length === 0 && (
+                    {!isLoading && rules.length === 0 && (
                         <div className="text-center py-20 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
                             <Zap size={48} className="mx-auto text-gray-200 mb-4" />
                             <p className="text-sm font-bold text-text-secondary">No automation rules yet</p>
@@ -236,7 +250,7 @@ export default function AutomationsPage() {
                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-2 block">Rule Name</label>
                                         <input
                                             type="text"
-                                            value={newRule.name || ''}
+                                            value={newRule.name}
                                             onChange={(e) => setNewRule({ ...newRule, name: e.target.value })}
                                             placeholder="e.g. Welcome Message"
                                             className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
@@ -247,8 +261,8 @@ export default function AutomationsPage() {
                                         <div>
                                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-2 block">When this happens</label>
                                             <select
-                                                value={newRule.event}
-                                                onChange={(e) => setNewRule({ ...newRule, event: e.target.value })}
+                                                value={newRule.triggerType}
+                                                onChange={(e) => setNewRule({ ...newRule, triggerType: e.target.value as TriggerType })}
                                                 className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none font-medium"
                                             >
                                                 {EVENT_OPTIONS.map(opt => (
@@ -259,8 +273,8 @@ export default function AutomationsPage() {
                                         <div>
                                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-2 block">Do this action</label>
                                             <select
-                                                value={newRule.action}
-                                                onChange={(e) => setNewRule({ ...newRule, action: e.target.value })}
+                                                value={newRule.actionType}
+                                                onChange={(e) => setNewRule({ ...newRule, actionType: e.target.value as ActionType })}
                                                 className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none font-medium"
                                             >
                                                 {ACTION_OPTIONS.map(opt => (
@@ -273,16 +287,13 @@ export default function AutomationsPage() {
                                     <div>
                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-2 block">Time Delay</label>
                                         <select
-                                            value={newRule.condition}
-                                            onChange={(e) => setNewRule({ ...newRule, condition: e.target.value })}
+                                            value={newRule.delayId}
+                                            onChange={(e) => setNewRule({ ...newRule, delayId: e.target.value })}
                                             className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none font-medium"
                                         >
-                                            <option value="immediate">Immediately</option>
-                                            <option value="1_hour">After 1 Hour</option>
-                                            <option value="24_hours">After 24 Hours</option>
-                                            <option value="3_days">After 3 Days</option>
-                                            <option value="7_days">After 7 Days</option>
-                                            <option value="30_days">After 30 Days</option>
+                                            {DELAY_OPTIONS.map(opt => (
+                                                <option key={opt.id} value={opt.id}>{opt.label}</option>
+                                            ))}
                                         </select>
                                     </div>
 
@@ -295,9 +306,10 @@ export default function AutomationsPage() {
                                         </button>
                                         <button
                                             onClick={addRule}
-                                            className="flex-1 h-12 bg-primary text-white font-bold rounded-lg shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all"
+                                            disabled={createMutation.isPending}
+                                            className="flex-1 h-12 bg-primary text-white font-bold rounded-lg shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all disabled:opacity-50"
                                         >
-                                            Create Rule
+                                            {createMutation.isPending ? 'Creating...' : 'Create Rule'}
                                         </button>
                                     </div>
                                 </div>
@@ -307,5 +319,33 @@ export default function AutomationsPage() {
                 )}
             </AnimatePresence>
         </div>
+    );
+}
+
+function RuleToggle({ rule }: { rule: AutomationRule }) {
+    const updateMutation = useUpdateAutomation(rule.id);
+
+    const handleToggle = () => {
+        updateMutation.mutate({ isActive: !rule.isActive }, {
+            onSuccess: () => {
+                toast.success(`Rule ${!rule.isActive ? 'activated' : 'paused'}`);
+            }
+        });
+    };
+
+    return (
+        <button
+            onClick={handleToggle}
+            disabled={updateMutation.isPending}
+            className={`size-10 rounded-lg flex items-center justify-center transition-all ${rule.isActive ? 'bg-amber-50 text-amber-500 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-500 hover:bg-emerald-100'} disabled:opacity-50`}
+        >
+            {updateMutation.isPending ? (
+                <Loader2 className="animate-spin text-primary" size={18} />
+            ) : rule.isActive ? (
+                <Pause size={18} />
+            ) : (
+                <Play size={18} />
+            )}
+        </button>
     );
 }
