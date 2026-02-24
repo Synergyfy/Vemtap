@@ -27,7 +27,7 @@ import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
 @ApiBearerAuth()
 @Controller('businesses')
 export class BusinessesController {
-  constructor(private readonly businessesService: BusinessesService) { }
+  constructor(private readonly businessesService: BusinessesService) {}
 
   @Get('my-business')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
@@ -80,18 +80,20 @@ export class BusinessesController {
     description: 'The business has been successfully created.',
     schema: {
       example: {
-        id: "b1de342f-0985-4a6c-94cc-1abcd56f8901",
-        name: "VemTap Head Office",
-        type: "RETAIL",
-        status: "active",
-        ownerId: "u89d342f-0985-4a6c-94cc-1abcd56f8901",
-        address: "123 Main St, Lagos",
-        createdAt: "2026-02-23T12:00:00.000Z",
-        updatedAt: "2026-02-23T12:00:00.000Z"
-      }
-    }
+        id: 'b1de342f-0985-4a6c-94cc-1abcd56f8901',
+        name: 'VemTap Head Office',
+        type: 'RETAIL',
+        status: 'active',
+        ownerId: 'u89d342f-0985-4a6c-94cc-1abcd56f8901',
+        address: '123 Main St, Lagos',
+        createdAt: '2026-02-23T12:00:00.000Z',
+        updatedAt: '2026-02-23T12:00:00.000Z',
+      },
+    },
   })
-  async adminCreateBusinessUser(@Body() createBusinessDto: AdminCreateBusinessDto) {
+  async adminCreateBusinessUser(
+    @Body() createBusinessDto: AdminCreateBusinessDto,
+  ) {
     return this.businessesService.adminCreate(createBusinessDto);
   }
 

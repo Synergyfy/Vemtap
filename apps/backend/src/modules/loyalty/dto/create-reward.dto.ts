@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsNumber, IsOptional, IsBoolean } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+} from 'class-validator';
 
 export class CreateRewardDto {
   @ApiProperty({ example: 'Free Coffee' })
@@ -7,7 +13,10 @@ export class CreateRewardDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ example: 'Get a free coffee after 10 purchases', required: false })
+  @ApiProperty({
+    example: 'Get a free coffee after 10 purchases',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   description?: string;
@@ -22,7 +31,7 @@ export class CreateRewardDto {
   @IsString()
   rewardType?: string;
 
-  @ApiProperty({ example: 10.00, required: false })
+  @ApiProperty({ example: 10.0, required: false })
   @IsOptional()
   @IsNumber()
   value?: number;

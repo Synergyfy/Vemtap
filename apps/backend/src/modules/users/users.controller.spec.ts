@@ -31,7 +31,11 @@ describe('UsersController', () => {
     findById: jest.fn(),
   };
 
-  const mockUser = { id: 'user-1', email: 'test@example.com', password: 'hashedpassword' };
+  const mockUser = {
+    id: 'user-1',
+    email: 'test@example.com',
+    password: 'hashedpassword',
+  };
   const mockReq = { user: { id: 'user-1' } };
 
   beforeEach(async () => {
@@ -69,7 +73,10 @@ describe('UsersController', () => {
 
       const result = await controller.updateMe(mockReq, updates);
       expect(result).toEqual(updatedUser);
-      expect(mockUsersService.updateProfile).toHaveBeenCalledWith('user-1', updates);
+      expect(mockUsersService.updateProfile).toHaveBeenCalledWith(
+        'user-1',
+        updates,
+      );
     });
   });
 
@@ -83,7 +90,10 @@ describe('UsersController', () => {
 
   describe('getMyPermissions', () => {
     it('should return user permissions', async () => {
-      mockUsersService.findOne.mockResolvedValue({ ...mockUser, permissions: ['dashboard', 'visitors'] });
+      mockUsersService.findOne.mockResolvedValue({
+        ...mockUser,
+        permissions: ['dashboard', 'visitors'],
+      });
       const result = await controller.getMyPermissions(mockReq);
       expect(result).toEqual({ permissions: ['dashboard', 'visitors'] });
     });
@@ -96,7 +106,9 @@ describe('UsersController', () => {
 
     it('should throw BadRequestException if user not found', async () => {
       mockUsersService.findOne.mockResolvedValue(null);
-      await expect(controller.getMyPermissions(mockReq)).rejects.toThrow(BadRequestException);
+      await expect(controller.getMyPermissions(mockReq)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -112,12 +124,19 @@ describe('UsersController', () => {
     beforeEach(() => {
       mockUsersService.findByEmail.mockResolvedValue(null);
       mockBusinessesService.findByOwner.mockResolvedValue({ id: 'business-1' });
-      mockBranchesService.findById.mockResolvedValue({ businessId: 'business-1' });
-      mockUsersService.create.mockResolvedValue({ id: 'new-user', ...inviteDto });
+      mockBranchesService.findById.mockResolvedValue({
+        businessId: 'business-1',
+      });
+      mockUsersService.create.mockResolvedValue({
+        id: 'new-user',
+        ...inviteDto,
+      });
     });
 
     it('should invite staff successfully for owner context', async () => {
-      const req = { user: { id: 'owner-1', role: UserRole.OWNER, businessId: undefined } };
+      const req = {
+        user: { id: 'owner-1', role: UserRole.OWNER, businessId: undefined },
+      };
       const result = await controller.inviteStaff(req, inviteDto);
       expect(result.id).toBe('new-user');
       expect(mockUsersService.create).toHaveBeenCalled();
@@ -128,33 +147,62 @@ describe('UsersController', () => {
     });
 
     it('should invite staff successfully for existing business context', async () => {
-      const req = { user: { id: 'manager-1', role: UserRole.MANAGER, businessId: 'business-1' } };
+      const req = {
+        user: {
+          id: 'manager-1',
+          role: UserRole.MANAGER,
+          businessId: 'business-1',
+        },
+      };
       const result = await controller.inviteStaff(req, inviteDto);
       expect(result.id).toBe('new-user');
     });
 
     it('should throw BadRequestException if invalid role provided', async () => {
-      await expect(controller.inviteStaff(mockReq, { ...inviteDto, role: UserRole.CUSTOMER })).rejects.toThrow(BadRequestException);
+      await expect(
+        controller.inviteStaff(mockReq, {
+          ...inviteDto,
+          role: UserRole.CUSTOMER,
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException if user with email already exists', async () => {
       mockUsersService.findByEmail.mockResolvedValue({ id: 'existing-user' });
-      await expect(controller.inviteStaff(mockReq, inviteDto)).rejects.toThrow(BadRequestException);
+      await expect(controller.inviteStaff(mockReq, inviteDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw error if business context not found for user', async () => {
-      const req = { user: { id: 'owner-1', role: UserRole.OWNER, businessId: undefined } };
+      const req = {
+        user: { id: 'owner-1', role: UserRole.OWNER, businessId: undefined },
+      };
       mockBusinessesService.findByOwner.mockResolvedValue(null);
-      await expect(controller.inviteStaff(req, inviteDto)).rejects.toThrow('Business context not found for the user');
+      await expect(controller.inviteStaff(req, inviteDto)).rejects.toThrow(
+        'Business context not found for the user',
+      );
     });
 
     it('should throw error if branch does not exist or belong to business', async () => {
-      const req = { user: { id: 'manager-1', role: UserRole.MANAGER, businessId: 'business-1' } };
+      const req = {
+        user: {
+          id: 'manager-1',
+          role: UserRole.MANAGER,
+          businessId: 'business-1',
+        },
+      };
       mockBranchesService.findById.mockResolvedValue(null);
-      await expect(controller.inviteStaff(req, inviteDto)).rejects.toThrow('Branch not found or does not belong to your business');
+      await expect(controller.inviteStaff(req, inviteDto)).rejects.toThrow(
+        'Branch not found or does not belong to your business',
+      );
 
-      mockBranchesService.findById.mockResolvedValue({ businessId: 'different-business' });
-      await expect(controller.inviteStaff(req, inviteDto)).rejects.toThrow('Branch not found or does not belong to your business');
+      mockBranchesService.findById.mockResolvedValue({
+        businessId: 'different-business',
+      });
+      await expect(controller.inviteStaff(req, inviteDto)).rejects.toThrow(
+        'Branch not found or does not belong to your business',
+      );
     });
   });
 });

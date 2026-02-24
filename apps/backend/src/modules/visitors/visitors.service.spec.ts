@@ -49,19 +49,30 @@ describe('VisitorsService', () => {
           },
         },
         {
-          provide: getRepositoryToken(require('../devices/entities/device.entity').Device),
+          provide: getRepositoryToken(
+            require('../devices/entities/device.entity').Device,
+          ),
           useValue: { findOne: jest.fn() },
         },
         {
-          provide: getRepositoryToken(require('../branches/entities/branch.entity').Branch),
-          useValue: { findOne: jest.fn().mockResolvedValue({ id: 'biz-1', businessId: 'biz-1' }) },
+          provide: getRepositoryToken(
+            require('../branches/entities/branch.entity').Branch,
+          ),
+          useValue: {
+            findOne: jest
+              .fn()
+              .mockResolvedValue({ id: 'biz-1', businessId: 'biz-1' }),
+          },
         },
         {
-          provide: getRepositoryToken(require('../contacts/entities/contact.entity').Contact),
+          provide: getRepositoryToken(
+            require('../contacts/entities/contact.entity').Contact,
+          ),
           useValue: { findOne: jest.fn(), create: jest.fn(), save: jest.fn() },
         },
         {
-          provide: require('../messaging/services/messaging-engine.service').MessagingEngineService,
+          provide: require('../messaging/services/messaging-engine.service')
+            .MessagingEngineService,
           useValue: { sendMessage: jest.fn() },
         },
         {
@@ -69,7 +80,8 @@ describe('VisitorsService', () => {
           useValue: { getRewards: jest.fn() },
         },
         {
-          provide: require('../messaging/services/automation.service').AutomationService,
+          provide: require('../messaging/services/automation.service')
+            .AutomationService,
           useValue: { trigger: jest.fn() },
         },
       ],

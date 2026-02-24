@@ -68,7 +68,10 @@ describe('SupportController', () => {
       mockSupportService.findOne.mockResolvedValue(result);
 
       expect(await controller.getTicket(mockReq, ticketId)).toBe(result);
-      expect(mockSupportService.findOne).toHaveBeenCalledWith(ticketId, mockUser.id);
+      expect(mockSupportService.findOne).toHaveBeenCalledWith(
+        ticketId,
+        mockUser.id,
+      );
     });
   });
 
@@ -79,7 +82,9 @@ describe('SupportController', () => {
       const result = { id: 'msg-1', message };
       mockSupportService.addMessage.mockResolvedValue(result);
 
-      expect(await controller.addMessage(mockReq, ticketId, message)).toBe(result);
+      expect(await controller.addMessage(mockReq, ticketId, message)).toBe(
+        result,
+      );
       expect(mockSupportService.addMessage).toHaveBeenCalledWith(
         ticketId,
         mockUser.id,

@@ -77,9 +77,17 @@ export class LoyaltyController {
   @Post('redeem')
   @Roles(UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Redeem a reward' })
-  async redeemReward(@Request() req, @Body() dto: RedeemRewardDto, @Query('businessId') businessId: string) {
+  async redeemReward(
+    @Request() req,
+    @Body() dto: RedeemRewardDto,
+    @Query('businessId') businessId: string,
+  ) {
     if (!businessId) throw new BadRequestException('Business ID is required');
-    return this.loyaltyService.redeemReward(req.user.id, businessId, dto.rewardId);
+    return this.loyaltyService.redeemReward(
+      req.user.id,
+      businessId,
+      dto.rewardId,
+    );
   }
 
   // --- Staff/Admin Endpoints ---
@@ -87,16 +95,22 @@ export class LoyaltyController {
   @Post('earn')
   @Roles(UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.ADMIN) // Restricted to staff
   @ApiOperation({ summary: 'Manually add points to a user (Staff only)' })
-  async earnPoints(@Body() dto: EarnPointsDto, @Query('businessId') businessId: string) {
-     if (!businessId) throw new BadRequestException('Business ID is required');
+  async earnPoints(
+    @Body() dto: EarnPointsDto,
+    @Query('businessId') businessId: string,
+  ) {
+    if (!businessId) throw new BadRequestException('Business ID is required');
     return this.loyaltyService.earnPoints(businessId, dto);
   }
 
   @Post('rewards/create')
   @Roles(UserRole.MANAGER, UserRole.OWNER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a new reward (Manager/Owner only)' })
-  async createReward(@Body() dto: CreateRewardDto, @Query('businessId') businessId: string) {
-     if (!businessId) throw new BadRequestException('Business ID is required');
+  async createReward(
+    @Body() dto: CreateRewardDto,
+    @Query('businessId') businessId: string,
+  ) {
+    if (!businessId) throw new BadRequestException('Business ID is required');
     return this.loyaltyService.createReward(businessId, dto);
   }
 }

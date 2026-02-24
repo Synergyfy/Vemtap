@@ -59,7 +59,9 @@ describe('AnalyticsService', () => {
   describe('getDashboardAnalytics', () => {
     it('should return dashboard analytics data', async () => {
       // Mock resolveBusinessContext to avoid deep mocking
-      jest.spyOn(service as any, 'resolveBusinessContext').mockResolvedValue({ resolvedBranchId: 'b1' });
+      jest
+        .spyOn(service as any, 'resolveBusinessContext')
+        .mockResolvedValue({ resolvedBranchId: 'b1' });
       mockRepository.count.mockResolvedValue(10);
 
       const result = await service.getDashboardAnalytics('b1', mockUser);
@@ -74,7 +76,9 @@ describe('AnalyticsService', () => {
 
   describe('getFootfallAnalytics', () => {
     it('should return footfall analytics data', async () => {
-      jest.spyOn(service as any, 'resolveBusinessContext').mockResolvedValue({ resolvedBranchId: 'b1' });
+      jest
+        .spyOn(service as any, 'resolveBusinessContext')
+        .mockResolvedValue({ resolvedBranchId: 'b1' });
       const result = await service.getFootfallAnalytics('b1', mockUser);
       expect(result).toBeDefined();
       expect(result.stats).toBeDefined();
@@ -86,7 +90,9 @@ describe('AnalyticsService', () => {
 
   describe('getPeakTimesAnalytics', () => {
     it('should return peak times analytics data', async () => {
-      jest.spyOn(service as any, 'resolveBusinessContext').mockResolvedValue({ resolvedBranchId: 'b1' });
+      jest
+        .spyOn(service as any, 'resolveBusinessContext')
+        .mockResolvedValue({ resolvedBranchId: 'b1' });
       const result = await service.getPeakTimesAnalytics('b1', mockUser);
       expect(result).toBeDefined();
       expect(result.weeklyData).toBeDefined();
@@ -96,7 +102,7 @@ describe('AnalyticsService', () => {
   });
   describe('getAdminSummary', () => {
     it('should return admin summary with statistics and trends', async () => {
-      // Mocking the repositories would be ideal here if this was a real DB test, 
+      // Mocking the repositories would be ideal here if this was a real DB test,
       // but to match the style of existing tests we check the structure.
       const result = await service.getAdminSummary();
       expect(result).toBeDefined();

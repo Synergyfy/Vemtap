@@ -14,7 +14,7 @@ export class PaymentsService {
     private readonly httpService: HttpService,
   ) {}
 
-  async verifyTransaction(reference: string): Promise<boolean> {
+  async verifyTransaction(reference: string): Promise<any> {
     try {
       const secretKey = process.env.PAYSTACK_SECRET_KEY;
       if (!secretKey) {
@@ -34,12 +34,51 @@ export class PaymentsService {
 
       const data = response.data;
       if (data.status && data.data.status === 'success') {
-        return true;
+        return data.data; // Return full data to access authorization
       }
       return false;
     } catch (error) {
       console.error('Paystack Verification Error:', error.message);
       return false;
+    }
+  }
+
+  async chargeAuthorization(
+    amount: number,
+    email: string,
+    authorization_code: string,
+  ): Promise<any> {
+    const secretKey = process.env.PAYSTACK_SECRET_KEY;
+    if (!secretKey) {
+      throw new Error('PAYSTACK_SECRET_KEY not configured');
+    }
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `https://api.paystack.co/transaction/charge_authorization`,
+          {
+            amount: Math.round(amount * 100), // Convert to kobo
+            email,
+            authorization_code,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${secretKey}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      const data = response.data;
+      if (data.status && data.data.status === 'success') {
+        return data.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Paystack Charge Error:', error.message);
+      return null;
     }
   }
 

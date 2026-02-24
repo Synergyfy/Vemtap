@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
@@ -9,7 +10,7 @@ import {
   SubscriptionStatus,
   BillingPeriod,
 } from './entities/subscription.entity';
-import { Repository } from 'typeorm';
+import { In, LessThanOrEqual, Repository } from 'typeorm';
 import { PlansService } from './plans.service';
 import { SubscribeDto } from './dto/subscribe.dto';
 import { Business } from '../businesses/entities/business.entity';
@@ -21,6 +22,8 @@ import {
 
 @Injectable()
 export class SubscriptionsService {
+  private readonly logger = new Logger(SubscriptionsService.name);
+
   constructor(
     @InjectRepository(Subscription)
     private readonly subscriptionRepository: Repository<Subscription>,
@@ -34,7 +37,7 @@ export class SubscriptionsService {
     const sub = await this.subscriptionRepository.findOne({
       where: {
         businessId,
-        status: SubscriptionStatus.ACTIVE,
+        status: In([SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL]),
       },
       relations: ['plan'],
       order: {
@@ -67,28 +70,64 @@ export class SubscriptionsService {
       throw new NotFoundException('Business not found');
     }
 
-    // Verify payment if not free
-    if (!plan.isFree) {
-      if (!paymentReference) {
-        throw new BadRequestException(
-          'Payment reference is required for paid plans',
-        );
-      }
-      const isPaymentValid =
+    let status = SubscriptionStatus.ACTIVE;
+    let trialEndDate: Date | null = null;
+    const startDate = new Date();
+    let endDate = new Date(startDate);
+    let authCode = null;
+
+    if (paymentReference) {
+      // Always verify payment if reference provided, to capture auth code for future billing
+      const paymentData =
         await this.paymentsService.verifyTransaction(paymentReference);
-      if (!isPaymentValid) {
+      if (!paymentData) {
         throw new BadRequestException('Payment verification failed');
       }
+      authCode = paymentData.authorization?.authorization_code;
+    }
 
-      await this.paymentsService.recordPayment({
-        reference: paymentReference,
-        amount: plan.monthlyPrice, // Ideally calculate based on period
-        purpose: PaymentPurpose.SUBSCRIPTION,
-        status: PaymentStatus.SUCCESS,
-        metadata: { planId, billingPeriod },
-        businessId,
-        userId: business.ownerId, // Assuming business has ownerId
-      });
+    // Determine status and endDate
+    if (plan.isFree) {
+      // Free plan: Free forever
+      endDate.setFullYear(endDate.getFullYear() + 10);
+      status = SubscriptionStatus.ACTIVE;
+    } else {
+      // Paid plan
+      const trialDays = plan.trialDurationDays || 0;
+
+      if (trialDays > 0) {
+        status = SubscriptionStatus.TRIAL;
+        const trialEnd = new Date(startDate);
+        trialEnd.setDate(trialEnd.getDate() + trialDays);
+        trialEndDate = trialEnd;
+        endDate = trialEnd;
+      } else {
+        // Immediate charge required
+        if (!paymentReference) {
+          throw new BadRequestException(
+            'Payment reference is required for paid plans',
+          );
+        }
+        // Verification already done above
+
+        await this.paymentsService.recordPayment({
+          reference: paymentReference,
+          amount: plan.monthlyPrice, // Ideally calculate based on period
+          purpose: PaymentPurpose.SUBSCRIPTION,
+          status: PaymentStatus.SUCCESS,
+          metadata: { planId, billingPeriod },
+          businessId,
+          userId: business.ownerId, // Assuming business has ownerId
+        });
+
+        // Set endDate based on billing period
+        if (billingPeriod === BillingPeriod.MONTHLY)
+          endDate.setMonth(endDate.getMonth() + 1);
+        else if (billingPeriod === BillingPeriod.QUARTERLY)
+          endDate.setMonth(endDate.getMonth() + 3);
+        else if (billingPeriod === BillingPeriod.YEARLY)
+          endDate.setFullYear(endDate.getFullYear() + 1);
+      }
     }
 
     // Deactivate previous subscriptions
@@ -98,34 +137,101 @@ export class SubscriptionsService {
       await this.subscriptionRepository.save(activeSub);
     }
 
-    const startDate = new Date();
-    const endDate = new Date(startDate);
-
-    if (plan.isFree && plan.freeDurationDays) {
-      endDate.setDate(endDate.getDate() + plan.freeDurationDays);
-    } else if (plan.isFree && !plan.freeDurationDays) {
-      // Free forever (give it 10 years or handle differently)
-      endDate.setFullYear(endDate.getFullYear() + 10);
-    } else {
-      if (billingPeriod === BillingPeriod.MONTHLY)
-        endDate.setMonth(endDate.getMonth() + 1);
-      if (billingPeriod === BillingPeriod.QUARTERLY)
-        endDate.setMonth(endDate.getMonth() + 3);
-      if (billingPeriod === BillingPeriod.YEARLY)
-        endDate.setFullYear(endDate.getFullYear() + 1);
-    }
-
     const newSub = this.subscriptionRepository.create({
       businessId,
       planId,
       billingPeriod,
       startDate,
       endDate,
-      status: SubscriptionStatus.ACTIVE,
+      trialEndDate,
+      status,
       paystackReference: paymentReference,
+      paystackAuthorizationCode: authCode,
     });
 
     return this.subscriptionRepository.save(newSub);
+  }
+
+  async processExpiredTrials() {
+    const now = new Date();
+    const expiredTrials = await this.subscriptionRepository.find({
+      where: {
+        status: SubscriptionStatus.TRIAL,
+        endDate: LessThanOrEqual(now),
+      },
+      relations: ['plan', 'business'],
+    });
+
+    this.logger.log(`Found ${expiredTrials.length} expired trials to process.`);
+
+    for (const sub of expiredTrials) {
+      if (!sub.paystackAuthorizationCode) {
+        this.logger.warn(
+          `Subscription ${sub.id} has no auth code. Expiring...`,
+        );
+        sub.status = SubscriptionStatus.EXPIRED;
+        await this.subscriptionRepository.save(sub);
+        continue;
+      }
+
+      // Calculate Amount
+      let amount = sub.plan.monthlyPrice;
+      if (sub.billingPeriod === BillingPeriod.QUARTERLY)
+        amount = sub.plan.quarterlyPrice;
+      if (sub.billingPeriod === BillingPeriod.YEARLY)
+        amount = sub.plan.yearlyPrice;
+
+      if (amount <= 0) {
+           this.activateSubscription(sub);
+           await this.subscriptionRepository.save(sub);
+           continue;
+      }
+
+      const ownerEmail = 'unknown@latap.com';
+
+      const charge = await this.paymentsService.chargeAuthorization(
+        amount,
+        ownerEmail,
+        sub.paystackAuthorizationCode,
+      );
+
+      if (charge && charge.status === 'success') {
+        this.logger.log(
+          `Successfully charged subscription ${sub.id}. Upgrading to ACTIVE.`,
+        );
+
+        await this.paymentsService.recordPayment({
+            reference: charge.reference,
+            amount: amount,
+            purpose: PaymentPurpose.SUBSCRIPTION,
+            status: PaymentStatus.SUCCESS,
+            metadata: { subscriptionId: sub.id, planId: sub.planId },
+            businessId: sub.businessId,
+            userId: sub.business?.ownerId,
+        });
+
+        this.activateSubscription(sub);
+        await this.subscriptionRepository.save(sub);
+      } else {
+        this.logger.error(`Failed to charge subscription ${sub.id}. Expiring.`);
+        sub.status = SubscriptionStatus.EXPIRED;
+        await this.subscriptionRepository.save(sub);
+      }
+    }
+  }
+
+  private activateSubscription(sub: Subscription) {
+    sub.status = SubscriptionStatus.ACTIVE;
+    const now = new Date();
+    sub.startDate = now;
+    sub.endDate = new Date(now);
+
+    if (sub.billingPeriod === BillingPeriod.MONTHLY)
+      sub.endDate.setMonth(sub.endDate.getMonth() + 1);
+    else if (sub.billingPeriod === BillingPeriod.QUARTERLY)
+      sub.endDate.setMonth(sub.endDate.getMonth() + 3);
+    else if (sub.billingPeriod === BillingPeriod.YEARLY)
+      sub.endDate.setFullYear(sub.endDate.getFullYear() + 1);
   }
 
   async getCapabilities(businessId: string) {
@@ -161,7 +267,10 @@ export class SubscriptionsService {
 
     return {
       plan: plan.name,
-      isActive: sub?.status === SubscriptionStatus.ACTIVE,
+      isActive:
+        sub?.status === SubscriptionStatus.ACTIVE ||
+        sub?.status === SubscriptionStatus.TRIAL,
+      isTrial: sub?.status === SubscriptionStatus.TRIAL,
       capabilities: {
         teamMembers: {
           limit: plan.teamMembersLimit ?? 'unlimited',
@@ -196,6 +305,12 @@ export class SubscriptionsService {
               : Math.max(0, plan.branchLimit - usedBranches),
         },
         analytics: plan.analyticsLevel,
+        features: plan.features || [],
+        credits: {
+          sms: plan.smsCredits || 0,
+          email: plan.emailCredits || 0,
+          whatsapp: plan.whatsappCredits || 0,
+        },
       },
     };
   }
@@ -218,7 +333,7 @@ export class SubscriptionsService {
         ? new Date(sub.endDate).toISOString().split('T')[0]
         : 'N/A',
       amount: sub.plan?.monthlyPrice
-        ? `₦${sub.plan.monthlyPrice.toLocaleString()}`
+        ? `₦${Number(sub.plan.monthlyPrice).toLocaleString()}`
         : sub.plan?.isFree
           ? 'Free'
           : 'N/A',
@@ -228,11 +343,14 @@ export class SubscriptionsService {
   async getAdminStats() {
     // Calculate dynamic real-time stats
     const allSubs = await this.subscriptionRepository.find({
-      where: { status: SubscriptionStatus.ACTIVE },
+      where: {
+        status: In([SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL]),
+      },
       relations: ['plan'],
     });
 
     let active = 0;
+    let trial = 0;
     let expiringSoon = 0;
     const pastDue = await this.subscriptionRepository.count({
       where: { status: SubscriptionStatus.EXPIRED },
@@ -243,16 +361,17 @@ export class SubscriptionsService {
     nextWeek.setDate(now.getDate() + 7);
 
     allSubs.forEach((sub) => {
+      if (sub.status === SubscriptionStatus.TRIAL) trial++;
+      else active++;
+
       if (sub.endDate > now && sub.endDate <= nextWeek) {
         expiringSoon++;
-        active++; // It's still active
-      } else if (sub.endDate > now) {
-        active++;
       }
     });
 
     return {
       activeSubscriptions: active,
+      activeTrials: trial,
       expiringSoon,
       pastDue,
     };

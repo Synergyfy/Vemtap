@@ -12,7 +12,7 @@ export class SupportService {
     private ticketRepository: Repository<SupportTicket>,
     @InjectRepository(TicketMessage)
     private messageRepository: Repository<TicketMessage>,
-  ) { }
+  ) {}
 
   async create(userId: string, dto: CreateTicketDto): Promise<SupportTicket> {
     const ticket = this.ticketRepository.create({
@@ -49,7 +49,11 @@ export class SupportService {
     return ticket;
   }
 
-  async addMessage(ticketId: string, userId: string, messageText: string): Promise<TicketMessage> {
+  async addMessage(
+    ticketId: string,
+    userId: string,
+    messageText: string,
+  ): Promise<TicketMessage> {
     const ticket = await this.findOne(ticketId, userId); // Ensure user owns ticket
 
     const message = this.messageRepository.create({
@@ -92,8 +96,14 @@ export class SupportService {
     return this.ticketRepository.save(ticket);
   }
 
-  async addAdminMessage(ticketId: string, adminId: string, messageText: string): Promise<TicketMessage> {
-    const ticket = await this.ticketRepository.findOne({ where: { id: ticketId } });
+  async addAdminMessage(
+    ticketId: string,
+    adminId: string,
+    messageText: string,
+  ): Promise<TicketMessage> {
+    const ticket = await this.ticketRepository.findOne({
+      where: { id: ticketId },
+    });
     if (!ticket) throw new NotFoundException('Ticket not found');
 
     const message = this.messageRepository.create({

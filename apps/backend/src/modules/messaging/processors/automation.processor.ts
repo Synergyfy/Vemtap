@@ -26,7 +26,6 @@ export class AutomationProcessor extends WorkerHost {
     try {
       await this.automationService.executeRule(ruleId, triggerDto);
     } catch (error: any) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       this.logger.error(
         `Failed to execute delayed rule ${ruleId}: ${error.message}`,
       );
