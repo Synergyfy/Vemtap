@@ -19,11 +19,11 @@ export class MailService {
   async sendOtp(email: string, otp: string) {
     const mailOptions = {
       from:
-        '"LaTap Support" <' +
+        '"VemTap Support" <' +
         this.configService.get<string>('EMAIL_USER') +
         '>',
       to: email,
-      subject: 'Verify your LaTap Account',
+      subject: 'Verify your VemTap Account',
       html: `
         <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
           <h2>Verify your Email</h2>
