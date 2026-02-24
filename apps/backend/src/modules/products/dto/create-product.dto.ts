@@ -5,6 +5,9 @@ import {
   IsOptional,
   IsEnum,
   Min,
+  IsArray,
+  IsObject,
+  IsBoolean,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ProductStatus } from '../entities/product.entity';
@@ -25,10 +28,35 @@ export class CreateProductDto {
   @Min(0)
   price: number;
 
-  @ApiProperty({ example: 'https://example.com/image.png' })
-  @IsString()
+  @ApiProperty({ example: ['https://example.com/image.png'], type: [String] })
+  @IsArray()
+  @IsString({ each: true })
   @IsNotEmpty()
-  image: string;
+  images: string[];
+
+  @ApiProperty({
+    example: ['https://example.com/video.mp4'],
+    type: [String],
+    required: false,
+  })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  videos?: string[];
+
+  @ApiProperty({
+    example: { weight: '20g', material: 'Plastic' },
+    required: false,
+    description: 'Technical specifications as key-value pairs',
+  })
+  @IsObject()
+  @IsOptional()
+  technicalSpecifications?: Record<string, string>;
+
+  @ApiProperty({ example: true, required: false })
+  @IsBoolean()
+  @IsOptional()
+  customBrandedCards?: boolean;
 
   @ApiProperty({ example: 'Hardware' })
   @IsString()

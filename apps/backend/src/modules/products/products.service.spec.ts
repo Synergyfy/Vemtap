@@ -88,7 +88,7 @@ describe('ProductsService', () => {
         name: 'Test Product',
         description: 'Test Desc',
         price: 100,
-        image: 'img.png',
+        images: ['img.png'],
         tag: 'Hardware',
       };
       const product = new Product();

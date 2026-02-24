@@ -23,9 +23,24 @@ export class Product extends AbstractBaseEntity {
   @Column('decimal', { precision: 10, scale: 2 })
   price: number;
 
-  @ApiProperty({ example: 'https://example.com/image.png' })
-  @Column()
-  image: string;
+  @ApiProperty({ example: ['https://example.com/image.png'], type: [String] })
+  @Column('simple-array')
+  images: string[];
+
+  @ApiProperty({ example: ['https://example.com/video.mp4'], type: [String], required: false })
+  @Column('simple-array', { nullable: true })
+  videos: string[];
+
+  @ApiProperty({
+    example: { weight: '20g', material: 'Plastic' },
+    required: false,
+  })
+  @Column({ type: 'jsonb', nullable: true })
+  technicalSpecifications: Record<string, string>;
+
+  @ApiProperty({ example: true, required: false })
+  @Column('boolean', { default: false })
+  customBrandedCards: boolean;
 
   @ApiProperty({ example: 'Hardware' })
   @Column()
