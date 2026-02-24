@@ -11,4 +11,7 @@ export class Otp extends AbstractBaseEntity {
 
   @Column()
   expiresAt: Date;
+
+  @Column({ type: 'jsonb', nullable: true })
+  metadata: any;
 }

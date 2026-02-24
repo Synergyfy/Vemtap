@@ -14,15 +14,23 @@ export default function StepPricing() {
     const mutation = useMutation({
         mutationFn: async () => {
             // Map frontend form data to backend DTO
+            const imagesArray = [
+                formData.images.primary,
+                formData.images.side,
+                formData.images.detail,
+                formData.images.packaging
+            ].filter((img): img is string => typeof img === 'string' && img.startsWith('http'));
+
+            if (imagesArray.length === 0) {
+                imagesArray.push('https://placehold.co/600x400/png?text=Hardware+Product');
+            }
+
             const payload = {
                 name: formData.title,
                 description: formData.description,
-                manufacturer: formData.manufacturer,
                 productTypeId: formData.productTypeId,
                 price: formData.msrp,
-                image: typeof formData.images.primary === 'string' && formData.images.primary.startsWith('http')
-                    ? formData.images.primary
-                    : 'https://placehold.co/600x400/png?text=Hardware+Product',
+                images: imagesArray,
                 tag: formData.tag,
                 tagColor: formData.tagColor,
                 moq: formData.volumeDiscounts[0]?.minQty || 1,
@@ -31,7 +39,17 @@ export default function StepPricing() {
                     max: tier.maxQty,
                     price: parseFloat((formData.msrp * (1 - tier.discountPercent / 100)).toFixed(2))
                 })),
-                status: 'Published'
+                status: 'Published',
+                customBrandedCards: formData.customBrandingEnabled,
+                technicalSpecifications: formData.specs.reduce((acc, spec) => {
+                    if (spec.label && spec.value) {
+                        acc[spec.label] = spec.value;
+                    }
+                    return acc;
+                }, {} as Record<string, string>),
+                videos: formData.video.url ? [formData.video.url] : [],
+                rating: 5, // Default rating as it's not currently in the form
+                requestQuoteThreshold: formData.bulkQuotesEnabled ? 100 : null // Default threshold if enabled
             };
 
             if (editingProductId) {
@@ -294,7 +312,6 @@ export default function StepPricing() {
                             <div className="flex justify-between items-start mb-2">
                                 <div>
                                     <h4 className="font-bold text-xl text-text-main leading-tight mb-1">{formData.title || 'Product Title'}</h4>
-                                    <p className="text-xs text-text-secondary font-bold uppercase tracking-widest">{formData.manufacturer || 'Manufacturer'}</p>
                                 </div>
                                 <div className="text-right">
                                     {formData.originalPrice > 0 && (

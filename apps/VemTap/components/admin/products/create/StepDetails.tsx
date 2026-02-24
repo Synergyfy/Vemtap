@@ -33,6 +33,22 @@ export default function StepDetails() {
         queryFn: () => adminProductsApi.getAllTypes(),
     });
 
+    const { data: categoryProductCount, refetch: refetchCount } = useQuery({
+        queryKey: ['category-product-count', formData.productTypeId],
+        queryFn: () => adminProductsApi.getCountByType(formData.productTypeId),
+        enabled: !!formData.productTypeId,
+    });
+
+    React.useEffect(() => {
+        const selectedType = types?.find((t: any) => t.id === formData.productTypeId);
+        if (categoryProductCount !== undefined && formData.productTypeId && !formData.sku && selectedType) {
+            const prefix = selectedType.name.toLowerCase().split(' ')[0];
+            const count = (categoryProductCount as number) + 1;
+            const generatedSku = `${prefix} ${count}`;
+            updateFormData({ sku: generatedSku });
+        }
+    }, [categoryProductCount, formData.productTypeId, types, formData.sku]);
+
     return (
         <div className="grid grid-cols-12 gap-8">
             <div className="col-span-12 lg:col-span-8">
@@ -55,23 +71,29 @@ export default function StepDetails() {
                             </div>
 
                             <div className="col-span-1">
-                                <label className="block text-sm font-bold text-text-secondary mb-2" htmlFor="manufacturer">Manufacturer</label>
-                                <div className="relative">
-                                    <Factory className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                                    <select
-                                        className="w-full pl-12 pr-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-medium text-text-main appearance-none cursor-pointer"
-                                        id="manufacturer"
-                                        name="manufacturer"
-                                        value={formData.manufacturer}
-                                        onChange={handleChange}
-                                    >
-                                        <option value="" disabled>Select Manufacturer</option>
-                                        <option value="entryconnect">EntryConnect</option>
-                                        <option value="hid">HID Global</option>
-                                        <option value="gototags">GoToTags</option>
-                                        <option value="rfideas">rf IDEAS</option>
-                                    </select>
-                                </div>
+                                <label className="block text-sm font-bold text-text-secondary mb-2" htmlFor="category">Category</label>
+                                <select
+                                    className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-medium text-text-main appearance-none cursor-pointer"
+                                    id="productTypeId"
+                                    name="productTypeId"
+                                    value={formData.productTypeId}
+                                    onChange={(e) => {
+                                        const selectedType = types?.find((t: any) => t.id === e.target.value);
+                                        updateFormData({
+                                            productTypeId: e.target.value,
+                                            category: selectedType?.name || '',
+                                            sku: '' // Reset SKU to trigger automatic generation
+                                        });
+                                    }}
+                                >
+                                    <option value="" disabled>Select Category</option>
+                                    {types?.map((type: any) => (
+                                        <option key={type.id} value={type.id}>{type.name}</option>
+                                    ))}
+                                    {(!types || types.length === 0) && (
+                                        <option value="">No Categories Available</option>
+                                    )}
+                                </select>
                             </div>
 
                             <div className="col-span-1">
@@ -88,31 +110,6 @@ export default function StepDetails() {
                                         onChange={handleChange}
                                     />
                                 </div>
-                            </div>
-
-                            <div className="col-span-1">
-                                <label className="block text-sm font-bold text-text-secondary mb-2" htmlFor="category">Category</label>
-                                <select
-                                    className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-medium text-text-main appearance-none cursor-pointer"
-                                    id="productTypeId"
-                                    name="productTypeId"
-                                    value={formData.productTypeId}
-                                    onChange={(e) => {
-                                        const selectedType = types?.find((t: any) => t.id === e.target.value);
-                                        updateFormData({
-                                            productTypeId: e.target.value,
-                                            category: selectedType?.name || ''
-                                        });
-                                    }}
-                                >
-                                    <option value="" disabled>Select Category</option>
-                                    {types?.map((type: any) => (
-                                        <option key={type.id} value={type.id}>{type.name}</option>
-                                    ))}
-                                    {(!types || types.length === 0) && (
-                                        <option value="">No Categories Available</option>
-                                    )}
-                                </select>
                             </div>
 
                             <div className="col-span-1">
