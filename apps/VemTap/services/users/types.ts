@@ -32,3 +32,23 @@ export interface UpdateStaffRequest {
     permissions?: string[];
     status?: 'Active' | 'Inactive' | 'Suspended';
 }
+
+export interface AdminUser {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    status: string;
+    lastLogin: string;
+    joined: string;
+}
+
+export interface AdminUsersResponse {
+    items: AdminUser[];
+    total: number;
+    stats: {
+        owners: number;
+        customers: number;
+        staff: number;
+    };
+}

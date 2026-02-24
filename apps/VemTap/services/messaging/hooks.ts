@@ -17,12 +17,18 @@ import {
     ActionType
 } from './types';
 
+const toUiChannel = (channel?: string): 'WhatsApp' | 'SMS' | 'Email' => {
+    if (channel === 'WHATSAPP') return 'WhatsApp';
+    if (channel === 'EMAIL') return 'Email';
+    return 'SMS';
+};
+
 // ─── Analytics ───────────────────────────────────────────────────────────────
 
 export const useMessagingAnalytics = (channel?: Channel) => {
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const branchId = useAuthStore((state) =>
-        activeBranchId && activeBranchId !== 'all' ? activeBranchId : (state.user?.branchId || state.user?.businessId)
+        activeBranchId && activeBranchId !== 'all' ? activeBranchId : state.user?.branchId
     );
 
     return useQuery<MessagingAnalytics, Error>({
@@ -31,7 +37,26 @@ export const useMessagingAnalytics = (channel?: Channel) => {
             const params = new URLSearchParams();
             if (branchId) params.append('branchId', branchId);
             if (channel) params.append('channel', channel);
-            return await api.get(`/messaging/analytics?${params.toString()}`);
+            const response = await api.get(`/messaging/analytics?${params.toString()}`);
+
+            const totalSent = response?.totalSent ?? response?.sent ?? 0;
+            const totalDelivered = response?.totalDelivered ?? response?.delivered ?? 0;
+            const deliveryRate = response?.deliveryRate ?? 0;
+
+            return {
+                sent: totalSent,
+                delivered: totalDelivered,
+                failed: Math.max(0, totalSent - totalDelivered),
+                deliveryRate,
+                openRate: response?.openRate,
+                channelStats: response?.channelStats,
+                globalStats: response?.globalStats || {
+                    totalSent,
+                    totalDelivered,
+                    openRate: response?.openRate ?? 0,
+                    clickRate: response?.clickRate ?? 0,
+                },
+            } as MessagingAnalytics;
         },
         enabled: !!branchId,
     });
@@ -42,7 +67,7 @@ export const useMessagingAnalytics = (channel?: Channel) => {
 export const useMessagingCampaigns = () => {
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const branchId = useAuthStore((state) =>
-        activeBranchId && activeBranchId !== 'all' ? activeBranchId : (state.user?.branchId || state.user?.businessId)
+        activeBranchId && activeBranchId !== 'all' ? activeBranchId : state.user?.branchId
     );
 
     return useQuery<Campaign[], Error>({
@@ -50,7 +75,19 @@ export const useMessagingCampaigns = () => {
         queryFn: async () => {
             const params = new URLSearchParams();
             if (branchId) params.append('branchId', branchId);
-            return await api.get(`/messaging/campaigns?${params.toString()}`);
+            const campaigns = await api.get(`/messaging/campaigns?${params.toString()}`);
+            return (campaigns || []).map((campaign: any) => ({
+                ...campaign,
+                channel: campaign?.channel || 'SMS',
+                status:
+                    campaign?.status === 'SENT'
+                        ? 'Completed'
+                        : campaign?.status === 'PROCESSING'
+                            ? 'Running'
+                            : campaign?.status === 'FAILED'
+                                ? 'Draft'
+                                : campaign?.status || 'Draft',
+            }));
         },
         enabled: !!branchId,
     });
@@ -60,8 +97,28 @@ export const useMessagingCampaigns = () => {
 
 export const useSendMessage = () => {
     const queryClient = useQueryClient();
+    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const userBranchId = useAuthStore((state) => state.user?.branchId);
+    const businessId = useAuthStore((state) => state.user?.businessId);
     return useMutation<any, Error, SendMessageRequest>({
-        mutationFn: async (dto) => await api.post('/messaging/send', dto),
+        mutationFn: async (dto) => {
+            const resolvedBranchId =
+                dto.branchId || (activeBranchId && activeBranchId !== 'all' ? activeBranchId : userBranchId);
+
+            const normalizedAudienceType =
+                dto.audienceType === 'ALL_CUSTOMERS' ? 'ALL' : dto.audienceType;
+
+            if (!businessId) {
+                throw new Error('Missing businessId in user session');
+            }
+
+            return await api.post('/messaging/send', {
+                ...dto,
+                businessId,
+                branchId: resolvedBranchId,
+                audienceType: normalizedAudienceType,
+            });
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['messaging', 'campaigns'] });
             queryClient.invalidateQueries({ queryKey: ['messaging', 'analytics'] });
@@ -73,14 +130,24 @@ export const useSendMessage = () => {
 
 export const useMessagingTemplates = (channel?: Channel) => {
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const role = useAuthStore((state) => state.user?.role);
     return useQuery<Template[], Error>({
         queryKey: ['messaging', 'templates', channel],
         queryFn: async () => {
-            // Note: template listing not exposed as GET currently; falls back gracefully
-            return await api.get(`/messaging/templates${channel ? `?channel=${channel}` : ''}`);
+            try {
+                const templates =
+                    role === 'admin'
+                        ? await api.get('/messaging/admin/templates')
+                        : [];
+                if (!channel) {
+                    return templates;
+                }
+                return (templates as Template[]).filter((t) => t.channel === channel);
+            } catch {
+                return [];
+            }
         },
         enabled: !!businessId,
-        // Return empty array if endpoint not found yet
         placeholderData: [] as Template[],
     });
 };
@@ -98,20 +165,47 @@ export const useCreateTemplate = () => {
 // ─── Inbox / Threads ─────────────────────────────────────────────────────────
 
 export const useInboxThreads = (channel: Channel) => {
-    const businessId = useAuthStore((state) => state.user?.businessId);
+    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const branchId = useAuthStore((state) =>
+        activeBranchId && activeBranchId !== 'all' ? activeBranchId : state.user?.branchId
+    );
     return useQuery<InboxThread[], Error>({
-        queryKey: ['messaging', 'inbox', channel],
-        queryFn: async () => await api.get(`/messaging/inbox/${channel}`),
-        enabled: !!businessId && !!channel,
+        queryKey: ['messaging', 'inbox', channel, branchId],
+        queryFn: async () => {
+            const response = await api.get(`/messaging/inbox/${channel}?${new URLSearchParams({ branchId: branchId || '' }).toString()}`);
+            return (response || []).map((thread: any) => ({
+                id: thread.id,
+                contactName: thread?.contact?.name || 'Unknown Contact',
+                contactPhone: thread?.contact?.phone,
+                contactEmail: thread?.contact?.email,
+                lastMessage: thread?.lastMessage || 'No messages yet',
+                channel: toUiChannel(thread?.channel),
+                unread: thread?.unreadCount || 0,
+                updatedAt: thread?.lastActivityAt || thread?.updatedAt || thread?.createdAt,
+            }));
+        },
+        enabled: !!branchId && !!channel,
     });
 };
 
 export const useThreadMessages = (threadId: string) => {
-    const businessId = useAuthStore((state) => state.user?.businessId);
+    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const branchId = useAuthStore((state) =>
+        activeBranchId && activeBranchId !== 'all' ? activeBranchId : state.user?.branchId
+    );
     return useQuery<ThreadMessage[], Error>({
-        queryKey: ['messaging', 'thread', threadId],
-        queryFn: async () => await api.get(`/messaging/inbox/threads/${threadId}`),
-        enabled: !!businessId && !!threadId,
+        queryKey: ['messaging', 'thread', threadId, branchId],
+        queryFn: async () => {
+            const response = await api.get(`/messaging/inbox/threads/${threadId}?${new URLSearchParams({ branchId: branchId || '' }).toString()}`);
+            return (response || []).map((message: any) => ({
+                id: message.id,
+                threadId: message.threadId,
+                content: message.content,
+                direction: message.direction,
+                createdAt: message.timestamp || message.createdAt,
+            }));
+        },
+        enabled: !!branchId && !!threadId,
     });
 };
 

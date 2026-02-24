@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
@@ -23,11 +24,13 @@ import { BranchesModule } from './modules/branches/branches.module';
 import { LoyaltyModule } from './modules/loyalty/loyalty.module';
 import { SupportModule } from './modules/support/support.module';
 import { SystemModule } from './modules/system/system.module';
+import { MessagingModule } from './modules/messaging/messaging.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: [join(__dirname, '../.env'), '.env'],
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -75,6 +78,7 @@ import { SystemModule } from './modules/system/system.module';
     LoyaltyModule,
     SupportModule,
     SystemModule,
+    MessagingModule,
   ],
   controllers: [AppController],
   providers: [
