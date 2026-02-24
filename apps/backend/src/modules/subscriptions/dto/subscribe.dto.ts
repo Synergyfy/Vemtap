@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { BillingPeriod } from '../entities/subscription.entity';
 
 export class SubscribeDto {
@@ -28,4 +34,12 @@ export class SubscribeDto {
   @IsString()
   @IsOptional()
   paymentReference?: string;
+
+  @ApiPropertyOptional({
+    description: 'Whether to start a trial subscription',
+    default: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isTrial?: boolean;
 }
