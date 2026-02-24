@@ -11,7 +11,10 @@ import { PlansService } from './plans.service';
 import { PaymentsService } from '../payments/payments.service';
 import { Repository, In } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
-import { PaymentPurpose, PaymentStatus } from '../payments/entities/payment.entity';
+import {
+  PaymentPurpose,
+  PaymentStatus,
+} from '../payments/entities/payment.entity';
 
 describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
@@ -187,91 +190,99 @@ describe('SubscriptionsService', () => {
     });
 
     it('should save auth code if verification provides it', async () => {
-        mockPlansService.findOne.mockResolvedValue(mockTrialPlan);
-        mockSubRepository.findOne.mockResolvedValue(null);
-        mockPaymentsService.verifyTransaction.mockResolvedValueOnce({
-            authorization: { authorization_code: 'AUTH_123' }
-        });
+      mockPlansService.findOne.mockResolvedValue(mockTrialPlan);
+      mockSubRepository.findOne.mockResolvedValue(null);
+      mockPaymentsService.verifyTransaction.mockResolvedValueOnce({
+        authorization: { authorization_code: 'AUTH_123' },
+      });
 
-        const result = await service.subscribe({
-          planId: '3',
-          businessId: 'b1',
-          billingPeriod: BillingPeriod.MONTHLY,
-          paymentReference: 'ref_with_auth',
-        });
+      const result = await service.subscribe({
+        planId: '3',
+        businessId: 'b1',
+        billingPeriod: BillingPeriod.MONTHLY,
+        paymentReference: 'ref_with_auth',
+      });
 
-        expect(result.paystackAuthorizationCode).toBe('AUTH_123');
+      expect(result.paystackAuthorizationCode).toBe('AUTH_123');
     });
   });
 
   describe('processExpiredTrials', () => {
     it('should charge and activate expired trials with auth code', async () => {
-        const expiredSub = {
-            id: 'sub_expired',
-            status: SubscriptionStatus.TRIAL,
-            endDate: new Date(), // Just expired
-            paystackAuthorizationCode: 'AUTH_123',
-            plan: mockPlan,
-            billingPeriod: BillingPeriod.MONTHLY,
-            businessId: 'b1',
-            business: mockBusiness,
-        };
-        mockSubRepository.find.mockResolvedValueOnce([expiredSub]);
+      const expiredSub = {
+        id: 'sub_expired',
+        status: SubscriptionStatus.TRIAL,
+        endDate: new Date(), // Just expired
+        paystackAuthorizationCode: 'AUTH_123',
+        plan: mockPlan,
+        billingPeriod: BillingPeriod.MONTHLY,
+        businessId: 'b1',
+        business: mockBusiness,
+      };
+      mockSubRepository.find.mockResolvedValueOnce([expiredSub]);
 
-        mockPaymentsService.chargeAuthorization.mockResolvedValueOnce({
-            status: 'success',
-            reference: 'charge_ref',
-        });
+      mockPaymentsService.chargeAuthorization.mockResolvedValueOnce({
+        status: 'success',
+        reference: 'charge_ref',
+      });
 
-        await service.processExpiredTrials();
+      await service.processExpiredTrials();
 
-        expect(mockPaymentsService.chargeAuthorization).toHaveBeenCalledWith(
-            5000, 'unknown@latap.com', 'AUTH_123'
-        );
-        expect(mockSubRepository.save).toHaveBeenCalledWith(expect.objectContaining({
-            id: 'sub_expired',
-            status: SubscriptionStatus.ACTIVE,
-        }));
-        expect(mockPaymentsService.recordPayment).toHaveBeenCalled();
+      expect(mockPaymentsService.chargeAuthorization).toHaveBeenCalledWith(
+        5000,
+        'unknown@latap.com',
+        'AUTH_123',
+      );
+      expect(mockSubRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'sub_expired',
+          status: SubscriptionStatus.ACTIVE,
+        }),
+      );
+      expect(mockPaymentsService.recordPayment).toHaveBeenCalled();
     });
 
     it('should expire trials without auth code', async () => {
-        const expiredSub = {
-            id: 'sub_no_auth',
-            status: SubscriptionStatus.TRIAL,
-            endDate: new Date(),
-            paystackAuthorizationCode: null,
-            plan: mockPlan,
-        };
-        mockSubRepository.find.mockResolvedValueOnce([expiredSub]);
+      const expiredSub = {
+        id: 'sub_no_auth',
+        status: SubscriptionStatus.TRIAL,
+        endDate: new Date(),
+        paystackAuthorizationCode: null,
+        plan: mockPlan,
+      };
+      mockSubRepository.find.mockResolvedValueOnce([expiredSub]);
 
-        await service.processExpiredTrials();
+      await service.processExpiredTrials();
 
-        expect(mockPaymentsService.chargeAuthorization).not.toHaveBeenCalled();
-        expect(mockSubRepository.save).toHaveBeenCalledWith(expect.objectContaining({
-            status: SubscriptionStatus.EXPIRED
-        }));
+      expect(mockPaymentsService.chargeAuthorization).not.toHaveBeenCalled();
+      expect(mockSubRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: SubscriptionStatus.EXPIRED,
+        }),
+      );
     });
 
     it('should expire trials if charge fails', async () => {
-        const expiredSub = {
-            id: 'sub_fail',
-            status: SubscriptionStatus.TRIAL,
-            endDate: new Date(),
-            paystackAuthorizationCode: 'AUTH_FAIL',
-            plan: mockPlan,
-            billingPeriod: BillingPeriod.MONTHLY,
-            businessId: 'b1',
-            business: mockBusiness,
-        };
-        mockSubRepository.find.mockResolvedValueOnce([expiredSub]);
-        mockPaymentsService.chargeAuthorization.mockResolvedValueOnce(null);
+      const expiredSub = {
+        id: 'sub_fail',
+        status: SubscriptionStatus.TRIAL,
+        endDate: new Date(),
+        paystackAuthorizationCode: 'AUTH_FAIL',
+        plan: mockPlan,
+        billingPeriod: BillingPeriod.MONTHLY,
+        businessId: 'b1',
+        business: mockBusiness,
+      };
+      mockSubRepository.find.mockResolvedValueOnce([expiredSub]);
+      mockPaymentsService.chargeAuthorization.mockResolvedValueOnce(null);
 
-        await service.processExpiredTrials();
+      await service.processExpiredTrials();
 
-        expect(mockSubRepository.save).toHaveBeenCalledWith(expect.objectContaining({
-            status: SubscriptionStatus.EXPIRED
-        }));
+      expect(mockSubRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: SubscriptionStatus.EXPIRED,
+        }),
+      );
     });
   });
 });

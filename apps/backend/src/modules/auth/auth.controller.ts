@@ -17,6 +17,7 @@ import { RegisterDto } from './dto/register.dto';
 import { VerifyOtpDto } from './dto/otp.dto';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
 import { RegisterAdminDto } from './dto/register-admin.dto';
+import { RequestOtpDto } from './dto/request-otp.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 
 @ApiTags('auth')
@@ -55,6 +56,14 @@ export class AuthController {
   @ApiBody({ type: RegisterDto })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
+  }
+
+  @Public()
+  @Post('register/owner/request-otp')
+  @ApiOperation({ summary: 'Request OTP for Owner Registration' })
+  @ApiBody({ type: RequestOtpDto })
+  async requestOwnerOtp(@Body() dto: RequestOtpDto) {
+    return this.authService.requestOwnerOtp(dto);
   }
 
   @Public()

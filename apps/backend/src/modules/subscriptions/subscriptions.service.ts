@@ -182,9 +182,9 @@ export class SubscriptionsService {
         amount = sub.plan.yearlyPrice;
 
       if (amount <= 0) {
-           this.activateSubscription(sub);
-           await this.subscriptionRepository.save(sub);
-           continue;
+        this.activateSubscription(sub);
+        await this.subscriptionRepository.save(sub);
+        continue;
       }
 
       const ownerEmail = 'unknown@latap.com';
@@ -201,13 +201,13 @@ export class SubscriptionsService {
         );
 
         await this.paymentsService.recordPayment({
-            reference: charge.reference,
-            amount: amount,
-            purpose: PaymentPurpose.SUBSCRIPTION,
-            status: PaymentStatus.SUCCESS,
-            metadata: { subscriptionId: sub.id, planId: sub.planId },
-            businessId: sub.businessId,
-            userId: sub.business?.ownerId,
+          reference: charge.reference,
+          amount: amount,
+          purpose: PaymentPurpose.SUBSCRIPTION,
+          status: PaymentStatus.SUCCESS,
+          metadata: { subscriptionId: sub.id, planId: sub.planId },
+          businessId: sub.businessId,
+          userId: sub.business?.ownerId,
         });
 
         this.activateSubscription(sub);
