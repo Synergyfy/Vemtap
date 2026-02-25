@@ -62,13 +62,22 @@ export default function AllVisitorsPage() {
 
     const addVisitorMutation = useMutation({
         mutationFn: async (data: VisitorFormData) => {
-            const newVisitor = {
-                name: data.name,
-                phone: data.phone,
+            const nameParts = data.name.trim().split(/\s+/);
+            const firstName = nameParts[0] || 'Visitor';
+            const lastName = nameParts.slice(1).join(' ') || ' ';
+
+            const payload = {
+                firstName,
+                lastName,
                 email: data.email,
-                branchId: data.branchId,
+                phone: data.phone,
             };
-            return await api.post('/visitors', newVisitor);
+
+            const url = data.branchId
+                ? `/visitors?branchId=${data.branchId}`
+                : '/visitors';
+
+            return await api.post(url, payload);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['visitors'] });

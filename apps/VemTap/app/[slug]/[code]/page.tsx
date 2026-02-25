@@ -395,7 +395,10 @@ export default function DynamicTapJourneyPage() {
                         customSuccessTitle={useCustomerFlowStore.getState().customSuccessTitle}
                         finalSuccessMessage={useCustomerFlowStore.getState().customSuccessMessage || config.finalSuccessMessage}
                         customSuccessButton={useCustomerFlowStore.getState().customSuccessButton}
-                        onFinish={resetFlow}
+                        onFinish={() => {
+                            resetFlow();
+                            router.push('/customer');
+                        }}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}
                         socialLinks={{
