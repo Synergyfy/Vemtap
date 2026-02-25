@@ -339,7 +339,7 @@ export class CampaignsService {
     }
 
     const transaction = this.transactionRepository.create({
-      loyaltyProfileId: profile.id,
+      loyaltyProfile: profile,
       transactionType: 'earn',
       pointsAmount: earned,
       reason:
@@ -385,8 +385,9 @@ export class CampaignsService {
     expiresAt.setDate(expiresAt.getDate() + reward.validityDays);
 
     const redemption = this.redemptionRepository.create({
-      loyaltyProfileId: profile.id,
-      rewardId: reward.id,
+      loyaltyProfile: profile,
+      reward: reward,
+      branchId, // Ensure branchId is captured
       redemptionCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
       pointsSpent: reward.pointCost,
       status: 'pending',
@@ -398,7 +399,7 @@ export class CampaignsService {
     await this.rewardRepository.save(reward);
 
     const transaction = this.transactionRepository.create({
-      loyaltyProfileId: profile.id,
+      loyaltyProfile: profile,
       transactionType: 'redeem',
       pointsAmount: -reward.pointCost,
       reason: `Redeemed ${reward.name}`,

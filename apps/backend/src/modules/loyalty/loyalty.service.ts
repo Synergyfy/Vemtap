@@ -5,10 +5,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { LoyaltyProfile, TierLevel } from './entities/loyalty-profile.entity';
-import { Reward } from './entities/reward.entity';
-import { LoyaltyTransaction } from './entities/loyalty-transaction.entity';
-import { Redemption } from './entities/redemption.entity';
+import { LoyaltyProfile, TierLevel } from '../campaigns/entities/loyalty-profile.entity';
+import { Reward } from '../campaigns/entities/reward.entity';
+import { Redemption } from '../campaigns/entities/redemption.entity';
+import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
 import { CreateRewardDto } from './dto/create-reward.dto';
 import { EarnPointsDto } from './dto/earn-points.dto';
 import { DevicesService } from '../devices/devices.service';
@@ -20,13 +20,13 @@ export class LoyaltyService {
     private loyaltyProfileRepository: Repository<LoyaltyProfile>,
     @InjectRepository(Reward)
     private rewardRepository: Repository<Reward>,
-    @InjectRepository(LoyaltyTransaction)
-    private transactionRepository: Repository<LoyaltyTransaction>,
+    @InjectRepository(PointTransaction)
+    private transactionRepository: Repository<PointTransaction>,
     @InjectRepository(Redemption)
     private redemptionRepository: Repository<Redemption>,
     private readonly devicesService: DevicesService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   // --- Profile Management ---
 
@@ -110,8 +110,8 @@ export class LoyaltyService {
 
       await manager.save(profile);
 
-      const transaction = manager.create(LoyaltyTransaction, {
-        loyaltyProfileId: profile.id,
+      const transaction = manager.create(PointTransaction, {
+        loyaltyProfile: profile,
         transactionType: 'earn',
         pointsAmount: dto.amount,
         reason: dto.reason || 'Earned',
@@ -153,8 +153,8 @@ export class LoyaltyService {
       await manager.save(profile);
 
       // Create Transaction
-      const transaction = manager.create(LoyaltyTransaction, {
-        loyaltyProfileId: profile.id,
+      const transaction = manager.create(PointTransaction, {
+        loyaltyProfile: profile,
         transactionType: 'redeem',
         pointsAmount: -reward.pointCost,
         reason: `Redeemed ${reward.name}`,
@@ -163,8 +163,8 @@ export class LoyaltyService {
 
       // Create Redemption
       const redemption = manager.create(Redemption, {
-        loyaltyProfileId: profile.id,
-        rewardId: reward.id,
+        loyaltyProfile: profile,
+        reward: reward,
         redemptionCode: Math.random()
           .toString(36)
           .substring(2, 10)
@@ -184,7 +184,7 @@ export class LoyaltyService {
   async getHistory(
     userId: string,
     businessId?: string,
-  ): Promise<LoyaltyTransaction[]> {
+  ): Promise<PointTransaction[]> {
     const query = this.transactionRepository
       .createQueryBuilder('transaction')
       .leftJoinAndSelect('transaction.loyaltyProfile', 'profile')

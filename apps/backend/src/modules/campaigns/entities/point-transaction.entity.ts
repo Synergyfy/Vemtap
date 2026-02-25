@@ -32,14 +32,15 @@ export class PointTransaction extends AbstractBaseEntity {
   referenceId: string;
 
   @ApiProperty({ description: 'Transaction metadata' })
-  @Column('simple-json', { nullable: true })
+  @Column({ type: 'jsonb', nullable: true })
   metadata: any;
 
   @ApiProperty({ description: 'Expiry date' })
   @Column({ type: 'timestamp', nullable: true })
   expiresAt: Date;
 
-  @ManyToOne(() => LoyaltyProfile, { onDelete: 'CASCADE' })
+  @ManyToOne(() => LoyaltyProfile, (profile) => profile.transactions, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'loyaltyProfileId' })
   loyaltyProfile: LoyaltyProfile;
 }
+
