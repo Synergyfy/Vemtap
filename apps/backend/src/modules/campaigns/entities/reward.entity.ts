@@ -2,14 +2,23 @@ import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Branch } from '../../branches/entities/branch.entity';
+import { Business } from '../../businesses/entities/business.entity';
 
 @Entity('rewards')
 export class Reward extends AbstractBaseEntity {
+  @ApiProperty({ description: 'Business ID' })
+  @Column({ nullable: true })
+  businessId: string;
+
+  @ManyToOne(() => Business)
+  @JoinColumn({ name: 'businessId' })
+  business: Business;
+
   @ApiProperty({ description: 'Branch ID', example: 'branch_001' })
-  @Column()
+  @Column({ nullable: true })
   branchId: string;
 
-  @ManyToOne(() => Branch, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'branchId' })
   branch: Branch;
 
@@ -59,3 +68,4 @@ export class Reward extends AbstractBaseEntity {
   @Column({ nullable: true })
   imageUrl: string;
 }
+

@@ -6,44 +6,59 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import AuthSidePanel from '@/components/auth/AuthSidePanel';
 import { useAuthStore, AuthState } from '../../store/useAuthStore';
-import { notify } from '@/lib/notify';
 import Logo from '@/components/brand/Logo';
-import { useLogin } from '@/services/auth/hooks';
+import { Headset } from 'lucide-react';
 
 export default function LoginPage() {
-    const { loginUser, isLoading: isLoggingIn } = useLogin();
     const router = useRouter();
     const login = useAuthStore((state: AuthState) => state.login);
-    const signup = useAuthStore((state: AuthState) => state.signup);
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
         password: '',
-        rememberMe: false
+        rememberMe: false,
     });
+    const [isAutoLogin, setIsAutoLogin] = useState(false);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setIsLoggingIn(true);
 
         try {
-            const response = await loginUser({ email: formData.email, password: formData.password });
-
-            // Set global state using the retrieved user and token
-            await signup(response.user, response.access_token);
-
-            const role = (response.user?.role || 'owner').toLowerCase();
-            if (role === 'admin') {
-                router.push('/admin/dashboard');
-            } else if (role === 'customer') {
-                router.push('/customer/dashboard');
-            } else {
-                router.push('/dashboard');
-            }
+            setError('Standard login is disabled in mock mode. Use Agent Access below.');
         } catch (err: any) {
             setError(err.message || 'Login failed');
+        } finally {
+            setIsLoggingIn(false);
         }
+    };
+
+    const handleAgentMockLogin = () => {
+        setError('');
+        setIsAutoLogin(true);
+        setFormData((prev) => ({
+            ...prev,
+            email: 'agent@vemtap.com',
+            password: 'vemtap-agent',
+            rememberMe: true,
+        }));
+        setShowPassword(true);
+
+        const mockUser = {
+            id: `mock-agent-${Date.now()}`,
+            email: 'agent@vemtap.com',
+            name: 'Support Agent',
+            role: 'staff',
+        };
+
+        setTimeout(() => {
+            login(mockUser as any, 'mock-token');
+            router.push('/agent/dashboard');
+            setIsAutoLogin(false);
+        }, 600);
     };
 
     return (
@@ -153,6 +168,26 @@ export default function LoginPage() {
                                         )}
                                     </button>
                                 </form>
+
+                                <div className="mt-10">
+                                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-text-secondary mb-4">Agent Access (Mock)</p>
+                                    <button
+                                        type="button"
+                                        onClick={handleAgentMockLogin}
+                                        className="w-full rounded-3xl border border-gray-200 bg-white hover:bg-gray-50 transition-all p-6 flex items-center gap-4 shadow-sm hover:shadow-md"
+                                    >
+                                        <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                                            <Headset size={24} />
+                                        </div>
+                                        <div className="flex-1 text-left">
+                                            <p className="text-sm font-black text-text-main uppercase tracking-wider">Support Agent Dashboard</p>
+                                            <p className="text-xs text-text-secondary font-medium mt-1">
+                                                {isAutoLogin ? 'Auto logging in...' : 'Preview the live support workspace without backend auth.'}
+                                            </p>
+                                        </div>
+                                        <span className="material-icons-round text-primary text-xl">{isAutoLogin ? 'autorenew' : 'arrow_forward'}</span>
+                                    </button>
+                                </div>
                             </motion.div>
 
                             <p className="text-xs text-center lg:text-left text-text-secondary font-bold uppercase tracking-[0.2em] mt-8">

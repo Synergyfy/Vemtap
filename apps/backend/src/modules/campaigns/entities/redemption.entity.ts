@@ -1,8 +1,9 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { LoyaltyProfile } from './loyalty-profile.entity';
 import { Reward } from './reward.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 
 @Entity('redemptions')
 export class Redemption extends AbstractBaseEntity {
@@ -32,6 +33,15 @@ export class Redemption extends AbstractBaseEntity {
   @Column({ default: 'pending' })
   status: string;
 
+  @ApiProperty({ description: 'Branch ID', nullable: true })
+  @Column({ nullable: true })
+  @Index()
+  branchId: string;
+
+  @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'branchId' })
+  branch: Branch;
+
   @ApiProperty({ description: 'Date redeemed' })
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   redeemedAt: Date;
@@ -48,7 +58,7 @@ export class Redemption extends AbstractBaseEntity {
   @Column({ type: 'timestamp' })
   expiresAt: Date;
 
-  @ManyToOne(() => LoyaltyProfile, { onDelete: 'CASCADE' })
+  @ManyToOne(() => LoyaltyProfile, (profile) => profile.redemptions, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'loyaltyProfileId' })
   loyaltyProfile: LoyaltyProfile;
 
@@ -56,3 +66,5 @@ export class Redemption extends AbstractBaseEntity {
   @JoinColumn({ name: 'rewardId' })
   reward: Reward;
 }
+
+

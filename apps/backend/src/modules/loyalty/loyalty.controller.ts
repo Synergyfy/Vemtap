@@ -9,8 +9,9 @@ import {
   Request,
   BadRequestException,
 } from '@nestjs/common';
+import { Public } from '../../common/decorators/public.decorator';
 import { LoyaltyService } from './loyalty.service';
-import { CreateRewardDto } from './dto/create-reward.dto';
+import { CreateLoyaltyRewardDto } from './dto/create-reward.dto';
 import { EarnPointsDto } from './dto/earn-points.dto';
 import { RedeemRewardDto } from './dto/redeem-reward.dto';
 import {
@@ -30,7 +31,7 @@ import { UserRole } from '../users/entities/user.entity';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('loyalty')
 export class LoyaltyController {
-  constructor(private readonly loyaltyService: LoyaltyService) {}
+  constructor(private readonly loyaltyService: LoyaltyService) { }
 
   @Get('analytics')
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
@@ -44,6 +45,42 @@ export class LoyaltyController {
   @ApiOperation({ summary: 'Process a device tap (Record visit/earn points)' })
   async tap(@Request() req, @Param('code') code: string) {
     return this.loyaltyService.processTap(req.user.id, code);
+  }
+
+  @Public()
+  @Get('device-info/:code')
+  @ApiOperation({ summary: 'Get public details of a device by its code' })
+  @ApiResponse({
+    status: 200,
+    description: 'Device details retrieved successfully',
+    schema: {
+      example: {
+        id: '270f20d0-7a0a-4a2a-9e0a-0a2a4b2b4c2b',
+        name: 'Main Entrance Scanner',
+        code: 'VT-8829',
+        type: 'NFCCard',
+        business: {
+          id: '8829-uuid',
+          name: 'VemTap Headquarters',
+        },
+        branch: {
+          id: 'branch-1-uuid',
+          name: 'Lagos Office',
+        },
+        owner: {
+          firstName: 'John',
+          lastName: 'Doe',
+          engagement: {
+            instagram: { profile: 'johndoe', link: 'https://instagr.am/johndoe' },
+          },
+        },
+        isFirstTimeVisit: true,
+      },
+    },
+  })
+  async getDeviceInfo(@Request() req: any, @Param('code') code: string) {
+    const userId = req.user?.id;
+    return this.loyaltyService.getDeviceByCode(code, userId);
   }
 
   @Get('profile')
@@ -107,7 +144,7 @@ export class LoyaltyController {
   @Roles(UserRole.MANAGER, UserRole.OWNER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a new reward (Manager/Owner only)' })
   async createReward(
-    @Body() dto: CreateRewardDto,
+    @Body() dto: CreateLoyaltyRewardDto,
     @Query('businessId') businessId: string,
   ) {
     if (!businessId) throw new BadRequestException('Business ID is required');

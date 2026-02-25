@@ -1,8 +1,18 @@
-import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index, OneToMany } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { User } from '../../users/entities/user.entity';
 import { Branch } from '../../branches/entities/branch.entity';
+import { Business } from '../../businesses/entities/business.entity';
+import { PointTransaction } from './point-transaction.entity';
+import { Redemption } from './redemption.entity';
+
+export enum TierLevel {
+  BRONZE = 'bronze',
+  SILVER = 'silver',
+  GOLD = 'gold',
+  PLATINUM = 'platinum',
+}
 
 @Entity('loyalty_profiles')
 export class LoyaltyProfile extends AbstractBaseEntity {
@@ -11,12 +21,28 @@ export class LoyaltyProfile extends AbstractBaseEntity {
   @Index()
   userId: string;
 
+  @ManyToOne(() => User, (user) => user.id, {
+    nullable: true,
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'userId' })
+  user: User;
+
+  @ApiProperty({ description: 'The business ID', example: 'business_001' })
+  @Column({ type: 'uuid', nullable: false })
+  @Index()
+  businessId: string;
+
+  @ManyToOne(() => Business, { nullable: false })
+  @JoinColumn({ name: 'businessId' })
+  business: Business;
+
   @ApiProperty({ description: 'The branch ID', example: 'branch_001' })
-  @Column()
+  @Column({ nullable: true })
   @Index()
   branchId: string;
 
-  @ManyToOne(() => Branch, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'branchId' })
   branch: Branch;
 
@@ -47,10 +73,10 @@ export class LoyaltyProfile extends AbstractBaseEntity {
   @Column({ type: 'timestamp', nullable: true })
   lastRewardedAt: Date;
 
-  @ManyToOne(() => User, (user) => user.id, {
-    nullable: true,
-    onDelete: 'CASCADE',
-  })
-  @JoinColumn({ name: 'userId' })
-  user: User;
+  @OneToMany(() => PointTransaction, (transaction) => transaction.loyaltyProfile)
+  transactions: PointTransaction[];
+
+  @OneToMany(() => Redemption, (redemption) => redemption.loyaltyProfile)
+  redemptions: Redemption[];
 }
+

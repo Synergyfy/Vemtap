@@ -47,7 +47,7 @@ export class CampaignsService {
     private contactRepo: Repository<Contact>,
     private branchesService: BranchesService,
     private automationService: AutomationService,
-  ) {}
+  ) { }
 
   async create(
     createCampaignDto: CreateCampaignDto,
@@ -176,12 +176,17 @@ export class CampaignsService {
     userId: string,
     branchId: string,
   ): Promise<LoyaltyProfile> {
+    const branch = await this.branchesService.findById(branchId);
+    if (!branch) throw new NotFoundException('Branch not found');
+
     let profile = await this.profileRepository.findOne({
-      where: { userId, branchId },
+      where: { userId, businessId: branch.businessId },
     });
+
     if (!profile) {
       profile = this.profileRepository.create({
         userId,
+        businessId: branch.businessId,
         branchId,
         tierLevel: 'bronze',
       });
@@ -201,6 +206,24 @@ export class CampaignsService {
       await this.ruleRepository.save(rule);
     }
     return rule;
+  }
+
+  async findActiveRule(branchId: string): Promise<LoyaltyRule | null> {
+    return this.ruleRepository.findOne({
+      where: { branchId, isActive: true },
+    });
+  }
+
+  async findProfile(
+    userId: string,
+    branchId: string,
+  ): Promise<LoyaltyProfile | null> {
+    const branch = await this.branchesService.findById(branchId);
+    if (!branch) return null;
+
+    return this.profileRepository.findOne({
+      where: { userId, businessId: branch.businessId },
+    });
   }
 
   async updateLoyaltyRule(
@@ -251,6 +274,19 @@ export class CampaignsService {
     const breakdown: Record<string, number> = {};
 
     if (dto.isVisit) {
+      // Cooldown check
+      if (profile.lastRewardedAt && rule.visitCooldownHours) {
+        const lastRewarded = new Date(profile.lastRewardedAt).getTime();
+        const cooldownMs = rule.visitCooldownHours * 60 * 60 * 1000;
+        if (Date.now() - lastRewarded < cooldownMs) {
+          return {
+            success: false,
+            pointsEarned: 0,
+            newBalance: profile.currentPointsBalance,
+            message: `Visit reward is on cooldown. Please wait ${rule.visitCooldownHours} hours between rewards.`,
+          };
+        }
+      }
       earned += rule.visitPoints || 0;
       breakdown.visitPoints = rule.visitPoints;
     }
@@ -339,7 +375,7 @@ export class CampaignsService {
     }
 
     const transaction = this.transactionRepository.create({
-      loyaltyProfileId: profile.id,
+      loyaltyProfile: profile,
       transactionType: 'earn',
       pointsAmount: earned,
       reason:
@@ -385,8 +421,9 @@ export class CampaignsService {
     expiresAt.setDate(expiresAt.getDate() + reward.validityDays);
 
     const redemption = this.redemptionRepository.create({
-      loyaltyProfileId: profile.id,
-      rewardId: reward.id,
+      loyaltyProfile: profile,
+      reward: reward,
+      branchId, // Ensure branchId is captured
       redemptionCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
       pointsSpent: reward.pointCost,
       status: 'pending',
@@ -398,7 +435,7 @@ export class CampaignsService {
     await this.rewardRepository.save(reward);
 
     const transaction = this.transactionRepository.create({
-      loyaltyProfileId: profile.id,
+      loyaltyProfile: profile,
       transactionType: 'redeem',
       pointsAmount: -reward.pointCost,
       reason: `Redeemed ${reward.name}`,

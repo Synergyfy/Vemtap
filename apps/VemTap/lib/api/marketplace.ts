@@ -24,8 +24,8 @@ export const fetchProducts = async (
         category: p.productType?.name || 'NFC Hardware',
         rating: p.rating || 5,
         price: Number(p.price),
-        originalPrice: Number(p.price) * 1.2, // Mocking original price
-        image: p.image || "/assets/nfc/Card NFC Plate White.avif",
+        originalPrice: null,
+        image: Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : "/assets/nfc/Card NFC Plate White.avif",
         desc: p.description,
         tag: p.tag || 'New',
         tagColor: p.tagColor || 'bg-emerald-500',
@@ -62,46 +62,42 @@ export const fetchProductDetail = async (id: string): Promise<ProductDetail | nu
     try {
         const p: any = await api.get(`/products/${id}`);
 
+        const images = Array.isArray(p.images) && p.images.length > 0
+            ? p.images
+            : ["/assets/nfc/Card NFC Plate White.avif"];
+
+        const specifications = (p.technicalSpecifications && typeof p.technicalSpecifications === 'object')
+            ? p.technicalSpecifications
+            : {};
+
+        if (typeof p.customBrandedCards === 'boolean') {
+            specifications['Custom Branded Cards'] = p.customBrandedCards ? 'Available' : 'Not available';
+        }
+
         return {
             id: p.id,
             sku: `VEM-${p.id.toUpperCase().split('-')[0]}`,
             name: p.name,
-            brand: p.productType?.name || 'VemTap',
+            brand: p.productType?.name || p.tag || 'VemTap',
             price: Number(p.price),
             description: p.description,
-            longDescription: p.description + "\n\nExperience the future of connectivity with the " + p.name + ". Designed for reliability and style, this NFC solution integrates seamlessly into any environment. Perfect for businesses looking to enhance customer engagement through tap-to-action technology.",
-            images: [
-                p.image,
-                "/assets/nfc/Reading position.avif",
-                "/assets/nfc/Card NFC Plate White spread.avif"
-            ],
-            mainImage: p.image,
-            tag: p.tag || 'Premium',
+            longDescription: p.description,
+            images,
+            mainImage: images[0],
+            tag: p.tag || 'Hardware',
             tagColor: p.tagColor || 'bg-zinc-800',
-            specifications: {
-                'Material': 'Premium PVC / Acrylic',
-                'Frequency': '13.56 MHz',
-                'Chip Type': 'NTAG215 / NTAG216',
-                'Reading Distance': '2-5 cm',
-                'Water Resistance': 'IP65'
-            },
-            documents: [
-                { name: 'User Guide', size: '1.2 MB', date: '2024', downloads: 120, type: 'pdf' }
-            ],
+            specifications,
+            documents: [],
             relatedProducts: [], // Can be fetched if there's a related endpoint
-            features: ['Instant Setup', 'Durable Build', 'Cloud Compatible'],
+            features: [],
             tieredPricing: p.priceTiers?.map((t: any) => ({
                 minQuantity: t.min,
                 maxQuantity: t.max,
                 price: t.price
-            })) || [
-                    { minQuantity: 1, maxQuantity: 49, price: Number(p.price) },
-                    { minQuantity: 50, maxQuantity: 100, price: Math.floor(Number(p.price) * 0.9) },
-                    { minQuantity: 101, price: 'quote' }
-                ],
+            })) || [{ minQuantity: p.moq || 1, maxQuantity: null, price: Number(p.price) }],
             moq: p.moq || 1,
             rating: p.rating || 5,
-            reviews: 124 // Mocked for now
+            reviews: undefined
         };
     } catch (e) {
         console.error('Error fetching product detail', e);
