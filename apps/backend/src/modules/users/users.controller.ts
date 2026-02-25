@@ -31,6 +31,7 @@ import { InviteStaffDto } from './dto/invite-staff.dto';
 import { GetStaffDto } from './dto/get-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateEngagementDto } from './dto/update-engagement.dto';
 import * as bcrypt from 'bcrypt';
 import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
 
@@ -244,6 +245,28 @@ export class UsersController {
   @ApiOperation({ summary: 'Remove a staff member' })
   async removeStaff(@Request() req, @Param('id') id: string) {
     return this.usersService.remove(id, req.user.businessId);
+  }
+
+  @Patch(':id/engagement')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Update engagement details for a user (Social Media links)' })
+  @ApiResponse({ status: 200, description: 'Engagement details updated' })
+  async updateEngagement(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() body: UpdateEngagementDto,
+  ) {
+    let businessId = req.user.businessId;
+    if (req.user.role === UserRole.OWNER && !businessId) {
+      const ownedBusiness = await this.businessesService.findByOwner(req.user.id);
+      if (ownedBusiness) businessId = ownedBusiness.id;
+    }
+
+    if (!businessId) {
+      throw new BadRequestException('Business context not found');
+    }
+
+    return this.usersService.updateEngagement(id, businessId, body.engagement);
   }
 
   // --- Admin Endpoints ---
