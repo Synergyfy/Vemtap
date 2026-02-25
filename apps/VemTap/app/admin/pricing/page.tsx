@@ -9,44 +9,56 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchAdminPricingPlans, updatePricingPlan, addPricingPlan, deletePricingPlan } from '@/lib/api/pricing';
 import { PricingPlan } from '@/types/pricing';
+import FormattedNumberInput from '@/components/shared/FormattedNumberInput';
 
-type EditablePlan = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice'> & { id?: string };
+type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice' | 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'tagsLimit' | 'branchLimit'> & {
+    id?: string;
+    monthlyPrice: string;
+    trialDurationDays: string;
+    smsCredits: string;
+    whatsappCredits: string;
+    emailCredits: string;
+    teamMembersLimit: string;
+    loyaltyLimit: string;
+    tagsLimit: string;
+    branchLimit: string;
+};
 
-const defaultNewPlan: EditablePlan = {
+const defaultNewPlan: EditablePlanForm = {
     name: '',
-    monthlyPrice: 0,
+    monthlyPrice: '',
     features: [],
     currency: 'NGN',
     isFree: false,
-    trialDurationDays: 30,
-    smsCredits: 0,
-    whatsappCredits: 0,
-    emailCredits: 0,
-    teamMembersLimit: 5,
-    loyaltyLimit: 10,
-    tagsLimit: 100,
-    branchLimit: 3,
+    trialDurationDays: '30',
+    smsCredits: '',
+    whatsappCredits: '',
+    emailCredits: '',
+    teamMembersLimit: '',
+    loyaltyLimit: '',
+    tagsLimit: '',
+    branchLimit: '',
     analyticsLevel: 'basic',
     isActive: true,
     description: '',
     isPopular: false,
 };
 
-const toEditablePlan = (plan: PricingPlan): EditablePlan => ({
+const toEditablePlan = (plan: PricingPlan): EditablePlanForm => ({
     id: plan.id,
     name: plan.name,
-    monthlyPrice: Number(plan.monthlyPrice) || 0,
+    monthlyPrice: Number(plan.monthlyPrice || 0).toString(),
     features: plan.features || [],
     currency: plan.currency || 'NGN',
     isFree: !!plan.isFree,
-    trialDurationDays: Number(plan.trialDurationDays) || 30,
-    smsCredits: Number(plan.smsCredits) || 0,
-    whatsappCredits: Number(plan.whatsappCredits) || 0,
-    emailCredits: Number(plan.emailCredits) || 0,
-    teamMembersLimit: Number(plan.teamMembersLimit) || 0,
-    loyaltyLimit: Number(plan.loyaltyLimit) || 0,
-    tagsLimit: Number(plan.tagsLimit) || 0,
-    branchLimit: Number(plan.branchLimit) || 0,
+    trialDurationDays: Number(plan.trialDurationDays || 30).toString(),
+    smsCredits: Number(plan.smsCredits || 0).toString(),
+    whatsappCredits: Number(plan.whatsappCredits || 0).toString(),
+    emailCredits: Number(plan.emailCredits || 0).toString(),
+    teamMembersLimit: Number(plan.teamMembersLimit || 0).toString(),
+    loyaltyLimit: Number(plan.loyaltyLimit || 0).toString(),
+    tagsLimit: Number(plan.tagsLimit || 0).toString(),
+    branchLimit: Number(plan.branchLimit || 0).toString(),
     analyticsLevel: plan.analyticsLevel || 'basic',
     isActive: plan.isActive ?? true,
     description: plan.description || '',
@@ -55,7 +67,7 @@ const toEditablePlan = (plan: PricingPlan): EditablePlan => ({
 
 export default function AdminPricingPage() {
     const queryClient = useQueryClient();
-    const [editingPlan, setEditingPlan] = useState<EditablePlan | null>(null);
+    const [editingPlan, setEditingPlan] = useState<EditablePlanForm | null>(null);
     const [isAddingNew, setIsAddingNew] = useState(false);
     const [featureInput, setFeatureInput] = useState('');
 
@@ -65,7 +77,7 @@ export default function AdminPricingPage() {
     });
 
     const updateMutation = useMutation({
-        mutationFn: (plan: EditablePlan) => updatePricingPlan(plan as EditablePlan & { id: string }),
+        mutationFn: (plan: PricingPlan) => updatePricingPlan(plan as PricingPlan & { id: string }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
             setEditingPlan(null);
@@ -76,7 +88,7 @@ export default function AdminPricingPage() {
     });
 
     const addMutation = useMutation({
-        mutationFn: (plan: EditablePlan) => addPricingPlan(plan as Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice'>),
+        mutationFn: (plan: Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice'>) => addPricingPlan(plan),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
             setEditingPlan(null);
@@ -111,15 +123,41 @@ export default function AdminPricingPage() {
     };
 
     const isModalOpen = editingPlan !== null;
-    const currentPlan = editingPlan
-        ? { ...editingPlan, trialDurationDays: editingPlan.trialDurationDays || 30 }
-        : null;
+    const currentPlan = editingPlan;
 
     const handleDelete = (id: string) => {
         if (confirm('Are you sure you want to delete this plan?')) {
             deleteMutation.mutate(id);
         }
     };
+
+    const toNumber = (value: string, fallback = 0) => {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : fallback;
+    };
+
+    const toPayload = (plan: EditablePlanForm): PricingPlan => ({
+        id: plan.id || '',
+        name: plan.name,
+        monthlyPrice: toNumber(plan.monthlyPrice),
+        quarterlyPrice: 0,
+        yearlyPrice: 0,
+        features: plan.features || [],
+        currency: plan.currency || 'NGN',
+        isFree: !!plan.isFree,
+        trialDurationDays: toNumber(plan.trialDurationDays, 30),
+        smsCredits: toNumber(plan.smsCredits),
+        whatsappCredits: toNumber(plan.whatsappCredits),
+        emailCredits: toNumber(plan.emailCredits),
+        teamMembersLimit: toNumber(plan.teamMembersLimit),
+        loyaltyLimit: toNumber(plan.loyaltyLimit),
+        tagsLimit: toNumber(plan.tagsLimit),
+        branchLimit: toNumber(plan.branchLimit),
+        analyticsLevel: plan.analyticsLevel || 'basic',
+        isActive: plan.isActive ?? true,
+        description: plan.description || '',
+        isPopular: !!plan.isPopular,
+    });
 
     const handleSave = () => {
         if (!currentPlan) return;
@@ -133,15 +171,19 @@ export default function AdminPricingPage() {
         }
 
         if (isAddingNew) {
-            addMutation.mutate({ ...currentPlan, id: undefined });
+            const payload = toPayload(currentPlan);
+            const { id, quarterlyPrice, yearlyPrice, ...createPayload } = payload;
+            addMutation.mutate(createPayload);
             return;
         }
-        updateMutation.mutate(currentPlan);
+        updateMutation.mutate(toPayload(currentPlan));
     };
 
-    const setNumber = (key: keyof EditablePlan, value: string) => {
-        const n = value === '' ? 0 : Number(value);
-        setEditingPlan((prev) => (prev ? { ...prev, [key]: Number.isNaN(n) ? 0 : n } : prev));
+    const setNumericField = (
+        key: keyof Pick<EditablePlanForm, 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'tagsLimit' | 'branchLimit'>,
+        value: string,
+    ) => {
+        setEditingPlan((prev) => (prev ? { ...prev, [key]: value } : prev));
     };
 
     const addFeature = () => {
@@ -297,11 +339,11 @@ export default function AdminPricingPage() {
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Monthly Price</label>
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-main">₦</span>
-                                        <input
-                                            type="number"
+                                        <FormattedNumberInput
                                             value={currentPlan.monthlyPrice}
-                                            onChange={(e) => setNumber('monthlyPrice', e.target.value)}
+                                            onChange={(value) => setNumericField('monthlyPrice', value)}
                                             className="w-full h-12 pl-8 pr-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                            placeholder="0"
                                         />
                                     </div>
                                 </div>
@@ -316,22 +358,22 @@ export default function AdminPricingPage() {
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">SMS Credits</label>
-                                    <input type="number" value={currentPlan.smsCredits} onChange={(e) => setNumber('smsCredits', e.target.value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
+                                    <FormattedNumberInput value={currentPlan.smsCredits} onChange={(value) => setNumericField('smsCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">WhatsApp Credits</label>
-                                    <input type="number" value={currentPlan.whatsappCredits} onChange={(e) => setNumber('whatsappCredits', e.target.value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
+                                    <FormattedNumberInput value={currentPlan.whatsappCredits} onChange={(value) => setNumericField('whatsappCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Email Credits</label>
-                                    <input type="number" value={currentPlan.emailCredits} onChange={(e) => setNumber('emailCredits', e.target.value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
+                                    <FormattedNumberInput value={currentPlan.emailCredits} onChange={(value) => setNumericField('emailCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Trial Duration (Days)</label>
-                                    <input type="number" value={currentPlan.trialDurationDays} onChange={(e) => setNumber('trialDurationDays', e.target.value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
+                                    <FormattedNumberInput value={currentPlan.trialDurationDays} onChange={(value) => setNumericField('trialDurationDays', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="30" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Analytics Level</label>
@@ -350,22 +392,22 @@ export default function AdminPricingPage() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Team Members Limit</label>
-                                    <input type="number" value={currentPlan.teamMembersLimit} onChange={(e) => setNumber('teamMembersLimit', e.target.value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
+                                    <FormattedNumberInput value={currentPlan.teamMembersLimit} onChange={(value) => setNumericField('teamMembersLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Loyalty Limit</label>
-                                    <input type="number" value={currentPlan.loyaltyLimit} onChange={(e) => setNumber('loyaltyLimit', e.target.value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
+                                    <FormattedNumberInput value={currentPlan.loyaltyLimit} onChange={(value) => setNumericField('loyaltyLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Tags Limit</label>
-                                    <input type="number" value={currentPlan.tagsLimit} onChange={(e) => setNumber('tagsLimit', e.target.value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
+                                    <FormattedNumberInput value={currentPlan.tagsLimit} onChange={(value) => setNumericField('tagsLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Branch Limit</label>
-                                    <input type="number" value={currentPlan.branchLimit} onChange={(e) => setNumber('branchLimit', e.target.value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
+                                    <FormattedNumberInput value={currentPlan.branchLimit} onChange={(value) => setNumericField('branchLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                             </div>
 

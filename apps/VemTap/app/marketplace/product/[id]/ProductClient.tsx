@@ -311,7 +311,7 @@ export default function ProductClient({ id }: { id: string }) {
                                     {[...Array(5)].map((_, i) => (
                                         <Star key={i} size={14} className={i < Math.floor(product.rating || 4.5) ? "text-primary fill-primary" : "text-slate-300"} />
                                     ))}
-                                    <span className="text-xs font-bold text-slate-500 ml-1 underline decoration-primary/30">({product.reviews || 24} Reviews)</span>
+                                    <span className="text-xs font-bold text-slate-500 ml-1 underline decoration-primary/30">({product.reviews ?? 0} Reviews)</span>
                                 </button>
                             </div>
                             <h1 className="text-4xl font-display font-bold text-slate-900 mb-2 leading-tight">{product.name}</h1>
