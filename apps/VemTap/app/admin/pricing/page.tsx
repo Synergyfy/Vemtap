@@ -1,62 +1,101 @@
 'use client';
 
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import { notify } from '@/lib/notify';
 import {
     Tag, Plus, Trash2, Edit3, Save, X,
-    Zap, Shield, Globe, Crown, CheckCircle2
+    Zap, Shield, Globe, Crown
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchPricingPlans, updatePricingPlan, addPricingPlan, deletePricingPlan } from '@/lib/api/pricing';
+import { fetchAdminPricingPlans, updatePricingPlan, addPricingPlan, deletePricingPlan } from '@/lib/api/pricing';
 import { PricingPlan } from '@/types/pricing';
+import FormattedNumberInput from '@/components/shared/FormattedNumberInput';
 
-const defaultNewPlan: Omit<PricingPlan, 'id'> = {
+type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice' | 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'tagsLimit' | 'branchLimit'> & {
+    id?: string;
+    monthlyPrice: string;
+    trialDurationDays: string;
+    smsCredits: string;
+    whatsappCredits: string;
+    emailCredits: string;
+    teamMembersLimit: string;
+    loyaltyLimit: string;
+    tagsLimit: string;
+    branchLimit: string;
+};
+
+const defaultNewPlan: EditablePlanForm = {
     name: '',
-    monthlyPrice: 0,
-    quarterlyPrice: 0,
-    yearlyPrice: 0,
+    monthlyPrice: '',
+    features: [],
     currency: 'NGN',
     isFree: false,
-    freeDurationDays: 30,
-    teamMembersLimit: 5,
-    loyaltyLimit: 10,
-    tagsLimit: 100,
-    branchLimit: 3,
+    trialDurationDays: '30',
+    smsCredits: '',
+    whatsappCredits: '',
+    emailCredits: '',
+    teamMembersLimit: '',
+    loyaltyLimit: '',
+    tagsLimit: '',
+    branchLimit: '',
     analyticsLevel: 'basic',
     isActive: true,
     description: '',
-    trialDurationDays: 0,
-    isPopular: false
+    isPopular: false,
 };
+
+const toEditablePlan = (plan: PricingPlan): EditablePlanForm => ({
+    id: plan.id,
+    name: plan.name,
+    monthlyPrice: Number(plan.monthlyPrice || 0).toString(),
+    features: plan.features || [],
+    currency: plan.currency || 'NGN',
+    isFree: !!plan.isFree,
+    trialDurationDays: Number(plan.trialDurationDays || 30).toString(),
+    smsCredits: Number(plan.smsCredits || 0).toString(),
+    whatsappCredits: Number(plan.whatsappCredits || 0).toString(),
+    emailCredits: Number(plan.emailCredits || 0).toString(),
+    teamMembersLimit: Number(plan.teamMembersLimit || 0).toString(),
+    loyaltyLimit: Number(plan.loyaltyLimit || 0).toString(),
+    tagsLimit: Number(plan.tagsLimit || 0).toString(),
+    branchLimit: Number(plan.branchLimit || 0).toString(),
+    analyticsLevel: plan.analyticsLevel || 'basic',
+    isActive: plan.isActive ?? true,
+    description: plan.description || '',
+    isPopular: !!plan.isPopular,
+});
 
 export default function AdminPricingPage() {
     const queryClient = useQueryClient();
-    const [editingPlan, setEditingPlan] = useState<PricingPlan | null>(null);
+    const [editingPlan, setEditingPlan] = useState<EditablePlanForm | null>(null);
     const [isAddingNew, setIsAddingNew] = useState(false);
+    const [featureInput, setFeatureInput] = useState('');
 
-    // Queries
     const { data: plans = [], isLoading: plansLoading } = useQuery({
         queryKey: ['subscription-plans'],
-        queryFn: fetchPricingPlans
+        queryFn: fetchAdminPricingPlans,
     });
 
-    // Mutations
     const updateMutation = useMutation({
-        mutationFn: updatePricingPlan,
+        mutationFn: (plan: PricingPlan) => updatePricingPlan(plan as PricingPlan & { id: string }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
             setEditingPlan(null);
+            setIsAddingNew(false);
+            setFeatureInput('');
             notify.success('Pricing plan updated successfully');
-        }
+        },
     });
 
     const addMutation = useMutation({
-        mutationFn: addPricingPlan,
+        mutationFn: (plan: Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice'>) => addPricingPlan(plan),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
+            setEditingPlan(null);
             setIsAddingNew(false);
+            setFeatureInput('');
             notify.success('New plan added successfully');
-        }
+        },
     });
 
     const deleteMutation = useMutation({
@@ -64,22 +103,27 @@ export default function AdminPricingPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
             notify.success('Plan deleted successfully');
-        }
+        },
     });
 
-    const handleSave = () => {
-        if (editingPlan) {
-            updateMutation.mutate(editingPlan);
-        }
+    const formatPrice = (price: number, currency = 'NGN') => {
+        return new Intl.NumberFormat('en-NG', { style: 'currency', currency, minimumFractionDigits: 0 }).format(Number(price) || 0);
     };
 
-    const handleAddPlan = () => {
+    const openEdit = (plan: PricingPlan) => {
+        setEditingPlan(toEditablePlan(plan));
+        setFeatureInput('');
+        setIsAddingNew(false);
+    };
+
+    const openCreate = () => {
+        setEditingPlan({ ...defaultNewPlan });
+        setFeatureInput('');
         setIsAddingNew(true);
     };
 
-    const handleCreatePlan = (planData: Omit<PricingPlan, 'id'>) => {
-        addMutation.mutate(planData);
-    };
+    const isModalOpen = editingPlan !== null;
+    const currentPlan = editingPlan;
 
     const handleDelete = (id: string) => {
         if (confirm('Are you sure you want to delete this plan?')) {
@@ -87,13 +131,79 @@ export default function AdminPricingPage() {
         }
     };
 
-    const formatPrice = (price: number) => {
-        return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(price);
+    const toNumber = (value: string, fallback = 0) => {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : fallback;
     };
 
-    const isModalOpen = editingPlan !== null || isAddingNew;
-    const currentPlan = editingPlan;
-    const isNewPlanMode = isAddingNew;
+    const toPayload = (plan: EditablePlanForm): PricingPlan => ({
+        id: plan.id || '',
+        name: plan.name,
+        monthlyPrice: toNumber(plan.monthlyPrice),
+        quarterlyPrice: 0,
+        yearlyPrice: 0,
+        features: plan.features || [],
+        currency: plan.currency || 'NGN',
+        isFree: !!plan.isFree,
+        trialDurationDays: toNumber(plan.trialDurationDays, 30),
+        smsCredits: toNumber(plan.smsCredits),
+        whatsappCredits: toNumber(plan.whatsappCredits),
+        emailCredits: toNumber(plan.emailCredits),
+        teamMembersLimit: toNumber(plan.teamMembersLimit),
+        loyaltyLimit: toNumber(plan.loyaltyLimit),
+        tagsLimit: toNumber(plan.tagsLimit),
+        branchLimit: toNumber(plan.branchLimit),
+        analyticsLevel: plan.analyticsLevel || 'basic',
+        isActive: plan.isActive ?? true,
+        description: plan.description || '',
+        isPopular: !!plan.isPopular,
+    });
+
+    const handleSave = () => {
+        if (!currentPlan) return;
+        if (!currentPlan.name.trim()) {
+            notify.error('Plan name is required');
+            return;
+        }
+        if (!currentPlan.features.length) {
+            notify.error('Add at least one feature');
+            return;
+        }
+
+        if (isAddingNew) {
+            const payload = toPayload(currentPlan);
+            const { id, quarterlyPrice, yearlyPrice, ...createPayload } = payload;
+            addMutation.mutate(createPayload);
+            return;
+        }
+        updateMutation.mutate(toPayload(currentPlan));
+    };
+
+    const setNumericField = (
+        key: keyof Pick<EditablePlanForm, 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'tagsLimit' | 'branchLimit'>,
+        value: string,
+    ) => {
+        setEditingPlan((prev) => (prev ? { ...prev, [key]: value } : prev));
+    };
+
+    const addFeature = () => {
+        const val = featureInput.trim();
+        if (!val || !currentPlan) return;
+        if (currentPlan.features.some((f) => f.toLowerCase() === val.toLowerCase())) {
+            notify.error('Feature already added');
+            return;
+        }
+        setEditingPlan((prev) => (prev ? { ...prev, features: [...(prev.features || []), val] } : prev));
+        setFeatureInput('');
+    };
+
+    const removeFeature = (value: string) => {
+        setEditingPlan((prev) =>
+            prev
+                ? { ...prev, features: (prev.features || []).filter((f) => f !== value) }
+                : prev,
+        );
+    };
 
     return (
         <>
@@ -109,7 +219,7 @@ export default function AdminPricingPage() {
                         </h1>
                     </div>
                     <button
-                        onClick={handleAddPlan}
+                        onClick={openCreate}
                         className="h-12 px-6 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
                     >
                         <Plus size={18} /> Add New Plan
@@ -118,11 +228,11 @@ export default function AdminPricingPage() {
 
                 {plansLoading ? (
                     <div className="flex items-center justify-center py-20">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {plans.map((plan: PricingPlan) => (
+                        {plans.map((plan) => (
                             <div
                                 key={plan.id}
                                 className={`bg-white rounded-2xl border-2 transition-all overflow-hidden ${editingPlan?.id === plan.id ? 'border-primary shadow-xl ring-4 ring-primary/5' : 'border-gray-100 hover:border-primary/20 hover:shadow-lg'}`}
@@ -143,7 +253,7 @@ export default function AdminPricingPage() {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <button
-                                                onClick={() => setEditingPlan(plan)}
+                                                onClick={() => openEdit(plan)}
                                                 className="p-2.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-primary transition-all"
                                             >
                                                 <Edit3 size={18} />
@@ -159,12 +269,12 @@ export default function AdminPricingPage() {
 
                                     <div className="space-y-4 mb-6">
                                         <div className="flex items-baseline gap-1">
-                                            <span className="text-3xl font-display font-black text-text-main">{formatPrice(plan.monthlyPrice)}</span>
+                                            <span className="text-3xl font-display font-black text-text-main">{formatPrice(plan.monthlyPrice, plan.currency)}</span>
                                             <span className="text-sm font-bold text-text-secondary">/mo</span>
                                         </div>
                                         <div className="flex gap-4 text-xs">
-                                            <span className="text-text-secondary">Quarterly: {formatPrice(plan.quarterlyPrice)}</span>
-                                            <span className="text-text-secondary">Yearly: {formatPrice(plan.yearlyPrice)}</span>
+                                            <span className="text-text-secondary">Quarterly: {formatPrice(plan.quarterlyPrice, plan.currency)}</span>
+                                            <span className="text-text-secondary">Yearly: {formatPrice(plan.yearlyPrice, plan.currency)}</span>
                                         </div>
                                     </div>
 
@@ -183,11 +293,11 @@ export default function AdminPricingPage() {
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <p className="font-bold text-text-main">Features</p>
+                                            <p className="font-bold text-text-main">Access</p>
                                             <div className="space-y-1 text-text-secondary">
-                                                <p>Analytics: {plan.analyticsLevel}</p>
-                                                <p>Free Days: {plan.freeDurationDays}</p>
-                                                <p>Active: {plan.isActive ? 'Yes' : 'No'}</p>
+                                                <p>Trial Days: {plan.trialDurationDays}</p>
+                                                <p>SMS/WA/Email: {plan.smsCredits}/{plan.whatsappCredits}/{plan.emailCredits}</p>
+                                                <p>Features: {(plan.features || []).length}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -199,17 +309,16 @@ export default function AdminPricingPage() {
                 )}
             </div>
 
-            {/* Add/Edit Modal */}
-            {isModalOpen && (
+            {isModalOpen && currentPlan && (
                 <div className="fixed inset-0 z-100 flex items-center justify-end p-4">
-                    <div className="absolute inset-0 bg-text-main/20 backdrop-blur-sm" onClick={() => { setEditingPlan(null); setIsAddingNew(false); }} />
+                    <div className="absolute inset-0 bg-text-main/20 backdrop-blur-sm" onClick={() => { setEditingPlan(null); setIsAddingNew(false); setFeatureInput(''); }} />
                     <div className="relative w-full max-w-xl bg-white h-full rounded-2xl shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
                         <div className="p-8 border-b border-gray-100 flex items-center justify-between">
                             <div>
-                                <h2 className="text-2xl font-bold text-text-main">{isNewPlanMode ? 'Add New Plan' : 'Edit Plan'}</h2>
+                                <h2 className="text-2xl font-bold text-text-main">{isAddingNew ? 'Add New Plan' : 'Edit Plan'}</h2>
                                 <p className="text-sm text-text-secondary font-medium uppercase tracking-widest mt-1">Plan Configuration</p>
                             </div>
-                            <button onClick={() => { setEditingPlan(null); setIsAddingNew(false); }} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                            <button onClick={() => { setEditingPlan(null); setIsAddingNew(false); setFeatureInput(''); }} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                                 <X size={24} />
                             </button>
                         </div>
@@ -219,160 +328,58 @@ export default function AdminPricingPage() {
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Plan Name</label>
                                 <input
                                     type="text"
-                                    value={currentPlan?.name || ''}
-                                    onChange={(e) => {
-                                        if (isNewPlanMode) {
-                                            const newPlan = { ...(currentPlan || defaultNewPlan), name: e.target.value };
-                                            setEditingPlan(newPlan as PricingPlan);
-                                        } else {
-                                            setEditingPlan({ ...currentPlan!, name: e.target.value });
-                                        }
-                                    }}
+                                    value={currentPlan.name}
+                                    onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, name: e.target.value } : prev))}
                                     className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
                                 />
                             </div>
 
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Monthly Price</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-main">₦</span>
+                                        <FormattedNumberInput
+                                            value={currentPlan.monthlyPrice}
+                                            onChange={(value) => setNumericField('monthlyPrice', value)}
+                                            className="w-full h-12 pl-8 pr-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Currency</label>
+                                    <div className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm flex items-center text-text-main">
+                                        ₦ Naira (NGN)
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Monthly</label>
-                                    <input
-                                        type="number"
-                                        value={currentPlan?.monthlyPrice || 0}
-                                        onChange={(e) => {
-                                            if (isNewPlanMode) {
-                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), monthlyPrice: parseInt(e.target.value) } as PricingPlan);
-                                            } else {
-                                                setEditingPlan({ ...currentPlan!, monthlyPrice: parseInt(e.target.value) });
-                                            }
-                                        }}
-                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                                    />
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">SMS Credits</label>
+                                    <FormattedNumberInput value={currentPlan.smsCredits} onChange={(value) => setNumericField('smsCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Quarterly</label>
-                                    <input
-                                        type="number"
-                                        value={currentPlan?.quarterlyPrice || 0}
-                                        onChange={(e) => {
-                                            if (isNewPlanMode) {
-                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), quarterlyPrice: parseInt(e.target.value) } as PricingPlan);
-                                            } else {
-                                                setEditingPlan({ ...currentPlan!, quarterlyPrice: parseInt(e.target.value) });
-                                            }
-                                        }}
-                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                                    />
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">WhatsApp Credits</label>
+                                    <FormattedNumberInput value={currentPlan.whatsappCredits} onChange={(value) => setNumericField('whatsappCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Yearly</label>
-                                    <input
-                                        type="number"
-                                        value={currentPlan?.yearlyPrice || 0}
-                                        onChange={(e) => {
-                                            if (isNewPlanMode) {
-                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), yearlyPrice: parseInt(e.target.value) } as PricingPlan);
-                                            } else {
-                                                setEditingPlan({ ...currentPlan!, yearlyPrice: parseInt(e.target.value) });
-                                            }
-                                        }}
-                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                                    />
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Email Credits</label>
+                                    <FormattedNumberInput value={currentPlan.emailCredits} onChange={(value) => setNumericField('emailCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Team Members Limit</label>
-                                    <input
-                                        type="number"
-                                        value={currentPlan?.teamMembersLimit || 0}
-                                        onChange={(e) => {
-                                            if (isNewPlanMode) {
-                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), teamMembersLimit: parseInt(e.target.value) } as PricingPlan);
-                                            } else {
-                                                setEditingPlan({ ...currentPlan!, teamMembersLimit: parseInt(e.target.value) });
-                                            }
-                                        }}
-                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Loyalty Limit</label>
-                                    <input
-                                        type="number"
-                                        value={currentPlan?.loyaltyLimit || 0}
-                                        onChange={(e) => {
-                                            if (isNewPlanMode) {
-                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), loyaltyLimit: parseInt(e.target.value) } as PricingPlan);
-                                            } else {
-                                                setEditingPlan({ ...currentPlan!, loyaltyLimit: parseInt(e.target.value) });
-                                            }
-                                        }}
-                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Tags Limit</label>
-                                    <input
-                                        type="number"
-                                        value={currentPlan?.tagsLimit || 0}
-                                        onChange={(e) => {
-                                            if (isNewPlanMode) {
-                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), tagsLimit: parseInt(e.target.value) } as PricingPlan);
-                                            } else {
-                                                setEditingPlan({ ...currentPlan!, tagsLimit: parseInt(e.target.value) });
-                                            }
-                                        }}
-                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Branch Limit</label>
-                                    <input
-                                        type="number"
-                                        value={currentPlan?.branchLimit || 0}
-                                        onChange={(e) => {
-                                            if (isNewPlanMode) {
-                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), branchLimit: parseInt(e.target.value) } as PricingPlan);
-                                            } else {
-                                                setEditingPlan({ ...currentPlan!, branchLimit: parseInt(e.target.value) });
-                                            }
-                                        }}
-                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Free Duration (Days)</label>
-                                    <input
-                                        type="number"
-                                        value={currentPlan?.freeDurationDays || 0}
-                                        onChange={(e) => {
-                                            if (isNewPlanMode) {
-                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), freeDurationDays: parseInt(e.target.value) } as PricingPlan);
-                                            } else {
-                                                setEditingPlan({ ...currentPlan!, freeDurationDays: parseInt(e.target.value) });
-                                            }
-                                        }}
-                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                                    />
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Trial Duration (Days)</label>
+                                    <FormattedNumberInput value={currentPlan.trialDurationDays} onChange={(value) => setNumericField('trialDurationDays', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="30" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Analytics Level</label>
                                     <select
-                                        value={currentPlan?.analyticsLevel || 'basic'}
-                                        onChange={(e) => {
-                                            if (isNewPlanMode) {
-                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), analyticsLevel: e.target.value as 'basic' | 'advanced' | 'none' } as PricingPlan);
-                                            } else {
-                                                setEditingPlan({ ...currentPlan!, analyticsLevel: e.target.value as 'basic' | 'advanced' | 'none' });
-                                            }
-                                        }}
+                                        value={currentPlan.analyticsLevel}
+                                        onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, analyticsLevel: e.target.value as PricingPlan['analyticsLevel'] } : prev))}
                                         className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
                                     >
                                         <option value="basic">Basic</option>
@@ -383,17 +390,85 @@ export default function AdminPricingPage() {
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Team Members Limit</label>
+                                    <FormattedNumberInput value={currentPlan.teamMembersLimit} onChange={(value) => setNumericField('teamMembersLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Loyalty Limit</label>
+                                    <FormattedNumberInput value={currentPlan.loyaltyLimit} onChange={(value) => setNumericField('loyaltyLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Tags Limit</label>
+                                    <FormattedNumberInput value={currentPlan.tagsLimit} onChange={(value) => setNumericField('tagsLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Branch Limit</label>
+                                    <FormattedNumberInput value={currentPlan.branchLimit} onChange={(value) => setNumericField('branchLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Features</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={featureInput}
+                                        onChange={(e) => setFeatureInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                addFeature();
+                                            }
+                                        }}
+                                        className="flex-1 h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                        placeholder="Type feature and click Add"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={addFeature}
+                                        className="h-12 px-4 bg-primary text-white rounded-xl font-bold text-sm"
+                                    >
+                                        Add
+                                    </button>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {(currentPlan.features || []).map((feature) => (
+                                        <span
+                                            key={feature}
+                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold"
+                                        >
+                                            {feature}
+                                            <button
+                                                type="button"
+                                                onClick={() => removeFeature(feature)}
+                                                className="text-primary/80 hover:text-primary"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
                                 <div className="flex items-center gap-3">
                                     <input
                                         type="checkbox"
-                                        checked={currentPlan?.isPopular || false}
-                                        onChange={(e) => {
-                                            if (isNewPlanMode) {
-                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), isPopular: e.target.checked } as PricingPlan);
-                                            } else {
-                                                setEditingPlan({ ...currentPlan!, isPopular: e.target.checked });
-                                            }
-                                        }}
+                                        checked={currentPlan.isFree}
+                                        onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, isFree: e.target.checked } : prev))}
+                                        className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                    <label className="text-sm font-bold text-text-main">Free Plan</label>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={currentPlan.isPopular ?? false}
+                                        onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, isPopular: e.target.checked } : prev))}
                                         className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
                                     />
                                     <label className="text-sm font-bold text-text-main">Most Popular</label>
@@ -401,14 +476,8 @@ export default function AdminPricingPage() {
                                 <div className="flex items-center gap-3">
                                     <input
                                         type="checkbox"
-                                        checked={currentPlan?.isActive ?? true}
-                                        onChange={(e) => {
-                                            if (isNewPlanMode) {
-                                                setEditingPlan({ ...(currentPlan || defaultNewPlan), isActive: e.target.checked } as PricingPlan);
-                                            } else {
-                                                setEditingPlan({ ...currentPlan!, isActive: e.target.checked });
-                                            }
-                                        }}
+                                        checked={currentPlan.isActive ?? true}
+                                        onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, isActive: e.target.checked } : prev))}
                                         className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
                                     />
                                     <label className="text-sm font-bold text-text-main">Active</label>
@@ -420,37 +489,25 @@ export default function AdminPricingPage() {
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Description</label>
                                 <textarea
                                     rows={3}
-                                    value={currentPlan?.description || ''}
-                                    onChange={(e) => {
-                                        if (isNewPlanMode) {
-                                            setEditingPlan({ ...(currentPlan || defaultNewPlan), description: e.target.value } as PricingPlan);
-                                        } else {
-                                            setEditingPlan({ ...currentPlan!, description: e.target.value });
-                                        }
-                                    }}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none resize-none"
+                                    value={currentPlan.description}
+                                    onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, description: e.target.value } : prev))}
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm focus:ring-2 focus:ring-primary/20 outline-none resize-none"
                                 />
                             </div>
                         </div>
 
                         <div className="p-8 border-t border-gray-100 flex gap-4">
                             <button
-                                onClick={() => { setEditingPlan(null); setIsAddingNew(false); }}
+                                onClick={() => { setEditingPlan(null); setIsAddingNew(false); setFeatureInput(''); }}
                                 className="flex-1 h-14 border border-gray-200 rounded-xl font-bold text-sm hover:bg-gray-50 transition-all"
                             >
                                 Cancel
                             </button>
                             <button
-                                onClick={() => {
-                                    if (isNewPlanMode && currentPlan) {
-                                        handleCreatePlan(currentPlan);
-                                    } else {
-                                        handleSave();
-                                    }
-                                }}
-                                className="flex-2 h-14 bg-primary text-white rounded-xl font-bold text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                onClick={handleSave}
+                                className="flex-1 h-14 bg-primary text-white rounded-xl font-bold text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                             >
-                                <Save size={20} /> {isNewPlanMode ? 'Create Plan' : 'Save Changes'}
+                                <Save size={20} /> {isAddingNew ? 'Create Plan' : 'Save Changes'}
                             </button>
                         </div>
                     </div>

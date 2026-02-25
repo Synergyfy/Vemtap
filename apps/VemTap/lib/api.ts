@@ -1,7 +1,15 @@
-export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1';
+const normalizeBaseUrl = (raw?: string) => {
+    if (!raw) return 'http://localhost:3002/api/v1';
+    const trimmed = raw.replace(/\/+$/, '');
+    if (trimmed.endsWith('/api/v1')) return trimmed;
+    return `${trimmed}/api/v1`;
+};
+
+export const BASE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
-    const url = `${BASE_URL}${endpoint}`;
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = `${BASE_URL}${normalizedEndpoint}`;
 
     const defaultHeaders: HeadersInit = {
         'Content-Type': 'application/json',
