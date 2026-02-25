@@ -111,8 +111,9 @@ export default function NFCManagerPage() {
         toast.success('Link copied to clipboard');
     };
 
-    const downloadQRCode = (id: string, code: string) => {
-        const canvas = document.getElementById(`qr-${id}`) as HTMLCanvasElement;
+    const downloadQRCode = (id: string, code: string, isModal = false) => {
+        const canvasId = isModal ? `qr-modal-${id}` : `qr-${id}`;
+        const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
         if (canvas) {
             const url = canvas.toDataURL('image/png');
             const link = document.createElement('a');
@@ -301,12 +302,13 @@ export default function NFCManagerPage() {
                                                 </td>
                                                 <td className="px-8 py-6">
                                                     <div className="flex items-center gap-4 p-2 bg-slate-50 border border-slate-100 rounded-xl w-fit pr-4">
-                                                        <div className="p-2 bg-white border border-slate-200 rounded-lg shadow-sm">
+                                                        <div className="p-2 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
                                                             <QRCodeCanvas
                                                                 id={`qr-${device.id}`}
                                                                 value={deviceUrl}
-                                                                size={32}
+                                                                size={1024}
                                                                 level="H"
+                                                                style={{ width: 32, height: 32 }}
                                                             />
                                                         </div>
                                                         <div>
@@ -410,9 +412,10 @@ export default function NFCManagerPage() {
                                         <QRCodeCanvas
                                             id={`qr-modal-${selectedLink.id}`}
                                             value={`${window.location.origin}/tap/${selectedLink.code}`}
-                                            size={180}
+                                            size={1024}
                                             level="H"
                                             includeMargin={true}
+                                            style={{ width: 180, height: 180 }}
                                         />
                                         <div className="absolute inset-x-0 -bottom-3 flex justify-center">
                                             <span className="bg-primary text-white text-[8px] font-black uppercase px-3 py-1 rounded-full shadow-lg">Cloud Static Link</span>

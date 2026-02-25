@@ -25,27 +25,34 @@ export default function PublicTapPage() {
 
                 if (device) {
                     // Initialize the customer flow with live data
-                    // If business metadata is missing from the API, we use the device info as fallback
                     initializeFromBusiness({
                         id: device.business?.id || device.businessId || 'legacy-id',
                         name: device.business?.name || device.name,
                         type: device.business?.type || 'RETAIL',
                         welcomeMessage: device.business?.welcomeMessage || 'Welcome! Please fill in your details to stay connected.',
                         welcomeTitle: device.business?.welcomeTitle || 'Welcome',
+                        newUserWelcomeMessage: device.business?.welcomeMessage || 'Welcome! Please fill in your details to stay connected.',
+                        newUserWelcomeTitle: device.business?.welcomeTitle || 'Welcome',
                         successMessage: device.business?.successMessage || 'Thank you for visiting! We look forward to seeing you again.',
                         rewardEnabled: device.business?.rewardEnabled ?? false,
                         logoUrl: device.business?.logoUrl || null,
                         branchId: device.branchId,
                         currentDeviceId: device.id,
                         deviceCode: device.code,
-                        deviceName: device.name
+                        deviceName: device.name,
+                        isFirstTimeVisit: device.isFirstTimeVisit ?? true
                     } as any);
 
-                    // Record the visit for analytics (local state)
-                    recordVisit();
+                    // Record the visit logic - if returning, we skip the scanning animation
+                    if (!device.isFirstTimeVisit) {
+                        recordVisit();
+                    }
 
-                    // Redirect to the customer intake journey
-                    router.push('/user-step');
+                    // Get the business slug (prefer name for the URL)
+                    const businessSlug = (device.business?.name || 'business').toLowerCase().replace(/\s+/g, '-');
+
+                    // Redirect to the dynamic business/code route
+                    router.push(`/${businessSlug}/${device.code}`);
                 } else {
                     console.warn('Device not found for code:', businessId);
                     setError(true);

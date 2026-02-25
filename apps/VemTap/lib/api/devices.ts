@@ -16,6 +16,7 @@ export interface Device {
     branchId?: string;
     branch?: any; // Added to support tap flow metadata
     productTypeId?: string;
+    isFirstTimeVisit?: boolean;
     createdAt: string;
     updatedAt: string;
 }

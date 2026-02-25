@@ -6,7 +6,14 @@ import PhoneFrame from '@/components/shared/PhoneFrame';
 import { motion } from 'framer-motion';
 
 export default function ReturningGuestPreview() {
-    const { storeName, logoUrl } = useCustomerFlowStore();
+    const {
+        storeName,
+        logoUrl,
+        customWelcomeMessage,
+        customWelcomeTitle,
+        customWelcomeButton,
+        customWelcomeTag
+    } = useCustomerFlowStore();
 
     const mockUserData = {
         name: 'Daniel Peterson',
@@ -21,6 +28,10 @@ export default function ReturningGuestPreview() {
                     <StepWelcomeBack
                         storeName={storeName || "Your Store"}
                         logoUrl={logoUrl}
+                        customWelcomeMessage={customWelcomeMessage}
+                        customWelcomeTitle={customWelcomeTitle}
+                        customWelcomeButton={customWelcomeButton}
+                        customWelcomeTag={customWelcomeTag}
                         userData={mockUserData}
                         visitCount={4}
                         rewardVisitThreshold={5}
