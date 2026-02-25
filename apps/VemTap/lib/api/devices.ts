@@ -59,3 +59,6 @@ export const createDevice = async (data: any): Promise<Device> => {
     return await api.post('/devices', data);
 };
 
+export const fetchDeviceByCode = async (code: string): Promise<Device> => {
+    return await api.get(`/loyalty/device-info/${code}`);
+};

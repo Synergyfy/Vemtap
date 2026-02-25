@@ -261,7 +261,7 @@ export default function NFCManagerPage() {
                             <tbody className="divide-y divide-gray-50">
                                 <AnimatePresence mode="popLayout">
                                     {devices.map((device: any) => {
-                                        const deviceUrl = `${window.location.origin}/tap/${device.id}`;
+                                        const deviceUrl = `${window.location.origin}/tap/${device.code}`;
                                         const deviceBranch = branches.find((b: any) => b.id === device.branchId);
                                         return (
                                             <motion.tr
@@ -404,12 +404,12 @@ export default function NFCManagerPage() {
                                 </button>
                             </div>
 
-                            <div className="p-8 space-y-8">
+                            <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
                                 <div className="flex flex-col items-center gap-4">
                                     <div className="p-4 bg-white border-2 border-primary/10 rounded-3xl shadow-inner group relative">
                                         <QRCodeCanvas
                                             id={`qr-modal-${selectedLink.id}`}
-                                            value={`${window.location.origin}/tap/${selectedLink.id}`}
+                                            value={`${window.location.origin}/tap/${selectedLink.code}`}
                                             size={180}
                                             level="H"
                                             includeMargin={true}

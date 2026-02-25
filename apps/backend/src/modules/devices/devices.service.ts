@@ -72,15 +72,8 @@ export class DevicesService {
     });
   }
 
-  async findOne(id: string, businessId?: string): Promise<Device> {
-    const where: any = { id };
-    if (businessId) where.businessId = businessId;
-
-    const device = await this.devicesRepository.findOne({
-      where,
-      relations: ['business', 'branch'],
-    });
-
+  async findOne(id: string, businessId: string): Promise<Device> {
+    const device = await this.devicesRepository.findOneBy({ id, businessId });
     if (!device) {
       throw new NotFoundException('Device not found');
     }

@@ -13,7 +13,6 @@ import { DevicesService } from './devices.service';
 import { UpdateDeviceDto } from './dto/update-device.dto';
 import { UpdateAssetNamesDto } from './dto/update-asset-names.dto';
 import { Device } from './entities/device.entity';
-import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { User, UserRole } from '../users/entities/user.entity';
 import {
@@ -44,12 +43,11 @@ export class DevicesController {
     return this.devicesService.getStats(req.user.businessId);
   }
 
-  @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get details of a specific device' })
   @ApiResponse({ status: 200, description: 'Device details', type: Device })
-  findOne(@Request() req: any, @Param('id') id: string) {
-    return this.devicesService.findOne(id, req.user?.businessId);
+  findOne(@Request() req: { user: User }, @Param('id') id: string) {
+    return this.devicesService.findOne(id, req.user.businessId);
   }
 
   @Patch('names')
