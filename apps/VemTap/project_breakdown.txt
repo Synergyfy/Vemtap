@@ -1,2 +1,15 @@
 make sure that in the nfc manager a bussiness only aopapproved quote by the admin is can be able to generate the nfc links for eg,. approved quote 10 nfc cards when admin approves then bussiness can approve that 
 2. whjen the user n clicks on dropdown  on tablet it shpould work on click the solutions tab
+
+
+--platform template
+--upgrade add product to handle that
+
+
+
+
+---create plan, array of string admin can type features,
+--quarterly and yearly price remove. auto calculate
+--if the pricing is free-- features we can have access to 
+--can set trail duration.
+--auto set to 30 days 

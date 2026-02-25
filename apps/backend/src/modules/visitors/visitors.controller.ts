@@ -16,14 +16,17 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiBody,
 } from '@nestjs/swagger';
 import { VisitorsService } from './visitors.service';
 import { CreateVisitorDto } from './dto/create-visitor.dto';
+import { VisitorSignupDto } from './dto/visitor-signup.dto';
 import { CreateVisitorRewardDto } from './dto/create-visitor-reward.dto';
 import { DeviceTapDto } from './dto/device-tap.dto';
 import { VisitorQueryDto } from './dto/visitor-query.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Permissions } from 'src/common/decorators/permissions.decorator';
+import { Public } from 'src/common/decorators/public.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -215,16 +218,34 @@ export class VisitorsController {
 
   // --- CRUD & Individual Actions ---
 
+  @Public()
+  @Post('signup')
+  @ApiOperation({ summary: 'Public visitor signup (Customer Only)' })
+  @ApiBody({ type: VisitorSignupDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Visitor registered successfully',
+    type: VisitorResponseDto,
+  })
+  async publicSignup(@Body() dto: VisitorSignupDto) {
+    return this.visitorsService.create(dto);
+  }
+
   @Post()
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @Permissions('visitors')
   @ApiOperation({ summary: 'Create a new visitor' })
-  @ApiResponse({ type: VisitorResponseDto })
+  @ApiBody({ type: CreateVisitorDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Visitor created successfully',
+    type: VisitorResponseDto,
+  })
   async create(@Body() createVisitorDto: CreateVisitorDto, @Req() req: any) {
     return this.visitorsService.create(
       createVisitorDto,
       this.getBusinessId(req),
-      this.getBranchId(req, createVisitorDto.branchId),
+      this.getBranchId(req),
     );
   }
 

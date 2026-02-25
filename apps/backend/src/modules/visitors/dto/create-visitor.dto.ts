@@ -2,17 +2,19 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEmail,
   IsNotEmpty,
-  IsOptional,
   IsString,
-  IsEnum,
-  IsUUID,
 } from 'class-validator';
 
 export class CreateVisitorDto {
-  @ApiProperty({ example: 'John Doe' })
+  @ApiProperty({ example: 'John' })
   @IsString()
   @IsNotEmpty()
-  name: string;
+  firstName: string;
+
+  @ApiProperty({ example: 'Doe' })
+  @IsString()
+  @IsNotEmpty()
+  lastName: string;
 
   @ApiProperty({ example: 'john@example.com' })
   @IsEmail()
@@ -23,26 +25,4 @@ export class CreateVisitorDto {
   @IsString()
   @IsNotEmpty()
   phone: string;
-
-  @ApiProperty({ example: 'New', enum: ['New', 'Active', 'VIP', 'Returning'] })
-  @IsString()
-  @IsOptional()
-  status?: string;
-
-  @ApiProperty({
-    example: '123e4567-e89b-12d3-a456-426614174000',
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  deviceId?: string;
-
-  @ApiProperty({
-    example: '123e4567-e89b-12d3-a456-426614174000',
-    description:
-      'Branch ID where visitor is being registered (required if deviceId not provided)',
-    required: false,
-  })
-  @IsUUID()
-  branchId?: string;
 }
