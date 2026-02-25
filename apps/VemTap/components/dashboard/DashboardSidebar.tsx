@@ -209,6 +209,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             roles: ['owner', 'manager', 'staff']
         },
         {
+            id: 'agent-desk',
+            label: 'Support Desk',
+            icon: HelpCircle,
+            href: '/agent/dashboard',
+            roles: ['staff', 'manager']
+        },
+        {
             id: 'staff',
             label: 'Team',
             icon: Users2,

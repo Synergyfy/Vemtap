@@ -218,7 +218,7 @@ export default function ProductClient({ id }: { id: string }) {
         <div className="min-h-screen bg-white pb-0">
             <Navbar />
 
-            <main className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 pt-28">
+            <main className="max-w-350 mx-auto px-4 md:px-8 py-8 pt-28">
                 {/* Breadcrumb */}
                 <nav className="flex mb-8 text-sm font-medium text-slate-500">
                     <Link href="/" className="hover:text-primary flex items-center gap-1"><Home size={14} /> Home</Link>

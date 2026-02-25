@@ -12,7 +12,7 @@ export default function LogoIcon({ size = 24, className = "" }: LogoIconProps) {
     return (
         <div className={`relative inline-block ${className}`} style={{ width: pixelSize, height: pixelSize }}>
             <Image
-                src="/assets/VEMTAP_PNG.png"
+                src="/assets/vemtap_v.png"
                 alt="VemTap Icon"
                 fill
                 className="object-contain"

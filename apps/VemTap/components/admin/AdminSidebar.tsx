@@ -82,7 +82,12 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             id: 'users',
             label: 'Users',
             icon: Users,
-            href: '/admin/users',
+            submenu: [
+                { label: 'All Users', href: '/admin/users' },
+                { label: 'Businesses', href: '/admin/users/business' },
+                { label: 'Customers', href: '/admin/users/customers' },
+                { label: 'Agents', href: '/admin/users/agents' },
+            ],
         },
         {
             id: 'devices',
@@ -163,7 +168,7 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             id: 'agent-hub',
             label: 'Support Agent Hub',
             icon: HelpCircle,
-            href: '/admin/support',
+            href: '/admin/agent-hub',
         },
         {
             id: 'settings',
