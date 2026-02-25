@@ -7,7 +7,7 @@ import {
   IsBoolean,
 } from 'class-validator';
 
-export class CreateRewardDto {
+export class CreateLoyaltyRewardDto {
   @ApiProperty({ example: 'Free Coffee' })
   @IsNotEmpty()
   @IsString()

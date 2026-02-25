@@ -7,7 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Visit } from './entities/visit.entity';
-import { Device } from '../devices/entities/device.entity';
+import { Device, DeviceStatus } from '../devices/entities/device.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { VisitorQueryDto } from './dto/visitor-query.dto';
@@ -317,6 +317,110 @@ export class VisitorsService {
     });
 
     return this.mapToVisitorDto(updatedUser!);
+  }
+
+  async recordVisit(
+    userId: string,
+    deviceCode: string,
+  ): Promise<any> {
+    // 1. Identify customer
+    const user = await this.userRepository.findOne({
+      where: { id: userId, role: UserRole.CUSTOMER },
+    });
+    if (!user) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    // 2. Resolve device context
+    const device = await this.deviceRepository.findOne({
+      where: { code: deviceCode, status: DeviceStatus.ACTIVE },
+    });
+    if (!device) {
+      throw new NotFoundException(`Active device with code ${deviceCode} not found`);
+    }
+
+    const businessId = device.businessId;
+    const branchId = device.branchId;
+
+    // 3. Record visit
+    const visit = this.visitRepository.create({
+      customer: user,
+      businessId,
+      branchId,
+      deviceId: device.id,
+      status: 'returning',
+    });
+    await this.visitRepository.save(visit);
+
+    // Increment device scans
+    device.totalScans += 1;
+    await this.deviceRepository.save(device);
+
+    // 4. Contact Sync/Automation
+    let contact = await this.contactRepository.findOne({
+      where: [
+        { businessId, email: user.email },
+        { businessId, phone: user.phone },
+      ],
+    });
+
+    if (!contact) {
+      contact = this.contactRepository.create({
+        businessId,
+        email: user.email,
+        phone: user.phone,
+        name: `${user.firstName} ${user.lastName}`.trim(),
+        optInChannels: [Channel.SMS, Channel.EMAIL, Channel.WHATSAPP],
+      });
+      await this.contactRepository.save(contact);
+    }
+
+    const visitCount = await this.visitRepository.count({
+      where: {
+        customer: { id: user.id },
+        ...(branchId ? { branchId } : { businessId }),
+      },
+    });
+
+    await this.automationService.trigger(
+      visitCount === 1 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG,
+      {
+        businessId,
+        branchId,
+        contactId: contact.id,
+      },
+    );
+
+    // 5. Loyalty Integration (Branch context takes precedence)
+    const activeRule = branchId
+      ? await this.campaignsService.findActiveRule(branchId)
+      : null;
+
+    let loyaltyResult = null;
+    if (activeRule) {
+      // Check if user has a profile in this branch/campaign
+      const profile = await this.campaignsService.findProfile(user.id, branchId!);
+
+      if (profile) {
+        loyaltyResult = await this.campaignsService.earnPoints(branchId!, {
+          userId: user.id,
+          isVisit: true,
+        });
+      }
+    }
+
+    return {
+      message: 'Visit recorded successfully',
+      visit: {
+        id: visit.id,
+        createdAt: visit.createdAt,
+      },
+      loyalty: loyaltyResult,
+      context: {
+        businessId,
+        branchId,
+      },
+    };
   }
 
   async findOne(id: string): Promise<VisitorResponseDto> {

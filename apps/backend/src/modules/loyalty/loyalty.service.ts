@@ -9,9 +9,11 @@ import { LoyaltyProfile, TierLevel } from '../campaigns/entities/loyalty-profile
 import { Reward } from '../campaigns/entities/reward.entity';
 import { Redemption } from '../campaigns/entities/redemption.entity';
 import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
-import { CreateRewardDto } from './dto/create-reward.dto';
+import { CreateLoyaltyRewardDto } from './dto/create-reward.dto';
 import { EarnPointsDto } from './dto/earn-points.dto';
 import { DevicesService } from '../devices/devices.service';
+import { Device, DeviceStatus } from '../devices/entities/device.entity';
+import { CampaignsService } from '../campaigns/campaigns.service';
 import { Visit } from '../visitors/entities/visit.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { User } from '../users/entities/user.entity';
@@ -29,6 +31,7 @@ export class LoyaltyService {
     @InjectRepository(Redemption)
     private redemptionRepository: Repository<Redemption>,
     private readonly devicesService: DevicesService,
+    private readonly campaignsService: CampaignsService,
     private readonly dataSource: DataSource,
   ) { }
 
@@ -73,7 +76,7 @@ export class LoyaltyService {
 
   async createReward(
     businessId: string,
-    createRewardDto: CreateRewardDto,
+    createRewardDto: CreateLoyaltyRewardDto,
   ): Promise<Reward> {
     const reward = this.rewardRepository.create({
       ...createRewardDto,
@@ -202,57 +205,84 @@ export class LoyaltyService {
     return query.getMany();
   }
 
-  async getDeviceByCode(code: string) {
-    const device = await this.devicesService.findByCode(code);
+  async getDeviceByCode(code: string, userId?: string) {
+    const device = await this.dataSource.getRepository(Device).findOne({
+      where: { code, status: DeviceStatus.ACTIVE },
+      relations: ['business', 'business.owner', 'branch'],
+    });
+
     if (!device) {
-      throw new NotFoundException('Device not found');
+      throw new NotFoundException('Device not found or inactive');
     }
-    if (device.status !== 'active') {
-      throw new BadRequestException('Device is inactive');
+
+    let isFirstTimeVisit = true;
+    if (userId && device.businessId) {
+      const visitCount = await this.dataSource.getRepository(Visit).count({
+        where: { customerId: userId, businessId: device.businessId },
+      });
+      isFirstTimeVisit = visitCount === 0;
     }
-    // Return device with business and branch details
+
+    const { owner, ...businessInfo } = device.business || ({} as any);
+    let ownerInfo: any = null;
+    if (owner) {
+      ownerInfo = {
+        firstName: owner.firstName,
+        lastName: owner.lastName,
+        engagement: owner.engagement,
+      };
+    }
+
     return {
       id: device.id,
       name: device.name,
       code: device.code,
       type: device.type,
-      business: device.business,
+      business: businessInfo,
       branch: device.branch,
+      owner: ownerInfo,
+      isFirstTimeVisit,
     };
   }
 
   async processTap(
     userId: string,
     deviceCode: string,
-  ): Promise<LoyaltyProfile> {
-    // 1. Find device
-    const device = await this.devicesService.findByCode(deviceCode);
+  ): Promise<any> {
+    // 1. Find device with relations
+    const device = await this.dataSource.getRepository(Device).findOne({
+      where: { code: deviceCode },
+      relations: ['business', 'business.owner', 'branch'],
+    });
+
     if (!device) {
       throw new NotFoundException('Device not found');
     }
 
-    // 2. Validate device (e.g. check if active)
-    if (device.status !== 'active') {
+    // 2. Validate device
+    if (device.status !== DeviceStatus.ACTIVE) {
       throw new BadRequestException('Device is inactive');
     }
 
     // 3. Increment total scans
     device.totalScans += 1;
-    await this.devicesService.adminUpdate(device.id, {
-      totalScans: device.totalScans,
-    });
+    await this.dataSource.getRepository(Device).save(device);
 
-    // 4. Earn points (Visit)
-    // Default 10 points for a visit for now
-    const pointsAmount = 10;
-    const profile = await this.earnPoints(device.businessId, {
-      userId,
-      amount: pointsAmount,
-      reason: 'Visit Tap',
-    });
+    // 4. Earn points (Rule-based)
+    let profile = await this.getProfile(userId, device.businessId);
+
+    if (device.branchId) {
+      const activeRule = await this.campaignsService.findActiveRule(device.branchId);
+      if (activeRule) {
+        await this.campaignsService.earnPoints(device.branchId, {
+          userId,
+          isVisit: true,
+        });
+        profile = await this.getProfile(userId, device.businessId);
+      }
+    }
 
     // 5. Explicitly record in the Visitors/Visits table
-    // Fetch user to ensure we have context
     const user = await this.dataSource.getRepository(User).findOneBy({ id: userId });
 
     if (user) {
@@ -260,13 +290,13 @@ export class LoyaltyService {
       const newVisit = visitRepo.create({
         customer: user,
         businessId: device.businessId,
-        branchId: device.branchId, // Inherit branch from device if it exists
+        branchId: device.branchId,
         deviceId: device.id,
-        status: 'returning', // Taps are by existing logged-in users
+        status: 'returning',
       });
       await visitRepo.save(newVisit);
 
-      // Check/Create Contact for the business
+      // Contact Sync
       const contactRepo = this.dataSource.getRepository(Contact);
       let contact = await contactRepo.findOne({
         where: [
@@ -287,7 +317,20 @@ export class LoyaltyService {
       }
     }
 
-    return profile;
+    // 6. Return comprehensive info
+    const { owner, ...businessInfo } = device.business || ({} as any);
+    let ownerInfo: any = null;
+    if (owner) {
+      const { password, ...safeOwner } = owner;
+      ownerInfo = safeOwner;
+    }
+
+    return {
+      profile,
+      business: businessInfo,
+      branch: device.branch,
+      owner: ownerInfo,
+    };
   }
 
   async getAnalytics(userId: string) {

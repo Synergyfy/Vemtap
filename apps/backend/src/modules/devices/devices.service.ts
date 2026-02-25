@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
@@ -91,6 +92,12 @@ export class DevicesService {
   ): Promise<Device> {
     const device = await this.findOne(id, businessId);
 
+    // If branchId is an empty string, treat it as null (to unset the branch)
+    if (updateDeviceDto.branchId === '') {
+      updateDeviceDto.branchId = null;
+    }
+
+    // Validate branchId if a new UUID is provided
     if (updateDeviceDto.branchId) {
       const branch = await this.branchRepository.findOneBy({
         id: updateDeviceDto.branchId,
@@ -99,12 +106,20 @@ export class DevicesService {
         throw new NotFoundException('Branch not found');
       }
       if (branch.businessId !== businessId) {
-        throw new ConflictException('Branch does not belong to your business');
+        throw new BadRequestException('Branch does not belong to your business');
       }
     }
 
     Object.assign(device, updateDeviceDto);
-    return this.devicesRepository.save(device);
+
+    try {
+      return await this.devicesRepository.save(device);
+    } catch (error) {
+      if (error.code === '22P02') {
+        throw new BadRequestException('Invalid UUID format provided');
+      }
+      throw error;
+    }
   }
 
   async fulfillOrder(orderId: string): Promise<Device[]> {

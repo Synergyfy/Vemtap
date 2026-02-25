@@ -20,6 +20,7 @@ import {
 import { VisitorsService } from './visitors.service';
 import { CreateVisitorDto } from './dto/create-visitor.dto';
 import { CreateVisitorRewardDto } from './dto/create-visitor-reward.dto';
+import { DeviceTapDto } from './dto/device-tap.dto';
 import { VisitorQueryDto } from './dto/visitor-query.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Permissions } from 'src/common/decorators/permissions.decorator';
@@ -224,6 +225,16 @@ export class VisitorsController {
       createVisitorDto,
       this.getBusinessId(req),
       this.getBranchId(req, createVisitorDto.branchId),
+    );
+  }
+
+  @Post('record-visit')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Record a visit via device tap (Customer Only)' })
+  async recordVisit(@Body() dto: DeviceTapDto, @Req() req: any) {
+    return this.visitorsService.recordVisit(
+      req.user.id,
+      dto.deviceCode,
     );
   }
 
