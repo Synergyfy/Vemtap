@@ -19,6 +19,7 @@ import {
 } from './dto/visitor-response.dto';
 import { VisitorStatsResponseDto } from './dto/visitor-stats.dto';
 import { CreateVisitorDto } from './dto/create-visitor.dto';
+import { VisitorSignupDto } from './dto/visitor-signup.dto';
 import { MessagingEngineService } from '../messaging/services/messaging-engine.service';
 import { AutomationService } from '../messaging/services/automation.service';
 import { TriggerType } from '../messaging/enums/automation.enum';
@@ -215,22 +216,23 @@ export class VisitorsService {
   }
 
   async create(
-    createVisitorDto: CreateVisitorDto,
-    businessId: string,
+    createVisitorDto: CreateVisitorDto | VisitorSignupDto,
+    businessId?: string,
     branchId?: string,
   ): Promise<VisitorResponseDto> {
+    const dto = createVisitorDto as any; // Cast for easier access to optional fields
     // Check if user exists
     let user = await this.userRepository.findOne({
-      where: { email: createVisitorDto.email },
+      where: { email: dto.email },
     });
 
     if (!user) {
       const hashedPassword = await bcrypt.hash('mypassword', 10);
       user = this.userRepository.create({
-        email: createVisitorDto.email,
-        firstName: createVisitorDto.name.split(' ')[0] || '',
-        lastName: createVisitorDto.name.split(' ').slice(1).join(' ') || '',
-        phone: createVisitorDto.phone,
+        email: dto.email,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        phone: dto.phone,
         password: hashedPassword,
         role: UserRole.CUSTOMER,
       });
@@ -243,72 +245,86 @@ export class VisitorsService {
       );
     }
 
-    // Resolve branchId from device if not provided
-    let resolvedBranchId = branchId;
-    if (!resolvedBranchId && createVisitorDto.deviceId) {
-      const device = await this.deviceRepository.findOne({
-        where: { id: createVisitorDto.deviceId },
-      });
-      if (device) resolvedBranchId = device.branchId;
-    }
+    // Resolve branchId and businessId
+    let resolvedBranchId = branchId || dto.branchId;
+    let resolvedBusinessId = businessId;
 
-    // Validate that branch exists IF provided
-    if (resolvedBranchId) {
-      const branch = await this.branchRepository.findOne({
-        where: { id: resolvedBranchId },
+    if (dto.deviceId) {
+      const device = await this.deviceRepository.findOne({
+        where: { id: dto.deviceId },
       });
-      if (!branch) {
-        throw new NotFoundException(
-          `Branch with ID ${resolvedBranchId} not found`,
-        );
+      if (device) {
+        if (!resolvedBranchId) resolvedBranchId = device.branchId;
+        if (!resolvedBusinessId) resolvedBusinessId = device.businessId;
       }
     }
 
-    const visit = this.visitRepository.create({
-      customer: user,
-      businessId,
-      branchId: resolvedBranchId,
-      deviceId: createVisitorDto.deviceId,
-      status: 'new',
-    });
-    await this.visitRepository.save(visit);
-
-    // Automation Trigger
-    // Find or create Contact
-    let contact = await this.contactRepository.findOne({
-      where: [
-        { businessId, email: user.email },
-        { businessId, phone: user.phone },
-      ],
-    });
-
-    if (!contact) {
-      contact = this.contactRepository.create({
-        businessId,
-        email: user.email,
-        phone: user.phone,
-        name: `${user.firstName} ${user.lastName}`,
-        optInChannels: [Channel.SMS, Channel.EMAIL, Channel.WHATSAPP], // Default opt-in
+    if (resolvedBranchId && !resolvedBusinessId) {
+      const branch = await this.branchRepository.findOne({
+        where: { id: resolvedBranchId },
       });
-      await this.contactRepository.save(contact);
+      if (branch) resolvedBusinessId = branch.businessId;
     }
 
-    const visitWhere: any = { customer: { id: user.id } };
-    if (resolvedBranchId) visitWhere.branchId = resolvedBranchId;
-    else visitWhere.businessId = businessId;
+    // Only proceed with business-specific logic if businessId is resolved
+    if (resolvedBusinessId) {
+      // Validate that branch exists IF provided
+      if (resolvedBranchId) {
+        const branch = await this.branchRepository.findOne({
+          where: { id: resolvedBranchId },
+        });
+        if (!branch) {
+          throw new NotFoundException(
+            `Branch with ID ${resolvedBranchId} not found`,
+          );
+        }
+      }
 
-    const visitCount = await this.visitRepository.count({
-      where: visitWhere,
-    });
+      const visit = this.visitRepository.create({
+        customer: user,
+        businessId: resolvedBusinessId,
+        branchId: resolvedBranchId,
+        deviceId: dto.deviceId,
+        status: 'new',
+      });
+      await this.visitRepository.save(visit);
 
-    const triggerType =
-      visitCount === 1 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG;
+      // Contact Sync
+      let contact = await this.contactRepository.findOne({
+        where: [
+          { businessId: resolvedBusinessId, email: user.email },
+          { businessId: resolvedBusinessId, phone: user.phone },
+        ],
+      });
 
-    await this.automationService.trigger(triggerType, {
-      businessId,
-      branchId: resolvedBranchId,
-      contactId: contact.id,
-    });
+      if (!contact) {
+        contact = this.contactRepository.create({
+          businessId: resolvedBusinessId,
+          email: user.email,
+          phone: user.phone,
+          name: `${user.firstName} ${user.lastName}`,
+          optInChannels: [Channel.SMS, Channel.EMAIL, Channel.WHATSAPP],
+        });
+        await this.contactRepository.save(contact);
+      }
+
+      const visitWhere: any = { customer: { id: user.id } };
+      if (resolvedBranchId) visitWhere.branchId = resolvedBranchId;
+      else visitWhere.businessId = resolvedBusinessId;
+
+      const visitCount = await this.visitRepository.count({
+        where: visitWhere,
+      });
+
+      const triggerType =
+        visitCount === 1 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG;
+
+      await this.automationService.trigger(triggerType, {
+        businessId: resolvedBusinessId,
+        branchId: resolvedBranchId,
+        contactId: contact.id,
+      });
+    }
 
     // Re-fetch to get full structure
     const updatedUser = await this.userRepository.findOne({
@@ -439,10 +455,8 @@ export class VisitorsService {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException('Visitor not found');
 
-    if (updateData.name) {
-      user.firstName = updateData.name.split(' ')[0];
-      user.lastName = updateData.name.split(' ').slice(1).join(' ');
-    }
+    if (updateData.firstName) user.firstName = updateData.firstName;
+    if (updateData.lastName) user.lastName = updateData.lastName;
     if (updateData.email) user.email = updateData.email;
     if (updateData.phone) user.phone = updateData.phone;
 
@@ -489,7 +503,8 @@ export class VisitorsService {
 
     const dtos = users.map((u) => ({
       id: u.id,
-      name: `${u.firstName} ${u.lastName}`,
+      firstName: u.firstName,
+      lastName: u.lastName,
       email: u.email,
       phone: u.phone,
       joined: u.createdAt,
@@ -624,7 +639,8 @@ export class VisitorsService {
 
     const dtos = rawData.map((r) => ({
       id: r.user_id,
-      name: `${r.user_firstName} ${r.user_lastName}`,
+      firstName: r.user_firstName,
+      lastName: r.user_lastName,
       email: r.user_email,
       phone: r.user_phone,
       totalVisits: parseInt(r.total_visits),
@@ -728,9 +744,9 @@ export class VisitorsService {
       businessId,
       branchId,
     );
-    let csv = 'Name,Email,Phone,Visits,Last Visit,Status\n';
+    let csv = 'First Name,Last Name,Email,Phone,Visits,Last Visit,Status\n';
     visitors.data.forEach((v) => {
-      csv += `"${v.name}","${v.email}","${v.phone}",${v.visits},"${v.lastVisit.toISOString()}",${v.status}\n`;
+      csv += `"${v.firstName}","${v.lastName}","${v.email}","${v.phone}",${v.visits},"${v.lastVisit.toISOString()}",${v.status}\n`;
     });
     return {
       message: 'Export successful',
@@ -845,7 +861,8 @@ export class VisitorsService {
 
     return {
       id: user.id,
-      name: `${user.firstName} ${user.lastName}`,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
       phone: user.phone,
       visits: visitCount,
