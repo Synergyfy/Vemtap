@@ -9,6 +9,7 @@ const agents = [
     { id: 'agent-2', name: 'Tunde Bello', status: 'online', activeChats: 1 },
     { id: 'agent-3', name: 'Zainab Yusuf', status: 'away', activeChats: 0 },
 ];
+const statuses = ['unassigned', 'assigned'] as const;
 
 const initialConversations = [
     {
@@ -265,7 +266,7 @@ export default function AgentHubPage() {
                                     </div>
                                     <div>
                                         <p className="font-bold text-text-main">{activeConversation.user.name}</p>
-                                        <p className="text-xs text-text-secondary font-medium">{activeConversation.subject} • {activeConversation.channel}</p>
+                                        <p className="text-xs text-text-secondary font-medium">{activeConversation.subject}  -  {activeConversation.channel}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -365,7 +366,7 @@ export default function AgentHubPage() {
                                         <CheckCircle2 size={14} className="text-primary" />
                                         <p className="text-xs font-bold text-text-main">{item.action}</p>
                                     </div>
-                                    <p className="text-[10px] text-text-secondary mt-1">{item.by} • {item.time}</p>
+                                    <p className="text-[10px] text-text-secondary mt-1">{item.by}  -  {item.time}</p>
                                 </div>
                             ))}
                             <button className="w-full py-3 bg-white border border-gray-200 rounded-xl text-xs font-black uppercase tracking-widest text-text-secondary hover:bg-gray-50 transition flex items-center justify-center gap-2">
