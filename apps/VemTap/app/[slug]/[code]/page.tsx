@@ -187,14 +187,14 @@ export default function DynamicTapJourneyPage() {
     const recordLoyaltyTap = async (identity: any) => {
         try {
             // This monitors the "stay" and triggers rule-based point earnings
-            const response = await api.post(`/loyalty/tap/${deviceCode}`);
+            // Authentication is now required as backend was reverted
+            const response = await api.post(`/loyalty/tap/${deviceCode}`, {});
             if (response && response.profile) {
                 // Refresh local profile state
                 const { fetchLoyaltyProfile } = useLoyaltyStore.getState();
-                fetchLoyaltyProfile(identity.email || identity.phone || identity.uniqueId, branchId || 'head-office');
+                const identifier = identity.email || identity.phone || identity.uniqueId;
+                fetchLoyaltyProfile(identifier, branchId || 'head-office');
 
-                // Show celebration modal if points were earned logic could go here
-                // For now we just ensure the backend processes the "tap" for rules (visit count, cooldowns, etc)
                 console.log('Loyalty tap processed:', response);
             }
         } catch (err) {
@@ -203,17 +203,46 @@ export default function DynamicTapJourneyPage() {
     };
 
     const onFormSubmit = async (data: any) => {
-        localStorage.setItem('google_identity', JSON.stringify(data));
-        setUserData(data);
+        try {
+            // Split name into firstName/lastName for backend DTO
+            const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
+            const firstName = nameParts[0];
+            const lastName = nameParts.slice(1).join(' ') || ' ';
 
-        const identity = data;
-        const currentBusinessId = useCustomerFlowStore.getState().businessId;
-        if (currentBusinessId) {
-            // Trigger the rule monitoring stay
-            recordLoyaltyTap(identity);
+            // 1. Register user via public signup endpoint
+            await api.post('/visitors/signup', {
+                firstName,
+                lastName,
+                email: data.email,
+                phone: data.phone
+            });
+
+            // 2. Performance Silent Login to get a token (Backend uses 'mypassword' for default signup)
+            const authResponse = await api.post('/auth/login', {
+                email: data.email,
+                password: 'mypassword'
+            });
+
+            if (authResponse?.access_token) {
+                // Set the session so subsequent 'api' calls include the Bearer token
+                useAuthStore.getState().login(authResponse.user, authResponse.access_token);
+            }
+
+            localStorage.setItem('google_identity', JSON.stringify(data));
+            setUserData(data);
+
+            const currentBusinessId = useCustomerFlowStore.getState().businessId;
+            if (currentBusinessId) {
+                // 3. Trigger the rule monitoring stay (loyalty/tap/:code)
+                // This is now authenticated via the token we just received
+                await recordLoyaltyTap(data);
+            }
+
+            setStep('OUTCOME');
+        } catch (err: any) {
+            console.error('Registration/Login failed:', err);
+            toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
         }
-
-        setStep('OUTCOME');
     };
 
     const handleDownloadReward = () => {
