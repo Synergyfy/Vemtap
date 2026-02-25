@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
 import { toast } from 'react-hot-toast';
 import { Star, Share2, MessageCircle, Trophy, Link as LinkIcon, Save, Smartphone, Loader2 } from 'lucide-react';
@@ -18,7 +19,9 @@ const Toggle = ({ active, onChange }: { active: boolean; onChange: (val: boolean
 );
 
 export default function EngagementSettingsPage() {
+    const { user, updateUser } = useAuthStore();
     const { engagementSettings, updateEngagementSettings } = useCustomerFlowStore();
+    const [isSaving, setIsSaving] = useState(false);
     const { data: business, isLoading } = useMyBusiness();
     const updateMutation = useUpdateBusiness();
 
@@ -33,52 +36,73 @@ export default function EngagementSettingsPage() {
         showFeedback: true,
     });
 
-    React.useEffect(() => {
-        if (business) {
+    useEffect(() => {
+        if (business || user) {
             setLocalSettings({
-                reviewUrl: business.reviewUrl || '',
-                instagram: business.instagramUrl || '',
-                twitter: business.xUrl || '',
-                facebook: business.facebookUrl || '',
-                linkedin: business.linkedinUrl || '',
-                showReview: business.showReview ?? true,
-                showSocial: business.showSocial ?? true,
-                showFeedback: business.showFeedback ?? true,
+                reviewUrl: business?.reviewUrl || user?.engagement?.reviewUrl || '',
+                instagram: business?.instagramUrl || user?.engagement?.instagram || '',
+                twitter: business?.xUrl || user?.engagement?.twitter || '',
+                facebook: business?.facebookUrl || user?.engagement?.facebook || '',
+                linkedin: business?.linkedinUrl || user?.engagement?.linkedin || '',
+                showReview: business?.showReview ?? user?.engagement?.showReview ?? true,
+                showSocial: business?.showSocial ?? user?.engagement?.showSocial ?? true,
+                showFeedback: business?.showFeedback ?? user?.engagement?.showFeedback ?? true,
             });
         }
-    }, [business]);
+    }, [business, user]);
 
-    const handleSave = () => {
-        if (!business) return;
-        updateMutation.mutate({
-            id: business.id,
-            updates: {
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            const engagementPayload = {
                 reviewUrl: localSettings.reviewUrl,
-                instagramUrl: localSettings.instagram,
-                xUrl: localSettings.twitter,
-                facebookUrl: localSettings.facebook,
-                linkedinUrl: localSettings.linkedin,
+                instagram: localSettings.instagram,
+                twitter: localSettings.twitter,
+                facebook: localSettings.facebook,
+                linkedin: localSettings.linkedin,
                 showReview: localSettings.showReview,
                 showSocial: localSettings.showSocial,
                 showFeedback: localSettings.showFeedback,
-            }
-        }, {
-            onSuccess: () => {
-                // Also update local store just in case
-                updateEngagementSettings({
-                    ...engagementSettings,
-                    reviewUrl: localSettings.reviewUrl,
-                    instagram: localSettings.instagram,
-                    twitter: localSettings.twitter,
-                    facebook: localSettings.facebook,
-                    showReview: localSettings.showReview,
-                    showSocial: localSettings.showSocial,
-                    showFeedback: localSettings.showFeedback,
+            };
+
+            const { usersApi } = await import('@/lib/api/users');
+
+            // 1. Update User Engagement (The new endpoint requested)
+            await usersApi.updateEngagement(engagementPayload);
+
+            // Sync with local Auth Store
+            await updateUser({ engagement: engagementPayload });
+
+            // 2. Update Business (Existing logic)
+            if (business) {
+                await updateMutation.mutateAsync({
+                    id: business.id,
+                    updates: {
+                        reviewUrl: localSettings.reviewUrl,
+                        instagramUrl: localSettings.instagram,
+                        xUrl: localSettings.twitter,
+                        facebookUrl: localSettings.facebook,
+                        linkedinUrl: localSettings.linkedin,
+                        showReview: localSettings.showReview,
+                        showSocial: localSettings.showSocial,
+                        showFeedback: localSettings.showFeedback,
+                    }
                 });
-                toast.success('Engagement settings updated successfully');
-            },
-            onError: () => toast.error('Failed to update settings')
-        });
+            }
+
+            // Also update local flow store for immediate UI updates in the journey
+            updateEngagementSettings({
+                ...engagementSettings,
+                ...engagementPayload
+            });
+
+            toast.success('Engagement settings updated successfully');
+        } catch (error) {
+            console.error('Update failed:', error);
+            toast.error('Failed to update settings');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     if (isLoading) {
@@ -272,10 +296,10 @@ export default function EngagementSettingsPage() {
             <div className="flex justify-end pt-12 border-t border-gray-100 mt-12">
                 <button
                     onClick={handleSave}
-                    disabled={updateMutation.isPending}
+                    disabled={isSaving}
                     className="h-14 px-10 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3 disabled:opacity-50"
                 >
-                    {updateMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : (
+                    {isSaving ? <Loader2 size={18} className="animate-spin" /> : (
                         <>
                             <Save size={18} />
                             Save Configuration
