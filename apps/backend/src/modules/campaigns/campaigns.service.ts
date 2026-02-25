@@ -176,12 +176,17 @@ export class CampaignsService {
     userId: string,
     branchId: string,
   ): Promise<LoyaltyProfile> {
+    const branch = await this.branchesService.findById(branchId);
+    if (!branch) throw new NotFoundException('Branch not found');
+
     let profile = await this.profileRepository.findOne({
-      where: { userId, branchId },
+      where: { userId, businessId: branch.businessId },
     });
+
     if (!profile) {
       profile = this.profileRepository.create({
         userId,
+        businessId: branch.businessId,
         branchId,
         tierLevel: 'bronze',
       });
@@ -213,8 +218,11 @@ export class CampaignsService {
     userId: string,
     branchId: string,
   ): Promise<LoyaltyProfile | null> {
+    const branch = await this.branchesService.findById(branchId);
+    if (!branch) return null;
+
     return this.profileRepository.findOne({
-      where: { userId, branchId },
+      where: { userId, businessId: branch.businessId },
     });
   }
 

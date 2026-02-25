@@ -29,11 +29,11 @@ export class LoyaltyProfile extends AbstractBaseEntity {
   user: User;
 
   @ApiProperty({ description: 'The business ID', example: 'business_001' })
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: false })
   @Index()
   businessId: string;
 
-  @ManyToOne(() => Business)
+  @ManyToOne(() => Business, { nullable: false })
   @JoinColumn({ name: 'businessId' })
   business: Business;
 
