@@ -50,7 +50,8 @@ describe('PaymentsService', () => {
       );
 
       const result = await service.verifyTransaction('ref_123');
-      expect(result).toBe(true);
+      expect(result).toBeTruthy();
+      expect(result.status).toBe('success');
     });
 
     it('should return false if paystack status is not success', async () => {

@@ -4,11 +4,13 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Device, DeviceStatus } from './entities/device.entity';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Order, OrderStatus } from '../products/entities/order.entity';
+import { Branch } from '../branches/entities/branch.entity';
 
 describe('DevicesService', () => {
   let service: DevicesService;
   let deviceRepository: any;
   let orderRepository: any;
+  let branchRepository: any;
 
   const mockDevice = {
     id: 'device-1',
@@ -23,12 +25,20 @@ describe('DevicesService', () => {
     create: jest.fn().mockImplementation((dto) => dto),
     save: jest.fn().mockResolvedValue(mockDevice),
     find: jest.fn(),
+    findOne: jest.fn(),
     findOneBy: jest.fn(),
     remove: jest.fn(),
+    count: jest.fn(),
   };
 
   const mockOrderRepository = {
     find: jest.fn(),
+    findOne: jest.fn(),
+    save: jest.fn(),
+  };
+
+  const mockBranchRepository = {
+    findOneBy: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -39,12 +49,14 @@ describe('DevicesService', () => {
         DevicesService,
         { provide: getRepositoryToken(Device), useValue: mockDeviceRepository },
         { provide: getRepositoryToken(Order), useValue: mockOrderRepository },
+        { provide: getRepositoryToken(Branch), useValue: mockBranchRepository },
       ],
     }).compile();
 
     service = module.get<DevicesService>(DevicesService);
     deviceRepository = module.get(getRepositoryToken(Device));
     orderRepository = module.get(getRepositoryToken(Order));
+    branchRepository = module.get(getRepositoryToken(Branch));
   });
 
   it('should create a device', async () => {

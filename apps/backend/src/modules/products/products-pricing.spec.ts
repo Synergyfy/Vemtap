@@ -3,18 +3,16 @@ import { ProductsService } from './products.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
 import { Quote } from './entities/quote.entity';
-import { Order, PaymentStatus } from './entities/order.entity';
+import { Order, OrderStatus, PaymentStatus } from './entities/order.entity';
 import { QuoteNegotiation } from './entities/quote-negotiation.entity';
+import { ProductType } from './entities/product-type.entity';
 import { Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { PaymentsService } from '../payments/payments.service';
 
 describe('ProductsService - Pricing & Payment', () => {
   let service: ProductsService;
-  let productRepo: Repository<Product>;
-  let orderRepo: Repository<Order>;
-  let paymentsService: PaymentsService;
 
   const mockProductRepo = {
     create: jest.fn(),
@@ -37,6 +35,7 @@ describe('ProductsService - Pricing & Payment', () => {
 
   const mockQuoteRepo = {};
   const mockNegotiationRepo = {};
+  const mockProductTypeRepo = {};
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -49,14 +48,15 @@ describe('ProductsService - Pricing & Payment', () => {
           provide: getRepositoryToken(QuoteNegotiation),
           useValue: mockNegotiationRepo,
         },
+        {
+          provide: getRepositoryToken(ProductType),
+          useValue: mockProductTypeRepo,
+        },
         { provide: PaymentsService, useValue: mockPaymentsService },
       ],
     }).compile();
 
     service = module.get<ProductsService>(ProductsService);
-    productRepo = module.get<Repository<Product>>(getRepositoryToken(Product));
-    orderRepo = module.get<Repository<Order>>(getRepositoryToken(Order));
-    paymentsService = module.get<PaymentsService>(PaymentsService);
   });
 
   afterEach(() => {
@@ -77,53 +77,27 @@ describe('ProductsService - Pricing & Payment', () => {
       requestQuoteThreshold: 1000,
     } as unknown as Product;
 
-    it('should create PAID order if payment verified', async () => {
+    it('should create PENDING order (online payment skipped for MVP)', async () => {
       mockProductRepo.findOne.mockResolvedValue(product);
-      mockOrderRepo.findOneBy.mockResolvedValue(null); // No duplicate order
-      mockPaymentsService.verifyTransaction.mockResolvedValue(true);
-      mockPaymentsService.recordPayment.mockResolvedValue({ id: 'pay-1' });
-      mockOrderRepo.create.mockImplementation((dto) => dto);
-      mockOrderRepo.save.mockImplementation((order) =>
-        Promise.resolve({ id: 'order-1', ...order }),
-      );
+      mockOrderRepo.findOneBy.mockResolvedValue(null);
+      mockOrderRepo.create.mockImplementation((dto) => ({ id: 'order-1', ...dto }));
+      mockOrderRepo.save.mockImplementation((order) => Promise.resolve(order));
 
       const dto = { productId, quantity: 50, paymentReference: 'ref_valid' };
       const result = await service.createDirectOrder(user, dto);
 
-      expect(result.paymentStatus).toBe(PaymentStatus.PAID);
-      expect(mockPaymentsService.recordPayment).toHaveBeenCalled();
+      expect(result.status).toBe(OrderStatus.PENDING);
+      expect(result.paymentStatus).toBe(PaymentStatus.PENDING);
       expect(mockOrderRepo.save).toHaveBeenCalled();
     });
 
-    it('should throw error if payment reference missing', async () => {
-      mockProductRepo.findOne.mockResolvedValue(product);
-      const dto = { productId, quantity: 50 }; // No ref
+    it('should throw error if quantity exceeds threshold', async () => {
+      const productWithThreshold = { ...product, requestQuoteThreshold: 10 };
+      mockProductRepo.findOne.mockResolvedValue(productWithThreshold);
+      const dto = { productId, quantity: 50 };
 
       await expect(service.createDirectOrder(user, dto)).rejects.toThrow(
         BadRequestException,
-      );
-    });
-
-    it('should throw error if payment verification fails', async () => {
-      mockProductRepo.findOne.mockResolvedValue(product);
-      mockOrderRepo.findOneBy.mockResolvedValue(null);
-      mockPaymentsService.verifyTransaction.mockResolvedValue(false);
-
-      const dto = { productId, quantity: 50, paymentReference: 'ref_invalid' };
-
-      await expect(service.createDirectOrder(user, dto)).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-
-    it('should throw conflict if order with same reference exists', async () => {
-      mockProductRepo.findOne.mockResolvedValue(product);
-      mockOrderRepo.findOneBy.mockResolvedValue({ id: 'existing_order' });
-
-      const dto = { productId, quantity: 50, paymentReference: 'ref_used' };
-
-      await expect(service.createDirectOrder(user, dto)).rejects.toThrow(
-        ConflictException,
       );
     });
   });

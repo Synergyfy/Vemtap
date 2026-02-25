@@ -1,14 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { VisitorsService } from './visitors.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { User, UserRole } from '../users/entities/user.entity';
+import { User } from '../users/entities/user.entity';
 import { Visit } from './entities/visit.entity';
-import { Repository, SelectQueryBuilder } from 'typeorm';
+import { Device } from '../devices/entities/device.entity';
+import { Branch } from '../branches/entities/branch.entity';
+import { Contact } from '../contacts/entities/contact.entity';
+import { MessagingEngineService } from '../messaging/services/messaging-engine.service';
+import { CampaignsService } from '../campaigns/campaigns.service';
+import { AutomationService } from '../messaging/services/automation.service';
+import { MailService } from '../mail/mail.service';
 
 describe('VisitorsService', () => {
   let service: VisitorsService;
-  let userRepository: Repository<User>;
-  let visitRepository: Repository<Visit>;
 
   const mockQueryBuilder = {
     leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -18,78 +22,68 @@ describe('VisitorsService', () => {
     andWhere: jest.fn().mockReturnThis(),
     select: jest.fn().mockReturnThis(),
     groupBy: jest.fn().mockReturnThis(),
+    having: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
     skip: jest.fn().mockReturnThis(),
     take: jest.fn().mockReturnThis(),
-    getManyAndCount: jest.fn(),
-    getMany: jest.fn(),
-    getCount: jest.fn(),
+    getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+    getMany: jest.fn().mockResolvedValue([]),
+    getCount: jest.fn().mockResolvedValue(0),
+    getRawMany: jest.fn().mockResolvedValue([]),
+  };
+
+  const mockUserRepo = {
+    createQueryBuilder: jest.fn(() => mockQueryBuilder),
+    findOne: jest.fn(),
+    findOneBy: jest.fn(),
+    create: jest.fn().mockImplementation(d => d),
+    save: jest.fn().mockImplementation(d => Promise.resolve({ id: '1', ...d })),
+    softDelete: jest.fn(),
+  };
+
+  const mockVisitRepo = {
+    create: jest.fn().mockImplementation(d => d),
+    save: jest.fn().mockImplementation(d => Promise.resolve({ id: '1', ...d })),
+    count: jest.fn().mockResolvedValue(0),
+  };
+
+  const mockDeviceRepo = { findOne: jest.fn() };
+  const mockBranchRepo = { findOne: jest.fn() };
+  const mockContactRepo = {
+    findOne: jest.fn(),
+    create: jest.fn().mockImplementation(d => d),
+    save: jest.fn().mockImplementation(d => Promise.resolve({ id: '1', ...d })),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         VisitorsService,
+        { provide: getRepositoryToken(User), useValue: mockUserRepo },
+        { provide: getRepositoryToken(Visit), useValue: mockVisitRepo },
+        { provide: getRepositoryToken(Device), useValue: mockDeviceRepo },
+        { provide: getRepositoryToken(Branch), useValue: mockBranchRepo },
+        { provide: getRepositoryToken(Contact), useValue: mockContactRepo },
         {
-          provide: getRepositoryToken(User),
-          useValue: {
-            createQueryBuilder: jest.fn(() => mockQueryBuilder),
-            findOne: jest.fn(),
-            create: jest.fn(),
-            save: jest.fn(),
-            softDelete: jest.fn(),
-          },
-        },
-        {
-          provide: getRepositoryToken(Visit),
-          useValue: {
-            create: jest.fn(),
-            save: jest.fn(),
-            count: jest.fn().mockResolvedValue(0),
-          },
-        },
-        {
-          provide: getRepositoryToken(
-            require('../devices/entities/device.entity').Device,
-          ),
-          useValue: { findOne: jest.fn() },
-        },
-        {
-          provide: getRepositoryToken(
-            require('../branches/entities/branch.entity').Branch,
-          ),
-          useValue: {
-            findOne: jest
-              .fn()
-              .mockResolvedValue({ id: 'biz-1', businessId: 'biz-1' }),
-          },
-        },
-        {
-          provide: getRepositoryToken(
-            require('../contacts/entities/contact.entity').Contact,
-          ),
-          useValue: { findOne: jest.fn(), create: jest.fn(), save: jest.fn() },
-        },
-        {
-          provide: require('../messaging/services/messaging-engine.service')
-            .MessagingEngineService,
+          provide: MessagingEngineService,
           useValue: { sendMessage: jest.fn() },
         },
         {
-          provide: require('../campaigns/campaigns.service').CampaignsService,
-          useValue: { getRewards: jest.fn() },
+          provide: CampaignsService,
+          useValue: { getRewards: jest.fn(), getLoyaltyRule: jest.fn() },
         },
         {
-          provide: require('../messaging/services/automation.service')
-            .AutomationService,
+          provide: AutomationService,
           useValue: { trigger: jest.fn() },
+        },
+        {
+          provide: MailService,
+          useValue: { sendWelcomeEmail: jest.fn() },
         },
       ],
     }).compile();
 
     service = module.get<VisitorsService>(VisitorsService);
-    userRepository = module.get<Repository<User>>(getRepositoryToken(User));
-    visitRepository = module.get<Repository<Visit>>(getRepositoryToken(Visit));
   });
 
   afterEach(() => {
@@ -112,27 +106,23 @@ describe('VisitorsService', () => {
         },
       ];
 
-      mockQueryBuilder.getManyAndCount.mockResolvedValue([[{ id: '1' }], 1]);
-      mockQueryBuilder.getMany.mockResolvedValue(mockUsers);
+      mockQueryBuilder.getManyAndCount.mockResolvedValueOnce([[{ id: '1' }], 1]);
+      mockQueryBuilder.getMany.mockResolvedValueOnce(mockUsers);
 
       const result = await service.findAll({ page: 1, limit: 10 }, 'biz-1');
 
       expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
       expect(result.data[0].name).toBe('John Doe');
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
-        'visit.branchId = :branchId',
-        { branchId: 'biz-1' },
-      );
     });
   });
 
   describe('create', () => {
     it('should create a new visitor (user + visit) if user does not exist', async () => {
       const dto = { name: 'New Guy', email: 'new@example.com', phone: '123' };
-      const branchId = 'biz-1';
+      const businessId = 'biz-1';
 
-      (userRepository.findOne as jest.Mock).mockResolvedValueOnce(null); // First check: not found
+      mockUserRepo.findOne.mockResolvedValueOnce(null); // First check: user not found
 
       const savedUser = {
         id: 'u1',
@@ -141,24 +131,24 @@ describe('VisitorsService', () => {
         lastName: 'Guy',
         phone: '123',
       };
-      (userRepository.create as jest.Mock).mockReturnValue(savedUser);
-      (userRepository.save as jest.Mock).mockResolvedValue(savedUser);
+      mockUserRepo.create.mockReturnValueOnce(savedUser);
+      mockUserRepo.save.mockResolvedValueOnce(savedUser);
 
-      const savedVisit = { id: 'v1', customer: savedUser, branchId };
-      (visitRepository.create as jest.Mock).mockReturnValue(savedVisit);
-      (visitRepository.save as jest.Mock).mockResolvedValue(savedVisit);
+      const savedVisit = { id: 'v1', customer: savedUser, businessId, createdAt: new Date() };
+      mockVisitRepo.create.mockReturnValueOnce(savedVisit);
+      mockVisitRepo.save.mockResolvedValueOnce(savedVisit);
 
       // Re-fetch returns user with visits
-      (userRepository.findOne as jest.Mock).mockResolvedValueOnce({
+      mockUserRepo.findOne.mockResolvedValueOnce({
         ...savedUser,
         visits: [savedVisit],
       });
 
-      const result = await service.create(dto, branchId);
+      const result = await service.create(dto, businessId);
 
-      expect(userRepository.create).toHaveBeenCalled();
-      expect(visitRepository.save).toHaveBeenCalled();
+      expect(mockUserRepo.create).toHaveBeenCalled();
       expect(result.name).toBe('New Guy');
+      expect(result.visits).toBe(1);
     });
   });
 

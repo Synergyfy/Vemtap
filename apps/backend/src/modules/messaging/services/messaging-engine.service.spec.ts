@@ -38,6 +38,7 @@ describe('MessagingEngineService', () => {
 
   const mockCreditService = {
     deduct: jest.fn(),
+    deductChannelCredit: jest.fn(),
   };
 
   const mockCampaignService = {
@@ -122,7 +123,7 @@ describe('MessagingEngineService', () => {
         content: 'msg',
       });
 
-      expect(mockCreditService.deduct).toHaveBeenCalled();
+      expect(mockCreditService.deductChannelCredit).toHaveBeenCalled();
       expect(mockCampaignService.createCampaign).toHaveBeenCalled();
       expect(mockQueue.add).toHaveBeenCalled();
       expect(result.campaignId).toBe('c1');

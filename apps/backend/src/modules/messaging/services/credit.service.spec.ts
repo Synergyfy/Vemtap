@@ -4,10 +4,21 @@ import { DataSource } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { BadRequestException } from '@nestjs/common';
 import { Business } from '../../businesses/entities/business.entity';
+import { Message } from '../entities/message.entity';
+import { BusinessCredit } from '../entities/business-credit.entity';
+import { Subscription } from '../../subscriptions/entities/subscription.entity';
 
 describe('CreditService', () => {
   let service: CreditService;
   let dataSourceMock: any;
+
+  const mockRepo = {
+    find: jest.fn(),
+    findOne: jest.fn(),
+    create: jest.fn().mockImplementation((d) => d),
+    save: jest.fn().mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
+    count: jest.fn(),
+  };
 
   beforeEach(async () => {
     dataSourceMock = {
@@ -21,13 +32,10 @@ describe('CreditService', () => {
           provide: DataSource,
           useValue: dataSourceMock,
         },
-        {
-          provide: getRepositoryToken(Business),
-          useValue: {
-            findOne: jest.fn(),
-            save: jest.fn(),
-          },
-        },
+        { provide: getRepositoryToken(Business), useValue: mockRepo },
+        { provide: getRepositoryToken(Message), useValue: mockRepo },
+        { provide: getRepositoryToken(BusinessCredit), useValue: mockRepo },
+        { provide: getRepositoryToken(Subscription), useValue: mockRepo },
       ],
     }).compile();
 
