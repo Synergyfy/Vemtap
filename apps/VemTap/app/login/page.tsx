@@ -28,7 +28,42 @@ export default function LoginPage() {
         setIsLoggingIn(true);
 
         try {
-            setError('Standard login is disabled in mock mode. Use Agent Access below.');
+            const email = formData.email.trim().toLowerCase();
+            const password = formData.password.trim();
+
+            if (!email || !password) {
+                throw new Error('Email and password are required.');
+            }
+
+            const inferredRole =
+                email.includes('admin') ? 'admin' :
+                    email.includes('customer') ? 'customer' :
+                        email.includes('manager') ? 'manager' :
+                            email.includes('staff') || email.includes('agent') ? 'staff' :
+                                'owner';
+
+            const mockUser = {
+                id: `mock-${inferredRole}-${Date.now()}`,
+                email,
+                name: email.split('@')[0]?.replace(/[._-]/g, ' ') || 'VemTap User',
+                role: inferredRole,
+            };
+
+            login(mockUser as any, 'mock-token');
+
+            if (inferredRole === 'admin') {
+                router.push('/admin/dashboard');
+                return;
+            }
+            if (inferredRole === 'customer') {
+                router.push('/customer/dashboard');
+                return;
+            }
+            if (inferredRole === 'staff' && (email.includes('agent') || email.includes('support'))) {
+                router.push('/agent/dashboard');
+                return;
+            }
+            router.push('/dashboard');
         } catch (err: any) {
             setError(err.message || 'Login failed');
         } finally {
