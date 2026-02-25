@@ -44,7 +44,6 @@ export class DevicesController {
     return this.devicesService.getStats(req.user.businessId);
   }
 
-  @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get details of a specific device' })
   @ApiResponse({ status: 200, description: 'Device details', type: Device })

@@ -67,6 +67,13 @@ export class LoyaltyController {
           id: 'branch-1-uuid',
           name: 'Lagos Office',
         },
+        owner: {
+          firstName: 'John',
+          lastName: 'Doe',
+          engagement: {
+            instagram: { profile: 'johndoe', link: 'https://instagr.am/johndoe' },
+          },
+        },
       },
     },
   })

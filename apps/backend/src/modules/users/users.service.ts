@@ -102,12 +102,11 @@ export class UsersService {
 
   async updateEngagement(
     id: string,
-    businessId: string,
     engagement: Record<string, any>,
   ): Promise<User> {
     const user = await this.findOne(id);
-    if (!user || user.businessId !== businessId) {
-      throw new NotFoundException('User not found in your business context');
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
     user.engagement = engagement;
     return this.usersRepository.save(user);
