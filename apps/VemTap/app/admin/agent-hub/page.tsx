@@ -9,6 +9,7 @@ const agents = [
     { id: 'agent-2', name: 'Tunde Bello', status: 'online', activeChats: 1 },
     { id: 'agent-3', name: 'Zainab Yusuf', status: 'away', activeChats: 0 },
 ];
+const statuses = ['unassigned', 'assigned'] as const;
 
 const initialConversations = [
     {
