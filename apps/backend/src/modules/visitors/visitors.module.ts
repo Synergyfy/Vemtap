@@ -9,6 +9,7 @@ import { Branch } from '../branches/entities/branch.entity';
 import { CampaignsModule } from '../campaigns/campaigns.module';
 import { MessagingModule } from '../messaging/messaging.module';
 import { ContactsModule } from '../contacts/contacts.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
@@ -16,9 +17,10 @@ import { ContactsModule } from '../contacts/contacts.module';
     CampaignsModule,
     MessagingModule,
     ContactsModule,
+    MailModule,
   ],
   controllers: [VisitorsController],
   providers: [VisitorsService],
   exports: [VisitorsService],
 })
-export class VisitorsModule {}
+export class VisitorsModule { }

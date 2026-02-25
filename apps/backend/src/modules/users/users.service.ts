@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole, UserStatus } from './entities/user.entity';
+import { PasswordResetHistory } from './entities/password-reset-history.entity';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import * as bcrypt from 'bcrypt';
 
@@ -14,6 +15,8 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(PasswordResetHistory)
+    private passwordResetHistoryRepository: Repository<PasswordResetHistory>,
   ) { }
 
   findOne(id: string): Promise<User | null> {
@@ -36,15 +39,29 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-  async findByBusiness(businessId: string, branchId?: string): Promise<User[]> {
-    const where: any = { businessId };
+  async findByBusiness(
+    businessId: string,
+    branchId?: string,
+    roles?: UserRole[],
+  ): Promise<User[]> {
+    const qb = this.usersRepository.createQueryBuilder('user');
+    qb.where('user.businessId = :businessId', { businessId });
+
     if (branchId) {
-      where.branchId = branchId;
+      qb.andWhere('user.branchId = :branchId', { branchId });
     }
-    return this.usersRepository.find({
-      where,
-      order: { createdAt: 'DESC' },
-    });
+
+    if (roles && roles.length > 0) {
+      qb.andWhere('user.role IN (:...roles)', { roles });
+    } else {
+      // Default to staff and managers for this method's typical usage in listing team members
+      qb.andWhere('user.role IN (:...roles)', {
+        roles: [UserRole.STAFF, UserRole.MANAGER],
+      });
+    }
+
+    qb.orderBy('user.createdAt', 'DESC');
+    return qb.getMany();
   }
 
   async updateStaff(
@@ -251,11 +268,34 @@ export class UsersService {
     await this.usersRepository.save(user);
   }
 
-  async adminResetPasswordLink(email: string): Promise<boolean> {
+  async adminResetPasswordLink(email: string) {
     const user = await this.findByEmail(email);
     if (!user) throw new NotFoundException('User not found');
 
     // In actual implementation, send a real email using emailService.
+    return true;
+  }
+
+  async updatePassword(
+    userId: string,
+    newPasswordHash: string,
+    meta?: { ipAddress?: string; userAgent?: string },
+  ) {
+    const user = await this.findOne(userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    user.password = newPasswordHash;
+    await this.usersRepository.save(user);
+
+    // Log history
+    const history = this.passwordResetHistoryRepository.create({
+      userId,
+      ipAddress: meta?.ipAddress,
+      userAgent: meta?.userAgent,
+      resetAt: new Date(),
+    });
+    await this.passwordResetHistoryRepository.save(history);
+
     return true;
   }
 }

@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -17,6 +18,8 @@ import { Otp } from './entities/otp.entity';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
 import { RegisterAdminDto } from './dto/register-admin.dto';
 import { RequestOtpDto } from './dto/request-otp.dto';
+import { PasswordResetOtpDto } from './dto/password-reset-otp.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -303,5 +306,65 @@ export class AuthService {
     });
 
     return this.login(user);
+  }
+
+  async requestPasswordReset(dto: PasswordResetOtpDto) {
+    const user = await this.usersService.findByEmail(dto.email);
+    if (!user) {
+      // For security, don't reveal if user exists, but we can log internally.
+      // However, usually we just say "If an account exists, you will receive an email".
+      return {
+        message:
+          'If an account exists with this email, a reset code has been sent.',
+      };
+    }
+
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+
+    const otp = this.otpRepository.create({
+      email: dto.email,
+      code,
+      expiresAt,
+      metadata: { type: 'password_reset' },
+    });
+    await this.otpRepository.save(otp);
+
+    await this.mailService.sendPasswordResetOtp(dto.email, code);
+
+    return {
+      message:
+        'If an account exists with this email, a reset code has been sent.',
+    };
+  }
+
+  async resetPassword(
+    dto: ResetPasswordDto,
+    meta?: { ip: string; userAgent: string },
+  ) {
+    const otpRecord = await this.otpRepository.findOne({
+      where: { email: dto.email },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!otpRecord) throw new BadRequestException('Reset session not found');
+    if (otpRecord.code !== dto.otp)
+      throw new BadRequestException('Invalid reset code');
+    if (new Date() > otpRecord.expiresAt)
+      throw new BadRequestException('Reset code expired');
+
+    const user = await this.usersService.findByEmail(dto.email);
+    if (!user) throw new NotFoundException('User no longer exists');
+
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
+    await this.usersService.updatePassword(user.id, hashedPassword, {
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+    });
+
+    await this.otpRepository.remove(otpRecord);
+
+    return { message: 'Password reset successfully' };
   }
 }

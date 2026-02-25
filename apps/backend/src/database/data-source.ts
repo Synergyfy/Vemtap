@@ -1,6 +1,10 @@
 import 'reflect-metadata';
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { join } from 'path';
+import * as dotenv from 'dotenv';
+
+// Support both .env and .env.local
+dotenv.config({ path: join(__dirname, '../../.env') });
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
@@ -10,8 +14,8 @@ export const dataSourceOptions: DataSourceOptions = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-  entities: [join(process.cwd(), 'src/**/*.entity{.ts,.js}')],
-  migrations: [join(process.cwd(), 'src/database/migrations/*{.ts,.js}')],
+  entities: [join(__dirname, '../**/*.entity{.ts,.js}')],
+  migrations: [join(__dirname, 'migrations/*{.ts,.js}')],
   synchronize: false,
 };
 

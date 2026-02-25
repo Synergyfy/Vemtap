@@ -158,6 +158,7 @@ describe('AuthService', () => {
         email: otpDto.email,
         code: '1234',
         expiresAt: new Date(Date.now() + 10000),
+        isVerified: true,
         metadata: storedMetadata,
       });
 
@@ -222,6 +223,7 @@ describe('AuthService', () => {
         email: otpDto.email,
         code: '1234',
         expiresAt: new Date(Date.now() + 10000),
+        isVerified: true,
         metadata: storedMetadata,
       });
 
