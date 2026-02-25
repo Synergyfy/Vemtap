@@ -9,6 +9,7 @@ import {
   Request,
   BadRequestException,
 } from '@nestjs/common';
+import { Public } from '../../common/decorators/public.decorator';
 import { LoyaltyService } from './loyalty.service';
 import { CreateRewardDto } from './dto/create-reward.dto';
 import { EarnPointsDto } from './dto/earn-points.dto';
@@ -30,7 +31,7 @@ import { UserRole } from '../users/entities/user.entity';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('loyalty')
 export class LoyaltyController {
-  constructor(private readonly loyaltyService: LoyaltyService) {}
+  constructor(private readonly loyaltyService: LoyaltyService) { }
 
   @Get('analytics')
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
@@ -44,6 +45,13 @@ export class LoyaltyController {
   @ApiOperation({ summary: 'Process a device tap (Record visit/earn points)' })
   async tap(@Request() req, @Param('code') code: string) {
     return this.loyaltyService.processTap(req.user.id, code);
+  }
+
+  @Public()
+  @Get('device-info/:code')
+  @ApiOperation({ summary: 'Get public details of a device by its code' })
+  async getDeviceInfo(@Param('code') code: string) {
+    return this.loyaltyService.getDeviceByCode(code);
   }
 
   @Get('profile')

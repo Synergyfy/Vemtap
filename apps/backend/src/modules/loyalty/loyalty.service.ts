@@ -12,6 +12,10 @@ import { PointTransaction } from '../campaigns/entities/point-transaction.entity
 import { CreateRewardDto } from './dto/create-reward.dto';
 import { EarnPointsDto } from './dto/earn-points.dto';
 import { DevicesService } from '../devices/devices.service';
+import { Visit } from '../visitors/entities/visit.entity';
+import { Contact } from '../contacts/entities/contact.entity';
+import { User } from '../users/entities/user.entity';
+import { Channel } from '../messaging/enums/channel.enum';
 
 @Injectable()
 export class LoyaltyService {
@@ -198,6 +202,25 @@ export class LoyaltyService {
     return query.getMany();
   }
 
+  async getDeviceByCode(code: string) {
+    const device = await this.devicesService.findByCode(code);
+    if (!device) {
+      throw new NotFoundException('Device not found');
+    }
+    if (device.status !== 'active') {
+      throw new BadRequestException('Device is inactive');
+    }
+    // Return device with business and branch details
+    return {
+      id: device.id,
+      name: device.name,
+      code: device.code,
+      type: device.type,
+      business: device.business,
+      branch: device.branch,
+    };
+  }
+
   async processTap(
     userId: string,
     deviceCode: string,
@@ -213,15 +236,58 @@ export class LoyaltyService {
       throw new BadRequestException('Device is inactive');
     }
 
-    // 3. Earn points (Visit)
-    // Default 10 points for a visit for now, ideally comes from Business settings
-    const pointsAmount = 10;
+    // 3. Increment total scans
+    device.totalScans += 1;
+    await this.devicesService.adminUpdate(device.id, {
+      totalScans: device.totalScans,
+    });
 
-    return this.earnPoints(device.businessId, {
+    // 4. Earn points (Visit)
+    // Default 10 points for a visit for now
+    const pointsAmount = 10;
+    const profile = await this.earnPoints(device.businessId, {
       userId,
       amount: pointsAmount,
       reason: 'Visit Tap',
     });
+
+    // 5. Explicitly record in the Visitors/Visits table
+    // Fetch user to ensure we have context
+    const user = await this.dataSource.getRepository(User).findOneBy({ id: userId });
+
+    if (user) {
+      const visitRepo = this.dataSource.getRepository(Visit);
+      const newVisit = visitRepo.create({
+        customer: user,
+        businessId: device.businessId,
+        branchId: device.branchId, // Inherit branch from device if it exists
+        deviceId: device.id,
+        status: 'returning', // Taps are by existing logged-in users
+      });
+      await visitRepo.save(newVisit);
+
+      // Check/Create Contact for the business
+      const contactRepo = this.dataSource.getRepository(Contact);
+      let contact = await contactRepo.findOne({
+        where: [
+          { businessId: device.businessId, email: user.email },
+          { businessId: device.businessId, phone: user.phone },
+        ],
+      });
+
+      if (!contact) {
+        contact = contactRepo.create({
+          businessId: device.businessId,
+          email: user.email,
+          phone: user.phone,
+          name: `${user.firstName} ${user.lastName}`.trim(),
+          optInChannels: [Channel.SMS, Channel.EMAIL, Channel.WHATSAPP],
+        });
+        await contactRepo.save(contact);
+      }
+    }
+
+    return profile;
   }
 
   async getAnalytics(userId: string) {

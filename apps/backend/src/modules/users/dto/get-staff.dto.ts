@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsOptional, IsUUID } from 'class-validator';
 
 export class GetStaffDto {
   @ApiProperty({
@@ -7,7 +7,7 @@ export class GetStaffDto {
     description:
       'The branch ID to fetch staff for. Can also handle mock IDs from frontend.',
   })
-  @IsString()
-  @IsNotEmpty()
-  branchId: string;
+  @IsUUID()
+  @IsOptional()
+  branchId?: string;
 }

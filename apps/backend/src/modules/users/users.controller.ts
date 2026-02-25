@@ -43,7 +43,7 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly businessesService: BusinessesService,
     private readonly branchesService: BranchesService,
-  ) {}
+  ) { }
 
   @Get('me')
   @SkipSubscriptionCheck()
@@ -107,10 +107,22 @@ export class UsersController {
       targetBranchId = undefined;
     }
 
-    return this.usersService.findByBusiness(
-      req.user.businessId,
-      targetBranchId,
-    );
+    // Determine business ID based on the logged-in user
+    let businessId = req.user.businessId;
+    if (req.user.role === UserRole.OWNER && !businessId) {
+      const ownedBusiness = await this.businessesService.findByOwner(
+        req.user.id,
+      );
+      if (ownedBusiness) {
+        businessId = ownedBusiness.id;
+      }
+    }
+
+    if (!businessId) {
+      throw new BadRequestException('Business context not found for the user');
+    }
+
+    return this.usersService.findByBusiness(businessId, targetBranchId);
   }
 
   @Get('staff/my-permissions')
@@ -191,13 +203,15 @@ export class UsersController {
       throw new BadRequestException('Business context not found for the user');
     }
 
-    // Verify the branch belongs to the user's business
+    // Verify the branch belongs to the user's business if provided
     const targetBranchId = inviteDto.branchId;
-    const branch = await this.branchesService.findById(targetBranchId);
-    if (!branch || branch.businessId !== businessId) {
-      throw new BadRequestException(
-        'Branch not found or does not belong to your business',
-      );
+    if (targetBranchId) {
+      const branch = await this.branchesService.findById(targetBranchId);
+      if (!branch || branch.businessId !== businessId) {
+        throw new BadRequestException(
+          'Branch not found or does not belong to your business',
+        );
+      }
     }
 
     // In a real app, we'd send an invite email. For this MVP, we create them with a default password.
