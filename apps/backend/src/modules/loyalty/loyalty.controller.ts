@@ -74,11 +74,13 @@ export class LoyaltyController {
             instagram: { profile: 'johndoe', link: 'https://instagr.am/johndoe' },
           },
         },
+        isFirstTimeVisit: true,
       },
     },
   })
-  async getDeviceInfo(@Param('code') code: string) {
-    return this.loyaltyService.getDeviceByCode(code);
+  async getDeviceInfo(@Request() req: any, @Param('code') code: string) {
+    const userId = req.user?.id;
+    return this.loyaltyService.getDeviceByCode(code, userId);
   }
 
   @Get('profile')

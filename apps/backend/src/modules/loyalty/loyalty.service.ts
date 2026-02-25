@@ -205,7 +205,7 @@ export class LoyaltyService {
     return query.getMany();
   }
 
-  async getDeviceByCode(code: string) {
+  async getDeviceByCode(code: string, userId?: string) {
     const device = await this.dataSource.getRepository(Device).findOne({
       where: { code, status: DeviceStatus.ACTIVE },
       relations: ['business', 'business.owner', 'branch'],
@@ -213,6 +213,14 @@ export class LoyaltyService {
 
     if (!device) {
       throw new NotFoundException('Device not found or inactive');
+    }
+
+    let isFirstTimeVisit = true;
+    if (userId && device.businessId) {
+      const visitCount = await this.dataSource.getRepository(Visit).count({
+        where: { customerId: userId, businessId: device.businessId },
+      });
+      isFirstTimeVisit = visitCount === 0;
     }
 
     const { owner, ...businessInfo } = device.business || ({} as any);
@@ -233,6 +241,7 @@ export class LoyaltyService {
       business: businessInfo,
       branch: device.branch,
       owner: ownerInfo,
+      isFirstTimeVisit,
     };
   }
 

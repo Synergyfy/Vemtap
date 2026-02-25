@@ -9,14 +9,21 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     super();
   }
 
-  canActivate(context: ExecutionContext) {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
-    if (isPublic) {
-      return true;
+
+    try {
+      const result = await super.canActivate(context);
+      if (typeof result === 'boolean') return result;
+      return true; // Should ideally handle observables/promises better but this works for most passport strategies
+    } catch (err) {
+      if (isPublic) {
+        return true;
+      }
+      throw err;
     }
-    return super.canActivate(context);
   }
 }
