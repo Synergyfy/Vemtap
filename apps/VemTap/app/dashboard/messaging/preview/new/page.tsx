@@ -6,7 +6,14 @@ import PhoneFrame from '@/components/shared/PhoneFrame';
 import { motion } from 'framer-motion';
 
 export default function NewUserPreview() {
-    const { storeName, logoUrl } = useCustomerFlowStore();
+    const {
+        storeName,
+        logoUrl,
+        customNewUserWelcomeMessage,
+        customNewUserWelcomeTitle,
+        customNewUserWelcomeTag,
+        customPrivacyMessage
+    } = useCustomerFlowStore();
 
     return (
         <div className="min-h-screen py-12 bg-gray-50 flex flex-col items-center justify-center gap-8">
@@ -15,6 +22,10 @@ export default function NewUserPreview() {
                     <StepForm
                         storeName={storeName || "Your Store"}
                         logoUrl={logoUrl}
+                        customWelcomeMessage={customNewUserWelcomeMessage}
+                        customWelcomeTitle={customNewUserWelcomeTitle}
+                        customWelcomeTag={customNewUserWelcomeTag}
+                        customPrivacyMessage={customPrivacyMessage}
                         onBack={() => alert('Back clicked')}
                         onSubmit={(data) => alert('Form submitted: ' + JSON.stringify(data))}
                     />

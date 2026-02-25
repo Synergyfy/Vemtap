@@ -102,9 +102,11 @@ interface CustomerFlowState {
         uniqueId?: string;
     } | null;
     isReturningUser: boolean;
+    isFirstTimeVisit: boolean;
 
     // Dynamic Customization
     businessId: string | null;
+    deviceCode: string | null;
     branchId: string | null;
     customWelcomeMessage: string | null;
     customWelcomeTitle: string | null;
@@ -194,8 +196,10 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             showFeedback: false,
             userData: null,
             isReturningUser: false,
+            isFirstTimeVisit: true,
 
             businessId: null,
+            deviceCode: null,
             branchId: null,
             customWelcomeMessage: null,
             customWelcomeTitle: null,
@@ -282,6 +286,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             getBusinessConfig: () => businessConfigs[get().businessType],
             initializeFromBusiness: (business) => set({
                 businessId: business.id,
+                deviceCode: business.deviceCode,
                 branchId: business.branchId || 'head-office',
                 storeName: business.name,
                 businessType: business.type,
@@ -289,6 +294,9 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 customWelcomeTitle: business.welcomeTitle,
                 customWelcomeButton: business.welcomeButton,
                 customWelcomeTag: business.welcomeTag,
+                customNewUserWelcomeMessage: business.newUserWelcomeMessage,
+                customNewUserWelcomeTitle: business.newUserWelcomeTitle,
+                customNewUserWelcomeTag: business.newUserWelcomeTag,
                 customSuccessMessage: business.successMessage,
                 customSuccessTitle: business.successTitle,
                 customSuccessButton: business.successButton,
@@ -297,6 +305,8 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 customRewardMessage: business.rewardMessage,
                 hasRewardSetup: business.rewardEnabled,
                 logoUrl: business.logoUrl,
+                isFirstTimeVisit: business.isFirstTimeVisit ?? true,
+                isReturningUser: !(business.isFirstTimeVisit ?? true),
                 currentStep: 'SCANNING'
             }),
             updateCustomSettings: (settings) => set((state) => ({
