@@ -10,6 +10,7 @@ import { CampaignsModule } from '../campaigns/campaigns.module';
 import { MessagingModule } from '../messaging/messaging.module';
 import { ContactsModule } from '../contacts/contacts.module';
 import { MailModule } from '../mail/mail.module';
+import { DevicesModule } from '../devices/devices.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { MailModule } from '../mail/mail.module';
     MessagingModule,
     ContactsModule,
     MailModule,
+    DevicesModule,
   ],
   controllers: [VisitorsController],
   providers: [VisitorsService],

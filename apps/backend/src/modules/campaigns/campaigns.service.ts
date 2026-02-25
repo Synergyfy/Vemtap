@@ -47,7 +47,7 @@ export class CampaignsService {
     private contactRepo: Repository<Contact>,
     private branchesService: BranchesService,
     private automationService: AutomationService,
-  ) {}
+  ) { }
 
   async create(
     createCampaignDto: CreateCampaignDto,
@@ -203,6 +203,21 @@ export class CampaignsService {
     return rule;
   }
 
+  async findActiveRule(branchId: string): Promise<LoyaltyRule | null> {
+    return this.ruleRepository.findOne({
+      where: { branchId, isActive: true },
+    });
+  }
+
+  async findProfile(
+    userId: string,
+    branchId: string,
+  ): Promise<LoyaltyProfile | null> {
+    return this.profileRepository.findOne({
+      where: { userId, branchId },
+    });
+  }
+
   async updateLoyaltyRule(
     branchId: string,
     updates: UpdateLoyaltyRuleDto,
@@ -251,6 +266,19 @@ export class CampaignsService {
     const breakdown: Record<string, number> = {};
 
     if (dto.isVisit) {
+      // Cooldown check
+      if (profile.lastRewardedAt && rule.visitCooldownHours) {
+        const lastRewarded = new Date(profile.lastRewardedAt).getTime();
+        const cooldownMs = rule.visitCooldownHours * 60 * 60 * 1000;
+        if (Date.now() - lastRewarded < cooldownMs) {
+          return {
+            success: false,
+            pointsEarned: 0,
+            newBalance: profile.currentPointsBalance,
+            message: `Visit reward is on cooldown. Please wait ${rule.visitCooldownHours} hours between rewards.`,
+          };
+        }
+      }
       earned += rule.visitPoints || 0;
       breakdown.visitPoints = rule.visitPoints;
     }

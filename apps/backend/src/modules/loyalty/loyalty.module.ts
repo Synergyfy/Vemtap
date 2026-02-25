@@ -7,6 +7,7 @@ import { Reward } from '../campaigns/entities/reward.entity';
 import { Redemption } from '../campaigns/entities/redemption.entity';
 import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
 import { DevicesModule } from '../devices/devices.module';
+import { CampaignsModule } from '../campaigns/campaigns.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { DevicesModule } from '../devices/devices.module';
       Redemption,
     ]),
     DevicesModule,
+    CampaignsModule,
   ],
   controllers: [LoyaltyController],
   providers: [LoyaltyService],
