@@ -9,9 +9,10 @@ import { LoyaltyProfile, TierLevel } from '../campaigns/entities/loyalty-profile
 import { Reward } from '../campaigns/entities/reward.entity';
 import { Redemption } from '../campaigns/entities/redemption.entity';
 import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
-import { CreateRewardDto } from './dto/create-reward.dto';
+import { CreateLoyaltyRewardDto } from './dto/create-reward.dto';
 import { EarnPointsDto } from './dto/earn-points.dto';
 import { DevicesService } from '../devices/devices.service';
+import { CampaignsService } from '../campaigns/campaigns.service';
 import { Visit } from '../visitors/entities/visit.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { User } from '../users/entities/user.entity';
@@ -29,6 +30,7 @@ export class LoyaltyService {
     @InjectRepository(Redemption)
     private redemptionRepository: Repository<Redemption>,
     private readonly devicesService: DevicesService,
+    private readonly campaignsService: CampaignsService,
     private readonly dataSource: DataSource,
   ) { }
 
@@ -73,7 +75,7 @@ export class LoyaltyService {
 
   async createReward(
     businessId: string,
-    createRewardDto: CreateRewardDto,
+    createRewardDto: CreateLoyaltyRewardDto,
   ): Promise<Reward> {
     const reward = this.rewardRepository.create({
       ...createRewardDto,
@@ -242,14 +244,21 @@ export class LoyaltyService {
       totalScans: device.totalScans,
     });
 
-    // 4. Earn points (Visit)
-    // Default 10 points for a visit for now
-    const pointsAmount = 10;
-    const profile = await this.earnPoints(device.businessId, {
-      userId,
-      amount: pointsAmount,
-      reason: 'Visit Tap',
-    });
+    // 4. Earn points (Rule-based)
+    let profile = await this.getProfile(userId, device.businessId);
+
+    if (device.branchId) {
+      const activeRule = await this.campaignsService.findActiveRule(device.branchId);
+      if (activeRule) {
+        // Use CampaignsService to earn points (handles cooldown, rules, and tiers)
+        await this.campaignsService.earnPoints(device.branchId, {
+          userId,
+          isVisit: true,
+        });
+        // Re-fetch updated profile
+        profile = await this.getProfile(userId, device.businessId);
+      }
+    }
 
     // 5. Explicitly record in the Visitors/Visits table
     // Fetch user to ensure we have context
