@@ -94,6 +94,9 @@ export default function AgentSupportDesk({ initialView = 'chats' }: SupportDeskP
     const activeItem = activeView === 'chats'
         ? chats.find((t) => t.id === activeId) || null
         : tickets.find((t) => t.id === activeId) || null;
+    const activeIsChat = !!activeItem && 'user' in activeItem;
+    const activeDisplayName = !activeItem ? '' : (activeIsChat ? activeItem.user.name : activeItem.requester);
+    const activeDisplaySubject = !activeItem ? '' : (activeIsChat ? activeItem.subject : activeItem.title);
 
     const filtered = useMemo(() => {
         const source = activeView === 'chats' ? chats : tickets;
@@ -250,10 +253,10 @@ export default function AgentSupportDesk({ initialView = 'chats' }: SupportDeskP
                                 </div>
                                 <div>
                                     <p className="font-bold text-text-main">
-                                        {activeView === 'chats' ? activeItem.user.name : activeItem.requester}
+                                        {activeDisplayName}
                                     </p>
                                     <p className="text-xs text-text-secondary font-medium">
-                                        {activeView === 'chats' ? activeItem.subject : activeItem.title} • {activeItem.channel}
+                                        {activeDisplaySubject} • {activeItem.channel}
                                     </p>
                                 </div>
                             </div>
@@ -287,7 +290,7 @@ export default function AgentSupportDesk({ initialView = 'chats' }: SupportDeskP
                                             <p className="text-sm leading-relaxed">{m.text}</p>
                                             <div className="flex items-center gap-2 mt-1 justify-end opacity-60">
                                                 <span className="text-[8px] font-bold uppercase tracking-widest">
-                                                    {isAgent ? 'Agent' : (activeView === 'chats' ? activeItem.user.name : activeItem.requester)}
+                                                    {isAgent ? 'Agent' : activeDisplayName}
                                                 </span>
                                                 <span className="text-[8px] font-bold">{m.time}</span>
                                             </div>
