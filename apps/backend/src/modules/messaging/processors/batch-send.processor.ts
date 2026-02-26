@@ -70,11 +70,9 @@ export class BatchSendProcessor extends WorkerHost {
 
       let template: any = null;
       if (templateId) {
-        template = await this.templateService.getTemplate(
-          templateId,
-          businessId,
-        );
+        template = await this.templateService.getTemplate(templateId);
       }
+
 
       // Process in chunks or individually
       for (const contactId of contactIds) {

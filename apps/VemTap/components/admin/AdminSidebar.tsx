@@ -9,7 +9,7 @@ import { dashboardApi } from '@/lib/api/dashboard';
 import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Store, Users, Nfc, CreditCard, BarChart, MessageSquare, Activity,
-    Settings, ChevronDown, Shield, LogOut, Gift, Search, Bell, HelpCircle, Package, FileText, Tag, Menu, X
+    Settings, ChevronDown, Shield, LogOut, Gift, Search, Bell, HelpCircle, Package, FileText, Tag, Menu, X, Workflow
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 
@@ -22,7 +22,7 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
     const pathname = usePathname();
     const router = useRouter();
     const { user, logout } = useAuthStore();
-    const [expandedMenus, setExpandedMenus] = useState<string[]>(['businesses']);
+    const [expandedMenus, setExpandedMenus] = useState<string[]>(['businesses', 'flow-engine']);
     const [showNotifications, setShowNotifications] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const queryClient = useQueryClient();
@@ -82,7 +82,12 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             id: 'users',
             label: 'Users',
             icon: Users,
-            href: '/admin/users',
+            submenu: [
+                { label: 'All Users', href: '/admin/users' },
+                { label: 'Businesses', href: '/admin/users/business' },
+                { label: 'Customers', href: '/admin/users/customers' },
+                { label: 'Agents', href: '/admin/users/agents' },
+            ],
         },
         {
             id: 'devices',
@@ -142,6 +147,20 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             href: '/admin/messaging',
         },
         {
+            id: 'flow-engine',
+            label: 'Flow Engine',
+            icon: Workflow,
+            submenu: [
+                { label: 'Overview', href: '/admin/flow-engine' },
+                { label: 'Flow Templates', href: '/admin/flow-engine/templates' },
+                { label: 'Trigger Management', href: '/admin/flow-engine/triggers' },
+                { label: 'WhatsApp Settings', href: '/admin/flow-engine/settings' },
+                { label: 'Sessions Monitor', href: '/admin/flow-engine/sessions' },
+                { label: 'Logs & Errors', href: '/admin/flow-engine/logs' },
+                { label: 'System Analytics', href: '/admin/flow-engine/analytics' },
+            ],
+        },
+        {
             id: 'pricing',
             label: 'Pricing Plans',
             icon: Tag,
@@ -163,7 +182,7 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             id: 'agent-hub',
             label: 'Support Agent Hub',
             icon: HelpCircle,
-            href: '/admin/support',
+            href: '/admin/agent-hub',
         },
         {
             id: 'settings',

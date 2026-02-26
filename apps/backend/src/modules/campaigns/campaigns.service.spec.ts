@@ -34,6 +34,7 @@ describe('CampaignsService', () => {
   };
 
   beforeEach(async () => {
+    jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CampaignsService,
@@ -82,6 +83,61 @@ describe('CampaignsService', () => {
 
       const result = await service.create(createDto as any, branchId);
       expect(result).toEqual(expectedCampaign);
+    });
+  });
+  describe('loyalty profiles', () => {
+    const userId = 'user-1';
+    const branchId = 'branch-1';
+    const businessId = 'biz-1';
+    const mockBranch = { id: branchId, businessId };
+
+    it('getLoyaltyProfile should create profile with businessId if not exists', async () => {
+      mockBranchesService.findById.mockResolvedValue(mockBranch);
+      mockRepo.findOne.mockResolvedValue(null); // Profile not found
+
+      const expectedProfile = { userId, businessId, branchId, tierLevel: 'bronze' };
+      mockRepo.create.mockReturnValue(expectedProfile);
+      mockRepo.save.mockResolvedValue({ id: 'prof-1', ...expectedProfile });
+
+      const result = await service.getLoyaltyProfile(userId, branchId);
+
+      expect(mockBranchesService.findById).toHaveBeenCalledWith(branchId);
+      expect(mockRepo.findOne).toHaveBeenCalledWith({ where: { userId, businessId } });
+      expect(mockRepo.create).toHaveBeenCalledWith(expect.objectContaining({ businessId }));
+      expect(result.businessId).toBe(businessId);
+    });
+
+    it('getLoyaltyProfile should return existing profile by businessId regardless of branch', async () => {
+      mockBranchesService.findById.mockResolvedValue(mockBranch);
+      const existingProfile = { id: 'prof-1', userId, businessId, branchId: 'different-branch' };
+      mockRepo.findOne.mockResolvedValue(existingProfile);
+
+      const result = await service.getLoyaltyProfile(userId, branchId);
+
+      expect(result).toEqual(existingProfile);
+      expect(mockRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('getLoyaltyProfile should throw NotFoundException if branch is invalid', async () => {
+      mockBranchesService.findById.mockResolvedValue(null);
+      await expect(service.getLoyaltyProfile(userId, 'invalid-branch')).rejects.toThrow('Branch not found');
+    });
+
+    it('findProfile should return profile by businessId', async () => {
+      mockBranchesService.findById.mockResolvedValue(mockBranch);
+      const existingProfile = { id: 'prof-1', userId, businessId };
+      mockRepo.findOne.mockResolvedValue(existingProfile);
+
+      const result = await service.findProfile(userId, branchId);
+
+      expect(mockRepo.findOne).toHaveBeenCalledWith({ where: { userId, businessId } });
+      expect(result).toEqual(existingProfile);
+    });
+
+    it('findProfile should return null if branch not found', async () => {
+      mockBranchesService.findById.mockResolvedValue(null);
+      const result = await service.findProfile(userId, 'invalid');
+      expect(result).toBeNull();
     });
   });
 });

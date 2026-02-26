@@ -35,12 +35,9 @@ import { InboxService } from '../services/inbox.service';
 
 import { SendMessageDto } from '../dto/send-message.dto';
 import { Channel } from '../enums/channel.enum';
+import { CreateTemplateDto } from '../dto/template/create-template.dto';
 
-export class CreateTemplateDto {
-  name: string;
-  channel: Channel;
-  content: string;
-}
+
 
 export class ReplyDto {
   content: string;
@@ -56,7 +53,7 @@ export class MessagingController {
     private readonly campaignService: CampaignService,
     private readonly analyticsService: AnalyticsService,
     private readonly inboxService: InboxService,
-  ) {}
+  ) { }
 
   @Post('send')
   @ApiBearerAuth()
@@ -90,21 +87,28 @@ export class MessagingController {
     return this.messagingEngine.sendMessage(dto);
   }
 
+  @Get('templates')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get available templates for the business (System + Business specific)' })
+  async getTemplates(@Request() req: { user: User }) {
+    if (!req.user.businessId && req.user.role !== UserRole.ADMIN) {
+      throw new BadRequestException('Business context required');
+    }
+    return this.templateService.getAvailableTemplates(req.user.businessId);
+  }
+
   @Post('templates')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a new message template' })
   async createTemplate(
     @Body() dto: CreateTemplateDto,
     @Request() req: { user: User },
   ) {
-    return this.templateService.createTemplate(
-      req.user.businessId,
-      dto.name,
-      dto.channel,
-      dto.content,
-    );
+    return this.templateService.createTemplate(dto, req.user);
   }
 
   @Get('campaigns')
@@ -206,8 +210,21 @@ export class MessagingController {
   })
   async updateTemplateStatus(
     @Param('id') id: string,
-    @Body('status') status: string,
+    @Body('status') status: any,
   ) {
     return this.templateService.updateStatus(id, status);
   }
+
+  @Post('templates/:id/delete')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Delete a message template' })
+  async deleteTemplate(
+    @Param('id') id: string,
+    @Request() req: { user: User },
+  ) {
+    return this.templateService.deleteTemplate(id, req.user);
+  }
 }
+
