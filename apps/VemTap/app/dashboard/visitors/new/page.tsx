@@ -14,6 +14,7 @@ import { UserPlus, Calendar, TrendingUp, Timer, Send, Hand } from 'lucide-react'
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import toast from 'react-hot-toast';
+import { formatDate } from '@/lib/utils/date';
 
 export default function NewVisitorsPage() {
     const queryClient = useQueryClient();
@@ -23,8 +24,8 @@ export default function NewVisitorsPage() {
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
 
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const { data: paginatedData, isLoading } = useNewVisitors(activeBranchId === 'all' || !activeBranchId ? undefined : activeBranchId);
-    const { data: statsData } = useNewVisitorStats(activeBranchId === 'all' || !activeBranchId ? undefined : activeBranchId);
+    const { data: paginatedData, isLoading } = useNewVisitors('all');
+    const { data: statsData } = useNewVisitorStats('all');
 
     const newVisitors = paginatedData?.data || [];
 
@@ -54,19 +55,26 @@ export default function NewVisitorsPage() {
     const columns: Column<Visitor>[] = [
         {
             header: 'Visitor',
-            accessor: (item: Visitor) => (
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-green-50 flex items-center justify-center text-green-600 font-bold text-xs border border-green-100">
-                        {item.name.split(' ').map((n: string) => n[0]).join('')}
+            accessor: (item: Visitor) => {
+                const displayName = item.name ||
+                    (item.firstName || item.lastName
+                        ? `${item.firstName || ''} ${item.lastName || ''}`.trim()
+                        : 'Unknown Visitor');
+
+                return (
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-green-50 flex items-center justify-center text-green-600 font-bold text-xs border border-green-100 uppercase">
+                            {displayName.split(' ').filter(Boolean).map((n: string) => n[0]).join('')}
+                        </div>
+                        <div>
+                            <p className="font-bold text-text-main">{displayName}</p>
+                            <p className="text-xs text-text-secondary">{item.phone || 'No phone'}</p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="font-bold text-text-main">{item.name}</p>
-                        <p className="text-xs text-text-secondary">{item.phone}</p>
-                    </div>
-                </div>
-            )
+                );
+            }
         },
-        { header: 'Joined', accessor: (item: Visitor) => String(item.lastVisit || item.time || new Date().toISOString().split('T')[0]) },
+        { header: 'Joined', accessor: (item: Visitor) => formatDate(item.lastVisit || item.time) },
         {
             header: 'Status',
             accessor: () => (

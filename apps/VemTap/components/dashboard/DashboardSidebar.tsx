@@ -248,7 +248,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 { label: 'Engagement', href: '/dashboard/settings/engagement' },
                 { label: 'Notifications', href: '/dashboard/settings/notifications' },
                 { label: 'Integrations', href: '/dashboard/settings/integrations' },
-                { label: `pricing`, href: '/dashboard/settings/pricing' },
+                { label: 'Subscription', href: '/dashboard/settings/subscription' },
                 { label: 'Privacy & Data', href: '/dashboard/settings/privacy' },
             ]
         },
