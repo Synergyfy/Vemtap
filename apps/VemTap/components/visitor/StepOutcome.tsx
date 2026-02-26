@@ -33,6 +33,13 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
 }) => {
     const [isSocialModalOpen, setIsSocialModalOpen] = React.useState(false);
 
+    const hasSocial = !!(engagementSettings?.instagram || engagementSettings?.linkedin || engagementSettings?.twitter || engagementSettings?.facebook || engagementSettings?.socialUrl);
+    const hasReview = !!engagementSettings?.reviewUrl;
+    const hasFeedback = !!engagementSettings?.showFeedback;
+    const hasRewards = !!engagementSettings?.showRewards;
+
+    const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards);
+
     const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards') => {
         if (type === 'social') {
             setIsSocialModalOpen(true);
@@ -72,7 +79,7 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
                 )}
 
                 {/* Engagement Layer */}
-                {onEngagement && (
+                {showEngagement && (
                     <EngagementTiles
                         onAction={handleEngagement}
                         settings={engagementSettings}
@@ -89,7 +96,7 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
                 <SocialMediaModal
                     isOpen={isSocialModalOpen}
                     onClose={() => setIsSocialModalOpen(false)}
-                    socialLinks={socialLinks}
+                    socialLinks={engagementSettings}
                 />
             </div>
         </motion.div>

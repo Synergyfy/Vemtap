@@ -64,23 +64,7 @@ export default function DynamicTapJourneyPage() {
                 if (!businessId || deviceCode !== useCustomerFlowStore.getState().deviceCode) {
                     const device = await fetchDeviceByCode(deviceCode);
                     if (device) {
-                        initializeFromBusiness({
-                            id: device.business?.id || device.businessId,
-                            name: device.business?.name || device.name,
-                            type: device.business?.type || 'RETAIL',
-                            welcomeMessage: device.business?.welcomeMessage,
-                            welcomeTitle: device.business?.welcomeTitle,
-                            newUserWelcomeMessage: device.business?.welcomeMessage, // Fallback
-                            newUserWelcomeTitle: device.business?.welcomeTitle, // Fallback
-                            successMessage: device.business?.successMessage,
-                            rewardEnabled: device.business?.rewardEnabled ?? false,
-                            logoUrl: device.business?.logoUrl || null,
-                            branchId: device.branchId,
-                            currentDeviceId: device.id,
-                            deviceCode: device.code,
-                            deviceName: device.name,
-                            isFirstTimeVisit: device.isFirstTimeVisit ?? true
-                        } as any);
+                        initializeFromBusiness(device);
 
                         // If it's a returning visitor according to backend, record visit immediately for analytics
                         if (device.isFirstTimeVisit === false) {
@@ -397,7 +381,7 @@ export default function DynamicTapJourneyPage() {
                         customSuccessButton={useCustomerFlowStore.getState().customSuccessButton}
                         onFinish={() => {
                             resetFlow();
-                            router.push('/customer');
+                            router.push('/customer/dashboard');
                         }}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}

@@ -25,6 +25,7 @@ import {
     CheckCircle2, Timer, MessageCircle, MapPin, Upload
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { formatDate } from '@/lib/utils/date';
 
 export default function AllVisitorsPage() {
     const router = useRouter();
@@ -42,11 +43,11 @@ export default function AllVisitorsPage() {
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const { data: branches = [] } = useBranches();
 
-    const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(activeBranchId === 'all' || !activeBranchId ? undefined : activeBranchId, {
+    const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors('all', {
         search: searchQuery,
         status: filterStatus !== 'all' ? filterStatus : undefined
     });
-    const { data: statsData } = useVisitorStats(userBusinessId);
+    const { data: statsData } = useVisitorStats('all');
 
     const visitors = paginatedData?.data || [];
     const isLoading = isLoadingVisitors;
@@ -93,7 +94,7 @@ export default function AllVisitorsPage() {
     const handleExportCSV = () => {
         const csvContent = [
             ['Name', 'Phone', 'Email', 'Status', 'Last Visit'],
-            ...visitors.map((v: Visitor) => [v.name, v.phone, v.email || '', v.status, String(v.lastVisit || v.time)])
+            ...visitors.map((v: Visitor) => [v.name || 'N/A', v.phone || 'N/A', v.email || '', v.status || 'Active', formatDate(v.lastVisit || v.time)])
         ].map(row => row.join(',')).join('\n');
 
         const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -143,17 +144,24 @@ export default function AllVisitorsPage() {
     const columns: Column<Visitor>[] = [
         {
             header: 'Visitor',
-            accessor: (item: Visitor) => (
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-                        {item.name.split(' ').map((n: string) => n[0]).join('')}
+            accessor: (item: Visitor) => {
+                const displayName = item.name ||
+                    (item.firstName || item.lastName
+                        ? `${item.firstName || ''} ${item.lastName || ''}`.trim()
+                        : 'Unknown Visitor');
+
+                return (
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                            {displayName.split(' ').filter(Boolean).map((n: string) => n[0]).join('').toUpperCase()}
+                        </div>
+                        <div>
+                            <p className="font-bold text-text-main">{displayName}</p>
+                            <p className="text-xs text-text-secondary">Customer ID: {(item.id || 'N/A').toUpperCase()}</p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="font-bold text-text-main">{item.name}</p>
-                        <p className="text-xs text-text-secondary">Customer ID: {item.id.toUpperCase()}</p>
-                    </div>
-                </div>
-            )
+                );
+            }
         },
         {
             header: 'Contact Info',
@@ -208,9 +216,9 @@ export default function AllVisitorsPage() {
         {
             header: 'Status',
             accessor: (item: Visitor) => (
-                <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${item.status === 'new' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${item.status?.toLowerCase() === 'new' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
                     }`}>
-                    {item.status}
+                    {item.status || 'Active'}
                 </span>
             )
         },

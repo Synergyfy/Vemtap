@@ -84,12 +84,18 @@ export default function DashboardPricingPage() {
     };
 
     const getPlanFeatures = (plan: PricingPlan) => {
-        const features = [];
+        const features = [...(plan.features || [])];
+        if (plan.smsCredits) features.push(`${plan.smsCredits.toLocaleString()} SMS Credits`);
+        if (plan.emailCredits) features.push(`${plan.emailCredits.toLocaleString()} Email Credits`);
+        if (plan.whatsappCredits) features.push(`${plan.whatsappCredits.toLocaleString()} WhatsApp Credits`);
         if (plan.teamMembersLimit) features.push(`${plan.teamMembersLimit} Team Members`);
         if (plan.loyaltyLimit) features.push(`${plan.loyaltyLimit} Loyalty Points`);
         if (plan.tagsLimit) features.push(`${plan.tagsLimit} Tags`);
         if (plan.branchLimit) features.push(`${plan.branchLimit} Branches`);
-        if (plan.analyticsLevel && plan.analyticsLevel !== 'none') features.push(`${plan.analyticsLevel} Analytics`);
+        if (plan.analyticsLevel && plan.analyticsLevel !== 'none') {
+            const level = plan.analyticsLevel.charAt(0).toUpperCase() + plan.analyticsLevel.slice(1);
+            features.push(`${level} Analytics`);
+        }
         return features;
     };
 
@@ -211,17 +217,33 @@ export default function DashboardPricingPage() {
                     return (
                         <div key={plan.id} className={`p-8 rounded-4xl border transition-all flex flex-col ${isCurrent ? 'bg-primary/5 border-primary shadow-xl shadow-primary/5' : 'bg-white border-slate-100 hover:border-primary/20'
                             }`}>
-                            <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center justify-between mb-4">
                                 <h4 className="font-black text-slate-900">{plan.name}</h4>
-                                {isCurrent && (
-                                    <span className="bg-primary text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
-                                        Active
-                                    </span>
-                                )}
+                                <div className="flex gap-2">
+                                    {plan.isPopular && (
+                                        <span className="bg-amber-100 text-amber-600 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
+                                            Popular
+                                        </span>
+                                    )}
+                                    {isCurrent && (
+                                        <span className="bg-primary text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
+                                            Active
+                                        </span>
+                                    )}
+                                </div>
                             </div>
+                            {plan.description && (
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
+                                    {plan.description}
+                                </p>
+                            )}
                             <div className="mb-6">
                                 <span className="text-3xl font-black text-slate-900 tracking-tight">{formatPrice(price)}</span>
-                                {plan.id !== 'free' && <span className="text-sm font-bold text-slate-400">/mo</span>}
+                                {plan.id !== 'free' && (
+                                    <span className="text-sm font-bold text-slate-400">
+                                        /{billingPeriod === 'yearly' ? 'yr' : billingPeriod === 'quarterly' ? 'qtr' : 'mo'}
+                                    </span>
+                                )}
                             </div>
                             <ul className="space-y-4 mb-8">
                                 {features.map((feature: string, i: number) => (
