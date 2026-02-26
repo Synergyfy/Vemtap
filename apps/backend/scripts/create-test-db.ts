@@ -46,7 +46,8 @@ async function createDb() {
   }
 
   // 2. If we are here, connection failed. Attempt to create it ONLY if it looks like a generated test name
-  if (dbName.includes('test')) {
+  // We verified dbName is not null above
+  if (dbName!.includes('test')) {
       const maintenanceDb = 'postgres';
       const client = new Client({
         ...baseConfig,
