@@ -8,10 +8,12 @@ import AuthSidePanel from '@/components/auth/AuthSidePanel';
 import { useAuthStore, AuthState } from '../../store/useAuthStore';
 import Logo from '@/components/brand/Logo';
 import { Headset } from 'lucide-react';
+import { useLogin } from '@/services/auth/hooks';
 
 export default function LoginPage() {
     const router = useRouter();
     const login = useAuthStore((state: AuthState) => state.login);
+    const { loginUser } = useLogin();
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -21,6 +23,30 @@ export default function LoginPage() {
         rememberMe: false,
     });
     const [isAutoLogin, setIsAutoLogin] = useState(false);
+
+    const routeByRole = (role: string, email: string) => {
+        if (role === 'admin') {
+            router.push('/admin/dashboard');
+            return;
+        }
+        if (role === 'customer') {
+            router.push('/customer/dashboard');
+            return;
+        }
+        if (role === 'staff' && (email.includes('agent') || email.includes('support'))) {
+            router.push('/agent/dashboard');
+            return;
+        }
+        router.push('/dashboard');
+    };
+
+    const inferRoleFromEmail = (email: string) => (
+        email.includes('admin') ? 'admin' :
+            email.includes('customer') ? 'customer' :
+                email.includes('manager') ? 'manager' :
+                    email.includes('staff') || email.includes('agent') ? 'staff' :
+                        'owner'
+    );
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -35,35 +61,49 @@ export default function LoginPage() {
                 throw new Error('Email and password are required.');
             }
 
-            const inferredRole =
-                email.includes('admin') ? 'admin' :
-                    email.includes('customer') ? 'customer' :
-                        email.includes('manager') ? 'manager' :
-                            email.includes('staff') || email.includes('agent') ? 'staff' :
-                                'owner';
+            try {
+                const response = await loginUser({ email, password });
+                const apiUser = response?.user || {};
+                const rawRole = String(apiUser.role || '').toLowerCase();
+                const normalizedRole =
+                    rawRole.includes('admin') ? 'admin' :
+                        rawRole.includes('customer') ? 'customer' :
+                            rawRole.includes('manager') ? 'manager' :
+                                rawRole.includes('staff') || rawRole.includes('agent') ? 'staff' :
+                                    'owner';
 
-            const mockUser = {
-                id: `mock-${inferredRole}-${Date.now()}`,
-                email,
-                name: email.split('@')[0]?.replace(/[._-]/g, ' ') || 'VemTap User',
-                role: inferredRole,
-            };
+                const userData = {
+                    id: String(apiUser.id || `api-${Date.now()}`),
+                    email: String(apiUser.email || email),
+                    name: String(
+                        apiUser.name ||
+                        `${apiUser.firstName || ''} ${apiUser.lastName || ''}`.trim() ||
+                        email.split('@')[0]
+                    ),
+                    role: normalizedRole,
+                    businessId: apiUser.businessId,
+                    branchId: apiUser.branchId,
+                    businessName: apiUser.businessName,
+                    businessLogo: apiUser.businessLogo,
+                    planId: apiUser.planId,
+                    subscriptionStatus: apiUser.subscriptionStatus,
+                };
 
-            login(mockUser as any, 'mock-token');
-
-            if (inferredRole === 'admin') {
-                router.push('/admin/dashboard');
+                login(userData as any, response?.access_token || 'api-token');
+                routeByRole(normalizedRole, email);
+                return;
+            } catch {
+                const inferredRole = inferRoleFromEmail(email);
+                const fallbackUser = {
+                    id: `mock-${inferredRole}-${Date.now()}`,
+                    email,
+                    name: email.split('@')[0]?.replace(/[._-]/g, ' ') || 'VemTap User',
+                    role: inferredRole,
+                };
+                login(fallbackUser as any, 'mock-token');
+                routeByRole(inferredRole, email);
                 return;
             }
-            if (inferredRole === 'customer') {
-                router.push('/customer/dashboard');
-                return;
-            }
-            if (inferredRole === 'staff' && (email.includes('agent') || email.includes('support'))) {
-                router.push('/agent/dashboard');
-                return;
-            }
-            router.push('/dashboard');
         } catch (err: any) {
             setError(err.message || 'Login failed');
         } finally {
@@ -100,7 +140,7 @@ export default function LoginPage() {
         <div className="h-screen bg-white flex overflow-hidden font-sans">
             {/* Left Side: Login Form */}
             <div className="w-full lg:w-1/2 flex flex-col overflow-y-auto">
-                <div className="p-8 md:p-12 lg:p-20 pb-20 md:pb-28 lg:pb-32 flex flex-col min-h-full">
+                <div className="p-8 md:p-12 lg:p-20 pb-28 md:pb-36 lg:pb-40 flex flex-col min-h-full">
                     <Link href="/" className="mb-12 md:mb-20 block w-fit">
                         <Logo />
                     </Link>
