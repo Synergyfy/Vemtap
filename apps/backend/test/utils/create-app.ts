@@ -1,8 +1,12 @@
 import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+// Mock IORedis BEFORE importing AppModule to ensure BullModule uses the mock
+jest.mock('ioredis', () => require('ioredis-mock'));
+
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/main';
 import { DataSource } from 'typeorm';
+import { getQueueToken } from '@nestjs/bullmq';
 
 export async function createTestApp(
   configureBuilder?: (builder: TestingModuleBuilder) => void
@@ -10,6 +14,18 @@ export async function createTestApp(
   const builder = Test.createTestingModule({
     imports: [AppModule],
   });
+
+  // Mock BullMQ Queues to avoid Redis connections in E2E tests
+  const mockQueue = {
+    add: jest.fn(),
+    process: jest.fn(),
+    close: jest.fn(),
+    on: jest.fn(),
+  };
+
+  builder.overrideProvider(getQueueToken('messaging-batch-send')).useValue(mockQueue);
+  builder.overrideProvider(getQueueToken('messaging-flow-delay')).useValue(mockQueue);
+  builder.overrideProvider(getQueueToken('messaging-automation')).useValue(mockQueue);
 
   if (configureBuilder) {
     configureBuilder(builder);
