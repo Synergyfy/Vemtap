@@ -1,10 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../../src/app.module';
 import { MailService } from '../../src/modules/mail/mail.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Otp } from '../../src/modules/auth/entities/otp.entity';
+import { createTestApp } from '../utils/create-app';
 
 describe('Auth & Notifications (e2e)', () => {
   let app: INestApplication;
@@ -16,26 +15,11 @@ describe('Auth & Notifications (e2e)', () => {
   };
 
   beforeAll(async () => {
-    // Set env var for DB type
-    process.env.DB_TYPE = 'sqlite';
-    process.env.JWT_SECRET = 'test-secret';
-    process.env.JWT_EXPIRATION = '1h';
+    app = await createTestApp((builder) => {
+        builder.overrideProvider(MailService).useValue(mockMailService);
+    });
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    })
-      .overrideProvider(MailService)
-      .useValue(mockMailService)
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api/v1');
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-    await app.init();
-
-    // Access OTP repo to peek at codes if needed (or we mock the Otp entity logic, but we are e2e testing so we should use the DB)
-    // Actually, with SQLite we can query the repo directly in the test to find the OTP code.
-    otpRepository = moduleFixture.get(getRepositoryToken(Otp));
+    otpRepository = app.get(getRepositoryToken(Otp));
   });
 
   afterAll(async () => {
@@ -77,9 +61,7 @@ describe('Auth & Notifications (e2e)', () => {
   });
 
   it('/auth/send-otp (POST)', async () => {
-    // We need a NEW email for OTP as sendOtp throws if user exists (based on current logic? let's check)
-    // AuthService.sendOtp throws ConflictException if user exists.
-    // So we use a different email.
+    // We need a NEW email for OTP as sendOtp throws if user exists
     const newEmail = 'otp@example.com';
 
     await request(app.getHttpServer())
@@ -94,7 +76,7 @@ describe('Auth & Notifications (e2e)', () => {
   it('/auth/verify-otp (POST)', async () => {
     const newEmail = 'otp@example.com';
 
-    // Fetch the OTP from the in-memory DB
+    // Fetch the OTP from the DB
     const otpRecord = await otpRepository.findOne({
       where: { email: newEmail },
     });
@@ -107,7 +89,23 @@ describe('Auth & Notifications (e2e)', () => {
         code: otpRecord.code,
       })
       .expect(201)
-      .expect({ message: 'OTP verified successfully' });
+      .expect({ message: 'OTP verified successfully' }); // Status 200 actually? AuthController says 200.
+      // Wait, let's check AuthController.
+      // @ApiResponse({ status: 200 ... })
+      // async verifyOtp ...
+      // But implementation calls authService.verifyOtp.
+      // Let's assume 200 or 201. If it fails I'll fix it. The original test had .expect(201).
+      // AuthController code:
+      /*
+      @Public()
+      @Post('otp/verify')
+      @ApiResponse({ status: 200 ... })
+      async verifyOtp(...) { ... }
+      */
+      // NestJS default POST status is 201. Unless @HttpCode(200) is used.
+      // AuthController login uses @HttpCode(HttpStatus.OK).
+      // verifyOtp does NOT use @HttpCode. So it returns 201 by default.
+      // So expectation of 201 is correct.
   });
 
   it('/notifications (GET) - Protected', () => {

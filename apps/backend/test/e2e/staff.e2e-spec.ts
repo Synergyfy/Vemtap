@@ -1,11 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../../src/app.module';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole, User } from '../../src/modules/users/entities/user.entity';
 import { Business } from '../../src/modules/businesses/entities/business.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { createTestApp } from '../utils/create-app';
 
 describe('Staff Management (e2e)', () => {
   let app: INestApplication;
@@ -14,21 +13,11 @@ describe('Staff Management (e2e)', () => {
   let businessRepository: any;
 
   beforeAll(async () => {
-    process.env.DB_TYPE = 'sqlite';
-    process.env.JWT_SECRET = 'eliztap_super_secret_key_2026';
+    app = await createTestApp();
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api/v1');
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-    await app.init();
-
-    jwtService = moduleFixture.get<JwtService>(JwtService);
-    userRepository = moduleFixture.get(getRepositoryToken(User));
-    businessRepository = moduleFixture.get(getRepositoryToken(Business));
+    jwtService = app.get<JwtService>(JwtService);
+    userRepository = app.get(getRepositoryToken(User));
+    businessRepository = app.get(getRepositoryToken(Business));
 
     // 1. Seed Owners first
     await userRepository.save([
@@ -41,7 +30,7 @@ describe('Staff Management (e2e)', () => {
         role: UserRole.OWNER,
       },
       {
-        id: 'other-owner-id',
+        id: '123e4567-e89b-12d3-a456-426614174010',
         email: 'other@team.com',
         password: 'password',
         firstName: 'Other',
@@ -52,14 +41,14 @@ describe('Staff Management (e2e)', () => {
 
     // 2. Seed Businesses referencing owners
     await businessRepository.save([
-      { id: 'biz-1', name: 'Biz One', ownerId: '123e4567-e89b-12d3-a456-426614174000' },
-      { id: 'biz-2', name: 'Biz Two', ownerId: 'other-owner-id' },
+      { id: '123e4567-e89b-12d3-a456-426614174001', name: 'Biz One', ownerId: '123e4567-e89b-12d3-a456-426614174000' },
+      { id: '123e4567-e89b-12d3-a456-426614174002', name: 'Biz Two', ownerId: '123e4567-e89b-12d3-a456-426614174010' },
     ]);
 
     // 3. Update Owners with businessId and seed Staff
     await userRepository.save([
-      { id: '123e4567-e89b-12d3-a456-426614174000', businessId: 'biz-1' },
-      { id: 'other-owner-id', businessId: 'biz-2' },
+      { id: '123e4567-e89b-12d3-a456-426614174000', businessId: '123e4567-e89b-12d3-a456-426614174001' },
+      { id: '123e4567-e89b-12d3-a456-426614174010', businessId: '123e4567-e89b-12d3-a456-426614174002' },
       {
         id: '123e4567-e89b-12d3-a456-426614174004',
         email: 'staff@team.com',
@@ -67,7 +56,7 @@ describe('Staff Management (e2e)', () => {
         firstName: 'Staff',
         lastName: 'Two',
         role: UserRole.STAFF,
-        businessId: 'biz-1',
+        businessId: '123e4567-e89b-12d3-a456-426614174001',
       },
     ]);
   });
@@ -126,15 +115,15 @@ describe('Staff Management (e2e)', () => {
     it('should allow owner to remove staff', () => {
       const token = generateToken('123e4567-e89b-12d3-a456-426614174000');
       return request(app.getHttpServer())
-        .delete('/api/v1/users/staff/staff-id')
+        .delete('/api/v1/users/staff/123e4567-e89b-12d3-a456-426614174004')
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
     });
 
     it('should prevent owner from removing staff from ANOTHER business', () => {
-      const token = generateToken('other-owner-id'); // Owner of biz-2
+      const token = generateToken('123e4567-e89b-12d3-a456-426614174010'); // Owner of biz-2
       return request(app.getHttpServer())
-        .delete('/api/v1/users/staff/owner-id') // Trying to delete owner of biz-1
+        .delete('/api/v1/users/staff/123e4567-e89b-12d3-a456-426614174000') // Trying to delete owner of biz-1 (not staff, but still another user)
         .set('Authorization', `Bearer ${token}`)
         .expect(404); // Service throws 404 if businessId mismatch
     });

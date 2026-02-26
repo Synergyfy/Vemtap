@@ -1,13 +1,21 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/main';
 import { DataSource } from 'typeorm';
 
-export async function createTestApp(): Promise<INestApplication> {
-  const moduleFixture: TestingModule = await Test.createTestingModule({
+export async function createTestApp(
+  configureBuilder?: (builder: TestingModuleBuilder) => void
+): Promise<INestApplication> {
+  const builder = Test.createTestingModule({
     imports: [AppModule],
-  }).compile();
+  });
+
+  if (configureBuilder) {
+    configureBuilder(builder);
+  }
+
+  const moduleFixture: TestingModule = await builder.compile();
 
   const app = moduleFixture.createNestApplication();
 
