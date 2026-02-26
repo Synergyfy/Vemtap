@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
+import { AppModule } from '../../src/app.module';
 import { JwtService } from '@nestjs/jwt';
-import { UserRole, User } from '../src/modules/users/entities/user.entity';
-import { Business } from '../src/modules/businesses/entities/business.entity';
+import { UserRole, User } from '../../src/modules/users/entities/user.entity';
+import { Business } from '../../src/modules/businesses/entities/business.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 describe('Devices & Security (e2e)', () => {
@@ -34,7 +34,7 @@ describe('Devices & Security (e2e)', () => {
 
     // 1. Create Owner User first (without businessId)
     await userRepository.save({
-      id: 'owner-id',
+      id: '123e4567-e89b-12d3-a456-426614174000',
       email: 'owner@example.com',
       password: 'password',
       firstName: 'Owner',
@@ -46,13 +46,13 @@ describe('Devices & Security (e2e)', () => {
     await businessRepository.save({
       id: 'biz-1',
       name: 'Test Business',
-      ownerId: 'owner-id',
+      ownerId: '123e4567-e89b-12d3-a456-426614174000',
     });
 
     // 3. Update Owner with businessId and create other users
     await userRepository.save([
       {
-        id: 'owner-id',
+        id: '123e4567-e89b-12d3-a456-426614174000',
         businessId: 'biz-1',
       },
       {
@@ -64,7 +64,7 @@ describe('Devices & Security (e2e)', () => {
         role: UserRole.CUSTOMER,
       },
       {
-        id: 'staff-id',
+        id: '123e4567-e89b-12d3-a456-426614174004',
         email: 'staff@example.com',
         password: 'password',
         firstName: 'Staff',
@@ -108,7 +108,7 @@ describe('Devices & Security (e2e)', () => {
     });
 
     it('/devices (POST) - Should fail for STAFF role (403)', () => {
-      const token = generateToken('staff-id');
+      const token = generateToken('123e4567-e89b-12d3-a456-426614174004');
       return request(app.getHttpServer())
         .post('/api/v1/devices')
         .set('Authorization', `Bearer ${token}`)
@@ -117,7 +117,7 @@ describe('Devices & Security (e2e)', () => {
     });
 
     it('/devices (POST) - Should pass for OWNER role', () => {
-      const token = generateToken('owner-id');
+      const token = generateToken('123e4567-e89b-12d3-a456-426614174000');
       return request(app.getHttpServer())
         .post('/api/v1/devices')
         .set('Authorization', `Bearer ${token}`)

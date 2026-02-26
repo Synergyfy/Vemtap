@@ -32,10 +32,15 @@ import { dataSourceOptions } from './database/data-source';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [join(__dirname, '../.env'), '.env'],
+      envFilePath:
+        process.env.NODE_ENV === 'test'
+          ? [join(__dirname, '../.env.test'), '.env.test']
+          : [join(__dirname, '../.env'), '.env'],
     }),
     TypeOrmModule.forRoot({
       ...dataSourceOptions,
+      synchronize: process.env.NODE_ENV === 'test',
+      dropSchema: process.env.NODE_ENV === 'test',
       autoLoadEntities: true,
     }),
     AuthModule,

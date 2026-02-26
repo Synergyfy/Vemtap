@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { MailService } from '../src/modules/mail/mail.service';
+import { AppModule } from '../../src/app.module';
+import { MailService } from '../../src/modules/mail/mail.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Otp } from '../src/modules/auth/entities/otp.entity';
+import { Otp } from '../../src/modules/auth/entities/otp.entity';
 
 describe('Auth & Notifications (e2e)', () => {
   let app: INestApplication;

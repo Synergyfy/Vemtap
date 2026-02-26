@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
+import { AppModule } from '../../src/app.module';
 import { JwtService } from '@nestjs/jwt';
-import { UserRole, User } from '../src/modules/users/entities/user.entity';
-import { Business } from '../src/modules/businesses/entities/business.entity';
+import { UserRole, User } from '../../src/modules/users/entities/user.entity';
+import { Business } from '../../src/modules/businesses/entities/business.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 describe('Staff Management (e2e)', () => {
@@ -33,7 +33,7 @@ describe('Staff Management (e2e)', () => {
     // 1. Seed Owners first
     await userRepository.save([
       {
-        id: 'owner-id',
+        id: '123e4567-e89b-12d3-a456-426614174000',
         email: 'owner@team.com',
         password: 'password',
         firstName: 'Owner',
@@ -52,16 +52,16 @@ describe('Staff Management (e2e)', () => {
 
     // 2. Seed Businesses referencing owners
     await businessRepository.save([
-      { id: 'biz-1', name: 'Biz One', ownerId: 'owner-id' },
+      { id: 'biz-1', name: 'Biz One', ownerId: '123e4567-e89b-12d3-a456-426614174000' },
       { id: 'biz-2', name: 'Biz Two', ownerId: 'other-owner-id' },
     ]);
 
     // 3. Update Owners with businessId and seed Staff
     await userRepository.save([
-      { id: 'owner-id', businessId: 'biz-1' },
+      { id: '123e4567-e89b-12d3-a456-426614174000', businessId: 'biz-1' },
       { id: 'other-owner-id', businessId: 'biz-2' },
       {
-        id: 'staff-id',
+        id: '123e4567-e89b-12d3-a456-426614174004',
         email: 'staff@team.com',
         password: 'password',
         firstName: 'Staff',
@@ -80,7 +80,7 @@ describe('Staff Management (e2e)', () => {
 
   describe('/users/staff (GET)', () => {
     it('should return staff for owner', () => {
-      const token = generateToken('owner-id');
+      const token = generateToken('123e4567-e89b-12d3-a456-426614174000');
       return request(app.getHttpServer())
         .get('/api/v1/users/staff')
         .set('Authorization', `Bearer ${token}`)
@@ -94,7 +94,7 @@ describe('Staff Management (e2e)', () => {
 
   describe('/users/staff/invite (POST)', () => {
     it('should allow owner to invite staff', () => {
-      const token = generateToken('owner-id');
+      const token = generateToken('123e4567-e89b-12d3-a456-426614174000');
       return request(app.getHttpServer())
         .post('/api/v1/users/staff/invite')
         .set('Authorization', `Bearer ${token}`)
@@ -108,7 +108,7 @@ describe('Staff Management (e2e)', () => {
     });
 
     it('should forbid staff from inviting other staff', () => {
-      const token = generateToken('staff-id');
+      const token = generateToken('123e4567-e89b-12d3-a456-426614174004');
       return request(app.getHttpServer())
         .post('/api/v1/users/staff/invite')
         .set('Authorization', `Bearer ${token}`)
@@ -124,7 +124,7 @@ describe('Staff Management (e2e)', () => {
 
   describe('/users/staff/:id (DELETE)', () => {
     it('should allow owner to remove staff', () => {
-      const token = generateToken('owner-id');
+      const token = generateToken('123e4567-e89b-12d3-a456-426614174000');
       return request(app.getHttpServer())
         .delete('/api/v1/users/staff/staff-id')
         .set('Authorization', `Bearer ${token}`)
