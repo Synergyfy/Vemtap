@@ -38,6 +38,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         return [];
     });
     const [showNotifications, setShowNotifications] = useState(false);
+    const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const queryClient = useQueryClient();
     const { activeBranchId } = useBusinessStore();
@@ -170,10 +171,15 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         },
         {
             id: 'automations',
-            label: 'Automations',
+            label: 'Automation',
             icon: Zap,
-            href: '/dashboard/automations',
-            roles: ['owner', 'manager']
+            roles: ['owner', 'manager'],
+            submenu: [
+                { label: 'Automation Settings', href: '/dashboard/automations' },
+                { label: 'Active Automations', href: '/dashboard/automations/active' },
+                { label: 'Automation Logs', href: '/dashboard/automations/logs' },
+                { label: 'Performance Overview', href: '/dashboard/automations/performance' },
+            ]
         },
         {
             id: 'loyalty',
@@ -209,6 +215,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             roles: ['owner', 'manager', 'staff']
         },
         {
+            id: 'agent-desk',
+            label: 'Support Desk',
+            icon: HelpCircle,
+            href: '/agent/dashboard',
+            roles: ['staff', 'manager']
+        },
+        {
             id: 'staff',
             label: 'Team',
             icon: Users2,
@@ -235,7 +248,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 { label: 'Engagement', href: '/dashboard/settings/engagement' },
                 { label: 'Notifications', href: '/dashboard/settings/notifications' },
                 { label: 'Integrations', href: '/dashboard/settings/integrations' },
-                {label: `pricing`, href: '/dashboard/settings/pricing' },
+                { label: `pricing`, href: '/dashboard/settings/pricing' },
                 { label: 'Privacy & Data', href: '/dashboard/settings/privacy' },
             ]
         },
@@ -532,6 +545,74 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         >
                             <HelpCircle size={20} />
                         </Link>
+
+                        {/* User Avatar & Dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowUserDropdown(!showUserDropdown)}
+                                className="flex items-center gap-2 p-0.5 hover:bg-gray-100 rounded-full transition-all focus:outline-none border border-transparent hover:border-gray-200"
+                            >
+                                <div className="size-8 rounded-full bg-primary/5 flex items-center justify-center overflow-hidden border border-gray-100 shadow-sm transition-transform hover:scale-105 active:scale-95">
+                                    {myBusiness?.logoUrl || (defaultLogo as any)?.src ? (
+                                        <img
+                                            src={myBusiness?.logoUrl || (defaultLogo as any).src}
+                                            alt={myBusiness?.name || 'Store'}
+                                            className="w-full h-full object-contain p-1"
+                                        />
+                                    ) : (
+                                        <Users className="text-primary" size={16} />
+                                    )}
+                                </div>
+                            </button>
+
+                            {showUserDropdown && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setShowUserDropdown(false)}
+                                    ></div>
+                                    <div className="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden py-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div className="px-4 py-3 border-b border-gray-50 mb-1 bg-gray-50/50">
+                                            <p className="text-sm font-bold text-text-main truncate">{user?.name || 'User'}</p>
+                                            <p className="text-[11px] text-text-secondary truncate">{user?.email || (user as any)?.email}</p>
+                                        </div>
+                                        <div className="px-2">
+                                            <Link
+                                                href="/dashboard/settings/profile"
+                                                className="flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-primary/5 hover:text-primary rounded-lg transition-colors"
+                                                onClick={() => setShowUserDropdown(false)}
+                                            >
+                                                <Settings size={16} className="opacity-70" />
+                                                <span>Profile</span>
+                                            </Link>
+                                            {((user?.role as string)?.toLowerCase() === 'owner' || (user?.role as string)?.toLowerCase() === 'admin') && (
+                                                <Link
+                                                    href="/dashboard/staff"
+                                                    className="flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-primary/5 hover:text-primary rounded-lg transition-colors"
+                                                    onClick={() => setShowUserDropdown(false)}
+                                                >
+                                                    <Users2 size={16} className="opacity-70" />
+                                                    <span>Users</span>
+                                                </Link>
+                                            )}
+                                        </div>
+                                        <div className="border-t border-gray-50 my-2"></div>
+                                        <div className="px-2">
+                                            <button
+                                                onClick={() => {
+                                                    setShowUserDropdown(false);
+                                                    handleLogout();
+                                                }}
+                                                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            >
+                                                <LogOut size={16} />
+                                                <span>Logout</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </header>
 

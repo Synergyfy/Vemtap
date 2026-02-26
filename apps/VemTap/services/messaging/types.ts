@@ -88,6 +88,7 @@ export enum TriggerType {
     REPEAT_TAG = 'repeat_tag',
     REWARD_EARNED = 'reward_earned',
     SURVEY_COMPLETED = 'survey_completed',
+    INACTIVE_CUSTOMER = 'inactive_customer',
 }
 
 export enum ActionType {
