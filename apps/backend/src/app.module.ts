@@ -39,8 +39,13 @@ import { dataSourceOptions } from './database/data-source';
     }),
     TypeOrmModule.forRoot({
       ...dataSourceOptions,
-      synchronize: process.env.NODE_ENV === 'test',
-      dropSchema: process.env.NODE_ENV === 'test',
+      // Only sync/drop schema if strictly in test environment AND DB name indicates test
+      synchronize:
+        process.env.NODE_ENV === 'test' &&
+        process.env.DB_NAME?.includes('test'),
+      dropSchema:
+        process.env.NODE_ENV === 'test' &&
+        process.env.DB_NAME?.includes('test'),
       autoLoadEntities: true,
     }),
     AuthModule,

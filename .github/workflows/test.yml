@@ -59,7 +59,7 @@ jobs:
         DB_HOST: localhost
         DB_PORT: 5432
         DB_USERNAME: neondb_owner
-        DB_PASSWORD: npg_wvh5gMYp6oFk
+        DB_PASSWORD: password123
         DB_NAME: neondb_test
         DB_SSL: false
         JWT_SECRET: test-secret-key-1234567890

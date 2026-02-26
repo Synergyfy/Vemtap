@@ -7,9 +7,14 @@ dotenv.config({ path: join(__dirname, '../.env.test') });
 
 const dbName = process.env.DB_NAME;
 
-if (!dbName || !dbName.includes('test')) {
-  console.error('DB_NAME must include "test" in name to prevent accidental production drops.');
+if (!dbName) {
+  console.error('DB_NAME is not defined.');
   process.exit(1);
+}
+
+// Warning if name doesn't imply test, but allow it if user explicitly configured it
+if (!dbName.includes('test')) {
+  console.warn(`WARNING: DB_NAME "${dbName}" does not contain "test". Ensure this is not a production database!`);
 }
 
 const baseConfig = {
@@ -40,38 +45,46 @@ async function createDb() {
     // Database does not exist, proceed to create it.
   }
 
-  // 2. Connect to maintenance database ('postgres') to create the new DB
-  const maintenanceDb = 'postgres';
-  const client = new Client({
-    ...baseConfig,
-    database: maintenanceDb,
-  });
+  // 2. If we are here, connection failed. Attempt to create it ONLY if it looks like a generated test name
+  if (dbName.includes('test')) {
+      const maintenanceDb = 'postgres';
+      const client = new Client({
+        ...baseConfig,
+        database: maintenanceDb,
+      });
 
-  try {
-    await client.connect();
-    console.log(`Connected to maintenance database '${maintenanceDb}'. Creating ${dbName}...`);
-    await client.query(`CREATE DATABASE "${dbName}"`);
-    console.log(`Database ${dbName} created.`);
-  } catch (err: any) {
-     // If 'postgres' db doesn't exist (unlikely but possible in some setups), try 'neondb'
-     if (err.code === '3D000') {
-         console.log(`Maintenance DB '${maintenanceDb}' not found. Trying 'neondb'...`);
-         const fallbackClient = new Client({ ...baseConfig, database: 'neondb' });
-         try {
-             await fallbackClient.connect();
-             await fallbackClient.query(`CREATE DATABASE "${dbName}"`);
-             console.log(`Database ${dbName} created via 'neondb'.`);
-             await fallbackClient.end();
-         } catch (e) {
-             console.error('Failed to connect to fallback maintenance DB:', e);
+      try {
+        await client.connect();
+        console.log(`Connected to maintenance database '${maintenanceDb}'. Creating ${dbName}...`);
+        await client.query(`CREATE DATABASE "${dbName}"`);
+        console.log(`Database ${dbName} created.`);
+      } catch (err: any) {
+         // Fallback logic
+         if (err.code === '3D000') {
+             console.log(`Maintenance DB '${maintenanceDb}' not found. Trying 'neondb'...`);
+             const fallbackClient = new Client({ ...baseConfig, database: 'neondb' });
+             try {
+                 await fallbackClient.connect();
+                 await fallbackClient.query(`CREATE DATABASE "${dbName}"`);
+                 console.log(`Database ${dbName} created via 'neondb'.`);
+                 await fallbackClient.end();
+             } catch (e) {
+                 console.error('Failed to create database:', e);
+                 // If creation fails, we exit.
+                 process.exit(1);
+             }
+         } else {
+             console.error('Error creating database:', err);
              process.exit(1);
          }
-     } else {
-         console.error('Error creating database:', err);
-         process.exit(1);
-     }
-  } finally {
-    await client.end().catch(() => {});
+      } finally {
+        await client.end().catch(() => {});
+      }
+  } else {
+      // If not a "test" named DB, we don't try to create it automatically to avoid permission issues or accidents.
+      // We just report the connection failure.
+      console.error(`Could not connect to database "${dbName}" and auto-creation is disabled for non-test names.`);
+      process.exit(1);
   }
 }
 
