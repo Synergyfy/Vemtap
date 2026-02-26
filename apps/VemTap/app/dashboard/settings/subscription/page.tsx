@@ -83,20 +83,43 @@ export default function DashboardPricingPage() {
         return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(price);
     };
 
-    const getPlanFeatures = (plan: PricingPlan) => {
-        const features = [...(plan.features || [])];
-        if (plan.smsCredits) features.push(`${plan.smsCredits.toLocaleString()} SMS Credits`);
-        if (plan.emailCredits) features.push(`${plan.emailCredits.toLocaleString()} Email Credits`);
-        if (plan.whatsappCredits) features.push(`${plan.whatsappCredits.toLocaleString()} WhatsApp Credits`);
-        if (plan.teamMembersLimit) features.push(`${plan.teamMembersLimit} Team Members`);
-        if (plan.loyaltyLimit) features.push(`${plan.loyaltyLimit} Loyalty Points`);
-        if (plan.tagsLimit) features.push(`${plan.tagsLimit} Tags`);
-        if (plan.branchLimit) features.push(`${plan.branchLimit} Branches`);
+    const getPerMonthPrice = (price: number, cycle: string) => {
+        if (cycle === 'yearly') return Math.floor(price / 12);
+        if (cycle === 'quarterly') return Math.floor(price / 3);
+        return price;
+    };
+
+    const getBillingTotal = (price: number, cycle: string) => {
+        if (cycle === 'yearly') return price;
+        if (cycle === 'quarterly') return price;
+        return price;
+    };
+
+    const getBillingLabel = (cycle: string) => {
+        if (cycle === 'yearly') return 'billed annually';
+        if (cycle === 'quarterly') return 'billed quarterly';
+        return 'billed monthly';
+    };
+
+    const normalizeFeatures = (plan: any) => {
+        const baseFeatures = Array.isArray(plan.features) ? plan.features.filter(Boolean) : [];
+        const derivedFeatures = [];
+        if (plan.smsCredits) derivedFeatures.push(`${plan.smsCredits.toLocaleString()} SMS Credits`);
+        if (plan.whatsappCredits) derivedFeatures.push(`${plan.whatsappCredits.toLocaleString()} WhatsApp Credits`);
+        if (plan.emailCredits) derivedFeatures.push(`${plan.emailCredits.toLocaleString()} Email Credits`);
+        if (plan.teamMembersLimit) derivedFeatures.push(`${plan.teamMembersLimit} Team Members`);
+        if (plan.loyaltyLimit) derivedFeatures.push(`${plan.loyaltyLimit} Loyalty Points`);
+        if (plan.tagsLimit) derivedFeatures.push(`${plan.tagsLimit} Tags`);
+        if (plan.branchLimit) derivedFeatures.push(`${plan.branchLimit} Branches`);
         if (plan.analyticsLevel && plan.analyticsLevel !== 'none') {
             const level = plan.analyticsLevel.charAt(0).toUpperCase() + plan.analyticsLevel.slice(1);
-            features.push(`${level} Analytics`);
+            derivedFeatures.push(`${level} Analytics`);
         }
-        return features;
+
+        return {
+            included: baseFeatures,
+            limits: derivedFeatures,
+        };
     };
 
     if (isLoading) return (
@@ -212,65 +235,132 @@ export default function DashboardPricingPage() {
                 ).map((plan: PricingPlan) => {
                     const isCurrent = plan.id === activePlanId;
                     const isPersonal = plan.id === 'personal' || plan.name.toLowerCase().includes('personal');
+                    const highlight = plan.isPopular;
                     const price = getPriceByCycle(plan, billingPeriod);
-                    const features = getPlanFeatures(plan);
+                    const perMonthPrice = getPerMonthPrice(price, billingPeriod);
+                    const billingTotal = getBillingTotal(price, billingPeriod);
+                    const features = normalizeFeatures(plan);
+
                     return (
-                        <div key={plan.id} className={`p-8 rounded-4xl border transition-all flex flex-col ${isCurrent ? 'bg-primary/5 border-primary shadow-xl shadow-primary/5' : 'bg-white border-slate-100 hover:border-primary/20'
-                            }`}>
-                            <div className="flex items-center justify-between mb-4">
-                                <h4 className="font-black text-slate-900">{plan.name}</h4>
-                                <div className="flex gap-2">
-                                    {plan.isPopular && (
-                                        <span className="bg-amber-100 text-amber-600 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
-                                            Popular
-                                        </span>
-                                    )}
+                        <div
+                            key={plan.id}
+                            className={`
+                                relative flex flex-col p-6 rounded-[2.5rem] transition-all duration-300
+                                ${highlight
+                                    ? 'bg-primary shadow-2xl shadow-primary/20 text-white z-10 border-2 border-white/10 scale-105'
+                                    : isCurrent
+                                        ? 'bg-primary/5 border-primary shadow-xl shadow-primary/5'
+                                        : 'bg-white border border-gray-100 shadow-xl hover:shadow-2xl'
+                                }
+                            `}
+                        >
+                            {highlight && (
+                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-white text-primary text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg">
+                                    Most Popular
+                                </div>
+                            )}
+
+                            <div className="mb-6">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className={`text-xl font-display font-bold ${highlight ? 'text-white' : 'text-text-main'}`}>
+                                        {plan.name}
+                                    </h3>
                                     {isCurrent && (
-                                        <span className="bg-primary text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
+                                        <span className={`${highlight ? 'bg-white text-primary' : 'bg-primary text-white'} text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest`}>
                                             Active
                                         </span>
                                     )}
                                 </div>
-                            </div>
-                            {plan.description && (
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
+                                <p className={`text-[10px] font-bold uppercase tracking-widest ${highlight ? 'text-white/80' : 'text-slate-400'}`}>
                                     {plan.description}
                                 </p>
-                            )}
-                            <div className="mb-6">
-                                <span className="text-3xl font-black text-slate-900 tracking-tight">{formatPrice(price)}</span>
-                                {plan.id !== 'free' && (
-                                    <span className="text-sm font-bold text-slate-400">
-                                        /{billingPeriod === 'yearly' ? 'yr' : billingPeriod === 'quarterly' ? 'qtr' : 'mo'}
-                                    </span>
+                            </div>
+
+                            <div className="mb-2">
+                                {plan.isFree ? (
+                                    <span className={`text-4xl font-display font-bold ${highlight ? 'text-white' : 'text-text-main'}`}>₦0</span>
+                                ) : (
+                                    <>
+                                        <div className="flex items-end gap-1">
+                                            <span className={`text-4xl font-display font-bold ${highlight ? 'text-white' : 'text-text-main'}`}>
+                                                ₦{perMonthPrice.toLocaleString()}
+                                            </span>
+                                            <span className={`text-sm font-bold mb-1 ${highlight ? 'text-white/70' : 'text-text-secondary'}`}>
+                                                /mo
+                                            </span>
+                                        </div>
+                                        {billingPeriod !== 'monthly' && (
+                                            <p className={`text-[10px] font-medium mt-1 ${highlight ? 'text-white/60' : 'text-text-secondary'}`}>
+                                                ₦{billingTotal.toLocaleString()} {getBillingLabel(billingPeriod)}
+                                            </p>
+                                        )}
+                                    </>
                                 )}
                             </div>
-                            <ul className="space-y-4 mb-8">
-                                {features.map((feature: string, i: number) => (
-                                    <li key={i} className="flex items-start gap-2.5 text-xs font-bold text-slate-600 leading-snug">
-                                        <CheckCircle2 size={14} className="text-primary mt-0.5 shrink-0" />
-                                        {feature}
-                                    </li>
-                                ))}
-                            </ul>
+
+                            <div className="space-y-5 mb-8 flex-1 mt-4">
+                                {features.included.length > 0 && (
+                                    <div>
+                                        <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${highlight ? 'text-white/70' : 'text-text-secondary'}`}>
+                                            Included Features
+                                        </p>
+                                        <ul className="space-y-3">
+                                            {features.included.map((feature: string, fIndex: number) => (
+                                                <li key={`included-${fIndex}`} className="flex items-start gap-3 text-xs font-semibold leading-relaxed">
+                                                    <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${highlight ? 'text-white' : 'text-primary'}`} />
+                                                    <span className={highlight ? 'text-white/90' : 'text-text-secondary'}>
+                                                        {feature}
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                                {features.limits.length > 0 && (
+                                    <div>
+                                        <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${highlight ? 'text-white/70' : 'text-text-secondary'}`}>
+                                            Usage Limits
+                                        </p>
+                                        <ul className="space-y-3">
+                                            {features.limits.map((feature: string, fIndex: number) => (
+                                                <li key={`limit-${fIndex}`} className="flex items-start gap-3 text-xs font-semibold leading-relaxed">
+                                                    <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${highlight ? 'text-white' : 'text-primary'}`} />
+                                                    <span className={highlight ? 'text-white/90' : 'text-text-secondary'}>
+                                                        {feature}
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="mt-auto flex flex-col gap-2">
                                 {plan.trialDurationDays > 0 && !plan.isFree && !isCurrent && isOwner && (
                                     <button
                                         onClick={() => handlePlanSelect(plan, true)}
-                                        className="w-full h-11 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all bg-primary text-white hover:bg-primary-hover shadow-lg shadow-primary/20"
+                                        className={`w-full h-11 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg active:scale-[0.98]
+                                            ${highlight
+                                                ? 'bg-white text-primary hover:bg-gray-50 shadow-white/10'
+                                                : 'bg-primary text-white hover:bg-primary-hover shadow-primary/20'
+                                            }`}
                                     >
                                         Start {plan.trialDurationDays}-Day Free Trial
                                     </button>
                                 )}
                                 <button
                                     onClick={() => handlePlanSelect(plan)}
-                                    disabled={(isCurrent && !isPersonal) || !isOwner}
-                                    className={`w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${isCurrent
-                                        ? isPersonal && isOwner ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                        : !isOwner ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                            : plan.trialDurationDays > 0
-                                                ? 'bg-slate-100 text-slate-900 hover:bg-slate-200'
-                                                : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg'
+                                    disabled={((isCurrent && !isPersonal) || !isOwner)}
+                                    className={`w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-[0.98]
+                                        ${isCurrent
+                                            ? isPersonal && isOwner
+                                                ? highlight ? 'bg-white text-primary hover:bg-gray-50' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20'
+                                                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                            : !isOwner
+                                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                                : highlight
+                                                    ? plan.trialDurationDays > 0 ? 'bg-primary border border-white/20 text-white hover:bg-primary-hover shadow-none' : 'bg-white text-primary hover:bg-gray-50 shadow-white/10'
+                                                    : plan.trialDurationDays > 0 ? 'bg-slate-100 text-slate-900 hover:bg-slate-200' : 'bg-primary text-white hover:bg-primary-hover shadow-primary/20'
                                         }`}
                                 >
                                     {isCurrent ? isPersonal && isOwner ? 'Update Configuration' : 'Current Plan' : isOwner ? plan.isFree ? 'Get Started' : 'Select Plan' : 'Restricted'}
@@ -282,18 +372,63 @@ export default function DashboardPricingPage() {
             </div>
 
             {/* White Label Promo */}
-            <div className="mt-12 p-8 rounded-4xl bg-orange-50 border border-orange-100 flex flex-col md:flex-row items-center gap-8">
-                <div className="size-16 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center shrink-0">
-                    <Star size={32} />
-                </div>
-                <div className="flex-1 text-center md:text-left">
-                    <h4 className="text-lg font-black text-slate-900 mb-1">Looking for custom branding?</h4>
-                    <p className="text-sm font-bold text-slate-600">Our White Label solution allows you to offer VemTap under your own domain and brand.</p>
-                </div>
-                <button className="h-12 px-8 bg-orange-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-orange-700 transition-all shadow-lg shadow-orange-600/20 whitespace-nowrap">
-                    Contact Sales
-                </button>
-            </div>
+            {plans.find((p: PricingPlan) =>
+                p.id === 'white-label' ||
+                p.id === 'enterprise' ||
+                p.name.toLowerCase().includes('enterprise') ||
+                p.name.toLowerCase().includes('white label')
+            ) && (() => {
+                const enterprisePlan = plans.find((p: PricingPlan) =>
+                    p.id === 'white-label' ||
+                    p.id === 'enterprise' ||
+                    p.name.toLowerCase().includes('enterprise') ||
+                    p.name.toLowerCase().includes('white label')
+                );
+                if (!enterprisePlan) return null;
+                const features = normalizeFeatures(enterprisePlan);
+                const price = getPriceByCycle(enterprisePlan, billingPeriod);
+
+                return (
+                    <div className="mt-12 relative flex flex-col md:flex-row items-center gap-8 p-6 md:p-8 rounded-[2rem] bg-slate-900 text-white shadow-2xl shadow-slate-900/20 border border-white/5 overflow-hidden">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 blur-[100px] rounded-full -mr-32 -mt-32" />
+
+                        <div className="relative z-10 flex-1 text-center md:text-left">
+                            <div className="inline-block px-2.5 py-1 bg-white/10 text-white text-[8px] font-black rounded-full uppercase tracking-widest mb-3 border border-white/10">
+                                Enterprise
+                            </div>
+                            <h3 className="text-xl md:text-2xl font-black mb-1 tracking-tight text-white">
+                                {enterprisePlan.name}
+                            </h3>
+                            <p className="text-xs mb-6 font-bold text-white/50 max-w-xl">
+                                {enterprisePlan.description}
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
+                                {[...features.included, ...features.limits].slice(0, 4).map((item: string, i: number) => (
+                                    <li key={i} className="flex items-center text-[10px] font-black uppercase tracking-widest gap-2.5 list-none justify-center md:justify-start">
+                                        <CheckCircle2 size={12} className="text-primary shrink-0" />
+                                        <span className="text-white/70">{item}</span>
+                                    </li>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="relative z-10 flex flex-col items-center md:items-end gap-5 shrink-0">
+                            <div className="text-center md:text-right">
+                                <span className="text-3xl md:text-4xl font-black block leading-none">{formatPrice(price)}</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest opacity-40 mt-1 block">
+                                    /{billingPeriod === 'yearly' ? 'yr' : billingPeriod === 'quarterly' ? 'qtr' : 'mo'}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => handlePlanSelect(enterprisePlan)}
+                                className="px-8 h-12 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all shadow-lg active:scale-[0.98] whitespace-nowrap"
+                            >
+                                Contact Sales
+                            </button>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {checkoutPlan && (
                 <SubscriptionCheckout

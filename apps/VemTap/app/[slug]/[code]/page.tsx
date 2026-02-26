@@ -381,7 +381,7 @@ export default function DynamicTapJourneyPage() {
                         customSuccessButton={useCustomerFlowStore.getState().customSuccessButton}
                         onFinish={() => {
                             resetFlow();
-                            router.push('/customer/dashboard');
+                            router.push(`/${businessSlug}?code=${deviceCode}`);
                         }}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}
