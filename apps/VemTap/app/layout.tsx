@@ -52,8 +52,8 @@ export const metadata: Metadata = {
         images: ["/VEMTAP_TITLE.png"],
     },
     icons: {
-        icon: "/icons/icon-192.png",
-        apple: "/icons/icon-192.png",
+        icon: "/VEMTAP_TITLE.png",
+        apple: "/VEMTAP_TITLE.png",
     },
 };
 
