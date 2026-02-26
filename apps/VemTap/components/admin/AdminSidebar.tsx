@@ -9,7 +9,7 @@ import { dashboardApi } from '@/lib/api/dashboard';
 import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Store, Users, Nfc, CreditCard, BarChart, MessageSquare, Activity,
-    Settings, ChevronDown, Shield, LogOut, Gift, Search, Bell, HelpCircle, Package, FileText, Tag, Menu, X, Workflow
+    Settings, ChevronDown, Shield, LogOut, Gift, Search, Bell, HelpCircle, Package, FileText, Tag, Menu, X, Workflow, Eye
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 
@@ -22,7 +22,7 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
     const pathname = usePathname();
     const router = useRouter();
     const { user, logout } = useAuthStore();
-    const [expandedMenus, setExpandedMenus] = useState<string[]>(['businesses', 'flow-engine']);
+    const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
     const [showNotifications, setShowNotifications] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const queryClient = useQueryClient();
@@ -51,9 +51,7 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
     });
 
     const toggleMenu = (menu: string) => {
-        setExpandedMenus(prev =>
-            prev.includes(menu) ? prev.filter(m => m !== menu) : [...prev, menu]
-        );
+        setExpandedMenus(prev => (prev.includes(menu) ? [] : [menu]));
     };
 
     const handleLogout = () => {
@@ -158,6 +156,15 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                 { label: 'Sessions Monitor', href: '/admin/flow-engine/sessions' },
                 { label: 'Logs & Errors', href: '/admin/flow-engine/logs' },
                 { label: 'System Analytics', href: '/admin/flow-engine/analytics' },
+            ],
+        },
+        {
+            id: 'control-tower',
+            label: 'Control Tower',
+            icon: Eye,
+            submenu: [
+                { label: 'Business Override', href: '/admin/control-tower/business-override' },
+                { label: 'Customer Override', href: '/admin/control-tower/customer-override' },
             ],
         },
         {
