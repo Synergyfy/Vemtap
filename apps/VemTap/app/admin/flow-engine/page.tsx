@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { AlertTriangle, ArrowRight, Bot, FileCode2, PlayCircle, Settings, Signal, TerminalSquare } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Bot, FileCode2, PlayCircle, Plus, Settings, Signal, TerminalSquare, Workflow } from 'lucide-react';
 import FlowEngineNav from '@/components/admin/flow-engine/FlowEngineNav';
 import { analyticsSnapshot, flowLogs, flowTemplates, sessions } from '@/components/admin/flow-engine/mockData';
 
@@ -17,6 +17,7 @@ export default function FlowEngineOverviewPage() {
     ];
 
     const quickLinks = [
+        { href: '/admin/flow-engine/flows', label: 'Flow Builder', icon: Workflow, desc: 'Create full flows and manage activation, clone, and removal.' },
         { href: '/admin/flow-engine/templates', label: 'Flow Templates', icon: FileCode2, desc: 'Create, version, and validate flow JSON definitions.' },
         { href: '/admin/flow-engine/triggers', label: 'Trigger Management', icon: Bot, desc: 'Enable/disable system triggers globally.' },
         { href: '/admin/flow-engine/settings', label: 'WhatsApp System Settings', icon: Settings, desc: 'Manage API credentials and webhook checks.' },
@@ -26,6 +27,20 @@ export default function FlowEngineOverviewPage() {
     return (
         <div className="p-8">
             <FlowEngineNav current="/admin/flow-engine" />
+
+            <div className="mb-6 rounded-2xl border border-primary/20 bg-primary/5 p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Flow Management</p>
+                    <h2 className="text-xl font-display font-bold text-text-main mt-1">Build Full Flows From Overview</h2>
+                    <p className="text-xs font-medium text-text-secondary mt-1">Use Flow Builder to create a complete new flow, then manage it centrally.</p>
+                </div>
+                <Link
+                    href="/admin/flow-engine/flows"
+                    className="h-11 px-5 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest inline-flex items-center justify-center gap-2"
+                >
+                    <Plus size={14} /> Create New Flow
+                </Link>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
                 {summaryCards.map((card) => {

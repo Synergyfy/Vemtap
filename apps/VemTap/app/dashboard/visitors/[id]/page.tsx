@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useParams } from 'next/navigation';
 import PageHeader from '@/components/dashboard/PageHeader';
 import StatsCard from '@/components/dashboard/StatsCard';
 import ChartCard from '@/components/dashboard/ChartCard';
@@ -11,17 +12,19 @@ import { notify } from '@/lib/notify';
 import { useVisitor } from '@/services/visitors/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 
-export default function VisitorProfilePage({ params }: { params: { id: string } }) {
+export default function VisitorProfilePage() {
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isMsgOpen, setIsMsgOpen] = useState(false);
     const [isNoteOpen, setIsNoteOpen] = useState(false);
+    const params = useParams<{ id: string }>();
+    const visitorId = params?.id || '';
 
     const userBranchId = useAuthStore((state) => state.user?.businessId);
-    const { data: serverVisitor, isLoading } = useVisitor(params.id, userBranchId);
+    const { data: serverVisitor, isLoading } = useVisitor(visitorId, userBranchId);
 
     // Fallback object to map data safely if isLoading
     const visitorObj = serverVisitor || {
-        id: params.id,
+        id: visitorId,
         name: 'Loading...',
         email: '',
         phone: '',
