@@ -7,6 +7,9 @@ import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/main';
 import { DataSource } from 'typeorm';
 import { getQueueToken } from '@nestjs/bullmq';
+import { BatchSendProcessor } from '../../src/modules/messaging/processors/batch-send.processor';
+import { FlowDelayProcessor } from '../../src/modules/messaging/processors/flow-delay.processor';
+import { AutomationProcessor } from '../../src/modules/messaging/processors/automation.processor';
 
 export async function createTestApp(
   configureBuilder?: (builder: TestingModuleBuilder) => void
@@ -26,6 +29,11 @@ export async function createTestApp(
   builder.overrideProvider(getQueueToken('messaging-batch-send')).useValue(mockQueue);
   builder.overrideProvider(getQueueToken('messaging-flow-delay')).useValue(mockQueue);
   builder.overrideProvider(getQueueToken('messaging-automation')).useValue(mockQueue);
+
+  // Mock BullMQ Processors to avoid starting workers that require Redis connections
+  builder.overrideProvider(BatchSendProcessor).useValue({ process: jest.fn() });
+  builder.overrideProvider(FlowDelayProcessor).useValue({ process: jest.fn() });
+  builder.overrideProvider(AutomationProcessor).useValue({ process: jest.fn() });
 
   if (configureBuilder) {
     configureBuilder(builder);
