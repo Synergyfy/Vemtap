@@ -37,7 +37,7 @@ export default function StepPricing() {
                 moq: formData.volumeDiscounts[0]?.minQty || 1,
                 priceTiers: formData.volumeDiscounts.map(tier => ({
                     min: tier.minQty,
-                    max: tier.maxQty,
+                    max: Number.isFinite(tier.maxQty as number) ? tier.maxQty : null,
                     price: parseFloat((formData.msrp * (1 - tier.discountPercent / 100)).toFixed(2))
                 })),
                 status: 'Published',
@@ -85,9 +85,41 @@ export default function StepPricing() {
     };
 
     const handleDiscountChange = (id: string, field: 'minQty' | 'maxQty' | 'discountPercent', value: string) => {
-        const numValue = value === '' ? null : parseInt(value);
-        const newDiscounts = formData.volumeDiscounts.map(d => d.id === id ? { ...d, [field]: numValue } : d);
+        const normalizedValue = value.trim();
+        const parsed = normalizedValue === '' ? NaN : parseInt(normalizedValue, 10);
+        const newDiscounts = formData.volumeDiscounts.map((d) => {
+            if (d.id !== id) return d;
+
+            if (field === 'maxQty') {
+                return { ...d, maxQty: Number.isNaN(parsed) ? (Number.NaN as unknown as number) : parsed };
+            }
+
+            if (field === 'minQty') {
+                return { ...d, minQty: Number.isNaN(parsed) ? 1 : Math.max(1, parsed) };
+            }
+
+            return { ...d, discountPercent: Number.isNaN(parsed) ? 0 : Math.max(0, parsed) };
+        });
+
         updateFormData({ volumeDiscounts: newDiscounts });
+    };
+
+    const setTierOpenEnded = (id: string) => {
+        updateFormData({
+            volumeDiscounts: formData.volumeDiscounts.map((tier) =>
+                tier.id === id ? { ...tier, maxQty: null } : tier
+            ),
+        });
+    };
+
+    const setTierFiniteMax = (id: string) => {
+        updateFormData({
+            volumeDiscounts: formData.volumeDiscounts.map((tier) => {
+                if (tier.id !== id) return tier;
+                const minQty = Number.isFinite(tier.minQty) ? tier.minQty : 1;
+                return { ...tier, maxQty: Math.max(minQty, minQty + 1) };
+            }),
+        });
     };
 
     const addDiscountTier = () => {
@@ -239,7 +271,9 @@ export default function StepPricing() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {formData.volumeDiscounts.map((tier) => (
+                                {formData.volumeDiscounts.map((tier) => {
+                                    const isOpenEndedTier = tier.maxQty === null;
+                                    return (
                                     <tr key={tier.id} className="bg-white hover:bg-gray-50 transition-colors group">
                                         <td className="px-6 py-4 font-bold text-text-main">
                                             <div className="flex items-center gap-2">
@@ -250,15 +284,35 @@ export default function StepPricing() {
                                                     className="w-16 px-2 py-1 text-xs border border-gray-200 rounded font-bold text-center focus:ring-1 focus:ring-primary focus:border-primary"
                                                 />
                                                 <span className="text-gray-400">-</span>
-                                                {tier.maxQty !== null ? (
-                                                    <input
-                                                        type="number"
-                                                        value={tier.maxQty}
-                                                        onChange={(e) => handleDiscountChange(tier.id, 'maxQty', e.target.value)}
-                                                        className="w-16 px-2 py-1 text-xs border border-gray-200 rounded font-bold text-center focus:ring-1 focus:ring-primary focus:border-primary"
-                                                    />
+                                                {!isOpenEndedTier ? (
+                                                    <>
+                                                        <input
+                                                            type="number"
+                                                            value={Number.isFinite(tier.maxQty as number) ? (tier.maxQty as number) : ''}
+                                                            onChange={(e) => handleDiscountChange(tier.id, 'maxQty', e.target.value)}
+                                                            className="w-16 px-2 py-1 text-xs border border-gray-200 rounded font-bold text-center focus:ring-1 focus:ring-primary focus:border-primary"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setTierOpenEnded(tier.id)}
+                                                            className="px-2 py-1 text-[10px] font-black rounded bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+                                                            title="Set open-ended (+)"
+                                                        >
+                                                            +
+                                                        </button>
+                                                    </>
                                                 ) : (
-                                                    <span className="text-xl px-2 text-gray-400">+</span>
+                                                    <>
+                                                        <span className="text-xl px-2 text-gray-400">+</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setTierFiniteMax(tier.id)}
+                                                            className="px-2 py-1 text-[10px] font-black rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                                                            title="Set numeric max"
+                                                        >
+                                                            Set Max
+                                                        </button>
+                                                    </>
                                                 )}
                                             </div>
                                         </td>
@@ -285,7 +339,8 @@ export default function StepPricing() {
                                             </button>
                                         </td>
                                     </tr>
-                                ))}
+                                );
+                                })}
                             </tbody>
                         </table>
                     </div>
