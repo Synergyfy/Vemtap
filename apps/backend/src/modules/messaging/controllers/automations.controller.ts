@@ -28,6 +28,8 @@ import { AutomationService } from '../services/automation.service';
 import {
   CreateAutomationRuleDto,
   UpdateAutomationRuleDto,
+  UpdateAutomationToggleDto,
+  UpdateAutomationConfigDto,
 } from '../dto/automation-rule.dto';
 
 @ApiTags('Messaging Automations')
@@ -36,7 +38,7 @@ import {
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
 @Permissions('messaging')
 export class AutomationsController {
-  constructor(private readonly automationService: AutomationService) {}
+  constructor(private readonly automationService: AutomationService) { }
 
   @Post()
   @Roles(UserRole.OWNER, UserRole.MANAGER)
@@ -79,6 +81,70 @@ export class AutomationsController {
     const targetBranchId = req.user.branchId || branchId;
 
     return this.automationService.findAll(req.user.businessId, targetBranchId);
+  }
+
+  @Get('logs')
+  @ApiOperation({ summary: 'Get automation execution logs' })
+  @ApiQuery({ name: 'branchId', required: false })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'offset', required: false, type: Number })
+  async getLogs(
+    @Query('branchId') branchId: string,
+    @Query('limit') limit: number,
+    @Query('offset') offset: number,
+    @Request() req: { user: User },
+  ) {
+    const targetBranchId = req.user.branchId || branchId;
+    return this.automationService.findLogs(
+      req.user.businessId,
+      targetBranchId,
+      limit || 50,
+      offset || 0,
+    );
+  }
+
+  @Get('logs/:sessionId')
+  @ApiOperation({ summary: 'Get details for a specific automation session log' })
+  async getLogDetails(
+    @Param('sessionId') sessionId: string,
+    @Request() req: { user: User },
+  ) {
+    try {
+      return await this.automationService.findLogDetails(sessionId, req.user.businessId);
+    } catch (e: any) {
+      throw new BadRequestException(e.message || 'Error fetching log details');
+    }
+  }
+
+  @Get('connection-status')
+  @ApiOperation({ summary: 'Get WhatsApp connection status for the business' })
+  @ApiQuery({ name: 'branchId', required: false })
+  async getConnectionStatus(
+    @Query('branchId') branchId: string,
+    @Request() req: { user: User },
+  ) {
+    const targetBranchId = req.user.branchId || branchId;
+    return this.automationService.getConnectionStatus(req.user.businessId, targetBranchId);
+  }
+
+  @Get('performance')
+  @ApiOperation({ summary: 'Get simple automation performance analytics' })
+  @ApiQuery({ name: 'branchId', required: false })
+  @ApiQuery({ name: 'startDate', required: false, type: Date })
+  @ApiQuery({ name: 'endDate', required: false, type: Date })
+  async getPerformance(
+    @Query('branchId') branchId: string,
+    @Query('startDate') startDate: Date,
+    @Query('endDate') endDate: Date,
+    @Request() req: { user: User },
+  ) {
+    const targetBranchId = req.user.branchId || branchId;
+    return this.automationService.getPerformanceAnalytics(
+      req.user.businessId,
+      targetBranchId,
+      startDate,
+      endDate,
+    );
   }
 
   @Get(':id')
@@ -142,5 +208,63 @@ export class AutomationsController {
     }
 
     return this.automationService.remove(id);
+  }
+
+  @Patch(':id/toggle')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Toggle an automation rule ON or OFF' })
+  async toggle(
+    @Param('id') id: string,
+    @Body() dto: UpdateAutomationToggleDto,
+    @Request() req: { user: User },
+  ) {
+    const rule = await this.automationService.findOne(id);
+    if (!rule) throw new BadRequestException('Rule not found');
+    if (
+      rule.businessId !== req.user.businessId &&
+      req.user.role !== UserRole.ADMIN
+    )
+      throw new BadRequestException('Access denied');
+
+    if (
+      req.user.role === UserRole.MANAGER &&
+      req.user.branchId &&
+      rule.branchId !== req.user.branchId
+    ) {
+      throw new BadRequestException('Access denied');
+    }
+
+    return this.automationService.toggleAutomation(id, dto);
+  }
+
+  @Patch(':id/configure')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Configure settings for an automation template' })
+  async configure(
+    @Param('id') id: string,
+    @Body() dto: UpdateAutomationConfigDto,
+    @Request() req: { user: User },
+  ) {
+    const rule = await this.automationService.findOne(id);
+    if (!rule) throw new BadRequestException('Rule not found');
+    if (
+      rule.businessId !== req.user.businessId &&
+      req.user.role !== UserRole.ADMIN
+    )
+      throw new BadRequestException('Access denied');
+
+    if (
+      req.user.role === UserRole.MANAGER &&
+      req.user.branchId &&
+      rule.branchId !== req.user.branchId
+    ) {
+      throw new BadRequestException('Access denied');
+    }
+
+    try {
+      return await this.automationService.configureAutomation(id, dto);
+    } catch (e: any) {
+      throw new BadRequestException(e.message || 'Configuration failed');
+    }
   }
 }

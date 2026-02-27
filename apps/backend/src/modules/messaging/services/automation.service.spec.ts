@@ -73,7 +73,7 @@ describe('AutomationService', () => {
         businessId: 'biz1',
         branchId: 'br1',
         isActive: true,
-      } as AutomationRule;
+      } as any as AutomationRule;
 
       jest.spyOn(ruleRepo, 'find').mockResolvedValue([rule]);
       jest.spyOn(ruleRepo, 'findOne').mockResolvedValue(rule);
@@ -97,7 +97,7 @@ describe('AutomationService', () => {
         businessId: 'biz1',
         branchId: 'br1',
         isActive: true,
-      } as AutomationRule;
+      } as any as AutomationRule;
 
       jest.spyOn(ruleRepo, 'find').mockResolvedValue([rule]);
 
@@ -124,7 +124,7 @@ describe('AutomationService', () => {
         businessId: 'biz1',
         branchId: 'br1',
         isActive: true,
-      } as AutomationRule;
+      } as any as AutomationRule;
 
       jest.spyOn(ruleRepo, 'findOne').mockResolvedValue(rule);
 
@@ -138,6 +138,57 @@ describe('AutomationService', () => {
       expect(logRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'success' }),
       );
+    });
+  });
+
+  describe('configureAutomation', () => {
+    it('should update content and delayDays correctly', async () => {
+      const rule = {
+        id: '1',
+        actionConfig: {},
+      } as any as AutomationRule;
+
+      jest.spyOn(ruleRepo, 'findOne').mockResolvedValue(rule);
+      jest.spyOn(ruleRepo, 'save').mockImplementation(async (r) => r as AutomationRule);
+
+      const result = await service.configureAutomation('1', {
+        content: 'Hello {{visitor_name}}',
+        delayDays: 2,
+        loyaltyPoints: 10,
+      });
+
+      expect(result.actionConfig.content).toBe('Hello {{visitor_name}}');
+      expect(result.actionConfig.loyaltyPoints).toBe(10);
+      expect(result.delaySeconds).toBe(2 * 24 * 60 * 60);
+    });
+
+    it('should throw error for invalid variables in content', async () => {
+      const rule = {
+        id: '1',
+      } as any as AutomationRule;
+
+      jest.spyOn(ruleRepo, 'findOne').mockResolvedValue(rule);
+
+      await expect(
+        service.configureAutomation('1', {
+          content: 'Hello {{invalid_var}}',
+        }),
+      ).rejects.toThrow('Invalid variable found: {{invalid_var}}');
+    });
+
+    it('should allow valid variables in content', async () => {
+      const rule = {
+        id: '1',
+      } as any as AutomationRule;
+
+      jest.spyOn(ruleRepo, 'findOne').mockResolvedValue(rule);
+      jest.spyOn(ruleRepo, 'save').mockImplementation(async (r) => r as AutomationRule);
+
+      await expect(
+        service.configureAutomation('1', {
+          content: 'Hi {{visitor_name}}, welcome to {{business_name}} at {{branch_name}}. You earned {{loyalty_points}} points!',
+        }),
+      ).resolves.toBeDefined();
     });
   });
 });

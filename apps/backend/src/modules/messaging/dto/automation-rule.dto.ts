@@ -88,3 +88,27 @@ export class AutomationTriggerDto {
   contactId: string;
   metadata?: Record<string, any>;
 }
+
+export class UpdateAutomationToggleDto {
+  @ApiProperty()
+  @IsNotEmpty()
+  @IsBoolean()
+  isActive: boolean;
+}
+
+export class UpdateAutomationConfigDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  content?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  loyaltyPoints?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  delayDays?: number;
+}
