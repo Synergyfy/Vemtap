@@ -1,11 +1,11 @@
-import { NestFactory } from '@nestjs/core';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { NestFactory, Reflector } from '@nestjs/core';
+import { Logger, ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 // 1. Shared Configuration Function
 // This setup applies to both Local and Vercel environments
-async function configureApp(app: any) {
+export async function configureApp(app: any) {
   // CORS
   app.enableCors({
     origin: true,
@@ -23,6 +23,9 @@ async function configureApp(app: any) {
       forbidNonWhitelisted: true,
     }),
   );
+
+  // Serialization
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   // Swagger
   const config = new DocumentBuilder()

@@ -114,6 +114,8 @@ export class TermiiProvider implements MessagingProvider {
     type: 'inbound' | 'delivery';
     data: InboundMessage | DeliveryReport;
   } | null> {
+    if (!payload) return null;
+
     // Termii Inbound SMS/WhatsApp usually has: receiver (shortcode/senderID), sender (phone), message, msgid
     if (payload.receiver && payload.sender && payload.message) {
       // Try to detect channel if possible, else default based on context or assume SMS/Unified
