@@ -40,12 +40,15 @@ import { dataSourceOptions } from './database/data-source';
     TypeOrmModule.forRoot({
       ...dataSourceOptions,
       // Only sync/drop schema if strictly in test environment AND DB name indicates test
+      // AND we are NOT in a deployment/production-like environment
       synchronize:
         process.env.NODE_ENV === 'test' &&
-        process.env.DB_NAME?.includes('test'),
+        process.env.DB_NAME?.includes('test') &&
+        process.env.DEPLOYMENT !== 'true',
       dropSchema:
         process.env.NODE_ENV === 'test' &&
-        process.env.DB_NAME?.includes('test'),
+        process.env.DB_NAME?.includes('test') &&
+        process.env.DEPLOYMENT !== 'true',
       autoLoadEntities: true,
     }),
     AuthModule,
