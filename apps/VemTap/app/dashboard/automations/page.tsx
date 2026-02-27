@@ -8,7 +8,9 @@ import { useAuthStore } from '@/store/useAuthStore';
 import {
     useAutomations,
     useCreateAutomation,
-    useUpdateAutomation
+    useUpdateAutomation,
+    useWhatsAppConnectionStatus,
+    useAutomationPerformance
 } from '@/services/messaging/hooks';
 import {
     TriggerType,
@@ -50,9 +52,9 @@ const AUTOMATION_TEMPLATES = [
 export default function AutomationsPage() {
     const { user, activeBranchId } = useAuthStore();
     const { data: rules = [], isLoading } = useAutomations();
+    const { data: connStatus } = useWhatsAppConnectionStatus();
+    const { data: performance } = useAutomationPerformance();
     const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
-
-    const updateMutation = useUpdateAutomation(selectedTemplate?.ruleId || '');
 
     return (
         <div className="p-8">
@@ -62,8 +64,10 @@ export default function AutomationsPage() {
                     description="Activate and configure smart automations to grow your business automatically."
                 />
                 <div className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full border border-green-100 shadow-sm">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-wider">WhatsApp Connected</span>
+                    <div className={`w-2 h-2 rounded-full ${connStatus?.status === 'Connected' ? 'bg-green-500 animate-pulse' : 'bg-amber-500'}`} />
+                    <span className="text-[10px] font-black uppercase tracking-wider">
+                        {connStatus?.status === 'Connected' ? 'WhatsApp Connected' : 'WhatsApp Disconnected'}
+                    </span>
                 </div>
             </div>
 
@@ -121,15 +125,15 @@ export default function AutomationsPage() {
                     <div className="flex gap-12">
                         <div className="text-center">
                             <p className="text-xs font-black uppercase tracking-widest text-white/40 mb-1">Messages</p>
-                            <p className="text-3xl font-display font-black">2,841</p>
+                            <p className="text-3xl font-display font-black">{performance?.totalMessagesSent?.toLocaleString() || '0'}</p>
                         </div>
                         <div className="text-center">
                             <p className="text-xs font-black uppercase tracking-widest text-white/40 mb-1">Engaged</p>
-                            <p className="text-3xl font-display font-black">412</p>
+                            <p className="text-3xl font-display font-black">{performance?.totalReplies?.toLocaleString() || '0'}</p>
                         </div>
                         <div className="text-center">
                             <p className="text-xs font-black uppercase tracking-widest text-white/40 mb-1">Loyalty Given</p>
-                            <p className="text-3xl font-display font-black">12.5k</p>
+                            <p className="text-3xl font-display font-black">{performance?.loyaltyPointsIssued?.toLocaleString() || '0'}</p>
                         </div>
                     </div>
                 </div>

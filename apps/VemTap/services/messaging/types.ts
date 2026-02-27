@@ -131,3 +131,39 @@ export interface UpdateAutomationRequest {
     actionConfig?: Record<string, any>;
     isActive?: boolean;
 }
+
+export interface AutomationLog {
+    id: string;
+    sessionId: string;
+    businessId: string;
+    branchId?: string;
+    automationId: string;
+    automationName: string;
+    visitorId: string;
+    visitorName: string;
+    visitorPhone?: string;
+    status: 'RUNNING' | 'COMPLETED' | 'FAILED' | 'DELAYED';
+    currentStep?: string;
+    lastMessage?: string;
+    errorMessage?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface AutomationPerformance {
+    totalMessagesSent: number;
+    totalReplies: number;
+    replyRate: number;
+    loyaltyPointsIssued: number;
+    topAutomations: Array<{
+        id: string;
+        name: string;
+        replies: number;
+        replyRate: number;
+    }>;
+    dailyStats: Array<{
+        date: string;
+        sent: number;
+        replies: number;
+    }>;
+}
