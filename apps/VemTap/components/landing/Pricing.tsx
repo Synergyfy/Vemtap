@@ -27,7 +27,7 @@ export default function Pricing() {
 
     const handleSubscription = async (plan: any, useTrial: boolean = false) => {
         if (!isAuthenticated) {
-            router.push('/login');
+            router.push('/get-started');
             return;
         }
 

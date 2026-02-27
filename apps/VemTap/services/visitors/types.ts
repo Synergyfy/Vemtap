@@ -18,6 +18,8 @@ export interface VisitorStatsResponse {
 export interface Visitor {
     id: string;
     name: string;
+    firstName?: string;
+    lastName?: string;
     email: string;
     phone: string;
     visits: number;
@@ -40,4 +42,20 @@ export interface PaginatedVisitorResponse {
     total: number;
     page: number;
     limit: number;
+}
+
+export interface Reward {
+    id: string;
+    branchId: string;
+    businessId: string;
+    name: string;
+    description: string;
+    pointCost: number;
+    rewardType: 'free_item' | 'percentage_discount' | 'flat_discount' | string;
+    value: number;
+    validityDays: number;
+    usageLimitPerUser: number;
+    active: boolean;
+    createdAt?: string;
+    updatedAt?: string;
 }

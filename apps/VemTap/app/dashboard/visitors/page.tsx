@@ -11,6 +11,7 @@ import { Visitor } from '@/services/visitors/types';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Users, UserPlus, Repeat, Star, Search, Download, MoreVertical, Send, Gift, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { formatDate } from '@/lib/utils/date';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import { exportToCSV } from '@/lib/utils/export';
@@ -70,18 +71,18 @@ export default function VisitorsOverviewPage() {
             accessor: (item: Visitor) => (
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs uppercase">
-                        {item.name.split(' ').map((n: string) => n[0]).join('')}
+                        {(item.name || 'V').split(' ').filter(Boolean).map((n: string) => n[0]).join('')}
                     </div>
                     <div>
-                        <p className="font-bold text-text-main">{item.name}</p>
-                        <p className="text-[10px] text-text-secondary font-medium tracking-tight uppercase">ID: {item.id.substr(0, 6)}</p>
+                        <p className="font-bold text-text-main">{item.name || 'Unknown Visitor'}</p>
+                        <p className="text-[10px] text-text-secondary font-medium tracking-tight uppercase">ID: {(item.id || '      ').substr(0, 6)}</p>
                     </div>
                 </div>
             )
         },
         { header: 'Contact', accessor: 'phone' },
         { header: 'Email', accessor: 'email', },
-        { header: 'Last Visit', accessor: (item: Visitor) => String(item.lastVisit || item.time || new Date().toISOString().split('T')[0]) },
+        { header: 'Last Visit', accessor: (item: Visitor) => formatDate(item.lastVisit || item.time) },
         {
             header: 'Status',
             accessor: (item: Visitor) => (

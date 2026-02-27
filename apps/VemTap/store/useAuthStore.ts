@@ -27,6 +27,7 @@ export interface User {
   lastLogin?: string;
   joined?: string;
   createdAt?: string;
+  engagement?: Record<string, any>;
 }
 
 export interface AuthState {
@@ -112,8 +113,8 @@ export const useAuthStore = create<AuthState>()(
  * @returns boolean
  */
 export function useCanAccess(allowedRoles: UserRole[]): boolean {
-    const userRole = useAuthStore((state) => state.user?.role);
-    if (!userRole) return false;
-    return allowedRoles.includes(userRole.toLowerCase() as UserRole);
+  const userRole = useAuthStore((state) => state.user?.role);
+  if (!userRole) return false;
+  return allowedRoles.includes(userRole.toLowerCase() as UserRole);
 }
 

@@ -8,6 +8,7 @@ import { Users, Send, CheckCircle, Smartphone, MessageSquare, Mail } from 'lucid
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useVisitors } from '@/services/visitors/hooks';
 import Image from 'next/image';
 
 interface MessageBuilderProps {
@@ -178,6 +179,7 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
     const router = useRouter();
     const { user } = useAuthStore();
     const sendMessage = useSendMessage();
+    const { data: visitorsData } = useVisitors();
     const [channel, setChannel] = useState<MessageChannel>(defaultChannel || 'SMS');
     const channelApiMap: Record<MessageChannel, Channel> = {
         WhatsApp: 'WHATSAPP',
@@ -270,8 +272,8 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                 <div>
                     <label className="block text-xs font-bold uppercase text-text-secondary mb-3">Target Audience</label>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {[ 
-                            { id: 'all', label: 'All Contacts', sub: '(Business-wide)', icon: Users },
+                        {[
+                            { id: 'all', label: 'All Contacts', sub: `(${visitorsData?.total || 0} Total)`, icon: Users },
                             { id: 'new', label: 'Recent Contacts', sub: '(Recent)', icon: Smartphone },
                             { id: 'premium', label: 'Tagged Contacts', sub: '(Tagged)', icon: CheckCircle }
                         ].map(opt => (
@@ -341,7 +343,7 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                             <label className="block text-[10px] font-black uppercase text-text-secondary mb-2 tracking-widest ml-1">Target Audience</label>
                             <div className="grid grid-cols-3 gap-2">
                                 {[
-                                    { id: 'all', label: 'All', sub: 'All contacts', icon: Users },
+                                    { id: 'all', label: 'All', sub: `${visitorsData?.total || 0} Total`, icon: Users },
                                     { id: 'new', label: 'Recent', sub: 'Recent', icon: Smartphone },
                                     { id: 'premium', label: 'Tagged', sub: 'Tagged', icon: CheckCircle }
                                 ].map(opt => (

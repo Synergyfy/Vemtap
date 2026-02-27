@@ -30,6 +30,16 @@ interface LoyaltyState {
     breakdown?: any;
   } | null;
 
+  // Overall customer analytics
+  analytics: {
+    totalVisits: number;
+    currentPointsBalance: number;
+    netSavings: number;
+    visitTrends: { month: string; visits: number }[];
+    pointsByVenue: { venueName: string; points: number }[];
+    topVenues: { venueName: string; points: number }[];
+  } | null;
+
   // Loading & Error states
   isLoading: boolean;
   error: string | null;
@@ -43,6 +53,7 @@ interface LoyaltyState {
   fetchAllProfiles: (branchId: string) => Promise<void>;
   fetchRewards: (branchId: string) => Promise<void>;
   fetchTransactions: (profileId: string) => Promise<void>;
+  fetchAnalytics: () => Promise<void>;
   earnPoints: (request: PointEarnRequest) => Promise<{ success: boolean; pointsEarned: number; message: string; newBalance?: number; breakdown?: any }>;
   redeemReward: (loyaltyProfileId: string, rewardId: string) => Promise<{ success: boolean; redemption?: Redemption; error?: string }>;
   setLastEarnedResponse: (response: LoyaltyState['lastEarnedResponse']) => void;
@@ -62,6 +73,7 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
   availableRewards: [],
   redemptions: [],
   lastEarnedResponse: null,
+  analytics: null,
   isLoading: false,
   error: null,
   rules: null,
@@ -116,6 +128,17 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
     } catch (error) {
       console.error('Failed to fetch transactions:', error);
       set({ isLoading: false, error: 'Failed to load transactions' });
+    }
+  },
+
+  fetchAnalytics: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const analytics = await loyaltyApi.fetchCustomerAnalytics();
+      set({ analytics, isLoading: false });
+    } catch (error) {
+      console.error('Failed to fetch analytics:', error);
+      set({ isLoading: false, error: 'Failed to load analytics' });
     }
   },
 

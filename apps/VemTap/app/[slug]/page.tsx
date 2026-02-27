@@ -1,206 +1,289 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
-    MapPin, Phone, Mail, Globe, Clock, Star,
-    ChevronRight, Gift, ShieldCheck, Instagram,
-    Twitter, Facebook, ExternalLink, Share2, Building2
+    MapPin, Phone, Mail, Globe, ShieldCheck, Instagram,
+    Twitter, Facebook, Share2, Building2, Linkedin, ExternalLink,
+    ChevronRight, LayoutDashboard, Loader2, Star
 } from 'lucide-react';
-import { useBusinessStore } from '@/store/useBusinessStore';
-import { useAuthStore, AuthState } from '../../store/useAuthStore';
+import { fetchDeviceByCode, Device } from '@/lib/api/devices';
+import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 
 export default function BusinessPublicPage() {
-    const { slug } = useParams();
+    const params = useParams();
     const router = useRouter();
-    const { branches } = useBusinessStore();
-    const user = useAuthStore((state: AuthState) => state.user);
+    const searchParams = useSearchParams();
 
-    // In a real app, we'd fetch business details by slug.
-    const businessName = user?.businessName || (slug as string)?.replace(/-/g, ' ') || 'VemTap Business';
+    // The slug is the business name (e.g. "green"), NOT the device code.
+    // The actual device code lives in the zustand store (set during the tap journey)
+    // or can be passed as ?code= in the URL as a fallback.
+    const storeDeviceCode = useCustomerFlowStore(state => state.deviceCode);
+    const queryCode = searchParams.get('code');
+    const deviceCode = storeDeviceCode || queryCode;
+
+    const [businessData, setBusinessData] = useState<Device | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const loadBusiness = async () => {
+            if (!deviceCode) {
+                // No code available — cannot look up business
+                setIsLoading(false);
+                return;
+            }
+            try {
+                const data = await fetchDeviceByCode(deviceCode);
+                setBusinessData(data);
+            } catch (err) {
+                console.error('Failed to load business data:', err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadBusiness();
+    }, [deviceCode]);
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-[#fafbfc] flex items-center justify-center">
+                <Loader2 className="size-10 text-primary animate-spin" />
+            </div>
+        );
+    }
+
+    if (!businessData?.business) {
+        return (
+            <div className="min-h-screen bg-[#fafbfc] flex flex-col items-center justify-center p-6 text-center">
+                <Building2 size={64} className="text-slate-300 mb-4" />
+                <h1 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Business Not Found</h1>
+                <p className="text-slate-500 font-bold mb-8">We couldn't find the business you're looking for.</p>
+                <button
+                    onClick={() => router.push('/')}
+                    className="px-8 h-12 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-primary/20"
+                >
+                    Back to Home
+                </button>
+            </div>
+        );
+    }
+
+    const { business, owner } = businessData;
+    const businessName = business.name || 'VemTap Business';
+    const logoUrl = business.logoUrl;
 
     return (
-        <div className="min-h-screen bg-[#fafbfc]">
-            {/* Hero / Cover */}
-            <div className="h-64 bg-linear-to-br from-primary to-indigo-600 relative overflow-hidden">
-                <div className="absolute inset-0 opacity-10">
-                    <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-white via-transparent to-transparent scale-150" />
+        <div className="min-h-screen bg-[#fafbfc] font-sans selection:bg-primary/10">
+            {/* Minimal Header */}
+            <div className="h-[40vh] bg-linear-to-b from-slate-50 to-[#fafbfc] relative overflow-hidden flex items-center justify-center">
+                {/* Abstract background elements for a "premium" feel */}
+                <div className="absolute top-0 left-0 w-full h-full">
+                    <div className="absolute top-[-10%] left-[-5%] size-96 bg-primary/5 rounded-full blur-3xl animate-pulse" />
+                    <div className="absolute bottom-[-10%] right-[-5%] size-96 bg-indigo-500/5 rounded-full blur-3xl" />
                 </div>
 
-                <div className="absolute top-6 left-6 right-6 flex justify-between items-center z-10">
+                <div className="absolute top-8 left-8 right-8 flex justify-between items-center z-10 font-bold uppercase tracking-widest text-[10px]">
                     <button
                         onClick={() => router.back()}
-                        className="size-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all border border-white/10"
+                        className="flex items-center gap-2 text-slate-400 hover:text-primary transition-colors"
                     >
-                        <ChevronRight size={20} className="rotate-180" />
+                        <ChevronRight size={14} className="rotate-180" /> Back
                     </button>
-                    <button className="size-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all border border-white/10">
-                        <Share2 size={18} />
+                    <div className="text-slate-900 tracking-[0.3em] font-black">
+                        Business Profile
+                    </div>
+                    <button className="text-slate-400 hover:text-primary transition-colors">
+                        <Share2 size={16} />
                     </button>
+                </div>
+
+                {/* Hero Content */}
+                <div className="flex flex-col items-center text-center z-10 px-6">
+                    <div className="size-28 md:size-32 rounded-3xl bg-white p-1.5 shadow-2xl shadow-slate-200/50 mb-6 border border-white">
+                        {logoUrl ? (
+                            <img
+                                src={logoUrl}
+                                alt={businessName}
+                                className="w-full h-full rounded-2xl object-cover"
+                            />
+                        ) : (
+                            <div className="w-full h-full rounded-2xl bg-slate-50 flex items-center justify-center text-primary text-4xl font-black italic">
+                                {businessName.charAt(0)}
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2 mb-2">
+                        <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight capitalize">
+                            {businessName}
+                        </h1>
+                        <ShieldCheck size={24} className="text-emerald-500" />
+                    </div>
+                    <p className="text-slate-400 font-bold text-sm tracking-wide flex items-center gap-2">
+                        <span className="text-primary">{business.category || business.type || 'Business'}</span>
+                        {business.address && (
+                            <>
+                                <span className="text-slate-200">•</span>
+                                <span className="flex items-center gap-1"><MapPin size={14} /> {business.address}</span>
+                            </>
+                        )}
+                    </p>
                 </div>
             </div>
 
-            {/* Profile Info Overlay */}
-            <div className="max-w-4xl mx-auto px-6 -mt-20 relative z-20">
-                <div className="bg-white rounded-4xl shadow-xl shadow-slate-200/50 p-8 md:p-12 border border-white font-sans">
-                    <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
-                        <div className="size-32 rounded-3xl bg-white p-2 shadow-2xl shadow-primary/10 -mt-24 md:-mt-32">
-                            <div className="w-full h-full rounded-2xl bg-primary flex items-center justify-center text-white text-4xl font-black">
-                                {businessName.charAt(0)}
+            {/* Main Content Area */}
+            <div className="max-w-4xl mx-auto px-6 -mt-10 relative z-20 pb-24">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+
+                    {/* Primary Info Card */}
+                    <div className="md:col-span-8 space-y-6">
+                        <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-xl shadow-slate-200/40 border border-white/50">
+                            {business.welcomeMessage && (
+                                <section className="mb-12">
+                                    <h2 className="text-[10px] uppercase tracking-[0.3em] font-black text-primary mb-6">About the Business</h2>
+                                    <p className="text-lg md:text-xl text-slate-600 leading-relaxed font-bold">
+                                        {business.welcomeMessage}
+                                    </p>
+                                </section>
+                            )}
+
+                            {business.rewardEnabled && (
+                                <section className="p-8 rounded-[2rem] bg-linear-to-br from-slate-50 to-white border border-slate-100/50">
+                                    <h3 className="text-sm font-black text-slate-900 mb-2 flex items-center gap-2">
+                                        <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                            <Star size={16} fill="currentColor" />
+                                        </div>
+                                        Exclusive Rewards
+                                    </h3>
+                                    <p className="text-slate-500 font-bold mb-6 leading-relaxed">
+                                        {business.rewardMessage || `Visit us ${business.rewardVisitThreshold || 5} times to unlock special rewards and benefits tailored for you.`}
+                                    </p>
+                                    <button
+                                        onClick={() => router.push(`/customer/dashboard`)}
+                                        className="inline-flex items-center gap-2 text-primary font-black uppercase tracking-widest text-[10px] hover:gap-3 transition-all underline underline-offset-8"
+                                    >
+                                        View your progress <ExternalLink size={14} />
+                                    </button>
+                                </section>
+                            )}
+
+                            {/* Stats Summary */}
+                            <div className="grid grid-cols-2 gap-8 mt-12 pt-12 border-t border-slate-50 text-center md:text-left">
+                                <div>
+                                    <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 mb-1">Impact</p>
+                                    <p className="text-xl font-black text-slate-900">{business.monthlyVisitors || 'N/A'}</p>
+                                    <p className="text-[10px] font-bold text-slate-400">Monthly Visitors</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 mb-1">Focus</p>
+                                    <p className="text-xl font-black text-slate-900 truncate">{business.goal || 'Quality Service'}</p>
+                                    <p className="text-[10px] font-bold text-slate-400">Primary Goal</p>
+                                </div>
                             </div>
                         </div>
-
-                        <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                                <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
-                                    {businessName}
-                                </h1>
-                                <div className="bg-emerald-100 text-emerald-600 p-1 rounded-full" title="Verified Business">
-                                    <ShieldCheck size={20} />
-                                </div>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-4 text-slate-500 font-bold text-sm">
-                                <div className="flex items-center gap-1.5 text-orange-500">
-                                    <Star size={16} fill="currentColor" />
-                                    <span className="font-bold text-slate-900">4.9</span>
-                                    <span>(1,240 Reviews)</span>
-                                </div>
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
-                                <div className="flex items-center gap-1.5">
-                                    <MapPin size={16} />
-                                    <span>{branches[0]?.address || 'Main Location'}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button className="w-full md:w-auto px-8 h-14 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 transition-all">
-                            Follow Business
-                        </button>
                     </div>
 
-                    <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* About Side */}
-                        <div className="md:col-span-2 space-y-10">
-                            <section>
-                                <h2 className="text-xl font-black text-slate-900 mb-4 tracking-tight">About Us</h2>
-                                <p className="text-slate-600 leading-relaxed font-bold">
-                                    Welcome to {businessName}! We are dedicated to providing the best experience
-                                    to our customers through innovation and quality service. Join our loyalty program
-                                    to earn points on every visit and unlock exclusive rewards.
-                                </p>
-                            </section>
-
-                            <section>
-                                <h2 className="text-xl font-black text-slate-900 mb-6 tracking-tight">Active Rewards</h2>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    {[
-                                        { title: 'Free Coffee', icon: '☕', points: 100 },
-                                        { title: '15% Discount', icon: '🏷️', points: 250 },
-                                    ].map((reward, i) => (
-                                        <div key={i} className="group p-5 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5 transition-all cursor-pointer">
-                                            <div className="flex items-center justify-between mb-3">
-                                                <span className="text-2xl">{reward.icon}</span>
-                                                <div className="px-3 py-1 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest">
-                                                    {reward.points} Points
-                                                </div>
-                                            </div>
-                                            <h3 className="font-bold text-slate-900 truncate">{reward.title}</h3>
-                                            <p className="text-xs text-slate-500 mt-1 font-bold">Tap to see details</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
-
-                            <section>
-                                <h2 className="text-xl font-black text-slate-900 mb-6 tracking-tight">Locations & Branches</h2>
-                                <div className="space-y-4">
-                                    {branches.map((branch, i) => (
-                                        <div key={i} className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 hover:bg-white hover:shadow-lg transition-all">
-                                            <div className="size-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                                                <Building2 size={24} />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="font-bold text-slate-900 truncate">{branch.name}</h4>
-                                                <p className="text-xs text-slate-500 font-bold truncate">{branch.address}</p>
-                                            </div>
-                                            <button className="size-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-primary/10 hover:text-primary transition-all">
-                                                <ChevronRight size={18} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
-                        </div>
-
-                        {/* Contact info side */}
-                        <div className="space-y-8">
-                            <div className="p-8 bg-slate-900 rounded-4xl text-white">
-                                <h3 className="text-lg font-black mb-6">Connect with us</h3>
-                                <div className="space-y-5">
-                                    <div className="flex items-center gap-4 group cursor-pointer">
-                                        <div className="size-10 rounded-xl bg-white/10 flex items-center justify-center group-hover:bg-primary transition-colors text-white">
+                    {/* Contact Sidebar (Light) */}
+                    <div className="md:col-span-4 space-y-6">
+                        <div className="bg-white rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/40 border border-white/50">
+                            <h3 className="text-sm font-black text-slate-900 mb-8 tracking-tight">Direct Connect</h3>
+                            <div className="space-y-6">
+                                {business.whatsappNumber && (
+                                    <div className="flex items-center gap-4 group cursor-pointer" onClick={() => window.open(`https://wa.me/${business.whatsappNumber}`, '_blank')}>
+                                        <div className="size-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                                             <Phone size={18} />
                                         </div>
-                                        <span className="text-sm font-bold text-slate-300 group-hover:text-white transition-colors">+234 800 VEMTAP</span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">WhatsApp</p>
+                                            <p className="text-sm font-bold text-slate-900 truncate">{business.whatsappNumber}</p>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-4 group cursor-pointer">
-                                        <div className="size-10 rounded-xl bg-white/10 flex items-center justify-center group-hover:bg-primary transition-colors text-white">
+                                )}
+                                {business.officialEmail && (
+                                    <div className="flex items-center gap-4 group cursor-pointer" onClick={() => window.open(`mailto:${business.officialEmail}`, '_blank')}>
+                                        <div className="size-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                                             <Mail size={18} />
                                         </div>
-                                        <span className="text-sm font-bold text-slate-300 group-hover:text-white transition-colors">hello@{slug}.com</span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Email</p>
+                                            <p className="text-sm font-bold text-slate-900 truncate">{business.officialEmail}</p>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-4 group cursor-pointer">
-                                        <div className="size-10 rounded-xl bg-white/10 flex items-center justify-center group-hover:bg-primary transition-colors text-white">
+                                )}
+                                {business.website && (
+                                    <div className="flex items-center gap-4 group cursor-pointer" onClick={() => window.open(business.website.startsWith('http') ? business.website : `https://${business.website}`, '_blank')}>
+                                        <div className="size-10 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                                             <Globe size={18} />
                                         </div>
-                                        <span className="text-sm font-bold text-slate-300 group-hover:text-white transition-colors">www.{slug}.com</span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Website</p>
+                                            <p className="text-sm font-bold text-slate-900 truncate">{business.website}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Small Social Row */}
+                            {(business.reviewUrl && business.showReview) || (business.showSocial && business.linkedinUrl) ? (
+                                <div className="mt-10 pt-8 border-t border-slate-50 flex gap-3">
+                                    {business.reviewUrl && business.showReview && (
+                                        <button
+                                            onClick={() => window.open(business.reviewUrl, '_blank')}
+                                            className="flex-1 h-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center hover:bg-orange-100 transition-colors"
+                                        >
+                                            <Star size={18} fill="currentColor" />
+                                        </button>
+                                    )}
+                                    {business.linkedinUrl && business.showSocial && (
+                                        <button
+                                            onClick={() => window.open(business.linkedinUrl, '_blank')}
+                                            className="flex-1 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors"
+                                        >
+                                            <Linkedin size={18} fill="currentColor" />
+                                        </button>
+                                    )}
+                                </div>
+                            ) : null}
+                        </div>
+
+                        {owner && (
+                            <div className="bg-slate-900 rounded-[2.5rem] p-6 text-white shadow-2xl shadow-slate-900/20">
+                                <div className="flex items-center gap-4">
+                                    <div className="size-10 rounded-xl bg-white/10 flex items-center justify-center">
+                                        <ShieldCheck size={20} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400">Verified Owner</p>
+                                        <p className="text-sm font-bold">{owner.firstName}</p>
                                     </div>
                                 </div>
-
-                                <div className="mt-10 pt-8 border-t border-white/10 flex justify-between">
-                                    <button className="size-12 rounded-full bg-white/5 flex items-center justify-center hover:bg-indigo-500 hover:scale-110 transition-all">
-                                        <Instagram size={20} />
-                                    </button>
-                                    <button className="size-12 rounded-full bg-white/5 flex items-center justify-center hover:bg-sky-500 hover:scale-110 transition-all">
-                                        <Twitter size={20} />
-                                    </button>
-                                    <button className="size-12 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-600 hover:scale-110 transition-all">
-                                        <Facebook size={20} />
-                                    </button>
-                                </div>
                             </div>
-
-                            <div className="p-8 bg-white rounded-4xl border border-slate-100 shadow-sm">
-                                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6">Business Hours</h3>
-                                <div className="space-y-4">
-                                    {[
-                                        { day: 'Mon - Fri', hours: '9:00 AM - 9:00 PM', status: 'Open' },
-                                        { day: 'Saturday', hours: '10:00 AM - 11:00 PM', status: 'Open' },
-                                        { day: 'Sunday', hours: 'Closed', status: 'Closed' },
-                                    ].map((item, i) => (
-                                        <div key={i} className="flex justify-between items-center text-sm">
-                                            <span className="font-bold text-slate-500">{item.day}</span>
-                                            <div className="text-right">
-                                                <p className="font-black text-slate-900">{item.hours}</p>
-                                                <p className={`text-[10px] font-black uppercase tracking-widest ${item.status === 'Open' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                    {item.status}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
+                        )}
                     </div>
                 </div>
 
-                <div className="py-20 text-center">
-                    <p className="text-slate-400 font-bold text-sm tracking-tight mb-8">
-                        Powered by <span className="font-black text-slate-900 tracking-tighter">VemTap</span> — Connecting businesses and customers smartly.
-                    </p>
-                    <button className="inline-flex items-center gap-2 text-primary font-black uppercase tracking-[0.2em] text-xs hover:gap-4 transition-all">
-                        Create your own Business Profile <ChevronRight size={14} />
+                {/* Main CTA - Prominent and Stunning */}
+                <div className="mt-12 text-center flex flex-col items-center">
+                    <button
+                        onClick={() => router.push('/customer/dashboard')}
+                        className="group relative px-12 h-20 bg-slate-900 text-white rounded-[2rem] overflow-hidden shadow-2xl shadow-slate-900/40 hover:scale-105 transition-all duration-500"
+                    >
+                        <div className="absolute inset-0 bg-linear-to-r from-primary/20 to-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="relative flex items-center gap-4">
+                            <div className="flex flex-col items-start">
+                                <span className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">Ready to engage?</span>
+                                <span className="text-lg font-black tracking-tight">Open Customer Dashboard</span>
+                            </div>
+                            <div className="size-10 rounded-2xl bg-white/10 flex items-center justify-center group-hover:rotate-12 transition-transform">
+                                <LayoutDashboard size={20} />
+                            </div>
+                        </div>
                     </button>
+
+                    <div className="mt-12 flex items-center gap-4 grayscale opacity-30 hover:grayscale-0 hover:opacity-100 transition-all duration-700 cursor-default">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Powered by</span>
+                        <div className="h-6 w-px bg-slate-200" />
+                        <span className="text-lg font-black tracking-tighter text-slate-900">VemTap</span>
+                    </div>
                 </div>
             </div>
         </div>

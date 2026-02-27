@@ -15,7 +15,9 @@ export interface Device {
     orderId?: string;
     branchId?: string;
     branch?: any; // Added to support tap flow metadata
+    owner?: any; // Owner info from device-info endpoint
     productTypeId?: string;
+    isFirstTimeVisit?: boolean;
     createdAt: string;
     updatedAt: string;
 }
@@ -59,3 +61,6 @@ export const createDevice = async (data: any): Promise<Device> => {
     return await api.post('/devices', data);
 };
 
+export const fetchDeviceByCode = async (code: string): Promise<Device> => {
+    return await api.get(`/loyalty/device-info/${code}`);
+};

@@ -34,20 +34,29 @@ interface EngagementTilesProps {
         showSocial?: boolean;
         showFeedback?: boolean;
         showRewards?: boolean;
+        reviewUrl?: string;
+        instagram?: string;
+        twitter?: string;
+        facebook?: string;
+        linkedin?: string;
+        socialUrl?: string;
     };
 }
 
 export const EngagementTiles: React.FC<EngagementTilesProps> = ({
     onAction,
-    settings = { showReview: true, showSocial: true, showFeedback: true, showRewards: true }
+    settings = {}
 }) => {
+    const hasSocial = !!(settings.instagram || settings.twitter || settings.facebook || settings.linkedin || settings.socialUrl);
+    const hasReview = !!settings.reviewUrl;
+
     return (
         <div className="w-full space-y-3 mt-8">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-left ml-1 mb-4">
                 Boost Your Experience
             </h3>
 
-            {settings.showReview && (
+            {settings.showReview && hasReview && (
                 <EngagementTile
                     icon="star"
                     label="Leave a Review"
@@ -57,7 +66,7 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
                 />
             )}
 
-            {settings.showSocial && (
+            {settings.showSocial && hasSocial && (
                 <EngagementTile
                     icon="share"
                     label="Follow on Social"

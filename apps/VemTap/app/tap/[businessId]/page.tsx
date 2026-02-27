@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { fetchDeviceDetail } from '@/lib/api/devices';
+import { fetchDeviceByCode } from '@/lib/api/devices';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { motion } from 'framer-motion';
 
 export default function PublicTapPage() {
     // Note: Parameter name must match directory '[businessId]' to avoid Next.js routing conflicts
-    // here, 'businessId' will contain the unique device UUID.
+    // here, 'businessId' will contain the unique device Code (e.g. C0COUXVY5).
     const { businessId } = useParams();
     const router = useRouter();
     const initializeFromBusiness = useCustomerFlowStore(state => state.initializeFromBusiness);
@@ -20,26 +20,41 @@ export default function PublicTapPage() {
             if (!businessId) return;
 
             try {
-                // Fetch live device details using the @Get(':id') endpoint
-                const device = await fetchDeviceDetail(businessId as string);
+                // Fetch live device details using the public @Get('loyalty/device-info/:code') endpoint
+                const device = await fetchDeviceByCode(businessId as string);
 
-                if (device && device.business) {
-                    // Initialize the customer flow with live business context
+                if (device) {
+                    // Initialize the customer flow with live data
                     initializeFromBusiness({
-                        ...device.business,
+                        id: device.business?.id || device.businessId || 'legacy-id',
+                        name: device.business?.name || device.name,
+                        type: device.business?.type || 'RETAIL',
+                        welcomeMessage: device.business?.welcomeMessage || 'Welcome! Please fill in your details to stay connected.',
+                        welcomeTitle: device.business?.welcomeTitle || 'Welcome',
+                        newUserWelcomeMessage: device.business?.welcomeMessage || 'Welcome! Please fill in your details to stay connected.',
+                        newUserWelcomeTitle: device.business?.welcomeTitle || 'Welcome',
+                        successMessage: device.business?.successMessage || 'Thank you for visiting! We look forward to seeing you again.',
+                        rewardEnabled: device.business?.rewardEnabled ?? false,
+                        logoUrl: device.business?.logoUrl || null,
                         branchId: device.branchId,
                         currentDeviceId: device.id,
                         deviceCode: device.code,
-                        deviceName: device.name
-                    });
+                        deviceName: device.name,
+                        isFirstTimeVisit: device.isFirstTimeVisit ?? true
+                    } as any);
 
-                    // Record the visit for analytics
-                    recordVisit();
+                    // Record the visit logic - if returning, we skip the scanning animation
+                    if (!device.isFirstTimeVisit) {
+                        recordVisit();
+                    }
 
-                    // Redirect to the customer intake journey
-                    router.push('/user-step');
+                    // Get the business slug (prefer name for the URL)
+                    const businessSlug = (device.business?.name || 'business').toLowerCase().replace(/\s+/g, '-');
+
+                    // Redirect to the dynamic business/code route
+                    router.push(`/${businessSlug}/${device.code}`);
                 } else {
-                    console.warn('Live device or business metadata not found for ID:', businessId);
+                    console.warn('Device not found for code:', businessId);
                     setError(true);
                 }
             } catch (err) {

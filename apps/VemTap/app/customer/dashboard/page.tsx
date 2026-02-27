@@ -12,6 +12,8 @@ import {
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useLoyaltyStore } from '@/store/loyaltyStore';
+import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { fetchDeviceByCode, Device } from '@/lib/api/devices';
 import { notify } from '@/lib/notify';
 
 export default function CustomerDashboardPage() {
@@ -23,18 +25,24 @@ export default function CustomerDashboardPage() {
         fetchRewards,
         recentTransactions,
         fetchTransactions,
-        isLoading,
-        redeemReward
+        isLoading: isLoyaltyLoading,
+        redeemReward,
+        analytics,
+        fetchAnalytics
     } = useLoyaltyStore();
+
+    const { businessId: flowBusinessId, branchId: flowBranchId, deviceCode } = useCustomerFlowStore();
 
     const router = useRouter();
     const [showIdModal, setShowIdModal] = useState(false);
     const [showRewardAnimation, setShowRewardAnimation] = useState(false);
     const [currentReward, setCurrentReward] = useState<{ name: string; points: number; icon?: React.ReactNode } | null>(null);
+    const [businessInfo, setBusinessInfo] = useState<Device | null>(null);
+    const [isBusinessLoading, setIsBusinessLoading] = useState(false);
 
-    // TODO: This should eventually come from a 'current business context' or 'last visited'
-    const businessId = 'bistro_001';
-    const profile = profiles[businessId];
+    // Prioritize the business from the current tap flow
+    const activeBranchId = flowBranchId || Object.keys(profiles)[0] || 'head-office';
+    const profile = profiles[activeBranchId];
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -43,28 +51,51 @@ export default function CustomerDashboardPage() {
         }
 
         if (user?.role?.toLowerCase() !== 'customer') {
-            router.push('/dashboard'); // Or appropriate non-customer dashboard
+            router.push('/dashboard');
             return;
         }
 
         const initializeDashboard = async () => {
             if (user?.id) {
-                const loadedProfile = await fetchLoyaltyProfile(user.id, businessId);
-                fetchRewards(businessId);
-                if (loadedProfile?.id) {
-                    fetchTransactions(loadedProfile.id);
+                // 1. Fetch global analytics (Visits, Points, Savings)
+                fetchAnalytics();
+
+                // 2. Fetch business info if we have a device code
+                if (deviceCode) {
+                    setIsBusinessLoading(true);
+                    try {
+                        const device = await fetchDeviceByCode(deviceCode);
+                        if (device) setBusinessInfo(device);
+                    } catch (err) {
+                        console.error('Failed to fetch business info:', err);
+                    } finally {
+                        setIsBusinessLoading(false);
+                    }
+                }
+
+                // 3. Fetch specific business context if available
+                const targetBranch = flowBranchId || activeBranchId;
+                if (targetBranch) {
+                    const loadedProfile = await fetchLoyaltyProfile(user.id, targetBranch);
+                    fetchRewards(targetBranch);
+                    if (loadedProfile?.id) {
+                        fetchTransactions(loadedProfile.id);
+                    }
                 }
             }
         };
 
         initializeDashboard();
-    }, [isAuthenticated, user, router, fetchLoyaltyProfile, fetchRewards, fetchTransactions]);
+    }, [isAuthenticated, user, router, flowBranchId, deviceCode]);
 
     if (!isAuthenticated || user?.role?.toLowerCase() !== 'customer') {
         return null;
     }
 
     const userPoints = profile?.currentPointsBalance || 0;
+    const businessName = businessInfo?.business?.name || profile?.businessId || 'VemTap';
+    const businessLogo = businessInfo?.business?.logoUrl || '/icon.png';
+    const businessAddress = businessInfo?.business?.address || '';
 
     const handleRedeem = async (rewardId: string, name: string, points: number, icon?: React.ReactNode) => {
         if (points > userPoints) {
@@ -75,11 +106,8 @@ export default function CustomerDashboardPage() {
         try {
             const result = await redeemReward(profile!.id, rewardId);
             if (result.success) {
-                // Show animated modal
                 setCurrentReward({ name, points, icon });
                 setShowRewardAnimation(true);
-
-                // Close animation after some time
                 setTimeout(() => {
                     setShowRewardAnimation(false);
                     setCurrentReward(null);
@@ -101,8 +129,9 @@ export default function CustomerDashboardPage() {
     };
 
     // Calculate dynamic stats
-    const totalVisitsCount = recentTransactions.filter(tx => tx.transactionType === 'earn').length;
-    const netSavingsValue = recentTransactions.filter(tx => tx.transactionType === 'redeem').length * 2500; // Estimated ₦2500 per reward or use actual points redeemed value if possible
+    // Calculate dynamic stats from global analytics or fallback to current profile
+    const totalVisitsCount = analytics?.totalVisits ?? profile?.totalVisits ?? 0;
+    const netSavingsValue = analytics?.netSavings ?? profile?.totalSavings ?? 0;
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
@@ -123,7 +152,7 @@ export default function CustomerDashboardPage() {
                                 {user?.name?.split(' ')[0] || 'Customer'}!
                             </h1>
                             <p className="text-blue-50 text-base md:text-lg max-w-lg mb-8 font-medium leading-relaxed opacity-90">
-                                Visit participating venues and tap your phone at the VemTap terminal to earn rewards instantly.
+                                Visit {businessName} {businessAddress ? `at ${businessAddress}` : ''} and tap your phone at the VemTap terminal to earn rewards instantly.
                             </p>
                             <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
                                 <button
@@ -191,13 +220,13 @@ export default function CustomerDashboardPage() {
                             </Link>
                         </div>
                         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                            {(isLoading && recentTransactions.length === 0) ? (
+                            {(isLoyaltyLoading && recentTransactions.length === 0) ? (
                                 <div className="p-12 flex flex-col items-center justify-center text-text-secondary gap-3">
                                     <Loader2 className="animate-spin" />
                                     <p className="text-sm font-medium">Syncing your activity...</p>
                                 </div>
                             ) : recentTransactions.length > 0 ? (
-                                recentTransactions.slice(0, 5).map((tx, index) => {
+                                recentTransactions.slice(0, 5).map((tx: any, index: number) => {
                                     const IconComp = getTransactionIcon(tx.transactionType, tx.reason);
                                     return (
                                         <div key={tx.id} className={`p-4 flex items-center justify-between ${index !== recentTransactions.length - 1 ? 'border-b border-gray-50' : ''}`}>
@@ -221,7 +250,7 @@ export default function CustomerDashboardPage() {
                             ) : (
                                 <div className="p-12 text-center text-text-secondary">
                                     <p className="text-sm font-medium">No recent activity found.</p>
-                                    <p className="text-xs mt-1">Start tapping to earn points!</p>
+                                    <p className="text-xs mt-1">Visit {businessName} and tap to earn points!</p>
                                 </div>
                             )}
                         </div>
@@ -235,7 +264,7 @@ export default function CustomerDashboardPage() {
                         </div>
                         <div className="space-y-4">
                             {availableRewards.length > 0 ? (
-                                availableRewards.slice(0, 3).map((reward, idx) => (
+                                availableRewards.slice(0, 3).map((reward: any, idx: number) => (
                                     <button
                                         key={reward.id}
                                         onClick={() => handleRedeem(reward.id, reward.name, reward.pointCost, <Star size={18} />)}
