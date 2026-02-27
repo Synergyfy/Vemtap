@@ -148,7 +148,9 @@ export default function BusinessProfilePage() {
                                     </div>
                                 )}
                                 {business.officialEmail && (
-                                    <div className="flex items-center gap-4 group cursor-pointer" onClick={() => window.open(`mailto:${business.officialEmail}`, '_blank')}>
+                                    <div className="flex items-center gap-4 group cursor-pointer" onClick={() => {
+                                        if (business.officialEmail) window.open(`mailto:${business.officialEmail}`, '_blank');
+                                    }}>
                                         <div className="size-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                                             <Mail size={18} />
                                         </div>
@@ -159,7 +161,12 @@ export default function BusinessProfilePage() {
                                     </div>
                                 )}
                                 {business.website && (
-                                    <div className="flex items-center gap-4 group cursor-pointer" onClick={() => window.open(business.website.startsWith('http') ? business.website : `https://${business.website}`, '_blank')}>
+                                    <div className="flex items-center gap-4 group cursor-pointer" onClick={() => {
+                                        if (business.website) {
+                                            const url = business.website.startsWith('http') ? business.website : `https://${business.website}`;
+                                            window.open(url, '_blank');
+                                        }
+                                    }}>
                                         <div className="size-10 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                                             <Globe size={18} />
                                         </div>
