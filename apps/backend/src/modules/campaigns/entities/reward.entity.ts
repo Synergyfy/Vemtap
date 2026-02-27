@@ -10,7 +10,7 @@ export class Reward extends AbstractBaseEntity {
   @Column({ nullable: true })
   businessId: string;
 
-  @ManyToOne(() => Business)
+  @ManyToOne(() => Business, { nullable: true })
   @JoinColumn({ name: 'businessId' })
   business: Business;
 
