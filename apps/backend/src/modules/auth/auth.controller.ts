@@ -48,6 +48,7 @@ export class AuthController {
 
   @Public()
   @Post('otp/verify')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify OTP' })
   @ApiBody({ type: VerifyOtpDto })
   @ApiResponse({

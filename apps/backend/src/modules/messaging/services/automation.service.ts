@@ -10,6 +10,8 @@ import {
   CreateAutomationRuleDto,
   UpdateAutomationRuleDto,
   AutomationTriggerDto,
+  UpdateAutomationToggleDto,
+  UpdateAutomationConfigDto,
 } from '../dto/automation-rule.dto';
 import { TriggerType, ActionType } from '../enums/automation.enum';
 import { Channel } from '../enums/channel.enum';
@@ -26,7 +28,7 @@ export class AutomationService {
     private readonly messagingEngine: MessagingEngineService,
     @InjectQueue('messaging-automation')
     private readonly automationQueue: Queue,
-  ) {}
+  ) { }
 
   // --- CRUD ---
 
@@ -64,8 +66,183 @@ export class AutomationService {
     return this.ruleRepo.save(rule);
   }
 
+  async toggleAutomation(
+    id: string,
+    dto: UpdateAutomationToggleDto,
+  ): Promise<AutomationRule> {
+    const rule = await this.findOne(id);
+    if (!rule) {
+      throw new Error('Automation rule not found');
+    }
+    rule.isActive = dto.isActive;
+    return this.ruleRepo.save(rule);
+  }
+
+  async configureAutomation(
+    id: string,
+    dto: UpdateAutomationConfigDto,
+  ): Promise<AutomationRule> {
+    const rule = await this.findOne(id);
+    if (!rule) {
+      throw new Error('Automation rule not found');
+    }
+
+    // Validate variables if content is provided
+    if (dto.content) {
+      this.validateCustomContent(dto.content);
+    }
+
+    // Merge into actionConfig
+    rule.actionConfig = {
+      ...(rule.actionConfig || {}),
+      ...dto,
+    };
+
+    // If delayDays is provided, map to delaySeconds (assuming PRD delayDays is standard)
+    if (dto.delayDays !== undefined) {
+      rule.delaySeconds = dto.delayDays * 24 * 60 * 60;
+    }
+
+    return this.ruleRepo.save(rule);
+  }
+
+  private validateCustomContent(content: string) {
+    if (!content || content.trim() === '') {
+      throw new Error('Message content cannot be empty');
+    }
+    if (content.length > 1024) {
+      // General WhatsApp limit or typical limit
+      throw new Error('Message is too long');
+    }
+
+    const validVariables = [
+      '{{business_name}}',
+      '{{visitor_name}}',
+      '{{loyalty_points}}',
+      '{{branch_name}}',
+    ];
+    const regex = /\{\{([^}]+)\}\}/g;
+    let match;
+    while ((match = regex.exec(content)) !== null) {
+      const fullMatch = match[0];
+      if (!validVariables.includes(fullMatch)) {
+        throw new Error(
+          `Invalid variable found: ${fullMatch}. Allowed variables are: ${validVariables.join(', ')}`,
+        );
+      }
+    }
+  }
+
   async remove(id: string): Promise<void> {
     await this.ruleRepo.delete(id);
+  }
+
+  // --- Phase 2: Logs & Connections ---
+
+  async findLogs(businessId: string, branchId?: string, limit = 50, offset = 0) {
+    const qb = this.logRepo.createQueryBuilder('log')
+      .leftJoinAndSelect('log.rule', 'rule')
+      .where('rule.businessId = :businessId', { businessId });
+
+    if (branchId) {
+      qb.andWhere('(rule.branchId = :branchId OR rule.branchId IS NULL)', { branchId });
+    }
+
+    qb.orderBy('log.executedAt', 'DESC')
+      .take(limit)
+      .skip(offset);
+
+    const [logs, total] = await qb.getManyAndCount();
+
+    // Map to a nice format for the frontend log page
+    return {
+      data: logs.map(log => ({
+        id: log.id,
+        ruleName: log.rule?.name,
+        contactId: log.contactId,
+        status: log.status,
+        executedAt: log.executedAt,
+        errorReason: log.errorReason,
+      })),
+      total,
+    };
+  }
+
+  async findLogDetails(logId: string, businessId: string) {
+    const log = await this.logRepo.findOne({
+      where: { id: logId },
+      relations: ['rule'],
+    });
+
+    if (!log) {
+      throw new Error('Log not found');
+    }
+
+    if (log.rule?.businessId !== businessId) {
+      throw new Error('Access denied');
+    }
+
+    return log;
+  }
+
+  async getConnectionStatus(businessId: string, branchId?: string) {
+    // In a real implementation, you would check the business's WhatsApp Cloud API
+    // or external provider connection status via MessagingEngineService.
+    // For now, return a mock connected state.
+    return {
+      status: 'Connected', // 'Connected' or 'Disconnected'
+      provider: 'WhatsApp',
+      updatedAt: new Date(),
+    };
+  }
+
+  // --- Phase 3: Analytics ---
+
+  async getPerformanceAnalytics(businessId: string, branchId?: string, startDate?: Date, endDate?: Date) {
+    const qb = this.logRepo.createQueryBuilder('log')
+      .leftJoinAndSelect('log.rule', 'rule')
+      .where('rule.businessId = :businessId', { businessId });
+
+    if (branchId) {
+      qb.andWhere('(rule.branchId = :branchId OR rule.branchId IS NULL)', { branchId });
+    }
+
+    if (startDate) {
+      qb.andWhere('log.executedAt >= :startDate', { startDate });
+    }
+    if (endDate) {
+      qb.andWhere('log.executedAt <= :endDate', { endDate });
+    }
+
+    const logs = await qb.getMany();
+
+    const totalMessagesSent = logs.filter(l => l.status === 'success').length;
+    const totalFailures = logs.filter(l => l.status === 'failed').length;
+
+    // We don't have reply tracking yet in log entity, so this is mocked/placeholder
+    const totalRepliesReceived = 0;
+    const replyRate = totalMessagesSent > 0 ? (totalRepliesReceived / totalMessagesSent) * 100 : 0;
+
+    // Calculate sum of loyalty points issued from successful logs
+    let loyaltyPointsIssued = 0;
+    for (const log of logs) {
+      if (log.status === 'success' && log.rule?.actionConfig?.loyaltyPoints) {
+        loyaltyPointsIssued += Number(log.rule.actionConfig.loyaltyPoints) || 0;
+      }
+    }
+
+    const activeRulesCount = await this.ruleRepo.count({
+      where: { businessId, isActive: true, ...(branchId ? { branchId } : {}) }
+    });
+
+    return {
+      totalMessagesSent,
+      totalFailures,
+      totalRepliesReceived,
+      replyRate: Number(replyRate.toFixed(2)),
+      loyaltyPointsIssued,
+      activeAutomationsCount: activeRulesCount,
+    };
   }
 
   // --- Logic ---

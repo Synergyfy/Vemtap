@@ -156,7 +156,7 @@ export class UsersController {
   }
 
   @Post('staff/invite')
-  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
   @Permissions('staff')
   @ApiOperation({
     summary: 'Invite a new staff member or manager',
