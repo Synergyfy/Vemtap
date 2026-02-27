@@ -16,6 +16,9 @@ import {
   ApiOperation,
   ApiBearerAuth,
   ApiQuery,
+  ApiResponse,
+  ApiOkResponse,
+  ApiCreatedResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
@@ -25,11 +28,14 @@ import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { TrialRestrictionGuard } from '../../subscriptions/guards/trial-restriction.guard';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { AutomationService } from '../services/automation.service';
+import { AutomationRule } from '../entities/automation-rule.entity';
 import {
   CreateAutomationRuleDto,
   UpdateAutomationRuleDto,
   UpdateAutomationToggleDto,
   UpdateAutomationConfigDto,
+  AutomationLogResponseDto,
+  AutomationPerformanceResponseDto,
 } from '../dto/automation-rule.dto';
 
 @ApiTags('Messaging Automations')
@@ -43,6 +49,7 @@ export class AutomationsController {
   @Post()
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Create a new automation rule' })
+  @ApiCreatedResponse({ type: AutomationRule })
   async create(
     @Body() dto: CreateAutomationRuleDto,
     @Request() req: { user: User },
@@ -73,6 +80,7 @@ export class AutomationsController {
   @Get()
   @ApiOperation({ summary: 'List automation rules' })
   @ApiQuery({ name: 'branchId', required: false })
+  @ApiOkResponse({ type: [AutomationRule] })
   async findAll(
     @Query('branchId') branchId: string,
     @Request() req: { user: User },
@@ -88,6 +96,14 @@ export class AutomationsController {
   @ApiQuery({ name: 'branchId', required: false })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'offset', required: false, type: Number })
+  @ApiOkResponse({
+    schema: {
+      properties: {
+        data: { type: 'array', items: { $ref: '#/components/schemas/AutomationLogResponseDto' } },
+        total: { type: 'number' }
+      }
+    }
+  })
   async getLogs(
     @Query('branchId') branchId: string,
     @Query('limit') limit: number,
@@ -105,6 +121,7 @@ export class AutomationsController {
 
   @Get('logs/:sessionId')
   @ApiOperation({ summary: 'Get details for a specific automation session log' })
+  @ApiOkResponse({ type: AutomationLogResponseDto })
   async getLogDetails(
     @Param('sessionId') sessionId: string,
     @Request() req: { user: User },
@@ -119,6 +136,15 @@ export class AutomationsController {
   @Get('connection-status')
   @ApiOperation({ summary: 'Get WhatsApp connection status for the business' })
   @ApiQuery({ name: 'branchId', required: false })
+  @ApiOkResponse({
+    schema: {
+      example: {
+        status: 'Connected',
+        provider: 'WhatsApp',
+        updatedAt: '2024-02-27T10:00:00.000Z'
+      }
+    }
+  })
   async getConnectionStatus(
     @Query('branchId') branchId: string,
     @Request() req: { user: User },
@@ -132,6 +158,7 @@ export class AutomationsController {
   @ApiQuery({ name: 'branchId', required: false })
   @ApiQuery({ name: 'startDate', required: false, type: Date })
   @ApiQuery({ name: 'endDate', required: false, type: Date })
+  @ApiOkResponse({ type: AutomationPerformanceResponseDto })
   async getPerformance(
     @Query('branchId') branchId: string,
     @Query('startDate') startDate: Date,
@@ -149,6 +176,7 @@ export class AutomationsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific automation rule' })
+  @ApiOkResponse({ type: AutomationRule })
   async findOne(@Param('id') id: string, @Request() req: { user: User }) {
     const rule = await this.automationService.findOne(id);
     if (!rule) throw new BadRequestException('Rule not found');
@@ -163,6 +191,7 @@ export class AutomationsController {
   @Patch(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Update an automation rule' })
+  @ApiOkResponse({ type: AutomationRule })
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateAutomationRuleDto,
@@ -190,6 +219,7 @@ export class AutomationsController {
   @Delete(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Delete an automation rule' })
+  @ApiOkResponse({ description: 'Rule deleted successfully' })
   async remove(@Param('id') id: string, @Request() req: { user: User }) {
     const rule = await this.automationService.findOne(id);
     if (!rule) throw new BadRequestException('Rule not found');
@@ -213,6 +243,7 @@ export class AutomationsController {
   @Patch(':id/toggle')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Toggle an automation rule ON or OFF' })
+  @ApiOkResponse({ type: AutomationRule })
   async toggle(
     @Param('id') id: string,
     @Body() dto: UpdateAutomationToggleDto,
@@ -240,6 +271,7 @@ export class AutomationsController {
   @Patch(':id/configure')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Configure settings for an automation template' })
+  @ApiOkResponse({ type: AutomationRule })
   async configure(
     @Param('id') id: string,
     @Body() dto: UpdateAutomationConfigDto,
@@ -268,3 +300,4 @@ export class AutomationsController {
     }
   }
 }
+
