@@ -39,9 +39,9 @@ export class CreateAutomationRuleDto {
   @IsEnum(ActionType)
   actionType: ActionType;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     example: { content: 'Hi {{visitor_name}}!', loyaltyPoints: 10 },
-    description: 'Configuration for the action' 
+    description: 'Configuration for the action'
   })
   @IsOptional()
   @IsObject()
@@ -59,7 +59,7 @@ export class UpdateAutomationRuleDto {
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ enum: TriggerType, example: TriggerType.RECURRING_VISIT })
+  @ApiPropertyOptional({ enum: TriggerType, example: TriggerType.FIRST_TAG })
   @IsOptional()
   @IsEnum(TriggerType)
   triggerType?: TriggerType;
