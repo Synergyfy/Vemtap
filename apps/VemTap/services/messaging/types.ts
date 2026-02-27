@@ -16,6 +16,10 @@ export interface Template {
     channel: string;
     content: string;
     status?: 'pending' | 'approved' | 'rejected';
+    isSystem?: boolean;
+    businessId?: string | null;
+    category?: 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
+    language?: string;
     createdAt?: string;
 }
 
@@ -23,6 +27,9 @@ export interface CreateTemplateRequest {
     name: string;
     channel: Channel;
     content: string;
+    category?: 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
+    language?: string;
+    isSystem?: boolean;
 }
 
 export interface Campaign {

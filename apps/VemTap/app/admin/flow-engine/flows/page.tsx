@@ -6,7 +6,7 @@ import { Plus } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import FlowEngineNav from '@/components/admin/flow-engine/FlowEngineNav';
 import { notify } from '@/lib/notify';
-import { adminFlowApi } from '@/lib/api/admin';
+import { adminBusinessesApi, adminFlowApi } from '@/lib/api/admin';
 import { sampleTemplateJson } from '@/components/admin/flow-engine/mockData';
 
 type FlowTriggerType = 'new_visitor' | 'manual' | 'tag_applied' | 'birthday' | 'loyalty_milestone';
@@ -24,6 +24,12 @@ type FlowRecord = {
     createdAt: string;
 };
 
+type BusinessRecord = {
+    id: string;
+    name: string;
+    status?: string;
+};
+
 const defaultStructure = () => {
     try {
         const parsed = JSON.parse(sampleTemplateJson) as { nodes?: any[]; edges?: any[] };
@@ -39,6 +45,7 @@ const defaultStructure = () => {
 export default function FlowManagementPage() {
     const queryClient = useQueryClient();
     const [businessId, setBusinessId] = useState('');
+    const [businessFilter, setBusinessFilter] = useState('');
     const [branchId, setBranchId] = useState('');
     const [search, setSearch] = useState('');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -58,6 +65,27 @@ export default function FlowManagementPage() {
         },
         enabled: !!businessId.trim(),
     });
+
+    const { data: businesses = [], isLoading: isLoadingBusinesses } = useQuery({
+        queryKey: ['admin-flow-businesses'],
+        queryFn: async () => {
+            const response = await adminBusinessesApi.getAll({ limit: 500 });
+            return (Array.isArray(response) ? response : response?.data || response?.businesses || []) as BusinessRecord[];
+        },
+    });
+
+    const filteredBusinesses = useMemo(() => {
+        const term = businessFilter.trim().toLowerCase();
+        if (!term) return businesses;
+        return businesses.filter((business) =>
+            `${business.name} ${business.id}`.toLowerCase().includes(term)
+        );
+    }, [businessFilter, businesses]);
+
+    const selectedBusiness = useMemo(
+        () => businesses.find((business) => business.id === businessId),
+        [businesses, businessId]
+    );
 
     const filteredFlows = useMemo(() => {
         const term = search.trim().toLowerCase();
@@ -153,17 +181,34 @@ export default function FlowManagementPage() {
 
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
                         <input
-                            value={businessId}
-                            onChange={(e) => setBusinessId(e.target.value)}
-                            placeholder="Business ID (required for admin)"
+                            value={businessFilter}
+                            onChange={(e) => setBusinessFilter(e.target.value)}
+                            placeholder="Filter businesses by name or ID"
                             className="h-11 px-4 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
+                        <select
+                            value={businessId}
+                            onChange={(e) => setBusinessId(e.target.value)}
+                            className="h-11 px-4 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        >
+                            <option value="">
+                                {isLoadingBusinesses ? 'Loading businesses...' : 'Select Business'}
+                            </option>
+                            {filteredBusinesses.map((business) => (
+                                <option key={business.id} value={business.id}>
+                                    {business.name} ({business.id.slice(0, 8)})
+                                </option>
+                            ))}
+                        </select>
                         <input
                             value={branchId}
                             onChange={(e) => setBranchId(e.target.value)}
                             placeholder="Branch ID (optional)"
                             className="h-11 px-4 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
+                    </div>
+
+                    <div className="mt-3">
                         <input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -188,7 +233,7 @@ export default function FlowManagementPage() {
                                 {!businessId.trim() ? (
                                     <tr>
                                         <td colSpan={6} className="py-10 text-center text-xs font-bold uppercase tracking-widest text-text-secondary">
-                                            Enter a business ID to load flows.
+                                            Select a business to load flows.
                                         </td>
                                     </tr>
                                 ) : isLoading ? (
@@ -262,7 +307,10 @@ export default function FlowManagementPage() {
                     <div className="relative w-full max-w-lg bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
                         <div className="mb-6">
                             <h3 className="text-2xl font-display font-bold text-text-main">Create New Flow</h3>
-                            <p className="text-sm text-text-secondary font-medium mt-1">Create flow for selected business/branch.</p>
+                            <p className="text-sm text-text-secondary font-medium mt-1">
+                                Create flow for selected business/branch.
+                                {selectedBusiness ? ` Business: ${selectedBusiness.name}` : ''}
+                            </p>
                         </div>
 
                         <div className="space-y-4">
