@@ -36,7 +36,7 @@ export default function DashboardPage() {
         const isNewUser = user && !user.planId; // Mock check: if no planId, they are "new"
 
         if (isNewUser && !hasSelectedPlan) {
-            router.push('/dashboard/settings/pricing');
+            router.push('/dashboard/settings/subscription');
         }
     }, [user, router]);
 

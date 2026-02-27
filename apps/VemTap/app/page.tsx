@@ -13,6 +13,7 @@ import FAQ from '@/components/landing/FAQ';
 import Footer from '@/components/layout/Footer';
 import Team from '@/components/landing/Team';
 import MarketplaceCTA from '@/components/landing/MarketplaceCTA';
+import ContactSection from '@/components/landing/ContactSection';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -34,6 +35,7 @@ export default function LandingPage() {
       <Pricing />
       <MobileExperience />
       <Testimonials />
+      <ContactSection />
       <AutomationCTA />
       <FAQ />
       <Footer />

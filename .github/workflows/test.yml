@@ -1,0 +1,70 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [ mono-master, dev ]
+  pull_request:
+    branches: [ mono-master, dev ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: neondb_owner
+          POSTGRES_PASSWORD: npg_wvh5gMYp6oFk
+          POSTGRES_DB: neondb_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v3
+      with:
+        version: 9
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'pnpm'
+
+    - name: Install dependencies
+      run: pnpm install
+
+    - name: Run Unit Tests
+      run: pnpm --filter @vemtap/backend test
+
+    - name: Run E2E Tests
+      # We skip creating DB via script because the service container already creates it
+      # But our script checks IF EXISTS, so it's fine to run it.
+      # Also DB_HOST is localhost here.
+      run: pnpm --filter @vemtap/backend test:e2e
+      env:
+        NODE_ENV: test
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_USERNAME: neondb_owner
+        DB_PASSWORD: password123
+        DB_NAME: neondb_test
+        DB_SSL: false
+        JWT_SECRET: test-secret-key-1234567890
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+        PAYSTACK_SECRET_KEY: sk_test_12345
+        ADMIN_ACCOUNT_CODE: admin-code-123
+        TERMII_API_KEY: termii-key-123

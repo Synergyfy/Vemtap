@@ -27,7 +27,7 @@ export default function Pricing() {
 
     const handleSubscription = async (plan: any, useTrial: boolean = false) => {
         if (!isAuthenticated) {
-            router.push('/login');
+            router.push('/get-started');
             return;
         }
 
@@ -72,14 +72,14 @@ export default function Pricing() {
     };
 
     const getPerMonthPrice = (price: number, cycle: string) => {
-        if (cycle === 'yearly') return Math.floor(price * 0.8 / 12);
-        if (cycle === 'quarterly') return Math.floor(price * 0.9 / 3);
+        if (cycle === 'yearly') return Math.floor(price / 12);
+        if (cycle === 'quarterly') return Math.floor(price / 3);
         return price;
     };
 
     const getBillingTotal = (price: number, cycle: string) => {
-        if (cycle === 'yearly') return Math.floor(price * 12 * 0.8);
-        if (cycle === 'quarterly') return Math.floor(price * 3 * 0.9);
+        if (cycle === 'yearly') return price;
+        if (cycle === 'quarterly') return price;
         return price;
     };
 
@@ -93,14 +93,22 @@ export default function Pricing() {
         return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(price);
     };
 
-    const getDefaultFeatures = (plan: any) => {
-        const features = [];
-        if (plan.teamMembersLimit) features.push(`${plan.teamMembersLimit} Team Members`);
-        if (plan.loyaltyLimit) features.push(`${plan.loyaltyLimit} Loyalty Points`);
-        if (plan.tagsLimit) features.push(`${plan.tagsLimit} Tags`);
-        if (plan.branchLimit) features.push(`${plan.branchLimit} Branches`);
-        if (plan.analyticsLevel && plan.analyticsLevel !== 'none') features.push(`${plan.analyticsLevel} Analytics`);
-        return features;
+    const normalizeFeatures = (plan: any) => {
+        const baseFeatures = Array.isArray(plan.features) ? plan.features.filter(Boolean) : [];
+        const derivedFeatures = [];
+        if (plan.smsCredits) derivedFeatures.push(`${plan.smsCredits} SMS Credits`);
+        if (plan.whatsappCredits) derivedFeatures.push(`${plan.whatsappCredits} WhatsApp Credits`);
+        if (plan.emailCredits) derivedFeatures.push(`${plan.emailCredits} Email Credits`);
+        if (plan.teamMembersLimit) derivedFeatures.push(`${plan.teamMembersLimit} Team Members`);
+        if (plan.loyaltyLimit) derivedFeatures.push(`${plan.loyaltyLimit} Loyalty Points`);
+        if (plan.tagsLimit) derivedFeatures.push(`${plan.tagsLimit} Tags`);
+        if (plan.branchLimit) derivedFeatures.push(`${plan.branchLimit} Branches`);
+        if (plan.analyticsLevel && plan.analyticsLevel !== 'none') derivedFeatures.push(`${plan.analyticsLevel} Analytics`);
+
+        return {
+            included: baseFeatures,
+            limits: derivedFeatures,
+        };
     };
 
     return (
@@ -142,7 +150,7 @@ export default function Pricing() {
                         const price = getPriceByCycle(plan, billingPeriod);
                         const perMonthPrice = getPerMonthPrice(price, billingPeriod);
                         const billingTotal = getBillingTotal(price, billingPeriod);
-                        const features = getDefaultFeatures(plan);
+                        const features = normalizeFeatures(plan);
 
                         return (
                             <div
@@ -189,16 +197,42 @@ export default function Pricing() {
                                         </>
                                     )}
                                 </div>
-                                <ul className="space-y-4 mb-8 flex-1 mt-4">
-                                    {features.map((feature: string, fIndex: number) => (
-                                        <li key={fIndex} className="flex items-start gap-3 text-xs font-semibold leading-relaxed">
-                                            <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${highlight ? 'text-white' : 'text-primary'}`} />
-                                            <span className={highlight ? 'text-white/90' : 'text-text-secondary'}>
-                                                {feature}
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ul>
+                                <div className="space-y-5 mb-8 flex-1 mt-4">
+                                    {features.included.length > 0 && (
+                                        <div>
+                                            <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${highlight ? 'text-white/70' : 'text-text-secondary'}`}>
+                                                Included Features
+                                            </p>
+                                            <ul className="space-y-3">
+                                                {features.included.map((feature: string, fIndex: number) => (
+                                                    <li key={`included-${fIndex}`} className="flex items-start gap-3 text-xs font-semibold leading-relaxed">
+                                                        <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${highlight ? 'text-white' : 'text-primary'}`} />
+                                                        <span className={highlight ? 'text-white/90' : 'text-text-secondary'}>
+                                                            {feature}
+                                                        </span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {features.limits.length > 0 && (
+                                        <div>
+                                            <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${highlight ? 'text-white/70' : 'text-text-secondary'}`}>
+                                                Usage Limits
+                                            </p>
+                                            <ul className="space-y-3">
+                                                {features.limits.map((feature: string, fIndex: number) => (
+                                                    <li key={`limit-${fIndex}`} className="flex items-start gap-3 text-xs font-semibold leading-relaxed">
+                                                        <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${highlight ? 'text-white' : 'text-primary'}`} />
+                                                        <span className={highlight ? 'text-white/90' : 'text-text-secondary'}>
+                                                            {feature}
+                                                        </span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
 
                                 <div className="flex flex-col gap-3">
                                     {plan.trialDurationDays > 0 && !plan.isFree && !isCurrentPlan && (
@@ -240,7 +274,7 @@ export default function Pricing() {
                 {/* White Label Plan - Separate Row */}
                 {enterprisePlan && (() => {
                     const isCurrentPlan = user?.planId === enterprisePlan.id;
-                    const features = getDefaultFeatures(enterprisePlan);
+                    const features = normalizeFeatures(enterprisePlan);
                     const price = getPriceByCycle(enterprisePlan, billingPeriod);
 
                     return (
@@ -257,7 +291,7 @@ export default function Pricing() {
                                         {enterprisePlan.description}
                                     </p>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
-                                        {features.slice(0, 4).map((item: string, i: number) => (
+                                        {[...features.included, ...features.limits].slice(0, 4).map((item: string, i: number) => (
                                             <li key={i} className="flex items-center text-xs font-semibold gap-2.5 list-none justify-center md:justify-start">
                                                 <CheckCircle2 size={14} className="text-white shrink-0" />
                                                 <span className="text-white/90">{item}</span>

@@ -45,12 +45,15 @@ describe('TemplateService', () => {
 
   describe('createTemplate', () => {
     it('should successfully create and save a template', async () => {
-      const template = await service.createTemplate(
-        'b1',
-        'promo',
-        Channel.SMS,
-        'text',
-      );
+      const dto = {
+        name: 'promo',
+        channel: Channel.SMS,
+        content: 'Hello visitor!',
+        category: 'marketing',
+      };
+      const user = { id: 'u1', businessId: 'b1', role: 'Owner' } as any;
+      
+      const template = await service.createTemplate(dto as any, user);
       expect(repoMock.create).toHaveBeenCalled();
       expect(repoMock.save).toHaveBeenCalled();
       expect(template.id).toBe('t1');

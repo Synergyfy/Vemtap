@@ -10,10 +10,13 @@ import { useAuthStore } from '@/store/useAuthStore';
  */
 function useResolvedBranchId(branchId?: string): string | undefined {
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const userBusinessId = useAuthStore((state) => state.user?.businessId);
-    // 'all' means no filter – pass nothing so backend returns all
-    const resolved = branchId || (activeBranchId === 'all' ? undefined : activeBranchId) || userBusinessId;
-    return resolved || undefined;
+
+    // If 'all' is explicitly requested or active, return undefined to fetch all business visitors
+    if (branchId === 'all' || (!branchId && activeBranchId === 'all')) {
+        return undefined;
+    }
+
+    return branchId || activeBranchId || undefined;
 }
 
 export const useVisitors = (branchId?: string, query?: Record<string, any>) => {

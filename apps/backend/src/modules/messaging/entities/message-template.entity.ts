@@ -18,12 +18,12 @@ export enum TemplateCategory {
 @Entity('message_templates')
 @Unique(['businessId', 'name', 'channel'])
 export class MessageTemplate extends AbstractBaseEntity {
-  @ManyToOne(() => Business, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Business, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'businessId' })
   business: Business;
 
-  @Column()
-  businessId: string;
+  @Column({ type: 'uuid', nullable: true })
+  businessId?: string | null;
 
   @Column({ type: 'enum', enum: Channel })
   channel: Channel;
@@ -50,4 +50,12 @@ export class MessageTemplate extends AbstractBaseEntity {
 
   @Column({ default: 'English (US)' })
   language: string;
+
+  @Column({ default: false })
+  isSystem: boolean;
+
+  @Column({ type: 'uuid', nullable: true })
+  createdById?: string | null;
 }
+
+

@@ -1,7 +1,0 @@
-﻿
-> @vemtap/backend@0.0.1 test C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\apps\backend
-> jest "src/modules/loyalty/loyalty.service.spec.ts"
-
-C:\Users\Azeem\Documents\github\Mcom\vemtap-workspace\apps\backend:
-ΓÇëERR_PNPM_RECURSIVE_RUN_FIRST_FAILΓÇë @vemtap/backend@0.0.1 test: `jest "src/modules/loyalty/loyalty.service.spec.ts"`
-Exit status 1
