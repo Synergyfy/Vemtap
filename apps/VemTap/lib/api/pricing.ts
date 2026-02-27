@@ -10,7 +10,7 @@ const toNumber = (value: unknown, fallback = 0): number => {
 };
 
 const normalizePlan = (raw: any): PricingPlan => ({
-    id: String(raw?.id ?? ''),
+    id: String(raw?.id ?? raw?._id ?? raw?.planId ?? raw?.code ?? raw?.planCode ?? ''),
     name: String(raw?.name ?? ''),
     monthlyPrice: toNumber(raw?.monthlyPrice),
     quarterlyPrice: toNumber(raw?.quarterlyPrice),

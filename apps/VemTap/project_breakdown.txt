@@ -13,3 +13,7 @@ make sure that in the nfc manager a bussiness only aopapproved quote by the admi
 --if the pricing is free-- features we can have access to 
 --can set trail duration.
 --auto set to 30 days 
+
+admin@vemtap.com
+securePassword123!
+

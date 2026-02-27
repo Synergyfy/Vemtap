@@ -33,6 +33,11 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             toast.error('User email not found. Please log in again.');
             return;
         }
+        const resolvedBusinessId = businessId || user?.businessId || '';
+        if (!resolvedBusinessId) {
+            toast.error('Business ID not found. Please refresh and try again.');
+            return;
+        }
 
         setIsProcessing(true);
 
@@ -43,7 +48,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             console.warn('Paystack public key not configured. Using mock success for demo.');
             setTimeout(() => {
                 subscribeMutation.mutate({
-                    businessId: businessId || user?.businessId || '',
+                    businessId: resolvedBusinessId,
                     planId: plan.id,
                     billingPeriod,
                     paymentReference: `mock-ref-${Date.now()}`
@@ -53,9 +58,9 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                         toast.success(`Welcome to the ${plan.name} plan!`);
                         onClose();
                     },
-                    onError: () => {
-                        setIsProcessing(true);
-                        toast.error('Subscription sync failed. Please contact support.');
+                    onError: (error) => {
+                        setIsProcessing(false);
+                        toast.error(error instanceof Error ? error.message : 'Subscription sync failed. Please contact support.');
                     }
                 });
             }, 1500);
@@ -78,7 +83,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             callback: (response: any) => {
                 // Payment successful
                 subscribeMutation.mutate({
-                    businessId: businessId || user?.businessId || '',
+                    businessId: resolvedBusinessId,
                     planId: plan.id,
                     billingPeriod,
                     paymentReference: response.reference
@@ -88,9 +93,9 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                         toast.success(isTrial ? `Trial started! You won't be charged for ${plan.trialDurationDays} days.` : `Welcome to the ${plan.name} plan!`);
                         onClose();
                     },
-                    onError: () => {
+                    onError: (error) => {
                         setIsProcessing(false);
-                        toast.error('Payment verified but subscription sync failed. Please contact support.');
+                        toast.error(error instanceof Error ? error.message : 'Payment verified but subscription sync failed. Please contact support.');
                     }
                 });
             }
