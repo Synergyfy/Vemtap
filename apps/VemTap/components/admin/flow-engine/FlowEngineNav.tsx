@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Activity, Settings, Bot, FileCode2, Gauge, Logs, PlayCircle } from 'lucide-react';
+import { Activity, Settings, Bot, FileCode2, Gauge, Logs, PlayCircle, Workflow } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 
 const tabs = [
     { href: '/admin/flow-engine', label: 'Overview', icon: Gauge },
+    { href: '/admin/flow-engine/flows', label: 'Flow Builder', icon: Workflow },
     { href: '/admin/flow-engine/templates', label: 'Flow Templates', icon: FileCode2 },
     { href: '/admin/flow-engine/triggers', label: 'Trigger Management', icon: Bot },
     { href: '/admin/flow-engine/settings', label: 'WhatsApp Settings', icon: Settings },
@@ -25,9 +26,9 @@ export default function FlowEngineNav({ current }: { current: string }) {
                     </div>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">VemTap Admin</p>
                 </div>
-                <h1 className="text-3xl font-display font-bold text-text-main">WhatsApp Flow Engine</h1>
+                <h1 className="text-3xl font-display font-bold text-text-main">WhatsApp Template & Flow Engine</h1>
                 <p className="text-sm font-medium text-text-secondary mt-1">
-                    Template control center with mocked data before API integration.
+                    Admin template creation and flow management control center.
                 </p>
             </div>
 

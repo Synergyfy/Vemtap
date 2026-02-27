@@ -1,40 +1,26 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import AnimatedRewardModal from '@/components/customer/AnimatedRewardModal';
 import { notify } from '@/lib/notify';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { Reward } from '@/types/loyalty';
 import { Star, Gift, Search, Info, CheckCircle2, QrCode, X, Clock, MapPin, Coffee, Dumbbell, Smartphone, Music, Film, Flower2, Loader2 } from 'lucide-react';
+import { useCustomerLoyaltyProfile, useCustomerLoyaltyRewards, useRedeemCustomerReward } from '@/services/customer/hooks';
 
 export default function CustomerRewardsPage() {
     const { user } = useAuthStore();
-    const {
-        profiles, fetchLoyaltyProfile,
-        availableRewards, fetchRewards,
-        isLoading, redeemReward
-    } = useLoyaltyStore();
-
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
     const [showRewardAnimation, setShowRewardAnimation] = useState(false);
-
-    // TODO: Dynamic branch context
-    const branchId = 'bistro_001';
-    const profile = profiles[branchId];
+    const businessId = user?.businessId;
+    const { data: profileResponse } = useCustomerLoyaltyProfile(businessId);
+    const { data: rewardsResponse = [], isLoading } = useCustomerLoyaltyRewards(businessId);
+    const redeemMutation = useRedeemCustomerReward();
+    const profile = profileResponse?.data || profileResponse;
+    const availableRewards = Array.isArray(rewardsResponse) ? rewardsResponse : (rewardsResponse?.data || []);
     const userPoints = profile?.currentPointsBalance || 0;
-
-    useEffect(() => {
-        const initialize = async () => {
-            if (user?.id) {
-                await fetchLoyaltyProfile(user.id, branchId);
-                fetchRewards(branchId);
-            }
-        };
-        initialize();
-    }, [user, branchId, fetchLoyaltyProfile, fetchRewards]);
 
     const getRewardIcon = (name: string, size = 24) => {
         const n = name.toLowerCase();
@@ -46,10 +32,13 @@ export default function CustomerRewardsPage() {
     };
 
     const handleRedeem = async (reward: Reward) => {
-        if (!profile) return;
+        if (!profile) {
+            notify.error('Loyalty profile not found');
+            return;
+        }
 
         try {
-            const result = await redeemReward(profile.id, reward.id);
+            const result = await redeemMutation.mutateAsync({ rewardId: reward.id, businessId });
             if (result.success) {
                 setSelectedReward(null);
                 setShowRewardAnimation(true);
@@ -61,12 +50,12 @@ export default function CustomerRewardsPage() {
         }
     };
 
-    const filteredRewards = availableRewards.filter(r =>
+    const filteredRewards = availableRewards.filter((r: Reward) =>
         r.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const readyToRedeem = filteredRewards.filter(r => userPoints >= r.pointCost);
-    const lockedRewards = filteredRewards.filter(r => userPoints < r.pointCost);
+    const readyToRedeem = filteredRewards.filter((r: Reward) => userPoints >= r.pointCost);
+    const lockedRewards = filteredRewards.filter((r: Reward) => userPoints < r.pointCost);
 
     return (
         <div className="max-w-6xl mx-auto space-y-12 pb-20 p-4 md:p-0">
@@ -109,7 +98,7 @@ export default function CustomerRewardsPage() {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {readyToRedeem.map((reward) => (
+                                {readyToRedeem.map((reward: Reward) => (
                                     <div key={reward.id} className="bg-white rounded-lg border-2 border-primary/20 p-8 flex flex-col hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full translate-x-16 -translate-y-16 group-hover:scale-150 transition-transform duration-700" />
 
@@ -151,7 +140,7 @@ export default function CustomerRewardsPage() {
                                 <h2 className="text-xl font-display font-bold text-text-main">Future Rewards</h2>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                {lockedRewards.map((reward) => {
+                                {lockedRewards.map((reward: Reward) => {
                                     const progress = Math.min(100, Math.floor((userPoints / reward.pointCost) * 100));
                                     return (
                                         <div

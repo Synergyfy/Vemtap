@@ -1,56 +1,44 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { LoyaltyCard } from '@/components/loyalty/LoyaltyCard';
 import { RewardsStore } from '@/components/loyalty/RewardsStore';
 import { PointsHistory } from '@/components/loyalty/PointsHistory';
 import { RedemptionCard } from '@/components/loyalty/RedemptionCard';
-import { EarnPointsModal } from '@/components/loyalty/EarnPointsModal';
-import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Reward, Redemption } from '@/types/loyalty';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Gift, History, LayoutGrid, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
+import {
+    useCustomerLoyaltyHistory,
+    useCustomerLoyaltyProfile,
+    useCustomerLoyaltyRewards,
+    useRedeemCustomerReward
+} from '@/services/customer/hooks';
 
 export default function LoyaltyPage() {
     const { user } = useAuthStore();
-    const {
-        profiles,
-        fetchLoyaltyProfile,
-        availableRewards,
-        fetchRewards,
-        recentTransactions,
-        fetchTransactions,
-        redeemReward,
-        isLoading
-    } = useLoyaltyStore();
-
     const [activeTab, setActiveTab] = useState<'rewards' | 'history'>('rewards');
     const [selectedRedemption, setSelectedRedemption] = useState<{ redemption: Redemption, reward: Reward } | null>(null);
-
-    // Branch ID is hardcoded for MVP demo purposes
-    const branchId = 'bistro_001';
-    const profile = profiles[branchId];
-
-    useEffect(() => {
-        if (user?.id) {
-            fetchLoyaltyProfile(user.id, branchId);
-            fetchRewards(branchId);
-        }
-    }, [user, branchId]);
-
-    useEffect(() => {
-        if (profile?.id) {
-            fetchTransactions(profile.id);
-        }
-    }, [profile?.id]);
+    const businessId = user?.businessId;
+    const { data: profileResponse, isLoading: isProfileLoading } = useCustomerLoyaltyProfile(businessId);
+    const { data: rewardsResponse = [] } = useCustomerLoyaltyRewards(businessId);
+    const { data: historyResponse = [] } = useCustomerLoyaltyHistory(businessId);
+    const redeemMutation = useRedeemCustomerReward();
+    const profile = profileResponse?.data || profileResponse;
+    const availableRewards = Array.isArray(rewardsResponse) ? rewardsResponse : (rewardsResponse?.data || []);
+    const recentTransactions = Array.isArray(historyResponse) ? historyResponse : (historyResponse?.data || []);
+    const isLoading = isProfileLoading;
 
     const handleRedeem = async (reward: Reward) => {
-        if (!profile) return;
+        if (!profile) {
+            notify.error('Loyalty profile not found');
+            return;
+        }
 
-        const result = await redeemReward(profile.id, reward.id);
+        const result = await redeemMutation.mutateAsync({ rewardId: reward.id, businessId });
         if (result.success && result.redemption) {
             setSelectedRedemption({ redemption: result.redemption, reward });
             notify.success(`Redeemed ${reward.name} successfully!`);

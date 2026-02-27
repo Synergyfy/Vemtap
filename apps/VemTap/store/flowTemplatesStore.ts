@@ -29,6 +29,7 @@ interface FlowTemplatesState {
     updateTemplate: (id: string, data: Partial<Omit<FlowTemplateRecord, 'id'>>) => FlowTemplateRecord | null;
     cloneTemplate: (id: string) => FlowTemplateRecord | null;
     toggleStatus: (id: string) => FlowTemplateRecord | null;
+    deleteTemplate: (id: string) => boolean;
 }
 
 const formatTimestamp = () => {
@@ -119,6 +120,14 @@ export const useFlowTemplatesStore = create<FlowTemplatesState>()(
                     }),
                 }));
                 return updated;
+            },
+            deleteTemplate: (id) => {
+                const exists = get().templates.some((template) => template.id === id);
+                if (!exists) return false;
+                set((state) => ({
+                    templates: state.templates.filter((template) => template.id !== id),
+                }));
+                return true;
             },
         }),
         {
