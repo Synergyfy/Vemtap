@@ -5,27 +5,25 @@ import { MessageSquare, LifeBuoy, Clock, Search, Filter, Plus, ChevronRight, Hel
 import { AnimatePresence } from 'framer-motion';
 import CreateTicketModal from '@/components/ui/CreateTicketModal';
 import { notify } from '@/lib/notify';
+import { useCreateCustomerSupportTicket, useCustomerSupportTickets } from '@/services/customer/hooks';
 
 export default function CustomerSupportPage() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-
-    const [tickets, setTickets] = useState([
-        { id: 'TKT-7721', subject: 'Forgot to scan at Green Terrace', status: 'In Progress', category: 'Points Inquiry', date: 'Feb 4, 2024' },
-        { id: 'TKT-7650', subject: 'Voucher code not working', status: 'Closed', category: 'Redemption Issue', date: 'Jan 28, 2024' },
-    ]);
+    const { data: ticketsData = [] } = useCustomerSupportTickets();
+    const createTicketMutation = useCreateCustomerSupportTicket();
+    const tickets = Array.isArray(ticketsData) ? ticketsData : (ticketsData?.data || []);
 
     const handleCreateTicket = (data: any) => {
-        const newTicket = {
-            id: `TKT-${Math.floor(1000 + Math.random() * 9000)}`,
-            subject: data.subject,
-            status: 'Open',
-            category: data.category,
-            date: 'Just now'
-        };
-        setTickets([newTicket, ...tickets]);
-        setIsCreateModalOpen(false);
-        notify.success('Support ticket created successfully. Our team will review it soon.');
+        createTicketMutation.mutate(data, {
+            onSuccess: () => {
+                setIsCreateModalOpen(false);
+                notify.success('Support ticket created successfully. Our team will review it soon.');
+            },
+            onError: (error) => {
+                notify.error(error instanceof Error ? error.message : 'Failed to create support ticket');
+            }
+        });
     };
 
     const faqs = [
@@ -62,7 +60,7 @@ export default function CustomerSupportPage() {
 
                         {tickets.length > 0 ? (
                             <div className="space-y-4">
-                                {tickets.map((ticket) => (
+                                {tickets.map((ticket: any) => (
                                     <div key={ticket.id} className="bg-white border border-gray-100 rounded-xl p-6 hover:shadow-md transition-all group cursor-pointer">
                                         <div className="flex items-start justify-between mb-4">
                                             <div>
@@ -79,7 +77,7 @@ export default function CustomerSupportPage() {
                                         <div className="flex items-center justify-between pt-4 border-t border-gray-50 text-xs text-text-secondary font-medium">
                                             <div className="flex items-center gap-4">
                                                 <span className="flex items-center gap-1"><Filter size={12} /> {ticket.category}</span>
-                                                <span className="flex items-center gap-1"><Clock size={12} /> {ticket.date}</span>
+                                                <span className="flex items-center gap-1"><Clock size={12} /> {new Date(ticket.createdAt || ticket.date || Date.now()).toLocaleDateString()}</span>
                                             </div>
                                             <ChevronRight size={16} className="text-gray-300 group-hover:text-primary group-hover:translate-x-1 transition-all" />
                                         </div>
@@ -133,6 +131,7 @@ export default function CustomerSupportPage() {
                         isOpen={isCreateModalOpen}
                         onClose={() => setIsCreateModalOpen(false)}
                         onSubmit={handleCreateTicket}
+                        isLoading={createTicketMutation.isPending}
                         userType="customer"
                     />
                 )}
