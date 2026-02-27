@@ -1,24 +1,40 @@
 
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useProductFormStore } from '@/store/useProductFormStore';
 import StepDetails from '@/components/admin/products/create/StepDetails';
 import StepMedia from '@/components/admin/products/create/StepMedia';
 import StepPricing from '@/components/admin/products/create/StepPricing';
 import StepSuccess from '@/components/admin/products/create/StepSuccess';
+import StepError from '@/components/admin/products/create/StepError';
 import { Check, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import { notify } from '@/lib/notify';
 
 export default function CreateProductPage() {
-    const { currentStep, setStep, editingProductId } = useProductFormStore();
+    const { currentStep, setStep, editingProductId, submissionStatus } = useProductFormStore();
 
     const steps = [
         { id: 1, label: 'Details' },
         { id: 2, label: 'Media' },
-        { id: 3, label: 'Pricing' },
-        { id: 4, label: 'Review' },
+        { id: 3, label: 'Review' },
+        { id: 4, label: 'Result' },
     ];
+
+    const handleStepClick = (stepId: number) => {
+        if (stepId === 4 && submissionStatus === 'idle') {
+            notify.info('Publish the product to view the result.');
+            return;
+        }
+        setStep(stepId);
+    };
+
+    useEffect(() => {
+        if (currentStep === 4 && submissionStatus === 'idle') {
+            setStep(3);
+        }
+    }, [currentStep, submissionStatus, setStep]);
 
     return (
         <div className="p-8 md:p-12 max-w-7xl mx-auto">
@@ -33,13 +49,20 @@ export default function CreateProductPage() {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                     <div>
                         <h1 className="text-4xl md:text-5xl font-display font-bold mb-4 bg-clip-text text-transparent bg-linear-to-r from-gray-900 to-gray-600">
-                            {currentStep === 4 ? 'Success!' : editingProductId ? 'Edit Product' : 'Add New Product'}
+                            {currentStep === 4
+                                ? submissionStatus === 'error'
+                                    ? 'Publish Failed'
+                                    : 'Success!'
+                                : editingProductId
+                                    ? 'Edit Product'
+                                    : 'Add New Product'}
                         </h1>
                         <p className="text-lg text-text-secondary font-medium">
                             {currentStep === 1 && `Enter the ${editingProductId ? 'updated' : 'basic'} product details below.`}
                             {currentStep === 2 && 'Upload high-quality images and specifications.'}
                             {currentStep === 3 && 'Configure pricing tiers and review.'}
-                            {currentStep === 4 && `Your product has been ${editingProductId ? 'updated' : 'published'} successfully.`}
+                            {currentStep === 4 && submissionStatus === 'success' && `Your product has been ${editingProductId ? 'updated' : 'published'} successfully.`}
+                            {currentStep === 4 && submissionStatus === 'error' && 'There was an issue deploying your product. Please review and try again.'}
                         </p>
                     </div>
 
@@ -70,7 +93,7 @@ export default function CreateProductPage() {
                                 <React.Fragment key={step.id}>
                                     <div
                                         className="flex items-center gap-3 cursor-pointer group"
-                                        onClick={() => setStep(step.id)}
+                                        onClick={() => handleStepClick(step.id)}
                                     >
                                         <div
                                             className={`
@@ -114,7 +137,8 @@ export default function CreateProductPage() {
                 {currentStep === 1 && <StepDetails />}
                 {currentStep === 2 && <StepMedia />}
                 {currentStep === 3 && <StepPricing />}
-                {currentStep === 4 && <StepSuccess />}
+                {currentStep === 4 && submissionStatus === 'success' && <StepSuccess />}
+                {currentStep === 4 && submissionStatus === 'error' && <StepError />}
             </div>
         </div>
     );

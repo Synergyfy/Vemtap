@@ -1,23 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPricingPlans } from '@/lib/api/pricing';
 import { useAuthStore, AuthState } from '../../store/useAuthStore';
-import { useSubscribe } from '@/services/subscriptions/hooks';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
-import SubscriptionCheckout from '@/components/dashboard/SubscriptionCheckout';
 
 export default function Pricing() {
     const router = useRouter();
     const user = useAuthStore((state: AuthState) => state.user);
     const isAuthenticated = useAuthStore((state: AuthState) => state.isAuthenticated);
-    const subscribeMutation = useSubscribe();
-    const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
-    const [isTrialSelection, setIsTrialSelection] = useState(false);
+    const accessToken = useAuthStore((state: AuthState) => state.access_token);
+    const [isRedirecting, setIsRedirecting] = useState(false);
     const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
 
     const { data: plans = [], isLoading } = useQuery({
@@ -26,24 +22,22 @@ export default function Pricing() {
     });
 
     const handleSubscription = async (plan: any, useTrial: boolean = false) => {
-        if (!isAuthenticated) {
+        const hasValidSession = Boolean(
+            isAuthenticated &&
+            accessToken &&
+            user?.id &&
+            user?.email &&
+            user?.businessId
+        );
+
+        if (!hasValidSession) {
+            toast('Create an account to select a plan.');
             router.push('/get-started');
             return;
         }
 
-        if (plan.id === 'free') {
-            subscribeMutation.mutate({
-                businessId: user?.businessId || '',
-                planId: plan.id,
-                billingPeriod
-            }, {
-                onSuccess: () => toast.success('Switched to Free plan!'),
-                onError: () => toast.error('Failed to update plan')
-            });
-        } else {
-            setIsTrialSelection(useTrial);
-            setCheckoutPlan({ ...plan, billingPeriod });
-        }
+        setIsRedirecting(true);
+        router.push('/dashboard/settings/subscription');
     };
 
     if (isLoading) return (
@@ -237,8 +231,8 @@ export default function Pricing() {
                                 <div className="flex flex-col gap-3">
                                     {plan.trialDurationDays > 0 && !plan.isFree && !isCurrentPlan && (
                                         <button
-                                            onClick={() => handleSubscription(plan, true)}
-                                            className={`
+                                        onClick={() => handleSubscription(plan, true)}
+                                        className={`
                                                 w-full py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center transition-all cursor-pointer shadow-lg active:scale-[0.98]
                                                 ${highlight
                                                     ? 'bg-white text-primary hover:bg-gray-50 shadow-white/10'
@@ -265,6 +259,11 @@ export default function Pricing() {
                                     >
                                         {plan.isFree ? 'Get Started' : isCurrentPlan ? 'Manage Sub' : 'Subscribe Now'}
                                     </button>
+                                    {!isAuthenticated && (
+                                        <p className={`text-[10px] font-semibold text-center ${highlight ? 'text-white/70' : 'text-text-secondary'}`}>
+                                            Create an account to choose this plan.
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         );
@@ -335,18 +334,10 @@ export default function Pricing() {
                     );
                 })()}
 
-                {checkoutPlan && (
-                    <SubscriptionCheckout
-                        isOpen={!!checkoutPlan}
-                        onClose={() => {
-                            setCheckoutPlan(null);
-                            setIsTrialSelection(false);
-                        }}
-                        plan={checkoutPlan}
-                        isTrial={isTrialSelection}
-                        billingPeriod={checkoutPlan.billingPeriod}
-                        businessId={user?.businessId}
-                    />
+                {isRedirecting && (
+                    <p className="text-center text-xs font-bold text-text-secondary uppercase tracking-widest">
+                        Redirecting to subscription settings...
+                    </p>
                 )}
             </div>
         </section >

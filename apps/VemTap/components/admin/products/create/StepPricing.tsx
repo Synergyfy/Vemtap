@@ -6,9 +6,10 @@ import { Percent, Trash2, Plus, Info, LayoutGrid, CheckCircle, Sparkles, Loader2
 import { TbCurrencyNaira } from "react-icons/tb";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminProductsApi } from '@/lib/api/admin';
+import { notify } from '@/lib/notify';
 
 export default function StepPricing() {
-    const { formData, updateFormData, nextStep, prevStep, editingProductId } = useProductFormStore();
+    const { formData, updateFormData, nextStep, prevStep, editingProductId, setSubmissionResult } = useProductFormStore();
     const queryClient = useQueryClient();
 
     const mutation = useMutation({
@@ -60,19 +61,26 @@ export default function StepPricing() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-products'] });
             queryClient.invalidateQueries({ queryKey: ['admin-product-stats'] });
+            setSubmissionResult('success', null);
             nextStep();
         },
         onError: (error) => {
             console.error('Operation failed:', error);
-            alert(`Failed to ${editingProductId ? 'update' : 'publish'} product. Please check your connection and try again.`);
+            const message = error instanceof Error
+                ? error.message
+                : `Failed to ${editingProductId ? 'update' : 'publish'} product. Please check your connection and try again.`;
+            setSubmissionResult('error', message);
+            nextStep();
+            notify.error(message);
         }
     });
 
     const handlePublish = async () => {
         if (!formData.title || !formData.description) {
-            alert('Please fill in the basic product details in Step 1.');
+            notify.warning('Please fill in the basic product details in Step 1.');
             return;
         }
+        setSubmissionResult('idle', null);
         mutation.mutate();
     };
 

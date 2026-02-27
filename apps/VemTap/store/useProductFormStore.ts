@@ -59,11 +59,14 @@ interface ProductFormState {
   currentStep: number;
   formData: ProductFormData;
   editingProductId: string | null;
+  submissionStatus: 'idle' | 'success' | 'error';
+  submissionError: string | null;
   setStep: (step: number) => void;
   updateFormData: (data: Partial<ProductFormData>) => void;
   loadProductForEditing: (product: any) => void;
   nextStep: () => void;
   prevStep: () => void;
+  setSubmissionResult: (status: 'idle' | 'success' | 'error', error?: string | null) => void;
   resetForm: () => void;
 }
 
@@ -101,11 +104,15 @@ export const useProductFormStore = create<ProductFormState>((set) => ({
   currentStep: 1,
   formData: initialFormData,
   editingProductId: null,
+  submissionStatus: 'idle',
+  submissionError: null,
   setStep: (step) => set({ currentStep: step }),
   updateFormData: (data) => set((state) => ({ formData: { ...state.formData, ...data } })),
   loadProductForEditing: (product) => set({
     editingProductId: product.id,
     currentStep: 1,
+    submissionStatus: 'idle',
+    submissionError: null,
     formData: {
       ...initialFormData,
       title: product.name,
@@ -126,5 +133,12 @@ export const useProductFormStore = create<ProductFormState>((set) => ({
   }),
   nextStep: () => set((state) => ({ currentStep: Math.min(state.currentStep + 1, 4) })),
   prevStep: () => set((state) => ({ currentStep: Math.max(state.currentStep - 1, 1) })),
-  resetForm: () => set({ currentStep: 1, formData: initialFormData, editingProductId: null }),
+  setSubmissionResult: (status, error = null) => set({ submissionStatus: status, submissionError: error }),
+  resetForm: () => set({
+    currentStep: 1,
+    formData: initialFormData,
+    editingProductId: null,
+    submissionStatus: 'idle',
+    submissionError: null,
+  }),
 }));
