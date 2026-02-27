@@ -94,11 +94,9 @@ export class MessagingEngineService {
 
     let template: any = null;
     if (dto.templateId) {
-      template = await this.templateService.getTemplate(
-        dto.templateId,
-        dto.businessId,
-      );
+      template = await this.templateService.getTemplate(dto.templateId);
     }
+
 
     const contacts = await this.resolveAudience(dto);
     if (!contacts.length) {

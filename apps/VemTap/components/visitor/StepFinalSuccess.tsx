@@ -23,9 +23,15 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
     onFinish,
     onEngagement,
     engagementSettings,
-    socialLinks
 }) => {
     const [isSocialModalOpen, setIsSocialModalOpen] = React.useState(false);
+
+    const hasSocial = !!(engagementSettings?.instagram || engagementSettings?.linkedin || engagementSettings?.twitter || engagementSettings?.facebook || engagementSettings?.socialUrl);
+    const hasReview = !!engagementSettings?.reviewUrl;
+    const hasFeedback = !!engagementSettings?.showFeedback;
+    const hasRewards = !!engagementSettings?.showRewards;
+
+    const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards);
 
     const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards') => {
         if (type === 'social') {
@@ -46,7 +52,7 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
             </p>
 
             {/* Prominent Google Review CTA */}
-            {engagementSettings?.showReview && engagementSettings?.reviewUrl && (
+            {engagementSettings?.showReview && hasReview && (
                 <div className="mb-6 p-1 bg-amber-50 rounded-3xl border border-amber-100">
                     <button
                         onClick={() => window.open(engagementSettings.reviewUrl, '_blank')}
@@ -67,7 +73,7 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
             )}
 
             {/* Engagement Layer preserved in final step */}
-            {onEngagement && (
+            {showEngagement && (
                 <div className="mb-8">
                     <EngagementTiles
                         onAction={handleEngagement}
@@ -83,7 +89,7 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
             <SocialMediaModal
                 isOpen={isSocialModalOpen}
                 onClose={() => setIsSocialModalOpen(false)}
-                socialLinks={socialLinks}
+                socialLinks={engagementSettings}
             />
         </motion.div>
     );

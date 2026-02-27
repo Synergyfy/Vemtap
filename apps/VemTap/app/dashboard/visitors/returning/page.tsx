@@ -9,11 +9,11 @@ import EmptyState from '@/components/dashboard/EmptyState';
 import CreateRewardModal from '@/components/dashboard/CreateRewardModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { Visitor } from '@/services/visitors/types';
+import { Reward, Visitor } from '@/services/visitors/types';
 import { useReturningVisitors, useReturningVisitorStats } from '@/services/visitors/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Reward } from '@/lib/store/mockDashboardStore';
 import toast from 'react-hot-toast';
+import { formatDate } from '@/lib/utils/date';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import { Repeat, Users, Star, AlertTriangle, Gift, Award, Send } from 'lucide-react';
@@ -25,28 +25,31 @@ export default function ReturningVisitorsPage() {
     const queryClient = useQueryClient();
     const { user, activeBranchId } = useAuthStore();
 
-    const { data: paginatedData, isLoading } = useReturningVisitors(activeBranchId === 'all' || !activeBranchId ? undefined : activeBranchId);
-    const { data: statsData } = useReturningVisitorStats(activeBranchId === 'all' || !activeBranchId ? undefined : activeBranchId);
+    const { data: paginatedData, isLoading } = useReturningVisitors('all');
+    const { data: statsData } = useReturningVisitorStats('all');
 
     const returningVisitors = paginatedData?.data || [];
 
     const createRewardMutation = useMutation({
-        mutationFn: async (rewardData: Omit<Reward, 'id' | 'active'>) => {
-            const newReward = {
+        mutationFn: async (rewardData: any) => {
+            const payload = {
                 ...rewardData,
-                active: true,
-                branchId: activeBranchId === 'all' ? undefined : activeBranchId
+                branchId: activeBranchId === 'all' ? undefined : activeBranchId,
             };
-            return await api.post('/campaigns/rewards', newReward); // Assuming you'd have a reward post, mock it via API here for UI binding compatibility
+            return await api.post('/visitors/rewards', payload);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['dashboard'] });
             setIsCreateModalOpen(false);
             toast.success('Reward created successfully');
+        },
+        onError: (err: any) => {
+            console.error('Reward creation error:', err);
+            toast.error(err.response?.data?.message || 'Failed to create reward');
         }
     });
 
-    const handleCreateReward = (rewardData: Omit<Reward, 'id' | 'active'>) => {
+    const handleCreateReward = (rewardData: any) => {
         createRewardMutation.mutate(rewardData);
     };
 
@@ -68,19 +71,26 @@ export default function ReturningVisitorsPage() {
     const columns: Column<Visitor>[] = [
         {
             header: 'Visitor',
-            accessor: (item: Visitor) => (
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-xs border border-blue-100">
-                        {item.name.split(' ').map((n: string) => n[0]).join('')}
+            accessor: (item: Visitor) => {
+                const displayName = item.name ||
+                    (item.firstName || item.lastName
+                        ? `${item.firstName || ''} ${item.lastName || ''}`.trim()
+                        : 'Unknown Visitor');
+
+                return (
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-xs border border-blue-100 uppercase">
+                            {displayName.split(' ').filter(Boolean).map((n: string) => n[0]).join('')}
+                        </div>
+                        <div>
+                            <p className="font-bold text-text-main">{displayName}</p>
+                            <p className="text-xs text-text-secondary">{item.phone || 'No phone'}</p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="font-bold text-text-main">{item.name}</p>
-                        <p className="text-xs text-text-secondary">{item.phone}</p>
-                    </div>
-                </div>
-            )
+                );
+            }
         },
-        { header: 'Last Seen', accessor: (item: Visitor) => String(item.lastVisit || item.time || new Date().toISOString().split('T')[0]) },
+        { header: 'Last Seen', accessor: (item: Visitor) => formatDate(item.lastVisit || item.time) },
         {
             header: 'Level',
             accessor: (item: Visitor) => (
