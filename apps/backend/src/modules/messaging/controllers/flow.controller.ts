@@ -30,6 +30,7 @@ export class CreateFlowDto {
   name: string;
   triggerType: FlowTriggerType;
   branchId?: string;
+  businessId?: string;
   structure: any;
 }
 
@@ -44,11 +45,18 @@ export class FlowController {
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a new flow' })
   @ApiBody({ type: CreateFlowDto })
   async create(@Body() dto: CreateFlowDto, @Request() req: any) {
     const user = req.user as User;
+
+    const businessId =
+      user.role === UserRole.ADMIN ? dto.businessId : user.businessId;
+
+    if (!businessId) {
+      throw new BadRequestException('businessId is required');
+    }
 
     let branchId = dto.branchId;
     if (user.role === UserRole.MANAGER || user.role === UserRole.STAFF) {
@@ -60,7 +68,7 @@ export class FlowController {
     }
 
     const flow = this.flowRepo.create({
-      businessId: user.businessId,
+      businessId,
       branchId,
       name: dto.name,
       triggerType: dto.triggerType,
@@ -74,21 +82,29 @@ export class FlowController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @ApiOperation({ summary: 'Get flows by branch' })
-  async findAll(@Query('branchId') branchId: string, @Request() req: any) {
+  async findAll(
+    @Query('branchId') branchId: string,
+    @Query('businessId') businessId: string,
+    @Request() req: any,
+  ) {
     const user = req.user as User;
-    // @ts-ignore
+
+    if (user.role === UserRole.ADMIN) {
+      if (!businessId) throw new BadRequestException('businessId is required');
+      return this.flowRepo.find({
+        where: branchId ? { businessId, branchId } : { businessId },
+      });
+    }
+
     const resolved = branchId || user.branchId;
     if (!resolved) throw new BadRequestException('branchId is required');
-
-    return this.flowRepo.find({
-      where: { branchId: resolved, businessId: user.businessId },
-    });
+    return this.flowRepo.find({ where: { branchId: resolved, businessId: user.businessId } });
   }
 
   @Post(':id/status')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Update flow status (active/draft/paused)' })
   async updateStatus(
     @Param('id') id: string,
@@ -96,9 +112,11 @@ export class FlowController {
     @Request() req: any,
   ) {
     const user = req.user as User;
-    const flow = await this.flowRepo.findOne({
-      where: { id, businessId: user.businessId },
-    });
+    const flow = await this.flowRepo.findOne(
+      user.role === UserRole.ADMIN
+        ? { where: { id } }
+        : { where: { id, businessId: user.businessId } },
+    );
     if (!flow) throw new BadRequestException('Flow not found');
 
     flow.status = status;

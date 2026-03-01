@@ -11,27 +11,26 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { fetchDeviceByCode, Device } from '@/lib/api/devices';
 import { notify } from '@/lib/notify';
+import {
+    useCustomerLoyaltyAnalytics,
+    useCustomerLoyaltyHistory,
+    useCustomerLoyaltyProfile,
+    useCustomerLoyaltyRewards,
+    useRedeemCustomerReward
+} from '@/services/customer/hooks';
 
 export default function CustomerDashboardPage() {
     const { user, isAuthenticated } = useAuthStore();
-    const {
-        profiles,
-        fetchLoyaltyProfile,
-        availableRewards,
-        fetchRewards,
-        recentTransactions,
-        fetchTransactions,
-        isLoading: isLoyaltyLoading,
-        redeemReward,
-        analytics,
-        fetchAnalytics
-    } = useLoyaltyStore();
-
     const { businessId: flowBusinessId, branchId: flowBranchId, deviceCode } = useCustomerFlowStore();
+    const businessId = flowBusinessId || user?.businessId;
+    const { data: analyticsResponse } = useCustomerLoyaltyAnalytics();
+    const { data: profileResponse } = useCustomerLoyaltyProfile(businessId);
+    const { data: availableRewardsData = [], isLoading: isRewardsLoading } = useCustomerLoyaltyRewards(businessId);
+    const { data: recentTransactionsData = [], isLoading: isHistoryLoading } = useCustomerLoyaltyHistory(businessId);
+    const redeemMutation = useRedeemCustomerReward();
 
     const router = useRouter();
     const [showIdModal, setShowIdModal] = useState(false);
@@ -40,9 +39,11 @@ export default function CustomerDashboardPage() {
     const [businessInfo, setBusinessInfo] = useState<Device | null>(null);
     const [isBusinessLoading, setIsBusinessLoading] = useState(false);
 
-    // Prioritize the business from the current tap flow
-    const activeBranchId = flowBranchId || Object.keys(profiles)[0] || 'head-office';
-    const profile = profiles[activeBranchId];
+    const analytics = analyticsResponse?.data || analyticsResponse;
+    const profile = profileResponse?.data || profileResponse;
+    const availableRewards = Array.isArray(availableRewardsData) ? availableRewardsData : (availableRewardsData?.data || []);
+    const recentTransactions = Array.isArray(recentTransactionsData) ? recentTransactionsData : (recentTransactionsData?.data || []);
+    const isLoyaltyLoading = isRewardsLoading || isHistoryLoading;
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -57,10 +58,7 @@ export default function CustomerDashboardPage() {
 
         const initializeDashboard = async () => {
             if (user?.id) {
-                // 1. Fetch global analytics (Visits, Points, Savings)
-                fetchAnalytics();
-
-                // 2. Fetch business info if we have a device code
+                // Fetch business info if we have a device code
                 if (deviceCode) {
                     setIsBusinessLoading(true);
                     try {
@@ -73,15 +71,6 @@ export default function CustomerDashboardPage() {
                     }
                 }
 
-                // 3. Fetch specific business context if available
-                const targetBranch = flowBranchId || activeBranchId;
-                if (targetBranch) {
-                    const loadedProfile = await fetchLoyaltyProfile(user.id, targetBranch);
-                    fetchRewards(targetBranch);
-                    if (loadedProfile?.id) {
-                        fetchTransactions(loadedProfile.id);
-                    }
-                }
             }
         };
 
@@ -104,8 +93,8 @@ export default function CustomerDashboardPage() {
         }
 
         try {
-            const result = await redeemReward(profile!.id, rewardId);
-            if (result.success) {
+            const result = await redeemMutation.mutateAsync({ rewardId, businessId });
+            if (result?.success) {
                 setCurrentReward({ name, points, icon });
                 setShowRewardAnimation(true);
                 setTimeout(() => {
@@ -113,7 +102,7 @@ export default function CustomerDashboardPage() {
                     setCurrentReward(null);
                 }, 5000);
             } else {
-                notify.error(result.error || 'Redemption failed');
+                notify.error(result?.error || 'Redemption failed');
             }
         } catch (error) {
             notify.error('An error occurred during redemption');

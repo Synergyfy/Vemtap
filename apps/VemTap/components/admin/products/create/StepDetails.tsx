@@ -5,14 +5,59 @@ import { useProductFormStore } from '@/store/useProductFormStore';
 import { Factory, QrCode, ArrowRight, Save, Plus, Trash2, GripVertical, ListOrdered } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { adminProductsApi } from '@/lib/api/admin';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { notify } from '@/lib/notify';
+
+const stepDetailsSchema = z.object({
+    title: z.string().min(3, 'Product title must be at least 3 characters.'),
+    productTypeId: z.string().min(1, 'Please select a category.'),
+    sku: z.string().min(2, 'SKU is required.'),
+    tag: z.string().min(2, 'Promo tag is required.'),
+    tagColor: z.string().min(1, 'Please choose a tag color.'),
+    description: z.string().min(20, 'Description must be at least 20 characters.'),
+});
+
+type StepDetailsFormValues = z.infer<typeof stepDetailsSchema>;
 
 export default function StepDetails() {
     const { formData, updateFormData, nextStep } = useProductFormStore();
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        updateFormData({ [name]: value });
-    };
+    const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<StepDetailsFormValues>({
+        resolver: zodResolver(stepDetailsSchema),
+        defaultValues: {
+            title: formData.title,
+            productTypeId: formData.productTypeId,
+            sku: formData.sku,
+            tag: formData.tag,
+            tagColor: formData.tagColor,
+            description: formData.description,
+        }
+    });
+
+    React.useEffect(() => {
+        setValue('title', formData.title);
+        setValue('productTypeId', formData.productTypeId);
+        setValue('sku', formData.sku);
+        setValue('tag', formData.tag);
+        setValue('tagColor', formData.tagColor);
+        setValue('description', formData.description);
+    }, [formData.title, formData.productTypeId, formData.sku, formData.tag, formData.tagColor, formData.description, setValue]);
+
+    React.useEffect(() => {
+        const subscription = watch((values) => {
+            updateFormData({
+                title: values.title ?? '',
+                productTypeId: values.productTypeId ?? '',
+                sku: values.sku ?? '',
+                tag: values.tag ?? '',
+                tagColor: values.tagColor ?? '',
+                description: values.description ?? '',
+            });
+        });
+        return () => subscription.unsubscribe();
+    }, [watch, updateFormData]);
 
     const addStep = () => {
         const newStep = { id: Date.now().toString(), title: '', description: '' };
@@ -46,8 +91,18 @@ export default function StepDetails() {
             const count = (categoryProductCount as number) + 1;
             const generatedSku = `${prefix} ${count}`;
             updateFormData({ sku: generatedSku });
+            setValue('sku', generatedSku, { shouldValidate: true });
         }
-    }, [categoryProductCount, formData.productTypeId, types, formData.sku]);
+    }, [categoryProductCount, formData.productTypeId, types, formData.sku, updateFormData, setValue]);
+
+    const onSubmit = () => {
+        nextStep();
+    };
+
+    const onInvalid = () => {
+        const firstMessage = Object.values(errors)[0]?.message;
+        notify.warning(typeof firstMessage === 'string' ? firstMessage : 'Please complete all required fields in this step.');
+    };
 
     return (
         <div className="grid grid-cols-12 gap-8">
@@ -62,11 +117,9 @@ export default function StepDetails() {
                                 <input
                                     className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-medium text-text-main placeholder-gray-400"
                                     id="title"
-                                    name="title"
                                     placeholder="e.g. GoToTags NFC Reader"
                                     type="text"
-                                    value={formData.title}
-                                    onChange={handleChange}
+                                    {...register('title')}
                                 />
                             </div>
 
@@ -76,7 +129,6 @@ export default function StepDetails() {
                                     className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-medium text-text-main appearance-none cursor-pointer"
                                     id="productTypeId"
                                     name="productTypeId"
-                                    value={formData.productTypeId}
                                     onChange={(e) => {
                                         const selectedType = types?.find((t: any) => t.id === e.target.value);
                                         updateFormData({
@@ -84,7 +136,10 @@ export default function StepDetails() {
                                             category: selectedType?.name || '',
                                             sku: '' // Reset SKU to trigger automatic generation
                                         });
+                                        setValue('productTypeId', e.target.value, { shouldValidate: true });
+                                        setValue('sku', '', { shouldValidate: true });
                                     }}
+                                    value={watch('productTypeId')}
                                 >
                                     <option value="" disabled>Select Category</option>
                                     {types?.map((type: any) => (
@@ -103,11 +158,9 @@ export default function StepDetails() {
                                     <input
                                         className="w-full pl-12 pr-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-medium text-text-main placeholder-gray-400 font-mono tracking-wide"
                                         id="sku"
-                                        name="sku"
                                         placeholder="EC-XXX-00"
                                         type="text"
-                                        value={formData.sku}
-                                        onChange={handleChange}
+                                        {...register('sku')}
                                     />
                                 </div>
                             </div>
@@ -117,11 +170,9 @@ export default function StepDetails() {
                                 <input
                                     className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-medium text-text-main placeholder-gray-400"
                                     id="tag"
-                                    name="tag"
                                     placeholder="e.g. New Arrival"
                                     type="text"
-                                    value={formData.tag}
-                                    onChange={handleChange}
+                                    {...register('tag')}
                                 />
                             </div>
 
@@ -130,9 +181,7 @@ export default function StepDetails() {
                                 <select
                                     className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-medium text-text-main appearance-none cursor-pointer"
                                     id="tagColor"
-                                    name="tagColor"
-                                    value={formData.tagColor}
-                                    onChange={handleChange}
+                                    {...register('tagColor')}
                                 >
                                     <option value="bg-primary">Primary (Orange)</option>
                                     <option value="bg-blue-600">Blue</option>
@@ -147,13 +196,11 @@ export default function StepDetails() {
                                 <textarea
                                     className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-sans text-text-main placeholder-gray-400 resize-none"
                                     id="description"
-                                    name="description"
                                     placeholder="Describe the product features, compatibility, and use cases..."
                                     rows={6}
-                                    value={formData.description}
-                                    onChange={handleChange}
+                                    {...register('description')}
                                 ></textarea>
-                                <p className="text-right text-xs text-gray-400 mt-2">{formData.description.length}/2000 characters</p>
+                                <p className="text-right text-xs text-gray-400 mt-2">{(watch('description') || '').length}/2000 characters</p>
                             </div>
                         </div>
 
@@ -219,7 +266,7 @@ export default function StepDetails() {
                                 Save Draft
                             </button>
                             <button
-                                onClick={nextStep}
+                                onClick={handleSubmit(onSubmit, onInvalid)}
                                 className="bg-primary hover:bg-primary-hover text-white px-8 py-4 rounded-full font-bold shadow-xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2"
                             >
                                 Next: Add Media

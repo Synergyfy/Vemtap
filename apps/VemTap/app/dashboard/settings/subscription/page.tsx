@@ -56,8 +56,12 @@ export default function DashboardPricingPage() {
         }
 
         if (plan.isFree) {
+            if (!user?.businessId) {
+                toast.error('Business ID not found. Please log in again.');
+                return;
+            }
             subscribeMutation.mutate({
-                businessId: user?.businessId || '',
+                businessId: user.businessId,
                 planId: plan.id,
                 billingPeriod: 'monthly'
             }, {
@@ -65,7 +69,7 @@ export default function DashboardPricingPage() {
                     toast.success('Switched to Free plan!');
                     refetchSub();
                 },
-                onError: () => toast.error('Failed to update plan')
+                onError: (error) => toast.error(error instanceof Error ? error.message : 'Failed to update plan')
             });
         } else {
             setIsTrialSelection(useTrial);

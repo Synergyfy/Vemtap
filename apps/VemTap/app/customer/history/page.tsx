@@ -1,33 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Search, Filter, Download, ExternalLink, Calendar, Clock, MapPin, Receipt, Star, MoreVertical, X, Coffee, Smartphone, Dumbbell, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { PointTransaction } from '@/types/loyalty';
 import { cn } from '@/lib/utils';
+import { useCustomerLoyaltyHistory } from '@/services/customer/hooks';
 
 export default function CustomerHistoryPage() {
     const { user } = useAuthStore();
-    const { profiles, fetchLoyaltyProfile, recentTransactions, fetchTransactions, isLoading } = useLoyaltyStore();
+    const { data: historyResponse = [], isLoading } = useCustomerLoyaltyHistory(user?.businessId);
+    const recentTransactions = Array.isArray(historyResponse) ? historyResponse : (historyResponse?.data || []);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedVisit, setSelectedVisit] = useState<PointTransaction | null>(null);
-
-    // TODO: This should eventually come from context or last visited
-    const branchId = 'bistro_001';
-    const profile = profiles[branchId];
-
-    useEffect(() => {
-        const initialize = async () => {
-            if (user?.id) {
-                const loadedProfile = await fetchLoyaltyProfile(user.id, branchId);
-                if (loadedProfile?.id) {
-                    fetchTransactions(loadedProfile.id);
-                }
-            }
-        };
-        initialize();
-    }, [user, branchId, fetchLoyaltyProfile, fetchTransactions]);
 
     const getTransactionIcon = (reason: string) => {
         const r = reason.toLowerCase();
@@ -38,7 +23,7 @@ export default function CustomerHistoryPage() {
         return Clock;
     };
 
-    const filteredTransactions = recentTransactions.filter(tx =>
+    const filteredTransactions = recentTransactions.filter((tx: PointTransaction) =>
         tx.reason.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -86,7 +71,7 @@ export default function CustomerHistoryPage() {
                                     </td>
                                 </tr>
                             ) : filteredTransactions.length > 0 ? (
-                                filteredTransactions.map((tx) => {
+                                filteredTransactions.map((tx: PointTransaction) => {
                                     const Icon = getTransactionIcon(tx.reason);
                                     const date = new Date(tx.createdAt);
                                     return (

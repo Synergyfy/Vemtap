@@ -28,7 +28,7 @@ export const VisitorLayout: React.FC<VisitorLayoutProps> = ({ children, onReset,
             <nav className="fixed top-0 left-0 right-0 z-60 px-10 py-8 flex items-center justify-between pointer-events-none">
                 <Link href="/" className="flex items-center gap-2 group pointer-events-auto active:scale-95 transition-all">
                     <div className="size-8 rounded-full bg-primary flex items-center justify-center overflow-hidden shadow-lg shadow-primary/20 group-hover:rotate-12 transition-transform">
-                        <img src="/assets/vemtap_v.png" alt="V" className="w-5 h-5 object-contain" />
+                        <img src="/VEMTAP_PNG.png" alt="VemTap" className="w-5 h-5 object-contain" />
                     </div>
                     <span className="font-display font-black text-xl tracking-tighter text-slate-900">VemTap</span>
                 </Link>
