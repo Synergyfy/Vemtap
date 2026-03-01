@@ -5,16 +5,20 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import { Search, Filter, ArrowRight, User, Calendar, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SessionDetailsModal from '@/components/messaging/SessionDetailsModal';
-
-const MOCK_LOGS = [
-    { id: 1, visitor: 'Olamide Johnson', phone: '+234 812 345 6789', automation: 'New Customer Welcome', status: 'Completed', lastMessage: 'Welcome to VemTap! Enjoy your bonus.', date: '2026-02-25 14:30' },
-    { id: 2, visitor: 'Chidi Okafor', phone: '+234 703 123 4567', automation: 'Repeat Visit Reward', status: 'Running', lastMessage: 'Thanks for coming back! Here is...', date: '2026-02-25 12:15' },
-    { id: 3, visitor: 'Amina Bello', phone: '+234 901 987 6543', automation: 'Inactive Customer Reminder', status: 'Waiting Reply', lastMessage: 'We miss you at VemTap! Come visit...', date: '2026-02-24 10:00' },
-    { id: 4, visitor: 'Emeka Obi', phone: '+234 805 555 4444', automation: 'New Customer Welcome', status: 'Completed', lastMessage: 'Welcome to VemTap! Enjoy your bonus.', date: '2026-02-24 09:30' },
-];
+import { useAutomationLogs } from '@/services/messaging/hooks';
 
 export default function AutomationLogsPage() {
+    const { data: logData, isLoading } = useAutomationLogs();
     const [selectedLog, setSelectedLog] = React.useState<any>(null);
+    const [searchTerm, setSearchTerm] = React.useState('');
+
+    const logs = logData?.data || [];
+    const filteredLogs = logs.filter(log =>
+        log.visitorName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        log.visitorPhone?.includes(searchTerm) ||
+        log.automationName?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
         <div className="p-8 space-y-8">
             <div className="flex flex-col md:flex-row justify-between items-start gap-4">
@@ -28,13 +32,11 @@ export default function AutomationLogsPage() {
                         <input
                             type="text"
                             placeholder="Search visitor or phone..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full h-12 pl-12 pr-4 bg-white border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all font-medium text-sm"
                         />
                     </div>
-                    <button className="h-12 px-5 bg-white border border-gray-100 rounded-xl hover:bg-gray-50 transition-all flex items-center gap-2 font-bold text-sm text-text-main shadow-sm">
-                        <Filter size={18} />
-                        Filter
-                    </button>
                 </div>
             </div>
 
@@ -52,55 +54,71 @@ export default function AutomationLogsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {MOCK_LOGS.map((log) => (
-                                <motion.tr
-                                    key={log.id}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    onClick={() => setSelectedLog(log)}
-                                    className="group hover:bg-gray-50/50 transition-all cursor-pointer"
-                                >
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-3">
-                                            <div className="size-10 rounded-full bg-primary/5 flex items-center justify-center text-primary font-black text-xs">
-                                                {log.visitor.split(' ').map(n => n[0]).join('')}
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={6} className="px-8 py-20 text-center">
+                                        <div className="animate-spin size-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+                                    </td>
+                                </tr>
+                            ) : filteredLogs.length > 0 ? (
+                                filteredLogs.map((log) => (
+                                    <motion.tr
+                                        key={log.id}
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        onClick={() => setSelectedLog({ ...log, visitor: log.visitorName, phone: log.visitorPhone, automation: log.automationName })}
+                                        className="group hover:bg-gray-50/50 transition-all cursor-pointer"
+                                    >
+                                        <td className="px-8 py-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="size-10 rounded-full bg-primary/5 flex items-center justify-center text-primary font-black text-xs uppercase">
+                                                    {log.visitorName?.split(' ').map(n => n[0]).join('') || 'V'}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-text-main text-sm">{log.visitorName || 'Unknown'}</p>
+                                                    <p className="text-[10px] text-text-secondary font-medium">{log.visitorPhone}</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="font-bold text-text-main text-sm">{log.visitor}</p>
-                                                <p className="text-[10px] text-text-secondary font-medium">{log.phone}</p>
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <span className="text-xs font-bold text-text-main">{log.automationName}</span>
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`size-2 rounded-full ${log.status === 'COMPLETED' ? 'bg-emerald-500' :
+                                                    log.status === 'RUNNING' ? 'bg-blue-500' : 'bg-amber-500'
+                                                    }`} />
+                                                <span className="text-xs font-bold text-text-secondary uppercase">{log.status}</span>
                                             </div>
-                                        </div>
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <div className="flex items-center gap-2 max-w-xs">
+                                                <MessageSquare size={14} className="text-gray-300 shrink-0" />
+                                                <p className="text-xs text-text-secondary truncate">{log.lastMessage || '...'}</p>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <div className="flex items-center gap-2 text-text-secondary">
+                                                <Calendar size={14} />
+                                                <span className="text-xs font-medium">
+                                                    {new Date(log.createdAt).toLocaleDateString()} {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-6 text-right">
+                                            <button className="p-2 hover:bg-white rounded-lg transition-all group-hover:text-primary">
+                                                <ArrowRight size={18} />
+                                            </button>
+                                        </td>
+                                    </motion.tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={6} className="px-8 py-20 text-center text-text-secondary font-medium">
+                                        No logs found matching your criteria.
                                     </td>
-                                    <td className="px-8 py-6">
-                                        <span className="text-xs font-bold text-text-main">{log.automation}</span>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-2">
-                                            <div className={`size-2 rounded-full ${log.status === 'Completed' ? 'bg-emerald-500' :
-                                                log.status === 'Running' ? 'bg-blue-500' : 'bg-amber-500'
-                                                }`} />
-                                            <span className="text-xs font-bold text-text-secondary">{log.status}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-2 max-w-xs">
-                                            <MessageSquare size={14} className="text-gray-300 shrink-0" />
-                                            <p className="text-xs text-text-secondary truncate">{log.lastMessage}</p>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-2 text-text-secondary">
-                                            <Calendar size={14} />
-                                            <span className="text-xs font-medium">{log.date}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6 text-right">
-                                        <button className="p-2 hover:bg-white rounded-lg transition-all group-hover:text-primary">
-                                            <ArrowRight size={18} />
-                                        </button>
-                                    </td>
-                                </motion.tr>
-                            ))}
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

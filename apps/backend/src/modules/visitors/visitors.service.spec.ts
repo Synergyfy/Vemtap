@@ -113,13 +113,14 @@ describe('VisitorsService', () => {
 
       expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
-      expect(result.data[0].name).toBe('John Doe');
+      expect(result.data[0].firstName).toBe('John');
+      expect(result.data[0].lastName).toBe('Doe');
     });
   });
 
   describe('create', () => {
     it('should create a new visitor (user + visit) if user does not exist', async () => {
-      const dto = { name: 'New Guy', email: 'new@example.com', phone: '123' };
+      const dto = { firstName: 'New', lastName: 'Guy', email: 'new@example.com', phone: '123' };
       const businessId = 'biz-1';
 
       mockUserRepo.findOne.mockResolvedValueOnce(null); // First check: user not found
@@ -147,7 +148,8 @@ describe('VisitorsService', () => {
       const result = await service.create(dto, businessId);
 
       expect(mockUserRepo.create).toHaveBeenCalled();
-      expect(result.name).toBe('New Guy');
+      expect(result.firstName).toBe('New');
+      expect(result.lastName).toBe('Guy');
       expect(result.visits).toBe(1);
     });
   });

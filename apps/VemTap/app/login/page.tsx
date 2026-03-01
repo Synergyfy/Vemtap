@@ -11,12 +11,12 @@ import { Headset } from 'lucide-react';
 import { useLogin } from '@/services/auth/hooks';
 
 export default function LoginPage() {
+    const { loginUser, isLoading: isLoginLoading } = useLogin();
     const router = useRouter();
     const login = useAuthStore((state: AuthState) => state.login);
     const { loginUser } = useLogin();
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
-    const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -51,7 +51,6 @@ export default function LoginPage() {
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        setIsLoggingIn(true);
 
         try {
             const email = formData.email.trim().toLowerCase();
@@ -61,80 +60,34 @@ export default function LoginPage() {
                 throw new Error('Email and password are required.');
             }
 
-            try {
-                const response = await loginUser({ email, password });
-                const apiUser = response?.user || {};
-                const rawRole = String(apiUser.role || '').toLowerCase();
-                const normalizedRole =
-                    rawRole.includes('admin') ? 'admin' :
-                        rawRole.includes('customer') ? 'customer' :
-                            rawRole.includes('manager') ? 'manager' :
-                                rawRole.includes('staff') || rawRole.includes('agent') ? 'staff' :
-                                    'owner';
+            const response = await loginUser({ email, password });
 
-                const userData = {
-                    id: String(apiUser.id || `api-${Date.now()}`),
-                    email: String(apiUser.email || email),
-                    name: String(
-                        apiUser.name ||
-                        `${apiUser.firstName || ''} ${apiUser.lastName || ''}`.trim() ||
-                        email.split('@')[0]
-                    ),
-                    role: normalizedRole,
-                    businessId: apiUser.businessId,
-                    branchId: apiUser.branchId,
-                    businessName: apiUser.businessName,
-                    businessLogo: apiUser.businessLogo,
-                    planId: apiUser.planId,
-                    subscriptionStatus: apiUser.subscriptionStatus,
-                };
+            if (!response.access_token || !response.user) {
+                throw new Error('Invalid response from server.');
+            }
 
-                login(userData as any, response?.access_token || 'api-token');
-                routeByRole(normalizedRole, email);
+            // Sync with Zustand store
+            login(response.user as any, response.access_token);
+
+            const userRole = response.user.role?.toLowerCase();
+
+            if (userRole === 'admin') {
+                router.push('/admin/dashboard');
                 return;
-            } catch {
-                const inferredRole = inferRoleFromEmail(email);
-                const fallbackUser = {
-                    id: `mock-${inferredRole}-${Date.now()}`,
-                    email,
-                    name: email.split('@')[0]?.replace(/[._-]/g, ' ') || 'VemTap User',
-                    role: inferredRole,
-                };
-                login(fallbackUser as any, 'mock-token');
-                routeByRole(inferredRole, email);
+            }
+            if (userRole === 'customer') {
+                router.push('/customer/dashboard');
+                return;
+            }
+            if (userRole === 'staff' && (email.includes('agent') || email.includes('support'))) {
+                router.push('/agent/dashboard');
                 return;
             }
         } catch (err: any) {
             setError(err.message || 'Login failed');
-        } finally {
-            setIsLoggingIn(false);
         }
     };
 
-    const handleAgentMockLogin = () => {
-        setError('');
-        setIsAutoLogin(true);
-        setFormData((prev) => ({
-            ...prev,
-            email: 'agent@vemtap.com',
-            password: 'vemtap-agent',
-            rememberMe: true,
-        }));
-        setShowPassword(true);
-
-        const mockUser = {
-            id: `mock-agent-${Date.now()}`,
-            email: 'agent@vemtap.com',
-            name: 'Support Agent',
-            role: 'staff',
-        };
-
-        setTimeout(() => {
-            login(mockUser as any, 'mock-token');
-            router.push('/agent/dashboard');
-            setIsAutoLogin(false);
-        }, 600);
-    };
 
     return (
         <div className="h-screen bg-white flex overflow-hidden font-sans">
@@ -227,10 +180,10 @@ export default function LoginPage() {
 
                                     <button
                                         type="submit"
-                                        disabled={isLoggingIn}
+                                        disabled={isLoginLoading}
                                         className="w-full h-14 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary-hover hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-base mt-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                                     >
-                                        {isLoggingIn ? (
+                                        {isLoginLoading ? (
                                             <>
                                                 <span className="material-icons-round animate-spin">refresh</span>
                                                 Proccessing Secure Login...
@@ -244,25 +197,6 @@ export default function LoginPage() {
                                     </button>
                                 </form>
 
-                                <div className="mt-10">
-                                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-text-secondary mb-4">Agent Access (Mock)</p>
-                                    <button
-                                        type="button"
-                                        onClick={handleAgentMockLogin}
-                                        className="w-full rounded-3xl border border-gray-200 bg-white hover:bg-gray-50 transition-all p-6 flex items-center gap-4 shadow-sm hover:shadow-md"
-                                    >
-                                        <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
-                                            <Headset size={24} />
-                                        </div>
-                                        <div className="flex-1 text-left">
-                                            <p className="text-sm font-black text-text-main uppercase tracking-wider">Support Agent Dashboard</p>
-                                            <p className="text-xs text-text-secondary font-medium mt-1">
-                                                {isAutoLogin ? 'Auto logging in...' : 'Preview the live support workspace without backend auth.'}
-                                            </p>
-                                        </div>
-                                        <span className="material-icons-round text-primary text-xl">{isAutoLogin ? 'autorenew' : 'arrow_forward'}</span>
-                                    </button>
-                                </div>
                             </motion.div>
 
                             <p className="text-xs text-center lg:text-left text-text-secondary font-bold uppercase tracking-[0.2em] mt-8">

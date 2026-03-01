@@ -32,10 +32,23 @@ import { dataSourceOptions } from './database/data-source';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [join(__dirname, '../.env'), '.env'],
+      envFilePath:
+        process.env.NODE_ENV === 'test'
+          ? [join(__dirname, '../.env.test'), '.env.test']
+          : [join(__dirname, '../.env'), '.env'],
     }),
     TypeOrmModule.forRoot({
       ...dataSourceOptions,
+      // Only sync/drop schema if strictly in test environment AND DB name indicates test
+      // AND we are NOT in a deployment/production-like environment
+      synchronize:
+        process.env.NODE_ENV === 'test' &&
+        process.env.DB_NAME?.includes('test') &&
+        process.env.DEPLOYMENT !== 'true',
+      dropSchema:
+        process.env.NODE_ENV === 'test' &&
+        process.env.DB_NAME?.includes('test') &&
+        process.env.DEPLOYMENT !== 'true',
       autoLoadEntities: true,
     }),
     AuthModule,

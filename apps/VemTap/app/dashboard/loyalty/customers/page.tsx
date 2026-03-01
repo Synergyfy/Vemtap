@@ -3,75 +3,96 @@
 import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
-import { useLoyaltyProfiles } from '@/services/loyalty/hooks';
-import { LoyaltyProfile } from '@/services/loyalty/types';
-import { User, Star, Trophy, Search, Filter } from 'lucide-react';
+import { useVisitors } from '@/services/visitors/hooks';
+import { Visitor } from '@/services/visitors/types';
+import { User, Search, Filter, Phone, Mail, Calendar, CreditCard, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatDate } from '@/lib/utils/date';
 
 export default function LoyaltyCustomersPage() {
-    const { data: profiles, isLoading } = useLoyaltyProfiles();
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const { data: paginatedData, isLoading } = useVisitors('all', {
+        search: searchQuery
+    });
 
-    const customerList: LoyaltyProfile[] = profiles || [];
+    const customers = paginatedData?.data || [];
 
-    const columns: Column<LoyaltyProfile>[] = [
+    const columns: Column<Visitor>[] = [
         {
             header: 'Customer',
-            accessor: (item: LoyaltyProfile) => (
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-xs border border-slate-200">
-                        <User className="w-4 h-4" />
+            accessor: (item: Visitor) => {
+                const displayName = item.firstName || item.lastName
+                    ? `${item.firstName || ''} ${item.lastName || ''}`.trim()
+                    : 'Unknown Visitor';
+                
+                return (
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                            {displayName.split(' ').filter(Boolean).map((n: string) => n[0]).join('').toUpperCase()}
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="font-bold text-slate-900">{displayName}</span>
+                            <span className="text-[10px] text-slate-400 font-black tracking-widest uppercase">Member Since: {item.joinedDate ? formatDate(item.joinedDate) : 'N/A'}</span>
+                        </div>
                     </div>
-                    <div className="flex flex-col">
-                        <span className="font-bold text-slate-900 uppercase"># {item.userId.substring(0, 8)}</span>
-                        <span className="text-[10px] text-slate-400 font-black tracking-widest uppercase">Member ID</span>
+                );
+            }
+        },
+        {
+            header: 'Contact Information',
+            accessor: (item: Visitor) => (
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-xs text-slate-600">
+                        <Phone size={12} className="text-slate-400" />
+                        {item.phone || 'No Phone'}
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                        <Mail size={12} className="text-slate-400" />
+                        {item.email || 'No Email'}
                     </div>
                 </div>
             )
         },
         {
-            header: 'Tier Level',
-            accessor: (item: LoyaltyProfile) => (
+            header: 'Activity',
+            accessor: (item: Visitor) => (
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                        <Repeat size={12} className="text-primary" />
+                        {item.visits} Visits
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                        <Calendar size={12} className="text-slate-400" />
+                        Last: {item.lastVisit ? formatDate(item.lastVisit) : 'Never'}
+                    </div>
+                </div>
+            )
+        },
+        {
+            header: 'Total Spent',
+            accessor: (item: Visitor) => (
+                <div className="flex items-center gap-2 font-black text-slate-900">
+                    <CreditCard size={14} className="text-emerald-500" />
+                    {item.totalSpent || '₦0'}
+                </div>
+            )
+        },
+        {
+            header: 'Status',
+            accessor: (item: Visitor) => (
                 <span className={cn(
-                    "px-2 py-0.5 rounded-none text-[10px] font-black uppercase tracking-widest border",
-                    item.tierLevel === 'platinum' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
-                        item.tierLevel === 'gold' ? 'bg-yellow-50 text-yellow-700 border-yellow-100' :
-                            item.tierLevel === 'silver' ? 'bg-slate-50 text-slate-700 border-slate-200' :
-                                'bg-orange-50 text-orange-700 border-orange-100'
+                    "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
+                    item.status?.toLowerCase() === 'new' 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-blue-100 text-blue-700'
                 )}>
-                    {item.tierLevel}
-                </span>
-            )
-        },
-        {
-            header: 'Balance',
-            accessor: (item: LoyaltyProfile) => (
-                <div className="flex items-center gap-1.5 font-black text-slate-900">
-                    <Star className="w-3.5 h-3.5 text-primary" />
-                    {item.currentPointsBalance.toLocaleString()}
-                </div>
-            )
-        },
-        {
-            header: 'Lifetime Earned',
-            accessor: (item: LoyaltyProfile) => (
-                <div className="flex items-center gap-1.5 font-bold text-slate-500">
-                    <Trophy className="w-3.5 h-3.5 text-slate-300" />
-                    {item.totalPointsEarned.toLocaleString()}
-                </div>
-            )
-        },
-        {
-            header: 'Last Visit',
-            accessor: (item: LoyaltyProfile) => (
-                <span className="text-xs font-medium text-slate-500">
-                    {new Date(item.lastVisitDate).toLocaleDateString()}
+                    {item.status || 'Active'}
                 </span>
             )
         },
     ];
 
-    if (isLoading) {
+    if (isLoading && !paginatedData) {
         return (
             <div className="p-8 flex items-center justify-center min-h-[400px]">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -82,7 +103,7 @@ export default function LoyaltyCustomersPage() {
     return (
         <div className="p-8 space-y-8">
             <PageHeader
-                title="Member Directory"
+                title="Customer Directory"
                 description="Manage and engage your loyal customer base"
             />
 
@@ -91,9 +112,9 @@ export default function LoyaltyCustomersPage() {
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Search by User ID or Member ID..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Search by name, email, or phone..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-100 text-sm font-medium outline-none focus:border-primary transition-all"
                     />
                 </div>
@@ -106,10 +127,19 @@ export default function LoyaltyCustomersPage() {
             <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
                 <DataTable
                     columns={columns}
-                    data={customerList.filter(c => c.userId.toLowerCase().includes(searchTerm.toLowerCase()))}
+                    data={customers}
+                    isLoading={isLoading}
                     onRowClick={(item) => console.log('Customer clicked:', item)}
                 />
+            </div>
+
+            <div className="mt-6 flex items-center justify-between px-2">
+                <p className="text-sm text-slate-500 font-medium">
+                    Showing {customers.length} of {paginatedData?.total || 0} customers
+                    {searchQuery && ` (filtered by "${searchQuery}")`}
+                </p>
             </div>
         </div>
     );
 }
+

@@ -17,19 +17,21 @@ describe('TemplateService (Strict)', () => {
     const mockOtherUser = { id: 'other1', role: UserRole.OWNER, businessId: 'bus2' } as User;
 
     beforeEach(async () => {
+        const qb = {
+            where: jest.fn().mockReturnThis(),
+            orWhere: jest.fn().mockReturnThis(),
+            orderBy: jest.fn().mockReturnThis(),
+            addOrderBy: jest.fn().mockReturnThis(),
+            getMany: jest.fn().mockResolvedValue([]),
+        };
+
         repoMock = {
             create: jest.fn().mockImplementation((dto) => dto),
             save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 'uuid', ...entity })),
             findOne: jest.fn(),
             find: jest.fn(),
             remove: jest.fn().mockResolvedValue(undefined),
-            createQueryBuilder: jest.fn(() => ({
-                where: jest.fn().mockReturnThis(),
-                orWhere: jest.fn().mockReturnThis(),
-                orderBy: jest.fn().mockReturnThis(),
-                addOrderBy: jest.fn().mockReturnThis(),
-                getMany: jest.fn().mockResolvedValue([]),
-            })),
+            createQueryBuilder: jest.fn(() => qb),
         };
 
         const module: TestingModule = await Test.createTestingModule({
