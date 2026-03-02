@@ -9,6 +9,7 @@ import {
   Query,
   Post,
   Delete,
+  BadRequestException,
 } from '@nestjs/common';
 import { BusinessesService } from './businesses.service';
 import { UpdateBusinessDto } from './dto/update-business.dto';
@@ -23,6 +24,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
 import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
+import { ImportCustomersDto } from './dto/import-customers.dto';
 
 @ApiTags('businesses')
 @ApiBearerAuth()
@@ -36,6 +38,18 @@ export class BusinessesController {
   @ApiOperation({ summary: 'Get details of the business for current user' })
   async getMyBusiness(@Request() req) {
     return this.businessesService.findById(req.user.businessId);
+  }
+
+  @Post('import-customers')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Bulk import customers for the current business' })
+  @ApiResponse({ status: 201, description: 'Import results' })
+  async importCustomers(@Request() req, @Body() importDto: ImportCustomersDto) {
+    const businessId = req.user.businessId;
+    if (!businessId) {
+      throw new BadRequestException('User is not associated with a business');
+    }
+    return this.businessesService.importCustomers(businessId, importDto);
   }
 
   @Patch(':id')
