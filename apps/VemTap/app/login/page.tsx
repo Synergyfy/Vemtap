@@ -82,6 +82,9 @@ export default function LoginPage() {
                 router.push('/agent/dashboard');
                 return;
             }
+
+            // Default fallback for owners/managers/other staff
+            router.push('/dashboard');
         } catch (err: any) {
             setError(err.message || 'Login failed');
         }

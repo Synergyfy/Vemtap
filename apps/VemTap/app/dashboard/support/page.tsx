@@ -1,30 +1,44 @@
 'use client';
 
 import React, { useState } from 'react';
-import { MessageSquare, LifeBuoy, Clock, Search, Filter, Plus, ChevronRight, HelpCircle, ShieldAlert } from 'lucide-react';
+import { MessageSquare, LifeBuoy, Clock, Search, Filter, Plus, ChevronRight, HelpCircle, ShieldAlert, Loader2 } from 'lucide-react';
 import CreateTicketModal from '@/components/ui/CreateTicketModal';
 import { notify } from '@/lib/notify';
+import { useCustomerSupportTickets, useCreateCustomerSupportTicket } from '@/services/customer/hooks';
+
+interface Ticket {
+    id: string;
+    subject: string;
+    status: string;
+    category: string;
+    date: string;
+}
 
 export default function BusinessSupportPage() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
-    const [tickets, setTickets] = useState([
-        { id: 'TKT-9921', subject: 'NFC Plate for Branch B not responding', status: 'In Progress', category: 'Hardware Issue', date: '2 hours ago' },
-        { id: 'TKT-9850', subject: 'Understanding March Invoice #234', status: 'Closed', category: 'Billing', date: '3 days ago' },
-    ]);
+    const { data: ticketsData, isLoading: isLoadingTickets } = useCustomerSupportTickets();
+    const createTicket = useCreateCustomerSupportTicket();
+
+    const tickets = ticketsData?.map((ticket: any) => ({
+        id: ticket.id.slice(0, 8).toUpperCase(),
+        subject: ticket.subject,
+        status: ticket.status,
+        category: ticket.category,
+        date: new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    })) || [];
 
     const handleCreateTicket = (data: any) => {
-        const newTicket = {
-            id: `TKT-${Math.floor(1000 + Math.random() * 9000)}`,
-            subject: data.subject,
-            status: 'Open',
-            category: data.category,
-            date: 'Just now'
-        };
-        setTickets([newTicket, ...tickets]);
-        setIsCreateModalOpen(false);
-        notify.success('Technical support request received. A success engineer will reach out shortly.');
+        createTicket.mutate(data, {
+            onSuccess: () => {
+                setIsCreateModalOpen(false);
+                notify.success('Technical support request received. A success engineer will reach out shortly.');
+            },
+            onError: () => {
+                notify.error('Failed to create ticket. Please try again.');
+            }
+        });
     };
 
     return (
@@ -55,9 +69,14 @@ export default function BusinessSupportPage() {
                             </h3>
                         </div>
 
-                        {tickets.length > 0 ? (
+                        {isLoadingTickets ? (
+                            <div className="bg-white border border-gray-200 rounded-2xl p-16 text-center shadow-sm">
+                                <Loader2 size={40} className="text-primary mx-auto animate-spin" />
+                                <p className="text-sm text-text-secondary mt-4">Loading tickets...</p>
+                            </div>
+                        ) : tickets.length > 0 ? (
                             <div className="space-y-4">
-                                {tickets.map((ticket) => (
+                                {tickets.map((ticket: Ticket) => (
                                     <div key={ticket.id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all group cursor-pointer">
                                         <div className="flex items-start justify-between mb-4">
                                             <div>
@@ -137,6 +156,7 @@ export default function BusinessSupportPage() {
                 onClose={() => setIsCreateModalOpen(false)}
                 onSubmit={handleCreateTicket}
                 userType="business"
+                isLoading={createTicket.isPending}
             />
         </>
     );

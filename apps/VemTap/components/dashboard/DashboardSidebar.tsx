@@ -17,6 +17,7 @@ import {
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
 import { useMyBusiness } from '@/services/businesses/hooks';
+import TrialBanner from './TrialBanner';
 
 interface SidebarProps {
     children: React.ReactNode;
@@ -98,69 +99,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             icon: Home,
             href: '/dashboard',
             roles: ['owner', 'manager', 'staff']
-        },
-        {
-            id: 'visitors',
-            label: 'Visitors',
-            icon: Users,
-            roles: ['owner', 'manager', 'staff'],
-            submenu: [
-                // { label: 'Overview', href: '/dashboard/visitors' },
-                { label: 'All Visitors', href: '/dashboard/visitors/all' },
-                { label: 'New Visitors', href: '/dashboard/visitors/new' },
-                { label: 'Returning', href: '/dashboard/visitors/returning' },
-            ]
-        },
-        {
-            id: 'devices',
-            label: 'NFC Hub',
-            icon: Nfc,
-            roles: ['owner', 'manager', 'staff'],
-            submenu: [
-                { label: 'NFC Asset Hub', href: '/dashboard/nfc-manager' },
-            ]
-        },
-        {
-            id: 'messaging-center',
-            label: 'Messaging Center',
-            icon: MessageSquare,
-            roles: ['owner', 'manager'],
-            submenu: [
-                { label: 'Overview', href: '/dashboard/messaging' },
-                {
-                    id: 'whatsapp',
-                    label: 'WhatsApp Channel',
-                    submenu: [
-                        { label: 'Overview', href: '/dashboard/messaging/whatsapp' },
-                        { label: 'Send Message', href: '/dashboard/messaging/whatsapp/send' },
-                        { label: 'Templates', href: '/dashboard/messaging/whatsapp/templates' },
-                        { label: 'Top up', href: '/dashboard/messaging/whatsapp/topup' },
-                        { label: 'Settings', href: '/dashboard/messaging/whatsapp/settings' },
-                    ]
-                },
-                {
-                    id: 'sms',
-                    label: 'SMS Channel',
-                    submenu: [
-                        { label: 'Overview', href: '/dashboard/messaging/sms' },
-                        { label: 'Send Message', href: '/dashboard/messaging/sms/send' },
-                        { label: 'Templates', href: '/dashboard/messaging/sms/templates' },
-                        { label: 'Top up', href: '/dashboard/messaging/sms/topup' },
-                        { label: 'Settings', href: '/dashboard/messaging/sms/settings' },
-                    ]
-                },
-                {
-                    id: 'email',
-                    label: 'Email Channel',
-                    submenu: [
-                        { label: 'Overview', href: '/dashboard/messaging/email' },
-                        { label: 'Send Message', href: '/dashboard/messaging/email/send' },
-                        { label: 'Templates', href: '/dashboard/messaging/email/templates' },
-                        { label: 'Settings', href: '/dashboard/messaging/email/settings' },
-                    ]
-                },
-                { label: 'Message History', href: '/dashboard/messaging/history' },
-            ].map(item => ({ ...item, onClick: () => setIsMobileOpen(false) }))
         },
         {
             id: 'surveys',
@@ -618,6 +556,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
                 {/* Page Content */}
                 <main className="flex-1 overflow-y-auto bg-gray-50">
+                    <TrialBanner />
                     {children}
                 </main>
             </div>

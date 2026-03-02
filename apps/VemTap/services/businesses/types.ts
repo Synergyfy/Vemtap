@@ -1,6 +1,13 @@
+export interface BusinessHours {
+    open: string;
+    close: string;
+    closed: boolean;
+}
+
 export interface Business {
     id: string;
     name: string;
+    type?: string;
     category: string;
     monthlyVisitors: string;
     goal: string;
@@ -8,6 +15,21 @@ export interface Business {
     welcomeMessage?: string;
     welcomeSubMessage?: string;
     whatsappMessage?: string;
+    successMessage?: string;
+    privacyMessage?: string;
+    rewardMessage?: string;
+    about?: string;
+    businessHours?: {
+        monday?: BusinessHours;
+        tuesday?: BusinessHours;
+        wednesday?: BusinessHours;
+        thursday?: BusinessHours;
+        friday?: BusinessHours;
+        saturday?: BusinessHours;
+        sunday?: BusinessHours;
+    };
+    rewardEnabled?: boolean;
+    rewardVisitThreshold?: number;
     rewardSetup?: any;
     emailSettings?: any;
     ownerId: string;

@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import {
     MapPin, Phone, Mail, Globe, ShieldCheck, Instagram,
     Twitter, Facebook, Share2, Building2, Linkedin, ExternalLink,
-    ChevronRight, LayoutDashboard, Loader2, Star
+    ChevronRight, LayoutDashboard, Loader2, Star, Clock, Youtube, Link as LinkIcon
 } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -42,6 +42,14 @@ export default function BusinessProfilePage() {
 
     const businessName = business.name || user?.businessName || 'VemTap Business';
     const logoUrl = business.logoUrl;
+
+    const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
+
+    const formatHours = (day: string) => {
+        const hours = business.businessHours?.[day as keyof typeof business.businessHours];
+        if (!hours || hours.closed) return 'Closed';
+        return `${hours.open} - ${hours.close}`;
+    };
 
     return (
         <div className="min-h-screen bg-[#fafbfc] font-sans selection:bg-primary/10">
@@ -108,12 +116,55 @@ export default function BusinessProfilePage() {
                     {/* Primary Info Card */}
                     <div className="md:col-span-8 space-y-6">
                         <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-xl shadow-slate-200/40 border border-white/50">
-                            <section className="mb-12">
-                                <h2 className="text-[10px] uppercase tracking-[0.3em] font-black text-primary mb-6">About your Business</h2>
-                                <p className="text-lg md:text-xl text-slate-600 leading-relaxed font-bold">
-                                    {business.welcomeMessage || `Welcome to ${businessName}! We are dedicated to providing the best experience to our customers.`}
-                                </p>
-                            </section>
+                            {business.about && (
+                                <section className="mb-12">
+                                    <h2 className="text-[10px] uppercase tracking-[0.3em] font-black text-primary mb-6">About the Business</h2>
+                                    <p className="text-lg md:text-xl text-slate-600 leading-relaxed font-bold">
+                                        {business.about}
+                                    </p>
+                                </section>
+                            )}
+
+                            {!business.about && business.welcomeMessage && (
+                                <section className="mb-12">
+                                    <h2 className="text-[10px] uppercase tracking-[0.3em] font-black text-primary mb-6">Welcome</h2>
+                                    <p className="text-lg md:text-xl text-slate-600 leading-relaxed font-bold">
+                                        {business.welcomeMessage}
+                                    </p>
+                                </section>
+                            )}
+
+                            {business.businessHours && Object.keys(business.businessHours).length > 0 && (
+                                <section className="mb-12 p-6 rounded-2xl bg-slate-50">
+                                    <h2 className="text-[10px] uppercase tracking-[0.3em] font-black text-primary mb-6 flex items-center gap-2">
+                                        <Clock size={16} /> Business Hours
+                                    </h2>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {DAYS.map((day) => (
+                                            <div key={day} className="flex justify-between items-center text-sm">
+                                                <span className="font-bold text-slate-500 capitalize">{day}</span>
+                                                <span className={`font-black ${business.businessHours?.[day]?.closed ? 'text-red-400' : 'text-slate-900'}`}>
+                                                    {formatHours(day)}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            {business.rewardEnabled && (
+                                <section className="p-8 rounded-[2rem] bg-linear-to-br from-slate-50 to-white border border-slate-100/50">
+                                    <h3 className="text-sm font-black text-slate-900 mb-2 flex items-center gap-2">
+                                        <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                            <Star size={16} fill="currentColor" />
+                                        </div>
+                                        Exclusive Rewards
+                                    </h3>
+                                    <p className="text-slate-500 font-bold mb-6 leading-relaxed">
+                                        {business.rewardMessage || `Visit us ${business.rewardVisitThreshold || 5} times to unlock special rewards and benefits tailored for you.`}
+                                    </p>
+                                </section>
+                            )}
 
                             {/* Stats Summary */}
                             <div className="grid grid-cols-2 gap-8 mt-12 pt-12 border-t border-slate-50 text-center md:text-left">
@@ -162,8 +213,9 @@ export default function BusinessProfilePage() {
                                 )}
                                 {business.website && (
                                     <div className="flex items-center gap-4 group cursor-pointer" onClick={() => {
-                                        if (business.website) {
-                                            const url = business.website.startsWith('http') ? business.website : `https://${business.website}`;
+                                        const website = business.website;
+                                        if (website) {
+                                            const url = website.startsWith('http') ? website : `https://${website}`;
                                             window.open(url, '_blank');
                                         }
                                     }}>
@@ -179,11 +231,21 @@ export default function BusinessProfilePage() {
                             </div>
 
                             {/* Small Social Row */}
-                            {business.showSocial && (business.instagramUrl || business.xUrl || business.facebookUrl || business.linkedinUrl) && (
+                            {business.showSocial && (business.instagramUrl || business.xUrl || business.facebookUrl || business.linkedinUrl || business.tiktokUrl || business.youtubeUrl || business.customLink) && (
                                 <div className="mt-10 pt-8 border-t border-slate-50 flex flex-wrap gap-2">
+                                    {business.facebookUrl && (
+                                        <button onClick={() => window.open(business.facebookUrl, '_blank')} className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors">
+                                            <Facebook size={18} />
+                                        </button>
+                                    )}
                                     {business.instagramUrl && (
                                         <button onClick={() => window.open(business.instagramUrl, '_blank')} className="size-10 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center hover:bg-pink-100 transition-colors">
                                             <Instagram size={18} />
+                                        </button>
+                                    )}
+                                    {business.tiktokUrl && (
+                                        <button onClick={() => window.open(business.tiktokUrl, '_blank')} className="size-10 rounded-xl bg-slate-900 text-white flex items-center justify-center hover:bg-slate-800 transition-colors">
+                                            <span className="text-xs font-black">TT</span>
                                         </button>
                                     )}
                                     {business.xUrl && (
@@ -191,14 +253,19 @@ export default function BusinessProfilePage() {
                                             <Twitter size={18} />
                                         </button>
                                     )}
-                                    {business.facebookUrl && (
-                                        <button onClick={() => window.open(business.facebookUrl, '_blank')} className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors">
-                                            <Facebook size={18} />
+                                    {business.youtubeUrl && (
+                                        <button onClick={() => window.open(business.youtubeUrl, '_blank')} className="size-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors">
+                                            <Youtube size={18} />
                                         </button>
                                     )}
                                     {business.linkedinUrl && (
                                         <button onClick={() => window.open(business.linkedinUrl, '_blank')} className="size-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center hover:bg-sky-100 transition-colors">
                                             <Linkedin size={18} />
+                                        </button>
+                                    )}
+                                    {business.customLink && (
+                                        <button onClick={() => window.open(business.customLink, '_blank')} className="size-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center hover:bg-purple-100 transition-colors">
+                                            <LinkIcon size={18} />
                                         </button>
                                     )}
                                 </div>

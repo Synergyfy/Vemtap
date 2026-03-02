@@ -3,13 +3,14 @@
 import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useAuthStore } from '@/store/useAuthStore';
-import { CheckCircle2, Crown, Star, ShieldCheck, Zap, ArrowRight, CreditCard, Clock } from 'lucide-react';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPricingPlans } from '@/lib/api/pricing';
 import { useActiveSubscription, useSubscribe } from '@/services/subscriptions/hooks';
 import SubscriptionCheckout from '@/components/dashboard/SubscriptionCheckout';
 import toast from 'react-hot-toast';
 import { PricingPlan } from '@/types/pricing';
+import { Crown, ShieldCheck, Zap, CheckCircle2 } from 'lucide-react';
 
 export default function DashboardPricingPage() {
     const { user } = useAuthStore();
@@ -205,9 +206,9 @@ export default function DashboardPricingPage() {
                             <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest mb-6 border-b border-white/10 pb-4">
                                 {subscription?.currentPeriodEnd ? `Next billing on ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}` : 'No upcoming billing period'}
                             </p>
-                            <button className="w-full h-11 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all">
-                                Manage Payment
-                            </button>
+<Link href="/dashboard/settings/subscription/manage" className="w-full h-11 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
+                                Manage Plan
+                            </Link>
                         </div>
                     </div>
                 </div>

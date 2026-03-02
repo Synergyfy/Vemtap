@@ -11,15 +11,58 @@ export interface Device {
     batteryLevel: number;
     lastActive?: string;
     businessId: string;
-    business?: any; // Added to support tap flow metadata
+    business?: BusinessData;
     orderId?: string;
     branchId?: string;
-    branch?: any; // Added to support tap flow metadata
-    owner?: any; // Owner info from device-info endpoint
+    branch?: any;
+    owner?: any;
     productTypeId?: string;
     isFirstTimeVisit?: boolean;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface BusinessData {
+    id: string;
+    name: string;
+    type?: string;
+    category?: string;
+    logoUrl?: string;
+    welcomeMessage?: string;
+    welcomeTitle?: string;
+    welcomeSubMessage?: string;
+    successMessage?: string;
+    privacyMessage?: string;
+    rewardMessage?: string;
+    about?: string;
+    businessHours?: {
+        monday?: { open: string; close: string; closed: boolean };
+        tuesday?: { open: string; close: string; closed: boolean };
+        wednesday?: { open: string; close: string; closed: boolean };
+        thursday?: { open: string; close: string; closed: boolean };
+        friday?: { open: string; close: string; closed: boolean };
+        saturday?: { open: string; close: string; closed: boolean };
+        sunday?: { open: string; close: string; closed: boolean };
+    };
+    rewardEnabled?: boolean;
+    rewardVisitThreshold?: number;
+    address?: string;
+    website?: string;
+    whatsappNumber?: string;
+    officialEmail?: string;
+    facebookUrl?: string;
+    instagramUrl?: string;
+    tiktokUrl?: string;
+    xUrl?: string;
+    youtubeUrl?: string;
+    customLink?: string;
+    linkedinUrl?: string;
+    reviewUrl?: string;
+    showReview?: boolean;
+    showSocial?: boolean;
+    showFeedback?: boolean;
+    monthlyVisitors?: string;
+    goal?: string;
 }
 
 export interface DeviceStats {
