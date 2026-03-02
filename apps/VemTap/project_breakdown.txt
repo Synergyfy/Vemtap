@@ -14,4 +14,11 @@ when a user taps it will send the link to them and then the system will check fo
 --when they click and they try to login first timers will be redirected to a coustomer reset page for password else just login. 
 --the system should check if its a new user and then reset the password else just log them in
 -- else check if the link has been clicked?
+--once they logged they are automatically redirected
+
+=========
+
+questions 
+
+bussinesses can ask for birthdays,anniversery etc 
 
