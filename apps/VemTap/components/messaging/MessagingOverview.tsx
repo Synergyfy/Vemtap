@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useMessagingAnalytics, useMessagingCampaigns } from '@/services/messaging/hooks';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -17,6 +17,11 @@ const CHANNEL_CONFIG = {
 export default function MessagingOverview() {
     const { data: analytics, isLoading: analyticsLoading } = useMessagingAnalytics();
     const { data: campaigns, isLoading: campaignsLoading } = useMessagingCampaigns();
+    const [isChartMounted, setIsChartMounted] = useState(false);
+
+    useEffect(() => {
+        setIsChartMounted(true);
+    }, []);
 
     const chartData = [
         { name: 'Mon', sent: 400, delivered: 240 },
@@ -144,19 +149,25 @@ export default function MessagingOverview() {
                 {/* Chart */}
                 <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-200 shadow-sm h-[400px]">
                     <h3 className="text-lg font-bold text-text-main mb-4">Traffic Overview</h3>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={chartData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
-                            <Tooltip
-                                contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #E5E7EB', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                                itemStyle={{ color: '#374151', fontSize: '12px', fontWeight: 'bold' }}
-                            />
-                            <Area type="monotone" dataKey="sent" stackId="1" stroke="#3B82F6" fill="#EFF6FF" strokeWidth={3} />
-                            <Area type="monotone" dataKey="delivered" stackId="1" stroke="#10B981" fill="#ECFDF5" strokeWidth={3} />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                    <div className="h-[330px] min-h-[330px] w-full">
+                        {isChartMounted ? (
+                            <ResponsiveContainer width="100%" height="100%" minWidth={280} minHeight={330} debounce={80}>
+                                <AreaChart data={chartData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} dy={10} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #E5E7EB', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                        itemStyle={{ color: '#374151', fontSize: '12px', fontWeight: 'bold' }}
+                                    />
+                                    <Area type="monotone" dataKey="sent" stackId="1" stroke="#3B82F6" fill="#EFF6FF" strokeWidth={3} />
+                                    <Area type="monotone" dataKey="delivered" stackId="1" stroke="#10B981" fill="#ECFDF5" strokeWidth={3} />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full w-full animate-pulse rounded-lg bg-slate-50" />
+                        )}
+                    </div>
                 </div>
 
                 {/* Quick Actions */}
