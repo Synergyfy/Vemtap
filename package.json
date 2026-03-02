@@ -5,6 +5,10 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report",
     "dev": "turbo dev",
     "dev:ui": "turbo dev --filter=entryconect",
     "dev:api": "turbo dev --filter=@vemtap/backend",
@@ -17,6 +21,7 @@
   "license": "ISC",
   "packageManager": "pnpm@10.29.1",
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "turbo": "^2.8.10"
   }
 }
