@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, UseGuards, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  UseGuards,
+  Param,
+  Request,
+  BadRequestException,
+} from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
 import { SubscribeDto } from './dto/subscribe.dto';
 import {
