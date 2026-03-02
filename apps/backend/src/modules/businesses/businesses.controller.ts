@@ -9,6 +9,7 @@ import {
   Query,
   Post,
   Delete,
+  BadRequestException,
 } from '@nestjs/common';
 import { BusinessesService } from './businesses.service';
 import { UpdateBusinessDto } from './dto/update-business.dto';
@@ -18,11 +19,13 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiOkResponse,
 } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
 import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
+import { ImportCustomersDto } from './dto/import-customers.dto';
 
 @ApiTags('businesses')
 @ApiBearerAuth()
@@ -34,8 +37,60 @@ export class BusinessesController {
   @SkipSubscriptionCheck()
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get details of the business for current user' })
+  @ApiOkResponse({
+    description: 'Current business details',
+    type: UpdateBusinessDto, // Business entity structure matches most of UpdateBusinessDto for swagger
+  })
   async getMyBusiness(@Request() req) {
     return this.businessesService.findById(req.user.businessId);
+  }
+
+  @Patch('my-business')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({
+    summary: 'Update current user\'s business details (About, Hours, Settings, etc.)',
+    description: 'Only accessible by business owners. Uses businessId from token.',
+  })
+  @ApiBody({ type: UpdateBusinessDto })
+  @ApiOkResponse({
+    description: 'Business updated successfully',
+    type: UpdateBusinessDto,
+  })
+  async updateMyBusiness(
+    @Request() req,
+    @Body() updateBusinessDto: UpdateBusinessDto,
+  ) {
+    const businessId = req.user.businessId;
+    if (!businessId) {
+      throw new BadRequestException('User is not associated with a business');
+    }
+    return this.businessesService.update(businessId, updateBusinessDto);
+  }
+
+  @Post('import-customers')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({
+    summary: 'Bulk import customers for the current business',
+    description: 'Import multiple customers at once. Default password "mypassword" will be assigned.',
+  })
+  @ApiBody({ type: ImportCustomersDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Import results with counts and errors',
+    schema: {
+      example: {
+        imported: 10,
+        skipped: 2,
+        errors: ['Error importing user@ex.com: Duplicate'],
+      },
+    },
+  })
+  async importCustomers(@Request() req, @Body() importDto: ImportCustomersDto) {
+    const businessId = req.user.businessId;
+    if (!businessId) {
+      throw new BadRequestException('User is not associated with a business');
+    }
+    return this.businessesService.importCustomers(businessId, importDto);
   }
 
   @Patch(':id')
