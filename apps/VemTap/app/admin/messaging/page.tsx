@@ -19,9 +19,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import PageHeader from '@/components/dashboard/PageHeader';
 
+type TemplateStatus = 'pending' | 'approved' | 'rejected';
+
 export default function TemplateApprovalPage() {
     const queryClient = useQueryClient();
-    const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+    const [filter, setFilter] = useState<'all' | TemplateStatus>('pending');
     const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -35,7 +37,7 @@ export default function TemplateApprovalPage() {
 
     // status mutation
     const statusMutation = useMutation({
-        mutationFn: ({ id, status }: { id: string, status: string }) =>
+        mutationFn: ({ id, status }: { id: string, status: TemplateStatus }) =>
             adminMessagingApi.updateTemplateStatus(id, status),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
@@ -52,7 +54,7 @@ export default function TemplateApprovalPage() {
         return matchesFilter && matchesSearch;
     });
 
-    const handleAction = (id: string, newStatus: string) => {
+    const handleAction = (id: string, newStatus: TemplateStatus) => {
         statusMutation.mutate({ id, status: newStatus });
     };
 
