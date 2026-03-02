@@ -20,7 +20,7 @@ export default function AdminPendingBusinessesPage() {
         try {
             const data = await adminBusinessesApi.getAll({
                 search: searchQuery || undefined,
-                status: 'Pending',
+                status: 'pending',
             });
             const bizList = Array.isArray(data) ? data : (data.data || []);
             setBusinesses(bizList);

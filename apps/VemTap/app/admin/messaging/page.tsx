@@ -13,7 +13,8 @@ import {
     Search,
     Check,
     X,
-    AlertCircle
+    AlertCircle,
+    Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -45,6 +46,16 @@ export default function TemplateApprovalPage() {
             setSelectedTemplate(null);
         },
         onError: () => toast.error('Failed to update status'),
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => adminMessagingApi.deleteTemplate(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
+            toast.success('Template deleted');
+            setSelectedTemplate(null);
+        },
+        onError: () => toast.error('Failed to delete template'),
     });
 
     const filteredTemplates = allTemplates.filter(t => {
@@ -165,6 +176,13 @@ export default function TemplateApprovalPage() {
                                                 </button>
                                             </>
                                         )}
+                                        <button
+                                            onClick={() => deleteMutation.mutate(t.id)}
+                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                            title="Delete Template"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -256,6 +274,12 @@ export default function TemplateApprovalPage() {
                                         </button>
                                     </div>
                                 )}
+                                <button
+                                    onClick={() => deleteMutation.mutate(selectedTemplate.id)}
+                                    className="px-6 py-3 bg-white border border-red-200 text-red-600 font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-red-50 transition-all shadow-sm"
+                                >
+                                    Delete Template
+                                </button>
                             </div>
                         </motion.div>
                     </div>

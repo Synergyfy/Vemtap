@@ -3,40 +3,41 @@
 import React from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dashboardApi } from '@/lib/api/dashboard';
-import { Notification } from '@/lib/store/mockDashboardStore';
+import { adminNotificationsApi } from '@/lib/api/admin';
 import { Bell, CheckCircle2, Info, AlertTriangle, Clock, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+type AdminNotification = {
+    id: string;
+    title: string;
+    message: string;
+    type: 'info' | 'success' | 'warning' | 'error';
+    isRead: boolean;
+    createdAt: string;
+};
+
 export default function AdminNotificationsPage() {
     const queryClient = useQueryClient();
-    const { data, isLoading } = useQuery({
-        queryKey: ['dashboard'],
-        queryFn: dashboardApi.fetchDashboardData,
+    const { data: notifications = [], isLoading } = useQuery<AdminNotification[]>({
+        queryKey: ['admin-notifications'],
+        queryFn: async () => {
+            const response = await adminNotificationsApi.getAll();
+            return (Array.isArray(response) ? response : response?.data || []) as AdminNotification[];
+        },
     });
 
-    const notifications = data?.notifications || [];
-
     const readMutation = useMutation({
-        mutationFn: dashboardApi.markNotificationRead,
+        mutationFn: adminNotificationsApi.markRead,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-notifications'] });
         }
     });
 
     const readAllMutation = useMutation({
-        mutationFn: dashboardApi.markAllNotificationsRead,
+        mutationFn: adminNotificationsApi.markAllRead,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-notifications'] });
             toast.success('All notifications marked as read');
-        }
-    });
-
-    const clearAllMutation = useMutation({
-        mutationFn: dashboardApi.clearNotifications,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            toast.success('Notification history cleared');
         }
     });
 
@@ -66,9 +67,7 @@ export default function AdminNotificationsPage() {
                         </button>
                         <button
                             onClick={() => {
-                                if (confirm('Are you sure you want to clear your notification history?')) {
-                                    clearAllMutation.mutate();
-                                }
+                                toast('Clear history is not available from backend yet.');
                             }}
                             disabled={notifications.length === 0}
                             className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition-all text-xs disabled:opacity-50"
@@ -98,27 +97,27 @@ export default function AdminNotificationsPage() {
                     </div>
                 ) : (
                     <div className="divide-y divide-gray-100">
-                        {notifications.map((note: Notification) => (
+                        {notifications.map((note) => (
                             <div
                                 key={note.id}
-                                onClick={() => !note.read && readMutation.mutate(note.id)}
-                                className={`p-6 flex items-start gap-4 hover:bg-gray-50 transition-colors cursor-pointer ${!note.read ? 'bg-primary/5' : ''}`}
+                                onClick={() => !note.isRead && readMutation.mutate(note.id)}
+                                className={`p-6 flex items-start gap-4 hover:bg-gray-50 transition-colors cursor-pointer ${!note.isRead ? 'bg-primary/5' : ''}`}
                             >
                                 <div className="mt-1">{getIcon(note.type)}</div>
                                 <div className="flex-1">
                                     <div className="flex items-center justify-between gap-4 mb-1">
-                                        <h4 className={`text-sm ${!note.read ? 'font-bold text-text-main' : 'text-text-secondary'}`}>
+                                        <h4 className={`text-sm ${!note.isRead ? 'font-bold text-text-main' : 'text-text-secondary'}`}>
                                             {note.title}
                                         </h4>
                                         <div className="flex items-center gap-1.5 text-[10px] text-text-secondary font-medium">
                                             <Clock size={12} />
-                                            {new Date(note.timestamp).toLocaleDateString()} at {new Date(note.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {new Date(note.createdAt).toLocaleDateString()} at {new Date(note.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </div>
                                     </div>
                                     <p className="text-sm text-text-secondary max-w-2xl leading-relaxed">
                                         {note.message}
                                     </p>
-                                    {!note.read && (
+                                    {!note.isRead && (
                                         <button
                                             className="mt-3 text-xs font-bold text-primary hover:underline flex items-center gap-1"
                                             onClick={(e) => {
@@ -130,7 +129,7 @@ export default function AdminNotificationsPage() {
                                         </button>
                                     )}
                                 </div>
-                                {!note.read && (
+                                {!note.isRead && (
                                     <div className="mt-1.5 w-2 h-2 rounded-full bg-primary shadow-sm shadow-primary/40"></div>
                                 )}
                             </div>

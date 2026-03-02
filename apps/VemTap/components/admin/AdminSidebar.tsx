@@ -5,8 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dashboardApi } from '@/lib/api/dashboard';
-import { Notification } from '@/lib/store/mockDashboardStore';
+import { adminNotificationsApi } from '@/lib/api/admin';
 import {
     Home, Store, Users, Nfc, CreditCard, BarChart, MessageSquare, Activity,
     Settings, ChevronDown, Shield, LogOut, Gift, Search, Bell, HelpCircle, Package, FileText, Tag, Menu, X, Workflow, Eye
@@ -28,26 +27,28 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const queryClient = useQueryClient();
 
-    const { data } = useQuery({
-        queryKey: ['dashboard'],
-        queryFn: dashboardApi.fetchDashboardData,
-        refetchInterval: 5000,
+    const { data: notifications = [] } = useQuery<any[]>({
+        queryKey: ['admin-notifications'],
+        queryFn: async () => {
+            const response = await adminNotificationsApi.getAll();
+            return (Array.isArray(response) ? response : response?.data || []) as any[];
+        },
+        refetchInterval: 10000,
     });
 
-    const notifications = (data?.notifications || []).filter((n: Notification) => n.scope === 'ADMIN');
-    const unreadCount = notifications.filter((n: Notification) => !n.read).length;
+    const unreadCount = notifications.filter((n: any) => !n.isRead).length;
 
     const readNotificationMutation = useMutation({
-        mutationFn: dashboardApi.markNotificationRead,
+        mutationFn: adminNotificationsApi.markRead,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-notifications'] });
         }
     });
 
     const readAllMutation = useMutation({
-        mutationFn: dashboardApi.markAllNotificationsRead,
+        mutationFn: adminNotificationsApi.markAllRead,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-notifications'] });
         }
     });
 
@@ -366,18 +367,18 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                                             notifications.map((note: any) => (
                                                 <div
                                                     key={note.id}
-                                                    onClick={() => !note.read && readNotificationMutation.mutate(note.id)}
-                                                    className={`p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${!note.read ? 'bg-blue-50/30' : ''}`}
+                                                    onClick={() => !note.isRead && readNotificationMutation.mutate(note.id)}
+                                                    className={`p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${!note.isRead ? 'bg-blue-50/30' : ''}`}
                                                 >
                                                     <div className="flex items-start gap-3">
-                                                        <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${!note.read ? 'bg-primary' : 'bg-transparent'}`}></div>
+                                                        <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${!note.isRead ? 'bg-primary' : 'bg-transparent'}`}></div>
                                                         <div className="flex-1">
-                                                            <p className={`text-sm ${!note.read ? 'font-bold text-text-main' : 'text-text-secondary'}`}>
+                                                            <p className={`text-sm ${!note.isRead ? 'font-bold text-text-main' : 'text-text-secondary'}`}>
                                                                 {note.title}
                                                             </p>
                                                             <p className="text-xs text-text-secondary mt-1">{note.message}</p>
                                                             <p className="text-[10px] text-gray-400 mt-2">
-                                                                {new Date(note.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                {new Date(note.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                             </p>
                                                         </div>
                                                     </div>

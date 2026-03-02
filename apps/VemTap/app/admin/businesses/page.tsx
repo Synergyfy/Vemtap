@@ -66,7 +66,7 @@ export default function AdminBusinessesPage() {
         try {
             const data = await adminBusinessesApi.getAll({
                 search: searchQuery || undefined,
-                status: filterStatus || undefined,
+                status: filterStatus ? filterStatus.toLowerCase() : undefined,
             });
             const parsed = extractBusinesses(data);
             setBusinesses(parsed.items);
@@ -130,13 +130,14 @@ export default function AdminBusinessesPage() {
     };
 
     const getStatusBadge = (status: string) => {
+        const normalized = normalizeBusinessStatus(status);
         const map: Record<string, string> = {
-            Active: 'bg-green-50 text-green-600',
-            Pending: 'bg-yellow-50 text-yellow-700',
-            Suspended: 'bg-red-50 text-red-600',
-            Rejected: 'bg-gray-100 text-gray-500',
+            active: 'bg-green-50 text-green-600',
+            pending: 'bg-yellow-50 text-yellow-700',
+            suspended: 'bg-red-50 text-red-600',
+            rejected: 'bg-gray-100 text-gray-500',
         };
-        return map[status] || 'bg-gray-100 text-gray-500';
+        return map[normalized] || 'bg-gray-100 text-gray-500';
     };
 
     return (
@@ -193,9 +194,9 @@ export default function AdminBusinessesPage() {
                     </div>
                     <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20">
                         <option value="">All Status</option>
-                        <option value="Active">Active</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Suspended">Suspended</option>
+                        <option value="active">Active</option>
+                        <option value="pending">Pending</option>
+                        <option value="suspended">Suspended</option>
                     </select>
                 </div>
                 <p className="mt-3 text-xs text-text-secondary font-medium">Tip: click any business row to open business analytics.</p>
@@ -257,14 +258,14 @@ export default function AdminBusinessesPage() {
                                             </td>
                                             <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex items-center justify-end gap-1">
-                                                    {biz.status === 'Pending' && <>
+                                                    {normalizeBusinessStatus(biz.status) === 'pending' && <>
                                                         <button onClick={() => handleAction('approve', biz)} className="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-all" title="Approve"><CheckCircle size={16} /></button>
                                                         <button onClick={() => handleAction('reject', biz)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Reject"><XCircle size={16} /></button>
                                                     </>}
-                                                    {biz.status === 'Active' && (
+                                                    {normalizeBusinessStatus(biz.status) === 'active' && (
                                                         <button onClick={() => handleAction('suspend', biz)} className="p-2 text-orange-500 hover:bg-orange-50 rounded-lg transition-all" title="Suspend"><Ban size={16} /></button>
                                                     )}
-                                                    {biz.status === 'Suspended' && (
+                                                    {normalizeBusinessStatus(biz.status) === 'suspended' && (
                                                         <button onClick={() => handleAction('reactivate', biz)} className="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-all" title="Reactivate"><RotateCcw size={16} /></button>
                                                     )}
                                                     <button onClick={() => handleAction('delete', biz)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete"><Trash2 size={16} /></button>

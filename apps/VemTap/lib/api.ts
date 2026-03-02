@@ -1,4 +1,4 @@
-const normalizeBaseUrl = (raw?: string) => {
+export const normalizeBaseUrl = (raw?: string) => {
     if (!raw) return 'http://localhost:3002/api/v1';
     const trimmed = raw.replace(/\/+$/, '');
     if (trimmed.endsWith('/api/v1')) return trimmed;
@@ -11,17 +11,20 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const url = `${BASE_URL}${normalizedEndpoint}`;
 
-    const defaultHeaders: HeadersInit = {
+    const headers = new Headers({
         'Content-Type': 'application/json',
-    };
+        ...options.headers,
+    });
 
     if (typeof window !== 'undefined') {
         const authStorage = localStorage.getItem('auth-storage-v2');
         if (authStorage) {
             try {
                 const state = JSON.parse(authStorage).state;
-                if (state?.access_token) {
-                    defaultHeaders['Authorization'] = `Bearer ${state.access_token}`;
+                // Support both access_token and token keys just in case
+                const token = state?.access_token || state?.token;
+                if (token && token !== 'mock-token') {
+                    headers.set('Authorization', `Bearer ${token}`);
                 }
             } catch (e) {
                 console.error('Error parsing auth storage', e);
@@ -31,14 +34,21 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
 
     const response = await fetch(url, {
         ...options,
-        headers: {
-            ...defaultHeaders,
-            ...options.headers,
-        },
+        headers,
     });
 
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+            console.warn(`Unauthorized access to ${url}. Token might be invalid or expired.`);
+        }
+
+        let errorData;
+        try {
+            errorData = await response.json();
+        } catch (e) {
+            errorData = { message: `API Error: ${response.status}` };
+        }
+
         throw new Error(errorData.message || `API Error: ${response.status}`);
     }
 

@@ -18,6 +18,8 @@ interface SanitizedInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>
     icon?: string;
     /** Whether this field is required (shows red asterisk) */
     required?: boolean;
+    /** Whether this field is optional (shows optional badge) */
+    optional?: boolean;
     /** Tooltip text explaining this field */
     tooltip?: string;
     /** Input type — determines which sanitizer is used */
@@ -73,6 +75,7 @@ export function SanitizedInput({
     onChange,
     icon,
     required = false,
+    optional = false,
     tooltip,
     type = 'text',
     wrapperClassName = '',
@@ -99,6 +102,7 @@ export function SanitizedInput({
                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">
                     {label}
                     {required && <span className="text-red-500 ml-0.5">*</span>}
+                    {optional && <span className="ml-1.5 px-1.5 py-0.5 bg-gray-100 text-gray-500 text-[9px] font-bold rounded uppercase">Optional</span>}
                 </label>
                 {tooltip && (
                     <Tooltip content={tooltip} side="right">

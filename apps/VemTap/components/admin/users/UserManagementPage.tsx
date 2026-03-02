@@ -43,6 +43,8 @@ export default function UserManagementPage({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [serverStats, setServerStats] = useState<any>(null);
 
+    const normalizeRole = (role?: string) => (role || '').toLowerCase().replace(/\s+/g, '_');
+
     const scopedRoles = useMemo(() => {
         if (!roleFilter) return null;
         return Array.isArray(roleFilter) ? roleFilter : [roleFilter];
@@ -53,8 +55,9 @@ export default function UserManagementPage({
         try {
             const response = await adminUsersApi.getAll({
                 search: searchQuery || undefined,
-                role: typeof roleFilter === 'string' ? roleFilter : (filterRole || undefined),
+                role: typeof roleFilter === 'string' ? normalizeRole(roleFilter) : (filterRole ? normalizeRole(filterRole) : undefined),
                 status: filterStatus || undefined,
+                limit: 1000,
             });
 
             const userList = Array.isArray(response) ? response : (response.data || response.users || []);
@@ -68,7 +71,16 @@ export default function UserManagementPage({
             }));
 
             const scopedUsers = scopedRoles
-                ? mappedUsers.filter((u: any) => scopedRoles.includes(u.role))
+                ? mappedUsers.filter((u: any) => {
+                    const role = normalizeRole(u.role);
+                    return scopedRoles.some((allowedRole) => {
+                        const normalizedAllowed = normalizeRole(allowedRole);
+                        if (normalizedAllowed === 'owner') {
+                            return role === 'owner' || role === 'business_owner';
+                        }
+                        return role === normalizedAllowed;
+                    });
+                })
                 : mappedUsers;
 
             setUsers(scopedUsers);

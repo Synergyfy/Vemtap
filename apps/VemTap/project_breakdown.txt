@@ -1,4 +1,3 @@
-now in our entryconect/apps/vemtap pleae check the bussiness admin 1. the bussiness count is zero but we have 5 bussinesses how come so check if there is mock data nad remove it only fetch from the backend please
 
 admin@vemtap.com
 securePassword123!
@@ -22,3 +21,24 @@ questions
 
 bussinesses can ask for birthdays,anniversery etc 
 
+===============
+dmin section	Missing endpoint(s) to add	Evidence
+Notifications	DELETE /notifications (or DELETE /notifications/clear) for Clear History	notifications page
+Subscriptions	PATCH /subscriptions/admin/:id/override (plan/status/manualAmount/renewalDate/reason)	subscriptions page
+Flow Engine Overview	GET /admin/flow-engine/overview?businessId=&branchId=	flow overview
+Flow Engine Analytics	GET /admin/flow-engine/analytics?businessId=&branchId=&from=&to=	flow analytics
+Flow Engine Logs	GET /admin/flow-engine/logs?... (filters + pagination)	flow logs
+Flow Engine Sessions	GET /admin/flow-engine/sessions?..., PATCH /admin/flow-engine/sessions/:id/terminate	flow sessions
+Flow Engine Triggers	GET /admin/flow-engine/triggers, PATCH /admin/flow-engine/triggers/:key, POST /admin/flow-engine/triggers/reset-defaults	flow triggers
+Flow Engine Settings	GET /admin/flow-engine/settings, PATCH /admin/flow-engine/settings, POST /admin/flow-engine/settings/test-connection, POST /admin/flow-engine/settings/verify-webhook	flow settings
+Control Tower (Business)	GET /admin/control-tower/businesses?search=&limit=, POST /admin/control-tower/businesses/:businessId/actions/:actionKey	business override
+Control Tower (Customer)	GET /admin/control-tower/customers?search=&businessId=&limit=, POST /admin/control-tower/customers/:customerId/actions/:actionKey	customer override
+Agent Hub	GET /admin/agent-hub/agents, GET /admin/agent-hub/conversations?..., PATCH /admin/agent-hub/conversations/:id/assign, PATCH /admin/agent-hub/conversations/:id/status, POST /admin/agent-hub/conversations/:id/reply	agent hub
+NFC Grants	GET /admin/nfc-grants?..., POST /admin/nfc-grants	nfc grants
+Business Analytics Detail	GET /analytics/admin/businesses/:id (or GET /businesses/admin/:id/analytics)	business analytics page
+Also important mismatch to fix:
+
+Admin UI calls DELETE template endpoint, but backend currently exposes POST delete route. Add DELETE alias:
+DELETE /messaging/templates/:id/delete
+frontend call
+backend route currently POST

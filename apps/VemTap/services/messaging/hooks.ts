@@ -14,7 +14,9 @@ import {
     CreateAutomationRequest,
     UpdateAutomationRequest,
     TriggerType,
-    ActionType
+    ActionType,
+    AutomationLog,
+    AutomationPerformance
 } from './types';
 
 const toUiChannel = (channel?: string): 'WhatsApp' | 'SMS' | 'Email' => {
@@ -265,5 +267,66 @@ export const useDeleteAutomation = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['messaging', 'automations'] });
         },
+    });
+};
+
+export const useAutomationLogs = (branchId?: string, limit = 50, offset = 0) => {
+    const businessId = useAuthStore((state) => state.user?.businessId);
+    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const targetBranchId = branchId || (activeBranchId && activeBranchId !== 'all' ? activeBranchId : undefined);
+
+    return useQuery<{ data: AutomationLog[]; total: number }, Error>({
+        queryKey: ['messaging', 'automation-logs', businessId, targetBranchId, limit, offset],
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            if (targetBranchId) params.append('branchId', targetBranchId);
+            params.append('limit', limit.toString());
+            params.append('offset', offset.toString());
+            return await api.get(`/automations/logs?${params.toString()}`);
+        },
+        enabled: !!businessId,
+    });
+};
+
+export const useAutomationLogDetails = (sessionId: string) => {
+    const businessId = useAuthStore((state) => state.user?.businessId);
+    return useQuery<AutomationLog, Error>({
+        queryKey: ['messaging', 'automation-log-details', sessionId],
+        queryFn: async () => await api.get(`/automations/logs/${sessionId}`),
+        enabled: !!businessId && !!sessionId,
+    });
+};
+
+export const useAutomationPerformance = (branchId?: string, startDate?: string, endDate?: string) => {
+    const businessId = useAuthStore((state) => state.user?.businessId);
+    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const targetBranchId = branchId || (activeBranchId && activeBranchId !== 'all' ? activeBranchId : undefined);
+
+    return useQuery<AutomationPerformance, Error>({
+        queryKey: ['messaging', 'automation-performance', businessId, targetBranchId, startDate, endDate],
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            if (targetBranchId) params.append('branchId', targetBranchId);
+            if (startDate) params.append('startDate', startDate);
+            if (endDate) params.append('endDate', endDate);
+            return await api.get(`/automations/performance?${params.toString()}`);
+        },
+        enabled: !!businessId,
+    });
+};
+
+export const useWhatsAppConnectionStatus = (branchId?: string) => {
+    const businessId = useAuthStore((state) => state.user?.businessId);
+    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const targetBranchId = branchId || (activeBranchId && activeBranchId !== 'all' ? activeBranchId : undefined);
+
+    return useQuery<{ status: string; provider: string; updatedAt: string }, Error>({
+        queryKey: ['messaging', 'whatsapp-status', businessId, targetBranchId],
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            if (targetBranchId) params.append('branchId', targetBranchId);
+            return await api.get(`/automations/connection-status?${params.toString()}`);
+        },
+        enabled: !!businessId,
     });
 };

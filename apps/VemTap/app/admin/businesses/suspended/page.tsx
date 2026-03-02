@@ -16,7 +16,7 @@ export default function AdminSuspendedBusinessesPage() {
         try {
             const data = await adminBusinessesApi.getAll({
                 search: searchQuery || undefined,
-                status: 'Suspended',
+                status: 'suspended',
             });
             const bizList = Array.isArray(data) ? data : (data.data || data.businesses || []);
             setBusinesses(bizList);

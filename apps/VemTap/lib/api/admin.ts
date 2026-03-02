@@ -117,7 +117,13 @@ export const adminMessagingApi = {
     }) => api.post('/messaging/templates', data),
     updateTemplateStatus: (id: string, status: 'pending' | 'approved' | 'rejected') =>
         api.post(`/messaging/admin/templates/${id}/status`, { status }),
-    deleteTemplate: (id: string) => api.post(`/messaging/templates/${id}/delete`, {}),
+    deleteTemplate: (id: string) => api.delete(`/messaging/templates/${id}/delete`),
+};
+
+export const adminNotificationsApi = {
+    getAll: () => api.get('/notifications'),
+    markRead: (id: string) => api.patch(`/notifications/${id}/read`, {}),
+    markAllRead: () => api.post('/notifications/mark-all-read', {}),
 };
 
 export const adminFlowApi = {
