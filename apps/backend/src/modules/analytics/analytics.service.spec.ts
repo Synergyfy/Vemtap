@@ -4,6 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Visit } from '../visitors/entities/visit.entity';
 import { User } from '../users/entities/user.entity';
 import { Business } from '../businesses/entities/business.entity';
+import { Device } from '../devices/entities/device.entity';
 
 describe('AnalyticsService', () => {
   let service: AnalyticsService;
@@ -42,6 +43,10 @@ describe('AnalyticsService', () => {
         },
         {
           provide: getRepositoryToken(Business),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(Device),
           useValue: mockRepository,
         },
       ],

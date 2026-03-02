@@ -7,8 +7,11 @@ import { Template } from '@/services/messaging/types';
 import { Plus, Copy, Edit, X, Save, MessageSquare, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function WhatsAppTemplatesPage() {
+    const role = useAuthStore((state) => state.user?.role);
+    const isAdmin = String(role || '').toLowerCase() === 'admin';
     const { data: templates = [] } = useMessagingTemplates('WHATSAPP');
     const createTemplateMutation = useCreateTemplate();
     const [searchQuery, setSearchQuery] = useState('');
@@ -37,6 +40,7 @@ export default function WhatsAppTemplatesPage() {
                 content: '',
                 channel: 'WHATSAPP',
                 status: 'pending',
+                isSystem: isAdmin,
             });
         }
         setIsModalOpen(true);
@@ -59,8 +63,15 @@ export default function WhatsAppTemplatesPage() {
                 name: editingTemplate.name,
                 channel: 'WHATSAPP',
                 content: editingTemplate.content,
+                isSystem: !!editingTemplate.isSystem && isAdmin,
+                category: 'MARKETING',
+                language: 'English (US)',
             });
-            toast.success('Template created');
+            toast.success(
+                editingTemplate.isSystem && isAdmin
+                    ? 'Global template created for businesses.'
+                    : 'Template created'
+            );
             setIsModalOpen(false);
             setEditingTemplate(null);
         } catch {
@@ -102,8 +113,15 @@ export default function WhatsAppTemplatesPage() {
                     <div key={template.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between group">
                         <div>
                             <div className="flex justify-between items-start mb-4">
-                                <div className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-green-100 text-green-700">
-                                    {template.channel}
+                                <div className="flex items-center gap-2">
+                                    <div className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-green-100 text-green-700">
+                                        {template.channel}
+                                    </div>
+                                    <div className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                        template.isSystem ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                                    }`}>
+                                        {template.isSystem ? 'Global' : 'Business'}
+                                    </div>
                                 </div>
                                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button
@@ -184,6 +202,19 @@ export default function WhatsAppTemplatesPage() {
                                         className="w-full h-32 p-4 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-medium outline-none resize-none"
                                     />
                                 </div>
+
+                                {isAdmin && (
+                                    <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50">
+                                        <input
+                                            type="checkbox"
+                                            checked={!!editingTemplate?.isSystem}
+                                            onChange={(e) => setEditingTemplate((prev) => ({ ...prev, isSystem: e.target.checked }))}
+                                        />
+                                        <span className="text-xs font-bold text-text-main">
+                                            Make this a global template for all businesses
+                                        </span>
+                                    </label>
+                                )}
 
                                 <button
                                     onClick={handleSave}

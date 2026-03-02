@@ -10,7 +10,8 @@ import { Home, MessageCircle, Ticket, Settings, LogOut, Menu, X } from 'lucide-r
 export default function AgentSidebar({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
-    const { user, logout } = useAuthStore();
+    const user = useAuthStore((state) => state.user);
+    const logout = useAuthStore((state) => state.logout);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
 
     const menuItems = [

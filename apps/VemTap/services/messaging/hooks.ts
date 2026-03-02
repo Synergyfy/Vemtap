@@ -133,14 +133,14 @@ export const useSendMessage = () => {
 export const useMessagingTemplates = (channel?: Channel) => {
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
+    const isAdmin = String(role || '').toLowerCase() === 'admin';
     return useQuery<Template[], Error>({
         queryKey: ['messaging', 'templates', channel],
         queryFn: async () => {
             try {
-                const templates =
-                    role === 'admin'
-                        ? await api.get('/messaging/admin/templates')
-                        : [];
+                const templates = isAdmin
+                    ? await api.get('/messaging/admin/templates')
+                    : await api.get('/messaging/templates');
                 if (!channel) {
                     return templates;
                 }
@@ -149,7 +149,7 @@ export const useMessagingTemplates = (channel?: Channel) => {
                 return [];
             }
         },
-        enabled: !!businessId,
+        enabled: isAdmin || !!businessId,
         placeholderData: [] as Template[],
     });
 };

@@ -43,6 +43,7 @@ export const useNfcStore = create<NFCState>()(
         }),
         {
             name: 'nfc-storage',
+            partialize: (state) => ({ links: state.links }),
         }
     )
 );

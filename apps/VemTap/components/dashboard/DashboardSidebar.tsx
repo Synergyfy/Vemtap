@@ -25,7 +25,8 @@ interface SidebarProps {
 export default function DashboardSidebar({ children }: SidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
-    const { user, logout } = useAuthStore();
+    const user = useAuthStore((state) => state.user);
+    const logout = useAuthStore((state) => state.logout);
     const { data: myBusiness } = useMyBusiness();
 
     // Auto-expand the menu corresponding to the current path

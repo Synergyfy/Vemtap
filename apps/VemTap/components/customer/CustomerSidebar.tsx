@@ -20,7 +20,8 @@ interface CustomerSidebarProps {
 export default function CustomerSidebar({ children }: CustomerSidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
-    const { user, logout } = useAuthStore();
+    const user = useAuthStore((state) => state.user);
+    const logout = useAuthStore((state) => state.logout);
     const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
     const [showNotifications, setShowNotifications] = useState(false);
     const queryClient = useQueryClient();

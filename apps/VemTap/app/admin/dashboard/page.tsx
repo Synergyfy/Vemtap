@@ -17,6 +17,48 @@ interface DashboardStats {
     totalDevices: number;
 }
 
+const normalizeBusinessStatus = (status?: string) => (status || '').toLowerCase();
+
+const toNumber = (value: any): number | undefined => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : undefined;
+};
+
+const extractBusinesses = (payload: any): any[] => {
+    const roots = [payload, payload?.data, payload?.data?.data, payload?.result, payload?.payload];
+    for (const root of roots) {
+        if (Array.isArray(root)) return root;
+        if (!root) continue;
+        const listKeys = ['businesses', 'items', 'rows', 'results', 'list', 'data'];
+        for (const key of listKeys) {
+            if (Array.isArray(root[key])) return root[key];
+        }
+    }
+    return [];
+};
+
+const extractBusinessStats = (payload: any) => {
+    const stats = payload?.stats || payload?.data?.stats || {};
+    const totalFromStats = toNumber(stats.total);
+    const activeFromStats = toNumber(stats.active);
+    const pendingFromStats = toNumber(stats.pending);
+    const suspendedFromStats = toNumber(stats.suspended);
+    const totalFromMeta =
+        toNumber(payload?.meta?.total) ??
+        toNumber(payload?.data?.meta?.total) ??
+        toNumber(payload?.pagination?.total) ??
+        toNumber(payload?.data?.pagination?.total) ??
+        toNumber(payload?.total) ??
+        toNumber(payload?.data?.total);
+
+    return {
+        total: totalFromStats ?? totalFromMeta,
+        active: activeFromStats,
+        pending: pendingFromStats,
+        suspended: suspendedFromStats,
+    };
+};
+
 export default function AdminDashboardPage() {
     const router = useRouter();
     const [stats, setStats] = useState<DashboardStats>({
@@ -40,7 +82,8 @@ export default function AdminDashboardPage() {
                 adminSubscriptionsApi.getStats().catch(() => ({ data: { activeSubscriptions: 0 } })),
                 adminDevicesApi.getStats().catch(() => ({ data: { total: 0 } }))
             ]);
-            const businesses = Array.isArray(bizData) ? bizData : (bizData.businesses || []);
+            const businesses = extractBusinesses(bizData);
+            const businessStats = extractBusinessStats(bizData);
             const users = Array.isArray(usersData) ? usersData : (usersData.users || []);
             const subStats = subsData?.data || subsData;
             const devStats = devicesData?.data || devicesData;
@@ -51,10 +94,10 @@ export default function AdminDashboardPage() {
             );
 
             setStats({
-                totalBusinesses: businesses.length,
-                activeBusinesses: businesses.filter((b: any) => b.status === 'Active').length,
-                pendingBusinesses: businesses.filter((b: any) => b.status === 'Pending').length,
-                suspendedBusinesses: businesses.filter((b: any) => b.status === 'Suspended').length,
+                totalBusinesses: businessStats.total ?? businesses.length,
+                activeBusinesses: businessStats.active ?? businesses.filter((b: any) => normalizeBusinessStatus(b.status) === 'active').length,
+                pendingBusinesses: businessStats.pending ?? businesses.filter((b: any) => normalizeBusinessStatus(b.status) === 'pending').length,
+                suspendedBusinesses: businessStats.suspended ?? businesses.filter((b: any) => normalizeBusinessStatus(b.status) === 'suspended').length,
                 totalUsers: users.length,
                 recentBusinesses: sorted.slice(0, 5),
                 activeSubscriptions: subStats?.activeSubscriptions || 0,

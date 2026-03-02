@@ -5,9 +5,10 @@ import { AnalyticsService } from './analytics.service';
 import { User } from '../users/entities/user.entity';
 import { Visit } from '../visitors/entities/visit.entity';
 import { Business } from '../businesses/entities/business.entity';
+import { Device } from '../devices/entities/device.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Visit, Business])],
+  imports: [TypeOrmModule.forFeature([User, Visit, Business, Device])],
   controllers: [AnalyticsController],
   providers: [AnalyticsService],
 })

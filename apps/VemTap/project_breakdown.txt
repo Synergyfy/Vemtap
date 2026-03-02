@@ -1,19 +1,24 @@
-make sure that in the nfc manager a bussiness only aopapproved quote by the admin is can be able to generate the nfc links for eg,. approved quote 10 nfc cards when admin approves then bussiness can approve that 
-2. whjen the user n clicks on dropdown  on tablet it shpould work on click the solutions tab
-
-
---platform template
---upgrade add product to handle that
-
-
-
-
----create plan, array of string admin can type features,
---quarterly and yearly price remove. auto calculate
---if the pricing is free-- features we can have access to 
---can set trail duration.
---auto set to 30 days 
+now in our entryconect/apps/vemtap pleae check the bussiness admin 1. the bussiness count is zero but we have 5 bussinesses how come so check if there is mock data nad remove it only fetch from the backend please
 
 admin@vemtap.com
 securePassword123!
+
+
+==================================
+new task
+
+add bussiness category and sub categories eg.retail:provision
+
+--- 
+when a user taps it will send the link to them and then the system will check for the first signup and then they can reset thier defaul password eg 123456
+--when they click and they try to login first timers will be redirected to a coustomer reset page for password else just login. 
+--the system should check if its a new user and then reset the password else just log them in
+-- else check if the link has been clicked?
+--once they logged they are automatically redirected
+
+=========
+
+questions 
+
+bussinesses can ask for birthdays,anniversery etc 
 
