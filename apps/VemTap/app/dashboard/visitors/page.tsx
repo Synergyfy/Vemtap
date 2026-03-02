@@ -8,7 +8,6 @@ import DataTable, { Column } from '@/components/dashboard/DataTable';
 import EmptyState from '@/components/dashboard/EmptyState';
 import { useVisitors, useVisitorStats } from '@/services/visitors/hooks';
 import { Visitor } from '@/services/visitors/types';
-import { useAuthStore } from '@/store/useAuthStore';
 import { Users, UserPlus, Repeat, Star, Search, Download, MoreVertical, Send, Gift, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDate } from '@/lib/utils/date';
@@ -22,12 +21,11 @@ export default function VisitorsOverviewPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' | 'general' } | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
 
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(activeBranchId === 'all' || !activeBranchId ? undefined : activeBranchId, {
+    const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors('all', {
         search: searchQuery,
         status: filterStatus !== 'all' ? filterStatus : undefined
     });
-    const { data: statsData } = useVisitorStats(activeBranchId === 'all' || !activeBranchId ? undefined : activeBranchId);
+    const { data: statsData } = useVisitorStats('all');
 
     const visitors = paginatedData?.data || [];
     const isLoading = isLoadingVisitors;

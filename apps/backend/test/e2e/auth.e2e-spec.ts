@@ -90,6 +90,19 @@ describe('Auth & Notifications (e2e)', () => {
       });
   });
 
+  it('/auth/login (POST) - case-insensitive email', () => {
+    return request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        email: testEmail.toUpperCase(),
+        password: 'password123',
+      })
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.access_token).toBeDefined();
+      });
+  });
+
   it('/notifications (GET) - Protected', () => {
     return request(app.getHttpServer())
       .get('/api/v1/notifications')

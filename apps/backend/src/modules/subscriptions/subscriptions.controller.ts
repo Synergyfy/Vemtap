@@ -29,19 +29,23 @@ export class SubscriptionsController {
     return this.subscriptionsService.subscribe(subscribeDto);
   }
 
-  @Get('active/:businessId')
+  @Get('active')
   @SkipSubscriptionCheck()
-  @Roles(UserRole.OWNER, UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get current active plan for a specific business' })
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({ summary: 'Get current active plan for the current business' })
   @ApiResponse({
     status: 200,
     description: 'Return current active plan details',
   })
-  getActivePlan(@Param('businessId') businessId: string) {
+  getActivePlan(@Request() req) {
+    const businessId = req.user.businessId;
+    if (!businessId) {
+      throw new BadRequestException('User is not associated with a business');
+    }
     return this.subscriptionsService.activeSubscription(businessId);
   }
 
-  @Get('capabilities/:businessId')
+  @Get('capabilities')
   @SkipSubscriptionCheck()
   @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({
@@ -52,7 +56,11 @@ export class SubscriptionsController {
     status: 200,
     description: 'Return capability limits and used counts',
   })
-  getCapabilities(@Param('businessId') businessId: string) {
+  getCapabilities(@Request() req) {
+    const businessId = req.user.businessId;
+    if (!businessId) {
+      throw new BadRequestException('User is not associated with a business');
+    }
     return this.subscriptionsService.getCapabilities(businessId);
   }
 
