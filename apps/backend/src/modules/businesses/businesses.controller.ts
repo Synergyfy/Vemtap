@@ -40,6 +40,23 @@ export class BusinessesController {
     return this.businessesService.findById(req.user.businessId);
   }
 
+  @Patch('my-business')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({
+    summary: 'Update current user\'s business details (About, Hours, Settings, etc.)',
+  })
+  @ApiResponse({ status: 200, description: 'Business updated successfully' })
+  async updateMyBusiness(
+    @Request() req,
+    @Body() updateBusinessDto: UpdateBusinessDto,
+  ) {
+    const businessId = req.user.businessId;
+    if (!businessId) {
+      throw new BadRequestException('User is not associated with a business');
+    }
+    return this.businessesService.update(businessId, updateBusinessDto);
+  }
+
   @Post('import-customers')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Bulk import customers for the current business' })
