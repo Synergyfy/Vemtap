@@ -240,12 +240,12 @@ export class AnalyticsService {
     const growthTrendRaw = await this.visitRepository
       .createQueryBuilder('visit')
       .select("TO_CHAR(visit.createdAt, 'Mon')", 'month')
-      .addSelect("TO_CHAR(visit.createdAt, 'YYYY-MM')", 'sortKey')
+      .addSelect("TO_CHAR(visit.createdAt, 'YYYY-MM')", 'sortkey')
       .addSelect('COUNT(visit.id)', 'count')
       .where('visit.createdAt >= :date', { date: twelveMonthsAgo })
-      .groupBy('sortKey')
+      .groupBy('sortkey')
       .addGroupBy('month')
-      .orderBy('sortKey', 'ASC')
+      .orderBy('sortkey', 'ASC')
       .getRawMany();
 
     const monthlyData = growthTrendRaw.map((item) => ({
