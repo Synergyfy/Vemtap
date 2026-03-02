@@ -5,6 +5,8 @@ import {
   OneToMany,
   JoinColumn,
   OneToOne,
+  BeforeInsert,
+  BeforeUpdate,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
@@ -120,4 +122,12 @@ export class User extends AbstractBaseEntity {
 
   @OneToMany(() => Visit, (visit) => visit.customer)
   visits: Visit[];
+
+  @BeforeInsert()
+  @BeforeUpdate()
+  normalizeEmail() {
+    if (this.email) {
+      this.email = this.email.toLowerCase();
+    }
+  }
 }

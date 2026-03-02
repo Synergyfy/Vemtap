@@ -5,15 +5,17 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import { Search, Filter, ArrowRight, Smartphone, Clock, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SessionDetailsModal from '@/components/messaging/SessionDetailsModal';
-
-const ACTIVE_SESSIONS = [
-    { id: 1, visitor: 'Chidi Okafor', phone: '+234 703 123 4567', automation: 'Repeat Visit Reward', status: 'Running', step: 'Waiting for reply', lastAction: '2 mins ago' },
-    { id: 2, visitor: 'Amina Bello', phone: '+234 901 987 6543', automation: 'Inactive Customer Reminder', status: 'Delayed', step: 'Waiting for 24h delay', lastAction: '1 hour ago' },
-    { id: 3, visitor: 'Fatima Musa', phone: '+234 812 000 1111', automation: 'New Customer Welcome', status: 'Running', step: 'Sending message', lastAction: 'Just now' },
-];
+import { useAutomationLogs } from '@/services/messaging/hooks';
 
 export default function ActiveAutomationsPage() {
+    const { data: logData, isLoading } = useAutomationLogs();
     const [selectedSession, setSelectedSession] = React.useState<any>(null);
+
+    // Filter for running or delayed sessions
+    const activeSessions = (logData?.data || []).filter(log =>
+        log.status === 'RUNNING' || log.status === 'DELAYED'
+    );
+
     return (
         <div className="p-8 space-y-8">
             <div className="flex flex-col md:flex-row justify-between items-start gap-4">
@@ -24,8 +26,12 @@ export default function ActiveAutomationsPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {ACTIVE_SESSIONS.length > 0 ? (
-                    ACTIVE_SESSIONS.map((session, i) => (
+                {isLoading ? (
+                    <div className="lg:col-span-3 flex justify-center py-20">
+                        <div className="animate-spin size-8 border-4 border-primary border-t-transparent rounded-full" />
+                    </div>
+                ) : activeSessions.length > 0 ? (
+                    activeSessions.map((session, i) => (
                         <motion.div
                             key={session.id}
                             initial={{ opacity: 0, y: 20 }}
@@ -35,15 +41,15 @@ export default function ActiveAutomationsPage() {
                         >
                             <div className="flex justify-between items-start mb-6">
                                 <div className="flex items-center gap-3">
-                                    <div className="size-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary font-black">
-                                        {session.visitor[0]}
+                                    <div className="size-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary font-black uppercase">
+                                        {session.visitorName?.[0] || 'V'}
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-text-main">{session.visitor}</h4>
-                                        <p className="text-[10px] text-text-secondary">{session.phone}</p>
+                                        <h4 className="font-bold text-text-main">{session.visitorName || 'Unknown Visitor'}</h4>
+                                        <p className="text-[10px] text-text-secondary">{session.visitorPhone}</p>
                                     </div>
                                 </div>
-                                <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-wider ${session.status === 'Running' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'
+                                <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-wider ${session.status === 'RUNNING' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'
                                     }`}>
                                     {session.status}
                                 </div>
@@ -54,16 +60,16 @@ export default function ActiveAutomationsPage() {
                                     <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Current Step</p>
                                     <p className="text-sm font-bold text-text-main flex items-center gap-2">
                                         <Clock size={14} className="text-primary" />
-                                        {session.step}
+                                        {session.currentStep || 'Initializing...'}
                                     </p>
                                 </div>
 
                                 <div className="flex items-center justify-between text-[10px] font-bold text-text-secondary">
                                     <span className="flex items-center gap-1">
                                         <Smartphone size={12} />
-                                        {session.automation}
+                                        {session.automationName}
                                     </span>
-                                    <span>{session.lastAction}</span>
+                                    <span>{new Date(session.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                             </div>
 

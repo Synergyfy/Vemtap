@@ -93,6 +93,12 @@ export class Business extends AbstractBaseEntity {
   @Column({ type: 'text', nullable: true })
   rewardMessage: string;
 
+  @Column({ type: 'text', nullable: true })
+  about: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  businessHours: Record<string, any>;
+
   @Column({ default: false })
   rewardEnabled: boolean;
 

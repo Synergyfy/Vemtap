@@ -26,4 +26,5 @@ export interface SubscribeRequest {
     planId: string;
     billingPeriod: 'monthly' | 'quarterly' | 'yearly';
     paymentReference?: string;
+    isTrial?: boolean;
 }
