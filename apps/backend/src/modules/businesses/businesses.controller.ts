@@ -36,6 +36,10 @@ export class BusinessesController {
   @SkipSubscriptionCheck()
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get details of the business for current user' })
+  @ApiOkResponse({
+    description: 'Current business details',
+    type: UpdateBusinessDto, // Business entity structure matches most of UpdateBusinessDto for swagger
+  })
   async getMyBusiness(@Request() req) {
     return this.businessesService.findById(req.user.businessId);
   }
@@ -44,8 +48,13 @@ export class BusinessesController {
   @Roles(UserRole.OWNER)
   @ApiOperation({
     summary: 'Update current user\'s business details (About, Hours, Settings, etc.)',
+    description: 'Only accessible by business owners. Uses businessId from token.',
   })
-  @ApiResponse({ status: 200, description: 'Business updated successfully' })
+  @ApiBody({ type: UpdateBusinessDto })
+  @ApiOkResponse({
+    description: 'Business updated successfully',
+    type: UpdateBusinessDto,
+  })
   async updateMyBusiness(
     @Request() req,
     @Body() updateBusinessDto: UpdateBusinessDto,
@@ -59,8 +68,22 @@ export class BusinessesController {
 
   @Post('import-customers')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @ApiOperation({ summary: 'Bulk import customers for the current business' })
-  @ApiResponse({ status: 201, description: 'Import results' })
+  @ApiOperation({
+    summary: 'Bulk import customers for the current business',
+    description: 'Import multiple customers at once. Default password "mypassword" will be assigned.',
+  })
+  @ApiBody({ type: ImportCustomersDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Import results with counts and errors',
+    schema: {
+      example: {
+        imported: 10,
+        skipped: 2,
+        errors: ['Error importing user@ex.com: Duplicate'],
+      },
+    },
+  })
   async importCustomers(@Request() req, @Body() importDto: ImportCustomersDto) {
     const businessId = req.user.businessId;
     if (!businessId) {
