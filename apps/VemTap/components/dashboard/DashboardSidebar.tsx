@@ -105,7 +105,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             icon: Users,
             roles: ['owner', 'manager', 'staff'],
             submenu: [
-                { label: 'Overview', href: '/dashboard/visitors' },
+                // { label: 'Overview', href: '/dashboard/visitors' },
                 { label: 'All Visitors', href: '/dashboard/visitors/all' },
                 { label: 'New Visitors', href: '/dashboard/visitors/new' },
                 { label: 'Returning', href: '/dashboard/visitors/returning' },
