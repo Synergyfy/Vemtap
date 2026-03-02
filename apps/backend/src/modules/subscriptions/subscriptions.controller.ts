@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, UseGuards, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  UseGuards,
+  Param,
+  Request,
+  BadRequestException,
+} from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
 import { SubscribeDto } from './dto/subscribe.dto';
 import {
@@ -6,6 +15,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiOkResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -29,30 +39,40 @@ export class SubscriptionsController {
     return this.subscriptionsService.subscribe(subscribeDto);
   }
 
-  @Get('active/:businessId')
+  @Get('active')
   @SkipSubscriptionCheck()
-  @Roles(UserRole.OWNER, UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get current active plan for a specific business' })
-  @ApiResponse({
-    status: 200,
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({
+    summary: 'Get current active plan for the current business',
+    description: 'Uses businessId from the authenticated user token.',
+  })
+  @ApiOkResponse({
     description: 'Return current active plan details',
   })
-  getActivePlan(@Param('businessId') businessId: string) {
+  getActivePlan(@Request() req) {
+    const businessId = req.user.businessId;
+    if (!businessId) {
+      throw new BadRequestException('User is not associated with a business');
+    }
     return this.subscriptionsService.activeSubscription(businessId);
   }
 
-  @Get('capabilities/:businessId')
+  @Get('capabilities')
   @SkipSubscriptionCheck()
   @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({
     summary:
       'View capability details and limits used for the current subscription',
+    description: 'Only accessible by business staff. Uses businessId from token.',
   })
-  @ApiResponse({
-    status: 200,
+  @ApiOkResponse({
     description: 'Return capability limits and used counts',
   })
-  getCapabilities(@Param('businessId') businessId: string) {
+  getCapabilities(@Request() req) {
+    const businessId = req.user.businessId;
+    if (!businessId) {
+      throw new BadRequestException('User is not associated with a business');
+    }
     return this.subscriptionsService.getCapabilities(businessId);
   }
 

@@ -24,10 +24,13 @@ export class UsersService {
   }
 
   findByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOneBy({ email });
+    return this.usersRepository.findOneBy({ email: email.toLowerCase() });
   }
 
   async create(userData: Partial<User>): Promise<User> {
+    if (userData.email) {
+      userData.email = userData.email.toLowerCase();
+    }
     const user = this.usersRepository.create(userData);
     return this.usersRepository.save(user);
   }

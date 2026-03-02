@@ -9,8 +9,10 @@ import { Repository } from 'typeorm';
 import { Business, BusinessStatus } from './entities/business.entity';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
-import { User, UserRole } from '../users/entities/user.entity';
+import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
+import { ImportCustomersDto } from './dto/import-customers.dto';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class BusinessesService {
@@ -19,6 +21,7 @@ export class BusinessesService {
     private businessesRepository: Repository<Business>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    private readonly mailService: MailService,
   ) {}
 
   async create(businessData: Partial<Business>): Promise<Business> {
@@ -51,6 +54,56 @@ export class BusinessesService {
     const business = await this.findById(id);
     Object.assign(business, updateBusinessDto);
     return this.businessesRepository.save(business);
+  }
+
+  async importCustomers(businessId: string, importDto: ImportCustomersDto) {
+    const defaultPassword = 'mypassword';
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    const results = {
+      imported: 0,
+      skipped: 0,
+      errors: [] as string[],
+    };
+
+    for (const customerData of importDto.customers) {
+      try {
+        const email = customerData.email.toLowerCase();
+        const existingUser = await this.usersRepository.findOne({
+          where: { email },
+        });
+
+        if (existingUser) {
+          results.skipped++;
+          continue;
+        }
+
+        const newUser = this.usersRepository.create({
+          firstName: customerData.firstName,
+          lastName: customerData.lastName,
+          email: email,
+          phone: customerData.phone,
+          password: hashedPassword,
+          role: UserRole.CUSTOMER,
+          status: UserStatus.ACTIVE,
+          businessId,
+        });
+
+        await this.usersRepository.save(newUser);
+        
+        // Send Welcome Email asynchronously
+        this.mailService.sendWelcomeEmail(
+          email,
+          `${customerData.firstName} ${customerData.lastName}`,
+          defaultPassword
+        ).catch(err => console.error(`Failed to send welcome email to ${email}:`, err));
+
+        results.imported++;
+      } catch (error) {
+        results.errors.push(`Error importing ${customerData.email}: ${error.message}`);
+      }
+    }
+
+    return results;
   }
 
   // --- Admin Methods ---
