@@ -115,7 +115,8 @@ export const adminMessagingApi = {
         language?: string;
         isSystem?: boolean;
     }) => api.post('/messaging/templates', data),
-    updateTemplateStatus: (id: string, status: string) => api.post(`/messaging/admin/templates/${id}/status`, { status }),
+    updateTemplateStatus: (id: string, status: 'pending' | 'approved' | 'rejected') =>
+        api.post(`/messaging/admin/templates/${id}/status`, { status }),
     deleteTemplate: (id: string) => api.post(`/messaging/templates/${id}/delete`, {}),
 };
 

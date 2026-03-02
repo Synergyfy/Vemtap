@@ -20,6 +20,35 @@ interface Business {
     devices?: any[];
 }
 
+const normalizeBusinessStatus = (status?: string) => (status || '').toLowerCase();
+
+const toNumber = (value: any): number | undefined => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : undefined;
+};
+
+const extractBusinesses = (payload: any): { items: Business[]; total?: number; stats?: any } => {
+    const roots = [payload, payload?.data, payload?.data?.data, payload?.result, payload?.payload];
+    const total =
+        toNumber(payload?.meta?.total) ??
+        toNumber(payload?.data?.meta?.total) ??
+        toNumber(payload?.pagination?.total) ??
+        toNumber(payload?.data?.pagination?.total) ??
+        toNumber(payload?.total) ??
+        toNumber(payload?.data?.total);
+    const stats = payload?.stats || payload?.data?.stats;
+
+    for (const root of roots) {
+        if (Array.isArray(root)) return { items: root, total, stats };
+        if (!root) continue;
+        const listKeys = ['businesses', 'items', 'rows', 'results', 'list', 'data'];
+        for (const key of listKeys) {
+            if (Array.isArray(root[key])) return { items: root[key], total, stats };
+        }
+    }
+    return { items: [], total, stats };
+};
+
 export default function AdminBusinessesPage() {
     const router = useRouter();
     const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -29,6 +58,8 @@ export default function AdminBusinessesPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [metaTotal, setMetaTotal] = useState<number | null>(null);
+    const [apiStats, setApiStats] = useState<{ active?: number; pending?: number; suspended?: number } | null>(null);
 
     const fetchBusinesses = useCallback(async () => {
         setIsLoading(true);
@@ -37,7 +68,10 @@ export default function AdminBusinessesPage() {
                 search: searchQuery || undefined,
                 status: filterStatus || undefined,
             });
-            setBusinesses(Array.isArray(data) ? data : (data.data || data.businesses || []));
+            const parsed = extractBusinesses(data);
+            setBusinesses(parsed.items);
+            setMetaTotal(parsed.total ?? null);
+            setApiStats(parsed.stats || null);
         } catch (err: any) {
             notify.error(err.message || 'Failed to load businesses');
         } finally {
@@ -51,10 +85,10 @@ export default function AdminBusinessesPage() {
     }, [fetchBusinesses]);
 
     const stats = [
-        { label: 'Total', value: businesses.length, icon: 'store', color: 'blue' },
-        { label: 'Active', value: businesses.filter(b => b.status === 'Active').length, icon: 'check_circle', color: 'green' },
-        { label: 'Pending', value: businesses.filter(b => b.status === 'Pending').length, icon: 'pending', color: 'yellow' },
-        { label: 'Suspended', value: businesses.filter(b => b.status === 'Suspended').length, icon: 'block', color: 'red' },
+        { label: 'Total', value: metaTotal ?? businesses.length, icon: 'store', color: 'blue' },
+        { label: 'Active', value: apiStats?.active ?? businesses.filter(b => normalizeBusinessStatus(b.status) === 'active').length, icon: 'check_circle', color: 'green' },
+        { label: 'Pending', value: apiStats?.pending ?? businesses.filter(b => normalizeBusinessStatus(b.status) === 'pending').length, icon: 'pending', color: 'yellow' },
+        { label: 'Suspended', value: apiStats?.suspended ?? businesses.filter(b => normalizeBusinessStatus(b.status) === 'suspended').length, icon: 'block', color: 'red' },
     ];
 
     const handleAction = async (action: 'approve' | 'reject' | 'suspend' | 'reactivate' | 'delete', business: Business) => {
@@ -164,7 +198,7 @@ export default function AdminBusinessesPage() {
                         <option value="Suspended">Suspended</option>
                     </select>
                 </div>
-                <p className="mt-3 text-xs text-text-secondary font-medium">Tip: click any business row to open mock analytics.</p>
+                <p className="mt-3 text-xs text-text-secondary font-medium">Tip: click any business row to open business analytics.</p>
             </div>
 
             {/* Table */}
@@ -245,7 +279,7 @@ export default function AdminBusinessesPage() {
                 </div>
                 <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
                     <p className="text-xs text-text-secondary font-black uppercase tracking-widest">
-                        {isLoading ? 'Loading...' : `${businesses.length} business${businesses.length !== 1 ? 'es' : ''} found`}
+                        {isLoading ? 'Loading...' : `${metaTotal ?? businesses.length} business${(metaTotal ?? businesses.length) !== 1 ? 'es' : ''} found`}
                     </p>
                 </div>
             </div>

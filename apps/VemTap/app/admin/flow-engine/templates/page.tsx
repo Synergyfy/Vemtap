@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import FlowEngineNav from '@/components/admin/flow-engine/FlowEngineNav';
 import { notify } from '@/lib/notify';
@@ -29,15 +29,6 @@ export default function FlowTemplatesPage() {
     const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | TemplateStatus>('all');
-    const [isCreateOpen, setIsCreateOpen] = useState(false);
-    const [createForm, setCreateForm] = useState({
-        name: '',
-        channel: 'WHATSAPP' as TemplateChannel,
-        content: '',
-        category: 'MARKETING' as TemplateCategory,
-        language: 'English (US)',
-        isSystem: true,
-    });
 
     const { data: templates = [], isLoading } = useQuery({
         queryKey: ['admin-flow-templates'],
@@ -60,36 +51,6 @@ export default function FlowTemplatesPage() {
             return statusMatch && searchMatch;
         });
     }, [search, statusFilter, templates]);
-
-    const createMutation = useMutation({
-        mutationFn: async () => {
-            const name = createForm.name.trim();
-            const content = createForm.content.trim();
-            if (!name) throw new Error('Template name is required.');
-            if (!content) throw new Error('Template content is required.');
-            return adminMessagingApi.createTemplate({
-                ...createForm,
-                name,
-                content,
-            });
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['admin-flow-templates'] });
-            setIsCreateOpen(false);
-            setCreateForm({
-                name: '',
-                channel: 'WHATSAPP',
-                content: '',
-                category: 'MARKETING',
-                language: 'English (US)',
-                isSystem: true,
-            });
-            notify.success('System template created.');
-        },
-        onError: (error) => {
-            notify.error(error instanceof Error ? error.message : 'Failed to create template.');
-        },
-    });
 
     const statusMutation = useMutation({
         mutationFn: async ({ id, status }: { id: string; status: TemplateStatus }) =>
@@ -122,18 +83,12 @@ export default function FlowTemplatesPage() {
                 <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Template Creation</p>
-                            <h2 className="text-2xl font-display font-bold text-text-main mt-1">WhatsApp Template Management</h2>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Template Review</p>
+                            <h2 className="text-2xl font-display font-bold text-text-main mt-1">Template Approval Management</h2>
                             <p className="text-sm text-text-secondary font-medium mt-1">
-                                Admin-created system templates can be used by businesses in their flow automation.
+                                Review templates submitted by businesses and approve or reject them.
                             </p>
                         </div>
-                        <button
-                            onClick={() => setIsCreateOpen(true)}
-                            className="h-11 px-5 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest inline-flex items-center gap-2"
-                        >
-                            <Plus size={14} /> Create Template
-                        </button>
                     </div>
 
                     <div className="mt-6 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
@@ -254,82 +209,6 @@ export default function FlowTemplatesPage() {
                     </div>
                 </div>
             </div>
-
-            {isCreateOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsCreateOpen(false)} />
-                    <div className="relative w-full max-w-2xl bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
-                        <h3 className="text-2xl font-display font-bold text-text-main">Create System Template</h3>
-                        <p className="text-sm text-text-secondary font-medium mt-1">
-                            This template will be available to businesses for WhatsApp flow use.
-                        </p>
-
-                        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="md:col-span-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Template Name</label>
-                                <input
-                                    value={createForm.name}
-                                    onChange={(e) => setCreateForm((prev) => ({ ...prev, name: e.target.value }))}
-                                    placeholder="e.g. Welcome Offer 10%"
-                                    className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Channel</label>
-                                <select
-                                    value={createForm.channel}
-                                    onChange={(e) => setCreateForm((prev) => ({ ...prev, channel: e.target.value as TemplateChannel }))}
-                                    className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10"
-                                >
-                                    <option value="WHATSAPP">WhatsApp</option>
-                                    <option value="SMS">SMS</option>
-                                    <option value="EMAIL">Email</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Category</label>
-                                <select
-                                    value={createForm.category}
-                                    onChange={(e) => setCreateForm((prev) => ({ ...prev, category: e.target.value as TemplateCategory }))}
-                                    className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10"
-                                >
-                                    <option value="MARKETING">Marketing</option>
-                                    <option value="UTILITY">Utility</option>
-                                    <option value="AUTHENTICATION">Authentication</option>
-                                </select>
-                            </div>
-                            <div className="md:col-span-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Content</label>
-                                <textarea
-                                    value={createForm.content}
-                                    onChange={(e) => setCreateForm((prev) => ({ ...prev, content: e.target.value }))}
-                                    rows={6}
-                                    placeholder="Hello {name}, welcome to {business}..."
-                                    className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-primary/10"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3 pt-6">
-                            <button
-                                type="button"
-                                onClick={() => setIsCreateOpen(false)}
-                                className="flex-1 h-12 bg-gray-100 text-text-secondary font-bold rounded-xl hover:bg-gray-200 text-sm"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => createMutation.mutate()}
-                                disabled={createMutation.isPending}
-                                className="flex-1 h-12 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 text-sm disabled:opacity-70"
-                            >
-                                {createMutation.isPending ? 'Creating...' : 'Create Template'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </>
     );
 }

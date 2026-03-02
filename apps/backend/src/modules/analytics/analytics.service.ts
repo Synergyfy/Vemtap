@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Visit } from '../visitors/entities/visit.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Business } from '../businesses/entities/business.entity';
+import { Device, DeviceStatus } from '../devices/entities/device.entity';
 
 @Injectable()
 export class AnalyticsService {
@@ -14,6 +15,8 @@ export class AnalyticsService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Business)
     private readonly businessRepository: Repository<Business>,
+    @InjectRepository(Device)
+    private readonly deviceRepository: Repository<Device>,
   ) {}
 
   private async resolveBusinessContext(
@@ -230,6 +233,9 @@ export class AnalyticsService {
     const totalCustomers = await this.userRepository.count({
       where: { role: UserRole.CUSTOMER },
     });
+    const activeDevices = await this.deviceRepository.count({
+      where: { status: DeviceStatus.ACTIVE },
+    });
 
     // 2. Growth Trend (Last 12 Months)
     const twelveMonthsAgo = new Date();
@@ -284,13 +290,6 @@ export class AnalyticsService {
       type: 'risk',
     }));
 
-    if (securityAlerts.length === 0) {
-      securityAlerts.push({
-        msg: 'No critical security alerts in the last 24 hours.',
-        type: 'info',
-      });
-    }
-
     return {
       stats: [
         {
@@ -311,7 +310,12 @@ export class AnalyticsService {
           change: 0,
           trend: 'up',
         },
-        { label: 'Active Devices', value: 'Live', change: 0, trend: 'up' },
+        {
+          label: 'Active Devices',
+          value: activeDevices.toLocaleString(),
+          change: 0,
+          trend: 'up',
+        },
       ],
       monthlyData,
       sectorSplit,
