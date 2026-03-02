@@ -90,7 +90,8 @@ export default function GetStarted() {
 
     const calculatePersonalPrice = () => {
         let base = 15000;
-        const branchVal = formData.branchCount === '1' ? 0 :
+const branchVal = formData.branchCount === 'No branch' ? 0 :
+            formData.branchCount === '1' ? 0 :
             formData.branchCount === '2-5' ? 5000 :
                 formData.branchCount === '6-10' ? 15000 :
                     formData.branchCount === '11-50' ? 40000 : 100000;
@@ -232,7 +233,7 @@ export default function GetStarted() {
             setStep(6);
 
             setTimeout(() => {
-                router.push(isManager ? '/dashboard' : '/pricing');
+                router.push(isManager ? '/dashboard' : '/dashboard/settings/subscription');
             }, 3000);
         } catch (error: any) {
             toast.error(error.message || 'Failed to create account. Please try again.');
@@ -597,13 +598,13 @@ export default function GetStarted() {
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Number of Branches</label>
                                                 <div className="grid grid-cols-1 gap-2">
-                                                    {['1', '2-5', '6-10', '11-50', '50+'].map(range => (
+{['No branch', '1', '2-5', '6-10', '11-50', '50+'].map(range => (
                                                         <button
                                                             key={range}
                                                             onClick={() => setFormData({ ...formData, branchCount: range })}
                                                             className={`w-full h-14 rounded-xl px-6 text-sm font-bold transition-all border flex items-center justify-between ${formData.branchCount === range ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-gray-50 border-gray-100 text-text-secondary hover:bg-gray-100'}`}
                                                         >
-                                                            <span>{range} {range === '1' ? 'Branch' : 'Branches'}</span>
+                                                            <span>{range} {range === '1' ? 'Branch' : range === 'No branch' ? '' : 'Branches'}</span>
                                                             {formData.branchCount === range && <span className="material-icons-round text-primary text-sm">check_circle</span>}
                                                         </button>
                                                     ))}
@@ -725,14 +726,14 @@ export default function GetStarted() {
                                                     required
                                                     tooltip="Physical location of your business — helps localize your customer profile"
                                                 />
-                                                <SanitizedInput
+<SanitizedInput
                                                     label="Business Website"
                                                     type="url"
                                                     value={formData.businessWebsite}
                                                     onChange={(v) => setFormData({ ...formData, businessWebsite: v })}
                                                     icon="language"
                                                     placeholder="https://www.yourbusiness.com"
-                                                    required
+                                                    optional
                                                     tooltip="Your website URL — included in customer-facing messages and NFC tags"
                                                 />
                                             </motion.div>
@@ -752,7 +753,7 @@ export default function GetStarted() {
                                                     (!isManager && subStep === 7 && !formData.businessNumber) ||
                                                     (!isManager && subStep === 8 && !formData.visitors) ||
                                                     (!isManager && subStep === 9 && formData.goals.length === 0) ||
-                                                    (!isManager && subStep === 10 && (!formData.businessAddress || !formData.businessWebsite))
+                                                    (!isManager && subStep === 10 && !formData.businessAddress)
                                                 }
                                                 className="flex-1 h-12 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all text-sm disabled:opacity-50"
                                             >

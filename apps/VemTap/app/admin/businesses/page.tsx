@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
 import { adminBusinessesApi } from '@/lib/api/admin';
-import { Search, Plus, RefreshCw, Loader2, Edit2, Trash2, CheckCircle, XCircle, Ban, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Plus, RefreshCw, Loader2, Trash2, CheckCircle, XCircle, Ban, RotateCcw } from 'lucide-react';
 
 interface Business {
     id: string;
@@ -20,11 +21,11 @@ interface Business {
 }
 
 export default function AdminBusinessesPage() {
+    const router = useRouter();
     const [businesses, setBusinesses] = useState<Business[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
-    const [expandedId, setExpandedId] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -163,6 +164,7 @@ export default function AdminBusinessesPage() {
                         <option value="Suspended">Suspended</option>
                     </select>
                 </div>
+                <p className="mt-3 text-xs text-text-secondary font-medium">Tip: click any business row to open mock analytics.</p>
             </div>
 
             {/* Table */}
@@ -189,16 +191,16 @@ export default function AdminBusinessesPage() {
                                     <React.Fragment key={biz.id}>
                                         <tr
                                             className="hover:bg-gray-50 transition-colors group cursor-pointer"
-                                            onClick={() => setExpandedId(expandedId === biz.id ? null : biz.id)}
+                                            onClick={() => router.push(`/admin/businesses/${biz.id}/analytics?name=${encodeURIComponent(biz.name)}`)}
                                         >
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary transition-colors">
                                                         <span className="material-icons-round text-primary text-sm group-hover:text-white">store</span>
                                                     </div>
-                                                    <div className="flex items-center gap-1.5">
+                                                    <div>
                                                         <p className="font-bold text-sm text-text-main">{biz.name}</p>
-                                                        {expandedId === biz.id ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+                                                        <p className="text-[11px] text-text-secondary font-medium">View analytics</p>
                                                     </div>
                                                 </div>
                                             </td>
@@ -235,40 +237,6 @@ export default function AdminBusinessesPage() {
                                                 </div>
                                             </td>
                                         </tr>
-                                        {expandedId === biz.id && (
-                                            <tr className="bg-gray-50/80">
-                                                <td colSpan={6} className="px-16 py-6 animate-in slide-in-from-top-2 duration-200">
-                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                        <div className="bg-white rounded-xl p-5 border border-gray-200">
-                                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Contact Details</p>
-                                                            <div className="space-y-2">
-                                                                <p className="text-xs text-gray-400 font-bold">Email</p>
-                                                                <p className="text-sm font-medium text-primary">{biz.email}</p>
-                                                                {biz.phone && <><p className="text-xs text-gray-400 font-bold mt-2">Phone</p><p className="text-sm font-medium text-text-secondary">{biz.phone}</p></>}
-                                                                {biz.address && <><p className="text-xs text-gray-400 font-bold mt-2">Address</p><p className="text-sm font-medium text-text-secondary">{biz.address}</p></>}
-                                                            </div>
-                                                        </div>
-                                                        <div className="bg-white rounded-xl p-5 border border-gray-200">
-                                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Business Stats</p>
-                                                            <div className="space-y-2">
-                                                                <div className="flex justify-between"><p className="text-xs text-gray-400 font-bold">Branches</p><p className="text-sm font-bold text-text-main">{biz.branches?.length ?? 0}</p></div>
-                                                                <div className="flex justify-between"><p className="text-xs text-gray-400 font-bold">Devices</p><p className="text-sm font-bold text-text-main">{biz.devices?.length ?? 0}</p></div>
-                                                                <div className="flex justify-between"><p className="text-xs text-gray-400 font-bold">Status</p><span className={`text-xs font-black px-2 py-0.5 rounded-full ${getStatusBadge(biz.status)}`}>{biz.status}</span></div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="bg-white rounded-xl p-5 border border-gray-200">
-                                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Quick Actions</p>
-                                                            <div className="space-y-2">
-                                                                {biz.status === 'Pending' && <button onClick={() => handleAction('approve', biz)} className="w-full py-2 px-4 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-all">Approve Business</button>}
-                                                                {biz.status === 'Active' && <button onClick={() => handleAction('suspend', biz)} className="w-full py-2 px-4 bg-orange-500 text-white text-xs font-bold rounded-lg hover:bg-orange-600 transition-all">Suspend Business</button>}
-                                                                {biz.status === 'Suspended' && <button onClick={() => handleAction('reactivate', biz)} className="w-full py-2 px-4 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary-hover transition-all">Reactivate</button>}
-                                                                <button onClick={() => handleAction('delete', biz)} className="w-full py-2 px-4 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition-all">Delete Permanently</button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )}
                                     </React.Fragment>
                                 ))
                             )}

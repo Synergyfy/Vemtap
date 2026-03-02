@@ -107,7 +107,34 @@ export const adminSupportApi = {
 
 export const adminMessagingApi = {
     getAllTemplates: () => api.get('/messaging/admin/templates'),
+    createTemplate: (data: {
+        name: string;
+        channel: 'SMS' | 'WHATSAPP' | 'EMAIL';
+        content: string;
+        category: 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
+        language?: string;
+        isSystem?: boolean;
+    }) => api.post('/messaging/templates', data),
     updateTemplateStatus: (id: string, status: string) => api.post(`/messaging/admin/templates/${id}/status`, { status }),
+    deleteTemplate: (id: string) => api.post(`/messaging/templates/${id}/delete`, {}),
+};
+
+export const adminFlowApi = {
+    getAll: (params: { businessId: string; branchId?: string }) => {
+        const q = new URLSearchParams();
+        q.set('businessId', params.businessId);
+        if (params.branchId) q.set('branchId', params.branchId);
+        return api.get(`/messaging/flows?${q.toString()}`);
+    },
+    create: (data: {
+        businessId: string;
+        branchId?: string;
+        name: string;
+        triggerType: 'new_visitor' | 'manual' | 'tag_applied' | 'birthday' | 'loyalty_milestone';
+        structure: { nodes: any[]; edges: any[] };
+    }) => api.post('/messaging/flows', data),
+    updateStatus: (id: string, status: 'draft' | 'active' | 'paused') =>
+        api.post(`/messaging/flows/${id}/status`, { status }),
 };
 
 export const adminHealthApi = {

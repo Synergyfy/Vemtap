@@ -15,15 +15,24 @@ import "./globals.css";
 // });
 
 export const metadata: Metadata = {
+    metadataBase: new URL("https://vemtap.io"),
     title: {
-        default: "Visitor Engagement Management",
+        default: "VemTap | NFC Visitor Engagement and Loyalty Platform",
         template: "%s | VemTap"
     },
-    description: "Visitor Engagement Management - Tap. Seamless offline-to-online visitor data capture with our NFC-powered platform.",
-    keywords: ["VemTap", "NFC data capture", "offline to online", "lead generation", "visitor management", "digital marketing"],
+    description: "VemTap helps businesses capture visitor data with NFC taps, grow loyalty, and automate follow-up across customer journeys.",
+    keywords: ["VemTap", "NFC visitor engagement", "loyalty platform", "business analytics", "visitor management", "customer retention", "offline to online"],
     authors: [{ name: "VemTap Team" }],
     creator: "VemTap",
     publisher: "VemTap",
+    category: "technology",
+    alternates: {
+        canonical: "/",
+    },
+    robots: {
+        index: true,
+        follow: true,
+    },
     formatDetection: {
         email: false,
         address: false,
@@ -31,29 +40,29 @@ export const metadata: Metadata = {
     },
     openGraph: {
         type: "website",
-        locale: "en_GB",
-        url: "https://vemtap.io/",
+        locale: "en_US",
+        url: "/",
         siteName: "VemTap",
-        title: "VemTap - Visitor Engagement Management",
-        description: "Seamless offline-to-online visitor data capture. Visitor Engagement Management - Tap.",
+        title: "VemTap | NFC Visitor Engagement and Loyalty Platform",
+        description: "Capture, engage, and retain visitors with NFC-powered check-ins, analytics, and loyalty workflows.",
         images: [
             {
-                url: "/assets/vemtap_v.png",
-                width: 800,
-                height: 600,
-                alt: "VemTap Logo",
+                url: "/VEMTAP_TITLE.png",
+                width: 1200,
+                height: 630,
+                alt: "VemTap platform",
             },
         ],
     },
     twitter: {
         card: "summary_large_image",
-        title: "VemTap - Visitor Engagement Management",
-        description: "Seamless offline-to-online visitor data capture. Visitor Engagement Management - Tap.",
-        images: ["/assets/vemtap_v.png"],
+        title: "VemTap | NFC Visitor Engagement and Loyalty Platform",
+        description: "Capture visitor data with NFC taps and turn it into retention with loyalty and messaging.",
+        images: ["/VEMTAP_TITLE.png"],
     },
     icons: {
-        icon: "/icons/icon-192.png",
-        apple: "/icons/icon-192.png",
+        icon: "/VEMTAP_TITLE.png",
+        apple: "/VEMTAP_TITLE.png",
     },
 };
 

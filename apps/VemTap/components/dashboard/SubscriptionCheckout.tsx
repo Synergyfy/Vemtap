@@ -33,6 +33,11 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             toast.error('User email not found. Please log in again.');
             return;
         }
+        const resolvedBusinessId = businessId || user?.businessId || '';
+        if (!resolvedBusinessId) {
+            toast.error('Business ID not found. Please refresh and try again.');
+            return;
+        }
 
         setIsProcessing(true);
 
@@ -43,7 +48,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             console.warn('Paystack public key not configured. Using mock success for demo.');
             setTimeout(() => {
                 subscribeMutation.mutate({
-                    businessId: businessId || user?.businessId || '',
+                    businessId: resolvedBusinessId,
                     planId: plan.id,
                     billingPeriod,
                     paymentReference: `mock-ref-${Date.now()}`
@@ -53,16 +58,16 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                         toast.success(`Welcome to the ${plan.name} plan!`);
                         onClose();
                     },
-                    onError: () => {
-                        setIsProcessing(true);
-                        toast.error('Subscription sync failed. Please contact support.');
+                    onError: (error) => {
+                        setIsProcessing(false);
+                        toast.error(error instanceof Error ? error.message : 'Subscription sync failed. Please contact support.');
                     }
                 });
             }, 1500);
             return;
         }
 
-        const amountToCharge = isTrial ? 0 : breakdown.total;
+        const amountToCharge = isTrial ? 50 : (breakdown?.total || 0); // Charge NGN 50 for trial verification
 
         // @ts-ignore
         const handler = window.PaystackPop.setup({
@@ -78,19 +83,20 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             callback: (response: any) => {
                 // Payment successful
                 subscribeMutation.mutate({
-                    businessId: businessId || user?.businessId || '',
+                    businessId: resolvedBusinessId,
                     planId: plan.id,
                     billingPeriod,
-                    paymentReference: response.reference
+                    paymentReference: response.reference,
+                    isTrial: isTrial
                 }, {
                     onSuccess: () => {
                         setIsProcessing(false);
                         toast.success(isTrial ? `Trial started! You won't be charged for ${plan.trialDurationDays} days.` : `Welcome to the ${plan.name} plan!`);
                         onClose();
                     },
-                    onError: () => {
+                    onError: (error) => {
                         setIsProcessing(false);
-                        toast.error('Payment verified but subscription sync failed. Please contact support.');
+                        toast.error(error instanceof Error ? error.message : 'Payment verified but subscription sync failed. Please contact support.');
                     }
                 });
             }
@@ -163,8 +169,8 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                         <div className="text-right">
                             {isTrial ? (
                                 <>
-                                    <p className="text-2xl font-black text-primary tracking-tighter">₦0</p>
-                                    <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest">Due Today</p>
+                                    <p className="text-2xl font-black text-primary tracking-tighter">₦50</p>
+                                    <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest leading-tight">Verification Fee<br />(refundable)</p>
                                 </>
                             ) : breakdown ? (
                                 <>
@@ -204,6 +210,20 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                         </p>
                     </div>
                 </div>
+
+                {isTrial && (
+                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex gap-4">
+                        <div className="size-10 bg-white border border-amber-200 rounded-xl flex items-center justify-center shrink-0">
+                            <Info className="text-amber-500" size={20} />
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold text-amber-900 mb-0.5">Card Verification</p>
+                            <p className="text-[10px] font-medium text-amber-700 leading-relaxed">
+                                A small fee of <span className="font-bold">₦50</span> will be charged to verify your card and secure your trial. Your subscription will automatically start after {plan.trialDurationDays} days.
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Trust Badges */}
                 <div className="flex items-center justify-center gap-8 text-[9px] font-black text-text-secondary uppercase tracking-widest py-2 border-y border-slate-50">

@@ -8,7 +8,9 @@ const withSerwist = withSerwistInit({
 
 const nextConfig: NextConfig = {
   /* config options here */
-  turbopack: {},
+  turbopack: {
+    root: process.cwd(),
+  },
 };
 
 export default withSerwist(nextConfig);
