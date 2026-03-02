@@ -21,7 +21,8 @@ interface AdminSidebarProps {
 export default function AdminSidebar({ children, activePage }: AdminSidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
-    const { user, logout } = useAuthStore();
+    const user = useAuthStore((state) => state.user);
+    const logout = useAuthStore((state) => state.logout);
     const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
     const [showNotifications, setShowNotifications] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
