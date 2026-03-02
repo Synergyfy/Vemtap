@@ -9,6 +9,7 @@ import {
 import { AnalyticsService } from './analytics.service';
 import {
   ApiBearerAuth,
+  ApiOkResponse,
   ApiOperation,
   ApiResponse,
   ApiTags,
@@ -19,6 +20,12 @@ import { UserRole } from '../users/entities/user.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import {
+  AdminSummaryResponseDto,
+  DashboardAnalyticsResponseDto,
+  FootfallAnalyticsResponseDto,
+  PeakTimesAnalyticsResponseDto,
+} from './dto/analytics-responses.dto';
 
 @ApiTags('analytics')
 @ApiBearerAuth()
@@ -31,8 +38,14 @@ export class AnalyticsController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @Permissions('dashboard')
   @ApiOperation({ summary: 'Get primary analytics dashboard stats' })
-  @ApiResponse({ status: 200, description: 'Analytics summary' })
-  getDashboardAnalytics(@Request() req, @Query('branchId') branchId?: string) {
+  @ApiOkResponse({
+    description: 'Analytics summary',
+    type: DashboardAnalyticsResponseDto,
+  })
+  getDashboardAnalytics(
+    @Request() req,
+    @Query('branchId') branchId?: string,
+  ): Promise<DashboardAnalyticsResponseDto> {
     return this.analyticsService.getDashboardAnalytics(branchId, req.user);
   }
 
@@ -40,8 +53,14 @@ export class AnalyticsController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @Permissions('analytics')
   @ApiOperation({ summary: 'Get footfall analytics' })
-  @ApiResponse({ status: 200, description: 'Footfall stats' })
-  getFootfallAnalytics(@Request() req, @Query('branchId') branchId?: string) {
+  @ApiOkResponse({
+    description: 'Footfall stats',
+    type: FootfallAnalyticsResponseDto,
+  })
+  getFootfallAnalytics(
+    @Request() req,
+    @Query('branchId') branchId?: string,
+  ): Promise<FootfallAnalyticsResponseDto> {
     return this.analyticsService.getFootfallAnalytics(branchId, req.user);
   }
 
@@ -49,8 +68,14 @@ export class AnalyticsController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @Permissions('analytics')
   @ApiOperation({ summary: 'Get peak times analytics' })
-  @ApiResponse({ status: 200, description: 'Peak times stats' })
-  getPeakTimesAnalytics(@Request() req, @Query('branchId') branchId?: string) {
+  @ApiOkResponse({
+    description: 'Peak times stats',
+    type: PeakTimesAnalyticsResponseDto,
+  })
+  getPeakTimesAnalytics(
+    @Request() req,
+    @Query('branchId') branchId?: string,
+  ): Promise<PeakTimesAnalyticsResponseDto> {
     return this.analyticsService.getPeakTimesAnalytics(branchId, req.user);
   }
 
@@ -59,11 +84,11 @@ export class AnalyticsController {
   @Get('admin/summary')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Get comprehensive platform summary' })
-  @ApiResponse({
-    status: 200,
+  @ApiOkResponse({
     description: 'Platform stats, growth trend, and sector split',
+    type: AdminSummaryResponseDto,
   })
-  getAdminSummary() {
+  getAdminSummary(): Promise<AdminSummaryResponseDto> {
     return this.analyticsService.getAdminSummary();
   }
 }
