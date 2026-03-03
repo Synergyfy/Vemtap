@@ -36,8 +36,8 @@ export default function StepSuccess() {
             {/* Product Preview Snippet */}
             <div className="w-full bg-white rounded-2xl p-4 flex items-center gap-5 border border-gray-100 mb-12 text-left shadow-sm hover:shadow-md transition-shadow">
                 <div className="size-20 shrink-0 bg-gray-50 rounded-xl overflow-hidden shadow-inner border border-gray-100 flex items-center justify-center">
-                    {formData.images.primary ? (
-                        <img src={formData.images.primary as string} className="w-full h-full object-contain p-2" />
+                    {formData.images.primary.url ? (
+                        <img src={formData.images.primary.url} className="w-full h-full object-contain p-2" />
                     ) : (
                         <div className="w-10 h-10 bg-gray-200 rounded-full" />
                     )}
