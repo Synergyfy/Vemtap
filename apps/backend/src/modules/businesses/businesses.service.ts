@@ -294,17 +294,31 @@ export class BusinessesService {
       where: { businessId },
     });
 
-    const totalVisitors = await this.visitRepository
+    const totalVisitorsRaw = await this.visitRepository
       .createQueryBuilder('visit')
       .where('visit.businessId = :businessId', { businessId })
       .select('COUNT(DISTINCT visit.customerId)', 'count')
       .getRawOne();
 
+    const recentVisits = await this.visitRepository.find({
+      where: { businessId },
+      relations: ['customer', 'branch'],
+      order: { createdAt: 'DESC' },
+      take: 5,
+    });
+
     return {
       businessName: business.name,
-      totalVisitors: parseInt(totalVisitors?.count || '0'),
+      totalVisitors: parseInt(totalVisitorsRaw?.count || '0'),
       totalTaps,
       totalBranches,
+      recentActivity: recentVisits.map((visit) => ({
+        id: visit.id,
+        visitorName: `${visit.customer?.firstName || ''} ${visit.customer?.lastName || ''}`.trim(),
+        branchName: visit.branch?.name || 'Main Office',
+        status: visit.status,
+        timestamp: visit.createdAt,
+      })),
     };
   }
 }

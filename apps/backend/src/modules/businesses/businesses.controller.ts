@@ -207,6 +207,15 @@ export class BusinessesController {
         totalVisitors: 150,
         totalTaps: 450,
         totalBranches: 5,
+        recentActivity: [
+          {
+            id: 'v123',
+            visitorName: 'John Doe',
+            branchName: 'Lekki Branch',
+            status: 'returning',
+            timestamp: '2026-03-03T18:00:00Z',
+          },
+        ],
       },
     },
   })
