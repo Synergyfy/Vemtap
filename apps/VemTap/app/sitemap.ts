@@ -1,8 +1,8 @@
 import { MetadataRoute } from 'next'
- 
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://vemtap.io'
-  
+
   const pages = [
     '',
     '/how-it-works',
@@ -12,7 +12,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/solutions',
     '/solutions/hardware',
     '/solutions/software',
-    '/solutions/hardware/marketplace',
+    '/marketplace',
     '/testimonials',
     '/login',
     '/get-started',

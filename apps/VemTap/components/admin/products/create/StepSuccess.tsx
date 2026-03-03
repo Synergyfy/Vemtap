@@ -59,7 +59,7 @@ export default function StepSuccess() {
 
             <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
                 <Link
-                    href="/solutions/hardware/marketplace"
+                    href="/marketplace"
                     className="flex items-center justify-center gap-2 h-14 px-8 rounded-full bg-primary hover:bg-primary-hover text-white font-bold text-sm uppercase tracking-widest transition-all shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 min-w-[200px]"
                 >
                     <span>View in Marketplace</span>
