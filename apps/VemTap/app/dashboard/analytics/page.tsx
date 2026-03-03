@@ -2,11 +2,9 @@
 
 import React from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
-import {
-    BarChart3, TrendingUp, Users, Clock, Calendar,
+import { BarChart3, TrendingUp, Users, Clock, Calendar,
     ArrowUpRight, ArrowDownRight, MousePointer2,
-    MessageSquare, Star, Zap, Share2, Download
-} from 'lucide-react';
+    MessageSquare, Star, Zap, Share2, Download, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, AuthState } from '../../../store/useAuthStore';
@@ -44,7 +42,7 @@ export default function AnalyticsDashboardPage() {
     if (isLoading) {
         return (
             <div className="p-4 md:p-8 flex items-center justify-center min-h-[400px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <Loader2 className="animate-spin text-primary" size={32} />
             </div>
         );
     }
@@ -237,3 +235,4 @@ export default function AnalyticsDashboardPage() {
         </div>
     );
 }
+

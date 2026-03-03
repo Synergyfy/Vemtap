@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useQuoteStore } from '@/store/quoteStore';
-import { Smartphone, Plus, QrCode, Copy, Download, Trash2, Link as LinkIcon, X, Save, ShieldAlert, CheckCircle2, Clock, Zap, BarChart3 } from 'lucide-react';
+import { Smartphone, Plus, QrCode, Copy, Download, Trash2, Link as LinkIcon, X, Save, ShieldAlert, CheckCircle2, Clock, Zap, BarChart3, Loader2 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -148,7 +148,7 @@ export default function NFCManagerPage() {
                                 disabled={generateMutation.isPending || totalRemainingQuota <= 0}
                                 className="h-14 px-8 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3 whitespace-nowrap disabled:opacity-50"
                             >
-                                {generateMutation.isPending ? (<div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>) : <QrCode size={18} />}
+                                {generateMutation.isPending ? (<Loader2 className="animate-spin text-white" size={16} />) : <QrCode size={18} />}
                                 {generateMutation.isPending ? 'Generating...' : 'Generate All Assets'}
                             </button>
                         </div>
@@ -238,7 +238,7 @@ export default function NFCManagerPage() {
 
                 {devicesLoading ? (
                     <div className="p-20 flex justify-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <Loader2 className="animate-spin text-primary" size={32} />
                     </div>
                 ) : devices.length === 0 ? (
                     <div className="p-20 text-center space-y-4">
@@ -357,7 +357,7 @@ export default function NFCManagerPage() {
                                                             disabled={deleteMutation.isPending}
                                                             className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-rose-50 rounded-xl transition-all border border-transparent hover:border-red-100"
                                                         >
-                                                            {deleteMutation.isPending ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div> : <Trash2 size={16} />}
+                                                            {deleteMutation.isPending ? <Loader2 className="animate-spin text-red-500" size={14} /> : <Trash2 size={16} />}
                                                         </button>
                                                     </div>
                                                 </td>
@@ -504,3 +504,4 @@ export default function NFCManagerPage() {
         </div >
     );
 }
+

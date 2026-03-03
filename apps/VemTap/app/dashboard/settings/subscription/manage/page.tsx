@@ -3,26 +3,14 @@
 import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useAuthStore } from '@/store/useAuthStore';
-import {
-    Crown, CreditCard, Calendar, AlertTriangle, CheckCircle2,
-    ArrowLeft, Building, Mail, Phone, Download, Trash2
-} from 'lucide-react';
+import { Crown, AlertTriangle, ArrowLeft, Building, Mail, Loader2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { useActiveSubscription } from '@/services/subscriptions/hooks';
-import { useCapabilities } from '@/services/subscriptions/hooks';
+import { useActiveSubscription, useCapabilities } from '@/services/subscriptions/hooks';
 import { fetchPricingPlans } from '@/lib/api/pricing';
 import { PricingPlan } from '@/types/pricing';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
-
-interface Invoice {
-    id: string;
-    amount: number;
-    status: 'paid' | 'pending' | 'failed';
-    createdAt: string;
-    billingPeriod: string;
-}
 
 export default function ManagePlanPage() {
     const { user } = useAuthStore();
@@ -62,11 +50,17 @@ export default function ManagePlanPage() {
 
     const activePlan = plans.find((p: PricingPlan) => p.id === subscription?.planId);
     const isCancelled = subscription?.status === 'cancelled' || subscription?.status === 'expired';
+    const isOnTrial = subscription?.status === 'trial';
+    const periodStart = subscription?.currentPeriodStart || subscription?.startDate || null;
+    const periodEnd = subscription?.currentPeriodEnd || subscription?.trialEndDate || subscription?.endDate || null;
 
     if (subLoading) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="flex items-center justify-center min-h-[400px] text-center">
+                <div>
+                    <Loader2 className="animate-spin mx-auto text-primary" size={32} />
+                    <p className="text-text-secondary text-sm mt-3 font-bold">Loading subscription...</p>
+                </div>
             </div>
         );
     }
@@ -99,184 +93,110 @@ export default function ManagePlanPage() {
                 </div>
             )}
 
-            {/* Current Plan Card */}
-            <div className="bg-slate-900 rounded-4xl p-8 mb-8 text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 blur-[100px] rounded-full -mr-32 -mt-32" />
-
-                <div className="relative z-10">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-[10px] font-black uppercase tracking-widest">
-                            <Crown size={12} className="text-primary" />
-                            Current Plan
-                        </div>
-                        <span className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border ${isCancelled
-                                ? 'bg-red-500/20 text-red-400 border-red-500/30'
-                                : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                            }`}>
-                            {subscription?.status || 'No Subscription'}
-                        </span>
+            <div className="mb-8 rounded-[2.5rem] border border-primary/10 bg-slate-50/70 p-6 md:p-10">
+                <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest">
+                        <Crown size={12} />
+                        {isOnTrial ? 'Trial Plan' : 'Current Plan'}
                     </div>
+                    <span className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border ${isCancelled
+                        ? 'bg-red-50 text-red-700 border-red-200'
+                        : isOnTrial
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        }`}>
+                        {subscription?.status || 'No Subscription'}
+                    </span>
+                </div>
 
-                    <h2 className="text-4xl font-black tracking-tight mb-2">
-                        {activePlan?.name || 'Free Plan'}
-                    </h2>
-                    <p className="text-white/60 font-bold mb-6">
-                        {activePlan?.description || 'Your essential start for digital interaction.'}
-                    </p>
+                <h2 className="text-3xl md:text-4xl font-black tracking-tight text-text-main mb-2">
+                    {activePlan?.name || 'Free Plan'}
+                </h2>
+                <p className="text-text-secondary font-bold mb-6">
+                    {activePlan?.description || 'Your essential start for digital interaction.'}
+                </p>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-white/5 rounded-xl p-4">
-                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-1">Plan Price</p>
-                            <p className="text-xl font-black">
-                                {activePlan ? formatPrice(activePlan.monthlyPrice) : '₦0'}
-                                <span className="text-xs font-bold opacity-40">/mo</span>
-                            </p>
-                        </div>
-                        <div className="bg-white/5 rounded-xl p-4">
-                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-1">Billing Cycle</p>
-                            <p className="text-xl font-black capitalize">
-                                {subscription?.billingPeriod || 'N/A'}
-                            </p>
-                        </div>
-                        <div className="bg-white/5 rounded-xl p-4">
-                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-1">Period Start</p>
-                            <p className="text-xl font-black">
-                                {subscription?.currentPeriodStart
-                                    ? new Date(subscription.currentPeriodStart).toLocaleDateString()
-                                    : 'N/A'}
-                            </p>
-                        </div>
-                        <div className="bg-white/5 rounded-xl p-4">
-                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-1">Period End</p>
-                            <p className="text-xl font-black">
-                                {subscription?.currentPeriodEnd
-                                    ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
-                                    : 'N/A'}
-                            </p>
-                        </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Plan Price</p>
+                        <p className="mt-2 text-lg font-black text-text-main">
+                            {activePlan ? formatPrice(activePlan.monthlyPrice) : formatPrice(0)}
+                            <span className="text-xs font-bold text-slate-500"> /mo</span>
+                        </p>
+                    </div>
+                    <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Billing Cycle</p>
+                        <p className="mt-2 text-lg font-black text-text-main capitalize">
+                            {subscription?.billingPeriod || 'N/A'}
+                        </p>
+                    </div>
+                    <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Period Start</p>
+                        <p className="mt-2 text-lg font-black text-text-main">
+                            {periodStart ? new Date(periodStart).toLocaleDateString() : 'N/A'}
+                        </p>
+                    </div>
+                    <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Period End</p>
+                        <p className="mt-2 text-lg font-black text-text-main">
+                            {periodEnd ? new Date(periodEnd).toLocaleDateString() : 'N/A'}
+                        </p>
                     </div>
                 </div>
             </div>
 
-            {/* Usage Stats */}
             {capabilities && (
-                <div className="bg-white rounded-3xl border border-gray-100 p-6 mb-8">
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 mb-8">
                     <h3 className="text-lg font-black text-slate-900 mb-6">Current Usage</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {/* Tags */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-bold text-slate-600">Tags</span>
-                                <span className="text-sm font-black text-slate-900">
-                                    {(capabilities.capabilities?.tags?.used ?? 0).toLocaleString()} / {(capabilities.capabilities?.tags?.limit ?? 0).toLocaleString()}
-                                </span>
+                        {[
+                            { label: 'Tags', used: capabilities.capabilities?.tags?.used ?? 0, limit: capabilities.capabilities?.tags?.limit ?? 0 },
+                            { label: 'Team Members', used: capabilities.capabilities?.teamMembers?.used ?? 0, limit: capabilities.capabilities?.teamMembers?.limit ?? 0 },
+                            { label: 'Branches', used: capabilities.capabilities?.branches?.used ?? 0, limit: capabilities.capabilities?.branches?.limit ?? 0 },
+                            { label: 'Loyalty Programs', used: capabilities.capabilities?.loyaltyPrograms?.used ?? 0, limit: capabilities.capabilities?.loyaltyPrograms?.limit ?? 0 },
+                        ].map((item) => (
+                            <div key={item.label}>
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-bold text-slate-600">{item.label}</span>
+                                    <span className="text-sm font-black text-slate-900">
+                                        {item.used.toLocaleString()} / {item.limit.toLocaleString()}
+                                    </span>
+                                </div>
+                                <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-primary rounded-full transition-all"
+                                        style={{ width: `${item.limit ? Math.min(100, (item.used / item.limit) * 100) : 0}%` }}
+                                    />
+                                </div>
                             </div>
-                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-primary rounded-full transition-all"
-                                    style={{ width: `${capabilities.capabilities?.tags?.limit ? Math.min(100, ((capabilities.capabilities.tags.used ?? 0) / capabilities.capabilities.tags.limit) * 100) : 0}%` }}
-                                />
-                            </div>
-                        </div>
+                        ))}
 
-                        {/* Team Members */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-bold text-slate-600">Team Members</span>
-                                <span className="text-sm font-black text-slate-900">
-                                    {(capabilities.capabilities?.teamMembers?.used ?? 0).toLocaleString()} / {(capabilities.capabilities?.teamMembers?.limit ?? 0).toLocaleString()}
-                                </span>
+                        {[
+                            { label: 'SMS Credits', value: capabilities.capabilities?.credits?.sms ?? 0 },
+                            { label: 'Email Credits', value: capabilities.capabilities?.credits?.email ?? 0 },
+                            { label: 'WhatsApp Credits', value: capabilities.capabilities?.credits?.whatsapp ?? 0 },
+                        ].map((credit) => (
+                            <div key={credit.label}>
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-bold text-slate-600">{credit.label}</span>
+                                    <span className="text-sm font-black text-slate-900">{credit.value.toLocaleString()}</span>
+                                </div>
+                                <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
+                                    <div className="h-full bg-primary rounded-full transition-all" style={{ width: '100%' }} />
+                                </div>
                             </div>
-                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-violet-500 rounded-full transition-all"
-                                    style={{ width: `${capabilities.capabilities?.teamMembers?.limit ? Math.min(100, ((capabilities.capabilities.teamMembers.used ?? 0) / capabilities.capabilities.teamMembers.limit) * 100) : 0}%` }}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Branches */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-bold text-slate-600">Branches</span>
-                                <span className="text-sm font-black text-slate-900">
-                                    {(capabilities.capabilities?.branches?.used ?? 0).toLocaleString()} / {(capabilities.capabilities?.branches?.limit ?? 0).toLocaleString()}
-                                </span>
-                            </div>
-                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-amber-500 rounded-full transition-all"
-                                    style={{ width: `${capabilities.capabilities?.branches?.limit ? Math.min(100, ((capabilities.capabilities.branches.used ?? 0) / capabilities.capabilities.branches.limit) * 100) : 0}%` }}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Loyalty Programs */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-bold text-slate-600">Loyalty Programs</span>
-                                <span className="text-sm font-black text-slate-900">
-                                    {(capabilities.capabilities?.loyaltyPrograms?.used ?? 0).toLocaleString()} / {(capabilities.capabilities?.loyaltyPrograms?.limit ?? 0).toLocaleString()}
-                                </span>
-                            </div>
-                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-rose-500 rounded-full transition-all"
-                                    style={{ width: `${capabilities.capabilities?.loyaltyPrograms?.limit ? Math.min(100, ((capabilities.capabilities.loyaltyPrograms.used ?? 0) / capabilities.capabilities.loyaltyPrograms.limit) * 100) : 0}%` }}
-                                />
-                            </div>
-                        </div>
-
-                        {/* SMS Credits */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-bold text-slate-600">SMS Credits</span>
-                                <span className="text-sm font-black text-slate-900">
-                                    {(capabilities.capabilities?.credits?.sms ?? 0).toLocaleString()}
-                                </span>
-                            </div>
-                            <div className="h-2 bg-emerald-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: '100%' }} />
-                            </div>
-                        </div>
-
-                        {/* Email Credits */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-bold text-slate-600">Email Credits</span>
-                                <span className="text-sm font-black text-slate-900">
-                                    {(capabilities.capabilities?.credits?.email ?? 0).toLocaleString()}
-                                </span>
-                            </div>
-                            <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: '100%' }} />
-                            </div>
-                        </div>
-
-                        {/* WhatsApp Credits */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-bold text-slate-600">WhatsApp Credits</span>
-                                <span className="text-sm font-black text-slate-900">
-                                    {(capabilities.capabilities?.credits?.whatsapp ?? 0).toLocaleString()}
-                                </span>
-                            </div>
-                            <div className="h-2 bg-green-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: '100%' }} />
-                            </div>
-                        </div>
+                        ))}
                     </div>
                 </div>
             )}
 
-            {/* Business Info */}
             {business && (
-                <div className="bg-white rounded-3xl border border-gray-100 p-6 mb-8">
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 mb-8">
                     <h3 className="text-lg font-black text-slate-900 mb-6">Business Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center">
-                                <Building size={20} className="text-slate-400" />
+                            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                                <Building size={20} className="text-primary" />
                             </div>
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Business</p>
@@ -284,8 +204,8 @@ export default function ManagePlanPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center">
-                                <Mail size={20} className="text-slate-400" />
+                            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                                <Mail size={20} className="text-primary" />
                             </div>
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Email</p>
@@ -296,33 +216,39 @@ export default function ManagePlanPage() {
                 </div>
             )}
 
-            {/* Change Plan CTA */}
-            <div className="bg-primary/5 rounded-3xl border border-primary/10 p-6 mb-8">
-                <div className="flex items-center justify-between">
+            <div className="bg-primary/5 rounded-3xl border border-primary/20 p-6 mb-8">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
                         <h3 className="text-lg font-black text-slate-900 mb-1">Want to change your plan?</h3>
                         <p className="text-sm font-medium text-slate-600">Upgrade or downgrade your subscription at any time.</p>
                     </div>
-                    <Link
-                        href="/dashboard/settings/subscription"
-                        className="px-6 h-12 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary-hover transition-all flex items-center gap-2 whitespace-nowrap"
-                    >
-                        View All Plans
-                    </Link>
+                    <div className="flex gap-3">
+                        <Link
+                            href="/dashboard/settings/subscription/details"
+                            className="px-6 h-12 bg-white text-primary border border-primary/30 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary/5 transition-all flex items-center gap-2 whitespace-nowrap"
+                        >
+                            See More Details
+                        </Link>
+                        <Link
+                            href="/dashboard/settings/subscription"
+                            className="px-6 h-12 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary-hover transition-all flex items-center gap-2 whitespace-nowrap"
+                        >
+                            Upgrade Plan
+                        </Link>
+                    </div>
                 </div>
             </div>
 
-            {/* Cancel Subscription */}
             {isOwner && subscription && !subscription.planId.includes('free') && !isCancelled && (
                 <div className="bg-red-50 rounded-3xl border border-red-100 p-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
                                 <AlertTriangle size={20} className="text-red-600" />
                             </div>
                             <div>
                                 <h3 className="text-lg font-black text-red-900 mb-1">Cancel Subscription</h3>
-                                <p className="text-sm font-medium text-red-700">Your plan will remain active until the end of the billing period.</p>
+                                <p className="text-sm font-medium text-red-700">Your plan remains active until the end of the billing period.</p>
                             </div>
                         </div>
                         <button
@@ -335,7 +261,6 @@ export default function ManagePlanPage() {
                 </div>
             )}
 
-            {/* Cancel Confirmation Modal */}
             {showCancelConfirm && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-3xl p-8 max-w-md w-full">
@@ -345,7 +270,7 @@ export default function ManagePlanPage() {
                             </div>
                             <h3 className="text-xl font-black text-slate-900 mb-2">Cancel Subscription?</h3>
                             <p className="text-sm font-medium text-slate-600 mb-6">
-                                Your subscription will be cancelled and you'll lose access to premium features at the end of your current billing period ({subscription?.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).toLocaleDateString() : 'N/A'}).
+                                Your subscription will be cancelled and premium access ends on {periodEnd ? new Date(periodEnd).toLocaleDateString() : 'N/A'}.
                             </p>
                             <div className="flex gap-3">
                                 <button

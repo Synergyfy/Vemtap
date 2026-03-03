@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBusinessStore } from '@/store/useBusinessStore';
 import toast from 'react-hot-toast';
-import { UserPlus, Shield, Edit3, Trash2, Eye, MessageSquare, BarChart3, Users as UsersIcon, Settings as SettingsIcon, Building2 } from 'lucide-react';
+import { UserPlus, Shield, Edit3, Trash2, Eye, MessageSquare, BarChart3, Users as UsersIcon, Settings as SettingsIcon, Building2, Loader2 } from 'lucide-react';
 import { useBranches } from '@/services/branches/hooks';
 import Modal from '@/components/ui/Modal';
 
@@ -206,7 +206,7 @@ export default function StaffManagementPage() {
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                     {isLoading ? (
                         <div className="p-20 flex justify-center">
-                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+                            <Loader2 className="animate-spin text-primary" size={40} />
                         </div>
                     ) : (
                         <DataTable columns={columns} data={staffMembers || []} />
@@ -322,7 +322,7 @@ export default function StaffManagementPage() {
                     <div className="flex gap-3 pt-4">
                         <button type="button" onClick={() => setIsInviteModalOpen(false)} className="flex-1 h-14 border border-gray-100 text-text-main font-bold rounded-2xl hover:bg-gray-50 transition-all text-base active:scale-95">Cancel</button>
                         <button disabled={inviteMutation.isPending} className="flex-2 h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 text-base">
-                            {inviteMutation.isPending ? (<div className="size-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>) : (<><UserPlus size={20} />Send Invitation</>)}
+                            {inviteMutation.isPending ? (<Loader2 size={20} className="animate-spin text-white" />) : (<><UserPlus size={20} />Send Invitation</>)}
                         </button>
                     </div>
                 </form>
@@ -433,3 +433,4 @@ export default function StaffManagementPage() {
         </>
     );
 }
+

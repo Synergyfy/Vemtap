@@ -4,7 +4,7 @@ import React from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '@/services/notifications/hooks';
 import { Notification } from '@/services/notifications/types';
-import { Bell, CheckCircle2, Info, AlertTriangle, Clock, Trash2 } from 'lucide-react';
+import { Bell, CheckCircle2, Info, AlertTriangle, Clock, Trash2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function NotificationsPage() {
@@ -56,7 +56,7 @@ export default function NotificationsPage() {
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                 {isLoading ? (
                     <div className="p-20 flex flex-col items-center justify-center gap-4">
-                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+                        <Loader2 className="animate-spin text-primary" size={40} />
                         <p className="text-sm text-text-secondary font-medium">Loading notifications...</p>
                     </div>
                 ) : notificationList.length === 0 ? (
@@ -114,3 +114,4 @@ export default function NotificationsPage() {
         </div>
     );
 }
+

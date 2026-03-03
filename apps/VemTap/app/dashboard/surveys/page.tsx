@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { toast } from 'react-hot-toast';
-import { Plus, Trash2, GripVertical, CheckCircle2, Layout, Settings, Eye, Save, Type, Star, List, BarChart3 } from 'lucide-react';
+import { Plus, Trash2, GripVertical, CheckCircle2, Layout, Settings, Eye, Save, Type, Star, List, BarChart3, Loader2 } from 'lucide-react';
 import { motion, Reorder, AnimatePresence } from 'framer-motion';
 import { useSurvey, useCreateOrUpdateSurvey } from '@/services/surveys/hooks';
 import { SurveyTriggerType, TargetAudience } from '@/services/surveys/types';
@@ -70,7 +70,7 @@ export default function SurveyBuilderPage() {
     if (isLoading) {
         return (
             <div className="p-8 flex items-center justify-center min-h-[60vh]">
-                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                <Loader2 className="animate-spin text-primary" size={40} />
             </div>
         );
     }
@@ -237,7 +237,7 @@ export default function SurveyBuilderPage() {
                             disabled={isSaving}
                             className="h-12 px-8 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-50 disabled:hover:scale-100"
                         >
-                            {isSaving ? <span className="material-icons-round animate-spin text-sm">refresh</span> : <Save size={16} />}
+                            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                             {isSaving ? 'Saving...' : 'Save Survey'}
                         </button>
                     </div>
@@ -306,3 +306,4 @@ export default function SurveyBuilderPage() {
         </div>
     );
 }
+
