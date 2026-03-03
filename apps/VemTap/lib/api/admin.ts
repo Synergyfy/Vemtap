@@ -16,7 +16,9 @@ export const adminUsersApi = {
     getStats: () => api.get('/users/admin/stats'),
     create: (data: any) => api.post('/users/admin', data),
     update: (id: string, data: any) => api.patch(`/users/admin/${id}`, data),
-    disable: (id: string) => api.delete(`/users/admin/${id}`),
+    delete: (id: string) => api.delete(`/users/admin/${id}`),
+    suspend: (id: string) => api.patch(`/users/admin/${id}/suspend`, {}),
+    activate: (id: string) => api.patch(`/users/admin/${id}/activate`, {}),
     resetPassword: (email: string) => api.post(`/users/admin/reset-password-link/${email}`, {}),
 };
 
@@ -90,6 +92,8 @@ export const adminProductsApi = {
 export const adminSubscriptionsApi = {
     getAll: () => api.get('/subscriptions/admin'),
     getStats: () => api.get('/subscriptions/admin/stats'),
+    subscribe: (data: { planId: string; businessId: string; billingPeriod: 'monthly' | 'yearly'; paymentReference?: string; isTrial?: boolean }) =>
+        api.post('/subscriptions/subscribe', data),
 };
 
 // =====================
@@ -150,4 +154,57 @@ export const adminFlowApi = {
 
 export const adminHealthApi = {
     getSystemHealth: () => api.get('/admin/system/health'),
+};
+
+// =====================
+// FLOW ENGINE (Admin)
+// =====================
+export const adminFlowEngineApi = {
+    getAnalytics: (params?: {
+        businessId?: string;
+        branchId?: string;
+        from?: string;
+        to?: string;
+        limit?: number;
+    }) => {
+        const q = new URLSearchParams();
+        if (params?.businessId) q.set('businessId', params.businessId);
+        if (params?.branchId) q.set('branchId', params.branchId);
+        if (params?.from) q.set('from', params.from);
+        if (params?.to) q.set('to', params.to);
+        if (params?.limit !== undefined) q.set('limit', String(params.limit));
+        return api.get(`/admin/flow-engine/analytics?${q.toString()}`);
+    },
+    getTemplates: () => api.get('/admin/flow-engine/templates'),
+    getTriggers: () => api.get('/admin/flow-engine/triggers'),
+    getSessions: (params?: { businessId?: string; branchId?: string; from?: string; to?: string; limit?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.businessId) q.set('businessId', params.businessId);
+        if (params?.branchId) q.set('branchId', params.branchId);
+        if (params?.from) q.set('from', params.from);
+        if (params?.to) q.set('to', params.to);
+        if (params?.limit !== undefined) q.set('limit', String(params.limit));
+        return api.get(`/admin/flow-engine/sessions?${q.toString()}`);
+    },
+    getLogs: (params?: { businessId?: string; branchId?: string; from?: string; to?: string; limit?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.businessId) q.set('businessId', params.businessId);
+        if (params?.branchId) q.set('branchId', params.branchId);
+        if (params?.from) q.set('from', params.from);
+        if (params?.to) q.set('to', params.to);
+        if (params?.limit !== undefined) q.set('limit', String(params.limit));
+        return api.get(`/admin/flow-engine/logs?${q.toString()}`);
+    },
+    getSettings: () => api.get('/admin/flow-engine/settings'),
+    updateSettings: (data: any) => api.put('/admin/flow-engine/settings', data),
+    updateTrigger: (key: string, data: any) => api.put(`/admin/flow-engine/triggers/${key}`, data),
+    createTemplate: (data: {
+        name: string;
+        description?: string;
+        triggerType: string;
+        version?: string;
+        status?: string;
+        structure: { nodes: any[]; edges: any[] };
+    }) => api.post('/admin/flow-engine/templates', data),
+    deleteTemplate: (id: string) => api.delete(`/admin/flow-engine/templates/${id}`),
 };
