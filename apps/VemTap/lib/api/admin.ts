@@ -39,6 +39,7 @@ export const adminBusinessesApi = {
     suspend: (id: string, reason?: string) => api.patch(`/businesses/admin/${id}/suspend`, { reason }),
     reactivate: (id: string) => api.patch(`/businesses/admin/${id}/reactivate`, {}),
     update: (id: string, data: any) => api.patch(`/businesses/${id}`, data),
+    getStats: (id: string) => api.get(`/businesses/admin/${id}/stats`),
 };
 
 // =====================

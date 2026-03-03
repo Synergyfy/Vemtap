@@ -312,7 +312,7 @@ export default function HardwareSolutionPage() {
                 {/* FINAL CALL TO ACTION */}
                 <section className="py-24 px-4 bg-white">
                     <div className="max-w-7xl mx-auto container">
-                        <Link href="/solutions/hardware/marketplace" className="block relative rounded-[3rem] overflow-hidden shadow-2xl group transition-transform duration-500 hover:scale-[1.02]">
+                        <Link href="/marketplace" className="block relative rounded-[3rem] overflow-hidden shadow-2xl group transition-transform duration-500 hover:scale-[1.02]">
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-white/10 transition-colors z-10 pointer-events-none"></div>
                             <img
                                 src="/assets/nfc_cta_banner.png"
