@@ -32,10 +32,10 @@ interface ProductFormData {
 
   // Step 2
   images: {
-    primary: File | string | null;
-    side: File | string | null;
-    detail: File | string | null;
-    packaging: File | string | null;
+    primary: { file: File | null, url: string | null };
+    side: { file: File | null, url: string | null };
+    detail: { file: File | null, url: string | null };
+    packaging: { file: File | null, url: string | null };
   };
   video: {
     file: File | null;
@@ -78,7 +78,12 @@ const initialFormData: ProductFormData = {
   sku: '',
   description: '',
   productTypeId: '',
-  images: { primary: null, side: null, detail: null, packaging: null },
+  images: {
+    primary: { file: null, url: null },
+    side: { file: null, url: null },
+    detail: { file: null, url: null },
+    packaging: { file: null, url: null }
+  },
   video: { file: null, url: '', autoplay: false },
   specs: [
     { id: '1', label: 'Frequency', value: '13.56 MHz' },
@@ -124,10 +129,10 @@ export const useProductFormStore = create<ProductFormState>((set) => ({
       productTypeId: product.productTypeId || '',
       msrp: Number(product.price) || 450,
       images: {
-        primary: product.image || null,
-        side: null,
-        detail: null,
-        packaging: null
+        primary: { file: null, url: product.image || null },
+        side: { file: null, url: null },
+        detail: { file: null, url: null },
+        packaging: { file: null, url: null }
       }
     }
   }),

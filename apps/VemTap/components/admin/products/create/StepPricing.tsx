@@ -7,6 +7,7 @@ import { TbCurrencyNaira } from "react-icons/tb";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminProductsApi } from '@/lib/api/admin';
 import { notify } from '@/lib/notify';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 export default function StepPricing() {
     const { formData, updateFormData, nextStep, prevStep, editingProductId, setSubmissionResult } = useProductFormStore();
@@ -14,18 +15,42 @@ export default function StepPricing() {
 
     const mutation = useMutation({
         mutationFn: async () => {
-            // Map frontend form data to backend DTO
-            const imagesArray = [
-                formData.images.primary,
-                formData.images.side,
-                formData.images.detail,
-                formData.images.packaging
-            ].filter((img): img is string => typeof img === 'string' && img.startsWith('http'));
+            // 1. Handle Image Uploads
+            const imageKeys: (keyof typeof formData.images)[] = ['primary', 'side', 'detail', 'packaging'];
+            const uploadPromises = imageKeys.map(async (key) => {
+                const img = formData.images[key];
+                if (img.file instanceof File) {
+                    try {
+                        return await uploadToCloudinary(img.file);
+                    } catch (error) {
+                        console.error(`Failed to upload ${key} image:`, error);
+                        return null;
+                    }
+                }
+                return img.url;
+            });
+
+            const uploadedImages = await Promise.all(uploadPromises);
+            const imagesArray = uploadedImages.filter((img): img is string => typeof img === 'string' && img.startsWith('http'));
+
+            // 2. Handle Video Upload
+            let videoUrl = formData.video.url;
+            if (formData.video.file instanceof File) {
+                try {
+                    videoUrl = await uploadToCloudinary(formData.video.file);
+                } catch (error) {
+                    console.error('Failed to upload video:', error);
+                    videoUrl = ''; // Avoid sending blob URL
+                }
+            } else if (videoUrl.startsWith('blob:')) {
+                videoUrl = ''; // Clean up stale blob URLs
+            }
 
             if (imagesArray.length === 0) {
                 imagesArray.push('https://placehold.co/600x400/png?text=Hardware+Product');
             }
 
+            // 3. Construct Payload
             const payload = {
                 name: formData.title,
                 description: formData.description,
@@ -48,9 +73,9 @@ export default function StepPricing() {
                     }
                     return acc;
                 }, {} as Record<string, string>),
-                videos: formData.video.url ? [formData.video.url] : [],
-                rating: 5, // Default rating as it's not currently in the form
-                requestQuoteThreshold: formData.bulkQuotesEnabled ? 100 : null // Default threshold if enabled
+                videos: videoUrl ? [videoUrl] : [],
+                rating: 5, // Default rating
+                requestQuoteThreshold: formData.bulkQuotesEnabled ? 100 : null
             };
 
             if (editingProductId) {
@@ -274,72 +299,72 @@ export default function StepPricing() {
                                 {formData.volumeDiscounts.map((tier) => {
                                     const isOpenEndedTier = tier.maxQty === null;
                                     return (
-                                    <tr key={tier.id} className="bg-white hover:bg-gray-50 transition-colors group">
-                                        <td className="px-6 py-4 font-bold text-text-main">
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="number"
-                                                    value={tier.minQty}
-                                                    onChange={(e) => handleDiscountChange(tier.id, 'minQty', e.target.value)}
-                                                    className="w-16 px-2 py-1 text-xs border border-gray-200 rounded font-bold text-center focus:ring-1 focus:ring-primary focus:border-primary"
-                                                />
-                                                <span className="text-gray-400">-</span>
-                                                {!isOpenEndedTier ? (
-                                                    <>
-                                                        <input
-                                                            type="number"
-                                                            value={Number.isFinite(tier.maxQty as number) ? (tier.maxQty as number) : ''}
-                                                            onChange={(e) => handleDiscountChange(tier.id, 'maxQty', e.target.value)}
-                                                            className="w-16 px-2 py-1 text-xs border border-gray-200 rounded font-bold text-center focus:ring-1 focus:ring-primary focus:border-primary"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setTierOpenEnded(tier.id)}
-                                                            className="px-2 py-1 text-[10px] font-black rounded bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
-                                                            title="Set open-ended (+)"
-                                                        >
-                                                            +
-                                                        </button>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <span className="text-xl px-2 text-gray-400">+</span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setTierFiniteMax(tier.id)}
-                                                            className="px-2 py-1 text-[10px] font-black rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                                                            title="Set numeric max"
-                                                        >
-                                                            Set Max
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2 bg-gray-50 px-2 py-1 rounded w-fit">
-                                                <input
-                                                    type="number"
-                                                    value={tier.discountPercent}
-                                                    onChange={(e) => handleDiscountChange(tier.id, 'discountPercent', e.target.value)}
-                                                    className="w-10 bg-transparent text-xs font-bold text-right outline-none"
-                                                />
-                                                <span className="text-gray-400 font-bold text-xs">%</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 font-bold text-primary inline-flex items-center gap-2">
-                                            <TbCurrencyNaira /> {calculatePrice(tier.discountPercent)}
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <button
-                                                onClick={() => removeDiscountTier(tier.id)}
-                                                className="text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                );
+                                        <tr key={tier.id} className="bg-white hover:bg-gray-50 transition-colors group">
+                                            <td className="px-6 py-4 font-bold text-text-main">
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        value={tier.minQty}
+                                                        onChange={(e) => handleDiscountChange(tier.id, 'minQty', e.target.value)}
+                                                        className="w-16 px-2 py-1 text-xs border border-gray-200 rounded font-bold text-center focus:ring-1 focus:ring-primary focus:border-primary"
+                                                    />
+                                                    <span className="text-gray-400">-</span>
+                                                    {!isOpenEndedTier ? (
+                                                        <>
+                                                            <input
+                                                                type="number"
+                                                                value={Number.isFinite(tier.maxQty as number) ? (tier.maxQty as number) : ''}
+                                                                onChange={(e) => handleDiscountChange(tier.id, 'maxQty', e.target.value)}
+                                                                className="w-16 px-2 py-1 text-xs border border-gray-200 rounded font-bold text-center focus:ring-1 focus:ring-primary focus:border-primary"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setTierOpenEnded(tier.id)}
+                                                                className="px-2 py-1 text-[10px] font-black rounded bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+                                                                title="Set open-ended (+)"
+                                                            >
+                                                                +
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span className="text-xl px-2 text-gray-400">+</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setTierFiniteMax(tier.id)}
+                                                                className="px-2 py-1 text-[10px] font-black rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                                                                title="Set numeric max"
+                                                            >
+                                                                Set Max
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2 bg-gray-50 px-2 py-1 rounded w-fit">
+                                                    <input
+                                                        type="number"
+                                                        value={tier.discountPercent}
+                                                        onChange={(e) => handleDiscountChange(tier.id, 'discountPercent', e.target.value)}
+                                                        className="w-10 bg-transparent text-xs font-bold text-right outline-none"
+                                                    />
+                                                    <span className="text-gray-400 font-bold text-xs">%</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 font-bold text-primary inline-flex items-center gap-2">
+                                                <TbCurrencyNaira /> {calculatePrice(tier.discountPercent)}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <button
+                                                    onClick={() => removeDiscountTier(tier.id)}
+                                                    className="text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
                                 })}
                             </tbody>
                         </table>
@@ -365,8 +390,8 @@ export default function StepPricing() {
                                 <span className={`${formData.tagColor} text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm`}>{formData.tag}</span>
                                 <span className="bg-white/90 backdrop-blur text-[9px] font-black uppercase tracking-widest px-2 py-0.5 border border-gray-100 shadow-sm text-text-main">{formData.category}</span>
                             </div>
-                            {formData.images.primary ? (
-                                <img src={formData.images.primary as string} className="w-40 h-40 object-contain drop-shadow-xl group-hover:scale-110 transition-transform duration-500" />
+                            {formData.images.primary.url ? (
+                                <img src={formData.images.primary.url} className="w-40 h-40 object-contain drop-shadow-xl group-hover:scale-110 transition-transform duration-500" />
                             ) : (
                                 <div className="w-32 h-32 bg-gray-200 rounded-full flex items-center justify-center text-gray-400 font-bold text-xs uppercase">No Image</div>
                             )}

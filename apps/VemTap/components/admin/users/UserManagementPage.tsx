@@ -4,8 +4,9 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
 import { adminUsersApi } from '@/lib/api/admin';
-import { Search, UserPlus, Edit2, Lock, Ban, Loader2, RefreshCw } from 'lucide-react';
-const PAGE_SIZE = 10;
+import { Search, UserPlus, Edit2, Lock, Ban, Loader2, RefreshCw, CheckCircle, Trash2 } from 'lucide-react';
+const DEFAULT_PAGE_SIZE = 10;
+
 
 interface AdminUser {
     id: string;
@@ -44,6 +45,8 @@ export default function UserManagementPage({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [serverStats, setServerStats] = useState<any>(null);
     const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+
 
     const normalizeRole = (role?: string) => (role || '').toLowerCase().replace(/\s+/g, '_');
 
@@ -103,22 +106,24 @@ export default function UserManagementPage({
         setCurrentPage(1);
     }, [searchQuery, filterRole, filterStatus, roleFilter]);
 
-    const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
-    const paginatedUsers = users.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+    const totalPages = Math.max(1, Math.ceil(users.length / pageSize));
+    const paginatedUsers = users.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
 
     const scopedStats = [
         { label: `${title}`, value: users.length, icon: 'people', color: 'blue' },
-        { label: 'Active', value: users.filter(u => (u.status || '').toLowerCase() === 'active').length, icon: 'check_circle', color: 'green' },
-        { label: 'Pending Users', value: users.filter(u => (u.status || '').toLowerCase() === 'pending').length, icon: 'hourglass_empty', color: 'orange' },
-        { label: 'Suspended', value: users.filter(u => (u.status || '').toLowerCase() === 'suspended').length, icon: 'block', color: 'red' },
+        { label: 'Active', value: users.filter(u => normalizeRole(u.status) === 'active').length, icon: 'check_circle', color: 'green' },
+        { label: 'Invited', value: users.filter(u => normalizeRole(u.status) === 'invited').length, icon: 'mail', color: 'yellow' },
+        { label: 'Suspended', value: users.filter(u => normalizeRole(u.status) === 'suspended').length, icon: 'block', color: 'red' },
     ];
 
     const defaultStats = [
         { label: 'Total Users', value: serverStats?.total ?? users.length, icon: 'people', color: 'blue' },
-        { label: 'Owners', value: serverStats?.owners ?? users.filter(u => u.role === 'Owner').length, icon: 'store', color: 'purple' },
-        { label: 'Customers', value: serverStats?.customers ?? users.filter(u => u.role === 'Customer').length, icon: 'person', color: 'green' },
-        { label: 'Staff', value: serverStats?.staff ?? users.filter(u => u.role === 'Staff' || u.role === 'Manager').length, icon: 'badge', color: 'orange' },
+        { label: 'Owners', value: serverStats?.owners ?? users.filter(u => normalizeRole(u.role).includes('owner')).length, icon: 'store', color: 'purple' },
+        { label: 'Customers', value: serverStats?.customers ?? users.filter(u => normalizeRole(u.role) === 'customer').length, icon: 'person', color: 'green' },
+        { label: 'Staff', value: serverStats?.staff ?? users.filter(u => normalizeRole(u.role) === 'staff' || normalizeRole(u.role) === 'manager').length, icon: 'badge', color: 'orange' },
     ];
+
 
     const stats = scopedRoles ? scopedStats : defaultStats;
 
@@ -154,14 +159,36 @@ export default function UserManagementPage({
         }
     };
 
-    const handleDisable = async (user: AdminUser) => {
-        if (!window.confirm(`Disable account for ${user.firstName} ${user.lastName}?`)) return;
+    const handleSuspend = async (user: AdminUser) => {
+        if (!window.confirm(`Suspend account for ${user.firstName} ${user.lastName}?`)) return;
         try {
-            await adminUsersApi.disable(user.id);
-            notify.success('Account disabled');
+            await adminUsersApi.suspend(user.id);
+            notify.success('Account suspended');
             fetchUsers();
         } catch (err: any) {
-            notify.error(err.message || 'Failed to disable user');
+            notify.error(err.message || 'Failed to suspend user');
+        }
+    };
+
+    const handleActivate = async (user: AdminUser) => {
+        if (!window.confirm(`Activate account for ${user.firstName} ${user.lastName}?`)) return;
+        try {
+            await adminUsersApi.activate(user.id);
+            notify.success('Account activated');
+            fetchUsers();
+        } catch (err: any) {
+            notify.error(err.message || 'Failed to activate user');
+        }
+    };
+
+    const handleDelete = async (user: AdminUser) => {
+        if (!window.confirm(`Permanently delete account for ${user.firstName} ${user.lastName}? This action cannot be undone.`)) return;
+        try {
+            await adminUsersApi.delete(user.id);
+            notify.success('Account deleted permanently');
+            fetchUsers();
+        } catch (err: any) {
+            notify.error(err.message || 'Failed to delete user');
         }
     };
 
@@ -175,15 +202,15 @@ export default function UserManagementPage({
     };
 
     const getRoleBadge = (role: string) => {
-        const map: Record<string, string> = {
-            Admin: 'bg-red-50 text-red-600',
-            Owner: 'bg-purple-50 text-purple-600',
-            Manager: 'bg-blue-50 text-blue-600',
-            Staff: 'bg-orange-50 text-orange-600',
-            Customer: 'bg-green-50 text-green-600',
-        };
-        return map[role] || 'bg-gray-100 text-gray-500';
+        const r = normalizeRole(role);
+        if (r === 'admin') return 'bg-red-50 text-red-600';
+        if (r === 'owner' || r === 'business_owner') return 'bg-purple-50 text-purple-600';
+        if (r === 'manager') return 'bg-blue-50 text-blue-600';
+        if (r === 'staff') return 'bg-orange-50 text-orange-600';
+        if (r === 'customer') return 'bg-green-50 text-green-600';
+        return 'bg-gray-100 text-gray-500';
     };
+
 
     const getStatusBadge = (status: string) => {
         const s = status?.toLowerCase();
@@ -334,6 +361,7 @@ export default function UserManagementPage({
                                             <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${getRoleBadge(user.role)}`}>
                                                 {user.role}
                                             </span>
+
                                         </td>
                                         <td className="py-4 px-6">
                                             <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${getStatusBadge(user.status)}`}>
@@ -354,8 +382,17 @@ export default function UserManagementPage({
                                                 <button onClick={() => handleResetPassword(user.email)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Reset Password">
                                                     <Lock size={16} />
                                                 </button>
-                                                <button onClick={() => handleDisable(user)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Disable">
-                                                    <Ban size={16} />
+                                                {(user.status?.toLowerCase() === 'active' || user.status?.toLowerCase() === 'pending' || user.status?.toLowerCase() === 'invited') ? (
+                                                    <button onClick={() => handleSuspend(user)} className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all" title="Suspend">
+                                                        <Ban size={16} />
+                                                    </button>
+                                                ) : user.status?.toLowerCase() === 'suspended' ? (
+                                                    <button onClick={() => handleActivate(user)} className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all" title="Activate">
+                                                        <CheckCircle size={16} />
+                                                    </button>
+                                                ) : null}
+                                                <button onClick={() => handleDelete(user)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Permanently Delete">
+                                                    <Trash2 size={16} />
                                                 </button>
                                             </div>
                                         </td>
@@ -377,6 +414,29 @@ export default function UserManagementPage({
                         >
                             Prev
                         </button>
+                        {users.length > DEFAULT_PAGE_SIZE && pageSize === DEFAULT_PAGE_SIZE && (
+                            <button
+                                onClick={() => {
+                                    setPageSize(users.length);
+                                    setCurrentPage(1);
+                                }}
+                                className="h-8 px-3 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors"
+                            >
+                                Show All ({users.length})
+                            </button>
+                        )}
+                        {pageSize > DEFAULT_PAGE_SIZE && (
+                            <button
+                                onClick={() => {
+                                    setPageSize(DEFAULT_PAGE_SIZE);
+                                    setCurrentPage(1);
+                                }}
+                                className="h-8 px-3 rounded-lg bg-gray-100 text-text-secondary text-xs font-bold hover:bg-gray-200 transition-colors"
+                            >
+                                Show Less
+                            </button>
+                        )}
+
                         <span className="text-xs font-bold text-text-secondary">
                             Page {currentPage} of {totalPages}
                         </span>

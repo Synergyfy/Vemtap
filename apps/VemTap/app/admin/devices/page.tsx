@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminDevicesApi } from '@/lib/api/admin';
+import { adminDevicesApi, adminBusinessesApi } from '@/lib/api/admin';
 import { notify } from '@/lib/notify';
 import { Plus, Search, Filter, Download, MoreVertical, Trash2, Cpu, Battery, Activity, Link as LinkIcon, Edit3, Copy } from 'lucide-react';
 import EditDeviceModal from '@/components/dashboard/EditDeviceModal';
@@ -37,6 +37,8 @@ export default function AdminDevicesPage() {
     const [editingDevice, setEditingDevice] = useState<any>(null);
     const [origin, setOrigin] = useState('https://vemtap.com');
     const [currentPage, setCurrentPage] = useState(1);
+    const [businessesList, setBusinessesList] = useState<any[]>([]);
+    const [isBusinessesLoading, setIsBusinessesLoading] = useState(false);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -47,6 +49,34 @@ export default function AdminDevicesPage() {
     useEffect(() => {
         setCurrentPage(1);
     }, [searchQuery, filterStatus]);
+
+    useEffect(() => {
+        const fetchAllBusinesses = async () => {
+            setIsBusinessesLoading(true);
+            try {
+                // Fetch first 100 businesses for the dropdown
+                const data = await adminBusinessesApi.getAll({ limit: 100, status: 'active' });
+                const roots = [data, data?.data, data?.data?.data, data?.result, data?.payload];
+                let items = [];
+                for (const root of roots) {
+                    if (Array.isArray(root)) { items = root; break; }
+                    if (!root) continue;
+                    const listKeys = ['businesses', 'items', 'rows', 'results', 'list', 'data'];
+                    const key = listKeys.find(k => Array.isArray(root[k]));
+                    if (key) { items = root[key]; break; }
+                }
+                setBusinessesList(items);
+            } catch (err: any) {
+                console.error('Failed to fetch businesses for dropdown', err);
+            } finally {
+                setIsBusinessesLoading(false);
+            }
+        };
+
+        if (isRegisterModalOpen) {
+            fetchAllBusinesses();
+        }
+    }, [isRegisterModalOpen]);
 
     // Fetch Devices from live API
     const { data: devicesData, isLoading: isDevicesLoading } = useQuery({
@@ -428,16 +458,22 @@ export default function AdminDevicesPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary ml-1">Assign to Business ID</label>
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary ml-1">Assign to Business</label>
                                     <div className="relative">
                                         <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                        <input
+                                        <select
                                             name="businessId"
-                                            placeholder="Paste Business ID (UUID)"
-                                            className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 focus:bg-white transition-all font-bold text-sm"
-                                        />
+                                            className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 focus:bg-white transition-all font-bold text-sm appearance-none"
+                                        >
+                                            <option value="">Global Inventory (Unassigned)</option>
+                                            {businessesList.map((biz: any) => (
+                                                <option key={biz.id} value={biz.id}>
+                                                    {biz.name}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
-                                    <p className="text-[10px] text-text-secondary font-medium ml-1">Leave blank to keep in global inventory</p>
+                                    <p className="text-[10px] text-text-secondary font-medium ml-1">Select a business to link this device immediately</p>
                                 </div>
 
                                 <button

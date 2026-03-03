@@ -14,7 +14,7 @@ import {
 import { UsersService } from './users.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Permissions } from '../../common/decorators/permissions.decorator';
-import { UserRole } from './entities/user.entity';
+import { UserRole, UserStatus } from './entities/user.entity';
 import { BusinessesService } from '../businesses/businesses.service';
 import { BranchesService } from '../branches/branches.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -44,7 +44,7 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly businessesService: BusinessesService,
     private readonly branchesService: BranchesService,
-  ) {}
+  ) { }
 
   @Get('me')
   @SkipSubscriptionCheck()
@@ -232,6 +232,7 @@ export class UsersController {
       businessId,
       branchId: targetBranchId,
       password: hashedPassword,
+      status: UserStatus.INVITED,
     });
   }
 

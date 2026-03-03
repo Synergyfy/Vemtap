@@ -42,4 +42,26 @@ export class Setting extends AbstractBaseEntity {
   @ApiProperty({ example: 0.01, description: 'Cost per Email message' })
   @Column('decimal', { precision: 10, scale: 2, default: 0.01 })
   messagingCostEmail: number;
+
+  @ApiProperty({ example: 'token_123', description: 'WhatsApp API Token' })
+  @Column({ nullable: true })
+  whatsappApiToken: string;
+
+  @ApiProperty({
+    example: 'verify_token',
+    description: 'WhatsApp Webhook Verify Token',
+  })
+  @Column({ nullable: true })
+  whatsappWebhookVerifyToken: string;
+
+  @ApiProperty({ example: '1234567890', description: 'WhatsApp Business ID' })
+  @Column({ nullable: true })
+  whatsappBusinessId: string;
+
+  @ApiProperty({
+    example: 'https://api.whatsapp.com/v15.0/',
+    description: 'WhatsApp API Base URL',
+  })
+  @Column({ default: 'https://graph.facebook.com/v17.0/' })
+  whatsappApiBaseUrl: string;
 }

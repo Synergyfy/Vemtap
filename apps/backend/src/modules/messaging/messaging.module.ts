@@ -13,6 +13,9 @@ import { Message } from './entities/message.entity';
 import { MessageLog } from './entities/message-log.entity';
 import { Flow } from './entities/flow.entity';
 import { FlowExecution } from './entities/flow-execution.entity';
+import { FlowTemplate } from './entities/flow-template.entity';
+import { FlowTriggerConfig } from './entities/flow-trigger-config.entity';
+import { FlowLog } from './entities/flow-log.entity';
 import { AutomationRule } from './entities/automation-rule.entity';
 import { AutomationLog } from './entities/automation-log.entity';
 import { CreditPlan } from './entities/credit-plan.entity';
@@ -32,10 +35,12 @@ import { CampaignService } from './services/campaign.service';
 import { InboxService } from './services/inbox.service';
 import { AnalyticsService } from './services/analytics.service';
 import { FlowEngineService } from './services/flow-engine.service';
+import { AdminFlowEngineService } from './services/admin-flow-engine.service';
 import { AutomationService } from './services/automation.service';
 
 import { MessagingController } from './controllers/messaging.controller';
 import { FlowController } from './controllers/flow.controller';
+import { AdminFlowEngineController } from './controllers/admin-flow-engine.controller';
 import { TermiiWebhookController } from './controllers/termii.controller';
 import { AutomationsController } from './controllers/automations.controller';
 import { CreditPlanController } from './controllers/credit-plan.controller';
@@ -57,6 +62,9 @@ import { AutomationProcessor } from './processors/automation.processor';
       MessageLog,
       Flow,
       FlowExecution,
+      FlowTemplate,
+      FlowTriggerConfig,
+      FlowLog,
       Business,
       Branch,
       AutomationRule,
@@ -112,6 +120,7 @@ import { AutomationProcessor } from './processors/automation.processor';
     InboxService,
     AnalyticsService,
     FlowEngineService,
+    AdminFlowEngineService,
     AutomationService,
     TermiiProvider,
     ProviderRouterService,
@@ -123,6 +132,7 @@ import { AutomationProcessor } from './processors/automation.processor';
   controllers: [
     MessagingController,
     FlowController,
+    AdminFlowEngineController,
     TermiiWebhookController,
     AutomationsController,
     CreditPlanController,
@@ -137,6 +147,7 @@ import { AutomationProcessor } from './processors/automation.processor';
     InboxService,
     AnalyticsService,
     FlowEngineService,
+    AdminFlowEngineService,
     AutomationService,
     TermiiProvider,
     ProviderRouterService,

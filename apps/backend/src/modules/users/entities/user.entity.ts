@@ -70,11 +70,11 @@ export class User extends AbstractBaseEntity {
   @Column({ type: 'simple-array', nullable: true })
   permissions: string[];
 
-  @ApiProperty({ enum: UserStatus, example: UserStatus.ACTIVE })
+  @ApiProperty({ enum: UserStatus, example: UserStatus.PENDING })
   @Column({
     type: 'simple-enum',
     enum: UserStatus,
-    default: UserStatus.INVITED,
+    default: UserStatus.PENDING,
   })
   status: UserStatus;
 
