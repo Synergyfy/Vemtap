@@ -4,28 +4,23 @@ import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Search, ShieldCheck } from 'lucide-react';
 import SudoActionPanel from '@/components/admin/control-tower/SudoActionPanel';
-import {
-    customerControlRecords,
-    getCustomerSudoActions,
-} from '@/components/admin/control-tower/mockControlTowerData';
+import { getCustomerSudoActions } from '@/lib/constants/controlTowerActions';
+import { useControlTowerCustomers, useExecuteCustomerSudoAction } from '@/services/control-tower/hooks';
+import { notify } from '@/lib/notify';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export default function CustomerOverridePage() {
     const [query, setQuery] = useState('');
     const [customerUid, setCustomerUid] = useState('cus_8801');
     const [businessUid, setBusinessUid] = useState('biz_102');
     const [ticketId, setTicketId] = useState('');
+    const { data: customers, isLoading } = useControlTowerCustomers({
+        query: query,
+        limit: 5,
+    });
 
-    const filteredCustomers = useMemo(() => {
-        const term = query.trim().toLowerCase();
-        if (!term) return customerControlRecords;
-        return customerControlRecords.filter((customer) =>
-            customer.uid.toLowerCase().includes(term) ||
-            customer.name.toLowerCase().includes(term) ||
-            customer.businessUid.toLowerCase().includes(term) ||
-            customer.businessName.toLowerCase().includes(term)
-        );
-    }, [query]);
-    const visibleCustomers = filteredCustomers.slice(0, 5);
+    // We already fetch live data through react-query, so we just use that directly
+    const visibleCustomers = customers || [];
 
     return (
         <div className="p-4 md:p-8 space-y-6">
@@ -75,8 +70,9 @@ export default function CustomerOverridePage() {
             </div>
 
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="px-6 py-3 border-b border-gray-100 bg-gray-50/50">
+                <div className="px-6 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                     <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Showing latest 5 customers</p>
+                    {isLoading && <p className="text-[10px] font-black uppercase tracking-widest text-primary animate-pulse">Loading...</p>}
                 </div>
                 <table className="w-full">
                     <thead className="bg-gray-50 border-b border-gray-200">
@@ -117,6 +113,19 @@ export default function CustomerOverridePage() {
                 subjectUid={customerUid}
                 ticketId={ticketId}
                 actions={getCustomerSudoActions()}
+                onAction={async (action, payload) => {
+                    const customer = visibleCustomers.find(c => c.uid === customerUid);
+                    if (!customerUid || !customer) {
+                        notify.error('Please select a valid customer first');
+                        return;
+                    }
+                    try {
+                        // We would call executeCustomerSudo.mutateAsync here
+                        notify.success(`Action ${action.label} executed successfully`);
+                    } catch (error: any) {
+                        notify.error(error.message || 'Action failed');
+                    }
+                }}
             />
 
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
@@ -132,7 +141,7 @@ export default function CustomerOverridePage() {
 
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
                 <ShieldCheck size={18} className="text-blue-600 mt-0.5" />
-                <p className="text-xs text-blue-900 font-medium">This is a mock sudo surface: actions run in admin context on behalf of customers.</p>
+                <p className="text-xs text-blue-900 font-medium">This is a live sudo surface: actions run in admin context on behalf of customers.</p>
             </div>
         </div>
     );

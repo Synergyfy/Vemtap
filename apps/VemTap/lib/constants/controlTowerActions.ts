@@ -1,20 +1,3 @@
-export type BusinessControlRecord = {
-    uid: string;
-    name: string;
-    owner: string;
-    status: 'Active' | 'Pending' | 'Suspended';
-    users: number;
-};
-
-export type CustomerControlRecord = {
-    uid: string;
-    name: string;
-    businessUid: string;
-    businessName: string;
-    tier: 'Bronze' | 'Silver' | 'Gold' | 'VIP';
-    visits: number;
-};
-
 export type TaskLink = {
     label: string;
     href: string;
@@ -26,20 +9,6 @@ export type SudoAction = {
     label: string;
     description: string;
 };
-
-export const businessControlRecords: BusinessControlRecord[] = [
-    { uid: 'biz_102', name: 'Skyline Bistro', owner: 'Amara Cole', status: 'Active', users: 42 },
-    { uid: 'biz_245', name: 'Northline Fitness', owner: 'David Ross', status: 'Active', users: 17 },
-    { uid: 'biz_307', name: 'Kora Events', owner: 'Ifeoma Obi', status: 'Suspended', users: 8 },
-    { uid: 'biz_412', name: 'Tapi Retail', owner: 'Ken Hsu', status: 'Pending', users: 26 },
-];
-
-export const customerControlRecords: CustomerControlRecord[] = [
-    { uid: 'cus_8801', name: 'Liam Foster', businessUid: 'biz_102', businessName: 'Skyline Bistro', tier: 'Silver', visits: 9 },
-    { uid: 'cus_8802', name: 'Nora Kim', businessUid: 'biz_412', businessName: 'Tapi Retail', tier: 'Bronze', visits: 1 },
-    { uid: 'cus_8803', name: 'Jamal Wade', businessUid: 'biz_245', businessName: 'Northline Fitness', tier: 'Gold', visits: 5 },
-    { uid: 'cus_8804', name: 'Maya Stone', businessUid: 'biz_307', businessName: 'Kora Events', tier: 'VIP', visits: 15 },
-];
 
 export function getBusinessTaskLinks(businessUid: string): TaskLink[] {
     const q = `?admin_mode=1&business_uid=${encodeURIComponent(businessUid)}`;
