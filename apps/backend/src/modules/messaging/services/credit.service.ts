@@ -3,9 +3,16 @@ import { Repository, DataSource, Between } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Business } from '../../businesses/entities/business.entity';
 import { Channel } from '../enums/channel.enum';
-import { Message, MessageDirection, MessageStatus } from '../entities/message.entity';
+import {
+  Message,
+  MessageDirection,
+  MessageStatus,
+} from '../entities/message.entity';
 import { BusinessCredit } from '../entities/business-credit.entity';
-import { Subscription, SubscriptionStatus } from '../../subscriptions/entities/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../../subscriptions/entities/subscription.entity';
 
 function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -27,7 +34,7 @@ export class CreditService {
     @InjectRepository(Subscription)
     private readonly subscriptionRepo: Repository<Subscription>,
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   public async getBalance(businessId: string): Promise<number> {
     const business = await this.businessRepository.findOne({
@@ -121,7 +128,8 @@ export class CreditService {
         let balance = 0;
         if (channel === Channel.SMS) balance = credits.smsBalance;
         else if (channel === Channel.EMAIL) balance = credits.emailBalance;
-        else if (channel === Channel.WHATSAPP) balance = credits.whatsappBalance;
+        else if (channel === Channel.WHATSAPP)
+          balance = credits.whatsappBalance;
 
         if (balance < topupNeeded) {
           throw new BadRequestException(

@@ -1,4 +1,11 @@
-import { Entity, Column, ManyToOne, JoinColumn, Index, OneToMany } from 'typeorm';
+import {
+  Entity,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  Index,
+  OneToMany,
+} from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { User } from '../../users/entities/user.entity';
@@ -73,10 +80,12 @@ export class LoyaltyProfile extends AbstractBaseEntity {
   @Column({ type: 'timestamp', nullable: true })
   lastRewardedAt: Date;
 
-  @OneToMany(() => PointTransaction, (transaction) => transaction.loyaltyProfile)
+  @OneToMany(
+    () => PointTransaction,
+    (transaction) => transaction.loyaltyProfile,
+  )
   transactions: PointTransaction[];
 
   @OneToMany(() => Redemption, (redemption) => redemption.loyaltyProfile)
   redemptions: Redemption[];
 }
-

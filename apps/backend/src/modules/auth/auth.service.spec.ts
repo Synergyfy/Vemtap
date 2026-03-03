@@ -244,19 +244,33 @@ describe('AuthService', () => {
 
   describe('validateUser', () => {
     it('should return user if credentials are valid (email)', async () => {
-      const user = { id: '1', email: 'test@example.com', password: 'hashed_password' };
+      const user = {
+        id: '1',
+        email: 'test@example.com',
+        password: 'hashed_password',
+      };
       usersService.findByIdentifier = jest.fn().mockResolvedValue(user);
-      (require('bcrypt').compare as jest.Mock) = jest.fn().mockResolvedValue(true);
+      (require('bcrypt').compare as jest.Mock) = jest
+        .fn()
+        .mockResolvedValue(true);
 
       const result = await service.validateUser('test@example.com', 'password');
       expect(result).toEqual({ id: '1', email: 'test@example.com' });
-      expect(usersService.findByIdentifier).toHaveBeenCalledWith('test@example.com');
+      expect(usersService.findByIdentifier).toHaveBeenCalledWith(
+        'test@example.com',
+      );
     });
 
     it('should return user if credentials are valid (phone)', async () => {
-      const user = { id: '1', phone: '1234567890', password: 'hashed_password' };
+      const user = {
+        id: '1',
+        phone: '1234567890',
+        password: 'hashed_password',
+      };
       usersService.findByIdentifier = jest.fn().mockResolvedValue(user);
-      (require('bcrypt').compare as jest.Mock) = jest.fn().mockResolvedValue(true);
+      (require('bcrypt').compare as jest.Mock) = jest
+        .fn()
+        .mockResolvedValue(true);
 
       const result = await service.validateUser('1234567890', 'password');
       expect(result).toEqual({ id: '1', phone: '1234567890' });
@@ -270,9 +284,15 @@ describe('AuthService', () => {
     });
 
     it('should return null if password incorrect', async () => {
-      const user = { id: '1', email: 'test@example.com', password: 'hashed_password' };
+      const user = {
+        id: '1',
+        email: 'test@example.com',
+        password: 'hashed_password',
+      };
       usersService.findByIdentifier = jest.fn().mockResolvedValue(user);
-      (require('bcrypt').compare as jest.Mock) = jest.fn().mockResolvedValue(false);
+      (require('bcrypt').compare as jest.Mock) = jest
+        .fn()
+        .mockResolvedValue(false);
 
       const result = await service.validateUser('test@example.com', 'wrong');
       expect(result).toBeNull();
@@ -281,7 +301,11 @@ describe('AuthService', () => {
 
   describe('login', () => {
     it('should return access token and user', async () => {
-      const user = { id: '1', email: 'test@example.com', role: UserRole.CUSTOMER };
+      const user = {
+        id: '1',
+        email: 'test@example.com',
+        role: UserRole.CUSTOMER,
+      };
       const result = await service.login(user);
       expect(result).toEqual({
         access_token: 'mock_token',

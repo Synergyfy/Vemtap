@@ -30,7 +30,10 @@ export class CreateAutomationRuleDto {
   @IsEnum(TriggerType)
   triggerType: TriggerType;
 
-  @ApiPropertyOptional({ example: 3600, description: 'Delay in seconds before execution' })
+  @ApiPropertyOptional({
+    example: 3600,
+    description: 'Delay in seconds before execution',
+  })
   @IsOptional()
   @IsNumber()
   delaySeconds?: number;
@@ -41,7 +44,7 @@ export class CreateAutomationRuleDto {
 
   @ApiPropertyOptional({
     example: { content: 'Hi {{visitor_name}}!', loyaltyPoints: 10 },
-    description: 'Configuration for the action'
+    description: 'Configuration for the action',
   })
   @IsOptional()
   @IsObject()
@@ -100,7 +103,9 @@ export class UpdateAutomationToggleDto {
 }
 
 export class UpdateAutomationConfigDto {
-  @ApiPropertyOptional({ example: 'Hi {{visitor_name}}, thanks for visiting {{business_name}}!' })
+  @ApiPropertyOptional({
+    example: 'Hi {{visitor_name}}, thanks for visiting {{business_name}}!',
+  })
   @IsOptional()
   @IsString()
   content?: string;
@@ -145,4 +150,3 @@ export class AutomationPerformanceResponseDto {
   @ApiProperty({ example: 3 })
   activeAutomationsCount: number;
 }
-

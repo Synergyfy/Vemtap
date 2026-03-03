@@ -63,7 +63,8 @@ export class SubscriptionsController {
   @ApiOperation({
     summary:
       'View capability details and limits used for the current subscription',
-    description: 'Only accessible by business staff. Uses businessId from token.',
+    description:
+      'Only accessible by business staff. Uses businessId from token.',
   })
   @ApiOkResponse({
     description: 'Return capability limits and used counts',

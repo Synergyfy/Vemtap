@@ -36,14 +36,18 @@ describe('VisitorsService', () => {
     createQueryBuilder: jest.fn(() => mockQueryBuilder),
     findOne: jest.fn(),
     findOneBy: jest.fn(),
-    create: jest.fn().mockImplementation(d => d),
-    save: jest.fn().mockImplementation(d => Promise.resolve({ id: '1', ...d })),
+    create: jest.fn().mockImplementation((d) => d),
+    save: jest
+      .fn()
+      .mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
     softDelete: jest.fn(),
   };
 
   const mockVisitRepo = {
-    create: jest.fn().mockImplementation(d => d),
-    save: jest.fn().mockImplementation(d => Promise.resolve({ id: '1', ...d })),
+    create: jest.fn().mockImplementation((d) => d),
+    save: jest
+      .fn()
+      .mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
     count: jest.fn().mockResolvedValue(0),
   };
 
@@ -51,8 +55,10 @@ describe('VisitorsService', () => {
   const mockBranchRepo = { findOne: jest.fn() };
   const mockContactRepo = {
     findOne: jest.fn(),
-    create: jest.fn().mockImplementation(d => d),
-    save: jest.fn().mockImplementation(d => Promise.resolve({ id: '1', ...d })),
+    create: jest.fn().mockImplementation((d) => d),
+    save: jest
+      .fn()
+      .mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
   };
 
   beforeEach(async () => {
@@ -106,7 +112,10 @@ describe('VisitorsService', () => {
         },
       ];
 
-      mockQueryBuilder.getManyAndCount.mockResolvedValueOnce([[{ id: '1' }], 1]);
+      mockQueryBuilder.getManyAndCount.mockResolvedValueOnce([
+        [{ id: '1' }],
+        1,
+      ]);
       mockQueryBuilder.getMany.mockResolvedValueOnce(mockUsers);
 
       const result = await service.findAll({ page: 1, limit: 10 }, 'biz-1');
@@ -120,7 +129,12 @@ describe('VisitorsService', () => {
 
   describe('create', () => {
     it('should create a new visitor (user + visit) if user does not exist', async () => {
-      const dto = { firstName: 'New', lastName: 'Guy', email: 'new@example.com', phone: '123' };
+      const dto = {
+        firstName: 'New',
+        lastName: 'Guy',
+        email: 'new@example.com',
+        phone: '123',
+      };
       const businessId = 'biz-1';
 
       mockUserRepo.findOne.mockResolvedValueOnce(null); // First check: user not found
@@ -135,7 +149,12 @@ describe('VisitorsService', () => {
       mockUserRepo.create.mockReturnValueOnce(savedUser);
       mockUserRepo.save.mockResolvedValueOnce(savedUser);
 
-      const savedVisit = { id: 'v1', customer: savedUser, businessId, createdAt: new Date() };
+      const savedVisit = {
+        id: 'v1',
+        customer: savedUser,
+        businessId,
+        createdAt: new Date(),
+      };
       mockVisitRepo.create.mockReturnValueOnce(savedVisit);
       mockVisitRepo.save.mockResolvedValueOnce(savedVisit);
 

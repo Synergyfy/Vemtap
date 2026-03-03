@@ -5,7 +5,7 @@ import { ROLES_KEY } from '../decorators/roles.decorator';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(private reflector: Reflector) { }
+  constructor(private reflector: Reflector) {}
 
   private normalizeRole(role?: string): string {
     return String(role || '')
@@ -24,6 +24,8 @@ export class RolesGuard implements CanActivate {
     }
     const { user } = context.switchToHttp().getRequest();
     const userRole = this.normalizeRole(user?.role);
-    return requiredRoles.some((role) => this.normalizeRole(String(role)) === userRole);
+    return requiredRoles.some(
+      (role) => this.normalizeRole(String(role)) === userRole,
+    );
   }
 }

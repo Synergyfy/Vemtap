@@ -12,4 +12,4 @@ import { MailModule } from '../mail/mail.module';
   controllers: [BusinessesController],
   exports: [BusinessesService],
 })
-export class BusinessesModule { }
+export class BusinessesModule {}

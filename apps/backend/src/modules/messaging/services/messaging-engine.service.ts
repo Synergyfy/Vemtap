@@ -60,7 +60,7 @@ export class MessagingEngineService {
     private readonly settingsService: SettingsService,
     private readonly providerRouter: ProviderRouterService,
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   public async sendMessage(
     dto: SendMessageDto,
@@ -96,7 +96,6 @@ export class MessagingEngineService {
     if (dto.templateId) {
       template = await this.templateService.getTemplate(dto.templateId);
     }
-
 
     const contacts = await this.resolveAudience(dto);
     if (!contacts.length) {

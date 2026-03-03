@@ -1,5 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsEnum, IsUUID, ValidateIf } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsUUID,
+  ValidateIf,
+} from 'class-validator';
 import { DeviceStatus } from '../entities/device.entity';
 
 export class UpdateDeviceDto {

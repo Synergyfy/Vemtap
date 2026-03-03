@@ -5,7 +5,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { LoyaltyProfile, TierLevel } from '../campaigns/entities/loyalty-profile.entity';
+import {
+  LoyaltyProfile,
+  TierLevel,
+} from '../campaigns/entities/loyalty-profile.entity';
 import { Reward } from '../campaigns/entities/reward.entity';
 import { Redemption } from '../campaigns/entities/redemption.entity';
 import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
@@ -33,7 +36,7 @@ export class LoyaltyService {
     private readonly devicesService: DevicesService,
     private readonly campaignsService: CampaignsService,
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   // --- Profile Management ---
 
@@ -245,10 +248,7 @@ export class LoyaltyService {
     };
   }
 
-  async processTap(
-    userId: string,
-    deviceCode: string,
-  ): Promise<any> {
+  async processTap(userId: string, deviceCode: string): Promise<any> {
     // 1. Find device with relations
     const device = await this.dataSource.getRepository(Device).findOne({
       where: { code: deviceCode },
@@ -272,7 +272,9 @@ export class LoyaltyService {
     let profile = await this.getProfile(userId, device.businessId);
 
     if (device.branchId) {
-      const activeRule = await this.campaignsService.findActiveRule(device.branchId);
+      const activeRule = await this.campaignsService.findActiveRule(
+        device.branchId,
+      );
       if (activeRule) {
         await this.campaignsService.earnPoints(device.branchId, {
           userId,
@@ -283,7 +285,9 @@ export class LoyaltyService {
     }
 
     // 5. Explicitly record in the Visitors/Visits table
-    const user = await this.dataSource.getRepository(User).findOneBy({ id: userId });
+    const user = await this.dataSource
+      .getRepository(User)
+      .findOneBy({ id: userId });
 
     if (user) {
       const visitRepo = this.dataSource.getRepository(Visit);

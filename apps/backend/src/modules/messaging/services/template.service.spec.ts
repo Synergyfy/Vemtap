@@ -52,7 +52,7 @@ describe('TemplateService', () => {
         category: 'marketing',
       };
       const user = { id: 'u1', businessId: 'b1', role: 'Owner' } as any;
-      
+
       const template = await service.createTemplate(dto as any, user);
       expect(repoMock.create).toHaveBeenCalled();
       expect(repoMock.save).toHaveBeenCalled();

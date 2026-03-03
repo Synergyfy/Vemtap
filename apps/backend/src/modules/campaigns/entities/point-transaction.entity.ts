@@ -39,8 +39,9 @@ export class PointTransaction extends AbstractBaseEntity {
   @Column({ type: 'timestamp', nullable: true })
   expiresAt: Date;
 
-  @ManyToOne(() => LoyaltyProfile, (profile) => profile.transactions, { onDelete: 'CASCADE' })
+  @ManyToOne(() => LoyaltyProfile, (profile) => profile.transactions, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'loyaltyProfileId' })
   loyaltyProfile: LoyaltyProfile;
 }
-

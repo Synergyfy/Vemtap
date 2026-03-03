@@ -47,7 +47,7 @@ export class CampaignsService {
     private contactRepo: Repository<Contact>,
     private branchesService: BranchesService,
     private automationService: AutomationService,
-  ) { }
+  ) {}
 
   async create(
     createCampaignDto: CreateCampaignDto,

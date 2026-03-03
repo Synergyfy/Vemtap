@@ -1,7 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BusinessesService } from './businesses.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Business, BusinessStatus, BusinessType } from './entities/business.entity';
+import {
+  Business,
+  BusinessStatus,
+  BusinessType,
+} from './entities/business.entity';
 import { User } from '../users/entities/user.entity';
 import { MailService } from '../mail/mail.service';
 import { NotFoundException } from '@nestjs/common';
@@ -19,7 +23,9 @@ describe('BusinessesService', () => {
 
   const mockRepository = {
     findOneBy: jest.fn().mockResolvedValue(mockBusiness),
-    create: jest.fn().mockImplementation((dto) => ({ ...dto, save: jest.fn() })),
+    create: jest
+      .fn()
+      .mockImplementation((dto) => ({ ...dto, save: jest.fn() })),
     save: jest.fn().mockImplementation((biz) => Promise.resolve(biz)),
     findOne: jest.fn(),
     createQueryBuilder: jest.fn(() => ({
@@ -97,7 +103,9 @@ describe('BusinessesService', () => {
 
     it('should throw NotFoundException if business not found', async () => {
       repository.findOneBy.mockResolvedValue(null);
-      await expect(service.update('invalid-id', {})).rejects.toThrow(NotFoundException);
+      await expect(service.update('invalid-id', {})).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

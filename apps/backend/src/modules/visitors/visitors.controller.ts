@@ -50,7 +50,7 @@ export class VisitorsController {
     private readonly visitorsService: VisitorsService,
     private readonly campaignsService: CampaignsService,
     private readonly messagingService: MessagingEngineService,
-  ) { }
+  ) {}
 
   private getBusinessId(req: any): string {
     const businessId = req.user?.businessId;
@@ -253,10 +253,7 @@ export class VisitorsController {
   @Roles(UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Record a visit via device tap (Customer Only)' })
   async recordVisit(@Body() dto: DeviceTapDto, @Req() req: any) {
-    return this.visitorsService.recordVisit(
-      req.user.id,
-      dto.deviceCode,
-    );
+    return this.visitorsService.recordVisit(req.user.id, dto.deviceCode);
   }
 
   @Get(':id')

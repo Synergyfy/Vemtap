@@ -89,17 +89,23 @@ export class BusinessesService {
         });
 
         await this.usersRepository.save(newUser);
-        
+
         // Send Welcome Email asynchronously
-        this.mailService.sendWelcomeEmail(
-          email,
-          `${customerData.firstName} ${customerData.lastName}`,
-          defaultPassword
-        ).catch(err => console.error(`Failed to send welcome email to ${email}:`, err));
+        this.mailService
+          .sendWelcomeEmail(
+            email,
+            `${customerData.firstName} ${customerData.lastName}`,
+            defaultPassword,
+          )
+          .catch((err) =>
+            console.error(`Failed to send welcome email to ${email}:`, err),
+          );
 
         results.imported++;
       } catch (error) {
-        results.errors.push(`Error importing ${customerData.email}: ${error.message}`);
+        results.errors.push(
+          `Error importing ${customerData.email}: ${error.message}`,
+        );
       }
     }
 
@@ -120,7 +126,9 @@ export class BusinessesService {
       .leftJoinAndSelect('business.devices', 'devices');
 
     if (query.status) {
-      const normalizedStatus = String(query.status).toLowerCase() as BusinessStatus;
+      const normalizedStatus = String(
+        query.status,
+      ).toLowerCase() as BusinessStatus;
       qb.andWhere('business.status = :status', { status: normalizedStatus });
     }
 

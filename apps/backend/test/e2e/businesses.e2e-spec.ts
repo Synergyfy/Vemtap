@@ -26,12 +26,12 @@ describe('Businesses (E2E)', () => {
     const userRepo = dataSource.getRepository(User);
 
     const business = businessRepo.create({
-        name: 'E2E Test Business',
-        ownerId: user.id,
+      name: 'E2E Test Business',
+      ownerId: user.id,
     });
     const savedBusiness = await businessRepo.save(business);
     businessId = savedBusiness.id;
-    
+
     // Update user with businessId
     user.businessId = businessId;
     await userRepo.save(user);
@@ -73,18 +73,18 @@ describe('Businesses (E2E)', () => {
     });
 
     it('should fail with invalid business hours format', async () => {
-        const invalidDto = {
-          businessHours: {
-            monday: { open: 123, close: 'invalid' }, // Should be strings
-          },
-        };
-  
-        await request(server)
-          .patch('/api/v1/businesses/my-business')
-          .set('Authorization', `Bearer ${ownerToken}`)
-          .send(invalidDto)
-          .expect(400);
-      });
+      const invalidDto = {
+        businessHours: {
+          monday: { open: 123, close: 'invalid' }, // Should be strings
+        },
+      };
+
+      await request(server)
+        .patch('/api/v1/businesses/my-business')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send(invalidDto)
+        .expect(400);
+    });
   });
 
   describe('GET /api/v1/businesses/my-business', () => {

@@ -4,7 +4,8 @@ import { join } from 'path';
 import * as dotenv from 'dotenv';
 
 // Support both .env and .env.local
-const envFile = process.env.NODE_ENV === 'test' ? '../../.env.test' : '../../.env';
+const envFile =
+  process.env.NODE_ENV === 'test' ? '../../.env.test' : '../../.env';
 dotenv.config({ path: join(__dirname, envFile) });
 
 export const dataSourceOptions: DataSourceOptions = {

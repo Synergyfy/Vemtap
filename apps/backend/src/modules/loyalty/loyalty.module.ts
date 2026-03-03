@@ -24,4 +24,4 @@ import { CampaignsModule } from '../campaigns/campaigns.module';
   providers: [LoyaltyService],
   exports: [LoyaltyService],
 })
-export class LoyaltyModule { }
+export class LoyaltyModule {}

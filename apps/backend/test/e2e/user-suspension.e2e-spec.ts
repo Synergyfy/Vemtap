@@ -2,7 +2,10 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
 import { createAuthenticatedUser } from '../utils/auth';
-import { UserRole, UserStatus } from '../../src/modules/users/entities/user.entity';
+import {
+  UserRole,
+  UserStatus,
+} from '../../src/modules/users/entities/user.entity';
 import { DataSource } from 'typeorm';
 
 describe('User Suspension (E2E)', () => {
@@ -55,7 +58,9 @@ describe('User Suspension (E2E)', () => {
       .set('Authorization', `Bearer ${customerToken}`)
       .expect(403)
       .expect((res) => {
-        expect(res.body.message).toBe('Your account has been suspended. Please contact support.');
+        expect(res.body.message).toBe(
+          'Your account has been suspended. Please contact support.',
+        );
       });
   });
 

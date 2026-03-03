@@ -149,7 +149,9 @@ describe('AutomationService', () => {
       } as any as AutomationRule;
 
       jest.spyOn(ruleRepo, 'findOne').mockResolvedValue(rule);
-      jest.spyOn(ruleRepo, 'save').mockImplementation(async (r) => r as AutomationRule);
+      jest
+        .spyOn(ruleRepo, 'save')
+        .mockImplementation(async (r) => r as AutomationRule);
 
       const result = await service.configureAutomation('1', {
         content: 'Hello {{visitor_name}}',
@@ -182,11 +184,14 @@ describe('AutomationService', () => {
       } as any as AutomationRule;
 
       jest.spyOn(ruleRepo, 'findOne').mockResolvedValue(rule);
-      jest.spyOn(ruleRepo, 'save').mockImplementation(async (r) => r as AutomationRule);
+      jest
+        .spyOn(ruleRepo, 'save')
+        .mockImplementation(async (r) => r as AutomationRule);
 
       await expect(
         service.configureAutomation('1', {
-          content: 'Hi {{visitor_name}}, welcome to {{business_name}} at {{branch_name}}. You earned {{loyalty_points}} points!',
+          content:
+            'Hi {{visitor_name}}, welcome to {{business_name}} at {{branch_name}}. You earned {{loyalty_points}} points!',
         }),
       ).resolves.toBeDefined();
     });
