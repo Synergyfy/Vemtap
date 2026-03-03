@@ -40,7 +40,10 @@ export class BusinessesService {
   }
 
   async findById(id: string): Promise<Business> {
-    const business = await this.businessesRepository.findOneBy({ id });
+    const business = await this.businessesRepository.findOne({
+      where: { id },
+      relations: ['rewards', 'branches'],
+    });
     if (!business) {
       throw new NotFoundException('Business not found');
     }

@@ -32,7 +32,7 @@ export class AuthService {
     private jwtService: JwtService,
     @InjectRepository(Otp)
     private otpRepository: Repository<Otp>,
-  ) { }
+  ) {}
 
   async requestOwnerOtp(dto: RequestOtpDto) {
     const email = dto.email.toLowerCase();

@@ -52,4 +52,27 @@ export class UpdateSettingDto {
   @IsNumber()
   @IsOptional()
   messagingCostEmail?: number;
+
+  @ApiProperty({ example: 'token_123', required: false })
+  @IsOptional()
+  @IsString()
+  whatsappApiToken?: string;
+
+  @ApiProperty({ example: 'verify_token', required: false })
+  @IsOptional()
+  @IsString()
+  whatsappWebhookVerifyToken?: string;
+
+  @ApiProperty({ example: '1234567890', required: false })
+  @IsOptional()
+  @IsString()
+  whatsappBusinessId?: string;
+
+  @ApiProperty({
+    example: 'https://graph.facebook.com/v17.0/',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  whatsappApiBaseUrl?: string;
 }

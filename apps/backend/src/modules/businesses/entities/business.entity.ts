@@ -10,6 +10,7 @@ import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { User } from '../../users/entities/user.entity';
 import { Device } from '../../devices/entities/device.entity';
 import { Branch } from '../../branches/entities/branch.entity';
+import { Reward } from '../../campaigns/entities/reward.entity';
 
 export enum BusinessType {
   RESTAURANT = 'RESTAURANT',
@@ -139,4 +140,7 @@ export class Business extends AbstractBaseEntity {
 
   @OneToMany(() => Branch, (branch) => branch.business)
   branches: Branch[];
+
+  @OneToMany(() => Reward, (reward) => reward.business)
+  rewards: Reward[];
 }

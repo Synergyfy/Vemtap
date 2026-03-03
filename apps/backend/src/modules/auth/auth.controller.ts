@@ -31,7 +31,7 @@ import { User } from '../users/entities/user.entity';
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService) {}
 
   @Public()
   @Post('otp/send')
