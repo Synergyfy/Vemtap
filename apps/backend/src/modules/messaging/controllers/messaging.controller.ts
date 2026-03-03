@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Controller,
+  Delete,
   Post,
   Get,
   Body,
@@ -216,6 +217,7 @@ export class MessagingController {
   }
 
   @Post('templates/:id/delete')
+  @Delete('templates/:id/delete')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
