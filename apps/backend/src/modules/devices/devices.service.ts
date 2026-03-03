@@ -8,6 +8,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Device, DeviceStatus } from './entities/device.entity';
 import { CreateDeviceDto } from './dto/create-device.dto';
+import { AdminCreateDeviceDto } from './dto/admin-create-device.dto';
+import { AdminUpdateDeviceDto } from './dto/admin-update-device.dto';
 import { UpdateDeviceDto } from './dto/update-device.dto';
 import { UpdateAssetNamesDto } from './dto/update-asset-names.dto';
 import { Order, OrderStatus } from '../products/entities/order.entity';
@@ -378,26 +380,26 @@ export class DevicesService {
     };
   }
 
-  async adminCreate(deviceData: any): Promise<Device> {
+  async adminCreate(dto: AdminCreateDeviceDto): Promise<Device> {
     const existing = await this.devicesRepository.findOneBy({
-      code: deviceData.id,
+      code: dto.code,
     });
     if (existing) {
       throw new ConflictException('Device Serial already registered');
     }
 
     const device = this.devicesRepository.create({
-      code: deviceData.id,
-      name: deviceData.name || '',
-      type: deviceData.type,
-      // In a real app, assignedTo would map to a business ID.
-      // If it's literally the string 'Unassigned' or blank, we leave businessId null
+      code: dto.code,
+      name: dto.name || '',
+      type: dto.type || 'Card',
+      businessId: dto.businessId,
+      location: dto.location,
       status: DeviceStatus.ACTIVE,
     });
     return this.devicesRepository.save(device);
   }
 
-  async adminUpdate(id: string, updates: Partial<Device>): Promise<Device> {
+  async adminUpdate(id: string, updates: AdminUpdateDeviceDto): Promise<Device> {
     const device = await this.devicesRepository.findOneBy({ id });
     if (!device) throw new NotFoundException('Device not found');
     Object.assign(device, updates);
