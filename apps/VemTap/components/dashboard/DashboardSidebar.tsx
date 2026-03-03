@@ -142,6 +142,16 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         { label: 'Templates', href: '/dashboard/messaging/whatsapp/templates' },
                         { label: 'Top up', href: '/dashboard/messaging/whatsapp/topup' },
                         { label: 'Settings', href: '/dashboard/messaging/whatsapp/settings' },
+                        {
+                            id: 'whatsapp-automations',
+                            label: 'Automation',
+                            submenu: [
+                                { label: 'Overview', href: '/dashboard/automations' },
+                                { label: 'Active Automations', href: '/dashboard/automations/active' },
+                                { label: 'Automation Logs', href: '/dashboard/automations/logs' },
+                                { label: 'Performance Overview', href: '/dashboard/automations/performance' },
+                            ]
+                        }
                     ]
                 },
                 {
@@ -175,18 +185,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             href: '/dashboard/surveys',
             roles: ['owner', 'manager']
         },
-        {
-            id: 'automations',
-            label: 'Automation',
-            icon: Zap,
-            roles: ['owner', 'manager'],
-            submenu: [
-                { label: 'Automation Settings', href: '/dashboard/automations' },
-                { label: 'Active Automations', href: '/dashboard/automations/active' },
-                { label: 'Automation Logs', href: '/dashboard/automations/logs' },
-                { label: 'Performance Overview', href: '/dashboard/automations/performance' },
-            ]
-        },
+
         {
             id: 'loyalty',
             label: 'Loyalty',
