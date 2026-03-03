@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Visitor } from '@/lib/store/mockDashboardStore';
 import toast from 'react-hot-toast';
+import Link from 'next/link';
 import { Users, UserPlus, Repeat, Calendar, TrendingUp, TrendingDown,
     ChevronDown, Trash, Send, Download, Gift, ArrowRight, MessageSquare, Zap, Loader2 } from 'lucide-react';
 import LogoIcon from '@/components/brand/LogoIcon';
@@ -16,6 +17,7 @@ import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useBusinessStore } from '@/store/useBusinessStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
+import { useActiveSubscription } from '@/services/subscriptions/hooks';
 
 
 export default function DashboardPage() {
@@ -28,6 +30,7 @@ export default function DashboardPage() {
 
     const user = useAuthStore((state) => state.user);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const { data: activeSubscription } = useActiveSubscription();
 
     // eslint-disable-next-line no-console
     console.log('[DASHBOARD PAGE] 🔍 isAuthenticated:', isAuthenticated, 'planId:', user?.planId);
@@ -56,6 +59,14 @@ export default function DashboardPage() {
     const { getActiveBranch, activeBranchId } = useBusinessStore();
     const { hasReachedVisitorLimit, getPlan } = useSubscriptionStore();
     const currentPlan = getPlan();
+    const subscriptionPlanId = String(activeSubscription?.planId || '').toLowerCase();
+    const isPaidSubscription = Boolean(activeSubscription)
+        && !subscriptionPlanId.includes('free')
+        && activeSubscription?.status !== 'cancelled'
+        && activeSubscription?.status !== 'expired'
+        && activeSubscription?.status !== 'pending'
+        && activeSubscription?.status !== 'trial';
+    const paidPlanLabel = activeSubscription?.plan?.name || 'Paid Plan';
 
     const handleSimulateVisitor = () => {
         toast.error("Simulation disabled while backend integration is ongoing.");
@@ -121,6 +132,14 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {isPaidSubscription && (
+                        <Link
+                            href="/dashboard/settings/subscription/manage"
+                            className="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
+                        >
+                            {paidPlanLabel}
+                        </Link>
+                    )}
                     {currentPlan?.id === 'free' && (
                         <button
                             onClick={() => router.push('/#pricing')}

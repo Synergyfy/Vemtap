@@ -17,7 +17,6 @@ import {
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
 import { useMyBusiness } from '@/services/businesses/hooks';
-import { useActiveSubscription } from '@/services/subscriptions/hooks';
 import TrialBanner from './TrialBanner';
 
 interface SidebarProps {
@@ -31,7 +30,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const logout = useAuthStore((state) => state.logout);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const { data: myBusiness } = useMyBusiness();
-    const { data: activeSubscription } = useActiveSubscription();
 
     // eslint-disable-next-line no-console
     console.log('[DASHBOARD SIDEBAR] 🔍 isAuthenticated:', isAuthenticated, 'path:', pathname);
@@ -61,14 +59,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const redemptionRequests = data?.redemptionRequests || [];
     const unreadCount = notifications.filter((n: Notification) => !n.read).length;
     const pendingRedemptions = redemptionRequests.filter((r: any) => r.status === 'pending').length;
-    const subscriptionPlanId = String(activeSubscription?.planId || '').toLowerCase();
-    const isPaidSubscription = Boolean(activeSubscription)
-        && !subscriptionPlanId.includes('free')
-        && activeSubscription?.status !== 'cancelled'
-        && activeSubscription?.status !== 'expired'
-        && activeSubscription?.status !== 'pending'
-        && activeSubscription?.status !== 'trial';
-    const paidPlanLabel = activeSubscription?.plan?.name || 'Paid Plan';
 
     const readNotificationMutation = useMutation({
         mutationFn: dashboardApi.markNotificationRead,
@@ -482,14 +472,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                     </div>
                     <div className="flex items-center gap-2 lg:gap-4 relative">
                         <TrialBanner compact />
-                        {isPaidSubscription && (
-                            <Link
-                                href="/dashboard/settings/subscription/manage"
-                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
-                            >
-                                {paidPlanLabel}
-                            </Link>
-                        )}
 
                         {/* Notification Button */}
                         <button
