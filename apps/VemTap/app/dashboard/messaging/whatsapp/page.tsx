@@ -6,6 +6,7 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import { MessageSquare, Phone, Mail, LayoutDashboard, Wallet, CreditCard, Send, CheckCircle, Clock, Smartphone, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import TopUpModal from '@/components/messaging/TopUpModal';
+import ChannelBalance from '@/components/messaging/ChannelBalance';
 import { useMessagingAnalytics } from '@/services/messaging/hooks';
 
 export default function WhatsAppOverviewPage() {
@@ -24,6 +25,8 @@ export default function WhatsAppOverviewPage() {
                 title="WhatsApp Channel"
                 description="Manage your WhatsApp Business communications and campaign performance."
             />
+
+            <ChannelBalance channel="whatsapp" onTopUp={() => setIsTopUpOpen(true)} />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {channelStats.map((stat, i) => (
@@ -88,7 +91,6 @@ export default function WhatsAppOverviewPage() {
             <TopUpModal
                 isOpen={isTopUpOpen}
                 onClose={() => setIsTopUpOpen(false)}
-                targetChannel="WhatsApp"
             />
         </div>
     );

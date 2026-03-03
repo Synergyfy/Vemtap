@@ -9,8 +9,12 @@ export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isSolutionsOpen, setIsSolutionsOpen] = useState(false);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const user = useAuthStore((state) => state.user);
     const { data: business } = useMyBusiness();
     const solutionsRef = useRef<HTMLDivElement>(null);
+
+    // eslint-disable-next-line no-console
+    console.log('[NAVBAR] 🔍 isAuthenticated:', isAuthenticated);
 
     const getInitials = (name?: string) => {
         if (!name) return 'U';

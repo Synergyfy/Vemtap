@@ -17,6 +17,7 @@ import {
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
 import { useMyBusiness } from '@/services/businesses/hooks';
+import TrialBanner from './TrialBanner';
 
 interface SidebarProps {
     children: React.ReactNode;
@@ -27,7 +28,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const router = useRouter();
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const { data: myBusiness } = useMyBusiness();
+
+    // eslint-disable-next-line no-console
+    console.log('[DASHBOARD SIDEBAR] 🔍 isAuthenticated:', isAuthenticated, 'path:', pathname);
 
     // Auto-expand the menu corresponding to the current path
     const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
@@ -466,7 +471,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                             <BranchSwitcher />
                         </div>
                     </div>
-                    <div className="flex items-center gap-4 relative">
+                    <div className="flex items-center gap-2 lg:gap-4 relative">
+                        <TrialBanner compact />
                         {/* Removed Plan Badge */}
 
                         {/* Notification Button */}
@@ -609,10 +615,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                 <LogOut size={16} />
                                                 <span>Logout</span>
                                             </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                </>
-                            )}
+                                    </>
+                                )}
                         </div>
                     </div>
                 </header>

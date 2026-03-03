@@ -28,14 +28,23 @@ export default function DashboardPage() {
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
     const [rewardPreviewVisitor, setRewardPreviewVisitor] = useState<Visitor | null>(null);
 
-    const { user } = useAuthStore();
+    const user = useAuthStore((state) => state.user);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+    // eslint-disable-next-line no-console
+    console.log('[DASHBOARD PAGE] 🔍 isAuthenticated:', isAuthenticated, 'planId:', user?.planId);
 
     // Redirect to pricing if user is new and hasn't selected a plan
     React.useEffect(() => {
         const hasSelectedPlan = localStorage.getItem('has_selected_plan') === 'true';
         const isNewUser = user && !user.planId; // Mock check: if no planId, they are "new"
 
+        // eslint-disable-next-line no-console
+        console.log('[DASHBOARD PAGE] 📋 Checking plan', { isNewUser, hasSelectedPlan });
+
         if (isNewUser && !hasSelectedPlan) {
+            // eslint-disable-next-line no-console
+            console.log('[DASHBOARD PAGE] 🚀 Redirecting to subscription');
             router.push('/dashboard/settings/subscription');
         }
     }, [user, router]);

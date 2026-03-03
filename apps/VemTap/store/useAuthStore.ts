@@ -53,14 +53,18 @@ export const useAuthStore = create<AuthState>()(
       activeBranchId: null,
 
       login: (userData, access_token) => {
+        console.log('[AUTH] 🔐 login() called', { email: userData?.email, role: userData?.role });
         set({ user: userData, access_token, isAuthenticated: true });
+        console.log('[AUTH] ✅ Login complete, isAuthenticated:', true);
       },
 
       signup: (userData, access_token) => {
+        console.log('[AUTH] 📝 signup() called', { email: userData?.email });
         set({ user: userData, access_token, isAuthenticated: true });
       },
 
       logout: () => {
+        console.log('[AUTH] 🚪 logout() called');
         set({ user: null, access_token: null, isAuthenticated: false, activeBranchId: null });
       },
 

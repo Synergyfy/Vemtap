@@ -24,7 +24,7 @@ export const customerApi = {
 
     getSupportTickets: () => api.get('/support/tickets'),
     createSupportTicket: (data: { subject: string; category: string; priority: string; description: string }) =>
-        api.post('/support/tickets', data),
+        api.post('/support/tickets', { subject: data.subject, category: data.category, message: data.description }),
     getSupportTicketDetails: (id: string) => api.get(`/support/tickets/${id}`),
     replyToSupportTicket: (id: string, message: string) => api.post(`/support/tickets/${id}/message`, { message }),
 

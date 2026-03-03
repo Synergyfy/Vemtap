@@ -1,274 +1,324 @@
 'use client';
 
-import React, { useState } from 'react';
-import { MessageCircle, User, Clock, Check, Send, Search, LogOut, Activity } from 'lucide-react';
-import { useAuthStore } from '@/store/useAuthStore';
-import { notify } from '@/lib/notify';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminSupportApi } from '@/lib/api/admin';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
+import { Loader2, MessageCircle, RefreshCw, Search, Send } from 'lucide-react';
+import { notify } from '@/lib/notify';
+import { adminSupportApi } from '@/lib/api/admin';
 import { cn } from '@/lib/utils';
 
-export default function AgentDashboard() {
-    const { logout, user } = useAuthStore();
-    const queryClient = useQueryClient();
-    const [activeChatId, setActiveChatId] = useState<string | null>(null);
-    const [replyText, setReplyText] = useState('');
-    const [searchQuery, setSearchQuery] = useState('');
+type TicketStatus = 'Open' | 'In Progress' | 'Closed';
 
-    // Fetch all tickets
-    const { data: ticketsResponse, isLoading: isLoadingTickets } = useQuery({
+const STATUS_OPTIONS: TicketStatus[] = ['Open', 'In Progress', 'Closed'];
+const PAGE_SIZE = 10;
+
+const extractList = (payload: any): any[] => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.tickets)) return payload.tickets;
+    if (Array.isArray(payload?.data?.tickets)) return payload.data.tickets;
+    return [];
+};
+
+const getStatusClass = (status: string) => {
+    if (status === 'Open') return 'bg-orange-50 text-orange-700 border-orange-100';
+    if (status === 'In Progress') return 'bg-blue-50 text-blue-700 border-blue-100';
+    return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+};
+
+export default function AdminSupportPage() {
+    const queryClient = useQueryClient();
+    const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [replyText, setReplyText] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+
+    const { data: ticketsResponse, isLoading: isLoadingTickets, refetch } = useQuery({
         queryKey: ['admin-tickets'],
         queryFn: () => adminSupportApi.getAllTickets(),
     });
 
-    const allTickets = (ticketsResponse?.data || ticketsResponse || []) as any[];
+    const tickets = useMemo(() => extractList(ticketsResponse), [ticketsResponse]);
 
-    // Fetch active ticket details
-    const { data: activeTicketResponse, isLoading: isLoadingDetails } = useQuery({
-        queryKey: ['admin-ticket', activeChatId],
-        queryFn: () => adminSupportApi.getTicketDetails(activeChatId!),
-        enabled: !!activeChatId,
+    const filteredTickets = useMemo(() => {
+        return tickets.filter((ticket: any) => {
+            const query = searchQuery.trim().toLowerCase();
+            const matchesQuery =
+                !query ||
+                ticket?.id?.toLowerCase().includes(query) ||
+                ticket?.subject?.toLowerCase().includes(query) ||
+                ticket?.user?.name?.toLowerCase().includes(query) ||
+                ticket?.user?.email?.toLowerCase().includes(query);
+
+            const matchesStatus = statusFilter === 'all' || ticket?.status === statusFilter;
+            return matchesQuery && matchesStatus;
+        });
+    }, [tickets, searchQuery, statusFilter]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, statusFilter]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredTickets.length / PAGE_SIZE));
+    const paginatedTickets = filteredTickets.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+    const { data: selectedTicketResponse, isLoading: isLoadingDetails } = useQuery({
+        queryKey: ['admin-ticket', selectedTicketId],
+        queryFn: () => adminSupportApi.getTicketDetails(selectedTicketId!),
+        enabled: !!selectedTicketId,
     });
 
-    const activeTicket = (activeTicketResponse?.data || activeTicketResponse) as any;
+    const selectedTicket = selectedTicketResponse?.data || selectedTicketResponse;
 
-    // reply mutation
+    const updateStatusMutation = useMutation({
+        mutationFn: ({ id, status }: { id: string; status: TicketStatus }) =>
+            adminSupportApi.updateTicketStatus(id, status),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['admin-tickets'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-ticket', variables.id] });
+            notify.success(`Ticket status updated to ${variables.status}`);
+        },
+        onError: () => notify.error('Failed to update ticket status'),
+    });
+
     const replyMutation = useMutation({
-        mutationFn: ({ id, message }: { id: string, message: string }) => adminSupportApi.replyToTicket(id, message),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['admin-ticket', activeChatId] });
+        mutationFn: ({ id, message }: { id: string; message: string }) =>
+            adminSupportApi.replyToTicket(id, message),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['admin-ticket', variables.id] });
+            queryClient.invalidateQueries({ queryKey: ['admin-tickets'] });
             setReplyText('');
-            notify.success('Reply sent successfully');
+            notify.success('Reply sent');
         },
         onError: () => notify.error('Failed to send reply'),
     });
 
-    // resolve mutation
-    const resolveMutation = useMutation({
-        mutationFn: (id: string) => adminSupportApi.resolveTicket(id),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['admin-tickets'] });
-            queryClient.invalidateQueries({ queryKey: ['admin-ticket', activeChatId] });
-            notify.success('Ticket resolved successfully');
-        },
-        onError: () => notify.error('Failed to resolve ticket'),
-    });
+    const handleStatusChange = (id: string, status: string) => {
+        if (!STATUS_OPTIONS.includes(status as TicketStatus)) return;
+        updateStatusMutation.mutate({ id, status: status as TicketStatus });
+    };
 
     const handleSendReply = () => {
-        if (!replyText.trim() || !activeChatId) return;
-        replyMutation.mutate({ id: activeChatId, message: replyText });
+        if (!selectedTicketId || !replyText.trim()) return;
+        replyMutation.mutate({ id: selectedTicketId, message: replyText.trim() });
     };
-
-    const handleLogout = () => {
-        logout();
-        notify.success('Logged out successfully');
-        window.location.href = '/login';
-    };
-
-    const filteredTickets = allTickets.filter((t: any) =>
-        t.user?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.id?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
 
     return (
-        <div className="flex h-[calc(100vh-64px)] bg-gray-50 border-t border-gray-200">
-            {/* Sidebar / Chat List */}
-            <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-                <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                    <h2 className="font-display font-bold text-text-main flex items-center gap-2">
-                        <MessageCircle size={20} className="text-primary" />
-                        Live Tickets
-                    </h2>
-                    <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-0.5 rounded-full">
-                        {isLoadingTickets ? '...' : allTickets.filter((c: any) => c.status !== 'Closed').length}
-                    </span>
+        <div className="p-4 md:p-8 space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-display font-bold text-text-main">Support Tickets</h1>
+                    <p className="text-text-secondary text-sm font-medium mt-1">List view for all support conversations</p>
                 </div>
+                <button
+                    onClick={() => refetch()}
+                    className="h-11 px-4 border border-gray-200 rounded-xl bg-white text-sm font-bold text-text-secondary hover:bg-gray-50 transition-colors inline-flex items-center gap-2"
+                >
+                    <RefreshCw size={16} />
+                    Refresh
+                </button>
+            </div>
 
-                <div className="p-4 border-b border-gray-100">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+            <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-5 space-y-3">
+                <div className="flex flex-col md:flex-row gap-3">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                         <input
-                            type="text"
-                            placeholder="Search tickets..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            placeholder="Search by ticket id, subject, user name or email..."
+                            className="w-full h-11 pl-9 pr-4 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
                     </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
-                    {isLoadingTickets ? (
-                        <div className="p-8 text-center animate-pulse">
-                            <Clock className="w-8 h-8 mx-auto text-gray-200 mb-2" />
-                            <p className="text-[10px] font-black uppercase text-gray-300">Loading stream...</p>
-                        </div>
-                    ) : filteredTickets.length > 0 ? filteredTickets.map((ticket: any) => (
-                        <button
-                            key={ticket.id}
-                            onClick={() => setActiveChatId(ticket.id)}
-                            className={cn(
-                                "w-full p-4 flex gap-3 text-left hover:bg-gray-50 transition-colors",
-                                activeChatId === ticket.id ? 'bg-primary/5 border-l-4 border-primary' : ''
-                            )}
-                        >
-                            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                                <User size={18} className="text-gray-400" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-center mb-1">
-                                    <p className="font-bold text-sm text-text-main truncate">{ticket.user?.name || 'Customer'}</p>
-                                    <p className="text-[10px] text-text-secondary font-bold">
-                                        {formatDistanceToNow(new Date(ticket.updatedAt), { addSuffix: true }).replace('about ', '')}
-                                    </p>
-                                </div>
-                                <p className="text-xs text-text-secondary truncate font-medium">{ticket.subject}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className={cn(
-                                        "text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full border",
-                                        ticket.status === 'Open' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                            ticket.status === 'In Progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                    )}>
-                                        {ticket.status}
-                                    </span>
-                                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{ticket.category}</span>
-                                </div>
-                            </div>
-                        </button>
-                    )) : (
-                        <div className="p-12 text-center">
-                            <Activity className="w-8 h-8 mx-auto text-gray-100 mb-2" />
-                            <p className="text-[10px] font-black uppercase text-gray-300 tracking-widest">No tickets found</p>
-                        </div>
-                    )}
-                </div>
-
-                {/* Agent Profile & Logout */}
-                <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs uppercase">
-                            {user?.name?.charAt(0) || 'A'}
-                        </div>
-                        <div className="min-w-0">
-                            <p className="text-xs font-bold text-text-main truncate">{user?.name || 'Agent'}</p>
-                            <p className="text-[10px] text-green-600 font-bold flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                                Online
-                            </p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={handleLogout}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                        title="Logout & Clear Data"
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
                     >
-                        <LogOut size={18} />
-                    </button>
+                        <option value="all">All Statuses</option>
+                        {STATUS_OPTIONS.map((status) => (
+                            <option key={status} value={status}>{status}</option>
+                        ))}
+                    </select>
                 </div>
             </div>
 
-            {/* Chat View */}
-            <div className="flex-1 flex flex-col bg-white">
-                {activeChatId ? (
-                    <>
-                        {/* Chat Header */}
-                        <div className="h-16 px-6 border-b border-gray-100 flex items-center justify-between bg-white shadow-sm z-10">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                                    <User size={20} className="text-gray-400" />
-                                </div>
-                                <div>
-                                    <p className="font-bold text-text-main">{activeTicket?.user?.name || 'Customer'}</p>
-                                    <p className="text-xs text-text-secondary font-medium">{activeTicket?.subject} • {activeTicket?.category}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                {activeTicket?.status !== 'Closed' && (
-                                    <button
-                                        onClick={() => resolveMutation.mutate(activeTicket.id)}
-                                        disabled={resolveMutation.isPending}
-                                        className="px-4 py-2 bg-green-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-green-600 shadow-lg shadow-green-100 transition-all flex items-center gap-2 disabled:opacity-50"
-                                    >
-                                        <Check size={14} />
-                                        Resolve Ticket
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Messages Area */}
-                        <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-gray-50/30">
-                            {isLoadingDetails ? (
-                                <div className="flex flex-col items-center justify-center h-full gap-4 animate-pulse">
-                                    <Activity className="w-12 h-12 text-primary/20" />
-                                    <p className="text-[10px] font-black uppercase text-primary/40 tracking-[0.2em]">Synchronizing Logs...</p>
-                                </div>
-                            ) : activeTicket?.messages?.map((m: any, idx: number) => {
-                                const isAgent = ['Admin', 'Staff', 'Manager', 'Owner'].includes(m.sender?.role);
-                                return (
-                                    <div key={idx} className={cn("flex", isAgent ? 'justify-end' : 'justify-start')}>
-                                        <div className={cn(
-                                            "max-w-[70%] px-4 py-3 shadow-sm rounded-2xl",
-                                            isAgent ? 'bg-primary text-white rounded-tr-none' : 'bg-white border border-gray-100 text-text-main rounded-tl-none'
-                                        )}>
-                                            <p className="text-sm leading-relaxed">{m.message}</p>
-                                            <div className={cn("flex items-center gap-2 mt-1 justify-end opacity-60")}>
-                                                <span className="text-[8px] font-bold uppercase tracking-widest">
-                                                    {isAgent ? 'VemTap Intelligence' : m.sender?.name || 'Customer'}
+            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[900px]">
+                        <thead className="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">Ticket</th>
+                                <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">User</th>
+                                <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">Category</th>
+                                <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">Status</th>
+                                <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">Updated</th>
+                                <th className="text-right py-3 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {isLoadingTickets ? (
+                                <tr>
+                                    <td colSpan={6} className="py-12 text-center">
+                                        <Loader2 className="mx-auto animate-spin text-primary" size={28} />
+                                        <p className="text-sm text-text-secondary font-medium mt-3">Loading tickets...</p>
+                                    </td>
+                                </tr>
+                            ) : filteredTickets.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="py-12 text-center text-sm text-text-secondary font-medium">
+                                        No tickets found.
+                                    </td>
+                                </tr>
+                            ) : (
+                                paginatedTickets.map((ticket: any) => (
+                                    <tr key={ticket.id} className={cn('hover:bg-gray-50', selectedTicketId === ticket.id ? 'bg-primary/5' : '')}>
+                                        <td className="py-3 px-4">
+                                            <p className="font-bold text-sm text-text-main">{ticket.subject || 'No subject'}</p>
+                                            <p className="text-xs text-text-secondary font-medium mt-0.5">{ticket.id}</p>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <p className="text-sm font-bold text-text-main">{ticket.user?.name || 'Unknown User'}</p>
+                                            <p className="text-xs text-text-secondary">{ticket.user?.email || 'No email'}</p>
+                                        </td>
+                                        <td className="py-3 px-4 text-sm text-text-secondary font-medium">{ticket.category || 'General'}</td>
+                                        <td className="py-3 px-4">
+                                            <div className="flex items-center gap-2">
+                                                <span className={cn('inline-flex px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border', getStatusClass(ticket.status))}>
+                                                    {ticket.status}
                                                 </span>
-                                                <span className="text-[8px] font-bold">
-                                                    {formatDistanceToNow(new Date(m.createdAt), { addSuffix: true })}
-                                                </span>
+                                                <select
+                                                    value={ticket.status}
+                                                    onChange={(e) => handleStatusChange(ticket.id, e.target.value)}
+                                                    className="h-8 px-2 bg-gray-50 border border-gray-200 rounded-md text-xs font-bold focus:outline-none"
+                                                >
+                                                    {STATUS_OPTIONS.map((status) => (
+                                                        <option key={status} value={status}>{status}</option>
+                                                    ))}
+                                                </select>
                                             </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                        </td>
+                                        <td className="py-3 px-4 text-sm text-text-secondary font-medium">
+                                            {ticket.updatedAt
+                                                ? formatDistanceToNow(new Date(ticket.updatedAt), { addSuffix: true })
+                                                : '-'}
+                                        </td>
+                                        <td className="py-3 px-4 text-right">
+                                            <button
+                                                onClick={() => setSelectedTicketId(ticket.id)}
+                                                className="h-8 px-3 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50"
+                                            >
+                                                View Details
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50/50">
+                    <p className="text-xs text-text-secondary font-black uppercase tracking-widest">
+                        {filteredTickets.length} ticket{filteredTickets.length !== 1 ? 's' : ''} found
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            disabled={currentPage <= 1}
+                            className="h-8 px-3 rounded-lg border border-gray-200 text-xs font-bold disabled:opacity-40"
+                        >
+                            Prev
+                        </button>
+                        <span className="text-xs font-bold text-text-secondary">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={currentPage >= totalPages}
+                            className="h-8 px-3 rounded-lg border border-gray-200 text-xs font-bold disabled:opacity-40"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </div>
 
-                        {/* Input Area */}
-                        <div className="p-6 border-t border-gray-100 bg-white">
-                            <div className="flex items-end gap-4">
-                                <div className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-2xl focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-                                    <textarea
-                                        rows={2}
-                                        placeholder="Type your response to the visitor..."
-                                        value={replyText}
-                                        onChange={(e) => setReplyText(e.target.value)}
-                                        className="w-full bg-transparent resize-none border-none outline-none text-sm font-medium placeholder:text-gray-400"
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                                e.preventDefault();
-                                                handleSendReply();
-                                            }
-                                        }}
-                                    />
-                                </div>
-                                <button
-                                    onClick={handleSendReply}
-                                    disabled={!replyText.trim() || replyMutation.isPending}
-                                    className="size-14 bg-primary text-white rounded-2xl flex items-center justify-center shadow-xl shadow-primary/20 hover:bg-primary-hover transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {replyMutation.isPending ? <Activity className="animate-spin" size={24} /> : <Send size={24} />}
-                                </button>
-                            </div>
-                        </div>
-                    </>
-                ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-12">
-                        <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
-                            <MessageCircle size={48} className="text-gray-200" />
-                        </div>
-                        <h3 className="text-xl font-display font-bold text-text-main uppercase tracking-tight">Support Terminal</h3>
-                        <p className="text-xs text-text-secondary mt-2 max-w-sm font-bold uppercase tracking-widest opacity-60">
-                            Select an active data stream from the sidebar to start assisting visitors in real-time.
+            {selectedTicketId && (
+                <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+                    <div className="p-5 border-b border-gray-100">
+                        <h2 className="text-lg font-display font-bold text-text-main">Ticket Details</h2>
+                        <p className="text-xs text-text-secondary font-medium mt-1">
+                            {selectedTicket?.subject || selectedTicketId}
                         </p>
                     </div>
-                )}
-            </div>
+
+                    <div className="p-5 space-y-4">
+                        {isLoadingDetails ? (
+                            <div className="py-8 text-center">
+                                <Loader2 className="mx-auto animate-spin text-primary" size={24} />
+                            </div>
+                        ) : (
+                            <>
+                                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                                    {(selectedTicket?.messages || []).length === 0 ? (
+                                        <div className="py-8 text-center text-sm text-text-secondary font-medium">
+                                            No messages yet.
+                                        </div>
+                                    ) : (
+                                        selectedTicket.messages.map((message: any, index: number) => (
+                                            <div key={index} className="p-3 rounded-lg border border-gray-100 bg-gray-50">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <p className="text-xs font-black uppercase tracking-wider text-text-secondary">
+                                                        {message.sender?.name || message.sender?.role || 'User'}
+                                                    </p>
+                                                    <p className="text-[10px] text-text-secondary font-medium">
+                                                        {message.createdAt
+                                                            ? formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })
+                                                            : ''}
+                                                    </p>
+                                                </div>
+                                                <p className="text-sm text-text-main mt-2 whitespace-pre-wrap">{message.message}</p>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                <div className="pt-3 border-t border-gray-100">
+                                    <label className="text-[10px] font-black uppercase tracking-wider text-text-secondary">Reply</label>
+                                    <div className="mt-2 flex gap-3 items-end">
+                                        <textarea
+                                            rows={3}
+                                            value={replyText}
+                                            onChange={(e) => setReplyText(e.target.value)}
+                                            placeholder="Write a reply..."
+                                            className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                        />
+                                        <button
+                                            onClick={handleSendReply}
+                                            disabled={!replyText.trim() || replyMutation.isPending}
+                                            className="h-11 px-4 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-hover disabled:opacity-50 inline-flex items-center gap-2"
+                                        >
+                                            {replyMutation.isPending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                                            Send
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {!selectedTicketId && !isLoadingTickets && (
+                <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
+                    <MessageCircle className="mx-auto text-gray-300" size={32} />
+                    <p className="text-sm text-text-secondary font-medium mt-3">
+                        Select a ticket from the list to view details and reply.
+                    </p>
+                </div>
+            )}
         </div>
     );
 }

@@ -59,6 +59,19 @@ const extractBusinessStats = (payload: any) => {
     };
 };
 
+const extractUsers = (payload: any): any[] => {
+    const roots = [payload, payload?.data, payload?.data?.data, payload?.result, payload?.payload];
+    for (const root of roots) {
+        if (Array.isArray(root)) return root;
+        if (!root) continue;
+        const listKeys = ['users', 'items', 'rows', 'results', 'list', 'data'];
+        for (const key of listKeys) {
+            if (Array.isArray(root[key])) return root[key];
+        }
+    }
+    return [];
+};
+
 export default function AdminDashboardPage() {
     const router = useRouter();
     const [stats, setStats] = useState<DashboardStats>({
@@ -84,7 +97,11 @@ export default function AdminDashboardPage() {
             ]);
             const businesses = extractBusinesses(bizData);
             const businessStats = extractBusinessStats(bizData);
-            const users = Array.isArray(usersData) ? usersData : (usersData.users || []);
+            const users = extractUsers(usersData);
+            const totalUsersFromStats =
+                toNumber(usersData?.stats?.total) ??
+                toNumber(usersData?.meta?.total) ??
+                toNumber(usersData?.total);
             const subStats = subsData?.data || subsData;
             const devStats = devicesData?.data || devicesData;
 
@@ -98,7 +115,7 @@ export default function AdminDashboardPage() {
                 activeBusinesses: businessStats.active ?? businesses.filter((b: any) => normalizeBusinessStatus(b.status) === 'active').length,
                 pendingBusinesses: businessStats.pending ?? businesses.filter((b: any) => normalizeBusinessStatus(b.status) === 'pending').length,
                 suspendedBusinesses: businessStats.suspended ?? businesses.filter((b: any) => normalizeBusinessStatus(b.status) === 'suspended').length,
-                totalUsers: users.length,
+                totalUsers: totalUsersFromStats ?? users.length,
                 recentBusinesses: sorted.slice(0, 5),
                 activeSubscriptions: subStats?.activeSubscriptions || 0,
                 totalDevices: devStats?.total || devStats?.active || 0,
@@ -261,7 +278,7 @@ export default function AdminDashboardPage() {
                         <div className="space-y-2.5">
                             {[
                                 { label: 'Active Businesses', value: stats.activeBusinesses, color: 'text-green-600' },
-                                { label: 'Awaiting Approval', value: stats.pendingBusinesses, color: 'text-yellow-600' },
+                                { label: 'Pending Businesses', value: stats.pendingBusinesses, color: 'text-yellow-600' },
                                 { label: 'Suspended Businesses', value: stats.suspendedBusinesses, color: 'text-red-500' },
                                 { label: 'Total Platform Users', value: stats.totalUsers, color: 'text-primary' },
                             ].map((item, i) => (

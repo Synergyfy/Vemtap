@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, UseGuards, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  UseGuards,
+  Param,
+  Request,
+  BadRequestException,
+} from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
 import { SubscribeDto } from './dto/subscribe.dto';
 import {
@@ -6,6 +15,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiOkResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -32,9 +42,11 @@ export class SubscriptionsController {
   @Get('active')
   @SkipSubscriptionCheck()
   @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
-  @ApiOperation({ summary: 'Get current active plan for the current business' })
-  @ApiResponse({
-    status: 200,
+  @ApiOperation({
+    summary: 'Get current active plan for the current business',
+    description: 'Uses businessId from the authenticated user token.',
+  })
+  @ApiOkResponse({
     description: 'Return current active plan details',
   })
   getActivePlan(@Request() req) {
@@ -51,9 +63,9 @@ export class SubscriptionsController {
   @ApiOperation({
     summary:
       'View capability details and limits used for the current subscription',
+    description: 'Only accessible by business staff. Uses businessId from token.',
   })
-  @ApiResponse({
-    status: 200,
+  @ApiOkResponse({
     description: 'Return capability limits and used counts',
   })
   getCapabilities(@Request() req) {

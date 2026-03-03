@@ -8,6 +8,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMockDashboardStore, Visitor } from '@/lib/store/mockDashboardStore';
 import { useBusinessStore } from '@/store/useBusinessStore';
+import { useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 interface ImportContactsModalProps {
@@ -15,14 +17,61 @@ interface ImportContactsModalProps {
     onClose: () => void;
 }
 
+interface CustomerRow {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+}
+
 export default function ImportContactsModal({ isOpen, onClose }: ImportContactsModalProps) {
     const [file, setFile] = useState<File | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [preview, setPreview] = useState<any[]>([]);
+    const [preview, setPreview] = useState<CustomerRow[]>([]);
     const [step, setStep] = useState<'upload' | 'preview' | 'success'>('upload');
     const importVisitors = useMockDashboardStore(state => state.importVisitors);
     const activeBranchId = useBusinessStore(state => state.activeBranchId);
     const activeBranch = useBusinessStore(state => state.getActiveBranch)();
+    const queryClient = useQueryClient();
+
+    const parseCSV = (content: string): CustomerRow[] => {
+        const lines = content.trim().split('\n');
+        if (lines.length < 2) return [];
+
+        const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+        const nameIndex = headers.findIndex(h => h === 'name' || h === 'fullname' || h === 'customer name');
+        const firstNameIndex = headers.findIndex(h => h === 'firstname' || h === 'first_name' || h === 'first name');
+        const lastNameIndex = headers.findIndex(h => h === 'lastname' || h === 'last_name' || h === 'last name');
+        const phoneIndex = headers.findIndex(h => h === 'phone' || h === 'phone number' || h === 'phonenumber' || h === 'tel' || h === 'telephone');
+        const emailIndex = headers.findIndex(h => h === 'email' || h === 'email address' || h === 'emailaddress');
+
+        const customers: CustomerRow[] = [];
+
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim());
+            
+            let firstName = '';
+            let lastName = '';
+
+            if (nameIndex >= 0 && values[nameIndex]) {
+                const fullName = values[nameIndex].split(' ');
+                firstName = fullName[0] || '';
+                lastName = fullName.slice(1).join(' ') || '';
+            } else {
+                if (firstNameIndex >= 0) firstName = values[firstNameIndex] || '';
+                if (lastNameIndex >= 0) lastName = values[lastNameIndex] || '';
+            }
+
+            customers.push({
+                firstName,
+                lastName,
+                email: emailIndex >= 0 ? values[emailIndex] || '' : '',
+                phone: phoneIndex >= 0 ? values[phoneIndex] || '' : ''
+            });
+        }
+
+        return customers;
+    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
@@ -32,31 +81,47 @@ export default function ImportContactsModal({ isOpen, onClose }: ImportContactsM
                 return;
             }
             setFile(selectedFile);
-            simulateParse(selectedFile);
+            parseFile(selectedFile);
         }
     };
 
-    const simulateParse = (file: File) => {
+    const parseFile = async (file: File) => {
         setIsProcessing(true);
-        // Simulate parsing CSV delay
-        setTimeout(() => {
-            const mockPreview = [
-                { name: 'Alice Johnson', phone: '+234 801 111 2222', email: 'alice@example.com' },
-                { name: 'Bob Smith', phone: '+234 802 222 3333', email: 'bob@example.com' },
-                { name: 'Charlie Brown', phone: '+234 803 333 4444', email: 'charlie@example.com' },
-            ];
-            setPreview(mockPreview);
-            setIsProcessing(false);
+        try {
+            const content = await file.text();
+            const parsed = parseCSV(content);
+            
+            if (parsed.length === 0) {
+                toast.error('No valid contacts found in the file');
+                setIsProcessing(false);
+                return;
+            }
+
+            setPreview(parsed);
             setStep('preview');
-        }, 1500);
+        } catch (error) {
+            console.error('Error parsing CSV:', error);
+            toast.error('Failed to parse CSV file');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
-    const handleImport = () => {
+    const handleImport = async () => {
         setIsProcessing(true);
-        setTimeout(() => {
+        try {
+            const customers = preview.map(p => ({
+                firstName: p.firstName,
+                lastName: p.lastName,
+                email: p.email,
+                phone: p.phone
+            }));
+
+            await api.post('/businesses/import-customers', { customers });
+
             const newVisitors: Visitor[] = preview.map((p, idx) => ({
                 id: `IMP-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-                name: p.name,
+                name: `${p.firstName} ${p.lastName}`.trim(),
                 phone: p.phone,
                 email: p.email,
                 time: 'Imported',
@@ -67,14 +132,20 @@ export default function ImportContactsModal({ isOpen, onClose }: ImportContactsM
             }));
 
             importVisitors(newVisitors);
-            setIsProcessing(false);
+            queryClient.invalidateQueries({ queryKey: ['visitors'] });
+            
             setStep('success');
-            toast.success(`${newVisitors.length} contacts imported to ${activeBranch?.name}`);
-        }, 1000);
+            toast.success(`${customers.length} contacts imported successfully`);
+        } catch (error: any) {
+            console.error('Import error:', error);
+            toast.error(error.response?.data?.message || 'Failed to import contacts');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     const handleDownloadTemplate = () => {
-        const csvContent = "name,phone,email\nJohn Doe,+2348012345678,john@example.com\nJane Smith,+2348023456789,jane@example.com";
+        const csvContent = "firstName,lastName,phone,email\nJohn,Doe,+2348012345678,john@example.com\nJane,Smith,+2348023456789,jane@example.com";
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -172,15 +243,19 @@ export default function ImportContactsModal({ isOpen, onClose }: ImportContactsM
                                         <table className="w-full text-left text-sm">
                                             <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
                                                 <tr>
-                                                    <th className="px-4 py-3 font-bold text-text-secondary uppercase text-[10px] tracking-widest">Name</th>
+                                                    <th className="px-4 py-3 font-bold text-text-secondary uppercase text-[10px] tracking-widest">First Name</th>
+                                                    <th className="px-4 py-3 font-bold text-text-secondary uppercase text-[10px] tracking-widest">Last Name</th>
                                                     <th className="px-4 py-3 font-bold text-text-secondary uppercase text-[10px] tracking-widest">Phone</th>
+                                                    <th className="px-4 py-3 font-bold text-text-secondary uppercase text-[10px] tracking-widest">Email</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50">
                                                 {preview.map((p, i) => (
                                                     <tr key={i} className="hover:bg-gray-50/50">
-                                                        <td className="px-4 py-3 font-medium text-text-main">{p.name}</td>
+                                                        <td className="px-4 py-3 font-medium text-text-main">{p.firstName}</td>
+                                                        <td className="px-4 py-3 font-medium text-text-main">{p.lastName}</td>
                                                         <td className="px-4 py-3 text-text-secondary font-medium">{p.phone}</td>
+                                                        <td className="px-4 py-3 text-text-secondary font-medium">{p.email}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>

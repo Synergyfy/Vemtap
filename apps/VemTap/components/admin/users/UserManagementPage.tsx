@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
 import { adminUsersApi } from '@/lib/api/admin';
 import { Search, UserPlus, Edit2, Lock, Ban, Loader2, RefreshCw } from 'lucide-react';
+const PAGE_SIZE = 10;
 
 interface AdminUser {
     id: string;
@@ -42,6 +43,9 @@ export default function UserManagementPage({
     const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [serverStats, setServerStats] = useState<any>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+
+    const normalizeRole = (role?: string) => (role || '').toLowerCase().replace(/\s+/g, '_');
 
     const scopedRoles = useMemo(() => {
         if (!roleFilter) return null;
@@ -53,8 +57,9 @@ export default function UserManagementPage({
         try {
             const response = await adminUsersApi.getAll({
                 search: searchQuery || undefined,
-                role: typeof roleFilter === 'string' ? roleFilter : (filterRole || undefined),
+                role: typeof roleFilter === 'string' ? normalizeRole(roleFilter) : (filterRole ? normalizeRole(filterRole) : undefined),
                 status: filterStatus || undefined,
+                limit: 1000,
             });
 
             const userList = Array.isArray(response) ? response : (response.data || response.users || []);
@@ -68,7 +73,16 @@ export default function UserManagementPage({
             }));
 
             const scopedUsers = scopedRoles
-                ? mappedUsers.filter((u: any) => scopedRoles.includes(u.role))
+                ? mappedUsers.filter((u: any) => {
+                    const role = normalizeRole(u.role);
+                    return scopedRoles.some((allowedRole) => {
+                        const normalizedAllowed = normalizeRole(allowedRole);
+                        if (normalizedAllowed === 'owner') {
+                            return role === 'owner' || role === 'business_owner';
+                        }
+                        return role === normalizedAllowed;
+                    });
+                })
                 : mappedUsers;
 
             setUsers(scopedUsers);
@@ -85,10 +99,17 @@ export default function UserManagementPage({
         return () => clearTimeout(debounce);
     }, [fetchUsers]);
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, filterRole, filterStatus, roleFilter]);
+
+    const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
+    const paginatedUsers = users.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
     const scopedStats = [
         { label: `${title}`, value: users.length, icon: 'people', color: 'blue' },
         { label: 'Active', value: users.filter(u => (u.status || '').toLowerCase() === 'active').length, icon: 'check_circle', color: 'green' },
-        { label: 'Pending', value: users.filter(u => (u.status || '').toLowerCase() === 'pending').length, icon: 'hourglass_empty', color: 'orange' },
+        { label: 'Pending Users', value: users.filter(u => (u.status || '').toLowerCase() === 'pending').length, icon: 'hourglass_empty', color: 'orange' },
         { label: 'Suspended', value: users.filter(u => (u.status || '').toLowerCase() === 'suspended').length, icon: 'block', color: 'red' },
     ];
 
@@ -294,7 +315,7 @@ export default function UserManagementPage({
                                     <td colSpan={6} className="py-16 text-center text-text-secondary text-sm font-medium">No users found.</td>
                                 </tr>
                             ) : (
-                                users.map((user) => (
+                                paginatedUsers.map((user) => (
                                     <tr key={user.id} className="hover:bg-gray-50 transition-colors group">
                                         <td className="py-4 px-6">
                                             <div className="flex items-center gap-3">
@@ -348,6 +369,25 @@ export default function UserManagementPage({
                     <p className="text-xs text-text-secondary font-black uppercase tracking-widest">
                         {isLoading ? 'Loading...' : `${users.length} user${users.length !== 1 ? 's' : ''} found`}
                     </p>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            disabled={currentPage <= 1}
+                            className="h-8 px-3 rounded-lg border border-gray-200 text-xs font-bold disabled:opacity-40"
+                        >
+                            Prev
+                        </button>
+                        <span className="text-xs font-bold text-text-secondary">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={currentPage >= totalPages}
+                            className="h-8 px-3 rounded-lg border border-gray-200 text-xs font-bold disabled:opacity-40"
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
             </div>
 

@@ -120,7 +120,8 @@ export class BusinessesService {
       .leftJoinAndSelect('business.devices', 'devices');
 
     if (query.status) {
-      qb.andWhere('business.status = :status', { status: query.status });
+      const normalizedStatus = String(query.status).toLowerCase() as BusinessStatus;
+      qb.andWhere('business.status = :status', { status: normalizedStatus });
     }
 
     if (query.search) {

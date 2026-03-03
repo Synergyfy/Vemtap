@@ -23,7 +23,8 @@ import {
 } from '@/services/customer/hooks';
 
 export default function CustomerDashboardPage() {
-    const { user, isAuthenticated } = useAuthStore();
+    const user = useAuthStore((state) => state.user);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const { businessId: flowBusinessId, branchId: flowBranchId, deviceCode } = useCustomerFlowStore();
     const businessId = flowBusinessId || user?.businessId;
     const { data: analyticsResponse } = useCustomerLoyaltyAnalytics();
@@ -46,15 +47,25 @@ export default function CustomerDashboardPage() {
     const isLoyaltyLoading = isRewardsLoading || isHistoryLoading;
 
     useEffect(() => {
+        // eslint-disable-next-line no-console
+        console.log('[CUSTOMER DASHBOARD] 🔍 Auth check', { isAuthenticated, userRole: user?.role });
+        
         if (!isAuthenticated) {
+            // eslint-disable-next-line no-console
+            console.log('[CUSTOMER DASHBOARD] 🚫 Redirecting to /login');
             router.push('/login');
             return;
         }
 
         if (user?.role?.toLowerCase() !== 'customer') {
+            // eslint-disable-next-line no-console
+            console.log('[CUSTOMER DASHBOARD] 🔄 Role not customer, redirecting to /dashboard');
             router.push('/dashboard');
             return;
         }
+
+        // eslint-disable-next-line no-console
+        console.log('[CUSTOMER DASHBOARD] ✅ Auth OK');
 
         const initializeDashboard = async () => {
             if (user?.id) {
