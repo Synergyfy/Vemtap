@@ -1,5 +1,7 @@
+
 "use client";
 
+import { Loader2 } from 'lucide-react';
 import React from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { RewardManager } from '@/components/loyalty/admin/RewardManager';
@@ -46,7 +48,7 @@ export default function RewardManagementPage() {
 
             {isLoading && !rewards ? (
                 <div className="flex items-center justify-center p-24">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    <Loader2 className="animate-spin text-primary" size={48} />
                 </div>
             ) : (
                 <RewardManager
@@ -58,3 +60,4 @@ export default function RewardManagementPage() {
         </div>
     );
 }
+
