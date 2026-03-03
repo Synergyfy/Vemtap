@@ -13,7 +13,8 @@ import { useLogin } from '@/services/auth/hooks';
 export default function LoginPage() {
     const { loginUser, isLoading: isLoginLoading } = useLogin();
     const router = useRouter();
-    const login = useAuthStore((state: AuthState) => state.login);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const login = useAuthStore((state) => state.login);
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [formData, setFormData] = useState({
@@ -22,6 +23,9 @@ export default function LoginPage() {
         rememberMe: false,
     });
     const [isAutoLogin, setIsAutoLogin] = useState(false);
+
+    // eslint-disable-next-line no-console
+    console.log('[LOGIN PAGE] 🔍 isAuthenticated:', isAuthenticated);
 
     const routeByRole = (role: string, email: string) => {
         if (role === 'admin') {
