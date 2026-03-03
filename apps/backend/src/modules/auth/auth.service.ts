@@ -32,7 +32,7 @@ export class AuthService {
     private jwtService: JwtService,
     @InjectRepository(Otp)
     private otpRepository: Repository<Otp>,
-  ) {}
+  ) { }
 
   async requestOwnerOtp(dto: RequestOtpDto) {
     const email = dto.email.toLowerCase();
@@ -165,9 +165,6 @@ export class AuthService {
     const existingUser = await this.usersService.findByEmail(
       registrationData.email,
     );
-    if (existingUser) {
-      throw new ConflictException('Email already exists');
-    }
 
     // Determine Role (Default to OWNER if businessName is provided, else CUSTOMER)
     let role = registrationData.role || UserRole.CUSTOMER;
@@ -181,21 +178,46 @@ export class AuthService {
       role = UserRole.OWNER;
     }
 
-    // 1. Create User
+    // 1. Create or Update User
     const hashedPassword = await bcrypt.hash(registrationData.password, 10);
-    const user = await this.usersService.create({
-      firstName: registrationData.firstName || metadata.firstName,
-      lastName: registrationData.lastName || metadata.lastName,
-      email: registrationData.email,
-      password: hashedPassword,
-      role: role as UserRole,
-      status: UserStatus.ACTIVE,
-      phone: registrationData.phone || metadata.phone,
-      businessId: registrationData.businessId, // For staff/managers joining existing business
-    });
+    let user: User;
+
+    if (existingUser && existingUser.status === UserStatus.INVITED) {
+      // Complete registration for invited user
+      existingUser.firstName =
+        registrationData.firstName || metadata.firstName || existingUser.firstName;
+      existingUser.lastName =
+        registrationData.lastName || metadata.lastName || existingUser.lastName;
+      existingUser.password = hashedPassword;
+      existingUser.role = (registrationData.role as UserRole) || existingUser.role;
+      existingUser.status = UserStatus.ACTIVE;
+      existingUser.phone =
+        registrationData.phone || metadata.phone || existingUser.phone;
+      user = await this.usersService.create(existingUser);
+    } else {
+      if (existingUser) {
+        throw new ConflictException('Email already exists');
+      }
+
+      user = await this.usersService.create({
+        firstName: registrationData.firstName || metadata.firstName,
+        lastName: registrationData.lastName || metadata.lastName,
+        email: registrationData.email,
+        password: hashedPassword,
+        role: role as UserRole,
+        status:
+          role === UserRole.CUSTOMER ? UserStatus.ACTIVE : UserStatus.PENDING,
+        phone: registrationData.phone || metadata.phone,
+        businessId: registrationData.businessId, // For staff/managers joining existing business
+      });
+    }
 
     // 2. Create Business (only for Owners)
-    if (role === UserRole.OWNER && registrationData.businessName) {
+    if (
+      user.role === UserRole.OWNER &&
+      registrationData.businessName &&
+      !user.businessId
+    ) {
       const business = await this.businessesService.create({
         name: registrationData.businessName,
         category: registrationData.category,
@@ -256,7 +278,7 @@ export class AuthService {
       email: dto.email,
       password: hashedPassword,
       role: UserRole.OWNER,
-      status: UserStatus.ACTIVE,
+      status: UserStatus.PENDING,
       phone: registrationData.phone,
     });
 
