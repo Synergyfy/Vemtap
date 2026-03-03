@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Plan } from './entities/plan.entity';
 import { Subscription } from './entities/subscription.entity';
 import { Business } from '../businesses/entities/business.entity';
+import { User } from '../users/entities/user.entity';
 import { BusinessesModule } from '../businesses/businesses.module';
 import { HttpModule } from '@nestjs/axios';
 import { PlansController } from './plans.controller';
@@ -14,7 +15,7 @@ import { TrialRestrictionGuard } from './guards/trial-restriction.guard';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Plan, Subscription, Business]),
+    TypeOrmModule.forFeature([Plan, Subscription, Business, User]),
     BusinessesModule,
     PaymentsModule,
   ],
@@ -27,4 +28,4 @@ import { TrialRestrictionGuard } from './guards/trial-restriction.guard';
     TrialRestrictionGuard,
   ],
 })
-export class SubscriptionsModule {}
+export class SubscriptionsModule { }
