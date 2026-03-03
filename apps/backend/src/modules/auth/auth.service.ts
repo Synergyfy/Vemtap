@@ -13,7 +13,7 @@ import { BusinessesService } from '../businesses/businesses.service';
 import { DevicesService } from '../devices/devices.service';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
-import { UserRole } from '../users/entities/user.entity';
+import { UserRole, UserStatus } from '../users/entities/user.entity';
 import { Otp } from './entities/otp.entity';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
 import { RegisterAdminDto } from './dto/register-admin.dto';
@@ -174,6 +174,7 @@ export class AuthService {
       email: registrationData.email,
       password: hashedPassword,
       role: role as UserRole,
+      status: UserStatus.ACTIVE,
       phone: registrationData.phone || metadata.phone,
       businessId: registrationData.businessId, // For staff/managers joining existing business
     });
@@ -240,6 +241,7 @@ export class AuthService {
       email: dto.email,
       password: hashedPassword,
       role: UserRole.OWNER,
+      status: UserStatus.ACTIVE,
       phone: registrationData.phone,
     });
 
@@ -303,6 +305,7 @@ export class AuthService {
       email: dto.email,
       password: hashedPassword,
       role: UserRole.ADMIN, // Explicitly ADMIN
+      status: UserStatus.ACTIVE,
       phone: dto.phone || undefined,
     });
 

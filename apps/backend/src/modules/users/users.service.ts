@@ -289,8 +289,21 @@ export class UsersService {
   async adminDeleteUser(id: string): Promise<void> {
     const user = await this.findOne(id);
     if (!user) throw new NotFoundException('User not found');
-    user.status = UserStatus.SUSPENDED; // Disable account = array of suspended
-    await this.usersRepository.save(user);
+    await this.usersRepository.remove(user);
+  }
+
+  async suspendUser(id: string): Promise<User> {
+    const user = await this.findOne(id);
+    if (!user) throw new NotFoundException('User not found');
+    user.status = UserStatus.SUSPENDED;
+    return this.usersRepository.save(user);
+  }
+
+  async activateUser(id: string): Promise<User> {
+    const user = await this.findOne(id);
+    if (!user) throw new NotFoundException('User not found');
+    user.status = UserStatus.ACTIVE;
+    return this.usersRepository.save(user);
   }
 
   async adminResetPasswordLink(email: string) {
