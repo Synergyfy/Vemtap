@@ -6,7 +6,10 @@ import { toast } from 'react-hot-toast';
 import DynamicQRCode from '@/components/shared/DynamicQRCode';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
+import { BusinessHours } from '@/services/businesses/types';
 import { Loader2 } from 'lucide-react';
+
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
 export default function BusinessProfilePage() {
     const { storeName, logoUrl, updateCustomSettings, setRedirect } = useCustomerFlowStore();
@@ -21,6 +24,30 @@ export default function BusinessProfilePage() {
     const [supportEmail, setSupportEmail] = useState('');
     const [supportPhone, setSupportPhone] = useState('');
     const [address, setAddress] = useState('');
+
+    const [about, setAbout] = useState('');
+    const [welcomeMessage, setWelcomeMessage] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+    const [privacyMessage, setPrivacyMessage] = useState('');
+    const [rewardMessage, setRewardMessage] = useState('');
+
+    const [businessHours, setBusinessHours] = useState<Record<string, BusinessHours>>({});
+
+    const [rewardEnabled, setRewardEnabled] = useState(false);
+    const [rewardVisitThreshold, setRewardVisitThreshold] = useState(5);
+
+    const [facebookUrl, setFacebookUrl] = useState('');
+    const [instagramUrl, setInstagramUrl] = useState('');
+    const [tiktokUrl, setTiktokUrl] = useState('');
+    const [xUrl, setXUrl] = useState('');
+    const [youtubeUrl, setYoutubeUrl] = useState('');
+    const [customLink, setCustomLink] = useState('');
+    const [linkedinUrl, setLinkedinUrl] = useState('');
+    const [reviewUrl, setReviewUrl] = useState('');
+
+    const [showReview, setShowReview] = useState(true);
+    const [showSocial, setShowSocial] = useState(true);
+    const [showFeedback, setShowFeedback] = useState(true);
 
     const [origin, setOrigin] = useState('https://vemtap.com');
 
@@ -42,6 +69,38 @@ export default function BusinessProfilePage() {
             setSupportPhone(business.whatsappNumber || '+234 801 234 5678');
             setAddress(business.address || '42 Admiralty Way, Lekki Phase 1, Lagos, Nigeria');
 
+            setAbout(business.about || '');
+            setWelcomeMessage(business.welcomeMessage || '');
+            setSuccessMessage(business.successMessage || '');
+            setPrivacyMessage(business.privacyMessage || '');
+            setRewardMessage(business.rewardMessage || '');
+
+            if (business.businessHours) {
+                setBusinessHours(business.businessHours);
+            } else {
+                const defaultHours: Record<string, BusinessHours> = {};
+                DAYS.forEach(day => {
+                    defaultHours[day] = { open: '09:00', close: '18:00', closed: false };
+                });
+                setBusinessHours(defaultHours);
+            }
+
+            setRewardEnabled(business.rewardEnabled || false);
+            setRewardVisitThreshold(business.rewardVisitThreshold || 5);
+
+            setFacebookUrl(business.facebookUrl || '');
+            setInstagramUrl(business.instagramUrl || '');
+            setTiktokUrl(business.tiktokUrl || '');
+            setXUrl(business.xUrl || '');
+            setYoutubeUrl(business.youtubeUrl || '');
+            setCustomLink(business.customLink || '');
+            setLinkedinUrl(business.linkedinUrl || '');
+            setReviewUrl(business.reviewUrl || '');
+
+            setShowReview(business.showReview ?? true);
+            setShowSocial(business.showSocial ?? true);
+            setShowFeedback(business.showFeedback ?? true);
+
             if (!profileSlug) {
                 const slug = (business.name || storeName).toLowerCase().replace(/\s+/g, '-');
                 setProfileSlug(slug);
@@ -61,7 +120,26 @@ export default function BusinessProfilePage() {
                 category: businessType,
                 officialEmail: supportEmail,
                 whatsappNumber: supportPhone,
-                address: address
+                address: address,
+                about,
+                welcomeMessage,
+                successMessage,
+                privacyMessage,
+                rewardMessage,
+                businessHours,
+                rewardEnabled,
+                rewardVisitThreshold,
+                facebookUrl,
+                instagramUrl,
+                tiktokUrl,
+                xUrl,
+                youtubeUrl,
+                customLink,
+                linkedinUrl,
+                reviewUrl,
+                showReview,
+                showSocial,
+                showFeedback
             }
         }, {
             onSuccess: () => {
@@ -226,18 +304,327 @@ export default function BusinessProfilePage() {
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Support Phone</label>
                             <input type="tel" value={supportPhone} onChange={e => setSupportPhone(e.target.value)} placeholder="+234 801 234 5678" className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" />
                         </div>
-                        <div className="col-span-1 md:col-span-2 space-y-2">
+                    <div className="col-span-1 md:col-span-2 space-y-2">
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Detailed Address</label>
                             <textarea value={address} onChange={e => setAddress(e.target.value)} placeholder="42 Admiralty Way, Lekki Phase 1, Lagos, Nigeria" rows={3} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none" />
                         </div>
                     </div>
                 </div>
 
-                {/* Dynamic QR Code Section */}
+                {/* About Section */}
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                     <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Dynamic Business QR</h3>
-                        <p className="text-xs text-text-secondary font-medium">This QR code always redirects to your profile link above. You can change the link anytime without reprinting.</p>
+                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight">About Your Business</h3>
+                        <p className="text-xs text-text-secondary font-medium">Tell customers more about your business</p>
+                    </div>
+                    <div className="p-8 space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">About</label>
+                            <textarea
+                                value={about}
+                                onChange={(e) => setAbout(e.target.value)}
+                                placeholder="A luxury dining experience with ocean views."
+                                rows={4}
+                                className="w-full bg-gray-50 border border-gray-200 rounded-xl p-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Business Hours Section */}
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
+                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Business Hours</h3>
+                        <p className="text-xs text-text-secondary font-medium">Set your operating hours for each day</p>
+                    </div>
+                    <div className="p-8 space-y-4">
+                        {DAYS.map((day) => (
+                            <div key={day} className="flex flex-col md:flex-row items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                                <div className="w-28">
+                                    <span className="text-xs font-black uppercase tracking-widest text-text-secondary capitalize">{day}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={!businessHours[day]?.closed}
+                                            onChange={(e) => {
+                                                setBusinessHours(prev => ({
+                                                    ...prev,
+                                                    [day]: { ...prev[day], closed: !e.target.checked }
+                                                }));
+                                            }}
+                                            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                        <span className="text-xs font-bold text-text-secondary">Open</span>
+                                    </label>
+                                </div>
+                                <div className="flex-1 flex items-center gap-3">
+                                    <input
+                                        type="time"
+                                        value={businessHours[day]?.open || '09:00'}
+                                        onChange={(e) => {
+                                            setBusinessHours(prev => ({
+                                                ...prev,
+                                                [day]: { ...prev[day], open: e.target.value }
+                                            }));
+                                        }}
+                                        disabled={businessHours[day]?.closed}
+                                        className="w-32 h-10 bg-white border border-gray-200 rounded-lg px-3 text-sm font-bold focus:ring-2 focus:ring-primary/10 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                    />
+                                    <span className="text-text-secondary text-xs font-bold">to</span>
+                                    <input
+                                        type="time"
+                                        value={businessHours[day]?.close || '18:00'}
+                                        onChange={(e) => {
+                                            setBusinessHours(prev => ({
+                                                ...prev,
+                                                [day]: { ...prev[day], close: e.target.value }
+                                            }));
+                                        }}
+                                        disabled={businessHours[day]?.closed}
+                                        className="w-32 h-10 bg-white border border-gray-200 rounded-lg px-3 text-sm font-bold focus:ring-2 focus:ring-primary/10 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Messages Section */}
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
+                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Customer Messages</h3>
+                        <p className="text-xs text-text-secondary font-medium">Customize messages shown to customers during check-in</p>
+                    </div>
+                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Welcome Message</label>
+                            <input
+                                type="text"
+                                value={welcomeMessage}
+                                onChange={(e) => setWelcomeMessage(e.target.value)}
+                                placeholder="Welcome to our store!"
+                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Success Message</label>
+                            <input
+                                type="text"
+                                value={successMessage}
+                                onChange={(e) => setSuccessMessage(e.target.value)}
+                                placeholder="Check-in Complete!"
+                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Privacy Message</label>
+                            <input
+                                type="text"
+                                value={privacyMessage}
+                                onChange={(e) => setPrivacyMessage(e.target.value)}
+                                placeholder="We value your privacy."
+                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Reward Message</label>
+                            <input
+                                type="text"
+                                value={rewardMessage}
+                                onChange={(e) => setRewardMessage(e.target.value)}
+                                placeholder="10% Off your next visit!"
+                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Social Media Links */}
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
+                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Social Media & Links</h3>
+                        <p className="text-xs text-text-secondary font-medium">Add your social media profiles and other links</p>
+                    </div>
+                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Facebook URL</label>
+                            <input
+                                type="url"
+                                value={facebookUrl}
+                                onChange={(e) => setFacebookUrl(e.target.value)}
+                                placeholder="https://facebook.com/yourbusiness"
+                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Instagram URL</label>
+                            <input
+                                type="url"
+                                value={instagramUrl}
+                                onChange={(e) => setInstagramUrl(e.target.value)}
+                                placeholder="https://instagram.com/yourbusiness"
+                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">TikTok URL</label>
+                            <input
+                                type="url"
+                                value={tiktokUrl}
+                                onChange={(e) => setTiktokUrl(e.target.value)}
+                                placeholder="https://tiktok.com/@yourbusiness"
+                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">X (Twitter) URL</label>
+                            <input
+                                type="url"
+                                value={xUrl}
+                                onChange={(e) => setXUrl(e.target.value)}
+                                placeholder="https://x.com/yourbusiness"
+                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">YouTube URL</label>
+                            <input
+                                type="url"
+                                value={youtubeUrl}
+                                onChange={(e) => setYoutubeUrl(e.target.value)}
+                                placeholder="https://youtube.com/@yourbusiness"
+                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">LinkedIn URL</label>
+                            <input
+                                type="url"
+                                value={linkedinUrl}
+                                onChange={(e) => setLinkedinUrl(e.target.value)}
+                                placeholder="https://linkedin.com/company/yourbusiness"
+                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Custom Link</label>
+                            <input
+                                type="url"
+                                value={customLink}
+                                onChange={(e) => setCustomLink(e.target.value)}
+                                placeholder="https://yourwebsite.com"
+                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Review URL</label>
+                            <input
+                                type="url"
+                                value={reviewUrl}
+                                onChange={(e) => setReviewUrl(e.target.value)}
+                                placeholder="https://google.com/reviews/yourbusiness"
+                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Display Settings */}
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
+                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Display Settings</h3>
+                        <p className="text-xs text-text-secondary font-medium">Control what customers see on your profile</p>
+                    </div>
+                    <div className="p-8 space-y-4">
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                            <div>
+                                <span className="text-sm font-bold text-text-main">Show Reviews</span>
+                                <p className="text-xs text-text-secondary">Display review option on customer check-in</p>
+                            </div>
+                            <button
+                                onClick={() => setShowReview(!showReview)}
+                                className={`w-12 h-6 rounded-full transition-all ${showReview ? 'bg-primary' : 'bg-gray-300'}`}
+                            >
+                                <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${showReview ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                            </button>
+                        </div>
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                            <div>
+                                <span className="text-sm font-bold text-text-main">Show Social Links</span>
+                                <p className="text-xs text-text-secondary">Display social media links on your profile</p>
+                            </div>
+                            <button
+                                onClick={() => setShowSocial(!showSocial)}
+                                className={`w-12 h-6 rounded-full transition-all ${showSocial ? 'bg-primary' : 'bg-gray-300'}`}
+                            >
+                                <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${showSocial ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                            </button>
+                        </div>
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                            <div>
+                                <span className="text-sm font-bold text-text-main">Show Feedback</span>
+                                <p className="text-xs text-text-secondary">Allow customers to leave feedback</p>
+                            </div>
+                            <button
+                                onClick={() => setShowFeedback(!showFeedback)}
+                                className={`w-12 h-6 rounded-full transition-all ${showFeedback ? 'bg-primary' : 'bg-gray-300'}`}
+                            >
+                                <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${showFeedback ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Reward Settings */}
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
+                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Reward Settings</h3>
+                        <p className="text-xs text-text-secondary font-medium">Set up loyalty rewards for your customers</p>
+                    </div>
+                    <div className="p-8 space-y-6">
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                            <div>
+                                <span className="text-sm font-bold text-text-main">Enable Rewards</span>
+                                <p className="text-xs text-text-secondary">Allow customers to earn rewards on visits</p>
+                            </div>
+                            <button
+                                onClick={() => setRewardEnabled(!rewardEnabled)}
+                                className={`w-12 h-6 rounded-full transition-all ${rewardEnabled ? 'bg-primary' : 'bg-gray-300'}`}
+                            >
+                                <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${rewardEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                            </button>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Visits Until Reward</label>
+                            <input
+                                type="number"
+                                value={rewardVisitThreshold}
+                                onChange={(e) => setRewardVisitThreshold(parseInt(e.target.value) || 1)}
+                                min={1}
+                                disabled={!rewardEnabled}
+                                className="w-full md:w-48 h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                            />
+                            <p className="text-xs text-text-secondary">Number of visits required before a reward is given</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Dynamic QR Code Section */}
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                        <div>
+                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Dynamic Business QR</h3>
+                            <p className="text-xs text-text-secondary font-medium">This QR code always redirects to your profile link above. You can change the link anytime without reprinting.</p>
+                        </div>
+                        <button
+                            onClick={() => window.open(`/${profileSlug}`, '_blank')}
+                            className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary/20 transition-colors"
+                        >
+                            <span className="material-icons-round text-sm">open_in_new</span>
+                            View Public Profile
+                        </button>
                     </div>
                     <div className="p-8 flex flex-col md:flex-row items-center md:items-start gap-8">
                         <DynamicQRCode
@@ -258,8 +645,12 @@ export default function BusinessProfilePage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Current Destination</label>
-                                <div className="h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 flex items-center text-sm font-bold text-gray-600">
-                                    {`${origin}/${profileSlug}`}
+                                <div 
+                                    onClick={() => window.open(`/${profileSlug}`, '_blank')}
+                                    className="h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 flex items-center text-sm font-bold text-primary cursor-pointer hover:bg-primary/5 hover:border-primary/30 transition-all"
+                                >
+                                    {`${origin.replace(/^https?:\/\//, '')}/${profileSlug}`}
+                                    <span className="material-icons-round text-sm ml-auto">open_in_new</span>
                                 </div>
                             </div>
                         </div>

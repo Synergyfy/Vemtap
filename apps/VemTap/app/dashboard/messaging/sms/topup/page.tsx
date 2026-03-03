@@ -2,14 +2,21 @@
 
 import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
-import { useMessagingStore } from '@/lib/store/useMessagingStore';
-import { Wallet, Plus, ShieldCheck } from 'lucide-react';
+import { Wallet, Plus, ShieldCheck, Loader2 } from 'lucide-react';
 import TopUpModal from '@/components/messaging/TopUpModal';
+import { fetchMyCredits } from '@/lib/api/credit-plans';
+import { useQuery } from '@tanstack/react-query';
 
 export default function SMSTopUpPage() {
-    const { wallets } = useMessagingStore();
-    const wallet = wallets.SMS;
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const { data: credits, isLoading } = useQuery({
+        queryKey: ['my-credits'],
+        queryFn: fetchMyCredits,
+        refetchInterval: 30000,
+    });
+
+    const smsCredits = credits?.smsBalance ?? 0;
 
     return (
         <div className="p-4 md:p-8 space-y-8 max-w-4xl mx-auto">
@@ -21,9 +28,15 @@ export default function SMSTopUpPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
                     <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] mb-2">Current Balance</p>
-                    <p className="text-4xl font-display font-black text-text-main mb-8">
-                        {wallet.credits.toLocaleString()} <span className="text-lg text-primary">Pts</span>
-                    </p>
+                    {isLoading ? (
+                        <div className="flex items-center justify-center h-16">
+                            <Loader2 className="animate-spin text-primary" size={32} />
+                        </div>
+                    ) : (
+                        <p className="text-4xl font-display font-black text-text-main mb-8">
+                            {smsCredits.toLocaleString()} <span className="text-lg text-primary">Pts</span>
+                        </p>
+                    )}
                     <button
                         onClick={() => setIsModalOpen(true)}
                         className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
@@ -41,7 +54,7 @@ export default function SMSTopUpPage() {
                 </div>
             </div>
 
-            <TopUpModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} targetChannel="SMS" />
+            <TopUpModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
         </div>
     );
 }

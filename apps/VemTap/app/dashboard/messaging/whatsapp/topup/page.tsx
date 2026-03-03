@@ -2,14 +2,23 @@
 
 import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
-import { useMessagingStore } from '@/lib/store/useMessagingStore';
-import { Wallet, Plus, ArrowUpRight, Clock, Star } from 'lucide-react';
+import { Wallet, Plus, ArrowUpRight, Clock, Star, Loader2 } from 'lucide-react';
 import TopUpModal from '@/components/messaging/TopUpModal';
+import { fetchMyCredits } from '@/lib/api/credit-plans';
+import { useQuery } from '@tanstack/react-query';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function WhatsAppTopUpPage() {
-    const { wallets } = useMessagingStore();
-    const wallet = wallets.WhatsApp;
+    const { user } = useAuthStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const { data: credits, isLoading } = useQuery({
+        queryKey: ['my-credits'],
+        queryFn: fetchMyCredits,
+        refetchInterval: 30000,
+    });
+
+    const whatsappCredits = credits?.whatsappBalance ?? 0;
 
     return (
         <div className="p-4 md:p-8 space-y-8 max-w-4xl mx-auto">
@@ -30,9 +39,15 @@ export default function WhatsAppTopUpPage() {
                                 <p className="text-xs text-text-secondary">Current points in your messaging wallet</p>
                             </div>
                         </div>
-                        <p className="text-5xl font-display font-black text-text-main mb-8">
-                            {wallet.credits.toLocaleString()} <span className="text-xl text-primary uppercase">Points</span>
-                        </p>
+                        {isLoading ? (
+                            <div className="flex items-center justify-center h-20">
+                                <Loader2 className="animate-spin text-primary" size={32} />
+                            </div>
+                        ) : (
+                            <p className="text-5xl font-display font-black text-text-main mb-8">
+                                {whatsappCredits.toLocaleString()} <span className="text-xl text-primary uppercase">Points</span>
+                            </p>
+                        )}
                     </div>
                     <button
                         onClick={() => setIsModalOpen(true)}
@@ -55,7 +70,9 @@ export default function WhatsAppTopUpPage() {
                 </div>
             </div>
 
-            <TopUpModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+            <TopUpModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => {
+                // Refetch credits after successful purchase - this is handled by React Query cache invalidation in the modal
+            }} />
         </div>
     );
 }

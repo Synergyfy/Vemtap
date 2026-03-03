@@ -6,6 +6,7 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import { Phone, Send, CheckCircle, Clock, Smartphone, Wallet, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import TopUpModal from '@/components/messaging/TopUpModal';
+import ChannelBalance from '@/components/messaging/ChannelBalance';
 import { useMessagingAnalytics } from '@/services/messaging/hooks';
 
 export default function SMSOverviewPage() {
@@ -24,6 +25,8 @@ export default function SMSOverviewPage() {
                 title="SMS Channel"
                 description="Reach your customers directly on their mobile phones via high-delivery SMS."
             />
+
+            <ChannelBalance channel="sms" onTopUp={() => setIsTopUpOpen(true)} />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {channelStats.map((stat, i) => (
@@ -74,7 +77,6 @@ export default function SMSOverviewPage() {
             <TopUpModal
                 isOpen={isTopUpOpen}
                 onClose={() => setIsTopUpOpen(false)}
-                targetChannel="SMS"
             />
         </div>
     );
