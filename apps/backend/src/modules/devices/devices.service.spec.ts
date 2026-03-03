@@ -167,4 +167,38 @@ describe('DevicesService', () => {
       expect(mockDeviceRepository.save).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('adminCreate', () => {
+    it('should create a device for admin manually', async () => {
+      mockDeviceRepository.findOneBy.mockResolvedValue(null);
+      const dto = {
+        code: 'ADMIN-PROV-1',
+        name: 'Manual Device',
+        type: 'Tablet',
+        businessId: 'biz-1',
+      };
+
+      const result = await service.adminCreate(dto);
+
+      expect(deviceRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: 'ADMIN-PROV-1',
+          name: 'Manual Device',
+          type: 'Tablet',
+          businessId: 'biz-1',
+        }),
+      );
+      expect(deviceRepository.save).toHaveBeenCalled();
+    });
+
+    it('should throw ConflictException if serial exists', async () => {
+      mockDeviceRepository.findOneBy.mockResolvedValue(mockDevice);
+      const dto = {
+        code: 'LT-123',
+        name: 'Manual Device',
+      };
+
+      await expect(service.adminCreate(dto)).rejects.toThrow(ConflictException);
+    });
+  });
 });

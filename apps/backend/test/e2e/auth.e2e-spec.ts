@@ -80,7 +80,7 @@ describe('Auth & Notifications (e2e)', () => {
     return request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({
-        email: testEmail,
+        identifier: testEmail,
         password: 'password123',
       })
       .expect(200)
@@ -94,7 +94,48 @@ describe('Auth & Notifications (e2e)', () => {
     return request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({
-        email: testEmail.toUpperCase(),
+        identifier: testEmail.toUpperCase(),
+        password: 'password123',
+      })
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.access_token).toBeDefined();
+      });
+  });
+
+  it('/auth/login (POST) - phone number', async () => {
+    const phone = '+1234567890';
+    // Create a user with phone
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/otp/send')
+      .send({ email: 'phone-test@example.com' })
+      .expect(201);
+    
+    const otpRecord = await otpRepository.findOne({
+      where: { email: 'phone-test@example.com' },
+      order: { createdAt: 'DESC' },
+    });
+
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/otp/verify')
+      .send({ email: 'phone-test@example.com', code: otpRecord.code })
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        firstName: 'Phone',
+        lastName: 'Tester',
+        email: 'phone-test@example.com',
+        password: 'password123',
+        phone: phone,
+      })
+      .expect(201);
+
+    return request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        identifier: phone,
         password: 'password123',
       })
       .expect(200)

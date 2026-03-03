@@ -2,7 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
 import { createAuthenticatedUser } from '../utils/auth';
-import { UserRole } from '../../src/modules/users/entities/user.entity';
+import { User, UserRole } from '../../src/modules/users/entities/user.entity';
 import { DataSource } from 'typeorm';
 import { Business } from '../../src/modules/businesses/entities/business.entity';
 
@@ -40,7 +40,7 @@ describe('Businesses (E2E)', () => {
     const loginRes = await request(server)
       .post('/api/v1/auth/login')
       .send({
-        email: user.email,
+        identifier: user.email,
         password: 'Password123!',
       })
       .expect(200);

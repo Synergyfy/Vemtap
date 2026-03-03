@@ -27,6 +27,16 @@ export class UsersService {
     return this.usersRepository.findOneBy({ email: email.toLowerCase() });
   }
 
+  async findByIdentifier(identifier: string): Promise<User | null> {
+    const lowerIdentifier = identifier.toLowerCase();
+    return this.usersRepository.findOne({
+      where: [
+        { email: lowerIdentifier },
+        { phone: identifier },
+      ],
+    });
+  }
+
   async create(userData: Partial<User>): Promise<User> {
     if (userData.email) {
       userData.email = userData.email.toLowerCase();

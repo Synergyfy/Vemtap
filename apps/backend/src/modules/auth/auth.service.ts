@@ -34,7 +34,8 @@ export class AuthService {
   ) { }
 
   async requestOwnerOtp(dto: RequestOtpDto) {
-    const existingUser = await this.usersService.findByEmail(dto.email);
+    const email = dto.email.toLowerCase();
+    const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
       throw new ConflictException('User with this email already exists');
     }
@@ -45,21 +46,21 @@ export class AuthService {
 
     // Save OTP with metadata
     const otp = this.otpRepository.create({
-      email: dto.email,
+      email,
       code,
       expiresAt,
-      metadata: dto,
+      metadata: { ...dto, email },
     });
     await this.otpRepository.save(otp);
 
     // Send Email
-    await this.mailService.sendOtp(dto.email, code);
+    await this.mailService.sendOtp(email, code);
 
     return { message: 'OTP sent successfully' };
   }
 
   async sendOtp(dto: any) {
-    const email = typeof dto === 'string' ? dto : dto.email;
+    const email = (typeof dto === 'string' ? dto : dto.email).toLowerCase();
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
       throw new ConflictException('User with this email already exists');
@@ -74,7 +75,7 @@ export class AuthService {
       email,
       code,
       expiresAt,
-      metadata: typeof dto === 'object' ? dto : undefined,
+      metadata: typeof dto === 'object' ? { ...dto, email } : undefined,
     });
     await this.otpRepository.save(otp);
 
@@ -109,8 +110,8 @@ export class AuthService {
     return { message: 'OTP verified successfully' };
   }
 
-  async validateUser(email: string, pass: string): Promise<any> {
-    const user = await this.usersService.findByEmail(email);
+  async validateUser(identifier: string, pass: string): Promise<any> {
+    const user = await this.usersService.findByIdentifier(identifier);
     if (user && (await bcrypt.compare(pass, user.password))) {
       const { password: _password, ...result } = user;
       return result;

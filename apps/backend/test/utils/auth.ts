@@ -27,7 +27,7 @@ export async function createAuthenticatedUser(app: INestApplication, role: UserR
   const response = await request(app.getHttpServer())
     .post('/api/v1/auth/login')
     .send({
-      email: user.email,
+      identifier: user.email,
       password: password,
     })
     .expect(200);
