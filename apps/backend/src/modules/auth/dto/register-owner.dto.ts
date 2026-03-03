@@ -10,7 +10,6 @@ import {
 } from 'class-validator';
 
 export class RegisterOwnerDto {
-
   @ApiProperty({
     example: 'daniel@company.com',
     description: 'Email address (must match the one used for OTP)',

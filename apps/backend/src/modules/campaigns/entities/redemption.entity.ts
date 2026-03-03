@@ -58,7 +58,9 @@ export class Redemption extends AbstractBaseEntity {
   @Column({ type: 'timestamp' })
   expiresAt: Date;
 
-  @ManyToOne(() => LoyaltyProfile, (profile) => profile.redemptions, { onDelete: 'CASCADE' })
+  @ManyToOne(() => LoyaltyProfile, (profile) => profile.redemptions, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'loyaltyProfileId' })
   loyaltyProfile: LoyaltyProfile;
 
@@ -66,5 +68,3 @@ export class Redemption extends AbstractBaseEntity {
   @JoinColumn({ name: 'rewardId' })
   reward: Reward;
 }
-
-

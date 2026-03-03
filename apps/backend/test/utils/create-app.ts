@@ -12,7 +12,7 @@ import { FlowDelayProcessor } from '../../src/modules/messaging/processors/flow-
 import { AutomationProcessor } from '../../src/modules/messaging/processors/automation.processor';
 
 export async function createTestApp(
-  configureBuilder?: (builder: TestingModuleBuilder) => void
+  configureBuilder?: (builder: TestingModuleBuilder) => void,
 ): Promise<INestApplication> {
   const builder = Test.createTestingModule({
     imports: [AppModule],
@@ -26,14 +26,22 @@ export async function createTestApp(
     on: jest.fn(),
   };
 
-  builder.overrideProvider(getQueueToken('messaging-batch-send')).useValue(mockQueue);
-  builder.overrideProvider(getQueueToken('messaging-flow-delay')).useValue(mockQueue);
-  builder.overrideProvider(getQueueToken('messaging-automation')).useValue(mockQueue);
+  builder
+    .overrideProvider(getQueueToken('messaging-batch-send'))
+    .useValue(mockQueue);
+  builder
+    .overrideProvider(getQueueToken('messaging-flow-delay'))
+    .useValue(mockQueue);
+  builder
+    .overrideProvider(getQueueToken('messaging-automation'))
+    .useValue(mockQueue);
 
   // Mock BullMQ Processors to avoid starting workers that require Redis connections
   builder.overrideProvider(BatchSendProcessor).useValue({ process: jest.fn() });
   builder.overrideProvider(FlowDelayProcessor).useValue({ process: jest.fn() });
-  builder.overrideProvider(AutomationProcessor).useValue({ process: jest.fn() });
+  builder
+    .overrideProvider(AutomationProcessor)
+    .useValue({ process: jest.fn() });
 
   if (configureBuilder) {
     configureBuilder(builder);

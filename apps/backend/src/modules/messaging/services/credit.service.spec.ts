@@ -16,7 +16,9 @@ describe('CreditService', () => {
     find: jest.fn(),
     findOne: jest.fn(),
     create: jest.fn().mockImplementation((d) => d),
-    save: jest.fn().mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
+    save: jest
+      .fn()
+      .mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
     count: jest.fn(),
   };
 

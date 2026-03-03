@@ -28,7 +28,7 @@ export class AutomationService {
     private readonly messagingEngine: MessagingEngineService,
     @InjectQueue('messaging-automation')
     private readonly automationQueue: Queue,
-  ) { }
+  ) {}
 
   // --- CRUD ---
 
@@ -139,24 +139,30 @@ export class AutomationService {
 
   // --- Phase 2: Logs & Connections ---
 
-  async findLogs(businessId: string, branchId?: string, limit = 50, offset = 0) {
-    const qb = this.logRepo.createQueryBuilder('log')
+  async findLogs(
+    businessId: string,
+    branchId?: string,
+    limit = 50,
+    offset = 0,
+  ) {
+    const qb = this.logRepo
+      .createQueryBuilder('log')
       .leftJoinAndSelect('log.rule', 'rule')
       .where('rule.businessId = :businessId', { businessId });
 
     if (branchId) {
-      qb.andWhere('(rule.branchId = :branchId OR rule.branchId IS NULL)', { branchId });
+      qb.andWhere('(rule.branchId = :branchId OR rule.branchId IS NULL)', {
+        branchId,
+      });
     }
 
-    qb.orderBy('log.executedAt', 'DESC')
-      .take(limit)
-      .skip(offset);
+    qb.orderBy('log.executedAt', 'DESC').take(limit).skip(offset);
 
     const [logs, total] = await qb.getManyAndCount();
 
     // Map to a nice format for the frontend log page
     return {
-      data: logs.map(log => ({
+      data: logs.map((log) => ({
         id: log.id,
         ruleName: log.rule?.name,
         contactId: log.contactId,
@@ -198,13 +204,21 @@ export class AutomationService {
 
   // --- Phase 3: Analytics ---
 
-  async getPerformanceAnalytics(businessId: string, branchId?: string, startDate?: Date, endDate?: Date) {
-    const qb = this.logRepo.createQueryBuilder('log')
+  async getPerformanceAnalytics(
+    businessId: string,
+    branchId?: string,
+    startDate?: Date,
+    endDate?: Date,
+  ) {
+    const qb = this.logRepo
+      .createQueryBuilder('log')
       .leftJoinAndSelect('log.rule', 'rule')
       .where('rule.businessId = :businessId', { businessId });
 
     if (branchId) {
-      qb.andWhere('(rule.branchId = :branchId OR rule.branchId IS NULL)', { branchId });
+      qb.andWhere('(rule.branchId = :branchId OR rule.branchId IS NULL)', {
+        branchId,
+      });
     }
 
     if (startDate) {
@@ -216,12 +230,15 @@ export class AutomationService {
 
     const logs = await qb.getMany();
 
-    const totalMessagesSent = logs.filter(l => l.status === 'success').length;
-    const totalFailures = logs.filter(l => l.status === 'failed').length;
+    const totalMessagesSent = logs.filter((l) => l.status === 'success').length;
+    const totalFailures = logs.filter((l) => l.status === 'failed').length;
 
     // We don't have reply tracking yet in log entity, so this is mocked/placeholder
     const totalRepliesReceived = 0;
-    const replyRate = totalMessagesSent > 0 ? (totalRepliesReceived / totalMessagesSent) * 100 : 0;
+    const replyRate =
+      totalMessagesSent > 0
+        ? (totalRepliesReceived / totalMessagesSent) * 100
+        : 0;
 
     // Calculate sum of loyalty points issued from successful logs
     let loyaltyPointsIssued = 0;
@@ -232,7 +249,7 @@ export class AutomationService {
     }
 
     const activeRulesCount = await this.ruleRepo.count({
-      where: { businessId, isActive: true, ...(branchId ? { branchId } : {}) }
+      where: { businessId, isActive: true, ...(branchId ? { branchId } : {}) },
     });
 
     return {

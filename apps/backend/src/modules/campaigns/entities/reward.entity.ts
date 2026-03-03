@@ -68,4 +68,3 @@ export class Reward extends AbstractBaseEntity {
   @Column({ nullable: true })
   imageUrl: string;
 }
-

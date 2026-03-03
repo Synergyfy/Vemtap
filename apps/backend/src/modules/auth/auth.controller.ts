@@ -61,7 +61,6 @@ export class AuthController {
   }
 
   @Public()
-  @UseGuards(LocalAuthGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email/phone and password' })
@@ -71,8 +70,8 @@ export class AuthController {
     description: 'Login successful',
     type: AuthResponseDto,
   })
-  async login(@Request() req) {
-    return this.authService.login(req.user);
+  async login(@Body() loginDto: LoginDto) {
+    return this.authService.login(loginDto);
   }
 
   @Public()

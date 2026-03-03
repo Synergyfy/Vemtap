@@ -17,7 +17,7 @@ export class UsersService {
     private usersRepository: Repository<User>,
     @InjectRepository(PasswordResetHistory)
     private passwordResetHistoryRepository: Repository<PasswordResetHistory>,
-  ) { }
+  ) {}
 
   findOne(id: string): Promise<User | null> {
     return this.usersRepository.findOneBy({ id });
@@ -30,10 +30,7 @@ export class UsersService {
   async findByIdentifier(identifier: string): Promise<User | null> {
     const lowerIdentifier = identifier.toLowerCase();
     return this.usersRepository.findOne({
-      where: [
-        { email: lowerIdentifier },
-        { phone: identifier },
-      ],
+      where: [{ email: lowerIdentifier }, { phone: identifier }],
     });
   }
 

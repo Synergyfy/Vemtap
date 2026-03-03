@@ -31,7 +31,7 @@ import { ImportCustomersDto } from './dto/import-customers.dto';
 @ApiBearerAuth()
 @Controller('businesses')
 export class BusinessesController {
-  constructor(private readonly businessesService: BusinessesService) { }
+  constructor(private readonly businessesService: BusinessesService) {}
 
   @Get('my-business')
   @SkipSubscriptionCheck()
@@ -48,8 +48,10 @@ export class BusinessesController {
   @Patch('my-business')
   @Roles(UserRole.OWNER)
   @ApiOperation({
-    summary: 'Update current user\'s business details (About, Hours, Settings, etc.)',
-    description: 'Only accessible by business owners. Uses businessId from token.',
+    summary:
+      "Update current user's business details (About, Hours, Settings, etc.)",
+    description:
+      'Only accessible by business owners. Uses businessId from token.',
   })
   @ApiBody({ type: UpdateBusinessDto })
   @ApiOkResponse({
@@ -71,7 +73,8 @@ export class BusinessesController {
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({
     summary: 'Bulk import customers for the current business',
-    description: 'Import multiple customers at once. Default password "mypassword" will be assigned.',
+    description:
+      'Import multiple customers at once. Default password "mypassword" will be assigned.',
   })
   @ApiBody({ type: ImportCustomersDto })
   @ApiResponse({

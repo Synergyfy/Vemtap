@@ -91,4 +91,4 @@ import { dataSourceOptions } from './database/data-source';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

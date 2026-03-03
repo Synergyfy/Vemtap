@@ -31,7 +31,7 @@ import { UserRole } from '../users/entities/user.entity';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('loyalty')
 export class LoyaltyController {
-  constructor(private readonly loyaltyService: LoyaltyService) { }
+  constructor(private readonly loyaltyService: LoyaltyService) {}
 
   @Get('analytics')
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
@@ -71,7 +71,10 @@ export class LoyaltyController {
           firstName: 'John',
           lastName: 'Doe',
           engagement: {
-            instagram: { profile: 'johndoe', link: 'https://instagr.am/johndoe' },
+            instagram: {
+              profile: 'johndoe',
+              link: 'https://instagr.am/johndoe',
+            },
           },
         },
         isFirstTimeVisit: true,

@@ -44,7 +44,7 @@ import {
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
 @Permissions('messaging')
 export class AutomationsController {
-  constructor(private readonly automationService: AutomationService) { }
+  constructor(private readonly automationService: AutomationService) {}
 
   @Post()
   @Roles(UserRole.OWNER, UserRole.MANAGER)
@@ -99,10 +99,13 @@ export class AutomationsController {
   @ApiOkResponse({
     schema: {
       properties: {
-        data: { type: 'array', items: { $ref: '#/components/schemas/AutomationLogResponseDto' } },
-        total: { type: 'number' }
-      }
-    }
+        data: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/AutomationLogResponseDto' },
+        },
+        total: { type: 'number' },
+      },
+    },
   })
   async getLogs(
     @Query('branchId') branchId: string,
@@ -120,14 +123,19 @@ export class AutomationsController {
   }
 
   @Get('logs/:sessionId')
-  @ApiOperation({ summary: 'Get details for a specific automation session log' })
+  @ApiOperation({
+    summary: 'Get details for a specific automation session log',
+  })
   @ApiOkResponse({ type: AutomationLogResponseDto })
   async getLogDetails(
     @Param('sessionId') sessionId: string,
     @Request() req: { user: User },
   ) {
     try {
-      return await this.automationService.findLogDetails(sessionId, req.user.businessId);
+      return await this.automationService.findLogDetails(
+        sessionId,
+        req.user.businessId,
+      );
     } catch (e: any) {
       throw new BadRequestException(e.message || 'Error fetching log details');
     }
@@ -141,16 +149,19 @@ export class AutomationsController {
       example: {
         status: 'Connected',
         provider: 'WhatsApp',
-        updatedAt: '2024-02-27T10:00:00.000Z'
-      }
-    }
+        updatedAt: '2024-02-27T10:00:00.000Z',
+      },
+    },
   })
   async getConnectionStatus(
     @Query('branchId') branchId: string,
     @Request() req: { user: User },
   ) {
     const targetBranchId = req.user.branchId || branchId;
-    return this.automationService.getConnectionStatus(req.user.businessId, targetBranchId);
+    return this.automationService.getConnectionStatus(
+      req.user.businessId,
+      targetBranchId,
+    );
   }
 
   @Get('performance')
@@ -300,4 +311,3 @@ export class AutomationsController {
     }
   }
 }
-

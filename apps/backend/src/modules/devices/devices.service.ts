@@ -24,7 +24,7 @@ export class DevicesService {
     private orderRepository: Repository<Order>,
     @InjectRepository(Branch)
     private branchRepository: Repository<Branch>,
-  ) { }
+  ) {}
 
   async create(
     businessId: string,
@@ -108,7 +108,9 @@ export class DevicesService {
         throw new NotFoundException('Branch not found');
       }
       if (branch.businessId !== businessId) {
-        throw new BadRequestException('Branch does not belong to your business');
+        throw new BadRequestException(
+          'Branch does not belong to your business',
+        );
       }
     }
 
@@ -399,7 +401,10 @@ export class DevicesService {
     return this.devicesRepository.save(device);
   }
 
-  async adminUpdate(id: string, updates: AdminUpdateDeviceDto): Promise<Device> {
+  async adminUpdate(
+    id: string,
+    updates: AdminUpdateDeviceDto,
+  ): Promise<Device> {
     const device = await this.devicesRepository.findOneBy({ id });
     if (!device) throw new NotFoundException('Device not found');
     Object.assign(device, updates);

@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
-import { MessageTemplate, TemplateStatus } from '../entities/message-template.entity';
+import {
+  MessageTemplate,
+  TemplateStatus,
+} from '../entities/message-template.entity';
 import { Channel } from '../enums/channel.enum';
 import { CreateTemplateDto } from '../dto/template/create-template.dto';
 import { User, UserRole } from '../../users/entities/user.entity';
@@ -16,7 +19,7 @@ export class TemplateService {
   constructor(
     @InjectRepository(MessageTemplate)
     private readonly templateRepo: Repository<MessageTemplate>,
-  ) { }
+  ) {}
 
   async createTemplate(
     dto: CreateTemplateDto,
@@ -33,14 +36,16 @@ export class TemplateService {
     const businessId = dto.isSystem ? null : user.businessId;
 
     if (!dto.isSystem && !businessId) {
-      throw new BadRequestException('Business context is required for non-system templates.');
+      throw new BadRequestException(
+        'Business context is required for non-system templates.',
+      );
     }
 
     const existing = await this.templateRepo.findOne({
       where: {
         businessId: businessId ?? IsNull(),
         name: dto.name,
-        channel: dto.channel
+        channel: dto.channel,
       },
     });
 
@@ -91,13 +96,17 @@ export class TemplateService {
     // Business templates are restricted to that business.
     // Admins can see everything.
     // If no user is provided, we skip checks (internal system call).
-    if (user && user.role !== UserRole.ADMIN && !template.isSystem && template.businessId !== user.businessId) {
+    if (
+      user &&
+      user.role !== UserRole.ADMIN &&
+      !template.isSystem &&
+      template.businessId !== user.businessId
+    ) {
       throw new ForbiddenException('Access denied to this template.');
     }
 
     return template;
   }
-
 
   // --- Admin Methods ---
 
@@ -108,7 +117,10 @@ export class TemplateService {
     });
   }
 
-  async updateStatus(id: string, status: TemplateStatus): Promise<MessageTemplate> {
+  async updateStatus(
+    id: string,
+    status: TemplateStatus,
+  ): Promise<MessageTemplate> {
     const template = await this.templateRepo.findOne({ where: { id } });
     if (!template) throw new NotFoundException('Template not found');
 
@@ -142,9 +154,11 @@ export class TemplateService {
       throw new BadRequestException('Template content cannot be empty.');
     }
 
-    if (channel === Channel.SMS && content.length > 320) { // Extended limit for concatenated SMS
-      throw new BadRequestException('SMS content too long (max 320 characters for templates).');
+    if (channel === Channel.SMS && content.length > 320) {
+      // Extended limit for concatenated SMS
+      throw new BadRequestException(
+        'SMS content too long (max 320 characters for templates).',
+      );
     }
   }
 }
-

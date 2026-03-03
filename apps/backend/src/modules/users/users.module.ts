@@ -18,4 +18,4 @@ import { BranchesModule } from '../branches/branches.module';
   controllers: [UsersController],
   exports: [UsersService],
 })
-export class UsersModule { }
+export class UsersModule {}

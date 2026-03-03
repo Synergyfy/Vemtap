@@ -57,5 +57,3 @@ export class MessageTemplate extends AbstractBaseEntity {
   @Column({ type: 'uuid', nullable: true })
   createdById?: string | null;
 }
-
-
