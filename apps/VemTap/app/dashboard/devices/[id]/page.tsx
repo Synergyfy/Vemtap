@@ -4,10 +4,8 @@ import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDevice } from '@/services/devices/hooks';
 import Link from 'next/link';
-import {
-    ArrowLeft, BarChart2, Users, MousePointer2,
-    Calendar, TrendingUp, Clock, MapPin, Battery
-} from 'lucide-react';
+import { ArrowLeft, BarChart2, Users, MousePointer2,
+    Calendar, TrendingUp, Clock, MapPin, Battery, Loader2 } from 'lucide-react';
 import LogoIcon from '@/components/brand/LogoIcon';
 import ChartCard from '@/components/dashboard/ChartCard';
 import StatsCard from '@/components/dashboard/StatsCard';
@@ -22,7 +20,7 @@ export default function DeviceStatsPage() {
     if (isLoading) {
         return (
             <div className="p-8 flex items-center justify-center min-h-[60vh]">
-                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                <Loader2 className="animate-spin text-primary" size={40} />
             </div>
         );
     }

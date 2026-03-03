@@ -14,10 +14,11 @@ interface Props {
     onClose: () => void;
     plan: PricingPlan;
     billingPeriod?: 'monthly' | 'quarterly' | 'yearly';
+    onBillingPeriodChange?: (cycle: 'monthly' | 'quarterly' | 'yearly') => void;
     businessId?: string;
 }
 
-export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPeriod = 'monthly', businessId, isTrial = false }: Props) {
+export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPeriod = 'monthly', onBillingPeriodChange, businessId, isTrial = false }: Props) {
     const { user } = useAuthStore();
     const subscribeMutation = useSubscribe();
     const [isProcessing, setIsProcessing] = useState(false);
@@ -75,7 +76,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             email: email,
             amount: amountToCharge * 100, // Paystack amount is in kobo
             currency: 'NGN',
-            ref: `SUB-${businessId || user?.businessId || 'anon'}-${Date.now()}`,
+            ref: `SUB-${resolvedBusinessId || 'anon'}-${Date.now()}`,
             onClose: () => {
                 setIsProcessing(false);
                 toast.error('Payment window closed');
@@ -120,24 +121,24 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
         if (base === undefined) return null;
 
         if (billingPeriod === 'quarterly') {
-            const perMonth = Math.floor(base * 0.9 / 3);
-            const total = perMonth * 3;
+            const perMonth = Math.floor(base / 3);
+            const total = base;
             return {
                 perMonth,
                 total,
                 label: 'Charged every 3 months',
-                savings: base - total,
+                savings: 0,
                 months: 3,
             };
         }
         if (billingPeriod === 'yearly') {
-            const perMonth = Math.floor(base * 0.8 / 12);
-            const total = perMonth * 12;
+            const perMonth = Math.floor(base / 12);
+            const total = base;
             return {
                 perMonth,
                 total,
                 label: 'Charged annually',
-                savings: base - total,
+                savings: 0,
                 months: 12,
             };
         }
@@ -160,10 +161,20 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                         <div>
                             <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1.5">Selected Plan</p>
                             <h4 className="text-xl font-black text-text-main tracking-tight">{plan.name}</h4>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="px-2 py-0.5 bg-white border border-primary/10 rounded text-[9px] font-black uppercase tracking-widest text-primary">
-                                    {billingPeriod}
-                                </span>
+                            <div className="flex items-center gap-1 mt-2 bg-white p-1 rounded-lg border border-primary/10 w-fit">
+                                {(['monthly', 'quarterly', 'yearly'] as const).map((cycle) => (
+                                    <button
+                                        key={cycle}
+                                        type="button"
+                                        onClick={() => onBillingPeriodChange?.(cycle)}
+                                        className={`px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-widest transition-colors ${billingPeriod === cycle
+                                            ? 'bg-primary text-white'
+                                            : 'text-primary hover:bg-primary/10'
+                                            }`}
+                                    >
+                                        {cycle}
+                                    </button>
+                                ))}
                             </div>
                         </div>
                         <div className="text-right">

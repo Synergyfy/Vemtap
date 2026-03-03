@@ -4,10 +4,8 @@ import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Visitor } from '@/lib/store/mockDashboardStore';
 import toast from 'react-hot-toast';
-import {
-    Users, UserPlus, Repeat, Calendar, TrendingUp, TrendingDown,
-    ChevronDown, Trash, Send, Download, Gift, ArrowRight, MessageSquare, Zap
-} from 'lucide-react';
+import { Users, UserPlus, Repeat, Calendar, TrendingUp, TrendingDown,
+    ChevronDown, Trash, Send, Download, Gift, ArrowRight, MessageSquare, Zap, Loader2 } from 'lucide-react';
 import LogoIcon from '@/components/brand/LogoIcon';
 import { useRouter } from 'next/navigation';
 import Modal from '@/components/ui/Modal';
@@ -287,7 +285,7 @@ export default function DashboardPage() {
                                 <div className="flex items-center gap-3">
                                     <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center">
                                         {isPending ? (
-                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            <Loader2 size={14} className="animate-spin text-white" />
                                         ) : (
                                             <UserPlus size={16} />
                                         )}
@@ -447,3 +445,4 @@ export default function DashboardPage() {
         </div >
     );
 }
+

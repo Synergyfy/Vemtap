@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { X, Plus, Send, Calendar, Clock, Edit } from 'lucide-react';
+import { X, Plus, Send, Calendar, Clock, Edit, Loader2 } from 'lucide-react';
 import { Message } from '@/lib/store/mockDashboardStore';
 import Modal from '@/components/ui/Modal';
 
@@ -120,7 +120,7 @@ export default function CreateMessageModal({ isOpen, onClose, onSubmit, isLoadin
                         className="flex-3 h-14 bg-primary text-white font-bold rounded-lg hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
                     >
                         {isLoading ? (
-                            <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            <Loader2 size={20} className="animate-spin text-white" />
                         ) : (
                             <>
                                 {isEditing ? <Edit size={20} /> : <Plus size={20} />}
@@ -133,3 +133,4 @@ export default function CreateMessageModal({ isOpen, onClose, onSubmit, isLoadin
         </Modal>
     );
 }
+

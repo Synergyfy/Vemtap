@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
 import { Branch } from '@/services/branches/types';
@@ -168,7 +168,7 @@ export default function AddVisitorModal({ isOpen, onClose, onSubmit, isLoading, 
                         className="flex-2 px-6 py-4 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-all text-sm shadow-xl shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-95"
                     >
                         {isLoading ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            <Loader2 size={18} className="animate-spin text-white" />
                         ) : (
                             'Confirm & Add Visitor'
                         )}
@@ -178,3 +178,4 @@ export default function AddVisitorModal({ isOpen, onClose, onSubmit, isLoading, 
         </Modal>
     );
 }
+

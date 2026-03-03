@@ -1,5 +1,7 @@
 'use client';
 
+import { Loader2 } from 'lucide-react';
+
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import Modal from '@/components/ui/Modal';
@@ -143,7 +145,7 @@ export default function EditVisitorModal({ isOpen, onClose, onSubmit, visitor, i
                         className="flex-2 px-6 py-4 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-all text-sm shadow-xl shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-95"
                     >
                         {isLoading ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            <Loader2 size={18} className="animate-spin text-white" />
                         ) : (
                             'Save Changes'
                         )}
@@ -153,3 +155,4 @@ export default function EditVisitorModal({ isOpen, onClose, onSubmit, visitor, i
         </Modal>
     );
 }
+
