@@ -3,7 +3,7 @@
 import React from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { motion } from 'framer-motion';
-import { BarChart3, TrendingUp, Users, MessageSquare, Award, Clock, ArrowUpRight } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, MessageSquare, Award, Clock, ArrowUpRight, Loader2 } from 'lucide-react';
 import { useAutomationPerformance } from '@/services/messaging/hooks';
 
 export default function AutomationPerformancePage() {
@@ -19,7 +19,7 @@ export default function AutomationPerformancePage() {
     if (isLoading) {
         return (
             <div className="p-8 flex items-center justify-center min-h-[400px]">
-                <div className="animate-spin size-12 border-4 border-primary border-t-transparent rounded-full" />
+                <Loader2 className="animate-spin text-primary" size={48} />
             </div>
         );
     }
@@ -137,3 +137,4 @@ export default function AutomationPerformancePage() {
         </div>
     );
 }
+

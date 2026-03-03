@@ -10,9 +10,7 @@ import { useRouter } from 'next/navigation';
 
 export default function Pricing() {
     const router = useRouter();
-    const user = useAuthStore((state: AuthState) => state.user);
     const isAuthenticated = useAuthStore((state: AuthState) => state.isAuthenticated);
-    const accessToken = useAuthStore((state: AuthState) => state.access_token);
     const [isRedirecting, setIsRedirecting] = useState(false);
     const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
 
@@ -22,22 +20,14 @@ export default function Pricing() {
     });
 
     const handleSubscription = async (plan: any, useTrial: boolean = false) => {
-        const hasValidSession = Boolean(
-            isAuthenticated &&
-            accessToken &&
-            user?.id &&
-            user?.email &&
-            user?.businessId
-        );
-
-        if (!hasValidSession) {
-            toast('Create an account to select a plan.');
-            router.push('/get-started');
-            return;
-        }
-
+        const params = new URLSearchParams({
+            plan: plan.id,
+            billing: billingPeriod,
+            trial: useTrial ? '1' : '0',
+        });
         setIsRedirecting(true);
-        router.push('/dashboard/settings/subscription');
+        toast(isAuthenticated ? 'Continue setup to activate this plan.' : 'Create an account to continue.');
+        router.push(`/get-started?${params.toString()}`);
     };
 
     if (isLoading) return (
@@ -85,6 +75,17 @@ export default function Pricing() {
 
     const formatPrice = (price: number) => {
         return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(price);
+    };
+
+    const capitalizeFirstLetter = (value?: string) => {
+        if (!value) return '';
+        const trimmed = value.trim();
+        if (!trimmed) return '';
+        return `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1)}`;
+    };
+
+    const getTrialDays = (plan: any) => {
+        return plan.trialDurationDays || plan.freeDurationDays || (plan.isFree ? 30 : 0);
     };
 
     const normalizeFeatures = (plan: any) => {
@@ -140,7 +141,7 @@ export default function Pricing() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                     {mainPlans.map((plan, index) => {
                         const highlight = plan.isPopular;
-                        const isCurrentPlan = user?.planId === plan.id;
+                        const trialDays = getTrialDays(plan);
                         const price = getPriceByCycle(plan, billingPeriod);
                         const perMonthPrice = getPerMonthPrice(price, billingPeriod);
                         const billingTotal = getBillingTotal(price, billingPeriod);
@@ -167,7 +168,7 @@ export default function Pricing() {
                                         {plan.name}
                                     </h3>
                                     <p className={`text-sm font-medium ${highlight ? 'text-white/80' : 'text-text-secondary'}`}>
-                                        {plan.description}
+                                        {capitalizeFirstLetter(plan.description)}
                                     </p>
                                 </div>
                                 <div className="mb-2">
@@ -202,7 +203,7 @@ export default function Pricing() {
                                                     <li key={`included-${fIndex}`} className="flex items-start gap-3 text-xs font-semibold leading-relaxed">
                                                         <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${highlight ? 'text-white' : 'text-primary'}`} />
                                                         <span className={highlight ? 'text-white/90' : 'text-text-secondary'}>
-                                                            {feature}
+                                                            {capitalizeFirstLetter(feature)}
                                                         </span>
                                                     </li>
                                                 ))}
@@ -219,7 +220,7 @@ export default function Pricing() {
                                                     <li key={`limit-${fIndex}`} className="flex items-start gap-3 text-xs font-semibold leading-relaxed">
                                                         <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${highlight ? 'text-white' : 'text-primary'}`} />
                                                         <span className={highlight ? 'text-white/90' : 'text-text-secondary'}>
-                                                            {feature}
+                                                            {capitalizeFirstLetter(feature)}
                                                         </span>
                                                     </li>
                                                 ))}
@@ -229,7 +230,7 @@ export default function Pricing() {
                                 </div>
 
                                 <div className="flex flex-col gap-3">
-                                    {plan.trialDurationDays > 0 && !plan.isFree && !isCurrentPlan && (
+                                    {trialDays > 0 && !plan.isFree && (
                                         <button
                                         onClick={() => handleSubscription(plan, true)}
                                         className={`
@@ -240,7 +241,7 @@ export default function Pricing() {
                                                 }
                                             `}
                                         >
-                                            Start {plan.trialDurationDays}-Day Free Trial
+                                            Start {trialDays}-Day Free Trial
                                         </button>
                                     )}
                                     <button
@@ -248,22 +249,20 @@ export default function Pricing() {
                                         className={`
                                             w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center transition-all cursor-pointer shadow-lg active:scale-[0.98]
                                             ${highlight
-                                                ? plan.trialDurationDays > 0
+                                                ? trialDays > 0
                                                     ? 'bg-primary border border-white/20 text-white hover:bg-primary-hover shadow-none'
                                                     : 'bg-white text-primary hover:bg-gray-50 shadow-white/10'
-                                                : plan.trialDurationDays > 0
+                                                : trialDays > 0
                                                     ? 'bg-slate-100 text-slate-900 hover:bg-slate-200 shadow-none'
                                                     : 'bg-primary text-white hover:bg-primary-hover shadow-primary/20'
                                             }
                                         `}
                                     >
-                                        {plan.isFree ? 'Get Started' : isCurrentPlan ? 'Manage Sub' : 'Subscribe Now'}
+                                        {plan.isFree ? 'Get Started' : 'Subscribe Now'}
                                     </button>
-                                    {!isAuthenticated && (
-                                        <p className={`text-[10px] font-semibold text-center ${highlight ? 'text-white/70' : 'text-text-secondary'}`}>
-                                            Create an account to choose this plan.
-                                        </p>
-                                    )}
+                                    <p className={`text-[10px] font-semibold text-center ${highlight ? 'text-white/70' : 'text-text-secondary'}`}>
+                                        {isAuthenticated ? 'Complete onboarding to activate this plan.' : 'Create an account to choose this plan.'}
+                                    </p>
                                 </div>
                             </div>
                         );
@@ -272,7 +271,6 @@ export default function Pricing() {
 
                 {/* White Label Plan - Separate Row */}
                 {enterprisePlan && (() => {
-                    const isCurrentPlan = user?.planId === enterprisePlan.id;
                     const features = normalizeFeatures(enterprisePlan);
                     const price = getPriceByCycle(enterprisePlan, billingPeriod);
 
@@ -287,13 +285,13 @@ export default function Pricing() {
                                         {enterprisePlan.name}
                                     </h3>
                                     <p className="text-xs mb-6 font-medium text-white/80 max-w-xl">
-                                        {enterprisePlan.description}
+                                        {capitalizeFirstLetter(enterprisePlan.description)}
                                     </p>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
                                         {[...features.included, ...features.limits].slice(0, 4).map((item: string, i: number) => (
                                             <li key={i} className="flex items-center text-xs font-semibold gap-2.5 list-none justify-center md:justify-start">
                                                 <CheckCircle2 size={14} className="text-white shrink-0" />
-                                                <span className="text-white/90">{item}</span>
+                                                <span className="text-white/90">{capitalizeFirstLetter(item)}</span>
                                             </li>
                                         ))}
                                     </div>
@@ -304,7 +302,7 @@ export default function Pricing() {
                                         <span className="text-xs font-bold opacity-60 mt-1 block tracking-wider">/mo</span>
                                     </div>
                                     <div className="flex flex-col gap-3 min-w-[200px]">
-                                        {enterprisePlan.trialDurationDays > 0 && !enterprisePlan.isFree && !isCurrentPlan && (
+                                        {enterprisePlan.trialDurationDays > 0 && !enterprisePlan.isFree && (
                                             <button
                                                 onClick={() => handleSubscription(enterprisePlan, true)}
                                                 className="px-8 py-3 rounded-xl text-sm font-bold text-center transition-all bg-white text-primary shadow-lg shadow-white/10 hover:scale-[1.02] active:scale-[0.98]"
@@ -313,19 +311,16 @@ export default function Pricing() {
                                             </button>
                                         )}
                                         <button
-                                            onClick={() => isCurrentPlan ? null : handleSubscription(enterprisePlan)}
-                                            disabled={isCurrentPlan}
+                                            onClick={() => handleSubscription(enterprisePlan)}
                                             className={`
                                                 px-8 py-3 rounded-xl text-sm font-bold text-center transition-all shadow-lg hover:scale-[1.02] active:scale-[0.98]
-                                                ${isCurrentPlan
-                                                    ? 'opacity-50 cursor-not-allowed shadow-none bg-white text-primary'
-                                                    : enterprisePlan.trialDurationDays > 0
-                                                        ? 'bg-primary border border-white/20 text-white hover:bg-primary-hover'
-                                                        : 'bg-white text-primary'
+                                                ${enterprisePlan.trialDurationDays > 0
+                                                    ? 'bg-primary border border-white/20 text-white hover:bg-primary-hover'
+                                                    : 'bg-white text-primary'
                                                 }
                                             `}
                                         >
-                                            {isCurrentPlan ? 'Current Plan' : 'Contact Sales'}
+                                            Contact Sales
                                         </button>
                                     </div>
                                 </div>
@@ -336,7 +331,7 @@ export default function Pricing() {
 
                 {isRedirecting && (
                     <p className="text-center text-xs font-bold text-text-secondary uppercase tracking-widest">
-                        Redirecting to subscription settings...
+                        Redirecting to signup...
                     </p>
                 )}
             </div>

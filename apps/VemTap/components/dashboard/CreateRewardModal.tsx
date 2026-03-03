@@ -1,7 +1,7 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { Reward } from '@/services/visitors/types';
-import { X, Plus, Info } from 'lucide-react';
+import { X, Plus, Info, Loader2 } from 'lucide-react';
 import Tooltip from '@/components/ui/Tooltip';
 import Modal from '@/components/ui/Modal';
 
@@ -180,7 +180,7 @@ export default function CreateRewardModal({ isOpen, onClose, onSubmit, isLoading
                         className="flex-[1.5] h-12 flex items-center justify-center gap-2 font-bold text-white bg-primary hover:bg-primary-hover rounded-xl transition-all text-sm shadow-xl shadow-primary/20 disabled:opacity-70 disabled:cursor-not-allowed active:scale-95"
                     >
                         {isLoading ? (
-                            <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                            <Loader2 size={18} className="animate-spin text-white" />
                         ) : (
                             <>
                                 {!initialData && <Plus size={18} />}
@@ -193,4 +193,5 @@ export default function CreateRewardModal({ isOpen, onClose, onSubmit, isLoading
         </Modal>
     );
 }
+
 

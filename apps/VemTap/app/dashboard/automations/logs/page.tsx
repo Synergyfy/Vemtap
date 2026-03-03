@@ -2,7 +2,7 @@
 
 import React from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
-import { Search, Filter, ArrowRight, User, Calendar, MessageSquare } from 'lucide-react';
+import { Search, Filter, ArrowRight, User, Calendar, MessageSquare, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SessionDetailsModal from '@/components/messaging/SessionDetailsModal';
 import { useAutomationLogs } from '@/services/messaging/hooks';
@@ -57,7 +57,7 @@ export default function AutomationLogsPage() {
                             {isLoading ? (
                                 <tr>
                                     <td colSpan={6} className="px-8 py-20 text-center">
-                                        <div className="animate-spin size-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+                                        <Loader2 className="animate-spin text-primary mx-auto" size={32} />
                                     </td>
                                 </tr>
                             ) : filteredLogs.length > 0 ? (
@@ -134,3 +134,4 @@ export default function AutomationLogsPage() {
         </div>
     );
 }
+
