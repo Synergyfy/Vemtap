@@ -53,6 +53,11 @@ export default function ManagePlanPage() {
     const isOnTrial = subscription?.status === 'trial';
     const periodStart = subscription?.currentPeriodStart || subscription?.startDate || null;
     const periodEnd = subscription?.currentPeriodEnd || subscription?.trialEndDate || subscription?.endDate || null;
+    const configuredTrialDays = activePlan?.trialDurationDays || activePlan?.freeDurationDays || 30;
+    const derivedTrialEndFromStart = (isOnTrial && periodStart && configuredTrialDays > 0)
+        ? new Date(new Date(periodStart).getTime() + configuredTrialDays * 24 * 60 * 60 * 1000).toISOString()
+        : null;
+    const displayPeriodEnd = isOnTrial ? (derivedTrialEndFromStart || periodEnd) : periodEnd;
 
     if (subLoading) {
         return (
@@ -139,7 +144,7 @@ export default function ManagePlanPage() {
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Period End</p>
                         <p className="mt-2 text-lg font-black text-text-main">
-                            {periodEnd ? new Date(periodEnd).toLocaleDateString() : 'N/A'}
+                            {displayPeriodEnd ? new Date(displayPeriodEnd).toLocaleDateString() : 'N/A'}
                         </p>
                     </div>
                 </div>
@@ -270,7 +275,7 @@ export default function ManagePlanPage() {
                             </div>
                             <h3 className="text-xl font-black text-slate-900 mb-2">Cancel Subscription?</h3>
                             <p className="text-sm font-medium text-slate-600 mb-6">
-                                Your subscription will be cancelled and premium access ends on {periodEnd ? new Date(periodEnd).toLocaleDateString() : 'N/A'}.
+                                Your subscription will be cancelled and premium access ends on {displayPeriodEnd ? new Date(displayPeriodEnd).toLocaleDateString() : 'N/A'}.
                             </p>
                             <div className="flex gap-3">
                                 <button

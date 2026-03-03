@@ -51,11 +51,12 @@ export default function DashboardPricingPage() {
     const periodStart = subscription?.currentPeriodStart || subscription?.startDate || null;
     const periodEnd = subscription?.currentPeriodEnd || subscription?.trialEndDate || subscription?.endDate || null;
     const isOwner = user?.role?.toLowerCase() === 'owner';
-    const configuredFreeTrialDays = activePlan?.trialDurationDays || activePlan?.freeDurationDays || (activePlan?.isFree ? 30 : 0);
-    const fallbackFreeTrialEnd = (activePlan?.isFree && periodStart && configuredFreeTrialDays > 0)
-        ? new Date(new Date(periodStart).getTime() + configuredFreeTrialDays * 24 * 60 * 60 * 1000).toISOString()
+    const configuredTrialDays = activePlan?.trialDurationDays || activePlan?.freeDurationDays || 30;
+    const derivedTrialEndFromStart = (isOnTrial && periodStart && configuredTrialDays > 0)
+        ? new Date(new Date(periodStart).getTime() + configuredTrialDays * 24 * 60 * 60 * 1000).toISOString()
         : null;
-    const effectiveTrialEndDate = trialEndDate || fallbackFreeTrialEnd;
+    const effectiveTrialEndDate = derivedTrialEndFromStart || trialEndDate;
+    const displayPeriodEnd = isOnTrial ? effectiveTrialEndDate : periodEnd;
     const isTrialWindowActive = effectiveTrialEndDate ? new Date(effectiveTrialEndDate).getTime() > Date.now() : false;
     const showTrialCountdown = Boolean(activePlan?.isFree) && isTrialWindowActive && (hasSelectedPlan || Boolean(subscription?.planId));
     const showFreeTrialHeader = showTrialCountdown;
@@ -239,7 +240,7 @@ export default function DashboardPricingPage() {
                             {periodStart ? `Start ${new Date(periodStart).toLocaleDateString()}` : 'Start N/A'}
                         </p>
                         <p className="mt-1 text-xs font-bold text-slate-500">
-                            {periodEnd ? `End ${new Date(periodEnd).toLocaleDateString()}` : 'End N/A'}
+                            {displayPeriodEnd ? `End ${new Date(displayPeriodEnd).toLocaleDateString()}` : 'End N/A'}
                         </p>
                     </div>
                 </div>

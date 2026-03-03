@@ -74,4 +74,7 @@ Acceptance criteria:
 --count down for free trail for standard plan eg.
 --opportunity to be able to pay now plan
 --ability to subscribe directly 
---the period start NAa
+--the period should be:
+--Start: trial start date
+--End: 30 days after trial start date
+--This is a 30-day trial window (not a fixed 10-year date range).
