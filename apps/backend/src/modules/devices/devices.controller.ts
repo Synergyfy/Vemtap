@@ -11,6 +11,8 @@ import {
 } from '@nestjs/common';
 import { DevicesService } from './devices.service';
 import { UpdateDeviceDto } from './dto/update-device.dto';
+import { AdminCreateDeviceDto } from './dto/admin-create-device.dto';
+import { AdminUpdateDeviceDto } from './dto/admin-update-device.dto';
 import { UpdateAssetNamesDto } from './dto/update-asset-names.dto';
 import { Device } from './entities/device.entity';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -20,6 +22,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiBody,
 } from '@nestjs/swagger';
 
 @ApiTags('devices')
@@ -28,6 +31,66 @@ import {
 @Roles(UserRole.OWNER, UserRole.MANAGER) // Only Owners and Managers can manage devices
 export class DevicesController {
   constructor(private readonly devicesService: DevicesService) { }
+
+  // --- Admin Endpoints ---
+
+  @Get('admin')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get all devices with filters' })
+  async findAllAdmin(
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.devicesService.findAllAdmin({ search, status, page, limit });
+  }
+
+  @Get('admin/stats')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get device statistics' })
+  async getAdminStats() {
+    return this.devicesService.getAdminStats();
+  }
+
+  @Post('admin')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Manually provision a new device' })
+  @ApiBody({ type: AdminCreateDeviceDto })
+  @ApiResponse({ status: 201, description: 'Device provisioned', type: Device })
+  async adminCreate(@Body() createDeviceDto: AdminCreateDeviceDto) {
+    return this.devicesService.adminCreate(createDeviceDto);
+  }
+
+  @Post('admin/fulfill-order/:orderId')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Fulfill an order (Generate devices)' })
+  @ApiResponse({
+    status: 201,
+    description: 'Devices generated and assigned.',
+    type: [Device],
+  })
+  async fulfillOrder(@Param('orderId') orderId: string) {
+    return this.devicesService.fulfillOrder(orderId);
+  }
+
+  @Patch('admin/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Update device configuration' })
+  @ApiResponse({ status: 200, description: 'Device updated', type: Device })
+  async adminUpdate(
+    @Param('id') id: string,
+    @Body() updateDeviceDto: AdminUpdateDeviceDto,
+  ) {
+    return this.devicesService.adminUpdate(id, updateDeviceDto);
+  }
+
+  @Delete('admin/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Decommission a device globally' })
+  async adminDelete(@Param('id') id: string) {
+    return this.devicesService.adminDelete(id);
+  }
 
   @Get()
   @ApiOperation({ summary: 'Get all devices for the business' })
@@ -108,59 +171,5 @@ export class DevicesController {
   @ApiResponse({ status: 200, description: 'Device removed' })
   remove(@Request() req: { user: User }, @Param('id') id: string) {
     return this.devicesService.remove(id, req.user.businessId);
-  }
-
-  // --- Admin Endpoints ---
-
-  @Get('admin')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get all devices with filters' })
-  async findAllAdmin(
-    @Query('search') search?: string,
-    @Query('status') status?: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.devicesService.findAllAdmin({ search, status, page, limit });
-  }
-
-  @Get('admin/stats')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get device statistics' })
-  async getAdminStats() {
-    return this.devicesService.getAdminStats();
-  }
-
-  @Post('admin')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Manually provision a new device' })
-  async adminCreate(@Body() createDeviceDto: any) {
-    return this.devicesService.adminCreate(createDeviceDto);
-  }
-
-  @Post('admin/fulfill-order/:orderId')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Fulfill an order (Generate devices)' })
-  @ApiResponse({
-    status: 201,
-    description: 'Devices generated and assigned.',
-    type: [Device],
-  })
-  async fulfillOrder(@Param('orderId') orderId: string) {
-    return this.devicesService.fulfillOrder(orderId);
-  }
-
-  @Patch('admin/:id')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Update device configuration' })
-  async adminUpdate(@Param('id') id: string, @Body() updateDeviceDto: any) {
-    return this.devicesService.adminUpdate(id, updateDeviceDto);
-  }
-
-  @Delete('admin/:id')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Decommission a device globally' })
-  async adminDelete(@Param('id') id: string) {
-    return this.devicesService.adminDelete(id);
   }
 }
