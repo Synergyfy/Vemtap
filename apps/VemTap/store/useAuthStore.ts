@@ -1,6 +1,18 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+// Cookie helpers for middleware auth sync
+const setAuthCookie = (token: string) => {
+  if (typeof document === 'undefined') return;
+  const maxAge = 30 * 24 * 60 * 60; // 30 days
+  document.cookie = `vemtap-auth-token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+};
+
+const clearAuthCookie = () => {
+  if (typeof document === 'undefined') return;
+  document.cookie = 'vemtap-auth-token=; path=/; max-age=0; SameSite=Lax';
+};
+
 export type UserRole = 'owner' | 'manager' | 'staff' | 'admin' | 'customer' | null;
 export type SubscriptionPlan = 'free' | 'pro' | 'enterprise' | string;
 export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'trialing' | string;
@@ -55,17 +67,20 @@ export const useAuthStore = create<AuthState>()(
       login: (userData, access_token) => {
         console.log('[AUTH] 🔐 login() called', { email: userData?.email, role: userData?.role });
         set({ user: userData, access_token, isAuthenticated: true });
+        setAuthCookie(access_token);
         console.log('[AUTH] ✅ Login complete, isAuthenticated:', true);
       },
 
       signup: (userData, access_token) => {
         console.log('[AUTH] 📝 signup() called', { email: userData?.email });
         set({ user: userData, access_token, isAuthenticated: true });
+        setAuthCookie(access_token);
       },
 
       logout: () => {
         console.log('[AUTH] 🚪 logout() called');
         set({ user: null, access_token: null, isAuthenticated: false, activeBranchId: null });
+        clearAuthCookie();
       },
 
       setActiveBranch: (branchId) => {
