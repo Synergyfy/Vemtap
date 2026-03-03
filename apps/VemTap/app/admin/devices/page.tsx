@@ -8,6 +8,27 @@ import { Plus, Search, Filter, Download, MoreVertical, Trash2, Cpu, Battery, Act
 import EditDeviceModal from '@/components/dashboard/EditDeviceModal';
 import { Device } from '@/services/devices/types';
 
+const PAGE_SIZE = 10;
+
+const extractDevices = (payload: any): { items: any[]; total: number; page: number; lastPage: number } => {
+    const roots = [payload, payload?.data, payload?.data?.data, payload?.result, payload?.payload];
+    const meta = payload?.meta || payload?.data?.meta || payload?.pagination || payload?.data?.pagination;
+    const total = Number(meta?.total || payload?.total || payload?.data?.total || 0) || 0;
+    const page = Number(meta?.page || 1) || 1;
+    const lastPage = Number(meta?.lastPage || Math.max(1, Math.ceil((total || 0) / PAGE_SIZE))) || 1;
+
+    for (const root of roots) {
+        if (Array.isArray(root)) return { items: root, total, page, lastPage };
+        if (!root) continue;
+        const listKeys = ['devices', 'items', 'rows', 'results', 'list', 'data'];
+        for (const key of listKeys) {
+            if (Array.isArray(root[key])) return { items: root[key], total, page, lastPage };
+        }
+    }
+
+    return { items: [], total, page, lastPage };
+};
+
 export default function AdminDevicesPage() {
     const queryClient = useQueryClient();
     const [searchQuery, setSearchQuery] = useState('');
@@ -15,6 +36,7 @@ export default function AdminDevicesPage() {
     const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
     const [editingDevice, setEditingDevice] = useState<any>(null);
     const [origin, setOrigin] = useState('https://vemtap.com');
+    const [currentPage, setCurrentPage] = useState(1);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -22,10 +44,20 @@ export default function AdminDevicesPage() {
         }
     }, []);
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, filterStatus]);
+
     // Fetch Devices from live API
     const { data: devicesData, isLoading: isDevicesLoading } = useQuery({
-        queryKey: ['admin-devices'],
-        queryFn: () => adminDevicesApi.getAll({ limit: 1000 }),
+        queryKey: ['admin-devices', searchQuery, filterStatus, currentPage],
+        queryFn: () =>
+            adminDevicesApi.getAll({
+                search: searchQuery || undefined,
+                status: filterStatus === 'all' ? undefined : filterStatus,
+                page: currentPage,
+                limit: PAGE_SIZE,
+            }),
     });
 
     // Fetch Stats from live API
@@ -35,7 +67,8 @@ export default function AdminDevicesPage() {
     });
 
     const isLoading = isDevicesLoading || isStatsLoading;
-    const rawDevices = Array.isArray(devicesData) ? devicesData : (devicesData?.devices || devicesData?.data || []);
+    const parsedDevices = extractDevices(devicesData);
+    const rawDevices = parsedDevices.items;
 
     // Map devices to the structure expected by the UI
     const devices = rawDevices.map((d: any) => ({
@@ -114,12 +147,8 @@ export default function AdminDevicesPage() {
         { label: 'Alerts', value: statsData?.alerts?.toLocaleString() || '0', icon: 'battery_alert', color: 'red' },
     ];
 
-    const filteredDevices = devices.filter((device: any) => {
-        const matchesSearch = String(device.code || device.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
-            device.assignedTo.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = filterStatus === 'all' || device.status === filterStatus;
-        return matchesSearch && matchesStatus;
-    });
+    const totalItems = parsedDevices.total || devices.length;
+    const totalPages = Math.max(1, parsedDevices.lastPage || Math.ceil(totalItems / PAGE_SIZE) || 1);
 
     return (
         <>
@@ -216,14 +245,14 @@ export default function AdminDevicesPage() {
                                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                                         </td>
                                     </tr>
-                                ) : filteredDevices.length === 0 ? (
+                                ) : devices.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} className="py-12 text-center text-text-secondary font-medium">
                                             No devices found in the current view.
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredDevices.map((device: any) => (
+                                    devices.map((device: any) => (
                                         <tr key={device.id} className="hover:bg-gray-50 transition-colors group">
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-3">
@@ -317,6 +346,30 @@ export default function AdminDevicesPage() {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+                        <p className="text-xs text-text-secondary font-black uppercase tracking-widest">
+                            {isLoading ? 'Loading...' : `${totalItems} device${totalItems !== 1 ? 's' : ''} total`}
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                disabled={currentPage <= 1}
+                                className="h-8 px-3 rounded-lg border border-gray-200 text-xs font-bold disabled:opacity-40"
+                            >
+                                Prev
+                            </button>
+                            <span className="text-xs font-bold text-text-secondary">
+                                Page {currentPage} of {totalPages}
+                            </span>
+                            <button
+                                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                disabled={currentPage >= totalPages}
+                                className="h-8 px-3 rounded-lg border border-gray-200 text-xs font-bold disabled:opacity-40"
+                            >
+                                Next
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

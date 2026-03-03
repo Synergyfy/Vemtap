@@ -23,7 +23,7 @@ bussinesses can ask for birthdays,anniversery etc
 
 ===============
 dmin section	Missing endpoint(s) to add	Evidence
-Notifications	DELETE /notifications (or DELETE /notifications/clear) for Clear History	notifications page
+Notifications	GET /notifications, GET /notifications/unread-count, PATCH /notifications/:id/read, POST /notifications/mark-all-read	notifications page
 Subscriptions	PATCH /subscriptions/admin/:id/override (plan/status/manualAmount/renewalDate/reason)	subscriptions page
 Flow Engine Overview	GET /admin/flow-engine/overview?businessId=&branchId=	flow overview
 Flow Engine Analytics	GET /admin/flow-engine/analytics?businessId=&branchId=&from=&to=	flow analytics

@@ -43,13 +43,6 @@ export class DevicesController {
     return this.devicesService.getStats(req.user.businessId);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get details of a specific device' })
-  @ApiResponse({ status: 200, description: 'Device details', type: Device })
-  findOne(@Request() req: { user: User }, @Param('id') id: string) {
-    return this.devicesService.findOne(id, req.user.businessId);
-  }
-
   @Patch('names')
   @ApiOperation({ summary: 'Update names for generated assets' })
   @ApiResponse({
@@ -129,6 +122,13 @@ export class DevicesController {
   @ApiOperation({ summary: 'Admin: Get device statistics' })
   async getAdminStats() {
     return this.devicesService.getAdminStats();
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get details of a specific device' })
+  @ApiResponse({ status: 200, description: 'Device details', type: Device })
+  findOne(@Request() req: { user: User }, @Param('id') id: string) {
+    return this.devicesService.findOne(id, req.user.businessId);
   }
 
   @Post('admin')

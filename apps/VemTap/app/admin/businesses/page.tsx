@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
 import { adminBusinessesApi } from '@/lib/api/admin';
 import { Search, Plus, RefreshCw, Loader2, Trash2, CheckCircle, XCircle, Ban, RotateCcw } from 'lucide-react';
+const PAGE_SIZE = 10;
 
 interface Business {
     id: string;
@@ -60,6 +61,12 @@ export default function AdminBusinessesPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [metaTotal, setMetaTotal] = useState<number | null>(null);
     const [apiStats, setApiStats] = useState<{ active?: number; pending?: number; suspended?: number } | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, filterStatus]);
 
     const fetchBusinesses = useCallback(async () => {
         setIsLoading(true);
@@ -67,17 +74,20 @@ export default function AdminBusinessesPage() {
             const data = await adminBusinessesApi.getAll({
                 search: searchQuery || undefined,
                 status: filterStatus ? filterStatus.toLowerCase() : undefined,
+                page: currentPage,
+                limit: PAGE_SIZE,
             });
             const parsed = extractBusinesses(data);
             setBusinesses(parsed.items);
             setMetaTotal(parsed.total ?? null);
             setApiStats(parsed.stats || null);
+            setTotalPages(Math.max(1, Math.ceil((parsed.total ?? parsed.items.length) / PAGE_SIZE)));
         } catch (err: any) {
             notify.error(err.message || 'Failed to load businesses');
         } finally {
             setIsLoading(false);
         }
-    }, [searchQuery, filterStatus]);
+    }, [searchQuery, filterStatus, currentPage]);
 
     useEffect(() => {
         const t = setTimeout(() => fetchBusinesses(), 400);
@@ -282,6 +292,25 @@ export default function AdminBusinessesPage() {
                     <p className="text-xs text-text-secondary font-black uppercase tracking-widest">
                         {isLoading ? 'Loading...' : `${metaTotal ?? businesses.length} business${(metaTotal ?? businesses.length) !== 1 ? 'es' : ''} found`}
                     </p>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            disabled={currentPage <= 1}
+                            className="h-8 px-3 rounded-lg border border-gray-200 text-xs font-bold disabled:opacity-40"
+                        >
+                            Prev
+                        </button>
+                        <span className="text-xs font-bold text-text-secondary">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={currentPage >= totalPages}
+                            className="h-8 px-3 rounded-lg border border-gray-200 text-xs font-bold disabled:opacity-40"
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
             </div>
 
