@@ -64,7 +64,7 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login with email and password' })
+  @ApiOperation({ summary: 'Login with email/phone and password' })
   @ApiBody({ type: LoginDto })
   @ApiResponse({
     status: 200,

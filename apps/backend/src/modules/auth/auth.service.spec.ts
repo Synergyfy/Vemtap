@@ -11,6 +11,9 @@ import { RegisterOwnerDto } from './dto/register-owner.dto';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { UserRole } from '../users/entities/user.entity';
 import { ConflictException, BadRequestException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
+
+jest.mock('bcrypt');
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -121,7 +124,7 @@ describe('AuthService', () => {
 
       const result = await service.requestOwnerOtp(dto);
 
-      expect(usersService.findByEmail).toHaveBeenCalledWith('John@Example.com');
+      expect(usersService.findByEmail).toHaveBeenCalledWith('john@example.com');
       expect(otpRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           email: 'John@Example.com'.toLowerCase(),
@@ -236,6 +239,59 @@ describe('AuthService', () => {
       await expect(service.registerOwner(otpDto)).rejects.toThrow(
         ConflictException,
       );
+    });
+  });
+
+  describe('validateUser', () => {
+    it('should return user if credentials are valid (email)', async () => {
+      const user = { id: '1', email: 'test@example.com', password: 'hashed_password' };
+      usersService.findByIdentifier = jest.fn().mockResolvedValue(user);
+      (require('bcrypt').compare as jest.Mock) = jest.fn().mockResolvedValue(true);
+
+      const result = await service.validateUser('test@example.com', 'password');
+      expect(result).toEqual({ id: '1', email: 'test@example.com' });
+      expect(usersService.findByIdentifier).toHaveBeenCalledWith('test@example.com');
+    });
+
+    it('should return user if credentials are valid (phone)', async () => {
+      const user = { id: '1', phone: '1234567890', password: 'hashed_password' };
+      usersService.findByIdentifier = jest.fn().mockResolvedValue(user);
+      (require('bcrypt').compare as jest.Mock) = jest.fn().mockResolvedValue(true);
+
+      const result = await service.validateUser('1234567890', 'password');
+      expect(result).toEqual({ id: '1', phone: '1234567890' });
+      expect(usersService.findByIdentifier).toHaveBeenCalledWith('1234567890');
+    });
+
+    it('should return null if user not found', async () => {
+      usersService.findByIdentifier = jest.fn().mockResolvedValue(null);
+      const result = await service.validateUser('none', 'password');
+      expect(result).toBeNull();
+    });
+
+    it('should return null if password incorrect', async () => {
+      const user = { id: '1', email: 'test@example.com', password: 'hashed_password' };
+      usersService.findByIdentifier = jest.fn().mockResolvedValue(user);
+      (require('bcrypt').compare as jest.Mock) = jest.fn().mockResolvedValue(false);
+
+      const result = await service.validateUser('test@example.com', 'wrong');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('login', () => {
+    it('should return access token and user', async () => {
+      const user = { id: '1', email: 'test@example.com', role: UserRole.CUSTOMER };
+      const result = await service.login(user);
+      expect(result).toEqual({
+        access_token: 'mock_token',
+        user: user,
+      });
+      expect(jwtService.sign).toHaveBeenCalledWith({
+        email: user.email,
+        sub: user.id,
+        role: user.role,
+      });
     });
   });
 });
