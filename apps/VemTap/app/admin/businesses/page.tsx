@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
 import { adminBusinessesApi } from '@/lib/api/admin';
-import { Search, Plus, RefreshCw, Loader2, Trash2, CheckCircle, XCircle, Ban, RotateCcw } from 'lucide-react';
+import { Search, Plus, RefreshCw, Loader2, Trash2, CheckCircle, XCircle, Ban, RotateCcw, Copy } from 'lucide-react';
 const PAGE_SIZE = 10;
 
 interface Business {
@@ -244,7 +244,20 @@ export default function AdminBusinessesPage() {
                                                         <span className="material-icons-round text-primary text-sm group-hover:text-white">store</span>
                                                     </div>
                                                     <div>
-                                                        <p className="font-bold text-sm text-text-main">{biz.name}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-bold text-sm text-text-main">{biz.name}</p>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    navigator.clipboard.writeText(biz.id);
+                                                                    notify.success('Business ID copied');
+                                                                }}
+                                                                className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-400 hover:text-primary"
+                                                                title="Copy Business ID"
+                                                            >
+                                                                <Copy size={12} />
+                                                            </button>
+                                                        </div>
                                                         <p className="text-[11px] text-text-secondary font-medium">View analytics</p>
                                                     </div>
                                                 </div>

@@ -63,11 +63,18 @@ export default function AutomationsPage() {
                     title="Automation Settings"
                     description="Activate and configure smart automations to grow your business automatically."
                 />
-                <div className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full border border-green-100 shadow-sm">
-                    <div className={`w-2 h-2 rounded-full ${connStatus?.status === 'Connected' ? 'bg-green-500 animate-pulse' : 'bg-amber-500'}`} />
-                    <span className="text-[10px] font-black uppercase tracking-wider">
-                        {connStatus?.status === 'Connected' ? 'WhatsApp Connected' : 'WhatsApp Disconnected'}
-                    </span>
+                <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full border border-green-100 shadow-sm">    
+                        <div className={`w-2 h-2 rounded-full ${connStatus?.status === 'Connected' ? 'bg-green-500 animate-pulse' : 'bg-amber-500'}`} />
+                        <span className="text-[10px] font-black uppercase tracking-wider">
+                            {connStatus?.status === 'Connected' ? 'WhatsApp Connected' : 'WhatsApp Disconnected'}
+                        </span>
+                    </div>
+                    {user?.phone && (
+                        <span className="text-[10px] font-bold text-text-secondary pr-2">
+                            {user.phone}
+                        </span>
+                    )}
                 </div>
             </div>
 
