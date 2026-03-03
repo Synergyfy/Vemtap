@@ -4,7 +4,11 @@ import { createTestApp } from '../utils/create-app';
 import { createAuthenticatedUser } from '../utils/auth';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Plan } from '../../src/modules/subscriptions/entities/plan.entity';
-import { Subscription, SubscriptionStatus, BillingPeriod } from '../../src/modules/subscriptions/entities/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+  BillingPeriod,
+} from '../../src/modules/subscriptions/entities/subscription.entity';
 import { UserRole, User } from '../../src/modules/users/entities/user.entity';
 import { Business } from '../../src/modules/businesses/entities/business.entity';
 import { PaymentsService } from '../../src/modules/payments/payments.service';
@@ -25,7 +29,9 @@ describe('Subscriptions & Trial System (e2e)', () => {
       status: 'success',
       authorization: { authorization_code: 'AUTH_123456' },
     }),
-    recordPayment: jest.fn().mockResolvedValue({ id: '00000000-0000-0000-0000-000000000003' }),
+    recordPayment: jest
+      .fn()
+      .mockResolvedValue({ id: '00000000-0000-0000-0000-000000000003' }),
   };
 
   beforeAll(async () => {
@@ -73,7 +79,7 @@ describe('Subscriptions & Trial System (e2e)', () => {
         .expect((res) => {
           expect(Array.isArray(res.body)).toBe(true);
           expect(res.body.length).toBeGreaterThanOrEqual(2);
-          expect(res.body.find(p => p.name === 'Free Plan')).toBeDefined();
+          expect(res.body.find((p) => p.name === 'Free Plan')).toBeDefined();
         });
     });
   });
@@ -139,33 +145,33 @@ describe('Subscriptions & Trial System (e2e)', () => {
     });
 
     it('/subscriptions/subscribe (POST) - should allow direct paid subscription (skipping trial)', async () => {
-        mockPaymentsService.verifyTransaction.mockResolvedValueOnce({
-            status: 'success',
-            authorization: { authorization_code: 'AUTH_PAID_789' }
-        });
-
-        const response = await request(app.getHttpServer())
-          .post('/api/v1/subscriptions/subscribe')
-          .set('Authorization', `Bearer ${ownerToken}`)
-          .send({
-            planId: PRO_PLAN_ID,
-            businessId: businessId,
-            billingPeriod: BillingPeriod.MONTHLY,
-            paymentReference: 'REF_PAID_123',
-            isTrial: false,
-          })
-          .expect(201);
-  
-        expect(response.body.status).toBe(SubscriptionStatus.ACTIVE);
-        expect(response.body.paystackAuthorizationCode).toBe('AUTH_PAID_789');
-        expect(response.body.trialEndDate).toBeNull();
+      mockPaymentsService.verifyTransaction.mockResolvedValueOnce({
+        status: 'success',
+        authorization: { authorization_code: 'AUTH_PAID_789' },
       });
+
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/subscriptions/subscribe')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({
+          planId: PRO_PLAN_ID,
+          businessId: businessId,
+          billingPeriod: BillingPeriod.MONTHLY,
+          paymentReference: 'REF_PAID_123',
+          isTrial: false,
+        })
+        .expect(201);
+
+      expect(response.body.status).toBe(SubscriptionStatus.ACTIVE);
+      expect(response.body.paystackAuthorizationCode).toBe('AUTH_PAID_789');
+      expect(response.body.trialEndDate).toBeNull();
+    });
   });
 
   describe('Permissions & Guarding', () => {
     it('/subscriptions/subscribe (POST) - should forbid CUSTOMER from subscribing', async () => {
       const { token } = await createAuthenticatedUser(app, UserRole.CUSTOMER);
-      
+
       return request(app.getHttpServer())
         .post('/api/v1/subscriptions/subscribe')
         .set('Authorization', `Bearer ${token}`)

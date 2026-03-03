@@ -21,7 +21,9 @@ describe('CampaignsService', () => {
     find: jest.fn(),
     findOne: jest.fn(),
     create: jest.fn().mockImplementation((d) => d),
-    save: jest.fn().mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
+    save: jest
+      .fn()
+      .mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
     softDelete: jest.fn(),
   };
 
@@ -78,8 +80,8 @@ describe('CampaignsService', () => {
         status: CampaignStatus.DRAFT,
       };
 
-      (mockRepo.create as jest.Mock).mockReturnValue(expectedCampaign);
-      (mockRepo.save as jest.Mock).mockResolvedValue(expectedCampaign);
+      mockRepo.create.mockReturnValue(expectedCampaign);
+      mockRepo.save.mockResolvedValue(expectedCampaign);
 
       const result = await service.create(createDto as any, branchId);
       expect(result).toEqual(expectedCampaign);
@@ -95,21 +97,35 @@ describe('CampaignsService', () => {
       mockBranchesService.findById.mockResolvedValue(mockBranch);
       mockRepo.findOne.mockResolvedValue(null); // Profile not found
 
-      const expectedProfile = { userId, businessId, branchId, tierLevel: 'bronze' };
+      const expectedProfile = {
+        userId,
+        businessId,
+        branchId,
+        tierLevel: 'bronze',
+      };
       mockRepo.create.mockReturnValue(expectedProfile);
       mockRepo.save.mockResolvedValue({ id: 'prof-1', ...expectedProfile });
 
       const result = await service.getLoyaltyProfile(userId, branchId);
 
       expect(mockBranchesService.findById).toHaveBeenCalledWith(branchId);
-      expect(mockRepo.findOne).toHaveBeenCalledWith({ where: { userId, businessId } });
-      expect(mockRepo.create).toHaveBeenCalledWith(expect.objectContaining({ businessId }));
+      expect(mockRepo.findOne).toHaveBeenCalledWith({
+        where: { userId, businessId },
+      });
+      expect(mockRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ businessId }),
+      );
       expect(result.businessId).toBe(businessId);
     });
 
     it('getLoyaltyProfile should return existing profile by businessId regardless of branch', async () => {
       mockBranchesService.findById.mockResolvedValue(mockBranch);
-      const existingProfile = { id: 'prof-1', userId, businessId, branchId: 'different-branch' };
+      const existingProfile = {
+        id: 'prof-1',
+        userId,
+        businessId,
+        branchId: 'different-branch',
+      };
       mockRepo.findOne.mockResolvedValue(existingProfile);
 
       const result = await service.getLoyaltyProfile(userId, branchId);
@@ -120,7 +136,9 @@ describe('CampaignsService', () => {
 
     it('getLoyaltyProfile should throw NotFoundException if branch is invalid', async () => {
       mockBranchesService.findById.mockResolvedValue(null);
-      await expect(service.getLoyaltyProfile(userId, 'invalid-branch')).rejects.toThrow('Branch not found');
+      await expect(
+        service.getLoyaltyProfile(userId, 'invalid-branch'),
+      ).rejects.toThrow('Branch not found');
     });
 
     it('findProfile should return profile by businessId', async () => {
@@ -130,7 +148,9 @@ describe('CampaignsService', () => {
 
       const result = await service.findProfile(userId, branchId);
 
-      expect(mockRepo.findOne).toHaveBeenCalledWith({ where: { userId, businessId } });
+      expect(mockRepo.findOne).toHaveBeenCalledWith({
+        where: { userId, businessId },
+      });
       expect(result).toEqual(existingProfile);
     });
 

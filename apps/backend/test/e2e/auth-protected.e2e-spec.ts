@@ -28,8 +28,6 @@ describe('Authenticated Routes (E2E)', () => {
   });
 
   it('/auth/profile (GET) should fail without token', () => {
-    return request(app.getHttpServer())
-      .get('/api/v1/auth/profile')
-      .expect(401);
+    return request(app.getHttpServer()).get('/api/v1/auth/profile').expect(401);
   });
 });

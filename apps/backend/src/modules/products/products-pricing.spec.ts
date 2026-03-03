@@ -80,7 +80,10 @@ describe('ProductsService - Pricing & Payment', () => {
     it('should create PENDING order (online payment skipped for MVP)', async () => {
       mockProductRepo.findOne.mockResolvedValue(product);
       mockOrderRepo.findOneBy.mockResolvedValue(null);
-      mockOrderRepo.create.mockImplementation((dto) => ({ id: 'order-1', ...dto }));
+      mockOrderRepo.create.mockImplementation((dto) => ({
+        id: 'order-1',
+        ...dto,
+      }));
       mockOrderRepo.save.mockImplementation((order) => Promise.resolve(order));
 
       const dto = { productId, quantity: 50, paymentReference: 'ref_valid' };

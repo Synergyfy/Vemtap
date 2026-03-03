@@ -1,7 +1,11 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { JwtService } from '@nestjs/jwt';
-import { UserRole, User, UserStatus } from '../../src/modules/users/entities/user.entity';
+import {
+  UserRole,
+  User,
+  UserStatus,
+} from '../../src/modules/users/entities/user.entity';
 import { Business } from '../../src/modules/businesses/entities/business.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { createTestApp } from '../utils/create-app';
@@ -26,7 +30,7 @@ describe('Staff Management (e2e)', () => {
     businessRepository = app.get(getRepositoryToken(Business));
 
     // Seed in correct order to avoid constraint issues and partial updates
-    
+
     // 1. Create Users without businessId first
     await userRepository.save([
       {
@@ -65,7 +69,7 @@ describe('Staff Management (e2e)', () => {
         lastName: 'One',
         role: UserRole.OWNER,
         status: UserStatus.ACTIVE,
-        businessId: BIZ_ONE_ID 
+        businessId: BIZ_ONE_ID,
       },
       {
         id: OTHER_OWNER_ID,
@@ -75,7 +79,7 @@ describe('Staff Management (e2e)', () => {
         lastName: 'Owner',
         role: UserRole.OWNER,
         status: UserStatus.ACTIVE,
-        businessId: BIZ_TWO_ID 
+        businessId: BIZ_TWO_ID,
       },
       {
         id: STAFF_ID,
@@ -95,7 +99,7 @@ describe('Staff Management (e2e)', () => {
     await app.close();
   });
 
-  const generateToken = (userId: string, role: UserRole, businessId?: string) => 
+  const generateToken = (userId: string, role: UserRole, businessId?: string) =>
     jwtService.sign({ sub: userId, role, businessId });
 
   describe('/users/staff (GET)', () => {

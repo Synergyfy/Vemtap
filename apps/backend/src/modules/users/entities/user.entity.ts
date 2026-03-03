@@ -114,7 +114,9 @@ export class User extends AbstractBaseEntity {
   notifications: Notification[];
 
   @ApiProperty({
-    example: { instagram: { profile: 'johndoe', link: 'https://instagr.am/johndoe' } },
+    example: {
+      instagram: { profile: 'johndoe', link: 'https://instagr.am/johndoe' },
+    },
     nullable: true,
   })
   @Column({ type: 'jsonb', nullable: true })

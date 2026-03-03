@@ -17,6 +17,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { UserStatusGuard } from './common/guards/user-status.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { SubscriptionGuard } from './modules/subscriptions/guards/subscription.guard';
 import { SettingsModule } from './modules/settings/settings.module';
@@ -78,6 +79,10 @@ import { dataSourceOptions } from './database/data-source';
     },
     {
       provide: APP_GUARD,
+      useClass: UserStatusGuard,
+    },
+    {
+      provide: APP_GUARD,
       useClass: RolesGuard,
     },
     {
@@ -86,4 +91,4 @@ import { dataSourceOptions } from './database/data-source';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

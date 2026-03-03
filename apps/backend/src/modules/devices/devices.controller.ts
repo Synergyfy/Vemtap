@@ -30,7 +30,7 @@ import {
 @Controller('devices')
 @Roles(UserRole.OWNER, UserRole.MANAGER) // Only Owners and Managers can manage devices
 export class DevicesController {
-  constructor(private readonly devicesService: DevicesService) { }
+  constructor(private readonly devicesService: DevicesService) {}
 
   // --- Admin Endpoints ---
 
@@ -135,7 +135,9 @@ export class DevicesController {
   }
 
   @Post('generate')
-  @ApiOperation({ summary: 'Generate devices for ready orders (Business Owner)' })
+  @ApiOperation({
+    summary: 'Generate devices for ready orders (Business Owner)',
+  })
   @ApiResponse({
     status: 201,
     description: 'Devices generated for pending ready orders.',

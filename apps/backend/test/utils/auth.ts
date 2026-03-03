@@ -1,10 +1,17 @@
 import { INestApplication } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { User, UserRole, UserStatus } from '../../src/modules/users/entities/user.entity';
+import {
+  User,
+  UserRole,
+  UserStatus,
+} from '../../src/modules/users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
 import request from 'supertest';
 
-export async function createAuthenticatedUser(app: INestApplication, role: UserRole = UserRole.CUSTOMER) {
+export async function createAuthenticatedUser(
+  app: INestApplication,
+  role: UserRole = UserRole.CUSTOMER,
+) {
   const dataSource = app.get(DataSource);
   const userRepo = dataSource.getRepository(User);
 
@@ -35,6 +42,6 @@ export async function createAuthenticatedUser(app: INestApplication, role: UserR
   return {
     user,
     token: response.body.access_token,
-    response: response.body
+    response: response.body,
   };
 }

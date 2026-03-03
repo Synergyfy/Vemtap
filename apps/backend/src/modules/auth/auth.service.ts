@@ -13,13 +13,14 @@ import { BusinessesService } from '../businesses/businesses.service';
 import { DevicesService } from '../devices/devices.service';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
-import { UserRole } from '../users/entities/user.entity';
+import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { Otp } from './entities/otp.entity';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
 import { RegisterAdminDto } from './dto/register-admin.dto';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { PasswordResetOtpDto } from './dto/password-reset-otp.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
@@ -110,7 +111,10 @@ export class AuthService {
     return { message: 'OTP verified successfully' };
   }
 
-  async validateUser(identifier: string, pass: string): Promise<any> {
+  async validateUser(
+    identifier: string,
+    pass: string,
+  ): Promise<Partial<User> | null> {
     const user = await this.usersService.findByIdentifier(identifier);
     if (user && (await bcrypt.compare(pass, user.password))) {
       const { password: _password, ...result } = user;
@@ -119,8 +123,19 @@ export class AuthService {
     return null;
   }
 
-  async login(user: any) {
+  async login(dto: LoginDto) {
+    const user = await this.usersService.findByIdentifier(dto.identifier);
+    if (!user || !(await bcrypt.compare(dto.password, user.password))) {
+      throw new UnauthorizedException('Invalid email/phone or password');
+    }
+
+    const { password: _password, ...result } = user;
+    return this.generateAuthResponse(result);
+  }
+
+  private generateAuthResponse(user: Partial<User>) {
     const payload = { email: user.email, sub: user.id, role: user.role };
+    delete user.password;
     return {
       access_token: this.jwtService.sign(payload),
       user,
@@ -174,6 +189,7 @@ export class AuthService {
       email: registrationData.email,
       password: hashedPassword,
       role: role as UserRole,
+      status: UserStatus.ACTIVE,
       phone: registrationData.phone || metadata.phone,
       businessId: registrationData.businessId, // For staff/managers joining existing business
     });
@@ -197,7 +213,7 @@ export class AuthService {
     await this.otpRepository.remove(otpRecord);
 
     const { password: _password, ...result } = user;
-    return this.login(result);
+    return this.generateAuthResponse(result);
   }
 
   // --- New Dedicated Owner Registration ---
@@ -240,6 +256,7 @@ export class AuthService {
       email: dto.email,
       password: hashedPassword,
       role: UserRole.OWNER,
+      status: UserStatus.ACTIVE,
       phone: registrationData.phone,
     });
 
@@ -271,7 +288,7 @@ export class AuthService {
     // Consume OTP
     await this.otpRepository.remove(otpRecord);
 
-    return this.login(user);
+    return this.generateAuthResponse(user);
   }
 
   // --- New Dedicated Admin Registration ---
@@ -303,10 +320,11 @@ export class AuthService {
       email: dto.email,
       password: hashedPassword,
       role: UserRole.ADMIN, // Explicitly ADMIN
+      status: UserStatus.ACTIVE,
       phone: dto.phone || undefined,
     });
 
-    return this.login(user);
+    return this.generateAuthResponse(user);
   }
 
   async requestPasswordReset(dto: PasswordResetOtpDto) {

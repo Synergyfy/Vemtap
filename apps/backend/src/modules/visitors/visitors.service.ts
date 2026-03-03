@@ -45,7 +45,7 @@ export class VisitorsService {
     private campaignsService: CampaignsService,
     private automationService: AutomationService,
     private mailService: MailService,
-  ) { }
+  ) {}
 
   // --- Main/All Visitors ---
 
@@ -134,7 +134,9 @@ export class VisitorsService {
     if (branchId) {
       totalVisitorsQb.andWhere('visit.branchId = :branchId', { branchId });
     } else {
-      totalVisitorsQb.andWhere('visit.businessId = :businessId', { businessId });
+      totalVisitorsQb.andWhere('visit.businessId = :businessId', {
+        businessId,
+      });
     }
     const totalVisitors = await totalVisitorsQb.getCount();
 
@@ -335,10 +337,7 @@ export class VisitorsService {
     return this.mapToVisitorDto(updatedUser!);
   }
 
-  async recordVisit(
-    userId: string,
-    deviceCode: string,
-  ): Promise<any> {
+  async recordVisit(userId: string, deviceCode: string): Promise<any> {
     // 1. Identify customer
     const user = await this.userRepository.findOne({
       where: { id: userId, role: UserRole.CUSTOMER },
@@ -352,7 +351,9 @@ export class VisitorsService {
       where: { code: deviceCode, status: DeviceStatus.ACTIVE },
     });
     if (!device) {
-      throw new NotFoundException(`Active device with code ${deviceCode} not found`);
+      throw new NotFoundException(
+        `Active device with code ${deviceCode} not found`,
+      );
     }
 
     const businessId = device.businessId;
@@ -415,10 +416,13 @@ export class VisitorsService {
     let loyaltyResult = null;
     if (activeRule) {
       // Check if user has a profile in this branch/campaign
-      const profile = await this.campaignsService.findProfile(user.id, branchId!);
+      const profile = await this.campaignsService.findProfile(
+        user.id,
+        branchId,
+      );
 
       if (profile) {
-        loyaltyResult = await this.campaignsService.earnPoints(branchId!, {
+        loyaltyResult = await this.campaignsService.earnPoints(branchId, {
           userId: user.id,
           isVisit: true,
         });
@@ -663,7 +667,9 @@ export class VisitorsService {
     if (branchId) {
       totalVisitorsQb.andWhere('visit.branchId = :branchId', { branchId });
     } else {
-      totalVisitorsQb.andWhere('visit.businessId = :businessId', { businessId });
+      totalVisitorsQb.andWhere('visit.businessId = :businessId', {
+        businessId,
+      });
     }
     const totalVisitors = await totalVisitorsQb.getCount();
 
@@ -674,7 +680,9 @@ export class VisitorsService {
     if (branchId) {
       returningCountQb.andWhere('visit.branchId = :branchId', { branchId });
     } else {
-      returningCountQb.andWhere('visit.businessId = :businessId', { businessId });
+      returningCountQb.andWhere('visit.businessId = :businessId', {
+        businessId,
+      });
     }
 
     const returningCount = await returningCountQb

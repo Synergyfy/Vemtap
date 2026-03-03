@@ -9,10 +9,10 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
 export class SystemController {
-    constructor(private readonly systemService: SystemService) { }
+  constructor(private readonly systemService: SystemService) {}
 
-    @Get('health')
-    async getHealth() {
-        return this.systemService.getSystemHealth();
-    }
+  @Get('health')
+  async getHealth() {
+    return this.systemService.getSystemHealth();
+  }
 }

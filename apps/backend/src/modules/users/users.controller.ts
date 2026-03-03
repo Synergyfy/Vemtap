@@ -44,7 +44,7 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly businessesService: BusinessesService,
     private readonly branchesService: BranchesService,
-  ) { }
+  ) {}
 
   @Get('me')
   @SkipSubscriptionCheck()
@@ -79,7 +79,9 @@ export class UsersController {
 
   @Patch('me/engagement')
   @Roles(UserRole.OWNER)
-  @ApiOperation({ summary: 'Update My social media engagement links (Owner Only)' })
+  @ApiOperation({
+    summary: 'Update My social media engagement links (Owner Only)',
+  })
   @ApiResponse({ status: 200, description: 'Engagement details updated' })
   async updateMyEngagement(@Request() req, @Body() body: UpdateEngagementDto) {
     return this.usersService.updateEngagement(req.user.id, body.engagement);
@@ -293,10 +295,60 @@ export class UsersController {
   @Delete('admin/:id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({
-    summary: 'Admin: Disable user account (Sets status to Suspended)',
+    summary: 'Admin: Delete user account (Permanently removes user)',
+    description:
+      'Completely deletes the user record from the system. Use with caution.',
   })
+  @ApiResponse({ status: 200, description: 'User deleted successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
   async adminDeleteUser(@Param('id') id: string) {
     return this.usersService.adminDeleteUser(id);
+  }
+
+  @Patch('admin/:id/suspend')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin: Suspend a user account',
+    description:
+      'Sets the user status to Suspended. Suspended users can login but cannot perform any other actions.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User suspended successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', example: 'user-uuid' },
+        status: { type: 'string', example: 'Suspended' },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async suspendUser(@Param('id') id: string) {
+    return this.usersService.suspendUser(id);
+  }
+
+  @Patch('admin/:id/activate')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin: Activate a suspended user account',
+    description:
+      'Sets the user status back to Active, restoring their access to the system.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User activated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', example: 'user-uuid' },
+        status: { type: 'string', example: 'Active' },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async activateUser(@Param('id') id: string) {
+    return this.usersService.activateUser(id);
   }
 
   @Post('admin/reset-password-link/:email')

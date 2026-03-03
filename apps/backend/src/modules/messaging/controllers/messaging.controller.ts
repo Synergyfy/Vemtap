@@ -38,8 +38,6 @@ import { SendMessageDto } from '../dto/send-message.dto';
 import { Channel } from '../enums/channel.enum';
 import { CreateTemplateDto } from '../dto/template/create-template.dto';
 
-
-
 export class ReplyDto {
   content: string;
 }
@@ -54,7 +52,7 @@ export class MessagingController {
     private readonly campaignService: CampaignService,
     private readonly analyticsService: AnalyticsService,
     private readonly inboxService: InboxService,
-  ) { }
+  ) {}
 
   @Post('send')
   @ApiBearerAuth()
@@ -92,7 +90,10 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get available templates for the business (System + Business specific)' })
+  @ApiOperation({
+    summary:
+      'Get available templates for the business (System + Business specific)',
+  })
   async getTemplates(@Request() req: { user: User }) {
     if (!req.user.businessId && req.user.role !== UserRole.ADMIN) {
       throw new BadRequestException('Business context required');
@@ -229,4 +230,3 @@ export class MessagingController {
     return this.templateService.deleteTemplate(id, req.user);
   }
 }
-

@@ -98,7 +98,9 @@ export class FlowController {
 
     const resolved = branchId || user.branchId;
     if (!resolved) throw new BadRequestException('branchId is required');
-    return this.flowRepo.find({ where: { branchId: resolved, businessId: user.businessId } });
+    return this.flowRepo.find({
+      where: { branchId: resolved, businessId: user.businessId },
+    });
   }
 
   @Post(':id/status')

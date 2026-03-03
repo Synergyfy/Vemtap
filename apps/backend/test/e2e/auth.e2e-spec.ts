@@ -16,7 +16,7 @@ describe('Auth & Notifications (e2e)', () => {
 
   beforeAll(async () => {
     app = await createTestApp((builder) => {
-        builder.overrideProvider(MailService).useValue(mockMailService);
+      builder.overrideProvider(MailService).useValue(mockMailService);
     });
 
     otpRepository = app.get(getRepositoryToken(Otp));
@@ -110,7 +110,7 @@ describe('Auth & Notifications (e2e)', () => {
       .post('/api/v1/auth/otp/send')
       .send({ email: 'phone-test@example.com' })
       .expect(201);
-    
+
     const otpRecord = await otpRepository.findOne({
       where: { email: 'phone-test@example.com' },
       order: { createdAt: 'DESC' },

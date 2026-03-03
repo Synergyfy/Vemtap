@@ -25,4 +25,4 @@ import { DevicesModule } from '../devices/devices.module';
   providers: [VisitorsService],
   exports: [VisitorsService],
 })
-export class VisitorsModule { }
+export class VisitorsModule {}

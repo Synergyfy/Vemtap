@@ -73,7 +73,6 @@ export class BatchSendProcessor extends WorkerHost {
         template = await this.templateService.getTemplate(templateId);
       }
 
-
       // Process in chunks or individually
       for (const contactId of contactIds) {
         try {

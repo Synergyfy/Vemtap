@@ -37,7 +37,8 @@ describe('SubscriptionGuard', () => {
     }).compile();
 
     guard = module.get<SubscriptionGuard>(SubscriptionGuard);
-    subscriptionsService = module.get<SubscriptionsService>(SubscriptionsService);
+    subscriptionsService =
+      module.get<SubscriptionsService>(SubscriptionsService);
     reflector = module.get<Reflector>(Reflector);
   });
 

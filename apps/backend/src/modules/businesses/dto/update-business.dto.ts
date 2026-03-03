@@ -103,7 +103,9 @@ export class UpdateBusinessDto {
   @IsOptional()
   rewardMessage?: string;
 
-  @ApiPropertyOptional({ example: 'A luxury dining experience with ocean views.' })
+  @ApiPropertyOptional({
+    example: 'A luxury dining experience with ocean views.',
+  })
   @IsString()
   @IsOptional()
   about?: string;
