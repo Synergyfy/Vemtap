@@ -18,7 +18,7 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [formData, setFormData] = useState({
-        email: '',
+        identifier: '',
         password: '',
         rememberMe: false,
     });
@@ -27,7 +27,7 @@ export default function LoginPage() {
     // eslint-disable-next-line no-console
     console.log('[LOGIN PAGE] 🔍 isAuthenticated:', isAuthenticated);
 
-    const routeByRole = (role: string, email: string) => {
+    const routeByRole = (role: string, identifier: string) => {
         if (role === 'admin') {
             router.push('/admin/dashboard');
             return;
@@ -36,34 +36,26 @@ export default function LoginPage() {
             router.push('/customer/dashboard');
             return;
         }
-        if (role === 'staff' && (email.includes('agent') || email.includes('support'))) {
+        if (role === 'staff' && (identifier.includes('agent') || identifier.includes('support'))) {
             router.push('/agent/dashboard');
             return;
         }
         router.push('/dashboard');
     };
 
-    const inferRoleFromEmail = (email: string) => (
-        email.includes('admin') ? 'admin' :
-            email.includes('customer') ? 'customer' :
-                email.includes('manager') ? 'manager' :
-                    email.includes('staff') || email.includes('agent') ? 'staff' :
-                        'owner'
-    );
-
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
         try {
-            const email = formData.email.trim().toLowerCase();
+            const identifier = formData.identifier.trim();
             const password = formData.password.trim();
 
-            if (!email || !password) {
-                throw new Error('Email and password are required.');
+            if (!identifier || !password) {
+                throw new Error('Email/Phone and password are required.');
             }
 
-            const response = await loginUser({ email, password });
+            const response = await loginUser({ identifier, password } as any);
 
             if (!response.access_token || !response.user) {
                 throw new Error('Invalid response from server.');
@@ -82,7 +74,7 @@ export default function LoginPage() {
                 router.push('/customer/dashboard');
                 return;
             }
-            if (userRole === 'staff' && (email.includes('agent') || email.includes('support'))) {
+            if (userRole === 'staff' && (identifier.includes('agent') || identifier.includes('support'))) {
                 router.push('/agent/dashboard');
                 return;
             }
@@ -126,15 +118,15 @@ export default function LoginPage() {
 
                                     <div className="grid grid-cols-1 gap-6">
                                         <div className="space-y-3">
-                                            <label className="text-[11px] font-black uppercase tracking-[0.2em] text-text-secondary ml-1">Email Address</label>
+                                            <label className="text-[11px] font-black uppercase tracking-[0.2em] text-text-secondary ml-1">Email or Phone Number</label>
                                             <div className="relative">
                                                 <span className="material-icons-round absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl">low_priority</span>
                                                 <input
-                                                    type="email"
-                                                    placeholder="name@company.com"
+                                                    type="text"
+                                                    placeholder="email@company.com or +234..."
                                                     className="w-full h-14 bg-gray-50 border border-gray-100 rounded-xl pl-12 pr-5 font-medium outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 focus:bg-white transition-all text-sm"
-                                                    value={formData.email}
-                                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                                    value={formData.identifier}
+                                                    onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
                                                     required
                                                 />
                                             </div>

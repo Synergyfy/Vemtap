@@ -40,6 +40,22 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     if (!response.ok) {
         if (response.status === 401) {
             console.warn(`Unauthorized access to ${url}. Token might be invalid or expired.`);
+
+            // Auto-clear auth on 401 (expired/invalid token)
+            // Skip if this is the login endpoint itself
+            if (!normalizedEndpoint.includes('/auth/login') && !normalizedEndpoint.includes('/auth/register')) {
+                try {
+                    localStorage.removeItem('auth-storage-v2');
+                    document.cookie = 'vemtap-auth-token=; path=/; max-age=0; SameSite=Lax';
+                    // Redirect to login if not already there
+                    if (window.location.pathname !== '/login') {
+                        window.location.href = '/login';
+                        return Promise.reject(new Error('Session expired. Redirecting to login...'));
+                    }
+                } catch (e) {
+                    // ignore errors during cleanup
+                }
+            }
         }
 
         let errorData;
