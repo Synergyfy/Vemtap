@@ -31,7 +31,7 @@ import { ImportCustomersDto } from './dto/import-customers.dto';
 @ApiBearerAuth()
 @Controller('businesses')
 export class BusinessesController {
-  constructor(private readonly businessesService: BusinessesService) {}
+  constructor(private readonly businessesService: BusinessesService) { }
 
   @Get('my-business')
   @SkipSubscriptionCheck()
@@ -193,5 +193,33 @@ export class BusinessesController {
   @ApiOperation({ summary: 'Admin: Reactivate a suspended business' })
   async reactivateBusiness(@Param('id') id: string) {
     return this.businessesService.reactivate(id);
+  }
+
+  @Get('admin/:id/stats')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get stats about a business' })
+  @ApiResponse({
+    status: 200,
+    description: 'Business stats returned successfully',
+    schema: {
+      example: {
+        businessName: 'VemTap Head Office',
+        totalVisitors: 150,
+        totalTaps: 450,
+        totalBranches: 5,
+        recentActivity: [
+          {
+            id: 'v123',
+            visitorName: 'John Doe',
+            branchName: 'Lekki Branch',
+            status: 'returning',
+            timestamp: '2026-03-03T18:00:00Z',
+          },
+        ],
+      },
+    },
+  })
+  async getBusinessStats(@Param('id') id: string) {
+    return this.businessesService.getBusinessStatsForAdmin(id);
   }
 }
