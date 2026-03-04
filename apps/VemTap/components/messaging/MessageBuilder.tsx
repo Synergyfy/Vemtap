@@ -212,7 +212,7 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
 
         const audienceType: AudienceType =
             audience === 'all'
-                ? 'ALL_CUSTOMERS'
+                ? 'ALL'
                 : audience === 'new'
                     ? 'RECENT'
                     : audience === 'premium'

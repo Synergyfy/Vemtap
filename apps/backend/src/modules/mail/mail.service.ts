@@ -111,4 +111,31 @@ export class MailService {
       return false;
     }
   }
+
+  async sendGenericEmail(email: string, subject: string, content: string) {
+    const mailOptions = {
+      from:
+        '"VemTap" <' + this.configService.get<string>('EMAIL_USER') + '>',
+      to: email,
+      subject,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+          <div style="padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            ${content.replace(/\n/g, '<br>')}
+          </div>
+          <p style="font-size: 0.8em; color: #888; margin-top: 30px;">
+            Sent via VemTap Messaging Center
+          </p>
+        </div>
+      `,
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+      return true;
+    } catch (error) {
+      console.error('Error sending generic email:', error);
+      return false;
+    }
+  }
 }

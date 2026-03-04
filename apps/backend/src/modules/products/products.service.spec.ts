@@ -179,7 +179,7 @@ describe('ProductsService', () => {
   // Keep existing tests...
   describe('create', () => {
     it('should create a new product', async () => {
-      const createProductDto: CreateProductDto = {
+      const createProductDto: any = {
         name: 'Test Product',
         description: 'Test Desc',
         price: 100,

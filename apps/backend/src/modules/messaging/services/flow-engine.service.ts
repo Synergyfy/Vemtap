@@ -12,6 +12,12 @@ import { SendMessageDto } from '../dto/send-message.dto';
 import { Channel } from '../enums/channel.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import {
+  FlowStructure,
+  FlowNode,
+  FlowEdge,
+  FlowTriggerContext,
+} from '../interfaces/flow-engine.interface';
 
 @Injectable()
 export class FlowEngineService {
@@ -31,7 +37,7 @@ export class FlowEngineService {
   async triggerFlow(
     triggerType: FlowTriggerType,
     branchId: string,
-    context: any,
+    context: FlowTriggerContext,
   ): Promise<void> {
     this.logger.log(`Triggering flow: ${triggerType} for branch ${branchId}`);
 
@@ -103,7 +109,7 @@ export class FlowEngineService {
     if (!execution || !execution.flow) return;
 
     const node = execution.flow.structure.nodes.find(
-      (n: any) => n.id === nodeId,
+      (n: FlowNode) => n.id === nodeId,
     );
     if (!node) {
       // End of flow or invalid node
@@ -141,7 +147,7 @@ export class FlowEngineService {
 
   // --- Handlers ---
 
-  private async handleSendMessage(execution: FlowExecution, node: any) {
+  private async handleSendMessage(execution: FlowExecution, node: FlowNode) {
     // PRD 7.1: Message Type, Content, Media
     const content = node.data?.message || '';
     // Assuming channel is WhatsApp as per PRD "WhatsApp Flow Builder"
@@ -164,7 +170,7 @@ export class FlowEngineService {
     await this.moveToNextNode(execution, node.id);
   }
 
-  private async handleDelay(execution: FlowExecution, node: any) {
+  private async handleDelay(execution: FlowExecution, node: FlowNode) {
     // PRD 7.2: Delay Time, Unit
     const time = node.data?.time || 0;
     const unit = node.data?.unit || 'minutes';
@@ -191,7 +197,7 @@ export class FlowEngineService {
     );
   }
 
-  private async handleCondition(execution: FlowExecution, node: any) {
+  private async handleCondition(execution: FlowExecution, node: FlowNode) {
     // PRD 7.3: If User Replied, If No Reply, etc.
     // This is tricky.
     // 1. "If User Replied": We need to wait for a webhook.
@@ -240,7 +246,7 @@ export class FlowEngineService {
     }
   }
 
-  private getStartNodeId(structure: any): string {
+  private getStartNodeId(structure: FlowStructure): string {
     // Find node with no incoming edges or marked as start
     // For simplicity, assuming first node or specific type 'start'
     // Or just the first in array if not specified.
@@ -254,13 +260,13 @@ export class FlowEngineService {
   ) {
     // Find edge from currentNodeId
     const edges = execution.flow.structure.edges.filter(
-      (e: any) => e.source === currentNodeId,
+      (e: FlowEdge) => e.source === currentNodeId,
     );
-    let nextEdge;
+    let nextEdge: FlowEdge | undefined;
 
     if (edgeLabel) {
       nextEdge = edges.find(
-        (e: any) => e.label === edgeLabel || e.handle === edgeLabel,
+        (e: FlowEdge) => e.label === edgeLabel || e.handle === edgeLabel,
       );
     } else {
       nextEdge = edges[0]; // Default path

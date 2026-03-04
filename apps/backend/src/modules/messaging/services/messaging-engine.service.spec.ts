@@ -61,6 +61,12 @@ describe('MessagingEngineService', () => {
   };
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+    mockRepo.findOne.mockReset();
+    mockRepo.find.mockReset();
+    mockRepo.create.mockImplementation((d) => d);
+    mockRepo.save.mockImplementation((e) => Promise.resolve({ id: '1', ...e }));
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MessagingEngineService,
@@ -124,9 +130,82 @@ describe('MessagingEngineService', () => {
       });
 
       expect(mockCreditService.deductChannelCredit).toHaveBeenCalled();
-      expect(mockCampaignService.createCampaign).toHaveBeenCalled();
+      expect(mockCampaignService.createCampaign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          businessId: 'b1',
+          branchId: 'branch1',
+        }),
+      );
       expect(mockQueue.add).toHaveBeenCalled();
       expect(result.campaignId).toBe('c1');
+    });
+
+    it('should handle optional branchId by finding a default branch', async () => {
+      mockRepo.findOne
+        .mockResolvedValueOnce({ id: 'b1', name: 'TestBusiness' }) // businessRepo.findOne
+        .mockResolvedValueOnce({ id: 'default-branch' }); // branchRepo.findOne fallback
+
+      mockRepo.find.mockResolvedValueOnce([{ id: 'c1' }, { id: 'c2' }]);
+
+      await service.sendMessage({
+        businessId: 'b1',
+        channel: Channel.SMS,
+        content: 'msg',
+      });
+
+      expect(mockCampaignService.createCampaign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          branchId: 'default-branch',
+        }),
+      );
+    });
+
+    it('should filter by RECENT audience type', async () => {
+      mockRepo.findOne
+        .mockResolvedValueOnce({ id: 'b1', name: 'TestBusiness' })
+        .mockResolvedValueOnce({ id: 'br1' });
+
+      mockRepo.find.mockResolvedValueOnce([{ id: 'c1' }]);
+
+      await service.sendMessage({
+        businessId: 'b1',
+        branchId: 'br1',
+        channel: Channel.SMS,
+        audienceType: 'RECENT' as any,
+        content: 'test',
+      });
+
+      expect(mockRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: expect.anything(),
+          }),
+        }),
+      );
+    });
+
+    it('should filter by TAGGED audience type', async () => {
+      mockRepo.findOne
+        .mockResolvedValueOnce({ id: 'b1', name: 'TestBusiness' })
+        .mockResolvedValueOnce({ id: 'br1' });
+
+      mockRepo.find.mockResolvedValueOnce([{ id: 'c1' }]);
+
+      await service.sendMessage({
+        businessId: 'b1',
+        branchId: 'br1',
+        channel: Channel.SMS,
+        audienceType: 'TAGGED' as any,
+        content: 'test',
+      });
+
+      expect(mockRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tags: expect.anything(),
+          }),
+        }),
+      );
     });
   });
 });
