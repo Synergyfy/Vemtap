@@ -33,7 +33,7 @@ export interface Subscription {
     startDate: string;
     endDate: string;
     trialEndDate: string;
-    status: 'active' | 'cancelled' | 'expired' | 'pending' | 'trial';
+    status: 'active' | 'cancelled' | 'expired' | 'pending' | 'trial' | 'trialing';
     paystackReference: string;
     paystackAuthorizationCode: string;
     currentPeriodStart?: string;

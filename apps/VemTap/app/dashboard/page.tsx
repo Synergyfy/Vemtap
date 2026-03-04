@@ -1,12 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { Visitor } from '@/lib/store/mockDashboardStore';
 import toast from 'react-hot-toast';
-import Link from 'next/link';
 import { Users, UserPlus, Repeat, Calendar, TrendingUp, TrendingDown,
-    ChevronDown, Trash, Send, Download, Gift, ArrowRight, MessageSquare, Zap, Loader2 } from 'lucide-react';
+    ChevronDown, Trash, Send, Download, Gift, ArrowRight, MessageSquare, Zap } from 'lucide-react';
 import LogoIcon from '@/components/brand/LogoIcon';
 import { useRouter } from 'next/navigation';
 import Modal from '@/components/ui/Modal';
@@ -14,14 +12,11 @@ import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import PreviewRewardModal from '@/components/dashboard/PreviewRewardModal';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
-import { useBusinessStore } from '@/store/useBusinessStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
-import { useActiveSubscription } from '@/services/subscriptions/hooks';
 
 
 export default function DashboardPage() {
-    const queryClient = useQueryClient();
     const router = useRouter();
     const [showClearModal, setShowClearModal] = useState(false);
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' } | null>(null);
@@ -30,7 +25,6 @@ export default function DashboardPage() {
 
     const user = useAuthStore((state) => state.user);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-    const { data: activeSubscription } = useActiveSubscription();
 
     // eslint-disable-next-line no-console
     console.log('[DASHBOARD PAGE] 🔍 isAuthenticated:', isAuthenticated, 'planId:', user?.planId);
@@ -53,24 +47,8 @@ export default function DashboardPage() {
     // Fetch Dashboard Data
     const { data, isLoading } = useDashboardAnalytics();
 
-    // Mutations are stripped for now since backend is truth.
-    const isPending = false;
-
-    const { getActiveBranch, activeBranchId } = useBusinessStore();
-    const { hasReachedVisitorLimit, getPlan } = useSubscriptionStore();
+    const { getPlan } = useSubscriptionStore();
     const currentPlan = getPlan();
-    const subscriptionPlanId = String(activeSubscription?.planId || '').toLowerCase();
-    const isPaidSubscription = Boolean(activeSubscription)
-        && !subscriptionPlanId.includes('free')
-        && activeSubscription?.status !== 'cancelled'
-        && activeSubscription?.status !== 'expired'
-        && activeSubscription?.status !== 'pending'
-        && activeSubscription?.status !== 'trial';
-    const paidPlanLabel = activeSubscription?.plan?.name || 'Paid Plan';
-
-    const handleSimulateVisitor = () => {
-        toast.error("Simulation disabled while backend integration is ongoing.");
-    };
 
     const handleClearDashboard = () => {
         setShowClearModal(true);
@@ -101,11 +79,13 @@ export default function DashboardPage() {
     const maxVisits = data ? Math.max(...data.peakTimes.map(d => d.value)) : 100;
 
     // Computed audience breakdown
-    const totalVisitsStat = data?.stats.find(s => s.label === 'Total Visits');
-    const newCustomersStat = data?.stats.find(s => s.label === 'New Customers');
+    const getStatValue = (labels: string[]) => {
+        const stat = data?.stats.find(s => labels.includes(s.label));
+        return parseInt(stat?.value?.toString().replace(/,/g, '') || '0', 10);
+    };
 
-    const totalVisitors = parseInt(totalVisitsStat?.value.toString().replace(/,/g, '') || '0', 10);
-    const newVisitors = parseInt(newCustomersStat?.value.toString().replace(/,/g, '') || '0', 10);
+    const totalVisitors = getStatValue(['Total Visits', 'Total Customers']);
+    const newVisitors = getStatValue(['New Customers']);
     const repeatVisitors = totalVisitors - newVisitors > 0 ? totalVisitors - newVisitors : 0;
 
     const returningPct = totalVisitors > 0 ? Math.round((repeatVisitors / totalVisitors) * 100) : 0;
@@ -132,14 +112,6 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    {isPaidSubscription && (
-                        <Link
-                            href="/dashboard/settings/subscription/manage"
-                            className="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
-                        >
-                            {paidPlanLabel}
-                        </Link>
-                    )}
                     {currentPlan?.id === 'free' && (
                         <button
                             onClick={() => router.push('/#pricing')}
@@ -151,7 +123,6 @@ export default function DashboardPage() {
                     )}
                     <button
                         onClick={handleClearDashboard}
-                        disabled={isPending}
                         className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
                     >
                         <Trash size={16} />
@@ -296,27 +267,6 @@ export default function DashboardPage() {
                     <div className="bg-white rounded-2xl p-5 border border-gray-100">
                         <h2 className="text-base font-display font-bold text-text-main mb-3">Quick Actions</h2>
                         <div className="space-y-2">
-                            <button
-                                onClick={handleSimulateVisitor}
-                                disabled={isPending}
-                                className="w-full flex items-center justify-between p-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-50 group"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center">
-                                        {isPending ? (
-                                            <Loader2 size={14} className="animate-spin text-white" />
-                                        ) : (
-                                            <UserPlus size={16} />
-                                        )}
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="font-bold text-xs leading-none mb-0.5">Simulate Check-in</p>
-                                        <p className="text-[9px] text-white/70 font-medium">Generate a test visit</p>
-                                    </div>
-                                </div>
-                                <ArrowRight size={16} className="opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-                            </button>
-
                             {[
                                 { label: 'New Message', icon: MessageSquare, route: '/dashboard/messaging', color: 'bg-indigo-50 text-indigo-600' },
                                 { label: 'Add Device', icon: LogoIcon, route: '/dashboard/settings/devices', color: 'bg-blue-50 text-blue-600' },
@@ -368,51 +318,65 @@ export default function DashboardPage() {
                         </thead>
                         <tbody>
                             {(data as any)?.recentVisitors?.length > 0 ? (
-                                (data as any).recentVisitors.slice(0, 5).map((visitor: Visitor) => (
-                                    <tr
-                                        key={visitor.id}
-                                        className="border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
-                                        onClick={() => setSelectedVisitorForDetails(visitor)}
-                                    >
-                                        <td className="py-4 px-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px] uppercase">
-                                                    {visitor.name.split(' ').map(n => n[0]).join('')}
+                                (data as any).recentVisitors.slice(0, 5).map((visitor: Visitor) => {
+                                    const fallbackFirstName = (visitor as any).firstName;
+                                    const fallbackLastName = (visitor as any).lastName;
+                                    const displayName = visitor.name?.trim()
+                                        || [fallbackFirstName, fallbackLastName].filter(Boolean).join(' ').trim()
+                                        || 'Unknown Visitor';
+                                    const initials = displayName
+                                        .split(' ')
+                                        .filter(Boolean)
+                                        .map((n) => n[0])
+                                        .join('')
+                                        .slice(0, 2);
+
+                                    return (
+                                        <tr
+                                            key={visitor.id}
+                                            className="border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                                            onClick={() => setSelectedVisitorForDetails(visitor)}
+                                        >
+                                            <td className="py-4 px-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px] uppercase">
+                                                        {initials}
+                                                    </div>
+                                                    <span className="text-sm font-bold text-text-main">{displayName}</span>
                                                 </div>
-                                                <span className="text-sm font-bold text-text-main">{visitor.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className="py-4 px-4 text-sm text-text-secondary font-medium">{visitor.phone}</td>
-                                        <td className="py-4 px-4 text-sm text-text-secondary font-medium">{visitor.time}</td>
-                                        <td className="py-4 px-4">
-                                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${visitor.status === 'new' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                {visitor.status}
-                                            </span>
-                                        </td>
-                                        <td className="py-4 px-4">
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setSelectedVisitorForMsg({ visitor, type: 'welcome' });
-                                                    }}
-                                                    className="p-1.5 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
-                                                >
-                                                    <Send size={14} />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setRewardPreviewVisitor(visitor);
-                                                    }}
-                                                    className="p-1.5 text-text-secondary hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-all"
-                                                >
-                                                    <Gift size={14} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
+                                            </td>
+                                            <td className="py-4 px-4 text-sm text-text-secondary font-medium">{visitor.phone}</td>
+                                            <td className="py-4 px-4 text-sm text-text-secondary font-medium">{visitor.time}</td>
+                                            <td className="py-4 px-4">
+                                                <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${visitor.status === 'new' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                    {visitor.status}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-4">
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedVisitorForMsg({ visitor, type: 'welcome' });
+                                                        }}
+                                                        className="p-1.5 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
+                                                    >
+                                                        <Send size={14} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setRewardPreviewVisitor(visitor);
+                                                        }}
+                                                        className="p-1.5 text-text-secondary hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-all"
+                                                    >
+                                                        <Gift size={14} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             ) : (
                                 <tr>
                                     <td colSpan={5} className="py-8 text-center text-text-secondary font-medium">

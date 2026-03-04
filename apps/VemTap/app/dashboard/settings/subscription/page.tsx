@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
@@ -20,7 +20,6 @@ export default function DashboardPricingPage() {
     const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
     const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
     const [isTrialSelection, setIsTrialSelection] = useState(false);
-    const [hasSelectedPlan, setHasSelectedPlan] = useState(false);
 
     const { data: plans = [], isLoading: plansLoading } = useQuery({
         queryKey: ['subscription-plans'],
@@ -46,26 +45,21 @@ export default function DashboardPricingPage() {
     const activePlanId = subscription?.planId || 'free';
     const activePlan = plans.find((p: PricingPlan) => p.id === activePlanId);
     const activeBillingPeriod = (subscription as any)?.billingPeriod || 'monthly';
-    const isOnTrial = subscription?.status === 'trial';
+    const isOnTrial = subscription?.status === 'trial' || subscription?.status === 'trialing';
     const trialEndDate = subscription?.trialEndDate || null;
     const periodStart = subscription?.currentPeriodStart || subscription?.startDate || null;
     const periodEnd = subscription?.currentPeriodEnd || subscription?.trialEndDate || subscription?.endDate || null;
     const isOwner = user?.role?.toLowerCase() === 'owner';
-    const configuredTrialDays = activePlan?.trialDurationDays || activePlan?.freeDurationDays || 30;
+    const configuredTrialDays = activePlan?.isFree ? 0 : (activePlan?.trialDurationDays || activePlan?.freeDurationDays || 30);
     const derivedTrialEndFromStart = (isOnTrial && periodStart && configuredTrialDays > 0)
         ? new Date(new Date(periodStart).getTime() + configuredTrialDays * 24 * 60 * 60 * 1000).toISOString()
         : null;
-    const effectiveTrialEndDate = derivedTrialEndFromStart || trialEndDate;
+    const effectiveTrialEndDate = activePlan?.isFree ? null : (derivedTrialEndFromStart || trialEndDate);
     const displayPeriodEnd = isOnTrial ? effectiveTrialEndDate : periodEnd;
     const isTrialWindowActive = effectiveTrialEndDate ? new Date(effectiveTrialEndDate).getTime() > Date.now() : false;
-    const showTrialCountdown = Boolean(activePlan?.isFree) && isTrialWindowActive && (hasSelectedPlan || Boolean(subscription?.planId));
+    const showTrialCountdown = Boolean(!activePlan?.isFree) && isTrialWindowActive;
     const showFreeTrialHeader = showTrialCountdown;
     const activePlanName = activePlan?.name || subscription?.plan?.name || 'Free Plan';
-
-    useEffect(() => {
-        const selectedPlanId = localStorage.getItem('selected_plan_id');
-        setHasSelectedPlan(Boolean(selectedPlanId));
-    }, []);
 
     const handlePlanSelect = async (plan: PricingPlan, useTrial: boolean = false) => {
         if (!isOwner) {
@@ -81,7 +75,7 @@ export default function DashboardPricingPage() {
             return;
         }
 
-        const trialDays = plan.trialDurationDays || plan.freeDurationDays || (plan.isFree ? 30 : 0);
+        const trialDays = plan.isFree ? 0 : (plan.trialDurationDays || plan.freeDurationDays || 0);
 
         if (plan.isFree) {
             if (!user?.businessId) {
@@ -293,7 +287,7 @@ export default function DashboardPricingPage() {
                     const isCurrent = plan.id === activePlanId;
                     const isPersonal = plan.id === 'personal' || plan.name.toLowerCase().includes('personal');
                     const highlight = plan.isPopular;
-                    const trialDays = plan.trialDurationDays || plan.freeDurationDays || (plan.isFree ? 30 : 0);
+                    const trialDays = plan.isFree ? 0 : (plan.trialDurationDays || plan.freeDurationDays || 0);
                     const price = getPriceByCycle(plan, billingPeriod);
                     const perMonthPrice = getPerMonthPrice(price, billingPeriod);
                     const billingTotal = getBillingTotal(price, billingPeriod);

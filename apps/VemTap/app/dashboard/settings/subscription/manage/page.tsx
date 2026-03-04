@@ -50,10 +50,10 @@ export default function ManagePlanPage() {
 
     const activePlan = plans.find((p: PricingPlan) => p.id === subscription?.planId);
     const isCancelled = subscription?.status === 'cancelled' || subscription?.status === 'expired';
-    const isOnTrial = subscription?.status === 'trial';
+    const isOnTrial = subscription?.status === 'trial' || subscription?.status === 'trialing';
     const periodStart = subscription?.currentPeriodStart || subscription?.startDate || null;
     const periodEnd = subscription?.currentPeriodEnd || subscription?.trialEndDate || subscription?.endDate || null;
-    const configuredTrialDays = activePlan?.trialDurationDays || activePlan?.freeDurationDays || 30;
+    const configuredTrialDays = activePlan?.isFree ? 0 : (activePlan?.trialDurationDays || activePlan?.freeDurationDays || 30);
     const derivedTrialEndFromStart = (isOnTrial && periodStart && configuredTrialDays > 0)
         ? new Date(new Date(periodStart).getTime() + configuredTrialDays * 24 * 60 * 60 * 1000).toISOString()
         : null;

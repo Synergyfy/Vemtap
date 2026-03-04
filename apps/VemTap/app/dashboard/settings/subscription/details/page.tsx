@@ -11,8 +11,8 @@ export default function PlanDetailsPage() {
     const activePlan = subscription?.plan;
     const periodStart = subscription?.currentPeriodStart || subscription?.startDate || null;
     const periodEnd = subscription?.currentPeriodEnd || subscription?.trialEndDate || subscription?.endDate || null;
-    const isOnTrial = subscription?.status === 'trial';
-    const configuredTrialDays = activePlan?.trialDurationDays || activePlan?.freeDurationDays || 30;
+    const isOnTrial = subscription?.status === 'trial' || subscription?.status === 'trialing';
+    const configuredTrialDays = activePlan?.isFree ? 0 : (activePlan?.trialDurationDays || activePlan?.freeDurationDays || 30);
     const derivedTrialEndFromStart = (isOnTrial && periodStart && configuredTrialDays > 0)
         ? new Date(new Date(periodStart).getTime() + configuredTrialDays * 24 * 60 * 60 * 1000).toISOString()
         : null;
