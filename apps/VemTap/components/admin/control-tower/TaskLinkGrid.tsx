@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import type { TaskLink } from './mockControlTowerData';
+import type { TaskLink } from '@/lib/constants/controlTowerActions';
 
 type TaskLinkGridProps = {
     title: string;

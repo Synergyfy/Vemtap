@@ -13,6 +13,8 @@ import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
 import { ImportCustomersDto } from './dto/import-customers.dto';
 import { MailService } from '../mail/mail.service';
+import { Branch } from '../branches/entities/branch.entity';
+import { Visit } from '../visitors/entities/visit.entity';
 
 @Injectable()
 export class BusinessesService {
@@ -21,8 +23,12 @@ export class BusinessesService {
     private businessesRepository: Repository<Business>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Branch)
+    private branchRepository: Repository<Branch>,
+    @InjectRepository(Visit)
+    private visitRepository: Repository<Visit>,
     private readonly mailService: MailService,
-  ) {}
+  ) { }
 
   async create(businessData: Partial<Business>): Promise<Business> {
     if (businessData.ownerId) {
@@ -40,7 +46,10 @@ export class BusinessesService {
   }
 
   async findById(id: string): Promise<Business> {
-    const business = await this.businessesRepository.findOneBy({ id });
+    const business = await this.businessesRepository.findOne({
+      where: { id },
+      relations: ['rewards', 'branches'],
+    });
     if (!business) {
       throw new NotFoundException('Business not found');
     }
@@ -272,5 +281,44 @@ export class BusinessesService {
     business.suspensionReason = null as any;
     business.suspendedAt = null as any;
     return this.businessesRepository.save(business);
+  }
+
+  async getBusinessStatsForAdmin(businessId: string) {
+    const business = await this.findById(businessId);
+
+    const totalBranches = await this.branchRepository.count({
+      where: { businessId },
+    });
+
+    const totalTaps = await this.visitRepository.count({
+      where: { businessId },
+    });
+
+    const totalVisitorsRaw = await this.visitRepository
+      .createQueryBuilder('visit')
+      .where('visit.businessId = :businessId', { businessId })
+      .select('COUNT(DISTINCT visit.customerId)', 'count')
+      .getRawOne();
+
+    const recentVisits = await this.visitRepository.find({
+      where: { businessId },
+      relations: ['customer', 'branch'],
+      order: { createdAt: 'DESC' },
+      take: 5,
+    });
+
+    return {
+      businessName: business.name,
+      totalVisitors: parseInt(totalVisitorsRaw?.count || '0'),
+      totalTaps,
+      totalBranches,
+      recentActivity: recentVisits.map((visit) => ({
+        id: visit.id,
+        visitorName: `${visit.customer?.firstName || ''} ${visit.customer?.lastName || ''}`.trim(),
+        branchName: visit.branch?.name || 'Main Office',
+        status: visit.status,
+        timestamp: visit.createdAt,
+      })),
+    };
   }
 }

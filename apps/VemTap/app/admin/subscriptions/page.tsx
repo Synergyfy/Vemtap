@@ -4,9 +4,9 @@ import React from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { CreditCard, Package, CheckCircle2, AlertCircle, Clock, Edit2, X, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import toast from 'react-hot-toast';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminSubscriptionsApi } from '@/lib/api/admin';
+import { notify } from '@/lib/notify';
 
 const ShieldLocal = ({ size }: { size: number }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -15,6 +15,7 @@ const ShieldLocal = ({ size }: { size: number }) => (
 );
 
 export default function AdminSubscriptionsPage() {
+    const queryClient = useQueryClient();
     const [selectedSub, setSelectedSub] = React.useState<any>(null);
     const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
 
@@ -33,15 +34,44 @@ export default function AdminSubscriptionsPage() {
     // Default fallback stats if backend doesn't return them immediately or is loading
     const statsObj = statsData?.data || statsData || { activeSubscriptions: 0, expiringSoon: 0, pastDue: 0 };
 
+    const subscribeMutation = useMutation({
+        mutationFn: async (data: { planId: string; businessId: string; billingPeriod: 'monthly' | 'yearly' }) => {
+            return adminSubscriptionsApi.subscribe(data);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-subscriptions'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-subscriptions-stats'] });
+            notify.success(`Successfully pushed manual subscription override for ${selectedSub?.business}`);
+            setIsEditModalOpen(false);
+        },
+        onError: (error: any) => {
+            notify.error(error.message || 'Failed to push subscription override.');
+        },
+    });
+
     const handleEdit = (sub: any) => {
-        setSelectedSub({ ...sub });
+        setSelectedSub({ ...sub, billingPeriod: 'monthly' }); // Default to monthly for manual overrides
         setIsEditModalOpen(true);
     };
 
     const handleSave = () => {
-        // Since there is no mock endpoint or real endpoint for override yet, we just show a toast
-        toast.success(`API for manual override coming soon. Override intent registered for ${selectedSub.business}`);
-        setIsEditModalOpen(false);
+        if (!selectedSub?.businessId && !selectedSub?.id) {
+            notify.error('Missing business ID for this subscription.');
+            return;
+        }
+
+        // Map the plan string to an ID expected by the backend
+        const planMap: Record<string, string> = {
+            'Basic': 'plan_basic',
+            'Premium': 'plan_premium',
+            'Enterprise': 'plan_enterprise'
+        };
+
+        subscribeMutation.mutate({
+            planId: planMap[selectedSub.plan] || selectedSub.plan || 'plan_basic',
+            businessId: selectedSub.businessId || selectedSub.id, // Fallback if ID is the business ID
+            billingPeriod: selectedSub.billingPeriod || 'monthly'
+        });
     };
 
     return (
@@ -219,16 +249,22 @@ export default function AdminSubscriptionsPage() {
                             <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-4">
                                 <button
                                     onClick={() => setIsEditModalOpen(false)}
-                                    className="flex-1 h-12 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-100 transition-all text-xs uppercase tracking-widest"
+                                    disabled={subscribeMutation.isPending}
+                                    className="flex-1 h-12 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-100 transition-all text-xs uppercase tracking-widest disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleSave}
-                                    className="flex-1 h-12 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                                    disabled={subscribeMutation.isPending}
+                                    className="flex-1 h-12 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-70"
                                 >
-                                    <Save size={16} />
-                                    Push Override
+                                    {subscribeMutation.isPending ? (
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    ) : (
+                                        <Save size={16} />
+                                    )}
+                                    {subscribeMutation.isPending ? 'Pushing...' : 'Push Override'}
                                 </button>
                             </div>
                         </motion.div>
@@ -238,3 +274,4 @@ export default function AdminSubscriptionsPage() {
         </div>
     );
 }
+

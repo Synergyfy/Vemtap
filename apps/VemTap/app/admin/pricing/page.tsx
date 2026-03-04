@@ -1,6 +1,6 @@
 'use client';
 
-import  { useState } from 'react';
+import { useState } from 'react';
 import { notify } from '@/lib/notify';
 import {
     Tag, Plus, Trash2, Edit3, Save, X,
@@ -105,6 +105,11 @@ export default function AdminPricingPage() {
             notify.success('Plan deleted successfully');
         },
     });
+
+    const unlimited = (val: any) => {
+        if (val === 0 || val === '0' || !val) return 'Unlimited';
+        return val;
+    };
 
     const formatPrice = (price: number, currency = 'NGN') => {
         return new Intl.NumberFormat('en-NG', { style: 'currency', currency, minimumFractionDigits: 0 }).format(Number(price) || 0);
@@ -286,17 +291,19 @@ export default function AdminPricingPage() {
                                         <div className="space-y-2">
                                             <p className="font-bold text-text-main">Limits</p>
                                             <div className="space-y-1 text-text-secondary">
-                                                <p>Team Members: {plan.teamMembersLimit}</p>
-                                                <p>Loyalty: {plan.loyaltyLimit}</p>
-                                                <p>Tags: {plan.tagsLimit}</p>
-                                                <p>Branches: {plan.branchLimit}</p>
+                                                <p>Team Members: {unlimited(plan.teamMembersLimit)}</p>
+                                                <p>Loyalty: {unlimited(plan.loyaltyLimit)}</p>
+                                                <p>Tags: {unlimited(plan.tagsLimit)}</p>
+                                                <p>Branches: {unlimited(plan.branchLimit)}</p>
                                             </div>
                                         </div>
                                         <div className="space-y-2">
                                             <p className="font-bold text-text-main">Access</p>
                                             <div className="space-y-1 text-text-secondary">
                                                 <p>Trial Days: {plan.trialDurationDays}</p>
-                                                <p>SMS/WA/Email: {plan.smsCredits}/{plan.whatsappCredits}/{plan.emailCredits}</p>
+                                                <p>SMS: {unlimited(plan.smsCredits)}</p>
+                                                <p>WA: {unlimited(plan.whatsappCredits)}</p>
+                                                <p>Email: {unlimited(plan.emailCredits)}</p>
                                                 <p>Features: {(plan.features || []).length}</p>
                                             </div>
                                         </div>
@@ -357,15 +364,21 @@ export default function AdminPricingPage() {
 
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">SMS Credits</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
+                                        SMS Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
+                                    </label>
                                     <FormattedNumberInput value={currentPlan.smsCredits} onChange={(value) => setNumericField('smsCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">WhatsApp Credits</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
+                                        WhatsApp Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
+                                    </label>
                                     <FormattedNumberInput value={currentPlan.whatsappCredits} onChange={(value) => setNumericField('whatsappCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Email Credits</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
+                                        Email Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
+                                    </label>
                                     <FormattedNumberInput value={currentPlan.emailCredits} onChange={(value) => setNumericField('emailCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                             </div>
@@ -391,22 +404,30 @@ export default function AdminPricingPage() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Team Members Limit</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
+                                        Team Members Limit <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
+                                    </label>
                                     <FormattedNumberInput value={currentPlan.teamMembersLimit} onChange={(value) => setNumericField('teamMembersLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Loyalty Limit</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
+                                        Loyalty Limit <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
+                                    </label>
                                     <FormattedNumberInput value={currentPlan.loyaltyLimit} onChange={(value) => setNumericField('loyaltyLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Tags Limit</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
+                                        Tags Limit <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
+                                    </label>
                                     <FormattedNumberInput value={currentPlan.tagsLimit} onChange={(value) => setNumericField('tagsLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Branch Limit</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
+                                        Branch Limit <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
+                                    </label>
                                     <FormattedNumberInput value={currentPlan.branchLimit} onChange={(value) => setNumericField('branchLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                             </div>
