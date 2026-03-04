@@ -16,6 +16,8 @@ interface StepOutcomeProps {
     onEngagement?: (type: 'review' | 'social' | 'feedback' | 'rewards') => void;
     engagementSettings?: any;
     socialLinks?: any;
+    selectedFormTitle?: string | null;
+    selectedFormType?: string | null;
 }
 
 export const StepOutcome: React.FC<StepOutcomeProps> = ({
@@ -29,7 +31,9 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
     onRestart,
     onEngagement,
     engagementSettings,
-    socialLinks
+    socialLinks,
+    selectedFormTitle,
+    selectedFormType
 }) => {
     const [isSocialModalOpen, setIsSocialModalOpen] = React.useState(false);
 
@@ -83,6 +87,8 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
                     <EngagementTiles
                         onAction={handleEngagement}
                         settings={engagementSettings}
+                        selectedFormTitle={selectedFormTitle}
+                        selectedFormType={selectedFormType}
                     />
                 )}
 
