@@ -35,7 +35,7 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
             className={presets.card}
         >
             <div className="flex items-center justify-between mb-6">
-                <span className={presets.tag}>{form.type.toUpperCase()} FORM</span>
+                <span className={presets.tag}>{(form.typeLabel || form.type).toUpperCase()} FORM</span>
                 <button
                     onClick={onSkip}
                     className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors"

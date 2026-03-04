@@ -12,7 +12,7 @@ import {
     ResponseChannel
 } from '@/store/useBusinessFormsStore';
 import { useMyBusiness } from '@/services/businesses/hooks';
-import { Copy, Plus, Trash2, CheckCircle2, Clock3, XCircle } from 'lucide-react';
+import { Copy, Plus, Trash2, CheckCircle2, Clock3, XCircle, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 type DraftField = {
@@ -36,7 +36,8 @@ const FIELD_TYPES: Array<{ label: string; value: FormFieldType }> = [
 const TYPE_OPTIONS: Array<{ label: string; value: BusinessFormType }> = [
     { label: 'Survey', value: 'survey' },
     { label: 'Complaint', value: 'complaint' },
-    { label: 'Social Media', value: 'social' }
+    { label: 'Social Media', value: 'social' },
+    { label: 'Custom Type', value: 'custom' }
 ];
 
 export default function EngagementFormsBuilderPage() {
@@ -44,10 +45,15 @@ export default function EngagementFormsBuilderPage() {
     const { data: myBusiness } = useMyBusiness();
     const createForm = useBusinessFormsStore((state) => state.createForm);
     const forms = useBusinessFormsStore((state) => state.forms);
+    const customTypeOptionsByBusiness = useBusinessFormsStore((state) => state.customTypeOptionsByBusiness);
+    const addCustomTypeOption = useBusinessFormsStore((state) => state.addCustomTypeOption);
+    const removeCustomTypeOption = useBusinessFormsStore((state) => state.removeCustomTypeOption);
     const businessId = myBusiness?.id || user?.businessId || 'demo-business-id';
     const businessName = myBusiness?.name || user?.businessName || 'My Business';
 
     const [formType, setFormType] = useState<BusinessFormType>('survey');
+    const [customTypeLabel, setCustomTypeLabel] = useState('');
+    const [newTypeOption, setNewTypeOption] = useState('');
     const [title, setTitle] = useState('');
     const [key, setKey] = useState('');
     const [responseActor, setResponseActor] = useState<ResponseActor>('agent');
@@ -66,6 +72,7 @@ export default function EngagementFormsBuilderPage() {
         () => forms.filter((f) => f.businessId === businessId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
         [forms, businessId]
     );
+    const customTypeOptions = customTypeOptionsByBusiness[businessId] || [];
 
     const addField = () => {
         setFields((prev) => [
@@ -119,10 +126,21 @@ export default function EngagementFormsBuilderPage() {
         }));
 
         const payloadKey = buildKey(key || title);
+        const resolvedTypeLabel =
+            formType === 'custom'
+                ? customTypeLabel.trim()
+                : TYPE_OPTIONS.find((option) => option.value === formType)?.label || formType;
+
+        if (formType === 'custom' && !resolvedTypeLabel) {
+            toast.error('Custom form type name is required');
+            return;
+        }
+
         createForm({
             businessId,
             businessName,
             type: formType,
+            typeLabel: resolvedTypeLabel,
             title,
             key: payloadKey,
             fields: mappedFields,
@@ -133,6 +151,7 @@ export default function EngagementFormsBuilderPage() {
         setTitle('');
         setKey('');
         setFormType('survey');
+        setCustomTypeLabel('');
         setResponseActor('agent');
         setChannels(['email']);
         setFields([{ id: `fld-${Date.now()}`, label: '', type: 'short_text', required: false, optionsText: '' }]);
@@ -140,7 +159,7 @@ export default function EngagementFormsBuilderPage() {
     };
 
     const copyFormLink = async (formKey: string) => {
-        const link = `${window.location.origin}/user-step?form=${formKey}`;
+        const link = `${window.location.origin}/forms/${formKey}`;
         await navigator.clipboard.writeText(link);
         toast.success('Form link copied');
     };
@@ -208,6 +227,70 @@ export default function EngagementFormsBuilderPage() {
                         )}
                     </div>
                 </div>
+
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Form Type Setup (Business-specific)</p>
+                    <div className="flex flex-col md:flex-row gap-3">
+                        <input
+                            value={newTypeOption}
+                            onChange={(e) => setNewTypeOption(e.target.value)}
+                            placeholder="Add a type e.g. Passenger Intake, Booking, Warranty Claim"
+                            className="flex-1 h-10 rounded-lg border border-gray-200 px-3 text-sm"
+                        />
+                        <button
+                            onClick={() => {
+                                if (!newTypeOption.trim()) return;
+                                addCustomTypeOption(businessId, newTypeOption);
+                                setNewTypeOption('');
+                                toast.success('Custom form type added');
+                            }}
+                            className="h-10 px-4 rounded-lg bg-primary text-white text-xs font-black uppercase tracking-widest"
+                        >
+                            Add Type
+                        </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {customTypeOptions.length === 0 && (
+                            <p className="text-xs text-text-secondary font-medium">No custom types yet.</p>
+                        )}
+                        {customTypeOptions.map((label) => (
+                            <button
+                                key={label}
+                                onClick={() => {
+                                    setFormType('custom');
+                                    setCustomTypeLabel(label);
+                                }}
+                                className="h-8 px-3 rounded-full bg-white border border-gray-200 text-xs font-bold text-text-main flex items-center gap-2"
+                            >
+                                <span>{label}</span>
+                                <span
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeCustomTypeOption(businessId, label);
+                                        toast.success('Custom form type removed');
+                                    }}
+                                    className="text-text-secondary hover:text-red-500"
+                                >
+                                    <X size={12} />
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {formType === 'custom' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Custom Form Type Name</label>
+                            <input
+                                value={customTypeLabel}
+                                onChange={(e) => setCustomTypeLabel(e.target.value)}
+                                placeholder="e.g. Passenger Manifest, Intake, Booking"
+                                className="mt-2 w-full h-11 rounded-xl border border-gray-200 px-3 text-sm font-medium"
+                            />
+                        </div>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -308,7 +391,10 @@ export default function EngagementFormsBuilderPage() {
                             <div>
                                 <p className="text-sm font-bold text-text-main">{form.title}</p>
                                 <p className="text-xs text-text-secondary font-medium">
-                                    {form.type.toUpperCase()} - /user-step?form={form.key}
+                                    {(form.typeLabel || (form.type === 'custom' ? 'CUSTOM' : form.type.toUpperCase()))} - {`/forms/${form.key}`}
+                                </p>
+                                <p className="text-[10px] text-text-secondary font-medium mt-1">
+                                    ID: {form.id}
                                 </p>
                             </div>
                             <div className="flex items-center gap-2">
@@ -316,6 +402,12 @@ export default function EngagementFormsBuilderPage() {
                                     {statusIcon(form.status)}
                                     {form.status}
                                 </span>
+                                <Link
+                                    href={`/dashboard/settings/engagement/forms/${form.id}`}
+                                    className="h-9 px-3 rounded-lg border border-gray-200 text-xs font-black uppercase tracking-widest text-text-secondary flex items-center gap-1"
+                                >
+                                    Preview
+                                </Link>
                                 <button onClick={() => copyFormLink(form.key)} className="h-9 px-3 rounded-lg border border-gray-200 text-xs font-black uppercase tracking-widest text-text-secondary flex items-center gap-1">
                                     <Copy size={12} /> Copy Link
                                 </button>

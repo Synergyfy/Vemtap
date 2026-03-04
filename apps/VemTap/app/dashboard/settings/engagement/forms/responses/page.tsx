@@ -93,7 +93,9 @@ export default function EngagementFormResponsesPage() {
                                 <div>
                                     <p className="text-2xl font-display font-bold text-text-main">{selected.customerName}</p>
                                     <p className="text-sm text-text-secondary font-medium">{selected.customerEmail || 'No email'} - {selected.customerPhone || 'No phone'}</p>
-                                    <p className="text-xs text-text-secondary font-black uppercase tracking-widest mt-2">{selected.formType.toUpperCase()} - {selected.formTitle}</p>
+                                    <p className="text-xs text-text-secondary font-black uppercase tracking-widest mt-2">
+                                        {(selectedForm?.typeLabel || selected.formType).toUpperCase()} - {selected.formTitle}
+                                    </p>
                                 </div>
 
                                 <div className="border-t border-gray-100 pt-4 space-y-3">

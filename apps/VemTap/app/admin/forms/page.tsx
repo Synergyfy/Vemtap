@@ -76,7 +76,9 @@ export default function AdminFormsPage() {
                                         <p className="text-sm font-bold text-text-main">{form.title}</p>
                                         <p className="text-xs text-text-secondary">{form.key}</p>
                                     </td>
-                                    <td className="px-5 py-4 text-xs font-black uppercase tracking-widest text-text-secondary">{form.type}</td>
+                                    <td className="px-5 py-4 text-xs font-black uppercase tracking-widest text-text-secondary">
+                                        {form.typeLabel || form.type}
+                                    </td>
                                     <td className="px-5 py-4">
                                         <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest ${statusBadge(form.status)}`}>
                                             {statusIcon(form.status)}

@@ -329,7 +329,7 @@ function UserStepPageContent() {
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}
                         selectedFormTitle={preferredBusinessForm?.title || null}
-                        selectedFormType={preferredBusinessForm?.type || null}
+                        selectedFormType={preferredBusinessForm?.typeLabel || preferredBusinessForm?.type || null}
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
                             // Add other placeholder or config links here
