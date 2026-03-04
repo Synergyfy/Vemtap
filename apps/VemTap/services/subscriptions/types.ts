@@ -7,6 +7,7 @@ export interface SubscriptionPlan {
     currency: string;
     isFree: boolean;
     trialDurationDays: number;
+    freeDurationDays?: number;
     features: string[];
     smsCredits: number;
     emailCredits: number;
@@ -33,7 +34,7 @@ export interface Subscription {
     startDate: string;
     endDate: string;
     trialEndDate: string;
-    status: 'active' | 'cancelled' | 'expired' | 'pending' | 'trial';
+    status: 'active' | 'cancelled' | 'expired' | 'pending' | 'trial' | 'trialing';
     paystackReference: string;
     paystackAuthorizationCode: string;
     currentPeriodStart?: string;

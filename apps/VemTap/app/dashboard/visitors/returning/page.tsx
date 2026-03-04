@@ -68,14 +68,31 @@ export default function ReturningVisitorsPage() {
         { label: 'Churn Risk', value: '0', icon: AlertTriangle, color: 'red' as const, trend: { value: '-0', isUp: true } },
     ];
 
+    const getVisitorDisplayName = (visitor: Visitor) => {
+        return visitor.name ||
+            (visitor.firstName || visitor.lastName
+                ? `${visitor.firstName || ''} ${visitor.lastName || ''}`.trim()
+                : 'Unknown Visitor');
+    };
+
+    const resolveDisplayDate = (item: Visitor) => {
+        const timestampDate = typeof item.timestamp === 'number'
+            ? new Date(item.timestamp < 1_000_000_000_000 ? item.timestamp * 1000 : item.timestamp)
+            : null;
+        const candidates: Array<string | Date | null | undefined> = [item.lastVisit, item.time, item.joinedDate, timestampDate];
+        for (const candidate of candidates) {
+            const formatted = formatDate(candidate);
+            if (formatted !== 'N/A' && formatted !== 'Invalid Date') return formatted;
+            if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+        }
+        return 'Not provided';
+    };
+
     const columns: Column<Visitor>[] = [
         {
             header: 'Visitor',
             accessor: (item: Visitor) => {
-                const displayName = item.name ||
-                    (item.firstName || item.lastName
-                        ? `${item.firstName || ''} ${item.lastName || ''}`.trim()
-                        : 'Unknown Visitor');
+                const displayName = getVisitorDisplayName(item);
 
                 return (
                     <div className="flex items-center gap-3">
@@ -90,7 +107,7 @@ export default function ReturningVisitorsPage() {
                 );
             }
         },
-        { header: 'Last Seen', accessor: (item: Visitor) => formatDate(item.lastVisit || item.time) },
+        { header: 'Last Seen', accessor: (item: Visitor) => resolveDisplayDate(item) },
         {
             header: 'Level',
             accessor: (item: Visitor) => (
@@ -142,7 +159,7 @@ export default function ReturningVisitorsPage() {
             <SendMessageModal
                 isOpen={!!selectedVisitorForMsg}
                 onClose={() => setSelectedVisitorForMsg(null)}
-                recipientName={selectedVisitorForMsg?.name || ''}
+                recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
                 recipientPhone={selectedVisitorForMsg?.phone}
                 type="reward"
             />

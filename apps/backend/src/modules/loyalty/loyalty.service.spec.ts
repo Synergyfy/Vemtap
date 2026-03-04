@@ -15,6 +15,7 @@ import { Visit } from '../visitors/entities/visit.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { CampaignsService } from '../campaigns/campaigns.service';
+import { DeviceStatus } from '../devices/entities/device.entity';
 
 describe('LoyaltyService', () => {
   let service: LoyaltyService;

@@ -29,6 +29,8 @@ const EngagementTile: React.FC<EngagementTileProps> = ({ icon, label, descriptio
 
 interface EngagementTilesProps {
     onAction: (type: 'review' | 'social' | 'feedback' | 'rewards') => void;
+    selectedFormTitle?: string | null;
+    selectedFormType?: string | null;
     settings?: {
         showReview?: boolean;
         showSocial?: boolean;
@@ -45,10 +47,13 @@ interface EngagementTilesProps {
 
 export const EngagementTiles: React.FC<EngagementTilesProps> = ({
     onAction,
+    selectedFormTitle,
+    selectedFormType,
     settings = {}
 }) => {
     const hasSocial = !!(settings.instagram || settings.twitter || settings.facebook || settings.linkedin || settings.socialUrl);
     const hasReview = !!settings.reviewUrl;
+    const hasSelectedForm = !!selectedFormTitle;
 
     return (
         <div className="w-full space-y-3 mt-8">
@@ -56,7 +61,15 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
                 Boost Your Experience
             </h3>
 
-            {settings.showReview && hasReview && (
+            {hasSelectedForm ? (
+                <EngagementTile
+                    icon="assignment"
+                    label={selectedFormTitle || 'Open Form'}
+                    description={`Fill ${selectedFormType || 'selected'} form`}
+                    color="bg-amber-50 text-amber-600"
+                    onClick={() => onAction('feedback')}
+                />
+            ) : settings.showReview && hasReview && (
                 <EngagementTile
                     icon="star"
                     label="Leave a Review"

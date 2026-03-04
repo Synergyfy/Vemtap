@@ -179,7 +179,7 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
     const router = useRouter();
     const { user } = useAuthStore();
     const sendMessage = useSendMessage();
-    const { data: visitorsData } = useVisitors();
+    const { data: visitorsData } = useVisitors('all');
     const [channel, setChannel] = useState<MessageChannel>(defaultChannel || 'SMS');
     const channelApiMap: Record<MessageChannel, Channel> = {
         WhatsApp: 'WHATSAPP',
@@ -201,7 +201,8 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
     const [customContent, setCustomContent] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [isLiveEdit, setIsLiveEdit] = useState(false);
-    const countLabel = audience === 'all' ? 'All Contacts' : 'Segmented Contacts';
+    const totalVisitors = visitorsData?.total || 0;
+    const countLabel = audience === 'all' ? `${totalVisitors.toLocaleString()} Contacts` : 'Segmented Contacts';
 
     const handleSend = async () => {
         if (!customContent.trim() && !selectedTemplate) {
@@ -211,7 +212,7 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
 
         const audienceType: AudienceType =
             audience === 'all'
-                ? 'ALL_CUSTOMERS'
+                ? 'ALL'
                 : audience === 'new'
                     ? 'RECENT'
                     : audience === 'premium'

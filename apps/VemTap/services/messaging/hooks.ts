@@ -104,11 +104,11 @@ export const useSendMessage = () => {
     const businessId = useAuthStore((state) => state.user?.businessId);
     return useMutation<any, Error, SendMessageRequest>({
         mutationFn: async (dto) => {
+            const isAllCustomersAudience = dto.audienceType === 'ALL';
             const resolvedBranchId =
-                dto.branchId || (activeBranchId && activeBranchId !== 'all' ? activeBranchId : userBranchId);
-
-            const normalizedAudienceType =
-                dto.audienceType === 'ALL_CUSTOMERS' ? 'ALL' : dto.audienceType;
+                isAllCustomersAudience
+                    ? undefined
+                    : (dto.branchId || (activeBranchId && activeBranchId !== 'all' ? activeBranchId : userBranchId));
 
             if (!businessId) {
                 throw new Error('Missing businessId in user session');
@@ -118,7 +118,7 @@ export const useSendMessage = () => {
                 ...dto,
                 businessId,
                 branchId: resolvedBranchId,
-                audienceType: normalizedAudienceType,
+                audienceType: dto.audienceType,
             });
         },
         onSuccess: () => {
