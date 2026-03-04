@@ -30,7 +30,7 @@ export default function FlowTemplatesPage() {
         queryFn: async () => {
             const response = await adminFlowEngineApi.getTemplates();
             return (response?.data || response || []) as AdminFlowTemplate[];
-        },
+        }, 
     });
 
     const filteredTemplates = useMemo(() => {

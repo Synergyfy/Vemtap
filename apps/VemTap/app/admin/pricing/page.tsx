@@ -106,9 +106,19 @@ export default function AdminPricingPage() {
         },
     });
 
+    // For feature limits: null/undefined = Unlimited, a number = that limit
     const unlimited = (val: any) => {
-        if (val === 0 || val === '0' || !val) return 'Unlimited';
+        if (val === null || val === undefined || val === '' || val === 'null') return 'Unlimited';
         return val;
+    };
+
+    // For messaging credits: 0 = Not included, -1 = Unlimited, else show count
+    const formatCredit = (val: any) => {
+        const n = Number(val);
+        if (val === null || val === undefined || val === '' || isNaN(n)) return 'Not included';
+        if (n === 0) return 'Not included';
+        if (n === -1) return 'Unlimited';
+        return n;
     };
 
     const formatPrice = (price: number, currency = 'NGN') => {
@@ -301,9 +311,9 @@ export default function AdminPricingPage() {
                                             <p className="font-bold text-text-main">Access</p>
                                             <div className="space-y-1 text-text-secondary">
                                                 <p>Trial Days: {plan.trialDurationDays}</p>
-                                                <p>SMS: {unlimited(plan.smsCredits)}</p>
-                                                <p>WA: {unlimited(plan.whatsappCredits)}</p>
-                                                <p>Email: {unlimited(plan.emailCredits)}</p>
+                                                <p>SMS: {formatCredit(plan.smsCredits)}</p>
+                                                <p>WA: {formatCredit(plan.whatsappCredits)}</p>
+                                                <p>Email: {formatCredit(plan.emailCredits)}</p>
                                                 <p>Features: {(plan.features || []).length}</p>
                                             </div>
                                         </div>
@@ -365,19 +375,19 @@ export default function AdminPricingPage() {
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
-                                        SMS Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
+                                        SMS Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 = none, -1 = unlimited)</span>
                                     </label>
                                     <FormattedNumberInput value={currentPlan.smsCredits} onChange={(value) => setNumericField('smsCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
-                                        WhatsApp Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
+                                        WhatsApp Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 = none, -1 = unlimited)</span>
                                     </label>
                                     <FormattedNumberInput value={currentPlan.whatsappCredits} onChange={(value) => setNumericField('whatsappCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
-                                        Email Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
+                                        Email Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 = none, -1 = unlimited)</span>
                                     </label>
                                     <FormattedNumberInput value={currentPlan.emailCredits} onChange={(value) => setNumericField('emailCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>

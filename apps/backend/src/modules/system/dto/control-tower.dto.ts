@@ -6,6 +6,8 @@ import {
   IsNumber,
   IsObject,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
 
 export class BusinessSudoActionDto {
   @ApiProperty({ example: 'biz_102' })
@@ -101,6 +103,7 @@ export class BusinessSearchFilterDto {
 
   @ApiProperty({ required: false, default: 10 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 }
@@ -113,6 +116,7 @@ export class CustomerSearchFilterDto {
 
   @ApiProperty({ required: false, default: 10 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 }
