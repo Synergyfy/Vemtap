@@ -33,7 +33,7 @@ export default function VisitorsOverviewPage() {
     const handleExportCSV = () => {
         const csvContent = [
             ['Name', 'Phone', 'Status', 'Last Visit'],
-            ...visitors.map((v: Visitor) => [v.name, v.phone, v.status, String(v.lastVisit || v.time)])
+            ...visitors.map((v: Visitor) => [getVisitorDisplayName(v), v.phone || 'Not provided', v.status || 'Active', resolveDisplayDate(v)])
         ].map(row => row.join(',')).join('\n');
 
         const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -63,24 +63,47 @@ export default function VisitorsOverviewPage() {
 
     const filteredVisitors = visitors; // Server handles filtering now via useVisitors query param hook params payload
 
+    const getVisitorDisplayName = (visitor: Visitor) => {
+        return visitor.name ||
+            (visitor.firstName || visitor.lastName
+                ? `${visitor.firstName || ''} ${visitor.lastName || ''}`.trim()
+                : 'Unknown Visitor');
+    };
+
+    const resolveDisplayDate = (item: Visitor) => {
+        const timestampDate = typeof item.timestamp === 'number'
+            ? new Date(item.timestamp < 1_000_000_000_000 ? item.timestamp * 1000 : item.timestamp)
+            : null;
+        const candidates: Array<string | Date | null | undefined> = [item.lastVisit, item.time, item.joinedDate, timestampDate];
+        for (const candidate of candidates) {
+            const formatted = formatDate(candidate);
+            if (formatted !== 'N/A' && formatted !== 'Invalid Date') return formatted;
+            if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+        }
+        return 'Not provided';
+    };
+
     const columns: Column<Visitor>[] = [
         {
             header: 'Visitor',
-            accessor: (item: Visitor) => (
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs uppercase">
-                        {(item.name || 'V').split(' ').filter(Boolean).map((n: string) => n[0]).join('')}
+            accessor: (item: Visitor) => {
+                const displayName = getVisitorDisplayName(item);
+                return (
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs uppercase">
+                            {displayName.split(' ').filter(Boolean).map((n: string) => n[0]).join('')}
+                        </div>
+                        <div>
+                            <p className="font-bold text-text-main">{displayName}</p>
+                            <p className="text-[10px] text-text-secondary font-medium tracking-tight uppercase">ID: {(item.id || '      ').substr(0, 6)}</p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="font-bold text-text-main">{item.name || 'Unknown Visitor'}</p>
-                        <p className="text-[10px] text-text-secondary font-medium tracking-tight uppercase">ID: {(item.id || '      ').substr(0, 6)}</p>
-                    </div>
-                </div>
-            )
+                );
+            }
         },
         { header: 'Contact', accessor: 'phone' },
         { header: 'Email', accessor: 'email', },
-        { header: 'Last Visit', accessor: (item: Visitor) => formatDate(item.lastVisit || item.time) },
+        { header: 'Last Visit', accessor: (item: Visitor) => resolveDisplayDate(item) },
         {
             header: 'Status',
             accessor: (item: Visitor) => (
@@ -182,7 +205,7 @@ export default function VisitorsOverviewPage() {
                     <EmptyState
                         icon="people"
                         title="No visitors activity"
-                        description="Tap the 'Simulate Check-in' button on the dashboard to see data here."
+                        description="Visitor activity will appear here after customers tap your live NFC devices."
                     />
                 }
             />
@@ -190,7 +213,7 @@ export default function VisitorsOverviewPage() {
             <SendMessageModal
                 isOpen={!!selectedVisitorForMsg}
                 onClose={() => setSelectedVisitorForMsg(null)}
-                recipientName={selectedVisitorForMsg?.visitor.name || ''}
+                recipientName={selectedVisitorForMsg?.visitor ? getVisitorDisplayName(selectedVisitorForMsg.visitor) : ''}
                 recipientPhone={selectedVisitorForMsg?.visitor.phone}
                 type={selectedVisitorForMsg?.type || 'general'}
             />

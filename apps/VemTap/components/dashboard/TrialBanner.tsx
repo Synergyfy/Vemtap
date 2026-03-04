@@ -17,15 +17,17 @@ export default function TrialBanner({ onUpgrade, compact = false }: TrialBannerP
         return null;
     }
 
-    const isOnTrial = subscription?.status === 'trial';
+    const isOnTrial = subscription?.status === 'trial' || subscription?.status === 'trialing';
+    const planId = String(subscription?.planId || '').toLowerCase();
+    const isFreePlan = planId.includes('free') || Boolean((subscription as any)?.plan?.isFree);
 
-    if (!isOnTrial || !subscription?.trialEndDate) {
+    if (isFreePlan || !isOnTrial || !subscription?.trialEndDate) {
         return null;
     }
 
     const trialEndDate = new Date(subscription.trialEndDate);
     const now = new Date();
-    const daysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const daysRemaining = Math.max(0, Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
     const planName = subscription?.plan?.name || 'Premium';
 
     const handleUpgrade = () => {

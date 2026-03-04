@@ -135,6 +135,12 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             href: '/admin/support',
         },
         {
+            id: 'forms',
+            label: 'Form Approvals',
+            icon: FileText,
+            href: '/admin/forms',
+        },
+        {
             id: 'quotes',
             label: 'Quote Requests',
             icon: FileText,

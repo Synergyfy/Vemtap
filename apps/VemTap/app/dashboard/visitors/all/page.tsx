@@ -94,7 +94,7 @@ export default function AllVisitorsPage() {
     const handleExportCSV = () => {
         const csvContent = [
             ['Name', 'Phone', 'Email', 'Status', 'Last Visit'],
-            ...visitors.map((v: Visitor) => [v.name || 'N/A', v.phone || 'N/A', v.email || '', v.status || 'Active', formatDate(v.lastVisit || v.time)])
+            ...visitors.map((v: Visitor) => [getVisitorDisplayName(v), v.phone || 'Not provided', v.email || '', v.status || 'Active', resolveDisplayDate(v)])
         ].map(row => row.join(',')).join('\n');
 
         const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -141,14 +141,39 @@ export default function AllVisitorsPage() {
 
     const filteredVisitors = visitors;
 
+    const getVisitorDisplayName = (visitor: Visitor) => {
+        return visitor.name ||
+            (visitor.firstName || visitor.lastName
+                ? `${visitor.firstName || ''} ${visitor.lastName || ''}`.trim()
+                : 'Unknown Visitor');
+    };
+
+    const resolveLocation = (item: Visitor) => {
+        const candidate = item.location
+            || (item as any)?.branchName
+            || (item as any)?.branch?.name
+            || (item as any)?.branch?.address;
+        return typeof candidate === 'string' && candidate.trim() ? candidate.trim() : 'Not provided';
+    };
+
+    const resolveDisplayDate = (item: Visitor) => {
+        const timestampDate = typeof item.timestamp === 'number'
+            ? new Date(item.timestamp < 1_000_000_000_000 ? item.timestamp * 1000 : item.timestamp)
+            : null;
+        const candidates: Array<string | Date | null | undefined> = [item.lastVisit, item.time, item.joinedDate, timestampDate];
+        for (const candidate of candidates) {
+            const formatted = formatDate(candidate);
+            if (formatted !== 'N/A' && formatted !== 'Invalid Date') return formatted;
+            if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+        }
+        return 'Not provided';
+    };
+
     const columns: Column<Visitor>[] = [
         {
             header: 'Visitor',
             accessor: (item: Visitor) => {
-                const displayName = item.name ||
-                    (item.firstName || item.lastName
-                        ? `${item.firstName || ''} ${item.lastName || ''}`.trim()
-                        : 'Unknown Visitor');
+                const displayName = getVisitorDisplayName(item);
 
                 return (
                     <div className="flex items-center gap-3">
@@ -157,7 +182,7 @@ export default function AllVisitorsPage() {
                         </div>
                         <div>
                             <p className="font-bold text-text-main">{displayName}</p>
-                            <p className="text-xs text-text-secondary">Customer ID: {(item.id || 'N/A').toUpperCase()}</p>
+                            <p className="text-xs text-text-secondary">Customer ID: {(item.id || 'Not provided').toUpperCase()}</p>
                         </div>
                     </div>
                 );
@@ -201,15 +226,6 @@ export default function AllVisitorsPage() {
                     ) : (
                         <span className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">None</span>
                     )}
-                </div>
-            )
-        },
-        {
-            header: 'Location',
-            accessor: (item: Visitor) => (
-                <div className="flex items-center gap-1.5 text-slate-500 font-medium">
-                    <MapPin size={12} className="text-slate-400" />
-                    <span className="text-xs truncate max-w-[120px]">{item.location || 'N/A'}</span>
                 </div>
             )
         },
@@ -321,7 +337,7 @@ export default function AllVisitorsPage() {
             <SendMessageModal
                 isOpen={!!selectedVisitorForMsg}
                 onClose={() => setSelectedVisitorForMsg(null)}
-                recipientName={selectedVisitorForMsg?.name || ''}
+                recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
                 recipientPhone={selectedVisitorForMsg?.phone}
                 type="welcome"
             />

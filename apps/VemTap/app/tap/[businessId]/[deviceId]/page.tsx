@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { getBusinessBySlug, getBusinessByNfcId } from '@/lib/businessService';
+import { getBusinessBySlug } from '@/lib/businessService';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useLoyaltyStore } from '@/store/loyaltyStore';
-import { useMockDashboardStore } from '@/lib/store/mockDashboardStore';
 import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 
@@ -16,7 +15,6 @@ export default function MultiDeviceTapPage() {
     const initializeFromBusiness = useCustomerFlowStore(state => state.initializeFromBusiness);
     const recordVisit = useCustomerFlowStore(state => state.recordVisit);
     const userDataStore = useCustomerFlowStore(state => state.userData);
-    const recordExternalTap = useMockDashboardStore(state => state.recordExternalTap);
     const { user } = useAuthStore();
     const [error, setError] = useState(false);
 
@@ -86,11 +84,6 @@ export default function MultiDeviceTapPage() {
                 }
 
                 recordVisit();
-                recordExternalTap({
-                    ...identity,
-                    phone: (identity as any).phone || '',
-                    branchId: assignedBranchId
-                });
 
                 // Loyalty Integration: Earn points if user is logged in
                 if (user) {
@@ -116,7 +109,7 @@ export default function MultiDeviceTapPage() {
         };
 
         fetchBusiness();
-    }, [businessId, deviceId, initializeFromBusiness, router, user, userDataStore, storedIdentity, recordVisit, recordExternalTap]);
+    }, [businessId, deviceId, initializeFromBusiness, router, user, userDataStore, storedIdentity, recordVisit]);
 
     if (error) {
         return (
