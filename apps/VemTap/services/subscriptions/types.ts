@@ -7,6 +7,7 @@ export interface SubscriptionPlan {
     currency: string;
     isFree: boolean;
     trialDurationDays: number;
+    freeDurationDays?: number;
     features: string[];
     smsCredits: number;
     emailCredits: number;
