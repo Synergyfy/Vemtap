@@ -31,6 +31,7 @@ export default function ProductClient({ id }: { id: string }) {
     const [selectedImage, setSelectedImage] = useState(0);
     const [activeTab, setActiveTab] = useState<'specs' | 'quote' | 'reviews'>('specs');
     const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+    const [modalType, setModalType] = useState<'quote' | 'consultation'>('quote');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [quoteData, setQuoteData] = useState({
@@ -359,11 +360,11 @@ export default function ProductClient({ id }: { id: string }) {
                                 </div>
                             </div>
                             <button
-                                onClick={handleBuyNow}
+                                onClick={() => { setModalType('quote'); setIsQuoteModalOpen(true); }}
                                 disabled={isSubmitting}
                                 className="w-full mt-4 py-4 bg-primary text-white font-bold rounded-2xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 group disabled:opacity-50"
                             >
-                                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Buy Now'}
+                                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Request Quote'}
                                 {!isSubmitting && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
                             </button>
                         </div>
@@ -377,7 +378,7 @@ export default function ProductClient({ id }: { id: string }) {
                                 <a href="tel:+2348012345678" className="hover:underline">+234 801 234 5678</a>
                             </div>
                             <button
-                                onClick={() => setIsQuoteModalOpen(true)}
+                                onClick={() => { setModalType('quote'); setIsQuoteModalOpen(true); }}
                                 className="w-full py-3 bg-amber-600 text-white font-bold rounded-2xl hover:bg-amber-700 transition-all flex items-center justify-center gap-2"
                             >
                                 Request Low MOQ Quote
@@ -568,6 +569,18 @@ export default function ProductClient({ id }: { id: string }) {
                                                     min="1"
                                                 />
                                             </div>
+
+                                            {quoteData.quantity && !isNaN(parseInt(quoteData.quantity)) && parseInt(quoteData.quantity) > 0 && (
+                                                <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl flex justify-between items-center animate-in fade-in slide-in-from-top-2 duration-300">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] font-black uppercase text-primary tracking-widest">Estimated Total</span>
+                                                        <span className="text-xs text-slate-500 font-medium">Based on ₦{product.price.toLocaleString()} / unit</span>
+                                                    </div>
+                                                    <span className="text-2xl font-black text-slate-900">
+                                                        ₦{(parseInt(quoteData.quantity) * product.price).toLocaleString()}
+                                                    </span>
+                                                </div>
+                                            )}
                                             <div>
                                                 <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">Additional Notes</label>
                                                 <textarea
@@ -705,7 +718,10 @@ export default function ProductClient({ id }: { id: string }) {
                             <Headset size={40} className="text-primary" />
                             <h4 className="text-xl font-bold text-slate-900">Need Customization?</h4>
                             <p className="text-sm text-slate-600 font-medium">Our hardware team specializes in custom NFC builds for large-scale enterprise deployments.</p>
-                            <button onClick={() => setActiveTab('quote')} className="w-full py-4 bg-white border border-primary/20 text-primary font-bold hover:bg-primary hover:text-white transition-all">
+                            <button
+                                onClick={() => { setModalType('consultation'); setIsQuoteModalOpen(true); }}
+                                className="w-full py-4 bg-white border border-primary/20 text-primary font-bold hover:bg-primary hover:text-white transition-all rounded-2xl"
+                            >
                                 Request Consultation
                             </button>
                         </div>
@@ -742,8 +758,14 @@ export default function ProductClient({ id }: { id: string }) {
                         <div className="flex-1">
                             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                                 <div>
-                                    <h3 className="font-display font-bold text-xl text-text-main">Request Bulk Quote</h3>
-                                    <p className="text-sm text-text-secondary">VemTap specialized pricing for {product.name}</p>
+                                    <h3 className="font-display font-bold text-xl text-text-main">
+                                        {modalType === 'quote' ? 'Request Bulk Quote' : 'Request Consultation'}
+                                    </h3>
+                                    <p className="text-sm text-text-secondary">
+                                        {modalType === 'quote'
+                                            ? `VemTap specialized pricing for ${product.name}`
+                                            : `Hardware customization for your business`}
+                                    </p>
                                 </div>
                                 <button onClick={() => setIsQuoteModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500">
                                     <X size={20} />
@@ -822,18 +844,34 @@ export default function ProductClient({ id }: { id: string }) {
                                         />
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">Quantity Needed</label>
-                                    <input
-                                        type="number"
-                                        value={quoteData.quantity}
-                                        onChange={(e) => setQuoteData({ ...quoteData, quantity: e.target.value })}
-                                        placeholder="e.g. 100"
-                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium"
-                                        required
-                                        min="1"
-                                    />
-                                </div>
+                                {modalType === 'quote' && (
+                                    <>
+                                        <div>
+                                            <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">Quantity Needed</label>
+                                            <input
+                                                type="number"
+                                                value={quoteData.quantity}
+                                                onChange={(e) => setQuoteData({ ...quoteData, quantity: e.target.value })}
+                                                placeholder="e.g. 100"
+                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium"
+                                                required
+                                                min="1"
+                                            />
+                                        </div>
+
+                                        {quoteData.quantity && !isNaN(parseInt(quoteData.quantity)) && parseInt(quoteData.quantity) > 0 && (
+                                            <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl flex justify-between items-center animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-black uppercase text-primary tracking-widest">Estimated Total</span>
+                                                    <span className="text-xs text-slate-500 font-medium">Based on ₦{product.price.toLocaleString()} / unit</span>
+                                                </div>
+                                                <span className="text-2xl font-black text-slate-900">
+                                                    ₦{(parseInt(quoteData.quantity) * product.price).toLocaleString()}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
                                 <div>
                                     <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">Additional Notes</label>
                                     <textarea

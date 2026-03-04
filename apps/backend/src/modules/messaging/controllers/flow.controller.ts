@@ -40,7 +40,7 @@ export class FlowController {
   constructor(
     @InjectRepository(Flow)
     private readonly flowRepo: Repository<Flow>,
-  ) {}
+  ) { }
 
   @Post()
   @ApiBearerAuth()

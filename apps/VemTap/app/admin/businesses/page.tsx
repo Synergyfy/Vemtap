@@ -10,8 +10,10 @@ const PAGE_SIZE = 10;
 interface Business {
     id: string;
     name: string;
-    email: string;
+    email: string; // This might be the user email
+    officialEmail?: string;
     phone?: string;
+    whatsappNumber?: string;
     address?: string;
     status: string;
     planId?: string;
@@ -64,6 +66,11 @@ export default function AdminBusinessesPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
 
+    // Confirmation Modal State
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<'approve' | 'reject' | 'suspend' | 'reactivate' | 'delete' | null>(null);
+    const [confirmReason, setConfirmReason] = useState('');
+
     useEffect(() => {
         setCurrentPage(1);
     }, [searchQuery, filterStatus]);
@@ -101,19 +108,33 @@ export default function AdminBusinessesPage() {
         { label: 'Suspended', value: apiStats?.suspended ?? businesses.filter(b => normalizeBusinessStatus(b.status) === 'suspended').length, icon: 'block', color: 'red' },
     ];
 
-    const handleAction = async (action: 'approve' | 'reject' | 'suspend' | 'reactivate' | 'delete', business: Business) => {
+    const handleAction = (action: 'approve' | 'reject' | 'suspend' | 'reactivate' | 'delete', business: Business) => {
+        setSelectedBusiness(business);
+        setConfirmAction(action);
+        setConfirmReason('');
+        setIsConfirmModalOpen(true);
+    };
+
+    const executeAction = async () => {
+        if (!selectedBusiness || !confirmAction) return;
+
+        setIsSubmitting(true);
         const labels = { approve: 'Approve', reject: 'Reject', suspend: 'Suspend', reactivate: 'Reactivate', delete: 'Delete' };
-        if (!window.confirm(`${labels[action]} "${business.name}"?`)) return;
+
         try {
-            if (action === 'approve') await adminBusinessesApi.approve(business.id);
-            else if (action === 'reject') await adminBusinessesApi.reject(business.id);
-            else if (action === 'suspend') await adminBusinessesApi.suspend(business.id);
-            else if (action === 'reactivate') await adminBusinessesApi.reactivate(business.id);
-            else if (action === 'delete') await adminBusinessesApi.delete(business.id);
-            notify.success(`Business ${labels[action].toLowerCase()}d successfully`);
+            if (confirmAction === 'approve') await adminBusinessesApi.approve(selectedBusiness.id);
+            else if (confirmAction === 'reject') await adminBusinessesApi.reject(selectedBusiness.id);
+            else if (confirmAction === 'suspend') await adminBusinessesApi.suspend(selectedBusiness.id, confirmReason);
+            else if (confirmAction === 'reactivate') await adminBusinessesApi.reactivate(selectedBusiness.id);
+            else if (confirmAction === 'delete') await adminBusinessesApi.delete(selectedBusiness.id);
+
+            notify.success(`Business ${labels[confirmAction].toLowerCase()}d successfully`);
+            setIsConfirmModalOpen(false);
             fetchBusinesses();
         } catch (err: any) {
             notify.error(err.message || 'Action failed');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -220,6 +241,8 @@ export default function AdminBusinessesPage() {
                             <tr>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Business</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Owner</th>
+                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Contact Info</th>
+                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Location</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Branches</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Status</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Joined</th>
@@ -270,14 +293,25 @@ export default function AdminBusinessesPage() {
                                                     </div>
                                                 ) : <span className="text-sm text-text-secondary">—</span>}
                                             </td>
+                                            <td className="py-4 px-6">
+                                                <div className="text-xs">
+                                                    <p className="font-bold text-text-main">{biz.officialEmail || biz.email || '—'}</p>
+                                                    <p className="text-text-secondary">{biz.whatsappNumber || biz.phone || '—'}</p>
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-6">
+                                                <p className="text-xs font-medium text-text-secondary line-clamp-2 max-w-[150px]">
+                                                    {biz.address || '—'}
+                                                </p>
+                                            </td>
                                             <td className="py-4 px-6 text-sm font-bold text-text-main">{biz.branches?.length ?? 0}</td>
                                             <td className="py-4 px-6">
                                                 <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${getStatusBadge(biz.status)}`}>
                                                     {biz.status}
                                                 </span>
                                             </td>
-                                            <td className="py-4 px-6 text-sm text-text-secondary font-medium">
-                                                {new Date(biz.createdAt).toLocaleDateString()}
+                                            <td className="py-4 px-6 text-xs text-text-secondary font-bold">
+                                                {new Date(biz.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                             </td>
                                             <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex items-center justify-end gap-1">
@@ -366,6 +400,72 @@ export default function AdminBusinessesPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Confirmation Modal */}
+            {isConfirmModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => !isSubmitting && setIsConfirmModalOpen(false)} />
+                    <div className="relative w-full max-w-md bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${confirmAction === 'delete' || confirmAction === 'reject' ? 'bg-red-50 text-red-600' :
+                                confirmAction === 'suspend' ? 'bg-orange-50 text-orange-600' : 'bg-green-50 text-green-600'
+                                }`}>
+                                {confirmAction === 'delete' ? <Trash2 size={24} /> :
+                                    confirmAction === 'suspend' ? <Ban size={24} /> :
+                                        confirmAction === 'approve' ? <CheckCircle size={24} /> :
+                                            confirmAction === 'reject' ? <XCircle size={24} /> : <RotateCcw size={24} />}
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-display font-bold text-text-main capitalize">{confirmAction} Business</h2>
+                                <p className="text-sm text-text-secondary font-medium">Please confirm this action</p>
+                            </div>
+                        </div>
+
+                        <div className="mb-8">
+                            <p className="text-sm text-text-secondary leading-relaxed">
+                                Are you sure you want to <span className="font-bold text-text-main italic">{confirmAction}</span> <strong>"{selectedBusiness?.name}"</strong>?
+                                {confirmAction === 'delete' && " This action cannot be undone."}
+                            </p>
+
+                            {(confirmAction === 'suspend' || confirmAction === 'delete') && (
+                                <div className="mt-6">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">
+                                        Reason for {confirmAction}ing
+                                    </label>
+                                    <textarea
+                                        value={confirmReason}
+                                        onChange={(e) => setConfirmReason(e.target.value)}
+                                        placeholder={`Please state why you are ${confirmAction}ing this business...`}
+                                        className="w-full h-24 p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all resize-none"
+                                        required={confirmAction === 'suspend'}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setIsConfirmModalOpen(false)}
+                                disabled={isSubmitting}
+                                className="flex-1 h-12 bg-gray-100 text-text-secondary font-bold rounded-xl hover:bg-gray-200 transition-all text-sm disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={executeAction}
+                                disabled={isSubmitting || ((confirmAction === 'suspend' || confirmAction === 'delete') && !confirmReason.trim())}
+                                className={`flex-1 h-12 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm active:scale-95 disabled:opacity-70 ${confirmAction === 'delete' || confirmAction === 'reject' ? 'bg-red-600 hover:bg-red-700 shadow-red-200' :
+                                    confirmAction === 'suspend' ? 'bg-orange-500 hover:bg-orange-600 shadow-orange-200' : 'bg-primary hover:bg-primary-hover shadow-primary/20'
+                                    }`}
+                            >
+                                {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                                Confirm {confirmAction}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

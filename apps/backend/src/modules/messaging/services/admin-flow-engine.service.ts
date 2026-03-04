@@ -38,7 +38,7 @@ export class AdminFlowEngineService implements OnModuleInit {
     @InjectRepository(FlowExecution)
     private readonly executionRepo: Repository<FlowExecution>,
     private readonly settingsService: SettingsService,
-  ) {}
+  ) { }
 
   private getWhereClause<T>(
     filter: FlowFilterDto,
