@@ -103,4 +103,6 @@ dropdown socials,form creator
 --respond to complain:via sms,whatsaap,email
 --bot can respond or agent 
 --response for the survey
---allow link to be changed:dynamic url not static 
+
+===========
+

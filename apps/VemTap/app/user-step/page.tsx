@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { Suspense, useEffect, useState, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { useCustomerFlowStore, BusinessType } from '@/store/useCustomerFlowStore';
+import { useSearchParams } from 'next/navigation';
+import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useMockDashboardStore } from '@/lib/store/mockDashboardStore';
+import { useBusinessFormsStore } from '@/store/useBusinessFormsStore';
 import { jwtDecode } from 'jwt-decode';
 import { toast } from 'react-hot-toast';
 
@@ -17,11 +19,12 @@ import { StepForm } from '@/components/visitor/StepForm';
 import { StepWelcomeBack } from '@/components/visitor/StepWelcomeBack';
 import { StepOutcome } from '@/components/visitor/StepOutcome';
 import { StepSurvey } from '@/components/visitor/StepSurvey';
+import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { StepFinalSuccess } from '@/components/visitor/StepFinalSuccess';
 import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { EarnPointsModal } from '@/components/loyalty/EarnPointsModal';
 
-export default function UserStepPage() {
+function UserStepPageContent() {
     const {
         currentStep, setStep, storeName, setUserData, resetFlow,
         getBusinessConfig, customWelcomeMessage, customSuccessMessage,
@@ -29,8 +32,29 @@ export default function UserStepPage() {
         setBusinessType, userData, branchId, logoUrl, visitCount, rewardVisitThreshold,
         redemptionStatus, lastRedemptionId, requestRedemption, setRedemptionStatus, resetVisitCountAfterRedemption,
         engagementSettings, surveyQuestions,
-        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag
+        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, businessId
     } = useCustomerFlowStore();
+    const searchParams = useSearchParams();
+    const preferredFormKey = searchParams.get('form');
+    const [selectedBusinessFormId, setSelectedBusinessFormId] = useState<string | null>(null);
+    const { forms: businessForms, submitForm } = useBusinessFormsStore((state) => ({
+        forms: state.forms,
+        submitForm: state.submitForm
+    }));
+    const approvedFormsForBusiness = useMemo(
+        () => businessForms.filter((f) => f.status === 'approved' && (!businessId || f.businessId === businessId)),
+        [businessForms, businessId]
+    );
+    const selectedBusinessForm = useMemo(
+        () => approvedFormsForBusiness.find((f) => f.id === selectedBusinessFormId) || null,
+        [approvedFormsForBusiness, selectedBusinessFormId]
+    );
+    const preferredBusinessForm = useMemo(() => {
+        const preferred = preferredFormKey
+            ? approvedFormsForBusiness.find((form) => form.key === preferredFormKey)
+            : undefined;
+        return preferred || approvedFormsForBusiness.find((form) => form.type === 'survey') || approvedFormsForBusiness[0] || null;
+    }, [approvedFormsForBusiness, preferredFormKey]);
 
     const addRedemptionRequest = useMockDashboardStore(state => state.addRedemptionRequest);
     const redemptionRequests = useMockDashboardStore(state => state.redemptionRequests);
@@ -162,8 +186,6 @@ export default function UserStepPage() {
         }
 
         const name = userData?.name || storedIdentity?.name || 'Guest';
-        const phone = userData?.phone || storedIdentity?.phone || '';
-
         // 1. Request in business dashboard
         addRedemptionRequest({
             visitorId: userData?.uniqueId || `V-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
@@ -183,6 +205,15 @@ export default function UserStepPage() {
         } else if (type === 'social') {
             // Handled by the component's internal modal
         } else if (type === 'feedback') {
+            const explicitlyRequested = preferredFormKey
+                ? approvedFormsForBusiness.find((form) => form.key === preferredFormKey)
+                : null;
+
+            if (explicitlyRequested) {
+                setSelectedBusinessFormId(explicitlyRequested.id);
+            } else {
+                setSelectedBusinessFormId(preferredBusinessForm?.id || null);
+            }
             setStep('SURVEY');
         } else if (type === 'rewards') {
             // Logic for rewards - maybe a toast or a new step?
@@ -191,8 +222,23 @@ export default function UserStepPage() {
     };
 
     const handleSurveyComplete = (answers: Record<string, any>) => {
+        if (selectedBusinessForm && businessId) {
+            const identity = userData || storedIdentity || user;
+            submitForm({
+                formId: selectedBusinessForm.id,
+                businessId,
+                formType: selectedBusinessForm.type,
+                formTitle: selectedBusinessForm.title,
+                customerName: identity?.name || 'Guest',
+                customerEmail: identity?.email,
+                customerPhone: identity?.phone,
+                answers
+            });
+        }
+
         console.log('Survey completed:', answers);
         toast.success('Thank you for your feedback!');
+        setSelectedBusinessFormId(null);
         setStep('FINAL_SUCCESS');
     };
 
@@ -282,6 +328,8 @@ export default function UserStepPage() {
                         onRestart={resetFlow}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}
+                        selectedFormTitle={preferredBusinessForm?.title || null}
+                        selectedFormType={preferredBusinessForm?.typeLabel || preferredBusinessForm?.type || null}
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
                             // Add other placeholder or config links here
@@ -290,11 +338,22 @@ export default function UserStepPage() {
                 )}
 
                 {currentStep === 'SURVEY' && (
-                    <StepSurvey
-                        questions={surveyQuestions}
-                        onComplete={handleSurveyComplete}
-                        onSkip={() => setStep('FINAL_SUCCESS')}
-                    />
+                    selectedBusinessForm ? (
+                        <StepBusinessForm
+                            form={selectedBusinessForm}
+                            onComplete={handleSurveyComplete}
+                            onSkip={() => {
+                                setSelectedBusinessFormId(null);
+                                setStep('FINAL_SUCCESS');
+                            }}
+                        />
+                    ) : (
+                        <StepSurvey
+                            questions={surveyQuestions}
+                            onComplete={handleSurveyComplete}
+                            onSkip={() => setStep('FINAL_SUCCESS')}
+                        />
+                    )
                 )}
 
                 {currentStep === 'FINAL_SUCCESS' && (
@@ -323,5 +382,13 @@ export default function UserStepPage() {
                 breakdown={lastEarnedResponse?.breakdown}
             />
         </VisitorLayout>
+    );
+}
+
+export default function UserStepPage() {
+    return (
+        <Suspense fallback={null}>
+            <UserStepPageContent />
+        </Suspense>
     );
 }
