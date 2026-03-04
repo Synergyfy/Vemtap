@@ -5,9 +5,12 @@ import {
     IsOptional,
     IsObject,
     IsUUID,
+    ValidateNested,
+    IsDefined,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { FlowTriggerType, FlowStatus } from '../entities/flow.entity';
-import type { FlowStructure } from '../interfaces/flow-engine.interface';
+import { FlowStructure } from '../interfaces/flow-engine.interface';
 
 export class CreateFlowDto {
     @ApiProperty({ example: 'Welcome Flow', description: 'The name of the flow' })
@@ -45,7 +48,10 @@ export class CreateFlowDto {
         description: 'The visual structure of the flow (nodes and edges)',
         required: true,
     })
+    @IsDefined()
     @IsObject()
+    @ValidateNested()
+    @Type(() => FlowStructure)
     structure: FlowStructure;
 }
 
