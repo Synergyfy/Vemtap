@@ -20,7 +20,7 @@ export default function NFCManagerPage() {
     const { user } = useAuthStore();
     const [selectedLink, setSelectedLink] = useState<any | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [editData, setEditData] = useState({ name: '', location: '', branchId: '' });
+    const [editData, setEditData] = useState({ name: '', location: '', branchId: '', targetUrl: '' });
 
     const { data: branches = [] } = useBranches();
 
@@ -92,18 +92,50 @@ export default function NFCManagerPage() {
     };
 
     const openEditModal = (device: any) => {
+        const fallbackTapUrl = `${window.location.origin}/tap/${device.code}`;
+        const currentTargetUrl = device.targetUrl || device.redirectUrl || device.url || fallbackTapUrl;
         setSelectedLink(device);
         setEditData({
             name: device.name,
             location: device.location || '',
-            branchId: device.branchId || ''
+            branchId: device.branchId || '',
+            targetUrl: currentTargetUrl
         });
         setIsEditModalOpen(true);
     };
 
+    const normalizeUrl = (raw: string) => {
+        const value = raw.trim();
+        if (!value) return '';
+        return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+    };
+
     const saveEdit = () => {
         if (!selectedLink) return;
-        updateMutation.mutate({ id: selectedLink.id, data: editData });
+        const normalizedTargetUrl = normalizeUrl(editData.targetUrl);
+        if (normalizedTargetUrl) {
+            try {
+                new URL(normalizedTargetUrl);
+            } catch {
+                toast.error('Please enter a valid destination URL');
+                return;
+            }
+        }
+
+        const payload: any = {
+            name: editData.name,
+            location: editData.location,
+            branchId: editData.branchId
+        };
+
+        if (normalizedTargetUrl) {
+            // Send common aliases to support backend variants while keeping one input in UI.
+            payload.targetUrl = normalizedTargetUrl;
+            payload.redirectUrl = normalizedTargetUrl;
+            payload.url = normalizedTargetUrl;
+        }
+
+        updateMutation.mutate({ id: selectedLink.id, data: payload });
     };
 
     const copyToClipboard = (text: string) => {
@@ -121,6 +153,10 @@ export default function NFCManagerPage() {
             link.href = url;
             link.click();
         }
+    };
+
+    const getConfiguredTargetUrl = (device: any) => {
+        return device?.targetUrl || device?.redirectUrl || device?.url || '';
     };
 
     return (
@@ -263,6 +299,8 @@ export default function NFCManagerPage() {
                                 <AnimatePresence mode="popLayout">
                                     {devices.map((device: any) => {
                                         const deviceUrl = `${window.location.origin}/tap/${device.code}`;
+                                        const configuredTargetUrl = getConfiguredTargetUrl(device);
+                                        const displayedTargetUrl = configuredTargetUrl || deviceUrl;
                                         const deviceBranch = branches.find((b: any) => b.id === device.branchId);
                                         return (
                                             <motion.tr
@@ -290,10 +328,10 @@ export default function NFCManagerPage() {
                                                         </div>
                                                         <div className="min-w-0 max-w-[150px]">
                                                             <span className="text-[10px] font-black text-slate-400 uppercase block leading-none mb-1">Target link</span>
-                                                            <span className="text-xs font-bold text-text-main truncate block">{deviceUrl}</span>
+                                                            <span className="text-xs font-bold text-text-main truncate block">{displayedTargetUrl}</span>
                                                         </div>
                                                         <button
-                                                            onClick={() => copyToClipboard(deviceUrl)}
+                                                            onClick={() => copyToClipboard(displayedTargetUrl)}
                                                             className="size-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center hover:bg-primary/5 hover:border-primary/20 transition-all shadow-sm"
                                                         >
                                                             <Copy size={14} className="text-slate-400 group-hover:text-primary transition-colors" />
@@ -427,6 +465,20 @@ export default function NFCManagerPage() {
                                 </div>
 
                                 <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 ml-1">Destination URL</label>
+                                        <input
+                                            type="url"
+                                            value={editData.targetUrl}
+                                            onChange={(e) => setEditData({ ...editData, targetUrl: e.target.value })}
+                                            className="w-full h-12 bg-gray-50 border border-slate-200 rounded-2xl px-4 text-sm font-bold focus:bg-white focus:border-primary transition-all outline-none"
+                                            placeholder="e.g. https://example.com/menu"
+                                        />
+                                        <p className="text-[10px] text-text-secondary font-medium px-1">
+                                            Update where this NFC asset redirects visitors.
+                                        </p>
+                                    </div>
+
                                     <div className="space-y-1.5">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 ml-1">Asset Name</label>
                                         <input

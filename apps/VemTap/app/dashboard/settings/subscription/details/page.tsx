@@ -11,6 +11,12 @@ export default function PlanDetailsPage() {
     const activePlan = subscription?.plan;
     const periodStart = subscription?.currentPeriodStart || subscription?.startDate || null;
     const periodEnd = subscription?.currentPeriodEnd || subscription?.trialEndDate || subscription?.endDate || null;
+    const isOnTrial = subscription?.status === 'trial' || subscription?.status === 'trialing';
+    const configuredTrialDays = activePlan?.isFree ? 0 : (activePlan?.trialDurationDays || activePlan?.freeDurationDays || 30);
+    const derivedTrialEndFromStart = (isOnTrial && periodStart && configuredTrialDays > 0)
+        ? new Date(new Date(periodStart).getTime() + configuredTrialDays * 24 * 60 * 60 * 1000).toISOString()
+        : null;
+    const displayPeriodEnd = isOnTrial ? (derivedTrialEndFromStart || periodEnd) : periodEnd;
     const billingPeriod = subscription?.billingPeriod || 'N/A';
     const formatPrice = (price?: number) => {
         const resolved = typeof price === 'number' ? price : 0;
@@ -78,7 +84,7 @@ export default function PlanDetailsPage() {
                     </div>
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Period End</p>
-                        <p className="mt-2 text-lg font-black text-text-main">{periodEnd ? new Date(periodEnd).toLocaleDateString() : 'N/A'}</p>
+                        <p className="mt-2 text-lg font-black text-text-main">{displayPeriodEnd ? new Date(displayPeriodEnd).toLocaleDateString() : 'N/A'}</p>
                     </div>
                 </div>
 

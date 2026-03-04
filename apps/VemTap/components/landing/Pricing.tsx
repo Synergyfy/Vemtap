@@ -85,7 +85,7 @@ export default function Pricing() {
     };
 
     const getTrialDays = (plan: any) => {
-        return plan.trialDurationDays || plan.freeDurationDays || (plan.isFree ? 30 : 0);
+        return plan.isFree ? 0 : (plan.trialDurationDays || plan.freeDurationDays || 0);
     };
 
     const normalizeFeatures = (plan: any) => {

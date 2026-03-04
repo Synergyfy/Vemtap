@@ -74,4 +74,33 @@ Acceptance criteria:
 --count down for free trail for standard plan eg.
 --opportunity to be able to pay now plan
 --ability to subscribe directly 
---the period start NAa
+--the period should be:
+--Start: trial start date
+--End: 30 days after trial start date
+--This is a 30-day trial window (not a fixed 10-year date range).
+
+
+=======
+
+give a bussiness the liberty to create thier own unique from
+--survey,complain,social media
+--any form being created will have approved to the admin side 
+
+title--
+
+--give them the liberty to create title for social media
+--form title form survey etc 
+
+--on the survey create survey users cant add a space bar
+
+--passenger form with diffrent links to thier form 
+--extra step
+
+put under enagment settings 
+dropdown socials,form creator
+--survey can come under enagagement
+--response to forms there should be an interface should see the response and then thier details
+--respond to complain:via sms,whatsaap,email
+--bot can respond or agent 
+--response for the survey
+--allow link to be changed:dynamic url not static 

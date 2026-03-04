@@ -152,7 +152,6 @@ interface CustomerFlowState {
     resetFlow: () => void;
     toggleFeedback: (show: boolean) => void;
     setRewardSetup: (has: boolean) => void;
-    simulateReturningUser: (visits?: number) => void;
     setBusinessType: (type: BusinessType) => void;
     getBusinessConfig: () => BusinessConfig;
     initializeFromBusiness: (business: any) => void;
@@ -261,23 +260,6 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             }),
             toggleFeedback: (show) => set({ showFeedback: show }),
             setRewardSetup: (has) => set({ hasRewardSetup: has }),
-            simulateReturningUser: (visits = 3) => {
-                const type = get().businessType;
-                const config = businessConfigs[type];
-                set({
-                    isReturningUser: true,
-                    currentStep: 'IDENTIFYING',
-                    visitCount: visits,
-                    storeName: config.storeName,
-                    logoUrl: config.logoUrl || null,
-                    userData: {
-                        name: 'Sarah Jordan',
-                        email: 'sarah@example.com',
-                        phone: '+234 801 234 5678',
-                        uniqueId: 'LT-SARAH-99'
-                    }
-                });
-            },
             setBusinessType: (type) => set({
                 businessType: type,
                 storeName: businessConfigs[type].storeName,
