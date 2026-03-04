@@ -7,7 +7,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import FlowEngineNav from '@/components/admin/flow-engine/FlowEngineNav';
 import { notify } from '@/lib/notify';
 import { adminBusinessesApi, adminFlowApi } from '@/lib/api/admin';
-import { sampleTemplateJson } from '@/components/admin/flow-engine/mockData';
 
 type FlowTriggerType = 'new_visitor' | 'manual' | 'tag_applied' | 'birthday' | 'loyalty_milestone';
 type FlowStatus = 'draft' | 'active' | 'paused';
@@ -31,15 +30,7 @@ type BusinessRecord = {
 };
 
 const defaultStructure = () => {
-    try {
-        const parsed = JSON.parse(sampleTemplateJson) as { nodes?: any[]; edges?: any[] };
-        return {
-            nodes: parsed.nodes || [],
-            edges: parsed.edges || [],
-        };
-    } catch {
-        return { nodes: [], edges: [] };
-    }
+    return { nodes: [], edges: [] };
 };
 
 export default function FlowManagementPage() {
@@ -255,13 +246,12 @@ export default function FlowManagementPage() {
                                             <td className="py-3 text-xs font-bold text-text-main uppercase tracking-wider">{flow.triggerType}</td>
                                             <td className="py-3">
                                                 <span
-                                                    className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                                                        flow.status === 'active'
-                                                            ? 'bg-emerald-50 text-emerald-700'
-                                                            : flow.status === 'paused'
-                                                                ? 'bg-amber-50 text-amber-700'
-                                                                : 'bg-gray-100 text-gray-700'
-                                                    }`}
+                                                    className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${flow.status === 'active'
+                                                        ? 'bg-emerald-50 text-emerald-700'
+                                                        : flow.status === 'paused'
+                                                            ? 'bg-amber-50 text-amber-700'
+                                                            : 'bg-gray-100 text-gray-700'
+                                                        }`}
                                                 >
                                                     {flow.status}
                                                 </span>
@@ -314,6 +304,24 @@ export default function FlowManagementPage() {
                         </div>
 
                         <div className="space-y-4">
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Business</label>
+                                <select
+                                    value={businessId}
+                                    onChange={(e) => setBusinessId(e.target.value)}
+                                    className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10"
+                                >
+                                    <option value="">
+                                        {isLoadingBusinesses ? 'Loading businesses...' : 'Select Business'}
+                                    </option>
+                                    {businesses.map((business) => (
+                                        <option key={business.id} value={business.id}>
+                                            {business.name} ({business.id.slice(0, 8)})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
                             <div>
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Flow Name</label>
                                 <input

@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
 import PageHeader from '@/components/dashboard/PageHeader';
@@ -11,6 +10,8 @@ import AddNoteModal from '@/components/dashboard/AddNoteModal';
 import { notify } from '@/lib/notify';
 import { useVisitor } from '@/services/visitors/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
+import { Loader2 } from 'lucide-react';
+
 
 export default function VisitorProfilePage() {
     const [isEditOpen, setIsEditOpen] = useState(false);
@@ -84,7 +85,7 @@ export default function VisitorProfilePage() {
 
             {isLoading ? (
                 <div className="flex items-center justify-center min-h-[40vh]">
-                    <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                    <Loader2 className="animate-spin text-primary" size={40} />
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

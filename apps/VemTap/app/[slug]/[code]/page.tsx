@@ -45,14 +45,44 @@ export default function DynamicTapJourneyPage() {
     const addRedemptionRequest = useMockDashboardStore(state => state.addRedemptionRequest);
     const redemptionRequests = useMockDashboardStore(state => state.redemptionRequests);
 
-    const { user } = useAuthStore();
+    const { user, isAuthenticated, login } = useAuthStore();
     const { lastEarnedResponse, setLastEarnedResponse } = useLoyaltyStore();
     const config = getBusinessConfig();
+
+    const isCustomer = isAuthenticated && user?.role?.toLowerCase() === 'customer';
 
     const [isLoading, setIsLoading] = useState(true);
     const [isDownloading, setIsDownloading] = useState(false);
     const [isSyncingReal, setIsSyncingReal] = useState(false);
     const [isDeviceSynced, setIsDeviceSynced] = useState(false);
+    const [hasVisitedBefore, setHasVisitedBefore] = useState(false);
+
+    // Fetch full user details if authenticated
+    useEffect(() => {
+        const fetchProfile = async () => {
+            if (isAuthenticated && !user?.firstName) {
+                try {
+                    const { usersApi } = await import('@/lib/api/users');
+                    const fullUser = await usersApi.getMe();
+                    if (fullUser && useAuthStore.getState().access_token) {
+                        login(fullUser, useAuthStore.getState().access_token!);
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch full profile:', err);
+                }
+            }
+        };
+        fetchProfile();
+    }, [isAuthenticated, user?.firstName, login]);
+
+    // Sync visit status from the initial device fetch
+    useEffect(() => {
+        if (businessId && isCustomer) {
+            // isFirstTimeVisit comes from useCustomerFlowStore which is populated in initJourney 
+            // via fetchDeviceByCode (backend's getDeviceInfo which checks visit history if authenticated)
+            setHasVisitedBefore(!isFirstTimeVisit);
+        }
+    }, [businessId, isCustomer, isFirstTimeVisit]);
 
     // 1. Session Initialization and Data Fetching
     useEffect(() => {
@@ -115,7 +145,7 @@ export default function DynamicTapJourneyPage() {
 
     useEffect(() => {
         if (storedIdentity || user || userData) {
-            setIsDeviceSynced(!!storedIdentity || !!userData);
+            setIsDeviceSynced(!!storedIdentity || !!userData || !!user);
         }
     }, [storedIdentity, user, userData]);
 
@@ -157,7 +187,7 @@ export default function DynamicTapJourneyPage() {
                 // Actually, if backend says they are returning (!isFirstTimeVisit), we should try to show Welcome Back 
                 // even if we don't have local data (maybe they used another device, but for now we follow the "First Time" flag)
 
-                if (storedIdentity || userData || !isFirstTimeVisit) {
+                if (storedIdentity || userData || !isFirstTimeVisit || isCustomer) {
                     setStep('WELCOME_BACK');
                 } else {
                     setStep('FORM');
@@ -166,7 +196,7 @@ export default function DynamicTapJourneyPage() {
 
             return () => clearTimeout(syncTimeout);
         }
-    }, [currentStep, setStep, storedIdentity, userData, isFirstTimeVisit, deviceCode]);
+    }, [currentStep, setStep, storedIdentity, userData, isFirstTimeVisit, deviceCode, isCustomer]);
 
     const recordLoyaltyTap = async (identity: any) => {
         try {
@@ -176,7 +206,7 @@ export default function DynamicTapJourneyPage() {
             if (response && response.profile) {
                 // Refresh local profile state
                 const { fetchLoyaltyProfile } = useLoyaltyStore.getState();
-                const identifier = identity.email || identity.phone || identity.uniqueId;
+                const identifier = identity.email || identity.phone || identity.uniqueId || identity.id;
                 fetchLoyaltyProfile(identifier, branchId || 'head-office');
 
                 console.log('Loyalty tap processed:', response);
@@ -188,41 +218,48 @@ export default function DynamicTapJourneyPage() {
 
     const onFormSubmit = async (data: any) => {
         try {
-            // Split name into firstName/lastName for backend DTO
-            const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
-            const firstName = nameParts[0];
-            const lastName = nameParts.slice(1).join(' ') || ' ';
+            if (!isCustomer) {
+                // Split name into firstName/lastName for backend DTO
+                const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
+                const firstName = nameParts[0];
+                const lastName = nameParts.slice(1).join(' ') || ' ';
 
-            // 1. Register user via public signup endpoint
-            await api.post('/visitors/signup', {
-                firstName,
-                lastName,
-                email: data.email,
-                phone: data.phone
-            });
+                // 1. Register user via public signup endpoint
+                await api.post('/visitors/signup', {
+                    firstName,
+                    lastName,
+                    email: data.email,
+                    phone: data.phone
+                });
 
-            // 2. Performance Silent Login to get a token (Backend uses 'mypassword' for default signup)
-            const authResponse = await api.post('/auth/login', {
-                email: data.email,
-                password: 'mypassword'
-            });
+                // 2. Performance Silent Login to get a token (Backend uses 'mypassword' for default signup)
+                const authResponse = await api.post('/auth/login', {
+                    identifier: data.email,
+                    password: 'mypassword'
+                });
 
-            if (authResponse?.access_token) {
-                // Set the session so subsequent 'api' calls include the Bearer token
-                useAuthStore.getState().login(authResponse.user, authResponse.access_token);
+                if (authResponse?.access_token) {
+                    // Set the session so subsequent 'api' calls include the Bearer token
+                    useAuthStore.getState().login(authResponse.user, authResponse.access_token);
+                }
+
+                localStorage.setItem('google_identity', JSON.stringify(data));
+                setUserData(data);
             }
-
-            localStorage.setItem('google_identity', JSON.stringify(data));
-            setUserData(data);
 
             const currentBusinessId = useCustomerFlowStore.getState().businessId;
             if (currentBusinessId) {
                 // 3. Trigger the rule monitoring stay (loyalty/tap/:code)
                 // This is now authenticated via the token we just received
-                await recordLoyaltyTap(data);
+                await recordLoyaltyTap(isCustomer ? user : data);
             }
 
-            setStep('OUTCOME');
+            if (isCustomer) {
+                toast.success('Visit recorded! Opening your dashboard...');
+                router.push('/customer/dashboard');
+            } else {
+                setStep('OUTCOME');
+            }
         } catch (err: any) {
             console.error('Registration/Login failed:', err);
             toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
@@ -326,18 +363,25 @@ export default function DynamicTapJourneyPage() {
                         customWelcomeTitle={customWelcomeTitle}
                         customWelcomeButton={customWelcomeButton}
                         customWelcomeTag={customWelcomeTag}
-                        userData={userData || storedIdentity || { name: 'Visitor' }}
+                        customPrivacyMessage={customPrivacyMessage}
+                        userData={user || userData || storedIdentity || { name: 'Visitor' }}
                         visitCount={visitCount}
                         rewardVisitThreshold={rewardVisitThreshold}
                         hasRewardSetup={hasRewardSetup}
                         redemptionStatus={redemptionStatus}
+                        showConsent={isCustomer && !hasVisitedBefore}
+                        isCustomer={isCustomer}
                         onRedeem={handleRedeem}
                         onContinue={() => {
-                            if (!user && (userData || storedIdentity)) {
-                                const identity = userData || storedIdentity;
-                                recordLoyaltyTap(identity);
+                            if (isCustomer) {
+                                onFormSubmit({});
+                            } else {
+                                if (!user && (userData || storedIdentity)) {
+                                    const identity = userData || storedIdentity;
+                                    recordLoyaltyTap(identity);
+                                }
+                                setStep('OUTCOME');
                             }
-                            setStep('OUTCOME');
                         }}
                         onClear={() => {
                             localStorage.removeItem('google_identity');

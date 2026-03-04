@@ -12,11 +12,9 @@ export default function StepMedia() {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'primary' | 'side' | 'detail' | 'packaging') => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            // In a real app, upload to storage here. For now, we store the file object.
-            // Or create a temporary URL for preview.
             const url = URL.createObjectURL(file);
             updateFormData({
-                images: { ...formData.images, [type]: url } // Mocki
+                images: { ...formData.images, [type]: { file, url } }
             });
         }
     };
@@ -26,7 +24,7 @@ export default function StepMedia() {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             updateFormData({
-                video: { ...formData.video, file: file }
+                video: { ...formData.video, file: file, url: URL.createObjectURL(file) }
             });
         }
     };
@@ -37,7 +35,8 @@ export default function StepMedia() {
     };
 
     const removeSpec = (id: string) => {
-        updateFormData({ specs: formData.specs.filter(s => s.id !== id) });
+        const newSpecs = formData.specs.filter(s => s.id !== id);
+        updateFormData({ specs: newSpecs });
     };
 
     const updateSpec = (id: string, field: 'label' | 'value', value: string) => {
@@ -63,8 +62,8 @@ export default function StepMedia() {
                                     onClick={() => primaryInputRef.current?.click()}
                                     className="group relative flex flex-col items-center justify-center w-full h-80 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 hover:border-primary/30 transition-all overflow-hidden"
                                 >
-                                    {formData.images.primary ? (
-                                        <img src={formData.images.primary as string} alt="Primary" className="w-full h-full object-contain p-4" />
+                                    {formData.images.primary.url ? (
+                                        <img src={formData.images.primary.url} alt="Primary" className="w-full h-full object-contain p-4" />
                                     ) : (
                                         <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
                                             <div className="size-16 bg-blue-50 text-primary rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -88,8 +87,8 @@ export default function StepMedia() {
                             <div className="flex flex-col gap-6 h-80">
                                 {(['side', 'detail', 'packaging'] as const).map((type) => (
                                     <label key={type} className="flex-1 relative flex flex-col items-center justify-center w-full border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:bg-gray-50 hover:border-primary/30 transition-all overflow-hidden">
-                                        {formData.images[type] ? (
-                                            <img src={formData.images[type] as string} alt={type} className="w-full h-full object-cover" />
+                                        {formData.images[type].url ? (
+                                            <img src={formData.images[type].url} alt={type} className="w-full h-full object-cover" />
                                         ) : (
                                             <div className="flex flex-col items-center justify-center">
                                                 <Plus size={20} className="text-gray-300 mb-1" />
@@ -280,8 +279,8 @@ export default function StepMedia() {
                         <h4 className="font-bold text-text-main mb-4 text-xs uppercase tracking-widest">Live Preview</h4>
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 opacity-80">
                             <div className="aspect-4/3 bg-gray-50 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
-                                {formData.images.primary ? (
-                                    <img src={formData.images.primary as string} className="w-full h-full object-contain" />
+                                {formData.images.primary.url ? (
+                                    <img src={formData.images.primary.url} className="w-full h-full object-contain" />
                                 ) : (
                                     <ImageIcon className="text-gray-300" size={48} />
                                 )}

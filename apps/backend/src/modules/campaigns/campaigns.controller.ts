@@ -9,6 +9,7 @@ import {
   Delete,
   Query,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { CampaignsService } from './campaigns.service';
 import { CreateCampaignDto, CampaignStatus } from './dto/create-campaign.dto';
@@ -22,6 +23,7 @@ import {
   ApiResponse,
   ApiQuery,
   ApiBody,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { LoyaltyProfile } from './entities/loyalty-profile.entity';
 import { PointTransaction } from './entities/point-transaction.entity';
@@ -35,20 +37,28 @@ import {
   RewardRedeemRequestDto,
   UpdateLoyaltyRuleDto,
   VerifyRedemptionDto,
+  BranchQueryDto,
 } from './dto/loyalty.dto';
+import { User, UserRole } from '../users/entities/user.entity';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('Campaigns')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('campaigns')
 export class CampaignsController {
-  constructor(private readonly campaignsService: CampaignsService) {}
+  constructor(private readonly campaignsService: CampaignsService) { }
 
-  private getBranchId(req: any, branchId?: string): string {
+  private getBranchId(req: { user: User }, branchId?: string): string {
     const resolved = branchId || req.user?.branchId;
     if (!resolved) throw new BadRequestException('branchId is required');
     return resolved;
   }
 
   @Post()
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Create a new campaign' })
   @ApiResponse({
     status: 201,
@@ -57,16 +67,17 @@ export class CampaignsController {
   })
   create(
     @Body() createCampaignDto: CreateCampaignDto,
-    @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Req() req: { user: User },
+    @Query() query: BranchQueryDto,
   ) {
     return this.campaignsService.create(
       createCampaignDto,
-      this.getBranchId(req, branchId || createCampaignDto.branchId),
+      this.getBranchId(req, query.branchId || createCampaignDto.branchId),
     );
   }
 
   @Get()
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get all campaigns' })
   @ApiQuery({ name: 'status', enum: CampaignStatus, required: false })
   @ApiQuery({ name: 'branchId', required: true })
@@ -76,49 +87,55 @@ export class CampaignsController {
     type: [Campaign],
   })
   findAll(
-    @Req() req: any,
+    @Req() req: { user: User },
     @Query('status') status?: CampaignStatus,
-    @Query('branchId') branchId?: string,
+    @Query() query?: BranchQueryDto,
   ) {
     return this.campaignsService.findAll(
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, query?.branchId),
       status,
     );
   }
 
   @Get('stats')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get campaign dashboard statistics' })
   @ApiResponse({ status: 200, description: 'Dashboard statistics cards' })
-  getStats(@Req() req: any, @Query('branchId') branchId?: string) {
-    return this.campaignsService.getStats(this.getBranchId(req, branchId));
+  getStats(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
+    return this.campaignsService.getStats(this.getBranchId(req, query.branchId));
   }
 
   @Get('scheduled')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get scheduled campaigns' })
   @ApiResponse({
     status: 200,
     description: 'List of scheduled campaigns',
     type: [Campaign],
   })
-  getScheduled(@Req() req: any, @Query('branchId') branchId?: string) {
+  getScheduled(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
     return this.campaignsService.findAll(
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, query.branchId),
       CampaignStatus.SCHEDULED,
     );
   }
 
   @Get('templates')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get campaign templates' })
   @ApiResponse({
     status: 200,
     description: 'List of campaign templates',
     type: [CampaignTemplate],
   })
-  getTemplates(@Req() req: any, @Query('branchId') branchId?: string) {
-    return this.campaignsService.getTemplates(this.getBranchId(req, branchId));
+  getTemplates(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
+    return this.campaignsService.getTemplates(
+      this.getBranchId(req, query.branchId),
+    );
   }
 
   @Post('templates')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Create a campaign template' })
   @ApiResponse({
     status: 201,
@@ -127,19 +144,20 @@ export class CampaignsController {
   })
   createTemplate(
     @Body() createTemplateDto: CreateCampaignTemplateDto,
-    @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Req() req: { user: User },
+    @Query() query: BranchQueryDto,
   ) {
     return this.campaignsService.createTemplate(
       createTemplateDto,
       this.getBranchId(
         req,
-        branchId ?? createTemplateDto.branchId ?? undefined,
+        query.branchId ?? createTemplateDto.branchId ?? undefined,
       ),
     );
   }
 
   @Get(':id')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get a campaign by ID' })
   @ApiResponse({
     status: 200,
@@ -151,6 +169,7 @@ export class CampaignsController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Update a campaign' })
   @ApiResponse({
     status: 200,
@@ -165,6 +184,7 @@ export class CampaignsController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.ADMIN, UserRole.OWNER)
   @ApiOperation({ summary: 'Delete a campaign' })
   @ApiResponse({ status: 200, description: 'Campaign successfully deleted' })
   remove(@Param('id') id: string) {
@@ -174,6 +194,7 @@ export class CampaignsController {
   // --- Loyalty Endpoints ---
 
   @Get('loyalty/profile/:userId')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get or create loyalty profile for user' })
   @ApiResponse({
     status: 200,
@@ -182,16 +203,17 @@ export class CampaignsController {
   })
   getLoyaltyProfile(
     @Param('userId') userId: string,
-    @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Req() req: { user: User },
+    @Query() query: BranchQueryDto,
   ) {
     return this.campaignsService.getLoyaltyProfile(
       userId,
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, query.branchId),
     );
   }
 
   @Get('loyalty/profiles')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({
     summary: 'Get all loyalty profiles for branch (Customer Directory)',
   })
@@ -200,26 +222,31 @@ export class CampaignsController {
     description: 'List of all loyalty profiles',
     type: [LoyaltyProfile],
   })
-  getLoyaltyProfiles(@Req() req: any, @Query('branchId') branchId?: string) {
+  getLoyaltyProfiles(
+    @Req() req: { user: User },
+    @Query() query: BranchQueryDto,
+  ) {
     return this.campaignsService.getLoyaltyProfiles(
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, query.branchId),
     );
   }
 
   @Get('loyalty/rules')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Get branch loyalty rules' })
   @ApiResponse({
     status: 200,
     description: 'The loyalty rules',
     type: LoyaltyRule,
   })
-  getLoyaltyRule(@Req() req: any, @Query('branchId') branchId?: string) {
+  getLoyaltyRule(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
     return this.campaignsService.getLoyaltyRule(
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, query.branchId),
     );
   }
 
   @Patch('loyalty/rules')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Update branch loyalty rules' })
   @ApiBody({ type: UpdateLoyaltyRuleDto })
   @ApiResponse({
@@ -229,27 +256,31 @@ export class CampaignsController {
   })
   updateLoyaltyRule(
     @Body() updates: UpdateLoyaltyRuleDto,
-    @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Req() req: { user: User },
+    @Query() query: BranchQueryDto,
   ) {
     return this.campaignsService.updateLoyaltyRule(
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, query.branchId),
       updates,
     );
   }
 
   @Get('loyalty/rewards')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Get all active rewards' })
   @ApiResponse({
     status: 200,
     description: 'List of rewards',
     type: [Reward],
   })
-  getRewards(@Req() req: any, @Query('branchId') branchId?: string) {
-    return this.campaignsService.getRewards(this.getBranchId(req, branchId));
+  getRewards(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
+    return this.campaignsService.getRewards(
+      this.getBranchId(req, query.branchId),
+    );
   }
 
   @Post('loyalty/rewards')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Create a new reward' })
   @ApiBody({ type: CreateRewardDto })
   @ApiResponse({
@@ -259,16 +290,17 @@ export class CampaignsController {
   })
   createReward(
     @Body() dto: CreateRewardDto,
-    @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Req() req: { user: User },
+    @Query() query: BranchQueryDto,
   ) {
     return this.campaignsService.createReward(
-      this.getBranchId(req, branchId || dto.branchId),
+      this.getBranchId(req, query.branchId || dto.branchId),
       dto,
     );
   }
 
   @Patch('loyalty/rewards/:id')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Update a reward' })
   @ApiBody({ type: UpdateRewardDto })
   @ApiResponse({
@@ -279,17 +311,18 @@ export class CampaignsController {
   updateReward(
     @Param('id') id: string,
     @Body() dto: UpdateRewardDto,
-    @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Req() req: { user: User },
+    @Query() query: BranchQueryDto,
   ) {
     return this.campaignsService.updateReward(
-      this.getBranchId(req, branchId || dto.branchId),
+      this.getBranchId(req, query.branchId || dto.branchId),
       id,
       dto,
     );
   }
 
   @Post('loyalty/earn')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Earn points (Visit or Spend)' })
   @ApiBody({ type: PointEarnRequestDto })
   @ApiResponse({
@@ -308,16 +341,17 @@ export class CampaignsController {
   })
   earnPoints(
     @Body() dto: PointEarnRequestDto,
-    @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Req() req: { user: User },
+    @Query() query: BranchQueryDto,
   ) {
     return this.campaignsService.earnPoints(
-      this.getBranchId(req, branchId || dto.branchId),
+      this.getBranchId(req, query.branchId || dto.branchId),
       dto,
     );
   }
 
   @Post('loyalty/redeem')
+  @Roles(UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Redeem a reward' })
   @ApiBody({ type: RewardRedeemRequestDto })
   @ApiResponse({
@@ -340,16 +374,17 @@ export class CampaignsController {
   })
   redeemReward(
     @Body() dto: RewardRedeemRequestDto,
-    @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Req() req: { user: User },
+    @Query() query: BranchQueryDto,
   ) {
     return this.campaignsService.redeemReward(
-      this.getBranchId(req, branchId || dto.branchId),
+      this.getBranchId(req, query.branchId || dto.branchId),
       dto,
     );
   }
 
   @Post('loyalty/verify-redemption')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Verify a customer redemption code' })
   @ApiBody({ type: VerifyRedemptionDto })
   @ApiResponse({
@@ -369,16 +404,17 @@ export class CampaignsController {
   })
   verifyRedemption(
     @Body() dto: VerifyRedemptionDto,
-    @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Req() req: { user: User },
+    @Query() query: BranchQueryDto,
   ) {
     return this.campaignsService.verifyRedemption(
-      this.getBranchId(req, branchId || dto.branchId),
+      this.getBranchId(req, query.branchId || dto.branchId),
       dto.code,
     );
   }
 
   @Get('loyalty/transactions/:profileId')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get transactions history for a profile' })
   @ApiResponse({
     status: 200,

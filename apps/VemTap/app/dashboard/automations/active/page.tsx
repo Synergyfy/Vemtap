@@ -2,7 +2,7 @@
 
 import React from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
-import { Search, Filter, ArrowRight, Smartphone, Clock, AlertCircle } from 'lucide-react';
+import { Search, Filter, ArrowRight, Smartphone, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SessionDetailsModal from '@/components/messaging/SessionDetailsModal';
 import { useAutomationLogs } from '@/services/messaging/hooks';
@@ -28,7 +28,7 @@ export default function ActiveAutomationsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {isLoading ? (
                     <div className="lg:col-span-3 flex justify-center py-20">
-                        <div className="animate-spin size-8 border-4 border-primary border-t-transparent rounded-full" />
+                        <Loader2 className="animate-spin text-primary" size={32} />
                     </div>
                 ) : activeSessions.length > 0 ? (
                     activeSessions.map((session, i) => (
@@ -111,3 +111,4 @@ export default function ActiveAutomationsPage() {
         </div>
     );
 }
+

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, Nfc } from 'lucide-react';
+import { X, Nfc, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
 interface AddDeviceModalProps {
@@ -124,7 +124,7 @@ export default function AddDeviceModal({ isOpen, onClose, onSubmit, isLoading }:
                         className="w-full px-6 py-4 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                     >
                         {isLoading ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            <Loader2 size={18} className="animate-spin text-white" />
                         ) : (
                             <>Confirm & Link Hardware</>
                         )}
@@ -141,3 +141,4 @@ export default function AddDeviceModal({ isOpen, onClose, onSubmit, isLoading }:
         </Modal>
     );
 }
+

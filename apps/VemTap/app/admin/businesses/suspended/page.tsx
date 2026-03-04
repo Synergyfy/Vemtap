@@ -4,12 +4,19 @@ import React, { useState, useCallback, useEffect } from 'react';
 import Notification from '@/components/ui/Notification';
 import { adminBusinessesApi } from '@/lib/api/admin';
 import { notify } from '@/lib/notify';
-import { Loader2, Search, Store, Ban, ShieldCheck, Info } from 'lucide-react';
+import { Loader2, Search, Store, Ban, ShieldCheck, Info, Trash2, CheckCircle, RotateCcw, XCircle } from 'lucide-react';
 
 export default function AdminSuspendedBusinessesPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [businesses, setBusinesses] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Confirmation Modal State
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<'reactivate' | 'delete' | null>(null);
+    const [confirmReason, setConfirmReason] = useState('');
+    const [selectedBusiness, setSelectedBusiness] = useState<{ id: string; name: string } | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const fetchSuspendedBusinesses = useCallback(async () => {
         setIsLoading(true);
@@ -31,24 +38,38 @@ export default function AdminSuspendedBusinessesPage() {
         fetchSuspendedBusinesses();
     }, [fetchSuspendedBusinesses]);
 
-    const handleReactivate = async (id: string, name: string) => {
-        try {
-            await adminBusinessesApi.reactivate(id);
-            notify.success(`${name} has been reactivated.`);
-            fetchSuspendedBusinesses();
-        } catch (err: any) {
-            notify.error(err.message || `Failed to reactivate ${name}`);
-        }
+    const handleReactivate = (id: string, name: string) => {
+        setSelectedBusiness({ id, name });
+        setConfirmAction('reactivate');
+        setConfirmReason('');
+        setIsConfirmModalOpen(true);
     };
 
-    const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`Are you sure you want to PERMANENTLY delete ${name}? This action cannot be undone.`)) return;
+    const handleDelete = (id: string, name: string) => {
+        setSelectedBusiness({ id, name });
+        setConfirmAction('delete');
+        setConfirmReason('');
+        setIsConfirmModalOpen(true);
+    };
+
+    const executeAction = async () => {
+        if (!selectedBusiness || !confirmAction) return;
+
+        setIsSubmitting(true);
         try {
-            await adminBusinessesApi.delete(id);
-            notify.success(`${name} deleted successfully`);
+            if (confirmAction === 'reactivate') {
+                await adminBusinessesApi.reactivate(selectedBusiness.id);
+                notify.success(`${selectedBusiness.name} has been reactivated.`);
+            } else if (confirmAction === 'delete') {
+                await adminBusinessesApi.delete(selectedBusiness.id);
+                notify.success(`${selectedBusiness.name} deleted successfully`);
+            }
+            setIsConfirmModalOpen(false);
             fetchSuspendedBusinesses();
         } catch (err: any) {
-            notify.error(err.message || `Failed to delete ${name}`);
+            notify.error(err.message || 'Action failed');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -156,7 +177,7 @@ export default function AdminSuspendedBusinessesPage() {
                                                     className="p-2 text-text-secondary hover:text-red-600 hover:bg-red-50 rounded-lg transition-all border border-gray-100"
                                                     title="Delete Permanently"
                                                 >
-                                                    <Ban size={16} />
+                                                    <Trash2 size={16} />
                                                 </button>
                                             </div>
                                         </td>
@@ -167,6 +188,65 @@ export default function AdminSuspendedBusinessesPage() {
                     </table>
                 </div>
             </div>
+            {/* Confirmation Modal */}
+            {isConfirmModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => !isSubmitting && setIsConfirmModalOpen(false)} />
+                    <div className="relative w-full max-w-md bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${confirmAction === 'delete' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'
+                                }`}>
+                                {confirmAction === 'delete' ? <Trash2 size={24} /> : <RotateCcw size={24} />}
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-display font-bold text-text-main capitalize">{confirmAction} Business</h2>
+                                <p className="text-sm text-text-secondary font-medium">Please confirm this action</p>
+                            </div>
+                        </div>
+
+                        <div className="mb-8">
+                            <p className="text-sm text-text-secondary leading-relaxed">
+                                Are you sure you want to <span className="font-bold text-text-main italic">{confirmAction}</span> <strong>"{selectedBusiness?.name}"</strong>?
+                                {confirmAction === 'delete' && " This action cannot be undone."}
+                            </p>
+
+                            {confirmAction === 'delete' && (
+                                <div className="mt-6">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">
+                                        Reason for deletion
+                                    </label>
+                                    <textarea
+                                        value={confirmReason}
+                                        onChange={(e) => setConfirmReason(e.target.value)}
+                                        placeholder={`Please state why you are deleting this business...`}
+                                        className="w-full h-24 p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all resize-none"
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setIsConfirmModalOpen(false)}
+                                disabled={isSubmitting}
+                                className="flex-1 h-12 bg-gray-100 text-text-secondary font-bold rounded-xl hover:bg-gray-200 transition-all text-sm disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={executeAction}
+                                disabled={isSubmitting || (confirmAction === 'delete' && !confirmReason.trim())}
+                                className={`flex-1 h-12 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm active:scale-95 disabled:opacity-70 ${confirmAction === 'delete' ? 'bg-red-600 hover:bg-red-700 shadow-red-200' : 'bg-primary hover:bg-primary-hover shadow-primary/20'
+                                    }`}
+                            >
+                                {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                                Confirm {confirmAction}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

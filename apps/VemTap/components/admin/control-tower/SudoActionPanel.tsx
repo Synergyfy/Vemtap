@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { CheckCircle2, Play } from 'lucide-react';
 import { notify } from '@/lib/notify';
 import Modal from '@/components/ui/Modal';
-import type { SudoAction } from './mockControlTowerData';
+import type { SudoAction } from '@/lib/constants/controlTowerActions';
 
 type SudoActionPanelProps = {
     title: string;
@@ -13,6 +13,8 @@ type SudoActionPanelProps = {
     subjectUid: string;
     ticketId: string;
     actions: SudoAction[];
+    onAction: (action: SudoAction, payload: Record<string, any>) => Promise<void>;
+    isLoading?: boolean;
 };
 
 export default function SudoActionPanel({
@@ -22,21 +24,38 @@ export default function SudoActionPanel({
     subjectUid,
     ticketId,
     actions,
+    onAction,
+    isLoading = false,
 }: SudoActionPanelProps) {
+
     const [runningKey, setRunningKey] = useState<string | null>(null);
     const [activeAction, setActiveAction] = useState<SudoAction | null>(null);
 
     const runAction = async (action: SudoAction, formData: FormData) => {
         setRunningKey(action.key);
-        await new Promise((resolve) => setTimeout(resolve, 450));
-        const payloadPreview = Array.from(formData.entries())
-            .filter(([key]) => key !== 'subject_uid' && key !== 'ticket_ref')
-            .map(([key, value]) => `${key}=${String(value)}`)
-            .join(', ');
-        notify.success(`Mock sudo action executed: ${action.label} (${subjectUid}${ticketId ? `, ticket: ${ticketId}` : ''}${payloadPreview ? `, ${payloadPreview}` : ''})`);
-        setRunningKey(null);
-        setActiveAction(null);
+        try {
+            const payload: Record<string, any> = {};
+            formData.forEach((value, key) => {
+                if (key !== 'subject_uid' && key !== 'ticket_ref') {
+                    // Try to parse number if it's a number, otherwise use as string
+                    const strVal = String(value);
+                    if (strVal && !isNaN(Number(strVal)) && activeForm?.fields.find(f => f.name === key)?.type === 'number') {
+                        payload[key] = Number(strVal);
+                    } else {
+                        payload[key] = strVal;
+                    }
+                }
+            });
+
+            await onAction(action, payload);
+            setRunningKey(null);
+            setActiveAction(null);
+        } catch (error) {
+            console.error('Action failed:', error);
+            setRunningKey(null);
+        }
     };
+
 
     const actionForms: Record<string, { title: string; fields: Array<{ name: string; label: string; type: 'text' | 'email' | 'number' | 'textarea'; placeholder: string }> }> = {
         add_user: {
@@ -160,7 +179,7 @@ export default function SudoActionPanel({
                 isOpen={!!activeAction}
                 onClose={() => setActiveAction(null)}
                 title={activeForm?.title || 'Run Sudo Action'}
-                description={`Mock admin override for ${subjectLabel.toLowerCase()}: ${subjectUid || '-'}`}
+                description={`Admin override for ${subjectLabel.toLowerCase()}: ${subjectUid || '-'}`}
                 size="lg"
             >
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -219,7 +238,7 @@ export default function SudoActionPanel({
                             disabled={runningKey !== null}
                             className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:bg-primary-hover disabled:opacity-60"
                         >
-                            {runningKey ? 'Processing...' : 'Run Mock Sudo Action'}
+                            {runningKey ? 'Processing...' : 'Run Sudo Action'}
                         </button>
                     </div>
                 </form>
