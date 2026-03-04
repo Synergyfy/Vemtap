@@ -251,7 +251,9 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             submenu: [
                 { label: 'Profile', href: '/dashboard/settings/profile' },
                 { label: 'Branches', href: '/dashboard/settings/branches' },
-                { label: 'Engagement', href: '/dashboard/settings/engagement' },
+                { label: 'Socials', href: '/dashboard/settings/engagement/socials' },
+                { label: 'Form Creator', href: '/dashboard/settings/engagement/forms' },
+                { label: 'Form Responses', href: '/dashboard/settings/engagement/forms/responses' },
                 { label: 'Notifications', href: '/dashboard/settings/notifications' },
                 { label: 'Integrations', href: '/dashboard/settings/integrations' },
                 { label: 'Subscription', href: '/dashboard/settings/subscription' },
