@@ -114,6 +114,7 @@ export const adminSupportApi = {
 
 export const adminMessagingApi = {
     getAllTemplates: () => api.get('/messaging/admin/templates'),
+    getAvailableTemplates: () => api.get('/messaging/templates'),
     createTemplate: (data: {
         name: string;
         channel: 'SMS' | 'WHATSAPP' | 'EMAIL';
