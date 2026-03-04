@@ -8,6 +8,7 @@ import { Redemption } from '../campaigns/entities/redemption.entity';
 import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
 import { DevicesModule } from '../devices/devices.module';
 import { CampaignsModule } from '../campaigns/campaigns.module';
+import { Visit } from '../visitors/entities/visit.entity';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { CampaignsModule } from '../campaigns/campaigns.module';
       Reward,
       PointTransaction,
       Redemption,
+      Visit,
     ]),
     DevicesModule,
     CampaignsModule,

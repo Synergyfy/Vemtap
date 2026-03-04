@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { adminBusinessesApi } from '@/lib/api/admin';
 import { notify } from '@/lib/notify';
-import { Loader2, Store, Search, Calendar, FileText, ClipboardList, Clock, CheckCircle } from 'lucide-react';
+import { Loader2, Store, Search, Calendar, FileText, ClipboardList, Clock, CheckCircle, Trash2, Ban, RotateCcw, XCircle } from 'lucide-react';
 
 export default function AdminPendingBusinessesPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -14,6 +14,13 @@ export default function AdminPendingBusinessesPage() {
         approvedToday: 0,
         avgWaitTime: '—'
     });
+
+    // Confirmation Modal State
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<'approve' | 'reject' | null>(null);
+    const [confirmReason, setConfirmReason] = useState('');
+    const [selectedBusiness, setSelectedBusiness] = useState<{ id: string; name: string } | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const fetchPendingBusinesses = useCallback(async () => {
         setIsLoading(true);
@@ -41,24 +48,38 @@ export default function AdminPendingBusinessesPage() {
         fetchPendingBusinesses();
     }, [fetchPendingBusinesses]);
 
-    const handleApprove = async (id: string, name: string) => {
-        try {
-            await adminBusinessesApi.approve(id);
-            notify.success(`${name} approved successfully`);
-            fetchPendingBusinesses();
-        } catch (err: any) {
-            notify.error(err.message || `Failed to approve ${name}`);
-        }
+    const handleApprove = (id: string, name: string) => {
+        setSelectedBusiness({ id, name });
+        setConfirmAction('approve');
+        setConfirmReason('');
+        setIsConfirmModalOpen(true);
     };
 
-    const handleReject = async (id: string, name: string) => {
-        if (!confirm(`Are you sure you want to reject ${name}?`)) return;
+    const handleReject = (id: string, name: string) => {
+        setSelectedBusiness({ id, name });
+        setConfirmAction('reject');
+        setConfirmReason('');
+        setIsConfirmModalOpen(true);
+    };
+
+    const executeAction = async () => {
+        if (!selectedBusiness || !confirmAction) return;
+
+        setIsSubmitting(true);
         try {
-            await adminBusinessesApi.reject(id);
-            notify.success(`${name} rejected`);
+            if (confirmAction === 'approve') {
+                await adminBusinessesApi.approve(selectedBusiness.id);
+                notify.success(`${selectedBusiness.name} approved successfully`);
+            } else if (confirmAction === 'reject') {
+                await adminBusinessesApi.reject(selectedBusiness.id);
+                notify.success(`${selectedBusiness.name} rejected`);
+            }
+            setIsConfirmModalOpen(false);
             fetchPendingBusinesses();
         } catch (err: any) {
-            notify.error(err.message || `Failed to reject ${name}`);
+            notify.error(err.message || 'Action failed');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -192,6 +213,64 @@ export default function AdminPendingBusinessesPage() {
                     ))
                 )}
             </div>
+            {/* Confirmation Modal */}
+            {isConfirmModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => !isSubmitting && setIsConfirmModalOpen(false)} />
+                    <div className="relative w-full max-w-md bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${confirmAction === 'reject' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'
+                                }`}>
+                                {confirmAction === 'reject' ? <XCircle size={24} /> : <CheckCircle size={24} />}
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-display font-bold text-text-main capitalize">{confirmAction} Business</h2>
+                                <p className="text-sm text-text-secondary font-medium">Please confirm this action</p>
+                            </div>
+                        </div>
+
+                        <div className="mb-8">
+                            <p className="text-sm text-text-secondary leading-relaxed">
+                                Are you sure you want to <span className="font-bold text-text-main italic">{confirmAction}</span> <strong>"{selectedBusiness?.name}"</strong>?
+                            </p>
+
+                            {confirmAction === 'reject' && (
+                                <div className="mt-6">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">
+                                        Reason for rejection
+                                    </label>
+                                    <textarea
+                                        value={confirmReason}
+                                        onChange={(e) => setConfirmReason(e.target.value)}
+                                        placeholder={`Please state why you are rejecting this business...`}
+                                        className="w-full h-24 p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all resize-none"
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setIsConfirmModalOpen(false)}
+                                disabled={isSubmitting}
+                                className="flex-1 h-12 bg-gray-100 text-text-secondary font-bold rounded-xl hover:bg-gray-200 transition-all text-sm disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={executeAction}
+                                disabled={isSubmitting}
+                                className={`flex-1 h-12 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm active:scale-95 disabled:opacity-70 ${confirmAction === 'reject' ? 'bg-red-600 hover:bg-red-700 shadow-red-200' : 'bg-primary hover:bg-primary-hover shadow-primary/20'
+                                    }`}
+                            >
+                                {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                                Confirm {confirmAction}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

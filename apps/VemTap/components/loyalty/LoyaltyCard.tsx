@@ -20,7 +20,8 @@ const TIER_CONFIG: Record<TierLevel, { label: string, color: string, icon: any, 
 };
 
 export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ profile, className, onRedeemClick }) => {
-    const config = TIER_CONFIG[profile.tierLevel];
+    const tierKey = (profile.tierLevel?.toLowerCase() || 'bronze') as TierLevel;
+    const config = TIER_CONFIG[tierKey] || TIER_CONFIG.bronze;
     const Icon = config.icon;
 
     const progress = config.next
@@ -52,7 +53,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ profile, className, on
                             </span>
                         </div>
                         <h3 className="text-2xl font-bold text-slate-900">
-                            {profile.currentPointsBalance.toLocaleString()} <span className="text-primary">ElizPoints</span>
+                            {(profile.currentPointsBalance || 0).toLocaleString()} <span className="text-primary">ElizPoints</span>
                         </h3>
                     </div>
                 </div>
@@ -72,7 +73,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ profile, className, on
                         <div className="flex justify-between text-sm text-slate-600 font-medium">
                             <div className="flex items-center gap-1.5">
                                 <TrendingUp className="w-4 h-4 text-primary" />
-                                <span>{(config.next - profile.totalPointsEarned).toLocaleString()} points to {TIER_CONFIG[profile.tierLevel === 'bronze' ? 'silver' : profile.tierLevel === 'silver' ? 'gold' : 'platinum'].label}</span>
+                                <span>{(config.next - (profile.totalPointsEarned || 0)).toLocaleString()} points to {TIER_CONFIG[tierKey === 'bronze' ? 'silver' : tierKey === 'silver' ? 'gold' : 'platinum'].label}</span>
                             </div>
                             <span>{Math.round(progress)}%</span>
                         </div>
@@ -86,14 +87,13 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ profile, className, on
                         </div>
                     </div>
                 )}
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
                     <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100">
                         <Clock className="w-4 h-4 text-slate-400" />
                         <div className="text-xs">
                             <p className="text-slate-500">Last Activity</p>
                             <p className="font-semibold text-slate-700">
-                                {new Date(profile.lastVisitDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                {profile.lastVisitDate ? new Date(profile.lastVisitDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No visits yet'}
                             </p>
                         </div>
                     </div>
@@ -102,7 +102,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ profile, className, on
                         <Trophy className="w-4 h-4 text-slate-400" />
                         <div className="text-xs">
                             <p className="text-slate-500">Lifetime Earned</p>
-                            <p className="font-semibold text-slate-700">{profile.totalPointsEarned.toLocaleString()}</p>
+                            <p className="font-semibold text-slate-700">{(profile.totalPointsEarned || 0).toLocaleString()}</p>
                         </div>
                     </div>
                 </div>
