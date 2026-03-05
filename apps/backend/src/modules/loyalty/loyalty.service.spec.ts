@@ -151,23 +151,31 @@ describe('LoyaltyService', () => {
   describe('getAnalytics', () => {
     it('should correctly calculate analytics including total visits from the Visit repository', async () => {
       const userId = 'user-123';
-      
+
       // Mock profiles
       mockLoyaltyProfileRepository.find.mockResolvedValue([
-        { business: { name: 'Venue A' }, totalPointsEarned: 1000, currentPointsBalance: 500 },
-        { business: { name: 'Venue B' }, totalPointsEarned: 500, currentPointsBalance: 200 }
+        {
+          business: { name: 'Venue A' },
+          totalPointsEarned: 1000,
+          currentPointsBalance: 500,
+        },
+        {
+          business: { name: 'Venue B' },
+          totalPointsEarned: 500,
+          currentPointsBalance: 200,
+        },
       ]);
 
       // Mock transactions (used for visitTrends calculation)
       mockTransactionRepository.createQueryBuilder().getMany.mockResolvedValue([
         { transactionType: 'earn', createdAt: new Date() },
-        { transactionType: 'earn', createdAt: new Date() }
+        { transactionType: 'earn', createdAt: new Date() },
       ]);
 
       // Mock redemptions (used for netSavings calculation)
       mockRedemptionRepository.find.mockResolvedValue([
         { reward: { value: 50 } },
-        { reward: { value: 25 } }
+        { reward: { value: 25 } },
       ]);
 
       // NEW: Mock Visit repository count (Ensures visits are counted directly, not derived from points)
@@ -176,18 +184,22 @@ describe('LoyaltyService', () => {
       const result = await service.getAnalytics(userId);
 
       // Verify that visitRepository.count was called with the correct userId
-      expect(mockVisitRepository.count).toHaveBeenCalledWith({ where: { customerId: userId } });
-      
+      expect(mockVisitRepository.count).toHaveBeenCalledWith({
+        where: { customerId: userId },
+      });
+
       // Verify the returned structure matches expected analytics
-      expect(result).toEqual(expect.objectContaining({
-        totalVisits: 15, // Should match the mocked visit count
-        currentPointsBalance: 700, // 500 + 200
-        netSavings: 75, // 50 + 25
-        pointsByVenue: [
-          { venueName: 'Venue A', points: 1000 },
-          { venueName: 'Venue B', points: 500 }
-        ]
-      }));
+      expect(result).toEqual(
+        expect.objectContaining({
+          totalVisits: 15, // Should match the mocked visit count
+          currentPointsBalance: 700, // 500 + 200
+          netSavings: 75, // 50 + 25
+          pointsByVenue: [
+            { venueName: 'Venue A', points: 1000 },
+            { venueName: 'Venue B', points: 500 },
+          ],
+        }),
+      );
     });
   });
 
@@ -195,11 +207,16 @@ describe('LoyaltyService', () => {
     it('should return the loyalty profile along with the total visits for the specific business', async () => {
       const userId = 'user-123';
       const businessId = 'biz-456';
-      
-      const mockProfile = { id: 'prof-1', userId, businessId, tierLevel: TierLevel.BRONZE };
-      
+
+      const mockProfile = {
+        id: 'prof-1',
+        userId,
+        businessId,
+        tierLevel: TierLevel.BRONZE,
+      };
+
       mockLoyaltyProfileRepository.findOne.mockResolvedValue(mockProfile);
-      
+
       // Mock visit count specifically for this user and business
       mockVisitRepository.count.mockResolvedValue(5);
 
@@ -213,7 +230,7 @@ describe('LoyaltyService', () => {
 
       // Verify visit count scoped by businessId
       expect(mockVisitRepository.count).toHaveBeenCalledWith({
-        where: { customerId: userId, businessId }
+        where: { customerId: userId, businessId },
       });
 
       // Result should spread the profile and append totalVisits
@@ -225,36 +242,45 @@ describe('LoyaltyService', () => {
     it('should create a 0-point transaction when no active campaigns exist to ensure visit visibility in history', async () => {
       const userId = 'user-123';
       const deviceCode = 'DEV-001';
-      
+
       // Setup base mocks for processTap
-      const mockDevice = { id: 'dev-1', code: deviceCode, status: DeviceStatus.ACTIVE, businessId: 'biz-1', branchId: 'br-1', totalScans: 0 };
+      const mockDevice = {
+        id: 'dev-1',
+        code: deviceCode,
+        status: DeviceStatus.ACTIVE,
+        businessId: 'biz-1',
+        branchId: 'br-1',
+        totalScans: 0,
+      };
       const mockUser = { id: userId, email: 'test@test.com', phone: '1234' };
       const mockProfile = { id: 'prof-1', userId, businessId: 'biz-1' };
-      
+
       mockGenericRepository.findOne.mockResolvedValueOnce(mockDevice); // Device find
       mockGenericRepository.findOneBy.mockResolvedValue(mockUser); // User find
       mockGenericRepository.findOne.mockResolvedValueOnce(null); // Contact find
       mockLoyaltyProfileRepository.findOne.mockResolvedValue(mockProfile); // Profile find
-      
+
       // CRITICAL: Simulate NO active rules (meaning no points will be earned)
       mockCampaignsService.findActiveRule.mockResolvedValue(null);
-      
+
       // Mock creation and saving
-      mockGenericRepository.create.mockImplementation(data => data);
+      mockGenericRepository.create.mockImplementation((data) => data);
       mockGenericRepository.save.mockResolvedValue(true);
-      mockTransactionRepository.create.mockImplementation(data => data);
+      mockTransactionRepository.create.mockImplementation((data) => data);
       mockTransactionRepository.save.mockResolvedValue(true);
 
       await service.processTap(userId, deviceCode);
 
       // Verify a 0-point transaction was created to record the visit
-      expect(mockTransactionRepository.create).toHaveBeenCalledWith(expect.objectContaining({
-        loyaltyProfileId: mockProfile.id,
-        transactionType: 'earn',
-        pointsAmount: 0,
-        reason: 'Visit recorded (No points)'
-      }));
-      
+      expect(mockTransactionRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          loyaltyProfileId: mockProfile.id,
+          transactionType: 'earn',
+          pointsAmount: 0,
+          reason: 'Visit recorded (No points)',
+        }),
+      );
+
       expect(mockTransactionRepository.save).toHaveBeenCalled();
     });
   });
@@ -262,21 +288,45 @@ describe('LoyaltyService', () => {
   describe('getHistory', () => {
     it('should fetch and aggregate transactions, redemptions, and visits into a unified, sorted history', async () => {
       const userId = 'user-123';
-      
+
       const mockTransactions = [
-        { id: 'tx-1', transactionType: 'earn', pointsAmount: 50, reason: 'Earned', createdAt: new Date('2023-01-05'), loyaltyProfile: { business: { name: 'Biz A' } } }
+        {
+          id: 'tx-1',
+          transactionType: 'earn',
+          pointsAmount: 50,
+          reason: 'Earned',
+          createdAt: new Date('2023-01-05'),
+          loyaltyProfile: { business: { name: 'Biz A' } },
+        },
       ];
       const mockRedemptions = [
-        { id: 'red-1', pointsSpent: 100, reward: { name: 'Free Coffee' }, status: 'verified', createdAt: new Date('2023-01-10'), loyaltyProfile: { business: { name: 'Biz B' } } }
+        {
+          id: 'red-1',
+          pointsSpent: 100,
+          reward: { name: 'Free Coffee' },
+          status: 'verified',
+          createdAt: new Date('2023-01-10'),
+          loyaltyProfile: { business: { name: 'Biz B' } },
+        },
       ];
       const mockVisits = [
-        { id: 'vis-1', createdAt: new Date('2023-01-01'), business: { name: 'Biz C' } }
+        {
+          id: 'vis-1',
+          createdAt: new Date('2023-01-01'),
+          business: { name: 'Biz C' },
+        },
       ];
 
       // Setup queries to return mock data
-      mockTransactionRepository.createQueryBuilder().getMany.mockResolvedValue(mockTransactions);
-      mockRedemptionRepository.createQueryBuilder().getMany.mockResolvedValue(mockRedemptions);
-      mockVisitRepository.createQueryBuilder().getMany.mockResolvedValue(mockVisits);
+      mockTransactionRepository
+        .createQueryBuilder()
+        .getMany.mockResolvedValue(mockTransactions);
+      mockRedemptionRepository
+        .createQueryBuilder()
+        .getMany.mockResolvedValue(mockRedemptions);
+      mockVisitRepository
+        .createQueryBuilder()
+        .getMany.mockResolvedValue(mockVisits);
 
       const result = await service.getHistory(userId);
 
@@ -289,18 +339,18 @@ describe('LoyaltyService', () => {
       expect(result.length).toBe(3);
 
       // Verify Mapping logic: Redemptions mapped to 'reward_claim'
-      expect(result.find(item => item.id === 'red-1')).toMatchObject({
+      expect(result.find((item) => item.id === 'red-1')).toMatchObject({
         type: 'reward_claim',
         pointsAmount: -100, // Converted to negative
         reason: 'Claimed Free Coffee',
-        businessName: 'Biz B'
+        businessName: 'Biz B',
       });
 
       // Verify Mapping logic: Visits mapped to 'visit' with 0 points
-      expect(result.find(item => item.id === 'vis-1')).toMatchObject({
+      expect(result.find((item) => item.id === 'vis-1')).toMatchObject({
         type: 'visit',
         pointsAmount: 0,
-        businessName: 'Biz C'
+        businessName: 'Biz C',
       });
 
       // Verify Sorting: Should be sorted by date descending (Newest first)

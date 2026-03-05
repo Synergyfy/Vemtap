@@ -141,7 +141,7 @@ export class CreateRewardDto {
   usageLimitPerUser?: number;
 }
 
-export class UpdateRewardDto extends PartialType(CreateRewardDto) { }
+export class UpdateRewardDto extends PartialType(CreateRewardDto) {}
 
 export class PointEarnRequestDto {
   @ApiProperty({

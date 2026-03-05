@@ -180,6 +180,43 @@ export default function AdminDevicesPage() {
     const totalItems = parsedDevices.total || devices.length;
     const totalPages = Math.max(1, parsedDevices.lastPage || Math.ceil(totalItems / PAGE_SIZE) || 1);
 
+    const handleExportCSV = () => {
+        if (devices.length === 0) {
+            notify.error('No devices to export');
+            return;
+        }
+
+        const headers = ['ID', 'Name', 'Code (UID)', 'Type', 'Assigned To', 'Battery Level', 'Total Scans', 'Last Active', 'Status'];
+        const rows = devices.map((d: any) => [
+            d.id,
+            d.name || 'N/A',
+            d.code || 'N/A',
+            d.type || 'Card',
+            d.assignedTo || 'Unassigned',
+            `${d.batteryLevel}%`,
+            d.totalScans || 0,
+            d.lastActive || 'Never',
+            d.status || 'N/A',
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `devices-export-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        notify.success('Devices exported successfully');
+    };
+
     return (
         <>
             <div className="p-8">
@@ -243,7 +280,7 @@ export default function AdminDevicesPage() {
                                 <option value="inactive">Available</option>
                             </select>
                             <button
-                                onClick={() => notify.info('Generating hardware asset report...')}
+                                onClick={handleExportCSV}
                                 className="h-12 px-6 bg-white border border-gray-200 text-text-main font-bold rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
                             >
                                 <Download size={18} />

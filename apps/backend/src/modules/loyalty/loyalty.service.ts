@@ -204,10 +204,7 @@ export class LoyaltyService {
     });
   }
 
-  async getHistory(
-    userId: string,
-    businessId?: string,
-  ): Promise<any[]> {
+  async getHistory(userId: string, businessId?: string): Promise<any[]> {
     // 1. Fetch Transactions (Earnings/Deductions)
     const txQuery = this.transactionRepository
       .createQueryBuilder('transaction')
@@ -220,7 +217,9 @@ export class LoyaltyService {
       txQuery.andWhere('profile.businessId = :businessId', { businessId });
     }
 
-    const transactions = await txQuery.orderBy('transaction.createdAt', 'DESC').getMany();
+    const transactions = await txQuery
+      .orderBy('transaction.createdAt', 'DESC')
+      .getMany();
 
     // 2. Fetch Redemptions
     const redQuery = this.redemptionRepository
@@ -235,7 +234,9 @@ export class LoyaltyService {
       redQuery.andWhere('profile.businessId = :businessId', { businessId });
     }
 
-    const redemptions = await redQuery.orderBy('redemption.createdAt', 'DESC').getMany();
+    const redemptions = await redQuery
+      .orderBy('redemption.createdAt', 'DESC')
+      .getMany();
 
     // 3. Fetch Visits
     const visitQuery = this.visitRepository
@@ -248,11 +249,13 @@ export class LoyaltyService {
       visitQuery.andWhere('visit.businessId = :businessId', { businessId });
     }
 
-    const visits = await visitQuery.orderBy('visit.createdAt', 'DESC').getMany();
+    const visits = await visitQuery
+      .orderBy('visit.createdAt', 'DESC')
+      .getMany();
 
     // 4. Map to unified format
     const activity: any[] = [
-      ...transactions.map(t => ({
+      ...transactions.map((t) => ({
         id: t.id,
         type: t.transactionType === 'redeem' ? 'redemption' : 'earn',
         pointsAmount: t.pointsAmount,
@@ -260,9 +263,9 @@ export class LoyaltyService {
         createdAt: t.createdAt,
         businessName: t.loyaltyProfile?.business?.name || 'Unknown Business',
         branchName: t.loyaltyProfile?.branch?.name,
-        loyaltyProfile: t.loyaltyProfile
+        loyaltyProfile: t.loyaltyProfile,
       })),
-      ...redemptions.map(r => ({
+      ...redemptions.map((r) => ({
         id: r.id,
         type: 'reward_claim',
         pointsAmount: -r.pointsSpent,
@@ -272,9 +275,9 @@ export class LoyaltyService {
         createdAt: r.createdAt,
         businessName: r.loyaltyProfile?.business?.name || 'Unknown Business',
         branchName: r.loyaltyProfile?.branch?.name,
-        loyaltyProfile: r.loyaltyProfile
+        loyaltyProfile: r.loyaltyProfile,
       })),
-      ...visits.map(v => ({
+      ...visits.map((v) => ({
         id: v.id,
         type: 'visit',
         pointsAmount: 0,
@@ -283,13 +286,14 @@ export class LoyaltyService {
         businessName: v.business?.name || 'Unknown Business',
         branchName: v.branch?.name,
         // visits don't have loyaltyProfile attached directly, but we can mock enough for frontend compat
-        loyaltyProfile: { business: v.business } 
-      }))
+        loyaltyProfile: { business: v.business },
+      })),
     ];
 
     // 5. Sort by date descending
-    return activity.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    return activity.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
   }
 
@@ -356,7 +360,7 @@ export class LoyaltyService {
     // 4. Earn points (Rule-based)
     let profile = await this.getProfile(userId, device.businessId);
     let pointsEarned = 0;
-    let reason = 'Visit recorded';
+    const reason = 'Visit recorded';
 
     if (device.branchId) {
       const activeRule = await this.campaignsService.findActiveRule(

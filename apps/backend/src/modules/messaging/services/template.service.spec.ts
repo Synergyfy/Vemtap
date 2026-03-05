@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TemplateService } from './template.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { MessageTemplate, TemplateStatus } from '../entities/message-template.entity';
+import {
+  MessageTemplate,
+  TemplateStatus,
+} from '../entities/message-template.entity';
 import { BadRequestException } from '@nestjs/common';
 import { Channel } from '../enums/channel.enum';
 
@@ -78,7 +81,10 @@ describe('TemplateService', () => {
     it('should update template status', async () => {
       const template = { id: 't1', status: TemplateStatus.PENDING };
       repoMock.findOne.mockResolvedValue(template);
-      repoMock.save.mockResolvedValue({ ...template, status: TemplateStatus.APPROVED });
+      repoMock.save.mockResolvedValue({
+        ...template,
+        status: TemplateStatus.APPROVED,
+      });
 
       const result = await service.updateStatus('t1', TemplateStatus.APPROVED);
       expect(result.status).toBe(TemplateStatus.APPROVED);

@@ -112,7 +112,7 @@ export class MessagingEngineService {
 
     // Check credits and deduct upfront (plan first, then top-up)
     await this.creditService.deductChannelCredit(
-      dto.businessId as string,
+      dto.businessId,
       dto.channel,
       contacts.length,
     );

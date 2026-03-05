@@ -26,15 +26,17 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { TrialRestrictionGuard } from '../../subscriptions/guards/trial-restriction.guard';
 import { Flow, FlowStatus, FlowTriggerType } from '../entities/flow.entity';
-import { CreateFlowDto, UpdateFlowStatusDto, GetFlowsDto } from '../dto/create-flow.dto';
+import {
+  CreateFlowDto,
+  UpdateFlowStatusDto,
+  GetFlowsDto,
+} from '../dto/create-flow.dto';
 import { MessagingFlowService } from '../services/messaging-flow.service';
 
 @ApiTags('Flow Builder')
 @Controller('messaging/flows')
 export class FlowController {
-  constructor(
-    private readonly flowsService: MessagingFlowService,
-  ) { }
+  constructor(private readonly flowsService: MessagingFlowService) {}
 
   @Post()
   @ApiBearerAuth()
@@ -42,7 +44,10 @@ export class FlowController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a new flow' })
   @ApiBody({ type: CreateFlowDto })
-  async create(@Body() dto: CreateFlowDto, @Request() req: Request & { user: User }) {
+  async create(
+    @Body() dto: CreateFlowDto,
+    @Request() req: Request & { user: User },
+  ) {
     return this.flowsService.create(dto, req.user);
   }
 
@@ -50,10 +55,7 @@ export class FlowController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @ApiOperation({ summary: 'Get flows by branch' })
-  async findAll(
-    @Query() query: GetFlowsDto,
-    @Request() req: any,
-  ) {
+  async findAll(@Query() query: GetFlowsDto, @Request() req: any) {
     return this.flowsService.findAll(query, req.user);
   }
 

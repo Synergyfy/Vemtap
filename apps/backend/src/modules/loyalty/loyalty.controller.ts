@@ -121,7 +121,9 @@ export class LoyaltyController {
 
   @Get('my-history')
   @Roles(UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'Get global loyalty history for the current customer' })
+  @ApiOperation({
+    summary: 'Get global loyalty history for the current customer',
+  })
   async getMyHistory(@Request() req) {
     return this.loyaltyService.getHistory(req.user.id);
   }
