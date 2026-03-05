@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { adminBusinessesApi } from '@/lib/api/admin';
 import { notify } from '@/lib/notify';
-import { Loader2, Store, Search, Calendar, FileText, ClipboardList, Clock, CheckCircle, Trash2, Ban, RotateCcw, XCircle } from 'lucide-react';
+import { Loader2, Store, Search, Calendar, FileText, ClipboardList, Clock, CheckCircle, Trash2, Ban, RotateCcw, XCircle, Download } from 'lucide-react';
 
 export default function AdminPendingBusinessesPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -83,6 +83,40 @@ export default function AdminPendingBusinessesPage() {
         }
     };
 
+    const handleExportCSV = () => {
+        if (businesses.length === 0) {
+            notify.error('No pending businesses to export');
+            return;
+        }
+
+        const headers = ['ID', 'Name', 'Email', 'Owner', 'Status', 'Submitted Date'];
+        const rows = businesses.map(biz => [
+            biz.id,
+            biz.name,
+            biz.email,
+            biz.owner ? `${biz.owner.firstName} ${biz.owner.lastName}` : 'N/A',
+            'Pending',
+            new Date(biz.createdAt).toLocaleDateString()
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `pending-businesses-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        notify.success('Pending businesses exported successfully');
+    };
+
     return (
         <div className="p-8">
             {/* Page Header */}
@@ -91,6 +125,14 @@ export default function AdminPendingBusinessesPage() {
                     <h1 className="text-3xl font-display font-bold text-text-main mb-2">Pending Approvals</h1>
                     <p className="text-text-secondary font-medium">Review and verify new business registrations</p>
                 </div>
+                <button
+                    onClick={handleExportCSV}
+                    className="px-5 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all flex items-center gap-2 font-bold text-text-secondary active:scale-95 bg-white"
+                    title="Export CSV"
+                >
+                    <Download size={18} />
+                    Export CSV
+                </button>
             </div>
 
             {/* Queue Stats */}

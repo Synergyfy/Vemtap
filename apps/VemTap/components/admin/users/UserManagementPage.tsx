@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
 import { adminUsersApi } from '@/lib/api/admin';
-import { Search, UserPlus, Edit2, Lock, Ban, Loader2, RefreshCw, CheckCircle, Trash2 } from 'lucide-react';
+import { Search, UserPlus, Edit2, Lock, Ban, Loader2, RefreshCw, CheckCircle, Trash2, Download } from 'lucide-react';
 const DEFAULT_PAGE_SIZE = 10;
 
 
@@ -247,6 +247,42 @@ export default function UserManagementPage({
 
     const currentSection = sectionOptions.find((opt) => pathname?.startsWith(opt.value))?.value || '/admin/users';
 
+    const handleExportCSV = () => {
+        if (users.length === 0) {
+            notify.error('No users to export');
+            return;
+        }
+
+        const headers = ['ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Status', 'Joined', 'Last Active'];
+        const rows = users.map(user => [
+            user.id,
+            user.firstName,
+            user.lastName,
+            user.email,
+            user.phone || 'N/A',
+            user.role,
+            user.status,
+            new Date(user.createdAt).toLocaleDateString(),
+            user.lastActive ? new Date(user.lastActive).toLocaleDateString() : 'Never'
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `users-export-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        notify.success('Users exported successfully');
+    };
+
     return (
         <div className="p-4 md:p-8 space-y-8">
             {/* Header */}
@@ -266,6 +302,14 @@ export default function UserManagementPage({
                             <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                     </select>
+                    <button
+                        onClick={handleExportCSV}
+                        className="px-5 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all flex items-center gap-2 font-bold text-text-secondary active:scale-95"
+                        title="Export CSV"
+                    >
+                        <Download size={18} />
+                        Export
+                    </button>
                     <button onClick={fetchUsers} className="p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors" title="Refresh">
                         <RefreshCw size={18} className="text-text-secondary" />
                     </button>
@@ -536,9 +580,9 @@ export default function UserManagementPage({
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} />
                     <div className="relative w-full max-w-md bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
                         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 ${confirmModal.type === 'delete' ? 'bg-red-50 text-red-600' :
-                                confirmModal.type === 'suspend' ? 'bg-orange-50 text-orange-600' :
-                                    confirmModal.type === 'activate' ? 'bg-green-50 text-green-600' :
-                                        'bg-blue-50 text-blue-600'
+                            confirmModal.type === 'suspend' ? 'bg-orange-50 text-orange-600' :
+                                confirmModal.type === 'activate' ? 'bg-green-50 text-green-600' :
+                                    'bg-blue-50 text-blue-600'
                             }`}>
                             <span className="material-icons-round text-3xl">
                                 {confirmModal.type === 'delete' ? 'delete_forever' :
@@ -585,9 +629,9 @@ export default function UserManagementPage({
                                 onClick={executeAction}
                                 disabled={isSubmitting || (confirmModal.type === 'delete' && !confirmReason.trim())}
                                 className={`flex-1 h-12 text-white font-bold rounded-xl transition-all shadow-lg text-sm flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 ${confirmModal.type === 'delete' ? 'bg-red-600 shadow-red-200' :
-                                        confirmModal.type === 'suspend' ? 'bg-orange-600 shadow-orange-200' :
-                                            confirmModal.type === 'activate' ? 'bg-green-600 shadow-green-200' :
-                                                'bg-primary shadow-primary/20'
+                                    confirmModal.type === 'suspend' ? 'bg-orange-600 shadow-orange-200' :
+                                        confirmModal.type === 'activate' ? 'bg-green-600 shadow-green-200' :
+                                            'bg-primary shadow-primary/20'
                                     }`}
                             >
                                 {isSubmitting && <Loader2 size={16} className="animate-spin" />}
