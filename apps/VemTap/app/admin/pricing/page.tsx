@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { notify } from '@/lib/notify';
 import {
     Tag, Plus, Trash2, Edit3, Save, X,
-    Zap, Shield, Globe, Crown
+    Zap, Shield, Globe, Crown, ChevronUp, ChevronDown
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchAdminPricingPlans, updatePricingPlan, addPricingPlan, deletePricingPlan } from '@/lib/api/pricing';
@@ -218,6 +218,28 @@ export default function AdminPricingPage() {
                 ? { ...prev, features: (prev.features || []).filter((f) => f !== value) }
                 : prev,
         );
+    };
+
+    const moveFeatureUp = (index: number) => {
+        setEditingPlan((prev) => {
+            if (!prev) return prev;
+            const features = [...(prev.features || [])];
+            if (index > 0) {
+                [features[index - 1], features[index]] = [features[index], features[index - 1]];
+            }
+            return { ...prev, features };
+        });
+    };
+
+    const moveFeatureDown = (index: number) => {
+        setEditingPlan((prev) => {
+            if (!prev) return prev;
+            const features = [...(prev.features || [])];
+            if (index < features.length - 1) {
+                [features[index + 1], features[index]] = [features[index], features[index + 1]];
+            }
+            return { ...prev, features };
+        });
     };
 
     return (
@@ -466,21 +488,43 @@ export default function AdminPricingPage() {
                                         Add
                                     </button>
                                 </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {(currentPlan.features || []).map((feature) => (
-                                        <span
+                                <div className="space-y-2">
+                                    {(currentPlan.features || []).map((feature, idx) => (
+                                        <div
                                             key={feature}
-                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold"
+                                            className="flex items-center justify-between px-4 py-3 rounded-xl bg-gray-50 border border-gray-200"
                                         >
-                                            {feature}
-                                            <button
-                                                type="button"
-                                                onClick={() => removeFeature(feature)}
-                                                className="text-primary/80 hover:text-primary"
-                                            >
-                                                <X size={12} />
-                                            </button>
-                                        </span>
+                                            <span className="text-sm font-bold text-text-main">{feature}</span>
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => moveFeatureUp(idx)}
+                                                    disabled={idx === 0}
+                                                    className="p-1.5 text-gray-400 hover:text-primary hover:bg-white rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+                                                    title="Move Up"
+                                                >
+                                                    <ChevronUp size={16} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => moveFeatureDown(idx)}
+                                                    disabled={idx === (currentPlan.features?.length || 0) - 1}
+                                                    className="p-1.5 text-gray-400 hover:text-primary hover:bg-white rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+                                                    title="Move Down"
+                                                >
+                                                    <ChevronDown size={16} />
+                                                </button>
+                                                <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeFeature(feature)}
+                                                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-white rounded-lg transition-all"
+                                                    title="Remove Feature"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
                                     ))}
                                 </div>
                             </div>
