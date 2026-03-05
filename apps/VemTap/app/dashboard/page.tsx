@@ -14,6 +14,7 @@ import PreviewRewardModal from '@/components/dashboard/PreviewRewardModal';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
+import { useVisitorStats } from '@/services/visitors/hooks';
 
 
 export default function DashboardPage() {
@@ -29,23 +30,10 @@ export default function DashboardPage() {
     // eslint-disable-next-line no-console
     console.log('[DASHBOARD PAGE] 🔍 isAuthenticated:', isAuthenticated, 'planId:', user?.planId);
 
-    // Redirect to pricing if user is new and hasn't selected a plan
-    React.useEffect(() => {
-        const hasSelectedPlan = localStorage.getItem('has_selected_plan') === 'true';
-        const isNewUser = user && !user.planId; // Mock check: if no planId, they are "new"
-
-        // eslint-disable-next-line no-console
-        console.log('[DASHBOARD PAGE] 📋 Checking plan', { isNewUser, hasSelectedPlan });
-
-        if (isNewUser && !hasSelectedPlan) {
-            // eslint-disable-next-line no-console
-            console.log('[DASHBOARD PAGE] 🚀 Redirecting to subscription');
-            router.push('/dashboard/settings/subscription');
-        }
-    }, [user, router]);
 
     // Fetch Dashboard Data
     const { data, isLoading } = useDashboardAnalytics();
+    const { data: visitorStatsData } = useVisitorStats('all');
 
     const { getPlan } = useSubscriptionStore();
     const currentPlan = getPlan();
@@ -59,7 +47,7 @@ export default function DashboardPage() {
         toast.error("Clear disabled while backend integration is ongoing.");
     };
 
-    const stats = data?.stats.map((s) => {
+    const analyticsStats = data?.stats.map((s) => {
         let icon = Users;
         let color = 'blue';
         if (s.label === 'New Customers') { icon = UserPlus; color = 'green'; }
@@ -76,17 +64,44 @@ export default function DashboardPage() {
         };
     }) || [];
 
+    const stats = visitorStatsData?.stats?.length
+        ? visitorStatsData.stats.map((s) => {
+            const label = s.label?.toString?.() || 'Metric';
+            const normalizedLabel = label.toLowerCase();
+            let icon = Users;
+            let color = 'blue';
+            if (normalizedLabel.includes('new')) { icon = UserPlus; color = 'green'; }
+            if (normalizedLabel.includes('repeat') || normalizedLabel.includes('returning') || normalizedLabel.includes('frequency')) {
+                icon = Repeat;
+                color = 'purple';
+            }
+            if (normalizedLabel.includes('vip')) { icon = Users; color = 'orange'; }
+
+            return {
+                label,
+                value: (s.value ?? '0').toString(),
+                change: s.trend?.value || '+0%',
+                trend: s.trend?.isUp ? 'up' : 'down',
+                icon,
+                color
+            };
+        })
+        : analyticsStats;
+
     const maxVisits = data ? Math.max(...data.peakTimes.map(d => d.value)) : 100;
 
     // Computed audience breakdown
     const getStatValue = (labels: string[]) => {
-        const stat = data?.stats.find(s => labels.includes(s.label));
-        return parseInt(stat?.value?.toString().replace(/,/g, '') || '0', 10);
+        const stat = stats.find((s) => labels.includes(s.label));
+        const normalized = stat?.value?.toString().replace(/,/g, '').trim() || '0';
+        const parsed = Number.parseFloat(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
     };
 
-    const totalVisitors = getStatValue(['Total Visits', 'Total Customers']);
-    const newVisitors = getStatValue(['New Customers']);
-    const repeatVisitors = totalVisitors - newVisitors > 0 ? totalVisitors - newVisitors : 0;
+    const totalVisitors = getStatValue(['Total Visitors', 'Total Visits', 'Total Customers']);
+    const newVisitors = getStatValue(['New This Month', 'New Customers']);
+    const knownReturning = getStatValue(['Returning', 'Repeat Visitors']);
+    const repeatVisitors = knownReturning > 0 ? knownReturning : (totalVisitors - newVisitors > 0 ? totalVisitors - newVisitors : 0);
 
     const returningPct = totalVisitors > 0 ? Math.round((repeatVisitors / totalVisitors) * 100) : 0;
     const newPct = totalVisitors > 0 ? 100 - returningPct : 0;
