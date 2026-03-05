@@ -484,7 +484,7 @@ export default function EngagementFormsBuilderPage() {
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="px-5 py-4 text-sm font-bold text-text-main">{form.fields.length}</td>
+                                    <td className="px-5 py-4 text-sm font-bold text-text-main">{form.fields?.length}</td>
                                     <td className="px-5 py-4">
                                         <div className="flex justify-end items-center gap-2">
                                             <Link href={`/dashboard/settings/engagement/forms/${form.id}`} className="h-8 px-3 rounded-lg border border-gray-200 text-xs font-bold text-text-secondary flex items-center">
