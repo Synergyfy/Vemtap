@@ -5,9 +5,11 @@ import { DashboardAnalyticsResponse, FootfallAnalyticsResponse, PeakTimesAnalyti
 
 function useResolvedBranchId(branchId?: string): string | undefined {
     const activeBranchId = useAuthStore((state: AuthState) => state.activeBranchId);
-    // Only send a true branch id. Passing businessId as branchId can force empty analytics responses.
-    const resolved = branchId || (activeBranchId === 'all' ? undefined : activeBranchId);
-    return resolved || undefined;
+    // Default analytics scope is all branches unless a specific branch is selected.
+    if (branchId === 'all' || (!branchId && activeBranchId === 'all')) {
+        return undefined;
+    }
+    return branchId || activeBranchId || undefined;
 }
 
 export const useDashboardAnalytics = (branchId?: string) => {

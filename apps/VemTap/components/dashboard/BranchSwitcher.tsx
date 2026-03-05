@@ -23,10 +23,10 @@ export default function BranchSwitcher() {
 
     const activeBranch = branches.find(b => b.id === activeBranchId);
 
-    // Auto-select first branch if none selected and branches loaded
+    // Default to all-branches analytics unless user selects a specific branch.
     useEffect(() => {
-        if (!activeBranchId && branches.length > 0) {
-            setActiveBranch(branches[0].id);
+        if (!activeBranchId) {
+            setActiveBranch('all');
         }
     }, [branches, activeBranchId, setActiveBranch]);
 
