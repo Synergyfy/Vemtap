@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import AuthSidePanel from '@/components/auth/AuthSidePanel';
-import { useAuthStore, AuthState } from '../../store/useAuthStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import Logo from '@/components/brand/Logo';
-import { Headset } from 'lucide-react';
 import { useLogin } from '@/services/auth/hooks';
+import { toast } from 'react-hot-toast';
 
 export default function LoginPage() {
     const { loginUser, isLoading: isLoginLoading } = useLogin();
@@ -22,26 +22,9 @@ export default function LoginPage() {
         password: '',
         rememberMe: false,
     });
-    const [isAutoLogin, setIsAutoLogin] = useState(false);
 
     // eslint-disable-next-line no-console
     console.log('[LOGIN PAGE] 🔍 isAuthenticated:', isAuthenticated);
-
-    const routeByRole = (role: string, identifier: string) => {
-        if (role === 'admin') {
-            router.push('/admin/dashboard');
-            return;
-        }
-        if (role === 'customer') {
-            router.push('/customer/dashboard');
-            return;
-        }
-        if (role === 'staff' && (identifier.includes('agent') || identifier.includes('support'))) {
-            router.push('/agent/dashboard');
-            return;
-        }
-        router.push('/dashboard');
-    };
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -63,6 +46,7 @@ export default function LoginPage() {
 
             // Sync with Zustand store
             login(response.user as any, response.access_token);
+            toast.success('Login successful');
 
             const userRole = response.user.role?.toLowerCase();
 
