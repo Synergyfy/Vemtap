@@ -71,7 +71,7 @@ describe('AdminFlowEngineService', () => {
   describe('getTemplates', () => {
     it('should return templates', async () => {
       const templates = [{ name: 'Template 1' }];
-      templateRepo.find.mockResolvedValue(templates);
+      templateRepo.find.mockResolvedValue(templates as any);
       expect(await service.getTemplates()).toEqual(templates);
     });
   });
@@ -79,7 +79,7 @@ describe('AdminFlowEngineService', () => {
   describe('getTriggers', () => {
     it('should return triggers', async () => {
       const triggers = [{ key: 'new_customer' }];
-      triggerRepo.find.mockResolvedValue(triggers);
+      triggerRepo.find.mockResolvedValue(triggers as any);
       expect(await service.getTriggers()).toEqual(triggers);
     });
   });

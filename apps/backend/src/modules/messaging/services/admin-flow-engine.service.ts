@@ -94,7 +94,9 @@ export class AdminFlowEngineService implements OnModuleInit {
   }
 
   async createTemplate(data: CreateFlowTemplateDto): Promise<FlowTemplate> {
-    const template = this.templateRepo.create(data as any) as unknown as FlowTemplate;
+    const template = this.templateRepo.create(
+      data as any,
+    ) as unknown as FlowTemplate;
     return this.templateRepo.save(template);
   }
 

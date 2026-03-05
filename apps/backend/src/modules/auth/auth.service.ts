@@ -32,7 +32,7 @@ export class AuthService {
     private jwtService: JwtService,
     @InjectRepository(Otp)
     private otpRepository: Repository<Otp>,
-  ) { }
+  ) {}
 
   async requestOwnerOtp(dto: RequestOtpDto) {
     const email = dto.email.toLowerCase();
@@ -185,11 +185,14 @@ export class AuthService {
     if (existingUser && existingUser.status === UserStatus.INVITED) {
       // Complete registration for invited user
       existingUser.firstName =
-        registrationData.firstName || metadata.firstName || existingUser.firstName;
+        registrationData.firstName ||
+        metadata.firstName ||
+        existingUser.firstName;
       existingUser.lastName =
         registrationData.lastName || metadata.lastName || existingUser.lastName;
       existingUser.password = hashedPassword;
-      existingUser.role = (registrationData.role as UserRole) || existingUser.role;
+      existingUser.role =
+        (registrationData.role as UserRole) || existingUser.role;
       existingUser.status = UserStatus.ACTIVE;
       existingUser.phone =
         registrationData.phone || metadata.phone || existingUser.phone;

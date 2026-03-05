@@ -28,7 +28,7 @@ export class BusinessesService {
     @InjectRepository(Visit)
     private visitRepository: Repository<Visit>,
     private readonly mailService: MailService,
-  ) { }
+  ) {}
 
   async create(businessData: Partial<Business>): Promise<Business> {
     if (businessData.ownerId) {
@@ -314,7 +314,8 @@ export class BusinessesService {
       totalBranches,
       recentActivity: recentVisits.map((visit) => ({
         id: visit.id,
-        visitorName: `${visit.customer?.firstName || ''} ${visit.customer?.lastName || ''}`.trim(),
+        visitorName:
+          `${visit.customer?.firstName || ''} ${visit.customer?.lastName || ''}`.trim(),
         branchName: visit.branch?.name || 'Main Office',
         status: visit.status,
         timestamp: visit.createdAt,

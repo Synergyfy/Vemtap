@@ -209,3 +209,13 @@ export class VerifyRedemptionDto {
   @IsString()
   code: string;
 }
+export class BranchQueryDto {
+  @ApiProperty({
+    description: 'Branch ID',
+    example: 'branch_001',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  branchId?: string;
+}

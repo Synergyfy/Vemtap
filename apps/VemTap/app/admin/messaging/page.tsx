@@ -14,7 +14,9 @@ import {
     Check,
     X,
     AlertCircle,
-    Trash2
+    Trash2,
+    Plus,
+    Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -24,17 +26,40 @@ type TemplateStatus = 'pending' | 'approved' | 'rejected';
 
 export default function TemplateApprovalPage() {
     const queryClient = useQueryClient();
+    const [view, setView] = useState<'approvals' | 'live'>('approvals');
     const [filter, setFilter] = useState<'all' | TemplateStatus>('pending');
     const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
-
-    // Fetch all templates
-    const { data: templatesResponse, isLoading } = useQuery({
-        queryKey: ['admin-templates'],
-        queryFn: () => adminMessagingApi.getAllTemplates(),
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [templateForm, setTemplateForm] = useState({
+        name: '',
+        channel: 'WHATSAPP' as 'WHATSAPP' | 'SMS' | 'EMAIL',
+        content: '',
+        category: 'MARKETING' as 'MARKETING' | 'UTILITY' | 'AUTHENTICATION',
+        language: 'English (US)',
+        isSystem: true
     });
 
-    const allTemplates = (templatesResponse?.data || templatesResponse || []) as any[];
+    // Fetch all templates
+    const { data: templatesResponse, isLoading: isApprovalsLoading } = useQuery({
+        queryKey: ['admin-templates'],
+        queryFn: () => adminMessagingApi.getAllTemplates(),
+        enabled: view === 'approvals',
+    });
+
+    // Fetch live templates (System + Business specific)
+    const { data: liveResponse, isLoading: isLiveLoading } = useQuery({
+        queryKey: ['live-templates'],
+        queryFn: () => adminMessagingApi.getAvailableTemplates(),
+        enabled: view === 'live',
+    });
+
+    const isLoading = view === 'approvals' ? isApprovalsLoading : isLiveLoading;
+    const rawTemplates = view === 'approvals'
+        ? (templatesResponse?.data || templatesResponse || [])
+        : (liveResponse?.data || liveResponse || []);
+
+    const allTemplates = rawTemplates as any[];
 
     // status mutation
     const statusMutation = useMutation({
@@ -58,6 +83,24 @@ export default function TemplateApprovalPage() {
         onError: () => toast.error('Failed to delete template'),
     });
 
+    const createMutation = useMutation({
+        mutationFn: (data: any) => adminMessagingApi.createTemplate(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
+            toast.success('Template created successfully');
+            setIsCreateModalOpen(false);
+            setTemplateForm({
+                name: '',
+                channel: 'WHATSAPP',
+                content: '',
+                category: 'MARKETING',
+                language: 'English (US)',
+                isSystem: true
+            });
+        },
+        onError: (error: any) => toast.error(error.message || 'Failed to create template'),
+    });
+
     const filteredTemplates = allTemplates.filter(t => {
         const matchesFilter = filter === 'all' || t.status === filter;
         const matchesSearch = (t.business?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -79,10 +122,19 @@ export default function TemplateApprovalPage() {
 
     return (
         <div className="p-8">
-            <PageHeader
-                title="WhatsApp Template Approval"
-                description="Review and manage messaging templates submitted by businesses"
-            />
+            <div className="flex items-center justify-between mb-8">
+                <PageHeader
+                    title="WhatsApp Template Approval"
+                    description="Review and manage messaging templates submitted by businesses"
+                />
+                <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex items-center gap-2 px-6 py-3 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 active:scale-95"
+                >
+                    <Plus size={16} />
+                    Create Template
+                </button>
+            </div>
 
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div className="flex items-center gap-2 p-1 bg-gray-100 rounded-xl w-fit">
@@ -104,13 +156,51 @@ export default function TemplateApprovalPage() {
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input
                         type="text"
-                        placeholder="Search by business or template name..."
+                        placeholder="Search templates..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full h-12 pl-12 pr-4 bg-white border border-gray-200 rounded-xl font-medium text-sm focus:bg-white focus:ring-2 focus:ring-primary/10 transition-all outline-none"
                     />
                 </div>
             </div>
+
+            <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-px">
+                <button
+                    onClick={() => setView('approvals')}
+                    className={`pb-4 px-2 text-xs font-black uppercase tracking-widest transition-all relative ${view === 'approvals'
+                        ? 'text-primary'
+                        : 'text-gray-400 hover:text-gray-600'}`}
+                >
+                    Review Queue
+                    {view === 'approvals' && <motion.div layoutId="view-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+                </button>
+                <button
+                    onClick={() => setView('live')}
+                    className={`pb-4 px-2 text-xs font-black uppercase tracking-widest transition-all relative ${view === 'live'
+                        ? 'text-primary'
+                        : 'text-gray-400 hover:text-gray-600'}`}
+                >
+                    Live System Templates
+                    {view === 'live' && <motion.div layoutId="view-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+                </button>
+            </div>
+
+            {view === 'approvals' && (
+                <div className="flex items-center gap-2 p-1 bg-gray-100 rounded-xl w-fit mb-6">
+                    {(['pending', 'approved', 'rejected', 'all'] as const).map((s) => (
+                        <button
+                            key={s}
+                            onClick={() => setFilter(s)}
+                            className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all ${filter === s
+                                ? 'bg-white text-primary shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            {s}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
                 <table className="w-full">
@@ -281,6 +371,141 @@ export default function TemplateApprovalPage() {
                                     Delete Template
                                 </button>
                             </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Create Template Modal */}
+            <AnimatePresence>
+                {isCreateModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsCreateModalOpen(false)}
+                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden"
+                        >
+                            <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
+                                        <Plus size={20} />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-black text-text-main text-sm uppercase tracking-tight">Create WhatsApp Template</h3>
+                                        <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">Register a new messaging template</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setIsCreateModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(templateForm); }} className="p-8 space-y-5">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase text-gray-500 mb-1.5 block ml-1">Template Name</label>
+                                        <input
+                                            type="text"
+                                            value={templateForm.name}
+                                            onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
+                                            placeholder="e.g. Welcome_Message"
+                                            className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase text-gray-500 mb-1.5 block ml-1">Channel</label>
+                                        <select
+                                            value={templateForm.channel}
+                                            onChange={(e) => setTemplateForm({ ...templateForm, channel: e.target.value as any })}
+                                            className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:bg-white transition-all"
+                                        >
+                                            <option value="WHATSAPP">WhatsApp</option>
+                                            <option value="SMS">SMS</option>
+                                            <option value="EMAIL">Email</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase text-gray-500 mb-1.5 block ml-1">Category</label>
+                                        <select
+                                            value={templateForm.category}
+                                            onChange={(e) => setTemplateForm({ ...templateForm, category: e.target.value as any })}
+                                            className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:bg-white transition-all"
+                                        >
+                                            <option value="MARKETING">Marketing</option>
+                                            <option value="UTILITY">Utility</option>
+                                            <option value="AUTHENTICATION">Authentication</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase text-gray-500 mb-1.5 block ml-1">Language</label>
+                                        <input
+                                            type="text"
+                                            value={templateForm.language}
+                                            onChange={(e) => setTemplateForm({ ...templateForm, language: e.target.value })}
+                                            placeholder="English (US)"
+                                            className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:bg-white transition-all"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="flex flex-col justify-end pb-1.5">
+                                        <label className="flex items-center gap-2 cursor-pointer group">
+                                            <div className="relative">
+                                                <input
+                                                    type="checkbox"
+                                                    className="sr-only"
+                                                    checked={templateForm.isSystem}
+                                                    onChange={(e) => setTemplateForm({ ...templateForm, isSystem: e.target.checked })}
+                                                />
+                                                <div className={`w-10 h-6 rounded-full transition-colors ${templateForm.isSystem ? 'bg-primary' : 'bg-gray-200'}`} />
+                                                <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${templateForm.isSystem ? 'translate-x-4' : ''}`} />
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase text-gray-400 group-hover:text-primary transition-colors">Global System Template</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-black uppercase text-gray-500 mb-1.5 block ml-1">Content</label>
+                                    <textarea
+                                        value={templateForm.content}
+                                        onChange={(e) => setTemplateForm({ ...templateForm, content: e.target.value })}
+                                        rows={4}
+                                        placeholder="Hello {{1}}, welcome to our service!"
+                                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl font-medium text-sm outline-none focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all resize-none"
+                                        required
+                                    />
+                                    <p className="text-[10px] text-gray-400 mt-2 font-medium">Use {'{{1}}'}, {'{{2}}'} for dynamic variables.</p>
+                                </div>
+
+                                <div className="flex items-center gap-3 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsCreateModalOpen(false)}
+                                        className="flex-1 h-12 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={createMutation.isPending}
+                                        className="flex-[2] h-12 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+                                    >
+                                        {createMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : 'Register Template'}
+                                    </button>
+                                </div>
+                            </form>
                         </motion.div>
                     </div>
                 )}

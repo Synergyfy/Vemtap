@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { notify } from '@/lib/notify';
 import {
     Tag, Plus, Trash2, Edit3, Save, X,
-    Zap, Shield, Globe, Crown
+    Zap, Shield, Globe, Crown, ChevronUp, ChevronDown
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchAdminPricingPlans, updatePricingPlan, addPricingPlan, deletePricingPlan } from '@/lib/api/pricing';
@@ -106,9 +106,19 @@ export default function AdminPricingPage() {
         },
     });
 
+    // For feature limits: null/undefined = Unlimited, a number = that limit
     const unlimited = (val: any) => {
-        if (val === 0 || val === '0' || !val) return 'Unlimited';
+        if (val === null || val === undefined || val === '' || val === 'null') return 'Unlimited';
         return val;
+    };
+
+    // For messaging credits: 0 = Not included, -1 = Unlimited, else show count
+    const formatCredit = (val: any) => {
+        const n = Number(val);
+        if (val === null || val === undefined || val === '' || isNaN(n)) return 'Not included';
+        if (n === 0) return 'Not included';
+        if (n === -1) return 'Unlimited';
+        return n;
     };
 
     const formatPrice = (price: number, currency = 'NGN') => {
@@ -210,6 +220,28 @@ export default function AdminPricingPage() {
         );
     };
 
+    const moveFeatureUp = (index: number) => {
+        setEditingPlan((prev) => {
+            if (!prev) return prev;
+            const features = [...(prev.features || [])];
+            if (index > 0) {
+                [features[index - 1], features[index]] = [features[index], features[index - 1]];
+            }
+            return { ...prev, features };
+        });
+    };
+
+    const moveFeatureDown = (index: number) => {
+        setEditingPlan((prev) => {
+            if (!prev) return prev;
+            const features = [...(prev.features || [])];
+            if (index < features.length - 1) {
+                [features[index + 1], features[index]] = [features[index], features[index + 1]];
+            }
+            return { ...prev, features };
+        });
+    };
+
     return (
         <>
             <div className="max-w-6xl mx-auto">
@@ -301,9 +333,9 @@ export default function AdminPricingPage() {
                                             <p className="font-bold text-text-main">Access</p>
                                             <div className="space-y-1 text-text-secondary">
                                                 <p>Trial Days: {plan.trialDurationDays}</p>
-                                                <p>SMS: {unlimited(plan.smsCredits)}</p>
-                                                <p>WA: {unlimited(plan.whatsappCredits)}</p>
-                                                <p>Email: {unlimited(plan.emailCredits)}</p>
+                                                <p>SMS: {formatCredit(plan.smsCredits)}</p>
+                                                <p>WA: {formatCredit(plan.whatsappCredits)}</p>
+                                                <p>Email: {formatCredit(plan.emailCredits)}</p>
                                                 <p>Features: {(plan.features || []).length}</p>
                                             </div>
                                         </div>
@@ -365,19 +397,19 @@ export default function AdminPricingPage() {
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
-                                        SMS Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
+                                        SMS Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 = none, -1 = unlimited)</span>
                                     </label>
                                     <FormattedNumberInput value={currentPlan.smsCredits} onChange={(value) => setNumericField('smsCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
-                                        WhatsApp Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
+                                        WhatsApp Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 = none, -1 = unlimited)</span>
                                     </label>
                                     <FormattedNumberInput value={currentPlan.whatsappCredits} onChange={(value) => setNumericField('whatsappCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
-                                        Email Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
+                                        Email Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 = none, -1 = unlimited)</span>
                                     </label>
                                     <FormattedNumberInput value={currentPlan.emailCredits} onChange={(value) => setNumericField('emailCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
@@ -456,21 +488,43 @@ export default function AdminPricingPage() {
                                         Add
                                     </button>
                                 </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {(currentPlan.features || []).map((feature) => (
-                                        <span
+                                <div className="space-y-2">
+                                    {(currentPlan.features || []).map((feature, idx) => (
+                                        <div
                                             key={feature}
-                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold"
+                                            className="flex items-center justify-between px-4 py-3 rounded-xl bg-gray-50 border border-gray-200"
                                         >
-                                            {feature}
-                                            <button
-                                                type="button"
-                                                onClick={() => removeFeature(feature)}
-                                                className="text-primary/80 hover:text-primary"
-                                            >
-                                                <X size={12} />
-                                            </button>
-                                        </span>
+                                            <span className="text-sm font-bold text-text-main">{feature}</span>
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => moveFeatureUp(idx)}
+                                                    disabled={idx === 0}
+                                                    className="p-1.5 text-gray-400 hover:text-primary hover:bg-white rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+                                                    title="Move Up"
+                                                >
+                                                    <ChevronUp size={16} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => moveFeatureDown(idx)}
+                                                    disabled={idx === (currentPlan.features?.length || 0) - 1}
+                                                    className="p-1.5 text-gray-400 hover:text-primary hover:bg-white rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+                                                    title="Move Down"
+                                                >
+                                                    <ChevronDown size={16} />
+                                                </button>
+                                                <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeFeature(feature)}
+                                                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-white rounded-lg transition-all"
+                                                    title="Remove Feature"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
                                     ))}
                                 </div>
                             </div>

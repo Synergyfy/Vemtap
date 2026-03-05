@@ -26,6 +26,7 @@ import { BusinessesModule } from '../businesses/businesses.module';
 import { SettingsModule } from '../settings/settings.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { MailModule } from '../mail/mail.module';
 
 import { MessagingEngineService } from './services/messaging-engine.service';
 import { TemplateService } from './services/template.service';
@@ -37,6 +38,7 @@ import { AnalyticsService } from './services/analytics.service';
 import { FlowEngineService } from './services/flow-engine.service';
 import { AdminFlowEngineService } from './services/admin-flow-engine.service';
 import { AutomationService } from './services/automation.service';
+import { MessagingFlowService } from './services/messaging-flow.service';
 
 import { MessagingController } from './controllers/messaging.controller';
 import { FlowController } from './controllers/flow.controller';
@@ -47,6 +49,7 @@ import { CreditPlanController } from './controllers/credit-plan.controller';
 
 import { CreditPlanService } from './services/credit-plan.service';
 import { TermiiProvider } from './providers/termii.provider';
+import { EmailProvider } from './providers/email.provider';
 import { ProviderRouterService } from './services/provider-router.service';
 import { BatchSendProcessor } from './processors/batch-send.processor';
 import { FlowDelayProcessor } from './processors/flow-delay.processor';
@@ -78,6 +81,7 @@ import { AutomationProcessor } from './processors/automation.processor';
     SettingsModule,
     SubscriptionsModule,
     PaymentsModule,
+    MailModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
@@ -123,11 +127,13 @@ import { AutomationProcessor } from './processors/automation.processor';
     AdminFlowEngineService,
     AutomationService,
     TermiiProvider,
+    EmailProvider,
     ProviderRouterService,
     BatchSendProcessor,
     FlowDelayProcessor,
     AutomationProcessor,
     CreditPlanService,
+    MessagingFlowService,
   ],
   controllers: [
     MessagingController,
@@ -150,7 +156,9 @@ import { AutomationProcessor } from './processors/automation.processor';
     AdminFlowEngineService,
     AutomationService,
     TermiiProvider,
+    EmailProvider,
     ProviderRouterService,
+    MessagingFlowService,
   ],
 })
 export class MessagingModule {}

@@ -64,7 +64,7 @@ describe('UsersService', () => {
       const existingUser = { id: '1', businessId: 'biz-1', firstName: 'Old' };
       userRepository.findOneBy.mockResolvedValue(existingUser);
 
-      const updates = { firstName: 'New' };
+      const updates: any = { firstName: 'New' };
       const result = await service.updateStaff('1', 'biz-1', updates);
 
       expect(result.firstName).toBe('New');
