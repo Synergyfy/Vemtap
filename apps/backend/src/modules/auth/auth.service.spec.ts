@@ -134,7 +134,7 @@ describe('AuthService', () => {
   });
 
   describe('registerOwner', () => {
-    const otpDto: RegisterOwnerDto = {
+    const otpDto: any = {
       otp: '1234',
       firstName: 'Dan',
       lastName: 'Owner',
@@ -306,7 +306,7 @@ describe('AuthService', () => {
         email: 'test@example.com',
         role: UserRole.CUSTOMER,
       };
-      const result = await service.login(user);
+      const result = await service.login(user as any);
       expect(result).toEqual({
         access_token: 'mock_token',
         user: user,

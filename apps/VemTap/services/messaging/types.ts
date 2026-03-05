@@ -1,5 +1,5 @@
 export type Channel = 'WHATSAPP' | 'SMS' | 'EMAIL';
-export type AudienceType = 'ALL' | 'GROUP' | 'TAGGED' | 'RECENT' | 'ALL_CUSTOMERS';
+export type AudienceType = 'ALL' | 'GROUP' | 'TAGGED' | 'RECENT';
 
 export interface SendMessageRequest {
     channel: Channel;

@@ -5,8 +5,8 @@ import { DashboardAnalyticsResponse, FootfallAnalyticsResponse, PeakTimesAnalyti
 
 function useResolvedBranchId(branchId?: string): string | undefined {
     const activeBranchId = useAuthStore((state: AuthState) => state.activeBranchId);
-    const userBusinessId = useAuthStore((state: AuthState) => state.user?.businessId);
-    const resolved = branchId || (activeBranchId === 'all' ? undefined : activeBranchId) || userBusinessId;
+    // Only send a true branch id. Passing businessId as branchId can force empty analytics responses.
+    const resolved = branchId || (activeBranchId === 'all' ? undefined : activeBranchId);
     return resolved || undefined;
 }
 
@@ -18,7 +18,8 @@ export const useDashboardAnalytics = (branchId?: string) => {
         queryFn: async () => {
             const searchParams = new URLSearchParams();
             if (resolvedBranchId) searchParams.append('branchId', resolvedBranchId);
-            return await api.get(`/analytics/dashboard?${searchParams.toString()}`);
+            const query = searchParams.toString();
+            return await api.get(`/analytics/dashboard${query ? `?${query}` : ''}`);
         }
     });
 };
@@ -31,7 +32,8 @@ export const useFootfallAnalytics = (branchId?: string) => {
         queryFn: async () => {
             const searchParams = new URLSearchParams();
             if (resolvedBranchId) searchParams.append('branchId', resolvedBranchId);
-            return await api.get(`/analytics/footfall?${searchParams.toString()}`);
+            const query = searchParams.toString();
+            return await api.get(`/analytics/footfall${query ? `?${query}` : ''}`);
         }
     });
 };
@@ -44,7 +46,8 @@ export const usePeakTimesAnalytics = (branchId?: string) => {
         queryFn: async () => {
             const searchParams = new URLSearchParams();
             if (resolvedBranchId) searchParams.append('branchId', resolvedBranchId);
-            return await api.get(`/analytics/peak-times?${searchParams.toString()}`);
+            const query = searchParams.toString();
+            return await api.get(`/analytics/peak-times${query ? `?${query}` : ''}`);
         }
     });
 };

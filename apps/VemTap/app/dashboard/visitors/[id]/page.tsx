@@ -11,6 +11,7 @@ import { notify } from '@/lib/notify';
 import { useVisitor } from '@/services/visitors/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Loader2 } from 'lucide-react';
+import { formatDate } from '@/lib/utils/date';
 
 
 export default function VisitorProfilePage() {
@@ -38,6 +39,26 @@ export default function VisitorProfilePage() {
     };
 
     const visitor = visitorObj;
+    const displayName = visitor.name ||
+        (visitor.firstName || visitor.lastName
+            ? `${visitor.firstName || ''} ${visitor.lastName || ''}`.trim()
+            : 'Unknown Visitor');
+    const joinedCandidates: Array<string | Date | null | undefined> = [
+        visitor.joinedDate,
+        visitor.lastVisit,
+        visitor.time,
+        typeof visitor.timestamp === 'number'
+            ? new Date(visitor.timestamp < 1_000_000_000_000 ? visitor.timestamp * 1000 : visitor.timestamp)
+            : null,
+    ];
+    const joinedLabel = (() => {
+        for (const candidate of joinedCandidates) {
+            const formatted = formatDate(candidate);
+            if (formatted !== 'N/A' && formatted !== 'Invalid Date') return formatted;
+            if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+        }
+        return 'Not provided';
+    })();
 
     const handleEditSubmit = (data: any) => {
         // You'd trigger an api.patch mutation here
@@ -62,7 +83,7 @@ export default function VisitorProfilePage() {
         <div className="p-8">
             <PageHeader
                 title="Visitor Profile"
-                description={`Detailed information for ${visitor.name}`}
+                description={`Detailed information for ${displayName}`}
                 actions={
                     <div className="flex gap-3">
                         <button
@@ -94,9 +115,9 @@ export default function VisitorProfilePage() {
                         <div className="bg-white rounded-xl border border-gray-200 p-6">
                             <div className="flex flex-col items-center text-center mb-6">
                                 <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-3xl mb-4 border-4 border-white shadow-lg">
-                                    {visitor.name.split(' ').map((n: string) => n[0]).join('')}
+                                    {displayName.split(' ').filter(Boolean).map((n: string) => n[0]).join('')}
                                 </div>
-                                <h2 className="text-2xl font-display font-bold text-text-main">{visitor.name}</h2>
+                                <h2 className="text-2xl font-display font-bold text-text-main">{displayName}</h2>
                                 <span className="mt-2 inline-flex px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-yellow-100 text-yellow-700">
                                     {visitor.status}
                                 </span>
@@ -113,7 +134,7 @@ export default function VisitorProfilePage() {
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <span className="material-icons-round text-gray-400">calendar_today</span>
-                                    <span className="text-sm font-medium text-text-main">Joined: {visitor.joinedDate}</span>
+                                    <span className="text-sm font-medium text-text-main">Joined: {joinedLabel}</span>
                                 </div>
                             </div>
 
@@ -201,7 +222,7 @@ export default function VisitorProfilePage() {
             <SendMessageModal
                 isOpen={isMsgOpen}
                 onClose={() => setIsMsgOpen(false)}
-                recipientName={visitor.name}
+                recipientName={displayName}
                 recipientPhone={visitor.phone}
                 type="welcome"
             />

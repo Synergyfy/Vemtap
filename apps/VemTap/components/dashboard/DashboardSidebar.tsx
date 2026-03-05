@@ -18,6 +18,7 @@ import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import TrialBanner from './TrialBanner';
+import { useActiveSubscription } from '@/services/subscriptions/hooks';
 
 interface SidebarProps {
     children: React.ReactNode;
@@ -30,6 +31,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const logout = useAuthStore((state) => state.logout);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const { data: myBusiness } = useMyBusiness();
+    const { data: activeSubscription } = useActiveSubscription();
 
     // eslint-disable-next-line no-console
     console.log('[DASHBOARD SIDEBAR] 🔍 isAuthenticated:', isAuthenticated, 'path:', pathname);
@@ -59,6 +61,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const redemptionRequests = data?.redemptionRequests || [];
     const unreadCount = notifications.filter((n: Notification) => !n.read).length;
     const pendingRedemptions = redemptionRequests.filter((r: any) => r.status === 'pending').length;
+    const subscriptionPlanId = String(activeSubscription?.planId || '').toLowerCase();
+    const showPlanPill = Boolean(activeSubscription)
+        && activeSubscription?.status !== 'cancelled'
+        && activeSubscription?.status !== 'expired'
+        && activeSubscription?.status !== 'pending'
+        && !subscriptionPlanId.includes('free');
+    const planPillLabel = activeSubscription?.plan?.name || 'Paid Plan';
 
     const readNotificationMutation = useMutation({
         mutationFn: dashboardApi.markNotificationRead,
@@ -179,14 +188,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ].map(item => ({ ...item, onClick: () => setIsMobileOpen(false) }))
         },
         {
-            id: 'surveys',
-            label: 'Surveys',
-            icon: MessageSquare,
-            href: '/dashboard/surveys',
-            roles: ['owner', 'manager']
-        },
-
-        {
             id: 'loyalty',
             label: 'Loyalty',
             icon: Gift,
@@ -250,7 +251,15 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             submenu: [
                 { label: 'Profile', href: '/dashboard/settings/profile' },
                 { label: 'Branches', href: '/dashboard/settings/branches' },
-                { label: 'Engagement', href: '/dashboard/settings/engagement' },
+                {
+                    id: 'engagement',
+                    label: 'Engagement',
+                    submenu: [
+                        { label: 'Socials', href: '/dashboard/settings/engagement/socials' },
+                        { label: 'Form Creator', href: '/dashboard/settings/engagement/forms' },
+                        { label: 'Form Responses', href: '/dashboard/settings/engagement/forms/responses' },
+                    ]
+                },
                 { label: 'Notifications', href: '/dashboard/settings/notifications' },
                 { label: 'Integrations', href: '/dashboard/settings/integrations' },
                 { label: 'Subscription', href: '/dashboard/settings/subscription' },
@@ -472,7 +481,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                     </div>
                     <div className="flex items-center gap-2 lg:gap-4 relative">
                         <TrialBanner compact />
-                        {/* Removed Plan Badge */}
+                        {showPlanPill && (
+                            <Link
+                                href="/dashboard/settings/subscription/manage"
+                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
+                            >
+                                {planPillLabel}
+                            </Link>
+                        )}
 
                         {/* Notification Button */}
                         <button
