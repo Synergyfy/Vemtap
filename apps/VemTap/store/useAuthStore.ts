@@ -64,18 +64,18 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       access_token: null,
       isAuthenticated: false,
-      activeBranchId: null,
+      activeBranchId: 'all',
 
       login: (userData, access_token) => {
         console.log('[AUTH] 🔐 login() called', { email: userData?.email, role: userData?.role });
-        set({ user: userData, access_token, isAuthenticated: true });
+        set({ user: userData, access_token, isAuthenticated: true, activeBranchId: get().activeBranchId || 'all' });
         setAuthCookie(access_token);
         console.log('[AUTH] ✅ Login complete, isAuthenticated:', true);
       },
 
       signup: (userData, access_token) => {
         console.log('[AUTH] 📝 signup() called', { email: userData?.email });
-        set({ user: userData, access_token, isAuthenticated: true });
+        set({ user: userData, access_token, isAuthenticated: true, activeBranchId: get().activeBranchId || 'all' });
         setAuthCookie(access_token);
       },
 
