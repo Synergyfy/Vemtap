@@ -104,7 +104,7 @@ export const useSendMessage = () => {
     const businessId = useAuthStore((state) => state.user?.businessId);
     return useMutation<any, Error, SendMessageRequest>({
         mutationFn: async (dto) => {
-            const isAllCustomersAudience = dto.audienceType === 'ALL_CUSTOMERS';
+            const isAllCustomersAudience = dto.audienceType === 'ALL';
             const resolvedBranchId =
                 isAllCustomersAudience
                     ? undefined

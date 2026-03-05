@@ -1,57 +1,71 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsArray, IsObject, IsOptional, ValidateNested, IsNumber } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class FlowPosition {
+  @IsNumber()
+  x: number;
+
+  @IsNumber()
+  y: number;
+}
 
 export class FlowNode {
-  @ApiProperty()
+  @IsString()
   id: string;
 
-  @ApiProperty()
+  @IsString()
   type: string;
 
-  @ApiProperty({ required: false })
-  label?: string;
+  @IsObject()
+  data: Record<string, any>;
 
-  @ApiProperty({ required: false })
-  config?: Record<string, any>;
-
-  @ApiProperty({ required: false })
-  position?: { x: number; y: number };
+  @ValidateNested()
+  @Type(() => FlowPosition)
+  position: FlowPosition;
 }
 
 export class FlowEdge {
-  @ApiProperty()
+  @IsString()
   id: string;
 
-  @ApiProperty()
+  @IsString()
   source: string;
 
-  @ApiProperty()
+  @IsString()
   target: string;
 
-  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
   label?: string;
+
+  @IsOptional()
+  @IsString()
+  handle?: string;
 }
 
 export class FlowStructure {
-  @ApiProperty({ type: [FlowNode] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FlowNode)
   nodes: FlowNode[];
 
-  @ApiProperty({ type: [FlowEdge] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FlowEdge)
   edges: FlowEdge[];
 }
 
+export class FlowTriggerContext {
+  contactId: string;
+  businessId: string;
+  branchId?: string;
+  [key: string]: any;
+}
+
 export class FlowAnalyticsResponse {
-  @ApiProperty()
   totalMessagesSent: number;
-
-  @ApiProperty()
   totalRepliesReceived: number;
-
-  @ApiProperty()
   avgResponseRate: number;
-
-  @ApiProperty()
   loyaltyAssigned: number;
-
-  @ApiProperty()
   activeSessionsCount: number;
 }

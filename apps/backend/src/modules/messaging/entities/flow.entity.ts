@@ -3,6 +3,7 @@ import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { FlowExecution } from './flow-execution.entity';
+import type { FlowStructure } from '../interfaces/flow-engine.interface';
 
 export enum FlowStatus {
   DRAFT = 'draft',
@@ -45,7 +46,7 @@ export class Flow extends AbstractBaseEntity {
 
   // JSON structure for nodes and edges
   @Column({ type: 'jsonb', default: { nodes: [], edges: [] } })
-  structure: any;
+  structure: FlowStructure;
 
   @OneToMany(() => FlowExecution, (execution) => execution.flow)
   executions: FlowExecution[];

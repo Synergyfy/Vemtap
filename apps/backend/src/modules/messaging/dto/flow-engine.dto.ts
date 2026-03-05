@@ -6,7 +6,7 @@ import {
   IsNumber,
   IsObject,
 } from 'class-validator';
-import { FlowStructure } from '../interfaces/flow-engine.interface';
+import type { FlowStructure } from '../interfaces/flow-engine.interface';
 
 export class CreateFlowTemplateDto {
   @ApiProperty({ example: 'Welcome Flow', description: 'Name of the template' })
