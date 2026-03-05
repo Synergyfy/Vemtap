@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
     Search, Star, ArrowRight,
     Home, ChevronRight, ChevronLeft, ShieldCheck, Truck, Headset,
-    Share2, X, CheckCircle2, Play
+    Share2, X, CheckCircle2, Play, ChevronDown, AlertTriangle
 } from 'lucide-react';
 import { fetchProductDetail, requestQuote, createOrder } from '@/lib/api/marketplace';
 import { ProductDetailSkeleton } from '@/components/marketplace/Skeletons';
@@ -31,7 +31,9 @@ export default function ProductClient({ id }: { id: string }) {
     const [selectedImage, setSelectedImage] = useState(0);
     const [activeTab, setActiveTab] = useState<'specs' | 'quote' | 'reviews'>('specs');
     const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+    const [modalType, setModalType] = useState<'quote' | 'consultation'>('quote');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [moqWarning, setMoqWarning] = useState(false);
 
     const [quoteData, setQuoteData] = useState({
         firstName: user?.name?.split(' ')[0] || '',
@@ -359,28 +361,32 @@ export default function ProductClient({ id }: { id: string }) {
                                 </div>
                             </div>
                             <button
-                                onClick={handleBuyNow}
+                                onClick={() => { setModalType('quote'); setIsQuoteModalOpen(true); }}
                                 disabled={isSubmitting}
                                 className="w-full mt-4 py-4 bg-primary text-white font-bold rounded-2xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 group disabled:opacity-50"
                             >
-                                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Buy Now'}
+                                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Request Quote'}
                                 {!isSubmitting && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
                             </button>
                         </div>
 
-                        {/* Low MOQ Quote */}
-                        <div className="bg-amber-50 p-6 rounded-2xl border border-amber-200 space-y-3">
-                            <h4 className="text-sm font-bold text-amber-900 uppercase tracking-wider">Need Less Than {product.tieredPricing?.[0]?.minQuantity || 1} Units?</h4>
+                        {/* MOQ Quote Section */}
+                        <div id="moq-quote-section" className="bg-amber-50 p-6 rounded-2xl border border-amber-200 space-y-3">
+                            <div className="flex items-center gap-2">
+                                <ChevronDown size={18} className="text-amber-700 animate-bounce" />
+                                <h4 className="text-sm font-bold text-amber-900 uppercase tracking-wider">Need Less Than {product.moq || product.tieredPricing?.[0]?.minQuantity || 1} Units?</h4>
+                            </div>
                             <p className="text-sm text-amber-800 font-medium">Contact us for special pricing on smaller quantities</p>
                             <div className="flex items-center gap-2 text-sm font-bold text-amber-900">
                                 <span className="material-icons-round text-lg">phone</span>
                                 <a href="tel:+2348012345678" className="hover:underline">+234 801 234 5678</a>
                             </div>
                             <button
-                                onClick={() => setIsQuoteModalOpen(true)}
+                                onClick={() => { setModalType('quote'); setIsQuoteModalOpen(true); }}
                                 className="w-full py-3 bg-amber-600 text-white font-bold rounded-2xl hover:bg-amber-700 transition-all flex items-center justify-center gap-2"
                             >
-                                Request Low MOQ Quote
+                                <ChevronDown size={16} />
+                                Request MOQ Quote
                             </button>
                         </div>
 
@@ -561,13 +567,48 @@ export default function ProductClient({ id }: { id: string }) {
                                                 <input
                                                     type="number"
                                                     value={quoteData.quantity}
-                                                    onChange={(e) => setQuoteData({ ...quoteData, quantity: e.target.value })}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        setQuoteData({ ...quoteData, quantity: val });
+                                                        const moq = product.moq || product.tieredPricing?.[0]?.minQuantity || 1;
+                                                        setMoqWarning(!!val && parseInt(val) > 0 && parseInt(val) < moq);
+                                                    }}
                                                     placeholder="e.g. 100"
-                                                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium"
+                                                    className={`w-full px-4 py-3 bg-white border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium transition-colors ${moqWarning ? 'border-amber-400 bg-amber-50' : 'border-gray-200'
+                                                        }`}
                                                     required
                                                     min="1"
                                                 />
                                             </div>
+
+                                            {moqWarning && (
+                                                <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-300 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300">
+                                                    <AlertTriangle size={18} className="text-amber-600 mt-0.5 shrink-0" />
+                                                    <div className="flex-1">
+                                                        <p className="text-sm font-bold text-amber-900">Quantity below minimum order ({product.moq || product.tieredPricing?.[0]?.minQuantity || 1} units)</p>
+                                                        <p className="text-xs text-amber-700 mt-1">Use the <strong>MOQ Quote Form</strong> below for smaller quantities.</p>
+                                                    </div>
+                                                    <ChevronDown size={18} className="text-amber-600 animate-bounce shrink-0" />
+                                                </div>
+                                            )}
+
+                                            {quoteData.quantity && !isNaN(parseInt(quoteData.quantity)) && parseInt(quoteData.quantity) > 0 && !moqWarning && (() => {
+                                                const qty = parseInt(quoteData.quantity);
+                                                const calculated = calculateQuotePrice(product.tieredPricing || [], qty);
+                                                const unitPrice = calculated === 'quote' ? product.price : calculated / qty;
+                                                const total = calculated === 'quote' ? null : calculated;
+                                                return (
+                                                    <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl flex justify-between items-center animate-in fade-in slide-in-from-top-2 duration-300">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[10px] font-black uppercase text-primary tracking-widest">Estimated Total</span>
+                                                            <span className="text-xs text-slate-500 font-medium">Based on ₦{unitPrice.toLocaleString()} / unit</span>
+                                                        </div>
+                                                        <span className="text-2xl font-black text-slate-900">
+                                                            {total !== null ? `₦${total.toLocaleString()}` : 'Contact for quote'}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })()}
                                             <div>
                                                 <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">Additional Notes</label>
                                                 <textarea
@@ -705,7 +746,10 @@ export default function ProductClient({ id }: { id: string }) {
                             <Headset size={40} className="text-primary" />
                             <h4 className="text-xl font-bold text-slate-900">Need Customization?</h4>
                             <p className="text-sm text-slate-600 font-medium">Our hardware team specializes in custom NFC builds for large-scale enterprise deployments.</p>
-                            <button onClick={() => setActiveTab('quote')} className="w-full py-4 bg-white border border-primary/20 text-primary font-bold hover:bg-primary hover:text-white transition-all">
+                            <button
+                                onClick={() => { setModalType('consultation'); setIsQuoteModalOpen(true); }}
+                                className="w-full py-4 bg-white border border-primary/20 text-primary font-bold hover:bg-primary hover:text-white transition-all rounded-2xl"
+                            >
                                 Request Consultation
                             </button>
                         </div>
@@ -742,8 +786,14 @@ export default function ProductClient({ id }: { id: string }) {
                         <div className="flex-1">
                             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                                 <div>
-                                    <h3 className="font-display font-bold text-xl text-text-main">Request Bulk Quote</h3>
-                                    <p className="text-sm text-text-secondary">VemTap specialized pricing for {product.name}</p>
+                                    <h3 className="font-display font-bold text-xl text-text-main">
+                                        {modalType === 'quote' ? 'Request MOQ Quote' : 'Request Consultation'}
+                                    </h3>
+                                    <p className="text-sm text-text-secondary">
+                                        {modalType === 'quote'
+                                            ? `VemTap specialized pricing for ${product.name}`
+                                            : `Hardware customization for your business`}
+                                    </p>
                                 </div>
                                 <button onClick={() => setIsQuoteModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500">
                                     <X size={20} />
@@ -822,18 +872,57 @@ export default function ProductClient({ id }: { id: string }) {
                                         />
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">Quantity Needed</label>
-                                    <input
-                                        type="number"
-                                        value={quoteData.quantity}
-                                        onChange={(e) => setQuoteData({ ...quoteData, quantity: e.target.value })}
-                                        placeholder="e.g. 100"
-                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium"
-                                        required
-                                        min="1"
-                                    />
-                                </div>
+                                {modalType === 'quote' && (
+                                    <>
+                                        <div>
+                                            <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">Quantity Needed</label>
+                                            <input
+                                                type="number"
+                                                value={quoteData.quantity}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setQuoteData({ ...quoteData, quantity: val });
+                                                    const moq = product.moq || product.tieredPricing?.[0]?.minQuantity || 1;
+                                                    setMoqWarning(!!val && parseInt(val) > 0 && parseInt(val) < moq);
+                                                }}
+                                                placeholder="e.g. 100"
+                                                className={`w-full px-4 py-3 bg-white border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium transition-colors ${moqWarning ? 'border-amber-400 bg-amber-50' : 'border-gray-200'
+                                                    }`}
+                                                required
+                                                min="1"
+                                            />
+                                        </div>
+
+                                        {moqWarning && (
+                                            <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-300 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <AlertTriangle size={18} className="text-amber-600 mt-0.5 shrink-0" />
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-bold text-amber-900">Quantity below minimum order ({product.moq || product.tieredPricing?.[0]?.minQuantity || 1} units)</p>
+                                                    <p className="text-xs text-amber-700 mt-1">Use the <strong>MOQ Quote Form</strong> for smaller quantities.</p>
+                                                </div>
+                                                <ChevronDown size={18} className="text-amber-600 animate-bounce shrink-0" />
+                                            </div>
+                                        )}
+
+                                        {quoteData.quantity && !isNaN(parseInt(quoteData.quantity)) && parseInt(quoteData.quantity) > 0 && !moqWarning && (() => {
+                                            const qty = parseInt(quoteData.quantity);
+                                            const calculated = calculateQuotePrice(product.tieredPricing || [], qty);
+                                            const unitPrice = calculated === 'quote' ? product.price : calculated / qty;
+                                            const total = calculated === 'quote' ? null : calculated;
+                                            return (
+                                                <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl flex justify-between items-center animate-in fade-in slide-in-from-top-2 duration-300">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] font-black uppercase text-primary tracking-widest">Estimated Total</span>
+                                                        <span className="text-xs text-slate-500 font-medium">Based on ₦{unitPrice.toLocaleString()} / unit</span>
+                                                    </div>
+                                                    <span className="text-2xl font-black text-slate-900">
+                                                        {total !== null ? `₦${total.toLocaleString()}` : 'Contact for quote'}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })()}
+                                    </>
+                                )}
                                 <div>
                                     <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">Additional Notes</label>
                                     <textarea

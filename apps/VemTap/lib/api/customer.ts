@@ -17,10 +17,10 @@ export const customerApi = {
     getLoyaltyAnalytics: () => api.get('/loyalty/analytics'),
     tapDevice: (code: string) => api.post(`/loyalty/tap/${code}`, {}),
     getDeviceInfo: (code: string) => api.get(`/loyalty/device-info/${code}`),
-    getLoyaltyProfile: (businessId?: string) => api.get(withQuery('/loyalty/profile', { businessId })),
-    getLoyaltyHistory: (businessId?: string) => api.get(withQuery('/loyalty/history', { businessId })),
-    getLoyaltyRewards: (businessId?: string) => api.get(withQuery('/loyalty/rewards', { businessId })),
-    redeemReward: (data: { rewardId: string; businessId?: string }) => api.post('/loyalty/redeem', data),
+    getLoyaltyProfile: (businessId?: string) => api.get(withQuery('/loyalty/profile', { businessId })),   
+    getLoyaltyHistory: (businessId?: string) => api.get(withQuery('/loyalty/history', { businessId })),   
+    getMyHistory: () => api.get('/loyalty/my-history'),
+    getLoyaltyRewards: (businessId?: string) => api.get(withQuery('/loyalty/rewards', { businessId })),       redeemReward: (data: { rewardId: string; businessId?: string }) => api.post('/loyalty/redeem', data),
 
     getSupportTickets: () => api.get('/support/tickets'),
     createSupportTicket: (data: { subject: string; category: string; priority: string; description: string }) =>

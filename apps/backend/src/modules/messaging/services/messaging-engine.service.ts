@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, In } from 'typeorm';
+import { Repository, DataSource, In, MoreThan, Not, IsNull } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 
@@ -16,6 +16,7 @@ import { MessageLog } from '../entities/message-log.entity';
 import {
   MessageCampaign,
   CampaignStatus,
+  AudienceType,
 } from '../entities/message-campaign.entity';
 import {
   ConversationThread,
@@ -65,6 +66,10 @@ export class MessagingEngineService {
   public async sendMessage(
     dto: SendMessageDto,
   ): Promise<{ campaignId?: string; messageIds?: string[] }> {
+    if (!dto.businessId) {
+      throw new BadRequestException('Business ID is required');
+    }
+
     const business = await this.businessRepo.findOne({
       where: { id: dto.businessId },
     });
@@ -83,12 +88,10 @@ export class MessagingEngineService {
       if (branch) branchId = branch.id;
     }
 
-    // For campaign (multiple contacts), branchId is crucial for data segmentation.
-    // If we still don't have branchId, and contacts > 1, maybe we should fail?
-    // Or just let it be null on Message entity? But ConversationThread requires branchId.
-    // So we MUST have a branchId for ConversationThread.
     if (!branchId) {
-      throw new BadRequestException('Branch ID is required for messaging.');
+      this.logger.warn(
+        `No branchId provided or found for business ${dto.businessId}. Proceeding with null branchId.`,
+      );
     }
     dto.branchId = branchId; // Update DTO for downstream use
 
@@ -126,6 +129,7 @@ export class MessagingEngineService {
       return { messageIds: [messageId] };
     } else {
       const campaign = await this.campaignService.createCampaign({
+        businessId: dto.businessId,
         branchId,
         name: `Campaign ${new Date().toISOString()}`,
         channel: dto.channel,
@@ -362,7 +366,7 @@ export class MessagingEngineService {
           contactId: contact.id,
           direction: MessageDirection.OUTBOUND,
           content: finalContent,
-          status: MessageStatus.SENT,
+          status: this.mapProviderStatus(response.status),
           providerMessageId: response.messageId || undefined,
           channel: dto.channel,
           cost: await this.providerRouter.estimateCost({
@@ -381,7 +385,7 @@ export class MessagingEngineService {
           contactId: contact.id,
           channel: dto.channel,
           direction: MessageDirection.OUTBOUND,
-          status: MessageStatus.SENT,
+          status: this.mapProviderStatus(response.status),
           messageId: message.id,
         }),
       );
@@ -410,7 +414,34 @@ export class MessagingEngineService {
     if (dto.contactIds && dto.contactIds.length > 0) {
       return this.contactRepo.findBy({ id: In(dto.contactIds) });
     }
-    return this.contactRepo.find({ where: { businessId: dto.businessId } });
+
+    const baseQuery: any = { businessId: dto.businessId, optOut: false };
+
+    switch (dto.audienceType) {
+      case AudienceType.RECENT:
+        // Contacts from last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return this.contactRepo.find({
+          where: {
+            ...baseQuery,
+            createdAt: MoreThan(thirtyDaysAgo),
+          },
+        });
+
+      case AudienceType.TAGGED:
+        // Contacts with any tags
+        return this.contactRepo.find({
+          where: {
+            ...baseQuery,
+            tags: Not(IsNull()),
+          },
+        });
+
+      case AudienceType.ALL:
+      default:
+        return this.contactRepo.find({ where: baseQuery });
+    }
   }
 
   public async calculateCost(count: number, channel: Channel): Promise<number> {

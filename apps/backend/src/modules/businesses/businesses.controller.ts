@@ -31,7 +31,7 @@ import { ImportCustomersDto } from './dto/import-customers.dto';
 @ApiBearerAuth()
 @Controller('businesses')
 export class BusinessesController {
-  constructor(private readonly businessesService: BusinessesService) { }
+  constructor(private readonly businessesService: BusinessesService) {}
 
   @Get('my-business')
   @SkipSubscriptionCheck()

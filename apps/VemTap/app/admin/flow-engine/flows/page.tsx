@@ -247,10 +247,10 @@ export default function FlowManagementPage() {
                                             <td className="py-3">
                                                 <span
                                                     className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${flow.status === 'active'
-                                                            ? 'bg-emerald-50 text-emerald-700'
-                                                            : flow.status === 'paused'
-                                                                ? 'bg-amber-50 text-amber-700'
-                                                                : 'bg-gray-100 text-gray-700'
+                                                        ? 'bg-emerald-50 text-emerald-700'
+                                                        : flow.status === 'paused'
+                                                            ? 'bg-amber-50 text-amber-700'
+                                                            : 'bg-gray-100 text-gray-700'
                                                         }`}
                                                 >
                                                     {flow.status}
@@ -304,6 +304,24 @@ export default function FlowManagementPage() {
                         </div>
 
                         <div className="space-y-4">
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Business</label>
+                                <select
+                                    value={businessId}
+                                    onChange={(e) => setBusinessId(e.target.value)}
+                                    className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10"
+                                >
+                                    <option value="">
+                                        {isLoadingBusinesses ? 'Loading businesses...' : 'Select Business'}
+                                    </option>
+                                    {businesses.map((business) => (
+                                        <option key={business.id} value={business.id}>
+                                            {business.name} ({business.id.slice(0, 8)})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
                             <div>
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Flow Name</label>
                                 <input

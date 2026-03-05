@@ -6,6 +6,7 @@ import {
   IsNumber,
   IsObject,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class BusinessSudoActionDto {
   @ApiProperty({ example: 'biz_102' })
@@ -44,7 +45,11 @@ export class BusinessSudoActionDto {
   @ApiProperty({
     required: false,
     description: 'Flexible payload for action fields',
-    example: { full_name: 'Jane Doe', email: 'jane@business.com', role: 'Manager' },
+    example: {
+      full_name: 'Jane Doe',
+      email: 'jane@business.com',
+      role: 'Manager',
+    },
   })
   @IsOptional()
   @IsObject()
@@ -101,6 +106,7 @@ export class BusinessSearchFilterDto {
 
   @ApiProperty({ required: false, default: 10 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 }
@@ -113,6 +119,7 @@ export class CustomerSearchFilterDto {
 
   @ApiProperty({ required: false, default: 10 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 }

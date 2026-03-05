@@ -34,7 +34,7 @@ export class SubscriptionsService {
     private readonly userRepository: Repository<User>,
     private readonly plansService: PlansService,
     private readonly paymentsService: PaymentsService,
-  ) { }
+  ) {}
 
   async activeSubscription(businessId: string): Promise<Subscription | null> {
     const sub = await this.subscriptionRepository.findOne({
@@ -87,7 +87,7 @@ export class SubscriptionsService {
     // But the request says "staff and manager should not be able to subscribe".
     // If this service is called by the controller, the @Roles guard handles it.
     // If we want to be absolutely sure here, we'd need the caller's role.
-    // Given the context, the controller restriction is likely sufficient, 
+    // Given the context, the controller restriction is likely sufficient,
     // but I will add a check if the business has an owner and ensure we are not violating business rules.
 
     let status = SubscriptionStatus.ACTIVE;

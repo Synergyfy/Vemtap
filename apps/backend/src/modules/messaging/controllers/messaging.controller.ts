@@ -79,10 +79,6 @@ export class MessagingController {
       dto.branchId = req.user.branchId;
     }
 
-    if (!dto.branchId) {
-      throw new BadRequestException('branchId is required');
-    }
-
     return this.messagingEngine.sendMessage(dto);
   }
 
@@ -116,14 +112,18 @@ export class MessagingController {
   @Get('campaigns')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
-  @ApiOperation({ summary: 'Get all messaging campaigns for a branch' })
+  @ApiOperation({
+    summary: 'Get all messaging campaigns for a branch or business',
+  })
   async getCampaigns(
     @Query('branchId') branchId: string,
     @Request() req: { user: User },
   ) {
-    const resolved = branchId || req.user?.branchId;
-    if (!resolved) throw new BadRequestException('branchId is required');
-    return this.campaignService.getCampaigns(resolved);
+    const resolvedBranchId = branchId || req.user?.branchId;
+    return this.campaignService.getCampaigns(
+      resolvedBranchId,
+      req.user.businessId,
+    );
   }
 
   @Get('analytics')

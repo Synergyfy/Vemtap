@@ -46,7 +46,7 @@ describe('AutomationsController (e2e)', () => {
       lastName: 'Test',
       role: UserRole.OWNER,
     } as any);
-    const savedOwner = await userRepo.save(ownerParams);
+    const savedOwner = (await userRepo.save(ownerParams)) as unknown as User;
 
     const biz = {
       name: 'Test Business ' + testId,
@@ -54,13 +54,18 @@ describe('AutomationsController (e2e)', () => {
       ownerId: savedOwner.id,
     };
     const businessParams = businessRepo.create(biz as any);
-    const savedBusiness = await businessRepo.save(businessParams);
+    const savedBusiness = (await businessRepo.save(
+      businessParams,
+    )) as unknown as Business;
     businessId = savedBusiness.id;
 
     savedOwner.businessId = businessId;
     await userRepo.save(savedOwner);
 
-    const loginResult = await authService.login(savedOwner);
+    const loginResult = await authService.login({
+      identifier: savedOwner.email,
+      password: 'password123',
+    });
     ownerToken = loginResult.access_token;
 
     // 2. Create an Automation Rule

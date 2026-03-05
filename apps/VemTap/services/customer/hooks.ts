@@ -25,6 +25,12 @@ export const useCustomerLoyaltyHistory = (businessId?: string) =>
         queryFn: () => customerApi.getLoyaltyHistory(businessId),
     });
 
+export const useCustomerGlobalHistory = () =>
+    useQuery({
+        queryKey: ['customer', 'loyalty', 'history', 'global'],
+        queryFn: () => customerApi.getMyHistory(),
+    });
+
 export const useCustomerLoyaltyRewards = (businessId?: string) =>
     useQuery({
         queryKey: ['customer', 'loyalty', 'rewards', businessId],
@@ -37,6 +43,7 @@ export const useRedeemCustomerReward = () => {
         mutationFn: (data: { rewardId: string; businessId?: string }) => customerApi.redeemReward(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['customer', 'loyalty'] });
+            queryClient.invalidateQueries({ queryKey: ['customer', 'loyalty', 'history', 'global'] });
         },
     });
 };

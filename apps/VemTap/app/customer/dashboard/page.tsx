@@ -16,7 +16,7 @@ import { fetchDeviceByCode, Device } from '@/lib/api/devices';
 import { notify } from '@/lib/notify';
 import {
     useCustomerLoyaltyAnalytics,
-    useCustomerLoyaltyHistory,
+    useCustomerGlobalHistory,
     useCustomerLoyaltyProfile,
     useCustomerLoyaltyRewards,
     useRedeemCustomerReward
@@ -30,7 +30,7 @@ export default function CustomerDashboardPage() {
     const { data: analyticsResponse } = useCustomerLoyaltyAnalytics();
     const { data: profileResponse } = useCustomerLoyaltyProfile(businessId);
     const { data: availableRewardsData = [], isLoading: isRewardsLoading } = useCustomerLoyaltyRewards(businessId);
-    const { data: recentTransactionsData = [], isLoading: isHistoryLoading } = useCustomerLoyaltyHistory(businessId);
+    const { data: recentTransactionsData = [], isLoading: isHistoryLoading } = useCustomerGlobalHistory();
     const redeemMutation = useRedeemCustomerReward();
 
     const router = useRouter();
@@ -235,17 +235,23 @@ export default function CustomerDashboardPage() {
                                                     <IconComp size={20} />
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-text-main text-sm">{tx.reason}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-bold text-text-main text-sm">{tx.reason}</p>
+                                                        {tx.loyaltyProfile?.business?.name && (
+                                                            <span className="px-1.5 py-0.5 bg-gray-100 text-[10px] font-bold text-gray-500 rounded text-nowrap truncate max-w-[100px]">
+                                                                @ {tx.loyaltyProfile.business.name}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <p className="text-xs text-text-secondary font-medium">
                                                         {new Date(tx.createdAt).toLocaleDateString()} at {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     </p>
                                                 </div>
                                             </div>
-                                            <span className={`font-black text-sm ${tx.pointsAmount > 0 ? 'text-green-600' : 'text-orange-600'}`}>
-                                                {tx.pointsAmount > 0 ? '+' : ''}{tx.pointsAmount} pts
+                                            <span className={`font-black text-sm ${tx.pointsAmount > 0 ? 'text-green-600' : tx.pointsAmount < 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+                                                {tx.pointsAmount > 0 ? '+' : ''}{tx.pointsAmount} pts     
                                             </span>
-                                        </div>
-                                    );
+                                        </div>                                    );
                                 })
                             ) : (
                                 <div className="p-12 text-center text-text-secondary">

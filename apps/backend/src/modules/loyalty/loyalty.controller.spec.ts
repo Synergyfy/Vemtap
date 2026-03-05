@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LoyaltyController } from './loyalty.controller';
 import { LoyaltyService } from './loyalty.service';
-import { CreateRewardDto } from './dto/create-reward.dto';
+import { CreateLoyaltyRewardDto } from './dto/create-reward.dto';
 import { EarnPointsDto } from './dto/earn-points.dto';
 import { RedeemRewardDto } from './dto/redeem-reward.dto';
 
@@ -126,7 +126,10 @@ describe('LoyaltyController', () => {
 
   describe('createReward', () => {
     it('should create a reward', async () => {
-      const dto: CreateRewardDto = { name: 'Test Reward', pointCost: 100 };
+      const dto: CreateLoyaltyRewardDto = {
+        name: 'Test Reward',
+        pointCost: 100,
+      };
       const businessId = 'biz-1';
       const result = { id: 'reward-1', ...dto };
       mockLoyaltyService.createReward.mockResolvedValue(result);

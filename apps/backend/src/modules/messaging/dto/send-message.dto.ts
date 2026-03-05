@@ -10,10 +10,12 @@ import { Channel } from '../enums/channel.enum';
 import { AudienceType } from '../entities/message-campaign.entity';
 
 export class SendMessageDto {
-  @ApiProperty({ description: 'Business ID (for credits)' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({
+    description: 'Business ID (resolved from token if not provided)',
+  })
+  @IsOptional()
   @IsString()
-  businessId: string;
+  businessId?: string;
 
   @ApiPropertyOptional({
     description:
