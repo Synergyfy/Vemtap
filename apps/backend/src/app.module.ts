@@ -26,6 +26,7 @@ import { LoyaltyModule } from './modules/loyalty/loyalty.module';
 import { SupportModule } from './modules/support/support.module';
 import { SystemModule } from './modules/system/system.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
+import { FormsModule } from './modules/forms/forms.module';
 
 import { dataSourceOptions } from './database/data-source';
 
@@ -69,6 +70,7 @@ import { dataSourceOptions } from './database/data-source';
     SupportModule,
     SystemModule,
     MessagingModule,
+    FormsModule,
   ],
   controllers: [AppController],
   providers: [

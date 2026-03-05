@@ -38,7 +38,7 @@ export class AdminFlowEngineService implements OnModuleInit {
     @InjectRepository(FlowExecution)
     private readonly executionRepo: Repository<FlowExecution>,
     private readonly settingsService: SettingsService,
-  ) { }
+  ) {}
 
   private getWhereClause<T>(
     filter: FlowFilterDto,
@@ -94,7 +94,9 @@ export class AdminFlowEngineService implements OnModuleInit {
   }
 
   async createTemplate(data: CreateFlowTemplateDto): Promise<FlowTemplate> {
-    const template = this.templateRepo.create(data as any) as unknown as FlowTemplate;
+    const template = this.templateRepo.create(
+      data as any,
+    ) as unknown as FlowTemplate;
     return this.templateRepo.save(template);
   }
 

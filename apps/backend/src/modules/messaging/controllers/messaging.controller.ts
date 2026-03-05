@@ -112,13 +112,18 @@ export class MessagingController {
   @Get('campaigns')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
-  @ApiOperation({ summary: 'Get all messaging campaigns for a branch or business' })
+  @ApiOperation({
+    summary: 'Get all messaging campaigns for a branch or business',
+  })
   async getCampaigns(
     @Query('branchId') branchId: string,
     @Request() req: { user: User },
   ) {
     const resolvedBranchId = branchId || req.user?.branchId;
-    return this.campaignService.getCampaigns(resolvedBranchId, req.user.businessId);
+    return this.campaignService.getCampaigns(
+      resolvedBranchId,
+      req.user.businessId,
+    );
   }
 
   @Get('analytics')

@@ -114,8 +114,7 @@ export class MailService {
 
   async sendGenericEmail(email: string, subject: string, content: string) {
     const mailOptions = {
-      from:
-        '"VemTap" <' + this.configService.get<string>('EMAIL_USER') + '>',
+      from: '"VemTap" <' + this.configService.get<string>('EMAIL_USER') + '>',
       to: email,
       subject,
       html: `

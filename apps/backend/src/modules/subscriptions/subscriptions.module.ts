@@ -28,4 +28,4 @@ import { TrialRestrictionGuard } from './guards/trial-restriction.guard';
     TrialRestrictionGuard,
   ],
 })
-export class SubscriptionsModule { }
+export class SubscriptionsModule {}

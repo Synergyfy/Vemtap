@@ -54,7 +54,9 @@ describe('AutomationsController (e2e)', () => {
       ownerId: savedOwner.id,
     };
     const businessParams = businessRepo.create(biz as any);
-    const savedBusiness = (await businessRepo.save(businessParams)) as unknown as Business;
+    const savedBusiness = (await businessRepo.save(
+      businessParams,
+    )) as unknown as Business;
     businessId = savedBusiness.id;
 
     savedOwner.businessId = businessId;

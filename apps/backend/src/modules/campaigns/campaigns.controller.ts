@@ -49,7 +49,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('campaigns')
 export class CampaignsController {
-  constructor(private readonly campaignsService: CampaignsService) { }
+  constructor(private readonly campaignsService: CampaignsService) {}
 
   private getBranchId(req: { user: User }, branchId?: string): string {
     const resolved = branchId || req.user?.branchId;
@@ -102,7 +102,9 @@ export class CampaignsController {
   @ApiOperation({ summary: 'Get campaign dashboard statistics' })
   @ApiResponse({ status: 200, description: 'Dashboard statistics cards' })
   getStats(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
-    return this.campaignsService.getStats(this.getBranchId(req, query.branchId));
+    return this.campaignsService.getStats(
+      this.getBranchId(req, query.branchId),
+    );
   }
 
   @Get('scheduled')
@@ -232,7 +234,13 @@ export class CampaignsController {
   }
 
   @Get('loyalty/rules')
-  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.CUSTOMER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.CUSTOMER,
+  )
   @ApiOperation({ summary: 'Get branch loyalty rules' })
   @ApiResponse({
     status: 200,
@@ -266,7 +274,13 @@ export class CampaignsController {
   }
 
   @Get('loyalty/rewards')
-  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.CUSTOMER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.CUSTOMER,
+  )
   @ApiOperation({ summary: 'Get all active rewards' })
   @ApiResponse({
     status: 200,

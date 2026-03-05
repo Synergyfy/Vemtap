@@ -161,4 +161,4 @@ import { AutomationProcessor } from './processors/automation.processor';
     MessagingFlowService,
   ],
 })
-export class MessagingModule { }
+export class MessagingModule {}

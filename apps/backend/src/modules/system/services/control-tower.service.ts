@@ -1,7 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, ILike } from 'typeorm';
-import { Business, BusinessStatus } from '../../businesses/entities/business.entity';
+import {
+  Business,
+  BusinessStatus,
+} from '../../businesses/entities/business.entity';
 import { Contact } from '../../contacts/entities/contact.entity';
 import { User } from '../../users/entities/user.entity';
 import {
@@ -99,7 +106,10 @@ export class ControlTowerService {
         business.status = BusinessStatus.SUSPENDED;
         business.suspensionReason = `Admin override: ${dto.ticketRef || 'Manual'}`;
         await this.businessRepo.save(business);
-        return { success: true, message: `Business ${business.name} suspended.` };
+        return {
+          success: true,
+          message: `Business ${business.name} suspended.`,
+        };
 
       case 'reset_access':
         // Logic to reset access (e.g., invalidate tokens, etc.)
