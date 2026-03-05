@@ -4,10 +4,9 @@ import React, { useState } from 'react';
 import { Visitor } from '@/lib/store/mockDashboardStore';
 import toast from 'react-hot-toast';
 import { Users, UserPlus, Repeat, Calendar, TrendingUp, TrendingDown,
-    ChevronDown, Trash, Send, Download, Gift, ArrowRight, MessageSquare, Zap } from 'lucide-react';
+    ChevronDown, Send, Download, Gift, ArrowRight, MessageSquare, Zap } from 'lucide-react';
 import LogoIcon from '@/components/brand/LogoIcon';
 import { useRouter } from 'next/navigation';
-import Modal from '@/components/ui/Modal';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import PreviewRewardModal from '@/components/dashboard/PreviewRewardModal';
@@ -19,7 +18,6 @@ import { useVisitorStats } from '@/services/visitors/hooks';
 
 export default function DashboardPage() {
     const router = useRouter();
-    const [showClearModal, setShowClearModal] = useState(false);
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' } | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
     const [rewardPreviewVisitor, setRewardPreviewVisitor] = useState<Visitor | null>(null);
@@ -37,15 +35,6 @@ export default function DashboardPage() {
 
     const { getPlan } = useSubscriptionStore();
     const currentPlan = getPlan();
-
-    const handleClearDashboard = () => {
-        setShowClearModal(true);
-    };
-
-    const confirmClear = () => {
-        setShowClearModal(false);
-        toast.error("Clear disabled while backend integration is ongoing.");
-    };
 
     const analyticsStats = data?.stats.map((s) => {
         let icon = Users;
@@ -136,13 +125,6 @@ export default function DashboardPage() {
                             Upgrade
                         </button>
                     )}
-                    <button
-                        onClick={handleClearDashboard}
-                        className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
-                    >
-                        <Trash size={16} />
-                        Reset
-                    </button>
                 </div>
             </div>
 
@@ -403,22 +385,6 @@ export default function DashboardPage() {
                     </table>
                 </div>
             </div>
-
-            <Modal
-                isOpen={showClearModal}
-                onClose={() => setShowClearModal(false)}
-                title="Clear Dashboard Data"
-                description="Are you sure you want to clear all dashboard data? This will reset all stats and visitor history."
-            >
-                <div className="flex gap-3 py-4">
-                    <button onClick={() => setShowClearModal(false)} className="flex-1 h-12 border border-gray-100 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm">
-                        Cancel
-                    </button>
-                    <button onClick={confirmClear} className="flex-1 h-12 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 text-sm">
-                        Clear Everything
-                    </button>
-                </div>
-            </Modal>
 
             <SendMessageModal
                 isOpen={!!selectedVisitorForMsg}

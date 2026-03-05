@@ -2,42 +2,53 @@
 
 import React, { useMemo } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import PageHeader from '@/components/dashboard/PageHeader';
-import { useAuthStore } from '@/store/useAuthStore';
-import { useMyBusiness } from '@/services/businesses/hooks';
-import { useBusinessFormsStore } from '@/store/useBusinessFormsStore';
+import { api } from '@/lib/api';
+import { useBusinessForms } from '@/services/business-forms/hooks';
 import { BarChart3, Eye } from 'lucide-react';
 
 export default function EngagementFormResponsesPage() {
-    const { user } = useAuthStore();
-    const { data: myBusiness } = useMyBusiness();
-    const businessId = myBusiness?.id || user?.businessId || 'demo-business-id';
+    const { data: forms = [], isLoading: formsLoading } = useBusinessForms();
 
-    const forms = useBusinessFormsStore((state) => state.forms);
-    const submissions = useBusinessFormsStore((state) => state.submissions);
-
-    const businessForms = useMemo(
-        () => forms.filter((form) => form.businessId === businessId),
-        [forms, businessId]
-    );
+    const { data: responsesSummary = [], isLoading: summaryLoading } = useQuery<
+        Array<{ formId: string; count: number; lastResponseAt?: string }>,
+        Error
+    >({
+        queryKey: ['business-forms', 'responses-summary', forms.map((f) => f.id).join(',')],
+        queryFn: async () => {
+            const summary = await Promise.all(
+                forms.map(async (form) => {
+                    const response = await api.get(`/business-forms/${form.id}/responses`);
+                    const rows = Array.isArray(response) ? response : Array.isArray(response?.data) ? response.data : [];
+                    const sorted = [...rows].sort(
+                        (a, b) =>
+                            new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime()
+                    );
+                    return {
+                        formId: form.id,
+                        count: rows.length,
+                        lastResponseAt: sorted[0]?.createdAt,
+                    };
+                })
+            );
+            return summary;
+        },
+        enabled: forms.length > 0,
+    });
 
     const totalResponses = useMemo(
-        () => submissions.filter((item) => item.businessId === businessId).length,
-        [submissions, businessId]
+        () => responsesSummary.reduce((total, item) => total + item.count, 0),
+        [responsesSummary]
     );
-
-    const approvedForms = businessForms.filter((form) => form.status === 'approved').length;
-    const pendingForms = businessForms.filter((form) => form.status === 'pending').length;
-    const respondedResponses = submissions.filter((item) => item.businessId === businessId && (item.status === 'responded' || item.status === 'closed')).length;
-    const responseRate = totalResponses
-        ? Math.round((respondedResponses / totalResponses) * 100)
-        : 0;
+    const publishedForms = forms.filter((form) => form.isPublished).length;
+    const activeForms = forms.filter((form) => form.isActive).length;
 
     return (
         <div className="p-8 space-y-8">
             <PageHeader
                 title="Form Responses"
-                description="View customer details, answers, and respond to complaints via SMS, WhatsApp, or Email."
+                description="View customer answers submitted to each business form."
             />
 
             <div className="flex items-center gap-3">
@@ -52,16 +63,16 @@ export default function EngagementFormResponsesPage() {
                     <p className="text-3xl font-black text-text-main mt-1">{totalResponses}</p>
                 </div>
                 <div className="bg-white rounded-2xl border border-gray-200 p-5">
-                    <p className="text-sm text-text-secondary font-medium">Responded Rate</p>
-                    <p className="text-3xl font-black text-text-main mt-1">{responseRate}%</p>
+                    <p className="text-sm text-text-secondary font-medium">Forms</p>
+                    <p className="text-3xl font-black text-text-main mt-1">{forms.length}</p>
                 </div>
                 <div className="bg-white rounded-2xl border border-gray-200 p-5">
-                    <p className="text-sm text-text-secondary font-medium">Approved Forms</p>
-                    <p className="text-3xl font-black text-text-main mt-1">{approvedForms}</p>
+                    <p className="text-sm text-text-secondary font-medium">Published</p>
+                    <p className="text-3xl font-black text-text-main mt-1">{publishedForms}</p>
                 </div>
                 <div className="bg-white rounded-2xl border border-gray-200 p-5">
-                    <p className="text-sm text-text-secondary font-medium">Pending Forms</p>
-                    <p className="text-3xl font-black text-text-main mt-1">{pendingForms}</p>
+                    <p className="text-sm text-text-secondary font-medium">Active</p>
+                    <p className="text-3xl font-black text-text-main mt-1">{activeForms}</p>
                 </div>
             </div>
 
@@ -74,48 +85,50 @@ export default function EngagementFormResponsesPage() {
                         <thead>
                             <tr className="text-[10px] uppercase tracking-widest text-text-secondary border-b border-gray-100">
                                 <th className="px-5 py-3 font-black">Form</th>
-                                <th className="px-5 py-3 font-black">Type</th>
-                                <th className="px-5 py-3 font-black">Status</th>
+                                <th className="px-5 py-3 font-black">Branch</th>
+                                <th className="px-5 py-3 font-black">Published</th>
                                 <th className="px-5 py-3 font-black">Responses</th>
                                 <th className="px-5 py-3 font-black">Last Response</th>
                                 <th className="px-5 py-3 font-black text-right">Open</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {businessForms.length === 0 && (
+                            {(formsLoading || summaryLoading) && (
+                                <tr>
+                                    <td colSpan={6} className="px-5 py-6 text-sm text-text-secondary">Loading...</td>
+                                </tr>
+                            )}
+                            {!formsLoading && !summaryLoading && forms.length === 0 && (
                                 <tr>
                                     <td colSpan={6} className="px-5 py-6 text-sm text-text-secondary">No forms found.</td>
                                 </tr>
                             )}
-                            {businessForms.map((form) => {
-                                const formSubmissions = submissions.filter((item) => item.formId === form.id);
-                                const lastSubmission = formSubmissions[0];
+                            {forms.map((form) => {
+                                const current = responsesSummary.find((item) => item.formId === form.id);
                                 return (
                                     <tr key={form.id} className="border-b border-gray-50 hover:bg-gray-50">
                                         <td className="px-5 py-4">
                                             <p className="text-sm font-bold text-text-main">{form.title}</p>
-                                            <p className="text-xs text-text-secondary">{`/forms/${form.key}`}</p>
+                                            <p className="text-xs text-text-secondary">{form.description || 'No description'}</p>
                                         </td>
-                                        <td className="px-5 py-4 text-xs font-bold text-text-secondary uppercase tracking-widest">{form.typeLabel || form.type}</td>
+                                        <td className="px-5 py-4 text-xs font-bold text-text-secondary">{form.branchId}</td>
                                         <td className="px-5 py-4">
                                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                                form.status === 'approved'
+                                                form.isPublished
                                                     ? 'bg-emerald-100 text-emerald-700'
-                                                    : form.status === 'pending'
-                                                        ? 'bg-amber-100 text-amber-700'
-                                                        : 'bg-blue-100 text-blue-700'
+                                                    : 'bg-amber-100 text-amber-700'
                                             }`}>
-                                                {form.status}
+                                                {form.isPublished ? 'Published' : 'Draft'}
                                             </span>
                                         </td>
                                         <td className="px-5 py-4">
                                             <div className="inline-flex items-center gap-2 text-sm font-bold text-text-main">
                                                 <BarChart3 size={14} className="text-primary" />
-                                                {formSubmissions.length}
+                                                {current?.count ?? 0}
                                             </div>
                                         </td>
                                         <td className="px-5 py-4 text-xs text-text-secondary">
-                                            {lastSubmission ? new Date(lastSubmission.createdAt).toLocaleString() : 'No responses'}
+                                            {current?.lastResponseAt ? new Date(current.lastResponseAt).toLocaleString() : 'No responses'}
                                         </td>
                                         <td className="px-5 py-4 text-right">
                                             <Link href={`/dashboard/settings/engagement/forms/responses/${form.id}`} className="inline-flex items-center gap-1 text-xs font-black text-primary hover:underline">
