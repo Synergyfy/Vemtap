@@ -126,7 +126,10 @@ describe('LoyaltyController', () => {
 
   describe('createReward', () => {
     it('should create a reward', async () => {
-      const dto: CreateLoyaltyRewardDto = { name: 'Test Reward', pointCost: 100 };
+      const dto: CreateLoyaltyRewardDto = {
+        name: 'Test Reward',
+        pointCost: 100,
+      };
       const businessId = 'biz-1';
       const result = { id: 'reward-1', ...dto };
       mockLoyaltyService.createReward.mockResolvedValue(result);

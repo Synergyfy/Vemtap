@@ -44,7 +44,7 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly businessesService: BusinessesService,
     private readonly branchesService: BranchesService,
-  ) { }
+  ) {}
 
   @Get('me')
   @SkipSubscriptionCheck()

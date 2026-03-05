@@ -3,7 +3,11 @@ import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { User, UserRole, UserStatus } from '../../src/modules/users/entities/user.entity';
+import {
+  User,
+  UserRole,
+  UserStatus,
+} from '../../src/modules/users/entities/user.entity';
 import {
   Business,
   BusinessType,
@@ -13,7 +17,11 @@ import { Contact } from '../../src/modules/contacts/entities/contact.entity';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { Channel } from '../../src/modules/messaging/enums/channel.enum';
 import { Plan } from '../../src/modules/subscriptions/entities/plan.entity';
-import { Subscription, SubscriptionStatus, BillingPeriod } from '../../src/modules/subscriptions/entities/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+  BillingPeriod,
+} from '../../src/modules/subscriptions/entities/subscription.entity';
 import { TermiiProvider } from '../../src/modules/messaging/providers/termii.provider';
 import * as bcrypt from 'bcrypt';
 

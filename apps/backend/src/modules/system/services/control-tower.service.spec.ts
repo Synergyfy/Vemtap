@@ -2,7 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ControlTowerService } from './control-tower.service';
-import { Business, BusinessStatus } from '../../businesses/entities/business.entity';
+import {
+  Business,
+  BusinessStatus,
+} from '../../businesses/entities/business.entity';
 import { Contact } from '../../contacts/entities/contact.entity';
 import { User } from '../../users/entities/user.entity';
 import {
@@ -72,9 +75,16 @@ describe('ControlTowerService', () => {
 
   describe('executeBusinessSudoAction - pause', () => {
     it('should suspend a business', async () => {
-      const mockBusiness = { id: 'biz_1', name: 'Test Biz', status: BusinessStatus.ACTIVE } as any;
+      const mockBusiness = {
+        id: 'biz_1',
+        name: 'Test Biz',
+        status: BusinessStatus.ACTIVE,
+      } as any;
       businessRepo.findOne.mockResolvedValue(mockBusiness);
-      businessRepo.save.mockResolvedValue({ ...mockBusiness, status: BusinessStatus.SUSPENDED });
+      businessRepo.save.mockResolvedValue({
+        ...mockBusiness,
+        status: BusinessStatus.SUSPENDED,
+      });
 
       const dto: BusinessSudoActionDto = {
         businessUid: 'biz_1',

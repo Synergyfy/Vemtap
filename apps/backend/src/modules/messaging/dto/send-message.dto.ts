@@ -10,7 +10,9 @@ import { Channel } from '../enums/channel.enum';
 import { AudienceType } from '../entities/message-campaign.entity';
 
 export class SendMessageDto {
-  @ApiPropertyOptional({ description: 'Business ID (resolved from token if not provided)' })
+  @ApiPropertyOptional({
+    description: 'Business ID (resolved from token if not provided)',
+  })
   @IsOptional()
   @IsString()
   businessId?: string;
