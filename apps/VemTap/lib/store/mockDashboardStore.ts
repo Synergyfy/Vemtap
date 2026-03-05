@@ -148,7 +148,6 @@ export interface DashboardState {
   addRedemptionRequest: (request: Omit<RedemptionRequest, 'id' | 'status' | 'timestamp'>) => void;
   approveRedemption: (id: string) => void;
   declineRedemption: (id: string) => void;
-  recordExternalTap: (visitorData: { name: string; email?: string; phone: string; uniqueId?: string; branchId?: string; location?: string }) => void;
   getFilteredVisitors: (branchId: string) => Visitor[];
   reset: () => void;
 }
@@ -422,83 +421,6 @@ export const useMockDashboardStore = create<DashboardState>()(
         templates: state.templates.map(t => t.id === id ? { ...t, ...updates } : t)
       })),
       deleteTemplate: (id) => set((state) => ({ templates: state.templates.filter(t => t.id !== id) })),
-      recordExternalTap: (visitorData) => set((state) => {
-        const existingIndex = state.visitors.findIndex(v => 
-          (visitorData.phone && v.phone === visitorData.phone) || 
-          (visitorData.uniqueId && v.id === visitorData.uniqueId)
-        );
-
-        let newVisitors = [...state.visitors];
-        let isReturning = false;
-
-        // Auto-Location Logic
-        const branchId = visitorData.branchId || 'head-office';
-        let location = visitorData.location;
-        
-        if (!location) {
-          // Fallback map for mock branches
-          const locationMap: Record<string, string> = {
-            'head-office': 'Victoria Island, Lagos',
-            'ikeja-branch': 'Allen Avenue, Ikeja',
-            'abuja-branch': 'Apo Garki, Abuja'
-          };
-          location = locationMap[branchId] || 'Main Location';
-        }
-
-        if (existingIndex > -1) {
-          isReturning = true;
-          const updatedVisitor = {
-            ...newVisitors[existingIndex],
-            time: 'Just now',
-            timestamp: Date.now(),
-            status: 'returning' as const,
-            branchId,
-            location
-          };
-          newVisitors.splice(existingIndex, 1);
-          newVisitors.unshift(updatedVisitor);
-        } else {
-          const newVisitor = {
-            id: visitorData.uniqueId || `V-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
-            name: visitorData.name,
-            phone: visitorData.phone,
-            time: 'Just now',
-            timestamp: Date.now(),
-            status: 'new' as const,
-            branchId,
-            location
-          };
-          newVisitors.unshift(newVisitor);
-        }
-
-        const newStats = { ...state.stats };
-        newStats.todaysVisits += 1;
-        if (isReturning) {
-          newStats.repeatVisitors += 1;
-        } else {
-          newStats.totalVisitors += 1;
-          newStats.newVisitors += 1;
-        }
-
-        // Add a notification for the business
-        const notification: Notification = {
-          id: `N-${Date.now()}`,
-          title: isReturning ? 'Returning Visitor' : 'New Visitor',
-          message: `${visitorData.name} just tapped at ${location}.`,
-          timestamp: Date.now(),
-          read: false,
-          type: 'success',
-          scope: 'DASHBOARD',
-          branchId
-        };
-
-        return {
-          visitors: newVisitors,
-          stats: newStats,
-          notifications: [notification, ...state.notifications]
-        };
-      }),
-
       addRedemptionRequest: (request) => set((state) => {
         const newRequest: RedemptionRequest = {
           ...request,

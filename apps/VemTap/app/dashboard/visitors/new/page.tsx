@@ -8,13 +8,53 @@ import DataTable, { Column } from '@/components/dashboard/DataTable';
 import EmptyState from '@/components/dashboard/EmptyState';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Visitor } from '@/services/visitors/types';
-import { useNewVisitors, useNewVisitorStats } from '@/services/visitors/hooks';
+import { useNewVisitors, useNewVisitorStats, useVisitor } from '@/services/visitors/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { UserPlus, Calendar, TrendingUp, Timer, Send, Hand } from 'lucide-react';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import toast from 'react-hot-toast';
 import { formatDate } from '@/lib/utils/date';
+
+function NewVisitorJoinedCell({ visitor }: { visitor: Visitor }) {
+    const { data: fullVisitor } = useVisitor(visitor.id, 'all');
+
+    const resolveJoinedDate = (item: Visitor) => {
+        const enhanced = item as Visitor & {
+            firstSeen?: string;
+            firstSeenDate?: string;
+            createdAt?: string;
+            updatedAt?: string;
+            firstSeenAt?: string;
+            firstVisitAt?: string;
+            firstVisitDate?: string;
+        };
+        const timestampDate = typeof item.timestamp === 'number'
+            ? new Date(item.timestamp < 1_000_000_000_000 ? item.timestamp * 1000 : item.timestamp)
+            : null;
+        const candidates: Array<string | Date | null | undefined> = [
+            item.joinedDate,
+            enhanced.firstSeen,
+            enhanced.firstSeenDate,
+            enhanced.firstSeenAt,
+            enhanced.firstVisitAt,
+            enhanced.firstVisitDate,
+            enhanced.createdAt,
+            timestampDate,
+            item.lastVisit,
+            item.time,
+            enhanced.updatedAt,
+        ];
+        for (const candidate of candidates) {
+            const formatted = formatDate(candidate);
+            if (formatted !== 'N/A' && formatted !== 'Invalid Date') return formatted;
+            if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+        }
+        return 'Not provided';
+    };
+
+    return resolveJoinedDate((fullVisitor || visitor) as Visitor);
+}
 
 export default function NewVisitorsPage() {
     const queryClient = useQueryClient();
@@ -52,14 +92,18 @@ export default function NewVisitorsPage() {
         { label: 'Avg. Wait', value: '0m', icon: Timer, color: 'yellow' as const, trend: { value: '-0s', isUp: true } },
     ];
 
+    const getVisitorDisplayName = (visitor: Visitor) => {
+        return visitor.name ||
+            (visitor.firstName || visitor.lastName
+                ? `${visitor.firstName || ''} ${visitor.lastName || ''}`.trim()
+                : 'Unknown Visitor');
+    };
+
     const columns: Column<Visitor>[] = [
         {
             header: 'Visitor',
             accessor: (item: Visitor) => {
-                const displayName = item.name ||
-                    (item.firstName || item.lastName
-                        ? `${item.firstName || ''} ${item.lastName || ''}`.trim()
-                        : 'Unknown Visitor');
+                const displayName = getVisitorDisplayName(item);
 
                 return (
                     <div className="flex items-center gap-3">
@@ -74,7 +118,7 @@ export default function NewVisitorsPage() {
                 );
             }
         },
-        { header: 'Joined', accessor: (item: Visitor) => formatDate(item.lastVisit || item.time) },
+        { header: 'Joined', accessor: (item: Visitor) => <NewVisitorJoinedCell visitor={item} /> },
         {
             header: 'Status',
             accessor: () => (
@@ -126,7 +170,7 @@ export default function NewVisitorsPage() {
             <SendMessageModal
                 isOpen={!!selectedVisitorForMsg}
                 onClose={() => setSelectedVisitorForMsg(null)}
-                recipientName={selectedVisitorForMsg?.name || ''}
+                recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
                 recipientPhone={selectedVisitorForMsg?.phone}
                 type="welcome"
             />

@@ -40,6 +40,20 @@ export class LoyaltyController {
     return this.loyaltyService.getAnalytics(req.user.id);
   }
 
+  @Get('check-visit/:businessId')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Check if current customer has visited a business' })
+  async checkVisit(
+    @Request() req,
+    @Param('businessId') businessId: string,
+  ): Promise<{ hasVisited: boolean }> {
+    const hasVisited = await this.loyaltyService.checkVisit(
+      req.user.id,
+      businessId,
+    );
+    return { hasVisited };
+  }
+
   @Post('tap/:code')
   @Roles(UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Process a device tap (Record visit/earn points)' })
@@ -103,6 +117,13 @@ export class LoyaltyController {
   @ApiQuery({ name: 'businessId', required: false })
   async getHistory(@Request() req, @Query('businessId') businessId?: string) {
     return this.loyaltyService.getHistory(req.user.id, businessId);
+  }
+
+  @Get('my-history')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Get global loyalty history for the current customer' })
+  async getMyHistory(@Request() req) {
+    return this.loyaltyService.getHistory(req.user.id);
   }
 
   @Get('rewards')

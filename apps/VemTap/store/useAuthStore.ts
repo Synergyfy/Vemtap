@@ -20,6 +20,8 @@ export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'trialing'
 export interface User {
   id: string;
   email: string;
+  firstName: string;
+  lastName: string;
   name: string;
   role: UserRole;
   businessId?: string;

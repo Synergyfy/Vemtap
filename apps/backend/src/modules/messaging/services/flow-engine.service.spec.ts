@@ -60,7 +60,7 @@ describe('FlowEngineService', () => {
 
   describe('triggerFlow', () => {
     const branchId = 'branch-1';
-    const context = { contactId: 'contact-1' };
+    const context = { contactId: 'contact-1', businessId: 'biz-1' };
 
     it('should trigger active flow and execute first node', async () => {
       const flow = {

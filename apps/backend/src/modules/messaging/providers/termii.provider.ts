@@ -58,20 +58,15 @@ export class TermiiProvider implements MessagingProvider {
         throw error;
       }
     } else if (payload.channel === Channel.WHATSAPP) {
-      // Termii WhatsApp Implementation (Generic/Mock structure based on typical providers)
-      // Termii's WhatsApp API documentation would specify the exact endpoint and payload.
-      // Assuming a similar structure to SMS but with different channel/type or a specific endpoint.
-      // Note: Termii often uses "dnd" or specific routes for WhatsApp, or a different base URL for "Token" based messaging.
-      // For this implementation, we will use a hypothetical endpoint as per instruction to use Termii.
-
-      const url = `${this.baseUrl}/sms/send`; // Often same endpoint, different 'channel'
+      // Termii WhatsApp Implementation
+      const url = `${this.baseUrl}/whatsapp/send`;
       const data: any = {
         api_key: apiKey,
         to: payload.to,
-        from: payload.from || 'N-Alert', // Or a registered WhatsApp Sender ID
+        from: payload.from || 'N-Alert', // Should be a registered WhatsApp Sender ID
         sms: payload.content,
+        channel: 'whatsapp',
         type: 'plain',
-        channel: 'whatsapp', // Specifying channel as whatsapp
       };
 
       if (payload.mediaUrl) {
@@ -82,7 +77,7 @@ export class TermiiProvider implements MessagingProvider {
         const response = await firstValueFrom(this.httpService.post(url, data));
         return {
           messageId: response.data.message_id,
-          status: 'queued', // WhatsApp via Termii usually queues
+          status: 'queued',
           rawResponse: response.data,
         };
       } catch (error) {
@@ -90,19 +85,8 @@ export class TermiiProvider implements MessagingProvider {
           'Termii WhatsApp Send Failed',
           error.response?.data || error.message,
         );
-        return {
-          messageId: null,
-          status: 'failed',
-          rawResponse: error.response?.data,
-        };
+        throw error;
       }
-    } else if (payload.channel === Channel.EMAIL) {
-      this.logger.warn('Termii Email implementation is a placeholder');
-      return {
-        messageId: `mock-email-${Date.now()}`,
-        status: 'sent',
-        rawResponse: {},
-      };
     }
 
     throw new Error(

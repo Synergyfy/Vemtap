@@ -141,7 +141,7 @@ export class CreateRewardDto {
   usageLimitPerUser?: number;
 }
 
-export class UpdateRewardDto extends PartialType(CreateRewardDto) {}
+export class UpdateRewardDto extends PartialType(CreateRewardDto) { }
 
 export class PointEarnRequestDto {
   @ApiProperty({
@@ -208,4 +208,14 @@ export class VerifyRedemptionDto {
   @ApiProperty({ description: 'Redemption code', example: 'A1B2C3D4' })
   @IsString()
   code: string;
+}
+export class BranchQueryDto {
+  @ApiProperty({
+    description: 'Branch ID',
+    example: 'branch_001',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  branchId?: string;
 }
