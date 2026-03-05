@@ -247,40 +247,79 @@ export default function UserManagementPage({
 
     const currentSection = sectionOptions.find((opt) => pathname?.startsWith(opt.value))?.value || '/admin/users';
 
-    const handleExportCSV = () => {
-        if (users.length === 0) {
-            notify.error('No users to export');
-            return;
+    const [isExporting, setIsExporting] = useState(false);
+
+    const handleExportCSV = async () => {
+        setIsExporting(true);
+        try {
+            // Fetch ALL users regardless of pagination
+            const response = await adminUsersApi.getAll({
+                search: searchQuery || undefined,
+                role: typeof roleFilter === 'string' ? normalizeRole(roleFilter) : (filterRole ? normalizeRole(filterRole) : undefined),
+                status: filterStatus || undefined,
+                limit: 100000,
+            });
+
+            const userList = Array.isArray(response) ? response : (response.data || response.users || []);
+            const mappedUsers = userList.map((u: any) => ({
+                ...u,
+                firstName: u.firstName || (u.name ? u.name.split(' ')[0] : ''),
+                lastName: u.lastName || (u.name ? u.name.split(' ').slice(1).join(' ') : ''),
+                lastActive: u.lastActive || (u.lastLogin && u.lastLogin !== 'Never' ? u.lastLogin : null),
+                createdAt: u.createdAt || u.joined || new Date().toISOString(),
+            }));
+
+            // Apply role scoping
+            const allUsers = scopedRoles
+                ? mappedUsers.filter((u: any) => {
+                    const role = normalizeRole(u.role);
+                    return scopedRoles.some((allowedRole) => {
+                        const normalizedAllowed = normalizeRole(allowedRole);
+                        if (normalizedAllowed === 'owner') return role === 'owner' || role === 'business_owner';
+                        return role === normalizedAllowed;
+                    });
+                })
+                : mappedUsers;
+
+            if (allUsers.length === 0) {
+                notify.error('No users to export');
+                return;
+            }
+
+            const headers = ['ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Status', 'Joined', 'Last Active'];
+            const rows = allUsers.map((user: any) => [
+                user.id,
+                user.firstName,
+                user.lastName,
+                user.email,
+                user.phone || 'N/A',
+                user.role,
+                user.status,
+                new Date(user.createdAt).toLocaleDateString(),
+                user.lastActive ? new Date(user.lastActive).toLocaleDateString() : 'Never'
+            ]);
+
+            const csvContent = [
+                headers.join(','),
+                ...rows.map((row: any[]) => row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `users-export-${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            notify.success(`Exported ${allUsers.length} users successfully`);
+        } catch (err: any) {
+            notify.error(err.message || 'Export failed');
+        } finally {
+            setIsExporting(false);
         }
-
-        const headers = ['ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Status', 'Joined', 'Last Active'];
-        const rows = users.map(user => [
-            user.id,
-            user.firstName,
-            user.lastName,
-            user.email,
-            user.phone || 'N/A',
-            user.role,
-            user.status,
-            new Date(user.createdAt).toLocaleDateString(),
-            user.lastActive ? new Date(user.lastActive).toLocaleDateString() : 'Never'
-        ]);
-
-        const csvContent = [
-            headers.join(','),
-            ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
-        ].join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `users-export-${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        notify.success('Users exported successfully');
     };
 
     return (
@@ -304,11 +343,12 @@ export default function UserManagementPage({
                     </select>
                     <button
                         onClick={handleExportCSV}
-                        className="px-5 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all flex items-center gap-2 font-bold text-text-secondary active:scale-95"
+                        disabled={isExporting}
+                        className="px-5 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all flex items-center gap-2 font-bold text-text-secondary active:scale-95 disabled:opacity-50"
                         title="Export CSV"
                     >
-                        <Download size={18} />
-                        Export
+                        {isExporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                        {isExporting ? 'Exporting...' : 'Export'}
                     </button>
                     <button onClick={fetchUsers} className="p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors" title="Refresh">
                         <RefreshCw size={18} className="text-text-secondary" />
