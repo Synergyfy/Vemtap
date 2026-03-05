@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
 import { adminUsersApi } from '@/lib/api/admin';
-import { Search, UserPlus, Edit2, Lock, Ban, Loader2, RefreshCw, CheckCircle, Trash2 } from 'lucide-react';
+import { Search, UserPlus, Edit2, Lock, Ban, Loader2, RefreshCw, CheckCircle, Trash2, Download } from 'lucide-react';
 const DEFAULT_PAGE_SIZE = 10;
 
 
@@ -46,6 +46,14 @@ export default function UserManagementPage({
     const [serverStats, setServerStats] = useState<any>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+
+    // Confirmation Modal State
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        type: 'suspend' | 'activate' | 'delete' | 'reset_password';
+        user: AdminUser | null;
+    }>({ isOpen: false, type: 'suspend', user: null });
+    const [confirmReason, setConfirmReason] = useState('');
 
 
     const normalizeRole = (role?: string) => (role || '').toLowerCase().replace(/\s+/g, '_');
@@ -159,46 +167,52 @@ export default function UserManagementPage({
         }
     };
 
-    const handleSuspend = async (user: AdminUser) => {
-        if (!window.confirm(`Suspend account for ${user.firstName} ${user.lastName}?`)) return;
+    const executeAction = async () => {
+        if (!confirmModal.user) return;
+        setIsSubmitting(true);
         try {
-            await adminUsersApi.suspend(user.id);
-            notify.success('Account suspended');
+            switch (confirmModal.type) {
+                case 'suspend':
+                    await adminUsersApi.suspend(confirmModal.user.id);
+                    notify.success('Account suspended');
+                    break;
+                case 'activate':
+                    await adminUsersApi.activate(confirmModal.user.id);
+                    notify.success('Account activated');
+                    break;
+                case 'delete':
+                    await adminUsersApi.delete(confirmModal.user.id);
+                    notify.success('Account deleted permanently');
+                    break;
+                case 'reset_password':
+                    await adminUsersApi.resetPassword(confirmModal.user.email);
+                    notify.success(`Password reset link sent to ${confirmModal.user.email}`);
+                    break;
+            }
             fetchUsers();
+            setConfirmModal({ isOpen: false, type: 'suspend', user: null });
+            setConfirmReason('');
         } catch (err: any) {
-            notify.error(err.message || 'Failed to suspend user');
+            notify.error(err.message || 'Operation failed');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
-    const handleActivate = async (user: AdminUser) => {
-        if (!window.confirm(`Activate account for ${user.firstName} ${user.lastName}?`)) return;
-        try {
-            await adminUsersApi.activate(user.id);
-            notify.success('Account activated');
-            fetchUsers();
-        } catch (err: any) {
-            notify.error(err.message || 'Failed to activate user');
-        }
+    const handleSuspend = (user: AdminUser) => {
+        setConfirmModal({ isOpen: true, type: 'suspend', user });
     };
 
-    const handleDelete = async (user: AdminUser) => {
-        if (!window.confirm(`Permanently delete account for ${user.firstName} ${user.lastName}? This action cannot be undone.`)) return;
-        try {
-            await adminUsersApi.delete(user.id);
-            notify.success('Account deleted permanently');
-            fetchUsers();
-        } catch (err: any) {
-            notify.error(err.message || 'Failed to delete user');
-        }
+    const handleActivate = (user: AdminUser) => {
+        setConfirmModal({ isOpen: true, type: 'activate', user });
     };
 
-    const handleResetPassword = async (email: string) => {
-        try {
-            await adminUsersApi.resetPassword(email);
-            notify.success(`Password reset link sent to ${email}`);
-        } catch {
-            notify.error('Failed to send reset link');
-        }
+    const handleDelete = (user: AdminUser) => {
+        setConfirmModal({ isOpen: true, type: 'delete', user });
+    };
+
+    const handleResetPassword = (user: AdminUser) => {
+        setConfirmModal({ isOpen: true, type: 'reset_password', user });
     };
 
     const getRoleBadge = (role: string) => {
@@ -233,6 +247,42 @@ export default function UserManagementPage({
 
     const currentSection = sectionOptions.find((opt) => pathname?.startsWith(opt.value))?.value || '/admin/users';
 
+    const handleExportCSV = () => {
+        if (users.length === 0) {
+            notify.error('No users to export');
+            return;
+        }
+
+        const headers = ['ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Status', 'Joined', 'Last Active'];
+        const rows = users.map(user => [
+            user.id,
+            user.firstName,
+            user.lastName,
+            user.email,
+            user.phone || 'N/A',
+            user.role,
+            user.status,
+            new Date(user.createdAt).toLocaleDateString(),
+            user.lastActive ? new Date(user.lastActive).toLocaleDateString() : 'Never'
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `users-export-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        notify.success('Users exported successfully');
+    };
+
     return (
         <div className="p-4 md:p-8 space-y-8">
             {/* Header */}
@@ -252,6 +302,14 @@ export default function UserManagementPage({
                             <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                     </select>
+                    <button
+                        onClick={handleExportCSV}
+                        className="px-5 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all flex items-center gap-2 font-bold text-text-secondary active:scale-95"
+                        title="Export CSV"
+                    >
+                        <Download size={18} />
+                        Export
+                    </button>
                     <button onClick={fetchUsers} className="p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors" title="Refresh">
                         <RefreshCw size={18} className="text-text-secondary" />
                     </button>
@@ -322,6 +380,7 @@ export default function UserManagementPage({
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">User</th>
+                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Contact</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Role</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Status</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Last Active</th>
@@ -332,14 +391,14 @@ export default function UserManagementPage({
                         <tbody className="divide-y divide-gray-100">
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={6} className="py-16 text-center">
+                                    <td colSpan={7} className="py-16 text-center">
                                         <Loader2 className="animate-spin mx-auto text-primary" size={32} />
                                         <p className="text-text-secondary text-sm mt-3 font-bold">Fetching users...</p>
                                     </td>
                                 </tr>
                             ) : users.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="py-16 text-center text-text-secondary text-sm font-medium">No users found.</td>
+                                    <td colSpan={7} className="py-16 text-center text-text-secondary text-sm font-medium">No users found.</td>
                                 </tr>
                             ) : (
                                 paginatedUsers.map((user) => (
@@ -356,6 +415,9 @@ export default function UserManagementPage({
                                                     <p className="text-text-secondary text-xs font-medium">{user.email}</p>
                                                 </div>
                                             </div>
+                                        </td>
+                                        <td className="py-4 px-6 text-sm text-text-secondary font-medium">
+                                            {user.phone || 'No phone'}
                                         </td>
                                         <td className="py-4 px-6">
                                             <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${getRoleBadge(user.role)}`}>
@@ -379,7 +441,7 @@ export default function UserManagementPage({
                                                 <button onClick={() => { setSelectedUser(user); setIsModalOpen(true); }} className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-all" title="Edit">
                                                     <Edit2 size={16} />
                                                 </button>
-                                                <button onClick={() => handleResetPassword(user.email)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Reset Password">
+                                                <button onClick={() => handleResetPassword(user)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Reset Password">
                                                     <Lock size={16} />
                                                 </button>
                                                 {(user.status?.toLowerCase() === 'active' || user.status?.toLowerCase() === 'pending' || user.status?.toLowerCase() === 'invited') ? (
@@ -508,6 +570,74 @@ export default function UserManagementPage({
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Confirmation Modal */}
+            {confirmModal.isOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} />
+                    <div className="relative w-full max-w-md bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 ${confirmModal.type === 'delete' ? 'bg-red-50 text-red-600' :
+                            confirmModal.type === 'suspend' ? 'bg-orange-50 text-orange-600' :
+                                confirmModal.type === 'activate' ? 'bg-green-50 text-green-600' :
+                                    'bg-blue-50 text-blue-600'
+                            }`}>
+                            <span className="material-icons-round text-3xl">
+                                {confirmModal.type === 'delete' ? 'delete_forever' :
+                                    confirmModal.type === 'suspend' ? 'block' :
+                                        confirmModal.type === 'activate' ? 'check_circle' :
+                                            'lock_reset'}
+                            </span>
+                        </div>
+
+                        <h3 className="text-xl font-display font-bold text-text-main mb-2">
+                            {confirmModal.type === 'delete' && 'Delete Account'}
+                            {confirmModal.type === 'suspend' && 'Suspend Account'}
+                            {confirmModal.type === 'activate' && 'Activate Account'}
+                            {confirmModal.type === 'reset_password' && 'Reset Password'}
+                        </h3>
+                        <p className="text-text-secondary font-medium text-sm mb-6">
+                            {confirmModal.type === 'delete' && `Are you sure you want to permanently delete the account for ${confirmModal.user?.firstName} ${confirmModal.user?.lastName}? This action cannot be undone.`}
+                            {confirmModal.type === 'suspend' && `Suspend account for ${confirmModal.user?.firstName} ${confirmModal.user?.lastName}? They will be logged out and restricted.`}
+                            {confirmModal.type === 'activate' && `Reactivate account for ${confirmModal.user?.firstName} ${confirmModal.user?.lastName}?`}
+                            {confirmModal.type === 'reset_password' && `Send a password reset link to ${confirmModal.user?.email}?`}
+                        </p>
+
+                        {(confirmModal.type === 'suspend' || confirmModal.type === 'delete') && (
+                            <div className="mb-6">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Reason for {confirmModal.type}</label>
+                                <textarea
+                                    value={confirmReason}
+                                    onChange={(e) => setConfirmReason(e.target.value)}
+                                    placeholder="Please state the reason..."
+                                    className="w-full h-24 p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all resize-none"
+                                    required={confirmModal.type === 'delete'}
+                                />
+                            </div>
+                        )}
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                                className="flex-1 h-12 bg-gray-100 text-text-secondary font-bold rounded-xl hover:bg-gray-200 transition-all text-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={executeAction}
+                                disabled={isSubmitting || (confirmModal.type === 'delete' && !confirmReason.trim())}
+                                className={`flex-1 h-12 text-white font-bold rounded-xl transition-all shadow-lg text-sm flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 ${confirmModal.type === 'delete' ? 'bg-red-600 shadow-red-200' :
+                                    confirmModal.type === 'suspend' ? 'bg-orange-600 shadow-orange-200' :
+                                        confirmModal.type === 'activate' ? 'bg-green-600 shadow-green-200' :
+                                            'bg-primary shadow-primary/20'
+                                    }`}
+                            >
+                                {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                                Confirm Action
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
