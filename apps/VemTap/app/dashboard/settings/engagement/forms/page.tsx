@@ -87,6 +87,7 @@ export default function EngagementFormsBuilderPage() {
     const [responseActor, setResponseActor] = useState<ResponseActor>('agent');
     const [channels, setChannels] = useState<ResponseChannel[]>(['email']);
     const [wizardStep, setWizardStep] = useState(1);
+    const [reviewPreviewMode, setReviewPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     const [fieldCounter, setFieldCounter] = useState(2);
     const [fields, setFields] = useState<DraftField[]>([
         makeField('fld-1', 'How was your experience?', 'rating', true, '')
@@ -470,86 +471,304 @@ export default function EngagementFormsBuilderPage() {
                 )}
 
                 {wizardStep === 3 && (
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                            <h3 className="text-sm font-black uppercase tracking-widest text-text-secondary">Form Fields</h3>
-                            <Tooltip content="Add customer questions. Multiple choice fields require comma-separated options.">
-                                <span className="inline-flex items-center text-text-secondary cursor-help">
-                                    <CircleHelp size={13} />
-                                </span>
-                            </Tooltip>
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                    <div className="xl:col-span-7 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-text-secondary">Form Fields</h3>
+                                <Tooltip content="Add customer questions. Multiple choice fields require comma-separated options.">
+                                    <span className="inline-flex items-center text-text-secondary cursor-help">
+                                        <CircleHelp size={13} />
+                                    </span>
+                                </Tooltip>
+                            </div>
+                            <button onClick={addField} className="h-10 px-4 rounded-xl border border-primary/30 text-primary text-xs font-black uppercase tracking-widest flex items-center gap-1">
+                                <Plus size={14} /> Add Field
+                            </button>
                         </div>
-                        <button onClick={addField} className="h-10 px-4 rounded-xl border border-primary/30 text-primary text-xs font-black uppercase tracking-widest flex items-center gap-1">
-                            <Plus size={14} /> Add Field
-                        </button>
-                    </div>
 
-                    {fields.map((field) => (
-                        <div key={field.id} className="border border-gray-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-12 gap-3">
-                            <div className="md:col-span-5">
-                                <input
-                                    value={field.label}
-                                    onChange={(e) => updateField(field.id, { label: e.target.value })}
-                                    placeholder="Field label"
-                                    className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm"
-                                />
-                            </div>
-                            <div className="md:col-span-3">
-                                <select value={field.type} onChange={(e) => updateField(field.id, { type: e.target.value as FormFieldType })} className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm">
-                                    {FIELD_TYPES.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="md:col-span-3 flex items-center gap-2">
-                                <input
-                                    id={`required-${field.id}`}
-                                    type="checkbox"
-                                    checked={field.required}
-                                    onChange={(e) => updateField(field.id, { required: e.target.checked })}
-                                    className="rounded border-gray-300"
-                                />
-                                <label htmlFor={`required-${field.id}`} className="text-xs font-bold text-text-secondary uppercase tracking-widest">Required</label>
-                            </div>
-                            <div className="md:col-span-1 flex items-center justify-end">
-                                <button onClick={() => removeField(field.id)} className="size-9 rounded-lg border border-gray-200 text-red-500 flex items-center justify-center">
-                                    <Trash2 size={14} />
-                                </button>
-                            </div>
-                            {field.type === 'choice' && (
-                                <div className="md:col-span-12">
+                        {fields.map((field) => (
+                            <div key={field.id} className="border border-gray-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-12 gap-3 bg-white">
+                                <div className="md:col-span-5">
                                     <input
-                                        value={field.optionsText}
-                                        onChange={(e) => updateField(field.id, { optionsText: e.target.value })}
-                                        placeholder="Options separated by comma: Good, Average, Poor"
+                                        value={field.label}
+                                        onChange={(e) => updateField(field.id, { label: e.target.value })}
+                                        placeholder="Field label"
                                         className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm"
                                     />
                                 </div>
-                            )}
+                                <div className="md:col-span-3">
+                                    <select value={field.type} onChange={(e) => updateField(field.id, { type: e.target.value as FormFieldType })} className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm">
+                                        {FIELD_TYPES.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="md:col-span-3 flex items-center gap-2">
+                                    <input
+                                        id={`required-${field.id}`}
+                                        type="checkbox"
+                                        checked={field.required}
+                                        onChange={(e) => updateField(field.id, { required: e.target.checked })}
+                                        className="rounded border-gray-300"
+                                    />
+                                    <label htmlFor={`required-${field.id}`} className="text-xs font-bold text-text-secondary uppercase tracking-widest">Required</label>
+                                </div>
+                                <div className="md:col-span-1 flex items-center justify-end">
+                                    <button onClick={() => removeField(field.id)} className="size-9 rounded-lg border border-gray-200 text-red-500 flex items-center justify-center">
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                                {field.type === 'choice' && (
+                                    <div className="md:col-span-12">
+                                        <input
+                                            value={field.optionsText}
+                                            onChange={(e) => updateField(field.id, { optionsText: e.target.value })}
+                                            placeholder="Options separated by comma: Good, Average, Poor"
+                                            className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="xl:col-span-5">
+                        <div className="sticky top-28">
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className="material-symbols-outlined text-primary text-lg">smartphone</span>
+                                <span className="text-[11px] font-black uppercase tracking-widest text-text-secondary">Live Preview</span>
+                            </div>
+
+                            <div className="relative mx-auto w-full max-w-[320px] aspect-[9/19] bg-slate-900 rounded-[2.5rem] border-[8px] border-slate-800 shadow-2xl overflow-hidden">
+                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-5 bg-slate-800 rounded-b-2xl z-20"></div>
+                                <div className="absolute inset-0 bg-gray-50 p-5 overflow-y-auto">
+                                    <div className="mt-6 space-y-4">
+                                        <div>
+                                            <h4 className="text-base font-black text-text-main leading-tight">{title || 'Form title preview'}</h4>
+                                            <p className="text-[10px] text-text-secondary mt-1">Please share your feedback.</p>
+                                        </div>
+                                        {fields.slice(0, 4).map((field) => (
+                                            <div key={`pv-${field.id}`} className="space-y-1">
+                                                <label className="text-[11px] font-bold text-slate-700">{field.label || 'Untitled field'}</label>
+                                                <div className="h-9 rounded-lg border border-gray-200 bg-white" />
+                                            </div>
+                                        ))}
+                                        {fields.length > 4 && (
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">+ {fields.length - 4} more fields</p>
+                                        )}
+                                        <button className="w-full h-10 rounded-lg bg-primary text-white text-xs font-black uppercase tracking-wider">Submit</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-4 bg-primary/5 rounded-2xl p-4 border border-primary/10">
+                                <p className="text-xs font-bold text-text-main">Preview Tip</p>
+                                <p className="text-xs text-text-secondary mt-1">Preview updates instantly as field labels change.</p>
+                            </div>
                         </div>
-                    ))}
+                    </div>
                 </div>
                 )}
 
                 {wizardStep === 4 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="rounded-xl border border-gray-200 p-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">Form Summary</p>
-                            <div className="space-y-1.5 text-sm text-text-main">
-                                <p><span className="font-bold">Type:</span> {useCustomType ? (customTypeLabel || 'Custom') : TYPE_OPTIONS.find((t) => t.value === predefinedType)?.label}</p>
-                                <p><span className="font-bold">Title:</span> {title || '-'}</p>
-                                <p><span className="font-bold">Key:</span> {buildKey(key || title) || '-'}</p>
-                                <p><span className="font-bold">Fields:</span> {fields.length}</p>
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                            <div className="xl:col-span-4 space-y-4">
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center gap-2 text-primary">
+                                        <span className="material-symbols-outlined text-base">verified</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Step 3 of 3</span>
+                                    </div>
+                                    <h3 className="text-3xl font-black text-text-main tracking-tight">Review &amp; Publish</h3>
+                                    <p className="text-sm text-text-secondary">Verify your configuration. Once submitted, admin will review it before it goes live.</p>
+                                </div>
+
+                                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <span className="text-sm font-semibold text-text-secondary">Completion Status</span>
+                                        <span className="text-sm font-bold text-primary">100% Ready</span>
+                                    </div>
+                                    <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
+                                        <div className="bg-primary h-full w-full" />
+                                    </div>
+                                </div>
+
+                                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                                    <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
+                                        <h4 className="font-bold text-text-main">Configuration Summary</h4>
+                                        <button className="text-primary text-xs font-bold hover:underline">Edit All</button>
+                                    </div>
+                                    <div className="p-5 flex flex-col gap-4">
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-[10px] uppercase font-bold text-text-secondary tracking-widest">Form Title</label>
+                                            <p className="text-sm font-medium text-text-main">{title || 'Untitled form'}</p>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-[10px] uppercase font-bold text-text-secondary tracking-widest">Type</label>
+                                            <div className="flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-primary text-sm">public</span>
+                                                <p className="text-sm font-medium text-text-main">{useCustomType ? (customTypeLabel || 'Custom') : TYPE_OPTIONS.find((t) => t.value === predefinedType)?.label}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-[10px] uppercase font-bold text-text-secondary tracking-widest">Field Count</label>
+                                            <p className="text-sm font-medium text-text-main">{fields.length} Active Fields</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                                    <div className="px-5 py-4 bg-gray-50">
+                                        <h4 className="text-sm font-bold text-text-main uppercase tracking-wide">Component Checklist</h4>
+                                    </div>
+                                    <div className="p-4 flex flex-col gap-3">
+                                        <div className="flex items-start gap-3">
+                                            <CheckCircle2 size={18} className="text-green-500" />
+                                            <div>
+                                                <p className="text-sm font-semibold text-text-main">Input Validation</p>
+                                                <p className="text-xs text-text-secondary">{fields.some((f) => f.type === 'email') ? 'Email field checks included' : 'Basic required-field checks included'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3 border-t border-gray-100 pt-3">
+                                            <CheckCircle2 size={18} className="text-green-500" />
+                                            <div>
+                                                <p className="text-sm font-semibold text-text-main">Response Routing</p>
+                                                <p className="text-xs text-text-secondary">Configured via {channels.join(', ') || 'email'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3 border-t border-gray-100 pt-3">
+                                            <CheckCircle2 size={18} className="text-green-500" />
+                                            <div>
+                                                <p className="text-sm font-semibold text-text-main">Form URL</p>
+                                                <p className="text-xs text-text-secondary">Set to /forms/{buildKey(key || title) || 'your-form-key'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 relative group">
+                                    <button
+                                        onClick={handleCreateForm}
+                                        className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all"
+                                    >
+                                        Submit for Approval
+                                        <span className="material-symbols-outlined text-sm">send</span>
+                                    </button>
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-64 bg-text-main text-white text-[11px] p-3 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-xl">
+                                        <p className="font-bold mb-1">Administrative Review Required</p>
+                                        Admin will review branding and response flow before this form goes live.
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-text-main"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="xl:col-span-8 flex flex-col gap-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <span className="material-symbols-outlined text-text-secondary">visibility</span>
+                                        <h4 className="font-bold text-text-main">Live Preview</h4>
+                                    </div>
+                                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                                        <button
+                                            onClick={() => setReviewPreviewMode('desktop')}
+                                            className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-bold ${
+                                                reviewPreviewMode === 'desktop' ? 'bg-white shadow-sm text-text-main' : 'text-text-secondary'
+                                            }`}
+                                        >
+                                            <span className="material-symbols-outlined text-sm">desktop_windows</span> Desktop
+                                        </button>
+                                        <button
+                                            onClick={() => setReviewPreviewMode('mobile')}
+                                            className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-bold ${
+                                                reviewPreviewMode === 'mobile' ? 'bg-white shadow-sm text-text-main' : 'text-text-secondary'
+                                            }`}
+                                        >
+                                            <span className="material-symbols-outlined text-sm">smartphone</span> Mobile
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {reviewPreviewMode === 'desktop' ? (
+                                    <div className="flex-1 min-h-[600px] border border-gray-200 rounded-2xl overflow-hidden shadow-2xl bg-white flex flex-col">
+                                        <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex items-center gap-4">
+                                            <div className="flex gap-1.5">
+                                                <div className="size-3 rounded-full bg-gray-300"></div>
+                                                <div className="size-3 rounded-full bg-gray-300"></div>
+                                                <div className="size-3 rounded-full bg-gray-300"></div>
+                                            </div>
+                                            <div className="flex-1 bg-white border border-gray-200 rounded-md py-1 px-3 text-[10px] text-text-secondary flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-[14px]">lock</span>
+                                                {`https://preview.vemtap.io/forms/${buildKey(key || title) || 'your-form-key'}`}
+                                            </div>
+                                            <span className="material-symbols-outlined text-text-secondary text-sm">open_in_new</span>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto bg-gray-50/60 p-8 md:p-12">
+                                            <div className="max-w-2xl mx-auto bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
+                                                <div className="h-24 bg-gradient-to-r from-primary/10 to-primary/30"></div>
+                                                <div className="p-8">
+                                                    <h4 className="text-2xl font-bold text-text-main mb-2">{title || 'Customer Feedback Survey 2024'}</h4>
+                                                    <p className="text-text-secondary text-sm mb-8">We value your opinion. Please take 2 minutes to fill out this form to help us improve our services.</p>
+                                                    <form className="flex flex-col gap-6" onSubmit={(e) => e.preventDefault()}>
+                                                        {fields.slice(0, 4).map((field) => (
+                                                            <div key={`review-desktop-${field.id}`} className="flex flex-col gap-2">
+                                                                <label className="text-sm font-semibold text-text-main">
+                                                                    {field.label || 'Untitled field'} {field.required ? <span className="text-red-500">*</span> : null}
+                                                                </label>
+                                                                <input
+                                                                    className="w-full rounded-lg border-gray-200 text-sm"
+                                                                    placeholder={field.type === 'email' ? 'john@example.com' : 'Type here...'}
+                                                                    type={field.type === 'email' ? 'email' : 'text'}
+                                                                    readOnly
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                        <button className="w-full bg-primary text-white font-bold py-3 rounded-lg mt-2 opacity-80 cursor-not-allowed">
+                                                            Submit Feedback
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="mx-auto w-full max-w-[360px] rounded-[2rem] border border-gray-200 bg-white p-4 shadow-lg">
+                                        <div className="relative mx-auto w-full max-w-[320px] aspect-[9/19] bg-slate-900 rounded-[2.5rem] border-[8px] border-slate-800 shadow-2xl overflow-hidden">
+                                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-5 bg-slate-800 rounded-b-2xl z-20"></div>
+                                            <div className="absolute inset-0 bg-gray-50 p-5 overflow-y-auto">
+                                                <div className="mt-6 space-y-4">
+                                                    <div>
+                                                        <h4 className="text-base font-black text-text-main leading-tight">{title || 'Form title preview'}</h4>
+                                                        <p className="text-[10px] text-text-secondary mt-1">Please share your feedback.</p>
+                                                    </div>
+                                                    {fields.slice(0, 4).map((field) => (
+                                                        <div key={`review-mobile-${field.id}`} className="space-y-1">
+                                                            <label className="text-[11px] font-bold text-text-main">{field.label || 'Untitled field'}</label>
+                                                            <div className="h-9 rounded-lg border border-gray-200 bg-white" />
+                                                        </div>
+                                                    ))}
+                                                    <button className="w-full h-10 rounded-lg bg-primary text-white text-xs font-black uppercase tracking-wider">Submit</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
-                        <div className="rounded-xl border border-gray-200 p-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">Response Setup</p>
-                            <div className="space-y-1.5 text-sm text-text-main">
-                                <p><span className="font-bold">Owner:</span> {responseActor}</p>
-                                <p><span className="font-bold">Channels:</span> {channels.join(', ') || '-'}</p>
-                                <p className="text-xs text-text-secondary mt-2">This form is sent to admin for approval after submission.</p>
-                            </div>
+
+                        <div className="lg:hidden sticky bottom-0 bg-white border border-gray-200 rounded-xl p-4 flex gap-3 z-10">
+                            <button
+                                onClick={goPrevStep}
+                                className="flex-1 bg-gray-100 text-text-main font-bold py-3 rounded-xl"
+                            >
+                                Previous
+                            </button>
+                            <button
+                                onClick={handleCreateForm}
+                                className="flex-[2] bg-primary text-white font-bold py-3 rounded-xl shadow-lg shadow-primary/20"
+                            >
+                                Submit for Approval
+                            </button>
                         </div>
                     </div>
                 )}
@@ -566,11 +785,7 @@ export default function EngagementFormsBuilderPage() {
                         <button onClick={goNextStep} className="h-11 px-5 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest">
                             Next Step
                         </button>
-                    ) : (
-                        <button onClick={handleCreateForm} className="h-11 px-6 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest">
-                            Save for Approval
-                        </button>
-                    )}
+                    ) : null}
                 </div>
             </div>
 

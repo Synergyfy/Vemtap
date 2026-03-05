@@ -45,7 +45,7 @@ export interface FormSubmission {
   customerName: string;
   customerEmail?: string;
   customerPhone?: string;
-  answers: Record<string, any>;
+  answers: Record<string, unknown>;
   status: SubmissionStatus;
   createdAt: string;
   response?: {
@@ -77,7 +77,7 @@ interface CreateSubmissionInput {
   customerName: string;
   customerEmail?: string;
   customerPhone?: string;
-  answers: Record<string, any>;
+  answers: Record<string, unknown>;
 }
 
 interface BusinessFormsState {
@@ -135,6 +135,118 @@ const mockForms: BusinessForm[] = [
     responseActor: 'agent',
     createdAt: nowIso(),
     updatedAt: nowIso()
+  },
+  {
+    id: 'frm-demo-approved-complaint',
+    businessId: 'demo-business-id',
+    businessName: 'Demo Business',
+    type: 'complaint',
+    title: 'Service Complaint Form',
+    key: 'service-complaint-form',
+    status: 'approved',
+    fields: [
+      { id: 'c-1', label: 'What went wrong?', type: 'long_text', required: true },
+      { id: 'c-2', label: 'How urgent is this?', type: 'choice', required: true, options: ['Low', 'Medium', 'High'] }
+    ],
+    responseChannels: ['sms', 'whatsapp', 'email'],
+    responseActor: 'agent',
+    createdAt: nowIso(),
+    updatedAt: nowIso()
+  },
+  {
+    id: 'frm-demo-pending-social',
+    businessId: 'demo-business-id',
+    businessName: 'Demo Business',
+    type: 'social',
+    title: 'Social Profile Capture',
+    key: 'social-profile-capture',
+    status: 'pending',
+    fields: [
+      { id: 's-1', label: 'Instagram handle', type: 'short_text' },
+      { id: 's-2', label: 'Would you like follow-up offers?', type: 'choice', options: ['Yes', 'No'] }
+    ],
+    responseChannels: ['email'],
+    responseActor: 'bot',
+    createdAt: nowIso(),
+    updatedAt: nowIso()
+  }
+];
+
+const mockSubmissions: FormSubmission[] = [
+  {
+    id: 'sub-demo-1',
+    formId: 'frm-demo-approved-survey',
+    businessId: 'demo-business-id',
+    formType: 'survey',
+    formTitle: 'Customer Experience Survey',
+    customerName: 'Jane Doe',
+    customerEmail: 'jane.doe@example.com',
+    customerPhone: '+1 (555) 234-5678',
+    answers: {
+      'f-1': 5,
+      'f-2': 'Great team and quick service.'
+    },
+    status: 'responded',
+    createdAt: nowIso(),
+    response: {
+      channel: 'email',
+      actor: 'agent',
+      message: 'Thanks for the feedback, Jane. We appreciate you!',
+      respondedAt: nowIso(),
+      responderName: 'Support Team'
+    }
+  },
+  {
+    id: 'sub-demo-2',
+    formId: 'frm-demo-approved-survey',
+    businessId: 'demo-business-id',
+    formType: 'survey',
+    formTitle: 'Customer Experience Survey',
+    customerName: 'Marcus Smith',
+    customerEmail: 'm.smith@company.org',
+    answers: {
+      'f-1': 4,
+      'f-2': 'Checkout line took longer than expected.'
+    },
+    status: 'new',
+    createdAt: nowIso()
+  },
+  {
+    id: 'sub-demo-3',
+    formId: 'frm-demo-approved-complaint',
+    businessId: 'demo-business-id',
+    formType: 'complaint',
+    formTitle: 'Service Complaint Form',
+    customerName: 'Alice Lawson',
+    customerPhone: '+1 (555) 111-2233',
+    answers: {
+      'c-1': 'Wrong item was delivered.',
+      'c-2': 'High'
+    },
+    status: 'in_review',
+    createdAt: nowIso()
+  },
+  {
+    id: 'sub-demo-4',
+    formId: 'frm-demo-approved-complaint',
+    businessId: 'demo-business-id',
+    formType: 'complaint',
+    formTitle: 'Service Complaint Form',
+    customerName: 'Robert Taylor',
+    customerEmail: 'robert@taylor.me',
+    answers: {
+      'c-1': 'Billing amount was incorrect.',
+      'c-2': 'Medium'
+    },
+    status: 'closed',
+    createdAt: nowIso(),
+    response: {
+      channel: 'whatsapp',
+      actor: 'agent',
+      message: 'Issue resolved and invoice corrected.',
+      respondedAt: nowIso(),
+      responderName: 'Billing Desk'
+    }
   }
 ];
 
@@ -142,7 +254,7 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
   persist(
     (set, get) => ({
       forms: mockForms,
-      submissions: [],
+      submissions: mockSubmissions,
       customTypeOptionsByBusiness: {},
       createForm: (input) => {
         const key = ensureUniqueKey(input.key || input.title, get().forms);
