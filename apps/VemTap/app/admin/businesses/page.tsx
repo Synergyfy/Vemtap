@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
 import { adminBusinessesApi } from '@/lib/api/admin';
-import { Search, Plus, RefreshCw, Loader2, Trash2, CheckCircle, XCircle, Ban, RotateCcw, Copy } from 'lucide-react';
+import { Search, Plus, RefreshCw, Loader2, Trash2, CheckCircle, XCircle, Ban, RotateCcw, Copy, Download } from 'lucide-react';
 const PAGE_SIZE = 10;
 
 interface Business {
@@ -171,6 +171,43 @@ export default function AdminBusinessesPage() {
         return map[normalized] || 'bg-gray-100 text-gray-500';
     };
 
+    const handleExportCSV = () => {
+        if (businesses.length === 0) {
+            notify.error('No businesses to export');
+            return;
+        }
+
+        const headers = ['ID', 'Name', 'Type', 'Owner', 'Email', 'Phone', 'Address', 'Status', 'Joined'];
+        const rows = businesses.map(biz => [
+            biz.id,
+            biz.name,
+            biz.planId || 'Standard', // Assuming planId is type for now
+            biz.owner ? `${biz.owner.firstName} ${biz.owner.lastName}` : 'N/A',
+            biz.officialEmail || biz.email || 'N/A',
+            biz.whatsappNumber || biz.phone || 'N/A',
+            biz.address || 'N/A',
+            biz.status,
+            new Date(biz.createdAt).toLocaleDateString()
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `businesses-export-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        notify.success('Businesses exported successfully');
+    };
+
     return (
         <div className="p-4 md:p-8 space-y-8">
             {/* Header */}
@@ -180,6 +217,14 @@ export default function AdminBusinessesPage() {
                     <p className="text-text-secondary font-medium text-sm">Manage all registered businesses on the platform</p>
                 </div>
                 <div className="flex gap-3">
+                    <button
+                        onClick={handleExportCSV}
+                        className="px-5 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all flex items-center gap-2 font-bold text-text-secondary active:scale-95"
+                        title="Export CSV"
+                    >
+                        <Download size={18} />
+                        Export
+                    </button>
                     <button onClick={fetchBusinesses} className="p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors" title="Refresh">
                         <RefreshCw size={18} className="text-text-secondary" />
                     </button>
