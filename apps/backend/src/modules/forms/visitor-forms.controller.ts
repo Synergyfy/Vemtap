@@ -16,6 +16,7 @@ import {
   ApiBearerAuth,
   ApiResponse,
   ApiQuery,
+  ApiBody,
 } from '@nestjs/swagger';
 
 @ApiTags('Visitor Forms')
@@ -29,7 +30,26 @@ export class VisitorFormsController {
     summary: 'Get all active forms for a specific business/branch',
   })
   @ApiQuery({ name: 'branchId', required: false, type: String })
-  @ApiResponse({ status: 200, description: 'Return all available forms.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return all available forms.',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', example: 'uuid-form-1234' },
+          title: { type: 'string', example: 'Customer Feedback' },
+          description: {
+            type: 'string',
+            example: 'Let us know how your visit went',
+          },
+          isActive: { type: 'boolean', example: true },
+          isPublished: { type: 'boolean', example: true },
+        },
+      },
+    },
+  })
   findForms(
     @Param('businessId') businessId: string,
     @Query('branchId') branchId?: string,
@@ -43,6 +63,38 @@ export class VisitorFormsController {
   @ApiResponse({
     status: 200,
     description: 'Return the form with fields to answer.',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', example: 'uuid-form-1234' },
+        title: { type: 'string', example: 'Customer Feedback' },
+        description: {
+          type: 'string',
+          example: 'Let us know how your visit went',
+        },
+        fields: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', example: 'uuid-field-1234' },
+              type: { type: 'string', example: 'radio' },
+              question: {
+                type: 'string',
+                example: 'How would you rate our service?',
+              },
+              options: {
+                type: 'array',
+                items: { type: 'string' },
+                example: ['1', '2', '3', '4', '5'],
+              },
+              isRequired: { type: 'boolean', example: true },
+              order: { type: 'number', example: 2 },
+            },
+          },
+        },
+      },
+    },
   })
   findOne(@Param('id') id: string, @Query('branchId') branchId?: string) {
     return this.formsService.getFormByIdForVisitor(id, branchId);
@@ -50,6 +102,27 @@ export class VisitorFormsController {
 
   @Post(':id/responses')
   @ApiOperation({ summary: 'Submit answers for a specific form' })
+  @ApiBody({
+    type: SubmitFormResponseDto,
+    examples: {
+      default: {
+        summary: 'Sample response payload',
+        value: {
+          branchId: 'uuid-branch-1234',
+          answers: [
+            {
+              fieldId: 'uuid-field-1234',
+              value: '5',
+            },
+            {
+              fieldId: 'uuid-field-5678',
+              value: 'It was a great visit.',
+            },
+          ],
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: 201,
     description: 'Form response successfully submitted.',
