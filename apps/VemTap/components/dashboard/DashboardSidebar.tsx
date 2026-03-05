@@ -214,6 +214,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ]
         },
         {
+            id: 'forms',
+            label: 'Forms',
+            icon: Building2,
+            href: '/dashboard/forms',
+            roles: ['owner', 'manager']
+        },
+        {
             id: 'support',
             label: 'Support',
             icon: HelpCircle,

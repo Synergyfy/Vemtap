@@ -1,20 +1,27 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import PageHeader from '@/components/dashboard/PageHeader';
 import PhoneFrame from '@/components/shared/PhoneFrame';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
-import { useBusinessFormsStore } from '@/store/useBusinessFormsStore';
+import { useBusinessForm } from '@/services/business-forms/hooks';
 import { toast } from 'react-hot-toast';
 
 export default function FormPreviewPage() {
     const params = useParams();
     const formId = String(params?.id || '');
-    const forms = useBusinessFormsStore((state) => state.forms);
-    const form = useMemo(() => forms.find((item) => item.id === formId), [forms, formId]);
+    const { data: form, isLoading } = useBusinessForm(formId);
     const [lastPreviewSubmission, setLastPreviewSubmission] = useState<Record<string, any> | null>(null);
+
+    if (isLoading) {
+        return (
+            <div className="p-8">
+                <PageHeader title="Form Preview" description="Loading form..." />
+            </div>
+        );
+    }
 
     if (!form) {
         return (
@@ -24,8 +31,6 @@ export default function FormPreviewPage() {
             </div>
         );
     }
-
-    const publicUrl = typeof window !== 'undefined' ? `${window.location.origin}/forms/${form.key}` : `/forms/${form.key}`;
 
     return (
         <div className="p-8 space-y-8">
@@ -49,26 +54,23 @@ export default function FormPreviewPage() {
                     </div>
                     <div>
                         <p className="text-sm font-bold text-text-main">Type</p>
-                        <p className="text-sm font-medium text-text-secondary">{form.typeLabel || form.type}</p>
+                        <p className="text-sm font-medium text-text-secondary">Business Form</p>
                     </div>
                     <div>
                         <p className="text-sm font-bold text-text-main">Form ID</p>
                         <p className="text-xs font-medium text-text-secondary">{form.id}</p>
                     </div>
                     <div>
-                        <p className="text-sm font-bold text-text-main">Public URL</p>
-                        <div className="flex items-center gap-2 mt-1">
-                            <code className="text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-text-secondary">{publicUrl}</code>
-                            <button
-                                onClick={async () => {
-                                    await navigator.clipboard.writeText(publicUrl);
-                                    toast.success('Public URL copied');
-                                }}
-                                className="h-8 px-2 rounded-lg border border-gray-200 text-xs font-bold text-text-secondary"
-                            >
-                                Copy
-                            </button>
-                        </div>
+                        <p className="text-sm font-bold text-text-main">Branch ID</p>
+                        <p className="text-xs font-medium text-text-secondary">{form.branchId}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${form.isPublished ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {form.isPublished ? 'Published' : 'Draft'}
+                        </span>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${form.isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                            {form.isActive ? 'Active' : 'Inactive'}
+                        </span>
                     </div>
 
                     {lastPreviewSubmission && (

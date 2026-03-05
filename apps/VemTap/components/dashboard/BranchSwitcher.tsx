@@ -171,7 +171,7 @@ export default function BranchSwitcher() {
                                     )}
 
                                     {branches.map((branch) => (
-                                        <button
+                                        <div
                                             key={branch.id}
                                             onClick={() => { setActiveBranch(branch.id); setIsOpen(false); }}
                                             className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group/item ${activeBranchId === branch.id
@@ -205,7 +205,7 @@ export default function BranchSwitcher() {
                                                     <Trash2 size={13} />
                                                 </button>
                                             </div>
-                                        </button>
+                                        </div>
                                     ))}
                                 </div>
 
