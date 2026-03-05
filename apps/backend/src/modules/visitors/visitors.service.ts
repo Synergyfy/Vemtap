@@ -45,7 +45,7 @@ export class VisitorsService {
     private campaignsService: CampaignsService,
     private automationService: AutomationService,
     private mailService: MailService,
-  ) {}
+  ) { }
 
   // --- Main/All Visitors ---
 
@@ -228,8 +228,10 @@ export class VisitorsService {
       where: { email: dto.email },
     });
 
+    const defaultPassword: string = '123456'
+
     if (!user) {
-      const hashedPassword = await bcrypt.hash('mypassword', 10);
+      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
       user = this.userRepository.create({
         email: dto.email,
         firstName: dto.firstName,
@@ -244,6 +246,7 @@ export class VisitorsService {
       await this.mailService.sendWelcomeEmail(
         user.email,
         `${user.firstName} ${user.lastName}`.trim() || 'Visitor',
+        defaultPassword,
       );
     }
 
