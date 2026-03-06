@@ -171,41 +171,61 @@ export default function AdminBusinessesPage() {
         return map[normalized] || 'bg-gray-100 text-gray-500';
     };
 
-    const handleExportCSV = () => {
-        if (businesses.length === 0) {
-            notify.error('No businesses to export');
-            return;
+    const [isExporting, setIsExporting] = useState(false);
+
+    const handleExportCSV = async () => {
+        setIsExporting(true);
+        try {
+            // Fetch ALL businesses regardless of current page/filter
+            const data = await adminBusinessesApi.getAll({
+                search: searchQuery || undefined,
+                status: filterStatus ? filterStatus.toLowerCase() : undefined,
+                limit: 100000,
+                page: 1,
+            });
+            const parsed = extractBusinesses(data);
+            const allBusinesses = parsed.items;
+
+            if (allBusinesses.length === 0) {
+                notify.error('No businesses to export');
+                return;
+            }
+
+            const headers = ['ID', 'Name', 'Owner', 'Owner Email', 'Business Email', 'Phone', 'WhatsApp', 'Address', 'Status', 'Joined'];
+            const rows = allBusinesses.map((biz: any) => [
+                biz.id,
+                biz.name,
+                biz.owner ? `${biz.owner.firstName} ${biz.owner.lastName}` : 'N/A',
+                biz.owner?.email || 'N/A',
+                biz.officialEmail || biz.email || 'N/A',
+                biz.phone || 'N/A',
+                biz.whatsappNumber || 'N/A',
+                biz.address || 'N/A',
+                biz.status,
+                new Date(biz.createdAt).toLocaleDateString()
+            ]);
+
+            const csvContent = [
+                headers.join(','),
+                ...rows.map((row: any[]) => row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `businesses-export-${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            notify.success(`Exported ${allBusinesses.length} businesses successfully`);
+        } catch (err: any) {
+            notify.error(err.message || 'Export failed');
+        } finally {
+            setIsExporting(false);
         }
-
-        const headers = ['ID', 'Name', 'Type', 'Owner', 'Email', 'Phone', 'Address', 'Status', 'Joined'];
-        const rows = businesses.map(biz => [
-            biz.id,
-            biz.name,
-            biz.planId || 'Standard', // Assuming planId is type for now
-            biz.owner ? `${biz.owner.firstName} ${biz.owner.lastName}` : 'N/A',
-            biz.officialEmail || biz.email || 'N/A',
-            biz.whatsappNumber || biz.phone || 'N/A',
-            biz.address || 'N/A',
-            biz.status,
-            new Date(biz.createdAt).toLocaleDateString()
-        ]);
-
-        const csvContent = [
-            headers.join(','),
-            ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
-        ].join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `businesses-export-${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.URL.revokeObjectURL(url);
-        notify.success('Businesses exported successfully');
     };
 
     return (
@@ -219,11 +239,12 @@ export default function AdminBusinessesPage() {
                 <div className="flex gap-3">
                     <button
                         onClick={handleExportCSV}
-                        className="px-5 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all flex items-center gap-2 font-bold text-text-secondary active:scale-95"
+                        disabled={isExporting}
+                        className="px-5 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all flex items-center gap-2 font-bold text-text-secondary active:scale-95 disabled:opacity-50"
                         title="Export CSV"
                     >
-                        <Download size={18} />
-                        Export
+                        {isExporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                        {isExporting ? 'Exporting...' : 'Export'}
                     </button>
                     <button onClick={fetchBusinesses} className="p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors" title="Refresh">
                         <RefreshCw size={18} className="text-text-secondary" />
@@ -475,7 +496,7 @@ export default function AdminBusinessesPage() {
                                 {confirmAction === 'delete' && " This action cannot be undone."}
                             </p>
 
-                            {(confirmAction === 'suspend' || confirmAction === 'delete') && (
+                            {(confirmAction === 'suspend' || confirmAction === 'delete' || confirmAction === 'reject') && (
                                 <div className="mt-6">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">
                                         Reason for {confirmAction}ing
@@ -485,7 +506,7 @@ export default function AdminBusinessesPage() {
                                         onChange={(e) => setConfirmReason(e.target.value)}
                                         placeholder={`Please state why you are ${confirmAction}ing this business...`}
                                         className="w-full h-24 p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all resize-none"
-                                        required={confirmAction === 'suspend'}
+                                        required={confirmAction === 'suspend' || confirmAction === 'reject'}
                                     />
                                 </div>
                             )}
@@ -502,7 +523,7 @@ export default function AdminBusinessesPage() {
                             </button>
                             <button
                                 onClick={executeAction}
-                                disabled={isSubmitting || ((confirmAction === 'suspend' || confirmAction === 'delete') && !confirmReason.trim())}
+                                disabled={isSubmitting || ((confirmAction === 'suspend' || confirmAction === 'delete' || confirmAction === 'reject') && !confirmReason.trim())}
                                 className={`flex-1 h-12 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm active:scale-95 disabled:opacity-70 ${confirmAction === 'delete' || confirmAction === 'reject' ? 'bg-red-600 hover:bg-red-700 shadow-red-200' :
                                     confirmAction === 'suspend' ? 'bg-orange-500 hover:bg-orange-600 shadow-orange-200' : 'bg-primary hover:bg-primary-hover shadow-primary/20'
                                     }`}

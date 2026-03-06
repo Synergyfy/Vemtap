@@ -21,6 +21,8 @@ import {
 } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
+import { Query } from '@nestjs/common';
 
 @ApiTags('Business Forms')
 @ApiBearerAuth()
@@ -102,6 +104,9 @@ export class FormsController {
     },
   })
   create(@Request() req, @Body() createFormDto: CreateFormDto) {
+    if (!createFormDto.branchId && req.user.branchId) {
+      createFormDto.branchId = req.user.branchId;
+    }
     return this.formsService.createForm(req.user.businessId, createFormDto);
   }
 
@@ -128,8 +133,8 @@ export class FormsController {
       },
     },
   })
-  findAll(@Request() req) {
-    return this.formsService.getFormsByBusiness(req.user.businessId);
+  findAll(@Request() req, @Query() filter: BranchFilterDto) {
+    return this.formsService.getFormsByBusiness(req.user.businessId, filter.branchId);
   }
 
   @Get(':id')

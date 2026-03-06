@@ -1,5 +1,6 @@
 'use client';
 
+import React, { Suspense } from 'react';
 import MessagingLayout from '@/components/messaging/MessagingLayout';
 import MessageBuilder from '@/components/messaging/MessageBuilder';
 
@@ -15,7 +16,9 @@ interface CampaignType {
 
 export default function ComposeMessagePage() {
     return (
-        <MessageBuilder />
+        <Suspense fallback={null}>
+            <MessageBuilder />
+        </Suspense>
     );
 }
 

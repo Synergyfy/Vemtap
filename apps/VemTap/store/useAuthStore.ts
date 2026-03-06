@@ -67,23 +67,35 @@ export const useAuthStore = create<AuthState>()(
       activeBranchId: null,
 
       login: (userData, access_token) => {
-        console.log('[AUTH] 🔐 login() called', { email: userData?.email, role: userData?.role });
-        set({ user: userData, access_token, isAuthenticated: true });
+        console.log('[AUTH] ðŸ” login() called', { email: userData?.email, role: userData?.role });       
+        set({ user: userData, access_token, isAuthenticated: true, activeBranchId: get().activeBranchId || null });
         setAuthCookie(access_token);
-        console.log('[AUTH] ✅ Login complete, isAuthenticated:', true);
+        console.log('[AUTH] âœ… Login complete, isAuthenticated:', true);
       },
 
       signup: (userData, access_token) => {
-        console.log('[AUTH] 📝 signup() called', { email: userData?.email });
-        set({ user: userData, access_token, isAuthenticated: true });
+        console.log('[AUTH] ðŸ“ signup() called', { email: userData?.email });
+        set({ user: userData, access_token, isAuthenticated: true, activeBranchId: get().activeBranchId || null });
         setAuthCookie(access_token);
       },
 
+
       logout: () => {
         console.log('[AUTH] 🚪 logout() called');
-        set({ user: null, access_token: null, isAuthenticated: false, activeBranchId: null });
+        set({ 
+          user: null, 
+          access_token: null, 
+          isAuthenticated: false, 
+          activeBranchId: null 
+        });
         clearAuthCookie();
+        // Clear session storage just in case
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth-storage-v2');
+          localStorage.removeItem('business-storage');
+        }
       },
+
 
       setActiveBranch: (branchId) => {
         set({ activeBranchId: branchId });

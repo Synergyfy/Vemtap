@@ -3,6 +3,7 @@ import {
   NotFoundException,
   forwardRef,
   Inject,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -26,22 +27,38 @@ export class InboxService {
   ) {}
 
   async getThreads(
-    branchId: string,
+    businessId: string,
     channel: Channel,
+    branchId?: string,
   ): Promise<ConversationThread[]> {
+    const where: any = { channel };
+    if (branchId) {
+      where.branchId = branchId;
+    } else {
+      where.businessId = businessId;
+    }
+
     return this.threadRepo.find({
-      where: { branchId, channel },
+      where,
       relations: ['contact'],
       order: { lastActivityAt: 'DESC' },
     });
   }
 
   async getThreadMessages(
-    branchId: string,
+    businessId: string,
     threadId: string,
+    branchId?: string,
   ): Promise<Message[]> {
+    const where: any = { id: threadId };
+    if (branchId) {
+      where.branchId = branchId;
+    } else {
+      where.businessId = businessId;
+    }
+
     const thread = await this.threadRepo.findOne({
-      where: { id: threadId, branchId },
+      where,
     });
     if (!thread) {
       throw new NotFoundException('Thread not found');
@@ -54,12 +71,20 @@ export class InboxService {
   }
 
   async sendReply(
-    branchId: string,
+    businessId: string,
     threadId: string,
     content: string,
+    branchId?: string,
   ): Promise<Message | null> {
+    const where: any = { id: threadId };
+    if (branchId) {
+      where.branchId = branchId;
+    } else {
+      where.businessId = businessId;
+    }
+
     const thread = await this.threadRepo.findOne({
-      where: { id: threadId, branchId },
+      where,
       relations: ['contact'],
     });
 

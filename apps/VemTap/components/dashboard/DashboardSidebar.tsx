@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useBusinessStore } from '@/store/useBusinessStore';
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import TrialBanner from './TrialBanner';
 import { useActiveSubscription } from '@/services/subscriptions/hooks';
@@ -26,12 +27,14 @@ interface SidebarProps {
 
 export default function DashboardSidebar({ children }: SidebarProps) {
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const router = useRouter();
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const { data: myBusiness } = useMyBusiness();
     const { data: activeSubscription } = useActiveSubscription();
+    const { getLinkWithBranch } = useActiveBranch();
 
     // eslint-disable-next-line no-console
     console.log('[DASHBOARD SIDEBAR] 🔍 isAuthenticated:', isAuthenticated, 'path:', pathname);
@@ -49,7 +52,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const queryClient = useQueryClient();
-    const { activeBranchId } = useBusinessStore();
+    const activeBranchId = useAuthStore((state) => state.activeBranchId);
 
     const { data } = useQuery({
         queryKey: ['dashboard', activeBranchId],
@@ -84,7 +87,18 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     });
 
     const handleLogout = () => {
+        // 1. Clear React Query Cache
+        queryClient.clear();
+        
+        // 2. Clear Local Storage (Zustand persists here)
+        if (typeof window !== 'undefined') {
+            localStorage.clear();
+        }
+
+        // 3. Clear Auth Store State
         logout();
+        
+        // 4. Redirect to login
         router.push('/login');
     };
 
@@ -212,6 +226,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 { label: 'Footfall', href: '/dashboard/analytics/footfall' },
                 { label: 'Peak Times', href: '/dashboard/analytics/peak-times' },
             ]
+        },
+        {
+            id: 'forms',
+            label: 'Forms',
+            icon: Building2,
+            href: '/dashboard/forms',
+            roles: ['owner', 'manager']
         },
         {
             id: 'support',
@@ -363,7 +384,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                                         {nestedItem.submenu.map((deepItem: any) => (
                                                                                             <Link
                                                                                                 key={deepItem.href}
-                                                                                                href={deepItem.href}
+                                                                                                href={getLinkWithBranch(deepItem.href)}
                                                                                                 className={`block px-3 py-1 rounded-lg text-[10px] font-medium transition-colors ${isActive(deepItem.href)
                                                                                                     ? 'text-primary border-l-2 border-primary -ml-px'
                                                                                                     : 'text-text-secondary hover:text-text-main'
@@ -378,7 +399,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                         ) : (
                                                                             <Link
                                                                                 key={nestedItem.href}
-                                                                                href={nestedItem.href}
+                                                                                href={getLinkWithBranch(nestedItem.href)}
                                                                                 className={`block px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isActive(nestedItem.href)
                                                                                     ? 'text-primary border-l-2 border-primary -ml-px'
                                                                                     : 'text-text-secondary hover:text-text-main'
@@ -394,7 +415,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                     ) : (
                                                         <Link
                                                             key={subItem.href}
-                                                            href={subItem.href}
+                                                            href={getLinkWithBranch(subItem.href)}
                                                             onClick={() => setIsMobileOpen(false)}
                                                             className={`block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive(subItem.href)
                                                                 ? 'bg-primary text-white'
@@ -407,15 +428,15 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                 ))}
                                             </div>
                                         )}
-                                    </>
-                                ) : (
-                                    <Link
-                                        href={item.href!}
+                                        </>
+                                        ) : (
+                                        <Link
+                                        href={getLinkWithBranch(item.href!)}
                                         className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive(item.href!)
                                             ? 'bg-primary/5 text-primary'
                                             : 'text-text-secondary hover:bg-gray-50 hover:text-text-main'
                                             }`}
-                                    >
+                                        >
                                         <div className="flex items-center gap-3">
                                             {IconComponent && <IconComponent size={18} />}
                                             <span>{item.label}</span>
@@ -425,8 +446,9 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                 {pendingRedemptions}
                                             </span>
                                         )}
-                                    </Link>
-                                )}
+                                        </Link>
+                                        )}
+
                             </div>
                         );
                     })}

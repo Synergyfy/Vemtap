@@ -2,23 +2,25 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { StaffMember, InviteStaffRequest, UpdateStaffRequest, AdminUser, AdminUsersResponse } from './types';
 import { useAuthStore, AuthState } from '../../store/useAuthStore';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 export const useStaff = (branchId?: string) => {
+    const { activeBranchId: urlBranchId } = useActiveBranch();
     const userBusinessId = useAuthStore((state: AuthState) => state.user?.businessId);
+    const resolvedBranchId = branchId || urlBranchId;
 
     return useQuery<StaffMember[], Error>({
-        queryKey: ['staff', branchId],
+        queryKey: ['staff', userBusinessId, resolvedBranchId],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (branchId && branchId !== 'all') {
-                params.append('branchId', branchId);
+            if (resolvedBranchId) {
+                params.append('branchId', resolvedBranchId);
             }
-            return await api.get(`/users/staff${params.toString() ? `?${params.toString()}` : ''}`);
+            return await api.get(`/users/staff?${params.toString()}`);
         },
         enabled: !!userBusinessId,
     });
 };
-
 export const useInviteStaff = () => {
     const queryClient = useQueryClient();
 
