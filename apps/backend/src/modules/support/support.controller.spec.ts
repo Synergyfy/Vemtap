@@ -5,7 +5,6 @@ import { CreateTicketDto } from './dto/create-ticket.dto';
 
 describe('SupportController', () => {
   let controller: SupportController;
-  let service: SupportService;
 
   const mockSupportService = {
     create: jest.fn(),
@@ -29,7 +28,6 @@ describe('SupportController', () => {
     }).compile();
 
     controller = module.get<SupportController>(SupportController);
-    service = module.get<SupportService>(SupportService);
   });
 
   it('should be defined', () => {

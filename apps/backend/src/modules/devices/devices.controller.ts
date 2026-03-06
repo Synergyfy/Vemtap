@@ -39,20 +39,17 @@ export class DevicesController {
   @Get()
   @ApiOperation({ summary: 'Get all devices for the business' })
   @ApiResponse({ status: 200, description: 'List of devices', type: [Device] })
-  findAll(
-    @Request() req: { user: User },
-    @Query() filter: BranchFilterDto,
-  ) {
-    return this.devicesService.findAllByBusiness(req.user.businessId, filter.branchId);
+  findAll(@Request() req: { user: User }, @Query() filter: BranchFilterDto) {
+    return this.devicesService.findAllByBusiness(
+      req.user.businessId,
+      filter.branchId,
+    );
   }
 
   @Get('stats')
   @ApiOperation({ summary: 'Get summary stats for all devices' })
   @ApiResponse({ status: 200, description: 'Device statistics' })
-  getStats(
-    @Request() req: { user: User },
-    @Query() filter: BranchFilterDto,
-  ) {
+  getStats(@Request() req: { user: User }, @Query() filter: BranchFilterDto) {
     return this.devicesService.getStats(req.user.businessId, filter.branchId);
   }
 

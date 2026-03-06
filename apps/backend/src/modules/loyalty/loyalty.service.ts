@@ -542,8 +542,10 @@ export class LoyaltyService {
     if (branchId) profileWhere.branchId = branchId;
 
     // 1. Core Stats
-    const totalMembers = await this.loyaltyProfileRepository.count({ where: profileWhere });
-    
+    const totalMembers = await this.loyaltyProfileRepository.count({
+      where: profileWhere,
+    });
+
     const pointsResult = await this.loyaltyProfileRepository
       .createQueryBuilder('profile')
       .select('SUM(profile.totalPointsEarned)', 'totalPoints')
@@ -554,9 +556,12 @@ export class LoyaltyService {
 
     const redemptionWhere: any = { loyaltyProfile: { businessId } };
     if (branchId) redemptionWhere.loyaltyProfile.branchId = branchId;
-    const rewardsClaimed = await this.redemptionRepository.count({ where: redemptionWhere });
+    const rewardsClaimed = await this.redemptionRepository.count({
+      where: redemptionWhere,
+    });
 
-    const redemptionRate = totalMembers > 0 ? Math.round((rewardsClaimed / totalMembers) * 100) : 0;
+    const redemptionRate =
+      totalMembers > 0 ? Math.round((rewardsClaimed / totalMembers) * 100) : 0;
 
     // 2. Tier Distribution
     const tiers = await this.loyaltyProfileRepository
@@ -568,11 +573,16 @@ export class LoyaltyService {
       .groupBy('profile.tierLevel')
       .getRawMany();
 
-    const tierDistribution = Object.values(TierLevel).map(level => {
-      const match = tiers.find(t => t.tier === level);
+    const tierDistribution = Object.values(TierLevel).map((level) => {
+      const match = tiers.find((t) => t.tier === level);
       const count = match ? parseInt(match.count, 10) : 0;
-      const percentage = totalMembers > 0 ? Math.round((count / totalMembers) * 100) : 0;
-      return { label: level.charAt(0).toUpperCase() + level.slice(1).toLowerCase(), value: percentage, count };
+      const percentage =
+        totalMembers > 0 ? Math.round((count / totalMembers) * 100) : 0;
+      return {
+        label: level.charAt(0).toUpperCase() + level.slice(1).toLowerCase(),
+        value: percentage,
+        count,
+      };
     });
 
     // 3. Activity Trends (Last 7 Days)
@@ -590,7 +600,8 @@ export class LoyaltyService {
       .andWhere(branchId ? 'profile.branchId = :branchId' : '1=1', { branchId })
       .andWhere('tx.transactionType = :type', { type: 'earn' })
       .andWhere('tx.createdAt >= :date', { date: sevenDaysAgo })
-      .groupBy('sortkey').addGroupBy('day')
+      .groupBy('sortkey')
+      .addGroupBy('day')
       .orderBy('sortkey', 'ASC')
       .getRawMany();
 
@@ -603,7 +614,8 @@ export class LoyaltyService {
       .where('profile.businessId = :businessId', { businessId })
       .andWhere(branchId ? 'profile.branchId = :branchId' : '1=1', { branchId })
       .andWhere('red.createdAt >= :date', { date: sevenDaysAgo })
-      .groupBy('sortkey').addGroupBy('day')
+      .groupBy('sortkey')
+      .addGroupBy('day')
       .orderBy('sortkey', 'ASC')
       .getRawMany();
 
@@ -611,26 +623,49 @@ export class LoyaltyService {
     const activityTrend = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (6 - i));
-      const dayLabel = d.toLocaleString('default', { month: 'short', day: '2-digit' });
-      const earnMatch = earningsTrendRaw.find(e => e.day === dayLabel);
-      const claimMatch = claimsTrendRaw.find(c => c.day === dayLabel);
+      const dayLabel = d.toLocaleString('default', {
+        month: 'short',
+        day: '2-digit',
+      });
+      const earnMatch = earningsTrendRaw.find((e) => e.day === dayLabel);
+      const claimMatch = claimsTrendRaw.find((c) => c.day === dayLabel);
       return {
         name: d.toLocaleString('default', { weekday: 'short' }),
         earnings: earnMatch ? parseInt(earnMatch.amount, 10) : 0,
-        claims: claimMatch ? parseInt(claimMatch.count, 10) : 0
+        claims: claimMatch ? parseInt(claimMatch.count, 10) : 0,
       };
     });
 
     return {
       stats: [
-        { label: 'Total Members', value: totalMembers.toLocaleString(), change: 0, trend: 'up' },
-        { label: 'Points Earned', value: totalPointsEarned.toLocaleString(), change: 0, trend: 'up' },
-        { label: 'Rewards Claimed', value: rewardsClaimed.toLocaleString(), change: 0, trend: 'up' },
-        { label: 'Redemption Rate', value: `${redemptionRate}%`, change: 0, trend: 'up' },
+        {
+          label: 'Total Members',
+          value: totalMembers.toLocaleString(),
+          change: 0,
+          trend: 'up',
+        },
+        {
+          label: 'Points Earned',
+          value: totalPointsEarned.toLocaleString(),
+          change: 0,
+          trend: 'up',
+        },
+        {
+          label: 'Rewards Claimed',
+          value: rewardsClaimed.toLocaleString(),
+          change: 0,
+          trend: 'up',
+        },
+        {
+          label: 'Redemption Rate',
+          value: `${redemptionRate}%`,
+          change: 0,
+          trend: 'up',
+        },
       ],
       tierDistribution,
       activityTrend,
-      growthForecast: '+0%' // We could calculate this based on month-over-month growth
+      growthForecast: '+0%', // We could calculate this based on month-over-month growth
     };
   }
 

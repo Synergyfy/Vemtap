@@ -22,6 +22,7 @@ export enum UserRole {
   STAFF = 'Staff',
   ADMIN = 'Admin',
   CUSTOMER = 'Customer',
+  AGENT = 'Agent',
 }
 
 export enum UserStatus {

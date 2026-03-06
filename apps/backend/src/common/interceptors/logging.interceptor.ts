@@ -18,7 +18,7 @@ export class LoggingInterceptor implements NestInterceptor {
     const now = Date.now();
 
     this.logger.log(`Incoming Request: ${method} ${url}`);
-    
+
     if (query && Object.keys(query).length > 0) {
       this.logger.debug(`Query Params: ${JSON.stringify(query, null, 2)}`);
     }
@@ -33,25 +33,28 @@ export class LoggingInterceptor implements NestInterceptor {
         const statusCode = response.statusCode;
         const duration = Date.now() - now;
 
-        this.logger.log(`Response: ${method} ${url} - Status: ${statusCode} - Duration: ${duration}ms`);
-        
+        this.logger.log(
+          `Response: ${method} ${url} - Status: ${statusCode} - Duration: ${duration}ms`,
+        );
+
         // Truncate response body if it's too large for logs
         const responseString = JSON.stringify(responseBody);
-        const loggableResponse = responseString.length > 500 
-          ? `${responseString.substring(0, 500)}... [TRUNCATED]` 
-          : responseString;
-          
+        const loggableResponse =
+          responseString.length > 500
+            ? `${responseString.substring(0, 500)}... [TRUNCATED]`
+            : responseString;
+
         this.logger.debug(`Response Body: ${loggableResponse}`);
       }),
       catchError((error) => {
         const duration = Date.now() - now;
         const statusCode = error.status || 500;
-        
+
         this.logger.error(
           `Error: ${method} ${url} - Status: ${statusCode} - Duration: ${duration}ms - Message: ${error.message}`,
           error.stack,
         );
-        
+
         return throwError(() => error);
       }),
     );

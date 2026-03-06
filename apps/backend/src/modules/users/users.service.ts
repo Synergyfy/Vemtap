@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { User, UserRole, UserStatus } from './entities/user.entity';
 import { PasswordResetHistory } from './entities/password-reset-history.entity';
 import { UpdateStaffDto } from './dto/update-staff.dto';
+import { AdminCreateAgentDto } from './dto/admin-create-agent.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -195,6 +196,22 @@ export class UsersService {
       meta: { total, page, lastPage: Math.ceil(total / limit) },
       stats,
     };
+  }
+
+  async adminCreateAgent(dto: AdminCreateAgentDto): Promise<User> {
+    const existing = await this.findByEmail(dto.email);
+    if (existing) {
+      throw new BadRequestException('User with this email already exists');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const user = this.usersRepository.create({
+      ...dto,
+      password: hashedPassword,
+      role: UserRole.AGENT,
+      status: UserStatus.ACTIVE,
+    });
+    return this.usersRepository.save(user);
   }
 
   async adminCreateUser(userData: any): Promise<User> {

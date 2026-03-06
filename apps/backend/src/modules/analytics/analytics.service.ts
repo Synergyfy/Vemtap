@@ -23,8 +23,11 @@ export class AnalyticsService {
     branchId: string | undefined,
     user: User,
   ) {
-    console.log('[AnalyticsService] resolveBusinessContext input branchId:', branchId);
-    const resolvedBranchId = branchId; 
+    console.log(
+      '[AnalyticsService] resolveBusinessContext input branchId:',
+      branchId,
+    );
+    const resolvedBranchId = branchId;
     let businessId = user.businessId;
 
     if (!resolvedBranchId && !businessId && user.role === UserRole.OWNER) {
@@ -36,7 +39,10 @@ export class AnalyticsService {
       }
     }
 
-    console.log('[AnalyticsService] resolved context:', { resolvedBranchId, businessId });
+    console.log('[AnalyticsService] resolved context:', {
+      resolvedBranchId,
+      businessId,
+    });
 
     if (!resolvedBranchId && !businessId) {
       throw new BadRequestException('branchId or business context is required');
@@ -50,8 +56,13 @@ export class AnalyticsService {
       branchId,
       user,
     );
-    console.log('[AnalyticsService] getDashboardAnalytics using branch:', resolvedBranchId, 'business:', businessId);
-    
+    console.log(
+      '[AnalyticsService] getDashboardAnalytics using branch:',
+      resolvedBranchId,
+      'business:',
+      businessId,
+    );
+
     const where: any = {};
     if (resolvedBranchId) {
       where.branchId = resolvedBranchId;
@@ -68,11 +79,17 @@ export class AnalyticsService {
       .where('user.role = :role', { role: UserRole.CUSTOMER });
 
     if (resolvedBranchId) {
-      customerCountQb.andWhere('visit.branchId = :branchId', { branchId: resolvedBranchId });
+      customerCountQb.andWhere('visit.branchId = :branchId', {
+        branchId: resolvedBranchId,
+      });
     } else {
-      customerCountQb.andWhere('visit.businessId = :businessId', { businessId });
+      customerCountQb.andWhere('visit.businessId = :businessId', {
+        businessId,
+      });
     }
-    const totalCustomersCount = await customerCountQb.select('COUNT(DISTINCT user.id)', 'count').getRawOne();
+    const totalCustomersCount = await customerCountQb
+      .select('COUNT(DISTINCT user.id)', 'count')
+      .getRawOne();
     const customersCount = parseInt(totalCustomersCount.count, 10) || 0;
 
     // 2. New Customers (Joined this month)
@@ -92,7 +109,10 @@ export class AnalyticsService {
       .groupBy('user.id')
       .having('COUNT(visit.id) > 1')
       .getCount();
-    const repeatRate = customersCount > 0 ? Math.round((returningCount / customersCount) * 100) : 0;
+    const repeatRate =
+      customersCount > 0
+        ? Math.round((returningCount / customersCount) * 100)
+        : 0;
 
     // 4. Peak Times (Today's Hourly Breakdown)
     const today = new Date();
@@ -106,7 +126,9 @@ export class AnalyticsService {
       .where('visit.createdAt >= :today', { today });
 
     if (resolvedBranchId) {
-      peakTimesRaw.andWhere('visit.branchId = :branchId', { branchId: resolvedBranchId });
+      peakTimesRaw.andWhere('visit.branchId = :branchId', {
+        branchId: resolvedBranchId,
+      });
     } else {
       peakTimesRaw.andWhere('visit.businessId = :businessId', { businessId });
     }
@@ -118,12 +140,19 @@ export class AnalyticsService {
 
     const formattedPeakTimes = Array.from({ length: 24 }, (_, i) => {
       const hourStr = i.toString().padStart(2, '0');
-      const match = peakTimesData.find(p => p.hour === hourStr);
-      const label = i === 0 ? '12am' : i === 12 ? '12pm' : i > 12 ? `${i - 12}pm` : `${i}am`;
+      const match = peakTimesData.find((p) => p.hour === hourStr);
+      const label =
+        i === 0
+          ? '12am'
+          : i === 12
+            ? '12pm'
+            : i > 12
+              ? `${i - 12}pm`
+              : `${i}am`;
       return {
         hour: label,
         value: match ? parseInt(match.count, 10) : 0,
-        new: match ? parseInt(match.newCount, 10) : 0
+        new: match ? parseInt(match.newCount, 10) : 0,
       };
     }).filter((_, i) => i >= 8 && i <= 22); // Focus on business hours 8am - 10pm
 
@@ -142,7 +171,12 @@ export class AnalyticsService {
           isUp: true,
         },
         { label: 'Avg. Stay Time', value: '45m', trend: '0%', isUp: true },
-        { label: 'Repeat Rate', value: `${repeatRate}%`, trend: '0%', isUp: true },
+        {
+          label: 'Repeat Rate',
+          value: `${repeatRate}%`,
+          trend: '0%',
+          isUp: true,
+        },
       ],
       peakTimes: formattedPeakTimes,
       messagingRoi: [
@@ -178,8 +212,12 @@ export class AnalyticsService {
       .createQueryBuilder('visit')
       .select("TO_CHAR(visit.createdAt, 'HH24')", 'hour')
       .addSelect('COUNT(visit.id)', 'count')
-      .where(resolvedBranchId ? 'visit.branchId = :branchId' : 'visit.businessId = :businessId', 
-             resolvedBranchId ? { branchId: resolvedBranchId } : { businessId });
+      .where(
+        resolvedBranchId
+          ? 'visit.branchId = :branchId'
+          : 'visit.businessId = :businessId',
+        resolvedBranchId ? { branchId: resolvedBranchId } : { businessId },
+      );
 
     const hourlyData = await hourlyDataRaw
       .groupBy('hour')
@@ -188,8 +226,15 @@ export class AnalyticsService {
 
     const formattedHourly = Array.from({ length: 24 }, (_, i) => {
       const hourStr = i.toString().padStart(2, '0');
-      const match = hourlyData.find(p => p.hour === hourStr);
-      const label = i === 0 ? '12am' : i === 12 ? '12pm' : i > 12 ? `${i - 12}pm` : `${i}am`;
+      const match = hourlyData.find((p) => p.hour === hourStr);
+      const label =
+        i === 0
+          ? '12am'
+          : i === 12
+            ? '12pm'
+            : i > 12
+              ? `${i - 12}pm`
+              : `${i}am`;
       return { hour: label, count: match ? parseInt(match.count, 10) : 0 };
     }).filter((_, i) => i >= 8 && i <= 23);
 

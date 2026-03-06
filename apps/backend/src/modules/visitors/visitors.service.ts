@@ -245,7 +245,10 @@ export class VisitorsService {
     businessId?: string,
     branchId?: string,
   ): Promise<VisitorResponseDto> {
-    const dto = createVisitorDto as (CreateVisitorDto & { branchId?: string; deviceId?: string });
+    const dto = createVisitorDto as CreateVisitorDto & {
+      branchId?: string;
+      deviceId?: string;
+    };
     // Check if user exists
     let user = await this.userRepository.findOne({
       where: { email: dto.email },
@@ -363,7 +366,10 @@ export class VisitorsService {
     return this.mapToVisitorDto(updatedUser!);
   }
 
-  async recordVisit(userId: string, deviceCode: string): Promise<RecordVisitResponse> {
+  async recordVisit(
+    userId: string,
+    deviceCode: string,
+  ): Promise<RecordVisitResponse> {
     // 1. Identify customer
     const user = await this.userRepository.findOne({
       where: { id: userId, role: UserRole.CUSTOMER },
@@ -797,7 +803,11 @@ export class VisitorsService {
     };
   }
 
-  async sendCampaign(businessId: string, body: SendCampaignBody, branchId?: string) {
+  async sendCampaign(
+    businessId: string,
+    body: SendCampaignBody,
+    branchId?: string,
+  ) {
     const visitors = await this.findAll(
       { page: 1, limit: 1000 },
       businessId,
@@ -885,8 +895,13 @@ export class VisitorsService {
     );
   }
 
-  async resetBusinessData(businessId: string, branchId?: string): Promise<void> {
-    const context: FindOptionsWhere<Visit | MessageLog | Contact | LoyaltyProfile> = branchId ? { branchId } : { businessId };
+  async resetBusinessData(
+    businessId: string,
+    branchId?: string,
+  ): Promise<void> {
+    const context: FindOptionsWhere<
+      Visit | MessageLog | Contact | LoyaltyProfile
+    > = branchId ? { branchId } : { businessId };
 
     // Use transaction for consistency
     await this.dataSource.transaction(async (manager) => {
@@ -899,12 +914,18 @@ export class VisitorsService {
       // 3. Delete Loyalty Activity
       // Note: Deleting profiles might be safer if we only delete transactions/redemptions to keep customer info
       // but 'Reset everything' usually implies a clean slate.
-      const profiles = await manager.find(LoyaltyProfile, { where: context as FindOptionsWhere<LoyaltyProfile> });
-      const profileIds = profiles.map(p => p.id);
+      const profiles = await manager.find(LoyaltyProfile, {
+        where: context as FindOptionsWhere<LoyaltyProfile>,
+      });
+      const profileIds = profiles.map((p) => p.id);
 
       if (profileIds.length > 0) {
-        await manager.delete(PointTransaction, { loyaltyProfileId: In(profileIds) } as FindOptionsWhere<PointTransaction>);
-        await manager.delete(Redemption, { loyaltyProfileId: In(profileIds) } as FindOptionsWhere<Redemption>);
+        await manager.delete(PointTransaction, {
+          loyaltyProfileId: In(profileIds),
+        } as FindOptionsWhere<PointTransaction>);
+        await manager.delete(Redemption, {
+          loyaltyProfileId: In(profileIds),
+        } as FindOptionsWhere<Redemption>);
         await manager.delete(LoyaltyProfile, { id: In(profileIds) });
       }
 

@@ -137,14 +137,20 @@ export class MessagingController {
     @Request() req: { user: User },
   ) {
     const resolved = filter.branchId || req.user?.branchId;
-    return this.analyticsService.getDashboardMetrics(req.user.businessId, resolved, channel);
+    return this.analyticsService.getDashboardMetrics(
+      req.user.businessId,
+      resolved,
+      channel,
+    );
   }
 
   @Get('inbox/:channel')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @ApiParam({ name: 'channel', enum: Channel })
-  @ApiOperation({ summary: 'Get conversation threads by channel for a branch or business' })
+  @ApiOperation({
+    summary: 'Get conversation threads by channel for a branch or business',
+  })
   async getInboxThreads(
     @Param('channel') channel: Channel,
     @Query() filter: BranchFilterDto,
@@ -164,7 +170,11 @@ export class MessagingController {
     @Request() req: { user: User },
   ) {
     const resolved = filter.branchId || req.user?.branchId;
-    return this.inboxService.getThreadMessages(req.user.businessId, threadId, resolved);
+    return this.inboxService.getThreadMessages(
+      req.user.businessId,
+      threadId,
+      resolved,
+    );
   }
 
   @Post('inbox/threads/:threadId/reply')
@@ -180,7 +190,12 @@ export class MessagingController {
   ) {
     const resolved = filter.branchId || req.user.branchId;
 
-    return this.inboxService.sendReply(req.user.businessId, threadId, dto.content, resolved);
+    return this.inboxService.sendReply(
+      req.user.businessId,
+      threadId,
+      dto.content,
+      resolved,
+    );
   }
 
   // --- Admin Endpoints ---

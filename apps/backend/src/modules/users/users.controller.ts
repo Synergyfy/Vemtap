@@ -32,6 +32,7 @@ import { GetStaffDto } from './dto/get-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateEngagementDto } from './dto/update-engagement.dto';
+import { AdminCreateAgentDto } from './dto/admin-create-agent.dto';
 import * as bcrypt from 'bcrypt';
 import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
 
@@ -277,6 +278,14 @@ export class UsersController {
       page,
       limit,
     });
+  }
+
+  @Post('admin/create-agent')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Create a new agent account' })
+  @ApiResponse({ status: 201, description: 'Agent created successfully' })
+  async adminCreateAgent(@Body() dto: AdminCreateAgentDto) {
+    return this.usersService.adminCreateAgent(dto);
   }
 
   @Post('admin')

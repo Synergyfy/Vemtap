@@ -48,7 +48,10 @@ export class AnalyticsController {
     @Request() req,
     @Query() filter: BranchFilterDto,
   ): Promise<DashboardAnalyticsResponseDto> {
-    return this.analyticsService.getDashboardAnalytics(filter.branchId, req.user);
+    return this.analyticsService.getDashboardAnalytics(
+      filter.branchId,
+      req.user,
+    );
   }
 
   @Get('footfall')
@@ -63,7 +66,10 @@ export class AnalyticsController {
     @Request() req,
     @Query() filter: BranchFilterDto,
   ): Promise<FootfallAnalyticsResponseDto> {
-    return this.analyticsService.getFootfallAnalytics(filter.branchId, req.user);
+    return this.analyticsService.getFootfallAnalytics(
+      filter.branchId,
+      req.user,
+    );
   }
 
   @Get('peak-times')
@@ -78,7 +84,10 @@ export class AnalyticsController {
     @Request() req,
     @Query() filter: BranchFilterDto,
   ): Promise<PeakTimesAnalyticsResponseDto> {
-    return this.analyticsService.getPeakTimesAnalytics(filter.branchId, req.user);
+    return this.analyticsService.getPeakTimesAnalytics(
+      filter.branchId,
+      req.user,
+    );
   }
 
   // --- Admin Endpoints ---

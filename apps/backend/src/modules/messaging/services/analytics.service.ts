@@ -64,19 +64,29 @@ export class AnalyticsService {
       .clone()
       .select("TO_CHAR(log.createdAt, 'Mon DD')", 'day')
       .addSelect("TO_CHAR(log.createdAt, 'YYYY-MM-DD')", 'sortkey')
-      .addSelect("COUNT(CASE WHEN log.direction = 'OUTBOUND' THEN 1 END)", 'sent')
-      .addSelect("COUNT(CASE WHEN log.status = :status THEN 1 END)", 'delivered')
+      .addSelect(
+        "COUNT(CASE WHEN log.direction = 'OUTBOUND' THEN 1 END)",
+        'sent',
+      )
+      .addSelect(
+        'COUNT(CASE WHEN log.status = :status THEN 1 END)',
+        'delivered',
+      )
       .setParameter('status', MessageStatus.DELIVERED)
       .andWhere('log.createdAt >= :date', { date: sevenDaysAgo })
-      .groupBy('sortkey').addGroupBy('day')
+      .groupBy('sortkey')
+      .addGroupBy('day')
       .orderBy('sortkey', 'ASC')
       .getRawMany();
 
     const trafficTrend = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (6 - i));
-      const dayLabel = d.toLocaleString('default', { month: 'short', day: '2-digit' });
-      const match = trendsRaw.find(t => t.day === dayLabel);
+      const dayLabel = d.toLocaleString('default', {
+        month: 'short',
+        day: '2-digit',
+      });
+      const match = trendsRaw.find((t) => t.day === dayLabel);
       return {
         name: d.toLocaleString('default', { weekday: 'short' }),
         sent: match ? parseInt(match.sent, 10) : 0,

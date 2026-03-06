@@ -134,7 +134,10 @@ export class FormsController {
     },
   })
   findAll(@Request() req, @Query() filter: BranchFilterDto) {
-    return this.formsService.getFormsByBusiness(req.user.businessId, filter.branchId);
+    return this.formsService.getFormsByBusiness(
+      req.user.businessId,
+      filter.branchId,
+    );
   }
 
   @Get(':id')

@@ -248,7 +248,9 @@ export class VisitorsController {
     description: 'Visitor registered successfully',
     type: VisitorResponseDto,
   })
-  async publicSignup(@Body() dto: VisitorSignupDto): Promise<VisitorResponseDto> {
+  async publicSignup(
+    @Body() dto: VisitorSignupDto,
+  ): Promise<VisitorResponseDto> {
     return this.visitorsService.create(dto);
   }
 

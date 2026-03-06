@@ -105,11 +105,11 @@ export class LoyaltyController {
   @Get('business-stats')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get aggregate loyalty stats for the business' })
-  async getBusinessStats(
-    @Request() req,
-    @Query() filter?: BranchFilterDto,
-  ) {
-    return this.loyaltyService.getBusinessLoyaltyStats(req.user.businessId, filter?.branchId);
+  async getBusinessStats(@Request() req, @Query() filter?: BranchFilterDto) {
+    return this.loyaltyService.getBusinessLoyaltyStats(
+      req.user.businessId,
+      filter?.branchId,
+    );
   }
 
   @Get('profile')
