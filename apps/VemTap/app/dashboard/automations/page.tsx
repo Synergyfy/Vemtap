@@ -170,7 +170,7 @@ function TemplateToggle({ rule, template }: { rule?: AutomationRule, template: a
             if (!user?.businessId) return;
             createMutation.mutate({
                 businessId: user.businessId,
-                branchId: activeBranchId && activeBranchId !== 'all' ? activeBranchId : undefined,
+                branchId: activeBranchId || undefined,
                 name: template.name,
                 triggerType: template.triggerType as any,
                 actionType: ActionType.SEND_WHATSAPP,

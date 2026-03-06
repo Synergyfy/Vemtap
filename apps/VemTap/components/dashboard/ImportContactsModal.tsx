@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMockDashboardStore, Visitor } from '@/lib/store/mockDashboardStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useBusinessStore } from '@/store/useBusinessStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -30,7 +31,7 @@ export default function ImportContactsModal({ isOpen, onClose }: ImportContactsM
     const [preview, setPreview] = useState<CustomerRow[]>([]);
     const [step, setStep] = useState<'upload' | 'preview' | 'success'>('upload');
     const importVisitors = useMockDashboardStore(state => state.importVisitors);
-    const activeBranchId = useBusinessStore(state => state.activeBranchId);
+    const activeBranchId = useAuthStore(state => state.activeBranchId);
     const activeBranch = useBusinessStore(state => state.getActiveBranch)();
     const queryClient = useQueryClient();
 
@@ -127,7 +128,7 @@ export default function ImportContactsModal({ isOpen, onClose }: ImportContactsM
                 time: 'Imported',
                 timestamp: Date.now(),
                 status: 'new',
-                branchId: activeBranchId,
+                branchId: activeBranchId || undefined,
                 location: activeBranch?.address || 'Imported'
             }));
 

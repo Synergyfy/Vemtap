@@ -2,22 +2,40 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Device, CreateDeviceRequest, UpdateDeviceRequest } from './types';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 
-export const useDevices = () => {
+export const useDevices = (branchId?: string) => {
+    const { activeBranchId: urlBranchId } = useActiveBranch();
+    const businessId = useAuthStore((state) => state.user?.businessId);
+    const resolvedBranchId = branchId || urlBranchId;
+
     return useQuery<Device[], Error>({
-        queryKey: ['devices'],
+        queryKey: ['devices', businessId, resolvedBranchId],
         queryFn: async () => {
-            return await api.get('/devices');
-        }
+            const searchParams = new URLSearchParams();
+            if (resolvedBranchId) searchParams.append('branchId', resolvedBranchId);
+            const query = searchParams.toString();
+            return await api.get(`/devices${query ? `?${query}` : ''}`);
+        },
+        enabled: !!businessId
     });
 };
 
-export const useDeviceStats = () => {
+export const useDeviceStats = (branchId?: string) => {
+    const { activeBranchId: urlBranchId } = useActiveBranch();
+    const businessId = useAuthStore((state) => state.user?.businessId);
+    const resolvedBranchId = branchId || urlBranchId;
+
     return useQuery<any, Error>({
-        queryKey: ['devices', 'stats'],
+        queryKey: ['devices', 'stats', businessId, resolvedBranchId],
         queryFn: async () => {
-            return await api.get('/devices/stats');
-        }
+            const searchParams = new URLSearchParams();
+            if (resolvedBranchId) searchParams.append('branchId', resolvedBranchId);
+            const query = searchParams.toString();
+            return await api.get(`/devices/stats${query ? `?${query}` : ''}`);
+        },
+        enabled: !!businessId
     });
 };
 

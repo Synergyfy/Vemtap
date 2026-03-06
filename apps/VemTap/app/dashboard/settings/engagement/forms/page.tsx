@@ -95,10 +95,7 @@ export default function EngagementFormsBuilderPage() {
     const createMutation = useCreateBusinessForm();
     const deleteMutation = useDeleteBusinessForm();
 
-    const defaultBranchId =
-        activeBranchId && activeBranchId !== 'all'
-            ? activeBranchId
-            : userBranchId || branches[0]?.id || '';
+    const defaultBranchId = activeBranchId || userBranchId || branches[0]?.id || '';
 
     const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
     const [title, setTitle] = useState('');
