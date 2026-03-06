@@ -13,26 +13,28 @@ import { fetchMyOrders } from '@/lib/api/marketplace';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MarketplaceOrder } from '@/types/marketplace';
 import { useBranches } from '@/services/branches/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { Building2 } from 'lucide-react';
 
 export default function NFCManagerPage() {
     const queryClient = useQueryClient();
     const { user } = useAuthStore();
+    const { activeBranchId: urlBranchId } = useActiveBranch();
     const [selectedLink, setSelectedLink] = useState<any | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [editData, setEditData] = useState({ name: '', location: '', branchId: '', targetUrl: '' });
+    const [editData, setEditData] = useState({ name: '', location: '', branchId: '', targetUrl: '', status: 'active' });
 
     const { data: branches = [] } = useBranches();
 
     // API Data
     const { data: devices = [], isLoading: devicesLoading } = useQuery({
-        queryKey: ['devices'],
-        queryFn: fetchDevices
+        queryKey: ['devices', user?.businessId, urlBranchId],
+        queryFn: () => fetchDevices(urlBranchId || undefined)
     });
 
     const { data: stats, isLoading: statsLoading } = useQuery({
-        queryKey: ['device-stats'],
-        queryFn: fetchDeviceStats
+        queryKey: ['device-stats', user?.businessId, urlBranchId],
+        queryFn: () => fetchDeviceStats(urlBranchId || undefined)
     });
 
     const { data: orders = [], isLoading: ordersLoading } = useQuery<MarketplaceOrder[]>({
@@ -99,7 +101,8 @@ export default function NFCManagerPage() {
             name: device.name,
             location: device.location || '',
             branchId: device.branchId || '',
-            targetUrl: currentTargetUrl
+            targetUrl: currentTargetUrl,
+            status: device.status || 'active'
         });
         setIsEditModalOpen(true);
     };
@@ -125,7 +128,8 @@ export default function NFCManagerPage() {
         const payload: any = {
             name: editData.name,
             location: editData.location,
-            branchId: editData.branchId
+            branchId: editData.branchId,
+            status: editData.status
         };
 
         if (normalizedTargetUrl) {
@@ -489,15 +493,29 @@ export default function NFCManagerPage() {
                                             placeholder="e.g. Reception Desk"
                                         />
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 ml-1">Physical Location</label>
-                                        <input
-                                            type="text"
-                                            value={editData.location}
-                                            onChange={(e) => setEditData({ ...editData, location: e.target.value })}
-                                            className="w-full h-12 bg-gray-50 border border-slate-200 rounded-2xl px-4 text-sm font-bold focus:bg-white focus:border-primary transition-all outline-none"
-                                            placeholder="e.g. Ground Floor, Lobby"
-                                        />
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 ml-1">Physical Location</label>
+                                            <input
+                                                type="text"
+                                                value={editData.location}
+                                                onChange={(e) => setEditData({ ...editData, location: e.target.value })}
+                                                className="w-full h-12 bg-gray-50 border border-slate-200 rounded-2xl px-4 text-sm font-bold focus:bg-white focus:border-primary transition-all outline-none"
+                                                placeholder="e.g. Ground Floor, Lobby"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 ml-1">Device Status</label>
+                                            <select
+                                                value={editData.status}
+                                                onChange={(e) => setEditData({ ...editData, status: e.target.value })}
+                                                className="w-full h-12 bg-gray-50 border border-slate-200 rounded-2xl px-4 text-sm font-bold focus:bg-white focus:border-primary transition-all outline-none appearance-none"
+                                            >
+                                                <option value="active">Active</option>
+                                                <option value="inactive">Inactive</option>
+                                            </select>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-1.5">

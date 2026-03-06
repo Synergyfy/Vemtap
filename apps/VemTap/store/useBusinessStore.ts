@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import { useAuthStore } from './useAuthStore';
+
 export interface Branch {
   id: string;
   name: string;
@@ -16,59 +18,26 @@ export interface Branch {
 
 interface BusinessState {
   branches: Branch[];
-  activeBranchId: string; // 'all' or a specific branch id
-  setActiveBranch: (id: string) => void;
+  setBranches: (branches: Branch[]) => void;
   getBranch: (id: string) => Branch | undefined;
   getActiveBranch: () => Branch | undefined;
   addBranch: (branch: Omit<Branch, 'id'>) => void;
 }
 
-const DEFAULT_BRANCHES: Branch[] = [
-  {
-    id: 'head-office',
-    name: 'Head Office',
-    address: 'VemTap HQ, Victoria Island, Lagos',
-    manager: 'John Owner',
-    whatsappNumber: '+234 800 123 4567',
-    smsSenderId: 'VEMTAP_HQ',
-    chatbotEnabled: true,
-    chatbotName: 'VemBot HQ'
-  },
-  {
-    id: 'ikeja-branch',
-    name: 'Ikeja Branch',
-    address: 'Allen Avenue, Ikeja, Lagos',
-    manager: 'Sarah Manager',
-    whatsappNumber: '+234 801 222 3333',
-    smsSenderId: 'VEMTAP_IKEJA',
-    chatbotEnabled: true,
-    chatbotName: 'VemBot Ikeja'
-  },
-  {
-    id: 'abuja-branch',
-    name: 'Abuja Branch',
-    address: 'Apo Garki, Abuja',
-    manager: 'Michael Abuja',
-    whatsappNumber: '+234 802 333 4444',
-    smsSenderId: 'VEMTAP_ABUJA',
-    chatbotEnabled: false
-  }
-];
-
 export const useBusinessStore = create<BusinessState>()(
   persist(
     (set, get) => ({
-      branches: DEFAULT_BRANCHES,
-      activeBranchId: 'head-office',
-      
-      setActiveBranch: (id: string) => set({ activeBranchId: id }),
-      
+      branches: [], // Start empty, let the API fill it
+
+      setBranches: (branches: Branch[]) => set({ branches }),
+
       getBranch: (id: string) => {
         return get().branches.find(b => b.id === id);
       },
-      
+
       getActiveBranch: () => {
-        const { branches, activeBranchId } = get();
+        const { branches } = get();
+        const activeBranchId = useAuthStore.getState().activeBranchId;
         return branches.find(b => b.id === activeBranchId);
       },
 
@@ -85,3 +54,4 @@ export const useBusinessStore = create<BusinessState>()(
     }
   )
 );
+

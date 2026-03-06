@@ -1,0 +1,75 @@
+'use client';
+
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useCallback, useEffect } from 'react';
+import { useAuthStore } from '@/store/useAuthStore';
+
+/**
+ * Robust hook for managing active branch state.
+ * Uses URL Search Params (?branchId=...) as the primary source of truth.
+ * Persists the selection across page navigations by ensuring the URL is updated.
+ */
+export function useActiveBranch() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
+    const { activeBranchId: storeBranchId, setActiveBranch: setStoreBranch } = useAuthStore();
+
+    // 1. Get branchId from URL and sanitize it (ignore 'all')
+    const rawUrlId = searchParams.get('branchId');
+    const urlBranchId = (rawUrlId === 'all' || !rawUrlId) ? null : rawUrlId;
+
+    // 2. Sync URL to Store
+    // This ensures that even if a user manually changes the URL, the store (and legacy components) stay in sync.
+    useEffect(() => {
+        if (urlBranchId !== storeBranchId) {
+            setStoreBranch(urlBranchId);
+        }
+    }, [urlBranchId, storeBranchId, setStoreBranch]);
+
+    // 3. Method to update branch (updates URL)
+    const setActiveBranch = useCallback((id: string | null) => {
+        const params = new URLSearchParams(searchParams.toString());
+        
+        // Clean ID: null, undefined, or 'all' should result in no branchId in URL
+        const cleanId = (id === 'all' || !id) ? null : id;
+
+        if (cleanId) {
+            params.set('branchId', cleanId);
+        } else {
+            params.delete('branchId');
+        }
+        
+        const query = params.toString();
+        const newUrl = `${pathname}${query ? `?${query}` : ''}`;
+        router.replace(newUrl);
+    }, [pathname, router, searchParams]);
+
+    return {
+        // Source of truth is the sanitized URL ID
+        activeBranchId: urlBranchId, 
+        setActiveBranch,
+        isAllBranches: !urlBranchId,
+        
+        /**
+         * Helper to append current branchId to any href
+         */
+        getLinkWithBranch: (href: string) => {
+            if (!urlBranchId) return href;
+            
+            // Handle both absolute paths and relative paths
+            const isAbsolute = href.startsWith('http');
+            const baseUrl = isAbsolute ? undefined : window.location.origin;
+            
+            try {
+                const url = new URL(href, baseUrl);
+                url.searchParams.set('branchId', urlBranchId);
+                return isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
+            } catch (e) {
+                // Fallback for malformed URLs
+                const separator = href.includes('?') ? '&' : '?';
+                return `${href}${separator}branchId=${urlBranchId}`;
+            }
+        }
+    };
+}

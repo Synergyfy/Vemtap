@@ -23,6 +23,8 @@ export default function Tooltip({ content, children, side = 'top' }: TooltipProp
             className="relative inline-block"
             onMouseEnter={() => setIsVisible(true)}
             onMouseLeave={() => setIsVisible(false)}
+            onFocus={() => setIsVisible(true)}
+            onBlur={() => setIsVisible(false)}
         >
             {children}
             {isVisible && (

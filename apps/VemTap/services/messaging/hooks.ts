@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import {
     Campaign,
     Channel,
@@ -28,13 +29,12 @@ const toUiChannel = (channel?: string): 'WhatsApp' | 'SMS' | 'Email' => {
 // ─── Analytics ───────────────────────────────────────────────────────────────
 
 export const useMessagingAnalytics = (channel?: Channel) => {
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const branchId = useAuthStore((state) =>
-        activeBranchId && activeBranchId !== 'all' ? activeBranchId : state.user?.branchId
-    );
+    const { activeBranchId: urlBranchId } = useActiveBranch();
+    const businessId = useAuthStore((state) => state.user?.businessId);
+    const branchId = (urlBranchId === 'all' || !urlBranchId) ? undefined : urlBranchId;
 
     return useQuery<MessagingAnalytics, Error>({
-        queryKey: ['messaging', 'analytics', branchId, channel],
+        queryKey: ['messaging', 'analytics', businessId, branchId, channel],
         queryFn: async () => {
             const params = new URLSearchParams();
             if (branchId) params.append('branchId', branchId);
@@ -58,25 +58,25 @@ export const useMessagingAnalytics = (channel?: Channel) => {
                     openRate: response?.openRate ?? 0,
                     clickRate: response?.clickRate ?? 0,
                 },
+                trafficTrend: response?.trafficTrend
             } as MessagingAnalytics;
         },
-        enabled: !!branchId,
+        enabled: !!businessId,
     });
 };
 
 // ─── Campaigns / History ──────────────────────────────────────────────────────
 
 export const useMessagingCampaigns = () => {
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const branchId = useAuthStore((state) =>
-        activeBranchId && activeBranchId !== 'all' ? activeBranchId : state.user?.branchId
-    );
+    const { activeBranchId: urlBranchId } = useActiveBranch();
+    const businessId = useAuthStore((state) => state.user?.businessId);
+    const branchId = (urlBranchId === 'all' || !urlBranchId) ? undefined : urlBranchId;
 
     return useQuery<Campaign[], Error>({
-        queryKey: ['messaging', 'campaigns', branchId],
+        queryKey: ['messaging', 'campaigns', businessId, branchId],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (branchId) params.append('branchId', branchId);
+            if (branchId) params.append('branchId', (branchId as string));
             const campaigns = await api.get(`/messaging/campaigns?${params.toString()}`);
             return (campaigns || []).map((campaign: any) => ({
                 ...campaign,
@@ -91,7 +91,7 @@ export const useMessagingCampaigns = () => {
                                 : campaign?.status || 'Draft',
             }));
         },
-        enabled: !!branchId,
+        enabled: !!businessId,
     });
 };
 
@@ -99,7 +99,7 @@ export const useMessagingCampaigns = () => {
 
 export const useSendMessage = () => {
     const queryClient = useQueryClient();
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const { activeBranchId: urlBranchId } = useActiveBranch();
     const userBranchId = useAuthStore((state) => state.user?.branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
     return useMutation<any, Error, SendMessageRequest>({
@@ -108,7 +108,7 @@ export const useSendMessage = () => {
             const resolvedBranchId =
                 isAllCustomersAudience
                     ? undefined
-                    : (dto.branchId || (activeBranchId && activeBranchId !== 'all' ? activeBranchId : userBranchId));
+                    : (dto.branchId || urlBranchId || userBranchId);
 
             if (!businessId) {
                 throw new Error('Missing businessId in user session');
@@ -117,7 +117,7 @@ export const useSendMessage = () => {
             return await api.post('/messaging/send', {
                 ...dto,
                 businessId,
-                branchId: resolvedBranchId,
+                branchId: resolvedBranchId || undefined,
                 audienceType: dto.audienceType,
             });
         },
@@ -168,13 +168,15 @@ export const useCreateTemplate = () => {
 
 export const useInboxThreads = (channel: Channel) => {
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const branchId = useAuthStore((state) =>
-        activeBranchId && activeBranchId !== 'all' ? activeBranchId : state.user?.branchId
-    );
+    const businessId = useAuthStore((state) => state.user?.businessId);
+    const branchId = activeBranchId === 'all' ? undefined : activeBranchId;
+
     return useQuery<InboxThread[], Error>({
-        queryKey: ['messaging', 'inbox', channel, branchId],
+        queryKey: ['messaging', 'inbox', channel, businessId, branchId],
         queryFn: async () => {
-            const response = await api.get(`/messaging/inbox/${channel}?${new URLSearchParams({ branchId: branchId || '' }).toString()}`);
+            const params = new URLSearchParams();
+            if (branchId) params.append('branchId', (branchId as string));
+            const response = await api.get(`/messaging/inbox/${channel}?${params.toString()}`);
             return (response || []).map((thread: any) => ({
                 id: thread.id,
                 contactName: thread?.contact?.name || 'Unknown Contact',
@@ -186,19 +188,21 @@ export const useInboxThreads = (channel: Channel) => {
                 updatedAt: thread?.lastActivityAt || thread?.updatedAt || thread?.createdAt,
             }));
         },
-        enabled: !!branchId && !!channel,
+        enabled: !!businessId && !!channel,
     });
 };
 
 export const useThreadMessages = (threadId: string) => {
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const branchId = useAuthStore((state) =>
-        activeBranchId && activeBranchId !== 'all' ? activeBranchId : state.user?.branchId
-    );
+    const businessId = useAuthStore((state) => state.user?.businessId);
+    const branchId = activeBranchId === 'all' ? undefined : activeBranchId;
+
     return useQuery<ThreadMessage[], Error>({
-        queryKey: ['messaging', 'thread', threadId, branchId],
+        queryKey: ['messaging', 'thread', threadId, businessId, branchId],
         queryFn: async () => {
-            const response = await api.get(`/messaging/inbox/threads/${threadId}?${new URLSearchParams({ branchId: branchId || '' }).toString()}`);
+            const params = new URLSearchParams();
+            if (branchId) params.append('branchId', (branchId as string));
+            const response = await api.get(`/messaging/inbox/threads/${threadId}?${params.toString()}`);
             return (response || []).map((message: any) => ({
                 id: message.id,
                 threadId: message.threadId,
@@ -207,7 +211,7 @@ export const useThreadMessages = (threadId: string) => {
                 createdAt: message.timestamp || message.createdAt,
             }));
         },
-        enabled: !!branchId && !!threadId,
+        enabled: !!businessId && !!threadId,
     });
 };
 
@@ -227,13 +231,13 @@ export const useReplyToThread = (threadId: string) => {
 export const useAutomations = (branchId?: string) => {
     const businessId = useAuthStore((state) => state.user?.businessId);
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const targetBranchId = branchId || (activeBranchId && activeBranchId !== 'all' ? activeBranchId : undefined);
+    const targetBranchId = branchId || (activeBranchId === 'all' ? undefined : activeBranchId);
 
     return useQuery<AutomationRule[], Error>({
         queryKey: ['messaging', 'automations', businessId, targetBranchId],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (targetBranchId) params.append('branchId', targetBranchId);
+            if (targetBranchId) params.append('branchId', (targetBranchId as string));
             return await api.get(`/automations?${params.toString()}`);
         },
         enabled: !!businessId,
@@ -273,13 +277,13 @@ export const useDeleteAutomation = () => {
 export const useAutomationLogs = (branchId?: string, limit = 50, offset = 0) => {
     const businessId = useAuthStore((state) => state.user?.businessId);
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const targetBranchId = branchId || (activeBranchId && activeBranchId !== 'all' ? activeBranchId : undefined);
+    const targetBranchId = branchId || (activeBranchId === 'all' ? undefined : activeBranchId);
 
     return useQuery<{ data: AutomationLog[]; total: number }, Error>({
         queryKey: ['messaging', 'automation-logs', businessId, targetBranchId, limit, offset],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (targetBranchId) params.append('branchId', targetBranchId);
+            if (targetBranchId) params.append('branchId', (targetBranchId as string));
             params.append('limit', limit.toString());
             params.append('offset', offset.toString());
             return await api.get(`/automations/logs?${params.toString()}`);
@@ -300,13 +304,13 @@ export const useAutomationLogDetails = (sessionId: string) => {
 export const useAutomationPerformance = (branchId?: string, startDate?: string, endDate?: string) => {
     const businessId = useAuthStore((state) => state.user?.businessId);
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const targetBranchId = branchId || (activeBranchId && activeBranchId !== 'all' ? activeBranchId : undefined);
+    const targetBranchId = branchId || (activeBranchId === 'all' ? undefined : activeBranchId);
 
     return useQuery<AutomationPerformance, Error>({
         queryKey: ['messaging', 'automation-performance', businessId, targetBranchId, startDate, endDate],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (targetBranchId) params.append('branchId', targetBranchId);
+            if (targetBranchId) params.append('branchId', (targetBranchId as string));
             if (startDate) params.append('startDate', startDate);
             if (endDate) params.append('endDate', endDate);
             return await api.get(`/automations/performance?${params.toString()}`);
@@ -318,13 +322,13 @@ export const useAutomationPerformance = (branchId?: string, startDate?: string, 
 export const useWhatsAppConnectionStatus = (branchId?: string) => {
     const businessId = useAuthStore((state) => state.user?.businessId);
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const targetBranchId = branchId || (activeBranchId && activeBranchId !== 'all' ? activeBranchId : undefined);
+    const targetBranchId = branchId || (activeBranchId === 'all' ? undefined : activeBranchId);
 
     return useQuery<{ status: string; provider: string; updatedAt: string }, Error>({
         queryKey: ['messaging', 'whatsapp-status', businessId, targetBranchId],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (targetBranchId) params.append('branchId', targetBranchId);
+            if (targetBranchId) params.append('branchId', (targetBranchId as string));
             return await api.get(`/automations/connection-status?${params.toString()}`);
         },
         enabled: !!businessId,

@@ -66,7 +66,7 @@ export class BusinessesService {
   }
 
   async importCustomers(businessId: string, importDto: ImportCustomersDto) {
-    const defaultPassword = 'mypassword';
+    const defaultPassword = '123456';
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
     const results = {
       imported: 0,

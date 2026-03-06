@@ -24,19 +24,17 @@ const PERMISSIONS = [
 
 export default function StaffManagementPage() {
     const router = useRouter();
-    const { user } = useAuthStore();
+    const { user, activeBranchId } = useAuthStore();
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
-    const [staffToDelete, setStaffToDelete] = useState<{ id: string, name: string } | null>(null);
-    const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['dashboard', 'visitors']);
+    const [staffToDelete, setStaffToDelete] = useState<{ id: string, name: string } | null>(null);        
+    const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['dashboard', 'visitors']);  
 
-    const { activeBranchId } = useBusinessStore();
     const { data: realBranches = [] } = useBranches();
-
     // We'll use real branches if available, otherwise an empty array (DataTable handles it)
     const branches = realBranches;
 
-    const { data: staffMembers, isLoading: isStaffLoading } = useStaff(activeBranchId);
+    const { data: staffMembers, isLoading: isStaffLoading } = useStaff(activeBranchId || undefined);
     const inviteMutation = useInviteStaff();
     const updateMutation = useUpdateStaff();
     const removeMutation = useRemoveStaff();
@@ -63,7 +61,7 @@ export default function StaffManagementPage() {
             email: formData.get('email') as string,
             jobTitle: formData.get('jobTitle') as string || undefined,
             role: roleValue as UserRole,
-            branchId: branchId || (activeBranchId !== 'all' ? activeBranchId : '') || user?.branchId || '',
+            branchId: branchId || activeBranchId || user?.branchId || '',
             permissions: selectedPermissions,
         };
 
@@ -283,7 +281,7 @@ export default function StaffManagementPage() {
                             <select
                                 name="branchId"
                                 required
-                                defaultValue={activeBranchId !== 'all' ? activeBranchId : branches[0]?.id}
+                                defaultValue={activeBranchId || branches[0]?.id}
                                 className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none"
                             >
                                 <option value="">Select a branch</option>

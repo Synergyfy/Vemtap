@@ -27,6 +27,8 @@ import {
   PeakTimesAnalyticsResponseDto,
 } from './dto/analytics-responses.dto';
 
+import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
+
 @ApiTags('analytics')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -44,9 +46,9 @@ export class AnalyticsController {
   })
   getDashboardAnalytics(
     @Request() req,
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ): Promise<DashboardAnalyticsResponseDto> {
-    return this.analyticsService.getDashboardAnalytics(branchId, req.user);
+    return this.analyticsService.getDashboardAnalytics(filter.branchId, req.user);
   }
 
   @Get('footfall')
@@ -59,9 +61,9 @@ export class AnalyticsController {
   })
   getFootfallAnalytics(
     @Request() req,
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ): Promise<FootfallAnalyticsResponseDto> {
-    return this.analyticsService.getFootfallAnalytics(branchId, req.user);
+    return this.analyticsService.getFootfallAnalytics(filter.branchId, req.user);
   }
 
   @Get('peak-times')
@@ -74,9 +76,9 @@ export class AnalyticsController {
   })
   getPeakTimesAnalytics(
     @Request() req,
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ): Promise<PeakTimesAnalyticsResponseDto> {
-    return this.analyticsService.getPeakTimesAnalytics(branchId, req.user);
+    return this.analyticsService.getPeakTimesAnalytics(filter.branchId, req.user);
   }
 
   // --- Admin Endpoints ---

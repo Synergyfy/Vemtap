@@ -10,14 +10,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Visitor } from '@/services/visitors/types';
 import { useNewVisitors, useNewVisitorStats, useVisitor } from '@/services/visitors/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
-import { UserPlus, Calendar, TrendingUp, Timer, Send, Hand } from 'lucide-react';
+import { UserPlus, Calendar, TrendingUp, Timer, Send, Hand, Tag } from 'lucide-react';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import toast from 'react-hot-toast';
 import { formatDate } from '@/lib/utils/date';
 
 function NewVisitorJoinedCell({ visitor }: { visitor: Visitor }) {
-    const { data: fullVisitor } = useVisitor(visitor.id, 'all');
+    const { data: fullVisitor } = useVisitor(visitor.id);
 
     const resolveJoinedDate = (item: Visitor) => {
         const enhanced = item as Visitor & {
@@ -64,8 +64,8 @@ export default function NewVisitorsPage() {
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
 
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const { data: paginatedData, isLoading } = useNewVisitors('all');
-    const { data: statsData } = useNewVisitorStats('all');
+    const { data: paginatedData, isLoading } = useNewVisitors();
+    const { data: statsData } = useNewVisitorStats();
 
     const newVisitors = paginatedData?.data || [];
 
@@ -84,7 +84,15 @@ export default function NewVisitorsPage() {
     const stats = statsData?.stats && statsData.stats.length > 0 ? statsData.stats.map(s => ({
         ...s,
         color: s.color as 'blue' | 'green' | 'purple' | 'red' | 'yellow',
-        icon: s.icon === 'person_add' ? UserPlus : s.icon === 'calendar' ? Calendar : s.icon === 'trending_up' ? TrendingUp : Timer
+        icon: s.icon === 'person_add'
+            ? UserPlus
+            : s.icon === 'calendar'
+                ? Calendar
+                : s.icon === 'trending_up'
+                    ? TrendingUp
+                    : s.icon === 'tag'
+                        ? Tag
+                        : Timer
     })) : [
         { label: 'New Today', value: newVisitors.length.toString(), icon: UserPlus, color: 'green' as const, trend: { value: '+0%', isUp: true } },
         { label: 'Weekly New', value: '0', icon: Calendar, color: 'blue' as const, trend: { value: '+0%', isUp: true } },

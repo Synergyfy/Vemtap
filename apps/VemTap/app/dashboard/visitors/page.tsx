@@ -21,11 +21,11 @@ export default function VisitorsOverviewPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' | 'general' } | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
 
-    const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors('all', {
+    const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(undefined, {
         search: searchQuery,
         status: filterStatus !== 'all' ? filterStatus : undefined
     });
-    const { data: statsData } = useVisitorStats('all');
+    const { data: statsData } = useVisitorStats();
 
     const visitors = paginatedData?.data || [];
     const isLoading = isLoadingVisitors;

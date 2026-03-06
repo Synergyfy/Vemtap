@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource, In, FindOptionsWhere } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Visit } from './entities/visit.entity';
 import { Device, DeviceStatus } from '../devices/entities/device.entity';
@@ -27,6 +27,28 @@ import { Channel } from '../messaging/enums/channel.enum';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import * as bcrypt from 'bcrypt';
 import { MailService } from '../mail/mail.service';
+import { MessageLog } from '../messaging/entities/message-log.entity';
+import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
+import { Redemption } from '../campaigns/entities/redemption.entity';
+import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
+
+export class RecordVisitResponse {
+  message: string;
+  visit: {
+    id: string;
+    createdAt: Date;
+  };
+  loyalty: any | null; // Loyalty result depends on campaigns service
+  context: {
+    businessId: string;
+    branchId?: string;
+  };
+}
+
+export class SendCampaignBody {
+  channel: Channel;
+  message: string;
+}
 
 @Injectable()
 export class VisitorsService {
@@ -41,6 +63,7 @@ export class VisitorsService {
     private branchRepository: Repository<Branch>,
     @InjectRepository(Contact)
     private contactRepository: Repository<Contact>,
+    private dataSource: DataSource,
     private messagingService: MessagingEngineService,
     private campaignsService: CampaignsService,
     private automationService: AutomationService,
@@ -157,9 +180,9 @@ export class VisitorsService {
     const newThisMonth = await newThisMonthQb.getCount();
 
     // Frequency = Total Visits / Total Visitors
-    const visitWhere: any = {};
-    if (branchId) visitWhere.branchId = branchId;
-    else visitWhere.businessId = businessId;
+    const visitWhere: FindOptionsWhere<Visit> = branchId
+      ? { branchId }
+      : { businessId };
 
     const totalVisitsCount = await this.visitRepository.count({
       where: visitWhere,
@@ -222,14 +245,16 @@ export class VisitorsService {
     businessId?: string,
     branchId?: string,
   ): Promise<VisitorResponseDto> {
-    const dto = createVisitorDto as any; // Cast for easier access to optional fields
+    const dto = createVisitorDto as (CreateVisitorDto & { branchId?: string; deviceId?: string });
     // Check if user exists
     let user = await this.userRepository.findOne({
       where: { email: dto.email },
     });
 
+    const defaultPassword: string = '123456';
+
     if (!user) {
-      const hashedPassword = await bcrypt.hash('mypassword', 10);
+      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
       user = this.userRepository.create({
         email: dto.email,
         firstName: dto.firstName,
@@ -244,6 +269,7 @@ export class VisitorsService {
       await this.mailService.sendWelcomeEmail(
         user.email,
         `${user.firstName} ${user.lastName}`.trim() || 'Visitor',
+        defaultPassword,
       );
     }
 
@@ -310,7 +336,7 @@ export class VisitorsService {
         await this.contactRepository.save(contact);
       }
 
-      const visitWhere: any = { customer: { id: user.id } };
+      const visitWhere: FindOptionsWhere<Visit> = { customer: { id: user.id } };
       if (resolvedBranchId) visitWhere.branchId = resolvedBranchId;
       else visitWhere.businessId = resolvedBusinessId;
 
@@ -337,7 +363,7 @@ export class VisitorsService {
     return this.mapToVisitorDto(updatedUser!);
   }
 
-  async recordVisit(userId: string, deviceCode: string): Promise<any> {
+  async recordVisit(userId: string, deviceCode: string): Promise<RecordVisitResponse> {
     // 1. Identify customer
     const user = await this.userRepository.findOne({
       where: { id: userId, role: UserRole.CUSTOMER },
@@ -620,7 +646,15 @@ export class VisitorsService {
         'MAX(visit.createdAt) as last_visit',
       ]);
 
-    const rawData: any[] = await qb
+    const rawData: Array<{
+      user_id: string;
+      user_firstName: string;
+      user_lastName: string;
+      user_email: string;
+      user_phone: string;
+      total_visits: string;
+      last_visit: string;
+    }> = await qb
       .orderBy('user.createdAt', 'DESC')
       .offset(skip)
       .limit(limit)
@@ -647,8 +681,8 @@ export class VisitorsService {
       lastName: r.user_lastName,
       email: r.user_email,
       phone: r.user_phone,
-      totalVisits: parseInt(r.total_visits),
-      frequency: parseInt(r.total_visits) > 5 ? 'Monthly' : 'Weekly',
+      totalVisits: parseInt(r.total_visits, 10),
+      frequency: parseInt(r.total_visits, 10) > 5 ? 'Monthly' : 'Weekly',
       lastVisit: new Date(r.last_visit),
       status: 'Returning',
     }));
@@ -763,7 +797,7 @@ export class VisitorsService {
     };
   }
 
-  async sendCampaign(businessId: string, body: any, branchId?: string) {
+  async sendCampaign(businessId: string, body: SendCampaignBody, branchId?: string) {
     const visitors = await this.findAll(
       { page: 1, limit: 1000 },
       businessId,
@@ -771,10 +805,8 @@ export class VisitorsService {
     );
     const contactIds = visitors.data.map((v) => v.id);
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const channel = (body.channel as Channel) || Channel.SMS;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const content = body.message as string;
+    const channel = body.channel || Channel.SMS;
+    const content = body.message;
 
     return this.messagingService.sendMessage({
       businessId,
@@ -851,6 +883,34 @@ export class VisitorsService {
       Channel.SMS,
       branchId,
     );
+  }
+
+  async resetBusinessData(businessId: string, branchId?: string): Promise<void> {
+    const context: FindOptionsWhere<Visit | MessageLog | Contact | LoyaltyProfile> = branchId ? { branchId } : { businessId };
+
+    // Use transaction for consistency
+    await this.dataSource.transaction(async (manager) => {
+      // 1. Delete Visits
+      await manager.delete(Visit, context as FindOptionsWhere<Visit>);
+
+      // 2. Delete Messaging Logs
+      await manager.delete(MessageLog, context as FindOptionsWhere<MessageLog>);
+
+      // 3. Delete Loyalty Activity
+      // Note: Deleting profiles might be safer if we only delete transactions/redemptions to keep customer info
+      // but 'Reset everything' usually implies a clean slate.
+      const profiles = await manager.find(LoyaltyProfile, { where: context as FindOptionsWhere<LoyaltyProfile> });
+      const profileIds = profiles.map(p => p.id);
+
+      if (profileIds.length > 0) {
+        await manager.delete(PointTransaction, { loyaltyProfileId: In(profileIds) } as FindOptionsWhere<PointTransaction>);
+        await manager.delete(Redemption, { loyaltyProfileId: In(profileIds) } as FindOptionsWhere<Redemption>);
+        await manager.delete(LoyaltyProfile, { id: In(profileIds) });
+      }
+
+      // 4. Delete Contacts (Optionally keep them? Usually reset means reset)
+      await manager.delete(Contact, context as FindOptionsWhere<Contact>);
+    });
   }
 
   // --- Helpers ---

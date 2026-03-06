@@ -43,7 +43,7 @@ describe('AnalyticsController', () => {
       const result = { test: 'data' } as any;
       jest.spyOn(service, 'getDashboardAnalytics').mockReturnValue(result);
 
-      expect(controller.getDashboardAnalytics({})).toBe(result);
+      expect(controller.getDashboardAnalytics({} as any, {} as any)).toBe(result);
       expect(service.getDashboardAnalytics).toHaveBeenCalled();
     });
   });
@@ -53,7 +53,7 @@ describe('AnalyticsController', () => {
       const result = { test: 'data' } as any;
       jest.spyOn(service, 'getFootfallAnalytics').mockReturnValue(result);
 
-      expect(controller.getFootfallAnalytics({})).toBe(result);
+      expect(controller.getFootfallAnalytics({} as any, {} as any)).toBe(result);
       expect(service.getFootfallAnalytics).toHaveBeenCalled();
     });
   });
@@ -63,7 +63,7 @@ describe('AnalyticsController', () => {
       const result = { test: 'data' } as any;
       jest.spyOn(service, 'getPeakTimesAnalytics').mockReturnValue(result);
 
-      expect(controller.getPeakTimesAnalytics({})).toBe(result);
+      expect(controller.getPeakTimesAnalytics({} as any, {} as any)).toBe(result);
       expect(service.getPeakTimesAnalytics).toHaveBeenCalled();
     });
   });

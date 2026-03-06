@@ -25,8 +25,8 @@ export default function ReturningVisitorsPage() {
     const queryClient = useQueryClient();
     const { user, activeBranchId } = useAuthStore();
 
-    const { data: paginatedData, isLoading } = useReturningVisitors('all');
-    const { data: statsData } = useReturningVisitorStats('all');
+    const { data: paginatedData, isLoading } = useReturningVisitors();
+    const { data: statsData } = useReturningVisitorStats();
 
     const returningVisitors = paginatedData?.data || [];
 
@@ -34,7 +34,7 @@ export default function ReturningVisitorsPage() {
         mutationFn: async (rewardData: any) => {
             const payload = {
                 ...rewardData,
-                branchId: activeBranchId === 'all' ? undefined : activeBranchId,
+                branchId: activeBranchId || undefined,
             };
             return await api.post('/visitors/rewards', payload);
         },
