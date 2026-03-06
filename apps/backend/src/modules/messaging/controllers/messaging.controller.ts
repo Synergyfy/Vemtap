@@ -37,6 +37,7 @@ import { InboxService } from '../services/inbox.service';
 import { SendMessageDto } from '../dto/send-message.dto';
 import { Channel } from '../enums/channel.enum';
 import { CreateTemplateDto } from '../dto/template/create-template.dto';
+import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
 
 export class ReplyDto {
   content: string;
@@ -116,10 +117,10 @@ export class MessagingController {
     summary: 'Get all messaging campaigns for a branch or business',
   })
   async getCampaigns(
-    @Query('branchId') branchId: string,
+    @Query() filter: BranchFilterDto,
     @Request() req: { user: User },
   ) {
-    const resolvedBranchId = branchId || req.user?.branchId;
+    const resolvedBranchId = filter.branchId || req.user?.branchId;
     return this.campaignService.getCampaigns(
       resolvedBranchId,
       req.user.businessId,
@@ -129,30 +130,28 @@ export class MessagingController {
   @Get('analytics')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
-  @ApiOperation({ summary: 'Get messaging analytics by branch' })
+  @ApiOperation({ summary: 'Get messaging analytics by branch or business' })
   async getAnalytics(
     @Query('channel') channel: Channel,
-    @Query('branchId') branchId: string,
+    @Query() filter: BranchFilterDto,
     @Request() req: { user: User },
   ) {
-    const resolved = branchId || req.user?.branchId;
-    if (!resolved) throw new BadRequestException('branchId is required');
-    return this.analyticsService.getDashboardMetrics(resolved, channel);
+    const resolved = filter.branchId || req.user?.branchId;
+    return this.analyticsService.getDashboardMetrics(req.user.businessId, resolved, channel);
   }
 
   @Get('inbox/:channel')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @ApiParam({ name: 'channel', enum: Channel })
-  @ApiOperation({ summary: 'Get conversation threads by channel for a branch' })
+  @ApiOperation({ summary: 'Get conversation threads by channel for a branch or business' })
   async getInboxThreads(
     @Param('channel') channel: Channel,
-    @Query('branchId') branchId: string,
+    @Query() filter: BranchFilterDto,
     @Request() req: { user: User },
   ) {
-    const resolved = branchId || req.user?.branchId;
-    if (!resolved) throw new BadRequestException('branchId is required');
-    return this.inboxService.getThreads(resolved, channel);
+    const resolved = filter.branchId || req.user?.branchId;
+    return this.inboxService.getThreads(req.user.businessId, channel, resolved);
   }
 
   @Get('inbox/threads/:threadId')
@@ -161,12 +160,11 @@ export class MessagingController {
   @ApiOperation({ summary: 'Get messages in a specific thread' })
   async getThreadMessages(
     @Param('threadId') threadId: string,
-    @Query('branchId') branchId: string,
+    @Query() filter: BranchFilterDto,
     @Request() req: { user: User },
   ) {
-    const resolved = branchId || req.user?.branchId;
-    if (!resolved) throw new BadRequestException('branchId is required');
-    return this.inboxService.getThreadMessages(resolved, threadId);
+    const resolved = filter.branchId || req.user?.branchId;
+    return this.inboxService.getThreadMessages(req.user.businessId, threadId, resolved);
   }
 
   @Post('inbox/threads/:threadId/reply')
@@ -177,17 +175,12 @@ export class MessagingController {
   async replyToThread(
     @Param('threadId') threadId: string,
     @Body() dto: ReplyDto,
+    @Query() filter: BranchFilterDto,
     @Request() req: { user: User },
   ) {
-    const resolved = req.user.branchId;
+    const resolved = filter.branchId || req.user.branchId;
 
-    if (!resolved) {
-      throw new BadRequestException(
-        'branchId is required to reply. Please switch to a branch context.',
-      );
-    }
-
-    return this.inboxService.sendReply(resolved, threadId, dto.content);
+    return this.inboxService.sendReply(req.user.businessId, threadId, dto.content, resolved);
   }
 
   // --- Admin Endpoints ---

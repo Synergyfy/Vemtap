@@ -23,7 +23,8 @@ export class AnalyticsService {
     branchId: string | undefined,
     user: User,
   ) {
-    const resolvedBranchId = branchId || user.branchId;
+    console.log('[AnalyticsService] resolveBusinessContext input branchId:', branchId);
+    const resolvedBranchId = branchId; 
     let businessId = user.businessId;
 
     if (!resolvedBranchId && !businessId && user.role === UserRole.OWNER) {
@@ -34,6 +35,8 @@ export class AnalyticsService {
         businessId = business.id;
       }
     }
+
+    console.log('[AnalyticsService] resolved context:', { resolvedBranchId, businessId });
 
     if (!resolvedBranchId && !businessId) {
       throw new BadRequestException('branchId or business context is required');
@@ -47,37 +50,82 @@ export class AnalyticsService {
       branchId,
       user,
     );
+    console.log('[AnalyticsService] getDashboardAnalytics using branch:', resolvedBranchId, 'business:', businessId);
+    
     const where: any = {};
     if (resolvedBranchId) {
       where.branchId = resolvedBranchId;
-    } else if (businessId) {
+    } else {
       where.businessId = businessId;
     }
 
     const totalVisitsCount = await this.visitRepository.count({ where });
 
-    const queryBuilder = this.userRepository
+    // 1. Total Customers Count (Unique Users)
+    const customerCountQb = this.userRepository
       .createQueryBuilder('user')
-      .where('user.role = :role', { role: UserRole.CUSTOMER })
-      .groupBy('user.id');
+      .innerJoin('user.visits', 'visit')
+      .where('user.role = :role', { role: UserRole.CUSTOMER });
 
     if (resolvedBranchId) {
-      queryBuilder.innerJoin(
-        'user.visits',
-        'visit',
-        'visit.branchId = :branchId',
-        { branchId: resolvedBranchId },
-      );
-    } else if (businessId) {
-      queryBuilder.innerJoin(
-        'user.visits',
-        'visit',
-        'visit.businessId = :businessId',
-        { businessId },
-      );
+      customerCountQb.andWhere('visit.branchId = :branchId', { branchId: resolvedBranchId });
+    } else {
+      customerCountQb.andWhere('visit.businessId = :businessId', { businessId });
+    }
+    const totalCustomersCount = await customerCountQb.select('COUNT(DISTINCT user.id)', 'count').getRawOne();
+    const customersCount = parseInt(totalCustomersCount.count, 10) || 0;
+
+    // 2. New Customers (Joined this month)
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const newCustomersCount = await customerCountQb
+      .clone()
+      .andWhere('user.createdAt >= :startOfMonth', { startOfMonth })
+      .getRawOne();
+    const newCount = parseInt(newCustomersCount.count, 10) || 0;
+
+    // 3. Repeat Rate
+    const returningCount = await customerCountQb
+      .clone()
+      .groupBy('user.id')
+      .having('COUNT(visit.id) > 1')
+      .getCount();
+    const repeatRate = customersCount > 0 ? Math.round((returningCount / customersCount) * 100) : 0;
+
+    // 4. Peak Times (Today's Hourly Breakdown)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const peakTimesRaw = await this.visitRepository
+      .createQueryBuilder('visit')
+      .select("TO_CHAR(visit.createdAt, 'HH24')", 'hour')
+      .addSelect('COUNT(visit.id)', 'count')
+      .addSelect("COUNT(CASE WHEN visit.status = 'new' THEN 1 END)", 'newCount')
+      .where('visit.createdAt >= :today', { today });
+
+    if (resolvedBranchId) {
+      peakTimesRaw.andWhere('visit.branchId = :branchId', { branchId: resolvedBranchId });
+    } else {
+      peakTimesRaw.andWhere('visit.businessId = :businessId', { businessId });
     }
 
-    const totalCustomersCount = await queryBuilder.getCount();
+    const peakTimesData = await peakTimesRaw
+      .groupBy('hour')
+      .orderBy('hour', 'ASC')
+      .getRawMany();
+
+    const formattedPeakTimes = Array.from({ length: 24 }, (_, i) => {
+      const hourStr = i.toString().padStart(2, '0');
+      const match = peakTimesData.find(p => p.hour === hourStr);
+      const label = i === 0 ? '12am' : i === 12 ? '12pm' : i > 12 ? `${i - 12}pm` : `${i}am`;
+      return {
+        hour: label,
+        value: match ? parseInt(match.count, 10) : 0,
+        new: match ? parseInt(match.newCount, 10) : 0
+      };
+    }).filter((_, i) => i >= 8 && i <= 22); // Focus on business hours 8am - 10pm
 
     return {
       stats: [
@@ -88,41 +136,27 @@ export class AnalyticsService {
           isUp: true,
         },
         {
-          label: 'Total Customers',
-          value: totalCustomersCount.toLocaleString(),
+          label: 'New Customers',
+          value: newCount.toLocaleString(),
           trend: '+0%',
           isUp: true,
         },
-        { label: 'Avg. Stay Time', value: '42m', trend: '0%', isUp: true },
-        { label: 'Repeat Rate', value: '0%', trend: '0%', isUp: true },
+        { label: 'Avg. Stay Time', value: '45m', trend: '0%', isUp: true },
+        { label: 'Repeat Rate', value: `${repeatRate}%`, trend: '0%', isUp: true },
       ],
-      peakTimes: [
-        { hour: '9am', value: 30 },
-        { hour: '11am', value: 45 },
-        { hour: '1pm', value: 85 },
-        { hour: '3pm', value: 60 },
-        { hour: '5pm', value: 95 },
-        { hour: '7pm', value: 75 },
-        { hour: '9pm', value: 40 },
-      ],
+      peakTimes: formattedPeakTimes,
       messagingRoi: [
-        { label: 'Sent', value: '12,450' },
-        { label: 'Delivered', value: '12,200', sub: '98%' },
-        { label: 'Opened', value: '8,450', sub: '69%' },
-        { label: 'Clicked', value: '3,120', sub: '25%' },
-        { label: 'Failed', value: '250', sub: '2%' },
-        { label: 'Unsub', value: '45', sub: '0.3%' },
+        { label: 'Sent', value: '0' },
+        { label: 'Delivered', value: '0', sub: '0%' },
+        { label: 'Opened', value: '0', sub: '0%' },
+        { label: 'Clicked', value: '0', sub: '0%' },
       ],
       engagementQuality: {
-        surveyCompletion: '78%',
-        reviewConversion: '12.4%',
-        socialFollows: '42/day',
+        surveyCompletion: '0%',
+        reviewConversion: '0%',
+        socialFollows: '0/day',
       },
-      topPerformers: [
-        { label: 'Review Collection', type: 'collection' },
-        { label: 'Customer Survey #1', type: 'survey' },
-        { label: 'NFC Tap Points', type: 'nfc' },
-      ],
+      topPerformers: [],
     };
   }
 
@@ -134,50 +168,47 @@ export class AnalyticsService {
     const where: any = {};
     if (resolvedBranchId) {
       where.branchId = resolvedBranchId;
-    } else if (businessId) {
+    } else {
       where.businessId = businessId;
     }
 
     const totalFootfall = await this.visitRepository.count({ where });
 
+    const hourlyDataRaw = await this.visitRepository
+      .createQueryBuilder('visit')
+      .select("TO_CHAR(visit.createdAt, 'HH24')", 'hour')
+      .addSelect('COUNT(visit.id)', 'count')
+      .where(resolvedBranchId ? 'visit.branchId = :branchId' : 'visit.businessId = :businessId', 
+             resolvedBranchId ? { branchId: resolvedBranchId } : { businessId });
+
+    const hourlyData = await hourlyDataRaw
+      .groupBy('hour')
+      .orderBy('hour', 'ASC')
+      .getRawMany();
+
+    const formattedHourly = Array.from({ length: 24 }, (_, i) => {
+      const hourStr = i.toString().padStart(2, '0');
+      const match = hourlyData.find(p => p.hour === hourStr);
+      const label = i === 0 ? '12am' : i === 12 ? '12pm' : i > 12 ? `${i - 12}pm` : `${i}am`;
+      return { hour: label, count: match ? parseInt(match.count, 10) : 0 };
+    }).filter((_, i) => i >= 8 && i <= 23);
+
     return {
       stats: [
         { label: 'Total Footfall', value: totalFootfall.toLocaleString() },
-        { label: 'Busiest Day', value: 'Saturday' },
-        { label: 'Peak Hour', value: '7:00 PM' },
-        { label: 'Devices Active', value: '1/1' },
+        { label: 'Busiest Day', value: '...' },
+        { label: 'Peak Hour', value: '...' },
+        { label: 'Devices Active', value: '...' },
       ],
-      hourlyData: [
-        { hour: '8am', count: 12 },
-        { hour: '9am', count: 25 },
-        { hour: '10am', count: 45 },
-        { hour: '11am', count: 38 },
-        { hour: '12pm', count: 72 },
-        { hour: '1pm', count: 85 },
-        { hour: '2pm', count: 68 },
-        { hour: '3pm', count: 54 },
-        { hour: '4pm', count: 62 },
-        { hour: '5pm', count: 88 },
-        { hour: '6pm', count: 124 },
-        { hour: '7pm', count: 156 },
-        { hour: '8pm', count: 142 },
-        { hour: '9pm', count: 98 },
-        { hour: '10pm', count: 65 },
-        { hour: '11pm', count: 32 },
-      ],
-      trafficByEntrance: [
-        { name: 'Main Gate', percentage: '45%', count: '2,842' },
-        { name: 'Side Entrance', percentage: '28%', count: '1,540' },
-        { name: 'Parking Lot', percentage: '20%', count: '1,241' },
-        { name: 'Loading Dock', percentage: '7%', count: '312' },
-      ],
+      hourlyData: formattedHourly,
+      trafficByEntrance: [],
       visitDuration: {
         averageStay: '45 Minutes',
-        trendText: '+12%',
+        trendText: '0%',
         distribution: [
-          { label: 'Short', time: '< 15m', p: '24%' },
-          { label: 'Medium', time: '15-60m', p: '58%' },
-          { label: 'Long', time: '> 60m', p: '18%' },
+          { label: 'Short', time: '< 15m', p: '20%' },
+          { label: 'Medium', time: '15-60m', p: '60%' },
+          { label: 'Long', time: '> 60m', p: '20%' },
         ],
       },
     };

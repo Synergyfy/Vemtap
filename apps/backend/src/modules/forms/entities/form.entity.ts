@@ -19,6 +19,9 @@ export class Form extends AbstractBaseEntity {
   @Column({ default: false })
   isPublished: boolean;
 
+  @Column({ default: false })
+  adminDisabled: boolean;
+
   @ManyToOne(() => Business, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'businessId' })
   business: Business;

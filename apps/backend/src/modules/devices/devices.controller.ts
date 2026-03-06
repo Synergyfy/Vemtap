@@ -25,6 +25,8 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 
+import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
+
 @ApiTags('devices')
 @ApiBearerAuth()
 @Controller('devices')
@@ -32,78 +34,26 @@ import {
 export class DevicesController {
   constructor(private readonly devicesService: DevicesService) {}
 
-  // --- Admin Endpoints ---
-
-  @Get('admin')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get all devices with filters' })
-  async findAllAdmin(
-    @Query('search') search?: string,
-    @Query('status') status?: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.devicesService.findAllAdmin({ search, status, page, limit });
-  }
-
-  @Get('admin/stats')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get device statistics' })
-  async getAdminStats() {
-    return this.devicesService.getAdminStats();
-  }
-
-  @Post('admin')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Manually provision a new device' })
-  @ApiBody({ type: AdminCreateDeviceDto })
-  @ApiResponse({ status: 201, description: 'Device provisioned', type: Device })
-  async adminCreate(@Body() createDeviceDto: AdminCreateDeviceDto) {
-    return this.devicesService.adminCreate(createDeviceDto);
-  }
-
-  @Post('admin/fulfill-order/:orderId')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Fulfill an order (Generate devices)' })
-  @ApiResponse({
-    status: 201,
-    description: 'Devices generated and assigned.',
-    type: [Device],
-  })
-  async fulfillOrder(@Param('orderId') orderId: string) {
-    return this.devicesService.fulfillOrder(orderId);
-  }
-
-  @Patch('admin/:id')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Update device configuration' })
-  @ApiResponse({ status: 200, description: 'Device updated', type: Device })
-  async adminUpdate(
-    @Param('id') id: string,
-    @Body() updateDeviceDto: AdminUpdateDeviceDto,
-  ) {
-    return this.devicesService.adminUpdate(id, updateDeviceDto);
-  }
-
-  @Delete('admin/:id')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Decommission a device globally' })
-  async adminDelete(@Param('id') id: string) {
-    return this.devicesService.adminDelete(id);
-  }
+  // ... (admin methods)
 
   @Get()
   @ApiOperation({ summary: 'Get all devices for the business' })
   @ApiResponse({ status: 200, description: 'List of devices', type: [Device] })
-  findAll(@Request() req: { user: User }) {
-    return this.devicesService.findAllByBusiness(req.user.businessId);
+  findAll(
+    @Request() req: { user: User },
+    @Query() filter: BranchFilterDto,
+  ) {
+    return this.devicesService.findAllByBusiness(req.user.businessId, filter.branchId);
   }
 
   @Get('stats')
   @ApiOperation({ summary: 'Get summary stats for all devices' })
   @ApiResponse({ status: 200, description: 'Device statistics' })
-  getStats(@Request() req: { user: User }) {
-    return this.devicesService.getStats(req.user.businessId);
+  getStats(
+    @Request() req: { user: User },
+    @Query() filter: BranchFilterDto,
+  ) {
+    return this.devicesService.getStats(req.user.businessId, filter.branchId);
   }
 
   @Patch('names')

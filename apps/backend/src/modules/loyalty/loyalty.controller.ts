@@ -26,6 +26,8 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 
+import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
+
 @ApiTags('Loyalty')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -100,13 +102,31 @@ export class LoyaltyController {
     return this.loyaltyService.getDeviceByCode(code, userId);
   }
 
+  @Get('business-stats')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({ summary: 'Get aggregate loyalty stats for the business' })
+  async getBusinessStats(
+    @Request() req,
+    @Query() filter?: BranchFilterDto,
+  ) {
+    return this.loyaltyService.getBusinessLoyaltyStats(req.user.businessId, filter?.branchId);
+  }
+
   @Get('profile')
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
   @ApiOperation({ summary: 'Get loyalty profile for current user' })
   @ApiQuery({ name: 'businessId', required: false })
-  async getProfile(@Request() req, @Query('businessId') businessId?: string) {
+  async getProfile(
+    @Request() req,
+    @Query('businessId') businessId?: string,
+    @Query() filter?: BranchFilterDto,
+  ) {
     if (businessId) {
-      return this.loyaltyService.getProfile(req.user.id, businessId);
+      return this.loyaltyService.getProfile(
+        req.user.id,
+        businessId,
+        filter?.branchId,
+      );
     }
     return this.loyaltyService.getAllProfiles(req.user.id);
   }
@@ -115,8 +135,16 @@ export class LoyaltyController {
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
   @ApiOperation({ summary: 'Get loyalty transaction history' })
   @ApiQuery({ name: 'businessId', required: false })
-  async getHistory(@Request() req, @Query('businessId') businessId?: string) {
-    return this.loyaltyService.getHistory(req.user.id, businessId);
+  async getHistory(
+    @Request() req,
+    @Query('businessId') businessId?: string,
+    @Query() filter?: BranchFilterDto,
+  ) {
+    return this.loyaltyService.getHistory(
+      req.user.id,
+      businessId,
+      filter?.branchId,
+    );
   }
 
   @Get('my-history')
@@ -132,9 +160,12 @@ export class LoyaltyController {
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
   @ApiOperation({ summary: 'Get available rewards for a business' })
   @ApiQuery({ name: 'businessId', required: true })
-  async getRewards(@Query('businessId') businessId: string) {
+  async getRewards(
+    @Query('businessId') businessId: string,
+    @Query() filter?: BranchFilterDto,
+  ) {
     if (!businessId) throw new BadRequestException('Business ID is required');
-    return this.loyaltyService.getRewards(businessId);
+    return this.loyaltyService.getRewards(businessId, filter?.branchId);
   }
 
   @Post('redeem')
@@ -158,22 +189,26 @@ export class LoyaltyController {
   @Post('earn')
   @Roles(UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER, UserRole.ADMIN) // Restricted to staff
   @ApiOperation({ summary: 'Manually add points to a user (Staff only)' })
+  @ApiQuery({ name: 'businessId', required: true })
   async earnPoints(
     @Body() dto: EarnPointsDto,
     @Query('businessId') businessId: string,
+    @Query() filter?: BranchFilterDto,
   ) {
     if (!businessId) throw new BadRequestException('Business ID is required');
-    return this.loyaltyService.earnPoints(businessId, dto);
+    return this.loyaltyService.earnPoints(businessId, dto, filter?.branchId);
   }
 
   @Post('rewards/create')
   @Roles(UserRole.MANAGER, UserRole.OWNER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a new reward (Manager/Owner only)' })
+  @ApiQuery({ name: 'businessId', required: true })
   async createReward(
     @Body() dto: CreateLoyaltyRewardDto,
     @Query('businessId') businessId: string,
+    @Query() filter?: BranchFilterDto,
   ) {
     if (!businessId) throw new BadRequestException('Business ID is required');
-    return this.loyaltyService.createReward(businessId, dto);
+    return this.loyaltyService.createReward(businessId, dto, filter?.branchId);
   }
 }

@@ -7,6 +7,8 @@ import {
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+
 // 1. Shared Configuration Function
 // This setup applies to both Local and Vercel environments
 export async function configureApp(app: any) {
@@ -31,8 +33,11 @@ export async function configureApp(app: any) {
     }),
   );
 
-  // Serialization
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+  // Serialization & Global Logging
+  app.useGlobalInterceptors(
+    new ClassSerializerInterceptor(app.get(Reflector)),
+    new LoggingInterceptor(),
+  );
 
   // Swagger
   const config = new DocumentBuilder()

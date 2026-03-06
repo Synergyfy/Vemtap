@@ -13,9 +13,6 @@ export default function Navbar() {
     const { data: business } = useMyBusiness(isAuthenticated);
     const solutionsRef = useRef<HTMLDivElement>(null);
 
-    // eslint-disable-next-line no-console
-    console.log('[NAVBAR] 🔍 isAuthenticated:', isAuthenticated);
-
     const getInitials = (name?: string) => {
         if (!name) return 'U';
         return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);

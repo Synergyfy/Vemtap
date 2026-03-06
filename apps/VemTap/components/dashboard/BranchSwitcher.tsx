@@ -6,10 +6,10 @@ import { ChevronDown, MapPin, Building2, Check, Plus, Layers, X, Save, Trash2, L
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useBranches, useCreateBranch, useDeleteBranch } from '@/services/branches/hooks';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 export default function BranchSwitcher() {
-    const { activeBranchId, setActiveBranch } = useAuthStore();
+    const { activeBranchId, setActiveBranch } = useActiveBranch();
     const { data: branches = [], isLoading } = useBranches();
     const createBranchMutation = useCreateBranch();
     const deleteBranchMutation = useDeleteBranch();
@@ -22,13 +22,6 @@ export default function BranchSwitcher() {
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const activeBranch = branches.find(b => b.id === activeBranchId);
-
-    // Default to all-branches analytics unless user selects a specific branch.
-    useEffect(() => {
-        if (!activeBranchId) {
-            setActiveBranch('all');
-        }
-    }, [branches, activeBranchId, setActiveBranch]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -76,9 +69,14 @@ export default function BranchSwitcher() {
         }
     };
 
-    const displayName = activeBranchId === 'all'
-        ? 'All Branches'
-        : activeBranch?.name || (branches.length === 0 ? 'No Branches' : 'Select Branch');
+    // If no branches exist, don't show the switcher at all
+    if (!isLoading && branches.length === 0) {
+        return null;
+    }
+
+    const displayName = !activeBranchId
+        ? 'Full Business'
+        : activeBranch?.name || 'Select Branch';
 
     return (
         <div className="relative" ref={dropdownRef}>
@@ -136,24 +134,24 @@ export default function BranchSwitcher() {
                                 <div className="space-y-1 max-h-64 overflow-y-auto">
                                     {/* All Branches Option */}
                                     <button
-                                        onClick={() => { setActiveBranch('all'); setIsOpen(false); }}
-                                        className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${activeBranchId === 'all'
+                                        onClick={() => { setActiveBranch(null); setIsOpen(false); }}
+                                        className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${!activeBranchId
                                             ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
                                             : 'hover:bg-gray-50 text-text-main font-bold'
                                             }`}
                                     >
-                                        <div className={`size-8 rounded-lg flex items-center justify-center ${activeBranchId === 'all' ? 'bg-white/20' : 'bg-gray-100 text-text-secondary'}`}>
+                                        <div className={`size-8 rounded-lg flex items-center justify-center ${!activeBranchId ? 'bg-white/20' : 'bg-gray-100 text-text-secondary'}`}>
                                             <Layers size={16} />
                                         </div>
                                         <div className="text-left flex-1 min-w-0">
-                                            <p className={`text-sm font-bold truncate ${activeBranchId === 'all' ? 'text-white' : 'text-text-main'}`}>
+                                            <p className={`text-sm font-bold truncate ${!activeBranchId ? 'text-white' : 'text-text-main'}`}>
                                                 All Branches
                                             </p>
-                                            <p className={`text-[10px] truncate ${activeBranchId === 'all' ? 'text-white/80' : 'text-text-secondary'}`}>
+                                            <p className={`text-[10px] truncate ${!activeBranchId ? 'text-white/80' : 'text-text-secondary'}`}>
                                                 Combined analytics & data
                                             </p>
                                         </div>
-                                        {activeBranchId === 'all' && (
+                                        {!activeBranchId && (
                                             <Check size={16} className="text-white shrink-0" />
                                         )}
                                     </button>

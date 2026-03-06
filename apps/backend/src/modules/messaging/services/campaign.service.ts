@@ -22,7 +22,7 @@ export class CampaignService {
     businessId?: string,
   ): Promise<MessageCampaign[]> {
     const where: any = {};
-    if (branchId && branchId !== 'all') where.branchId = branchId;
+    if (branchId) where.branchId = branchId;
     if (businessId) where.businessId = businessId;
 
     return this.campaignRepo.find({
@@ -37,7 +37,7 @@ export class CampaignService {
     businessId?: string,
   ): Promise<MessageCampaign> {
     const where: any = { id };
-    if (branchId && branchId !== 'all') where.branchId = branchId;
+    if (branchId) where.branchId = branchId;
     if (businessId) where.businessId = businessId;
 
     const campaign = await this.campaignRepo.findOne({
