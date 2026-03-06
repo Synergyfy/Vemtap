@@ -13,28 +13,44 @@ import PreviewRewardModal from '@/components/dashboard/PreviewRewardModal';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
-import { useVisitorStats } from '@/services/visitors/hooks';
+import { useVisitorStats, useResetDashboard } from '@/services/visitors/hooks';
 
 
 export default function DashboardPage() {
     const router = useRouter();
+    const [showClearModal, setShowClearModal] = useState(false);
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' } | null>(null);
-    const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
+    const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);     
     const [rewardPreviewVisitor, setRewardPreviewVisitor] = useState<Visitor | null>(null);
 
     const user = useAuthStore((state) => state.user);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
     // eslint-disable-next-line no-console
-    console.log('[DASHBOARD PAGE] 🔍 isAuthenticated:', isAuthenticated, 'planId:', user?.planId);
+    console.log('[DASHBOARD PAGE] 🔍 isAuthenticated:', isAuthenticated, 'planId:', user?.planId);       
 
 
     // Fetch Dashboard Data
     const { data, isLoading } = useDashboardAnalytics();
-    const { data: visitorStatsData } = useVisitorStats('all');
+    const { data: visitorStatsData } = useVisitorStats();
+    const resetDashboardMutation = useResetDashboard();
 
     const { getPlan } = useSubscriptionStore();
     const currentPlan = getPlan();
+
+    const handleClearDashboard = () => {
+        setShowClearModal(true);
+    };
+
+    const confirmClear = async () => {
+        try {
+            await resetDashboardMutation.mutateAsync();
+            toast.success('Dashboard data cleared');
+            setShowClearModal(false);
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to reset dashboard');
+        }
+    };
 
     const analyticsStats = data?.stats.map((s) => {
         let icon = Users;
@@ -88,9 +104,9 @@ export default function DashboardPage() {
     };
 
     const totalVisitors = getStatValue(['Total Visitors', 'Total Visits', 'Total Customers']);
-    const newVisitors = getStatValue(['New This Month', 'New Customers']);
+    const newVisitorsCount = getStatValue(['New This Month', 'New Customers']);
     const knownReturning = getStatValue(['Returning', 'Repeat Visitors']);
-    const repeatVisitors = knownReturning > 0 ? knownReturning : (totalVisitors - newVisitors > 0 ? totalVisitors - newVisitors : 0);
+    const repeatVisitors = knownReturning > 0 ? knownReturning : (totalVisitors - newVisitorsCount > 0 ? totalVisitors - newVisitorsCount : 0);
 
     const returningPct = totalVisitors > 0 ? Math.round((repeatVisitors / totalVisitors) * 100) : 0;
     const newPct = totalVisitors > 0 ? 100 - returningPct : 0;
@@ -111,7 +127,7 @@ export default function DashboardPage() {
             {/* Page Header */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex-1">
-                    <h1 className="text-2xl font-display font-bold text-text-main mb-1">Dashboard</h1>
+                    <h1 className="text-2xl font-display font-bold text-text-main mb-1">Dashboard</h1>    
                     <p className="text-sm text-text-secondary font-medium">Welcome back! Here's what's happening today.</p>
                 </div>
 
@@ -160,7 +176,7 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between mb-4">
                         <div>
                             <h2 className="text-base font-display font-bold text-text-main">Visitor Activity</h2>
-                            <p className="text-[10px] text-text-secondary">Today's hourly breakdown</p>
+                            <p className="text-[10px] text-text-secondary">Today's hourly breakdown</p>   
                         </div>
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-3">
@@ -169,7 +185,7 @@ export default function DashboardPage() {
                                     <span className="text-[9px] font-bold text-text-secondary uppercase">All</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                    <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div>
+                                    <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div>       
                                     <span className="text-[9px] font-bold text-text-secondary uppercase">New</span>
                                 </div>
                             </div>
@@ -183,7 +199,7 @@ export default function DashboardPage() {
                     {/* Bar Chart */}
                     <div className="flex items-end justify-between gap-2 h-48">
                         {data?.peakTimes.map((d: any, index: number) => {
-                            const newVisits = Math.floor(d.value * 0.4);
+                            const newVisits = d.new || 0;
                             const totalPct = maxVisits > 0 ? (d.value / maxVisits) * 100 : 0;
                             const newPctBar = d.value > 0 ? (newVisits / d.value) * 100 : 0;
                             return (
@@ -207,7 +223,7 @@ export default function DashboardPage() {
                                         </div>
                                     </div>
                                     <div className="text-center">
-                                        <p className="text-[9px] font-bold text-text-main">{d.value}</p>
+                                        <p className="text-[9px] font-bold text-text-main">{d.value}</p>  
                                         <p className="text-[8px] text-text-secondary font-medium uppercase tracking-tighter">{d.hour}</p>
                                     </div>
                                 </div>
@@ -230,7 +246,7 @@ export default function DashboardPage() {
                                     <circle cx="50" cy="50" r="40" fill="transparent" stroke="#10b981" strokeWidth="10" strokeDasharray={`${(newPct / 100) * 251.2} 251.2`} strokeDashoffset={`${-(returningPct / 100) * 251.2}`} strokeLinecap="round" transform="rotate(-90 50 50)" />
                                 </svg>
                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <p className="text-lg font-black text-slate-900">{totalVisitors}</p>
+                                    <p className="text-lg font-black text-slate-900">{totalVisitors}</p>  
                                     <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Total</p>
                                 </div>
                             </div>
@@ -252,7 +268,7 @@ export default function DashboardPage() {
                                         <span className="text-[10px] font-black uppercase text-slate-500">New</span>
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-sm font-black text-slate-900">{newVisitors}</span>
+                                        <span className="text-sm font-black text-slate-900">{newVisitorsCount}</span>
                                         <span className="text-[9px] font-bold text-slate-400 ml-1">({newPct}%)</span>
                                     </div>
                                 </div>
@@ -293,7 +309,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between mb-4">
                     <div>
                         <h2 className="text-base font-display font-bold text-text-main mb-0.5">Recent Visitors</h2>
-                        <p className="text-[10px] text-text-secondary">Latest customer check-ins</p>
+                        <p className="text-[10px] text-text-secondary">Latest customer check-ins</p>      
                     </div>
                     <button
                         onClick={() => router.push('/dashboard/visitors/all')}
@@ -315,7 +331,7 @@ export default function DashboardPage() {
                         </thead>
                         <tbody>
                             {(data as any)?.recentVisitors?.length > 0 ? (
-                                (data as any).recentVisitors.slice(0, 5).map((visitor: Visitor) => {
+                                (data as any).recentVisitors.slice(0, 5).map((visitor: Visitor) => {      
                                     const fallbackFirstName = (visitor as any).firstName;
                                     const fallbackLastName = (visitor as any).lastName;
                                     const displayName = visitor.name?.trim()
@@ -409,4 +425,3 @@ export default function DashboardPage() {
         </div >
     );
 }
-

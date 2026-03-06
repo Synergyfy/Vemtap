@@ -38,9 +38,16 @@ export class FormsService {
     return this.formsRepository.save(form);
   }
 
-  async getFormsByBusiness(businessId: string): Promise<Form[]> {
+  async getFormsByBusiness(
+    businessId: string,
+    branchId?: string,
+  ): Promise<Form[]> {
+    const where: any = { businessId };
+    if (branchId) {
+      where.branchId = branchId;
+    }
     return this.formsRepository.find({
-      where: { businessId },
+      where,
       order: { createdAt: 'DESC' },
     });
   }
@@ -64,6 +71,12 @@ export class FormsService {
     dto: UpdateFormDto,
   ): Promise<Form> {
     const form = await this.getFormById(businessId, id);
+
+    if (form.adminDisabled) {
+      throw new ForbiddenException(
+        'This form has been disabled by an administrator and cannot be modified.',
+      );
+    }
 
     if (dto.title !== undefined) form.title = dto.title;
     if (dto.description !== undefined) form.description = dto.description;
@@ -91,6 +104,13 @@ export class FormsService {
 
   async deleteForm(businessId: string, id: string): Promise<void> {
     const form = await this.getFormById(businessId, id);
+
+    if (form.adminDisabled) {
+      throw new ForbiddenException(
+        'This form has been disabled by an administrator and cannot be deleted.',
+      );
+    }
+
     await this.formsRepository.remove(form);
   }
 
@@ -108,6 +128,45 @@ export class FormsService {
     });
   }
 
+  // --- Admin Methods ---
+
+  async findAllForAdmin(filters?: {
+    businessId?: string;
+    branchId?: string;
+  }): Promise<Form[]> {
+    const query = this.formsRepository.createQueryBuilder('form');
+
+    if (filters?.businessId) {
+      query.andWhere('form.businessId = :businessId', {
+        businessId: filters.businessId,
+      });
+    }
+
+    if (filters?.branchId) {
+      query.andWhere('form.branchId = :branchId', {
+        branchId: filters.branchId,
+      });
+    }
+
+    return query.orderBy('form.createdAt', 'DESC').getMany();
+  }
+
+  async setAdminDisabledStatus(id: string, disabled: boolean): Promise<Form> {
+    const form = await this.formsRepository.findOne({ where: { id } });
+    if (!form) {
+      throw new NotFoundException(`Form with ID ${id} not found`);
+    }
+
+    form.adminDisabled = disabled;
+
+    if (disabled) {
+      form.isActive = false;
+      form.isPublished = false;
+    }
+
+    return this.formsRepository.save(form);
+  }
+
   // --- Visitor Methods ---
 
   async getFormsForVisitor(
@@ -118,6 +177,7 @@ export class FormsService {
       .createQueryBuilder('form')
       .where('form.isActive = :isActive', { isActive: true })
       .andWhere('form.isPublished = :isPublished', { isPublished: true })
+      .andWhere('form.adminDisabled = :adminDisabled', { adminDisabled: false })
       .andWhere('form.businessId = :businessId', { businessId });
 
     if (branchId) {
@@ -136,12 +196,19 @@ export class FormsService {
     branchId?: string,
   ): Promise<Form> {
     const form = await this.formsRepository.findOne({
-      where: { id: formId, isActive: true, isPublished: true },
+      where: {
+        id: formId,
+        isActive: true,
+        isPublished: true,
+        adminDisabled: false,
+      },
       relations: ['fields'],
     });
 
     if (!form) {
-      throw new NotFoundException(`Form not found, inactive, or not published`);
+      throw new NotFoundException(
+        `Form not found, inactive, not published, or disabled by admin`,
+      );
     }
 
     if (form.branchId && form.branchId !== branchId) {

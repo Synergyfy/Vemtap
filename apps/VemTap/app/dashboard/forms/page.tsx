@@ -21,17 +21,14 @@ export default function FormsPage() {
     const setDefaultForm = useFormPreferencesStore((state) => state.setDefaultForm);
     const getDefaultFormId = useFormPreferencesStore((state) => state.getDefaultFormId);
 
-    const branchScope =
-        activeBranchId && activeBranchId !== 'all'
-            ? activeBranchId
-            : userBranchId || 'all';
+    const branchScope = activeBranchId || userBranchId || null;
 
-    const defaultFormId = getDefaultFormId(branchScope);
+    const defaultFormId = getDefaultFormId(branchScope || 'global');
     const businessSlug = (myBusiness?.name || 'business').toLowerCase().replace(/\s+/g, '-');
-    const branchName = branches.find((branch) => branch.id === branchScope)?.name || (branchScope === 'all' ? 'All Branches' : branchScope);
+    const branchName = branches.find((branch) => branch.id === branchScope)?.name || (!branchScope ? 'Full Business' : branchScope);
 
     const scopedForms = useMemo(() => {
-        if (branchScope === 'all') return forms;
+        if (!branchScope) return forms;
         return forms.filter((form) => form.branchId === branchScope);
     }, [forms, branchScope]);
 
@@ -93,7 +90,7 @@ export default function FormsPage() {
                                         <td className="px-5 py-4">
                                             <button
                                                 onClick={() => {
-                                                    setDefaultForm(branchScope, form.id);
+                                                    setDefaultForm(branchScope || 'global', form.id);
                                                     toast.success('Default form updated');
                                                 }}
                                                 className={`size-5 rounded-full border flex items-center justify-center ${isDefault ? 'border-primary bg-primary text-white' : 'border-gray-300 text-transparent'}`}

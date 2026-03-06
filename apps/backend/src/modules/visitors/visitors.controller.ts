@@ -40,6 +40,8 @@ import {
   ReturningVisitorResponseDto,
 } from './dto/visitor-response.dto';
 import { VisitorStatsResponseDto } from './dto/visitor-stats.dto';
+import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
+import { RecordVisitResponse, SendCampaignBody } from './visitors.service';
 
 @ApiTags('Visitors')
 @ApiBearerAuth()
@@ -73,11 +75,11 @@ export class VisitorsController {
   @ApiResponse({ type: VisitorStatsResponseDto })
   async getStats(
     @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ): Promise<VisitorStatsResponseDto> {
     return this.visitorsService.getStats(
       this.getBusinessId(req),
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, filter.branchId),
     );
   }
 
@@ -88,11 +90,11 @@ export class VisitorsController {
   @ApiResponse({ type: VisitorStatsResponseDto })
   async getNewStats(
     @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ): Promise<VisitorStatsResponseDto> {
     return this.visitorsService.getNewStats(
       this.getBusinessId(req),
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, filter.branchId),
     );
   }
 
@@ -103,11 +105,11 @@ export class VisitorsController {
   @ApiResponse({ type: VisitorStatsResponseDto })
   async getReturningStats(
     @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ): Promise<VisitorStatsResponseDto> {
     return this.visitorsService.getReturningStats(
       this.getBusinessId(req),
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, filter.branchId),
     );
   }
 
@@ -120,12 +122,12 @@ export class VisitorsController {
   async getNew(
     @Query() query: VisitorQueryDto,
     @Req() req: any,
-    @Query('branchId') branchId?: string,
-  ) {
+    @Query() filter: BranchFilterDto,
+  ): Promise<{ data: NewVisitorResponseDto[]; total: number }> {
     return this.visitorsService.findNew(
       query,
       this.getBusinessId(req),
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, filter.branchId),
     );
   }
 
@@ -136,12 +138,12 @@ export class VisitorsController {
   async getReturning(
     @Query() query: VisitorQueryDto,
     @Req() req: any,
-    @Query('branchId') branchId?: string,
-  ) {
+    @Query() filter: BranchFilterDto,
+  ): Promise<{ data: ReturningVisitorResponseDto[]; total: number }> {
     return this.visitorsService.findReturning(
       query,
       this.getBusinessId(req),
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, filter.branchId),
     );
   }
 
@@ -153,12 +155,12 @@ export class VisitorsController {
   async findAll(
     @Query() query: VisitorQueryDto,
     @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ): Promise<PaginatedVisitorResponseDto> {
     return this.visitorsService.findAll(
       query,
       this.getBusinessId(req),
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, filter.branchId),
     );
   }
 
@@ -168,10 +170,13 @@ export class VisitorsController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @Permissions('visitors')
   @ApiOperation({ summary: 'Export visitors to CSV' })
-  async export(@Req() req: any, @Query('branchId') branchId?: string) {
+  async export(
+    @Req() req: any,
+    @Query() filter: BranchFilterDto,
+  ): Promise<{ message: string; data: string; filename: string }> {
     return this.visitorsService.export(
       this.getBusinessId(req),
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, filter.branchId),
     );
   }
 
@@ -181,13 +186,13 @@ export class VisitorsController {
   @ApiOperation({ summary: 'Send campaign to visitors' })
   async sendCampaign(
     @Req() req: any,
-    @Body() body: any,
-    @Query('branchId') branchId?: string,
-  ) {
+    @Body() body: SendCampaignBody,
+    @Query() filter: BranchFilterDto,
+  ): Promise<any> {
     return this.visitorsService.sendCampaign(
       this.getBusinessId(req),
       body,
-      this.getBranchId(req, branchId || body.branchId),
+      this.getBranchId(req, filter.branchId),
     );
   }
 
@@ -197,11 +202,24 @@ export class VisitorsController {
   @ApiOperation({ summary: 'Send welcome campaign to new visitors' })
   async sendWelcomeCampaign(
     @Req() req: any,
-    @Query('branchId') branchId?: string,
-  ) {
+    @Query() filter: BranchFilterDto,
+  ): Promise<any> {
     return this.visitorsService.sendWelcomeCampaign(
       this.getBusinessId(req),
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, filter.branchId),
+    );
+  }
+
+  @Delete('reset')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Reset all dashboard data for the business/branch' })
+  async resetDashboard(
+    @Req() req: any,
+    @Query() filter: BranchFilterDto,
+  ): Promise<void> {
+    return this.visitorsService.resetBusinessData(
+      this.getBusinessId(req),
+      this.getBranchId(req, filter.branchId),
     );
   }
 
@@ -209,9 +227,12 @@ export class VisitorsController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @Permissions('dashboard') // Rewards might fall under campaigns/loyalty/dashboard
   @ApiOperation({ summary: 'Create a reward for visitors' })
-  async createReward(@Req() req: any, @Body() body: CreateVisitorRewardDto) {
+  async createReward(
+    @Req() req: any,
+    @Body() body: CreateVisitorRewardDto,
+  ): Promise<any> {
     return this.campaignsService.createReward(
-      this.getBranchId(req, body.branchId)!, // Rewards might still need branchId, or we handle it in service
+      this.getBranchId(req, body.branchId) || '',
       body,
     );
   }
@@ -227,7 +248,7 @@ export class VisitorsController {
     description: 'Visitor registered successfully',
     type: VisitorResponseDto,
   })
-  async publicSignup(@Body() dto: VisitorSignupDto) {
+  async publicSignup(@Body() dto: VisitorSignupDto): Promise<VisitorResponseDto> {
     return this.visitorsService.create(dto);
   }
 
@@ -241,7 +262,10 @@ export class VisitorsController {
     description: 'Visitor created successfully',
     type: VisitorResponseDto,
   })
-  async create(@Body() createVisitorDto: CreateVisitorDto, @Req() req: any) {
+  async create(
+    @Body() createVisitorDto: CreateVisitorDto,
+    @Req() req: any,
+  ): Promise<VisitorResponseDto> {
     return this.visitorsService.create(
       createVisitorDto,
       this.getBusinessId(req),
@@ -252,7 +276,10 @@ export class VisitorsController {
   @Post('record-visit')
   @Roles(UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Record a visit via device tap (Customer Only)' })
-  async recordVisit(@Body() dto: DeviceTapDto, @Req() req: any) {
+  async recordVisit(
+    @Body() dto: DeviceTapDto,
+    @Req() req: any,
+  ): Promise<RecordVisitResponse> {
     return this.visitorsService.recordVisit(req.user.id, dto.deviceCode);
   }
 
@@ -293,14 +320,14 @@ export class VisitorsController {
     @Req() req: any,
     @Param('id') id: string,
     @Body() body: { message: string; channel: string },
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ) {
     return this.visitorsService.sendMessage(
       this.getBusinessId(req),
       id,
       body.message,
       body.channel as any,
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, filter.branchId),
     );
   }
 
@@ -311,12 +338,12 @@ export class VisitorsController {
   async sendWelcome(
     @Req() req: any,
     @Param('id') id: string,
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ) {
     return this.visitorsService.sendWelcome(
       this.getBusinessId(req),
       id,
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, filter.branchId),
     );
   }
 
@@ -328,13 +355,13 @@ export class VisitorsController {
     @Req() req: any,
     @Param('id') id: string,
     @Body() body: { rewardId: string },
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ) {
     return this.visitorsService.sendReward(
       this.getBusinessId(req),
       id,
       body.rewardId,
-      this.getBranchId(req, branchId),
+      this.getBranchId(req, filter.branchId),
     );
   }
 }

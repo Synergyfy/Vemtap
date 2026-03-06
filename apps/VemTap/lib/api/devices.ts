@@ -72,12 +72,16 @@ export interface DeviceStats {
     offline: number;
 }
 
-export const fetchDevices = async (): Promise<Device[]> => {
-    return await api.get('/devices');
+export const fetchDevices = async (branchId?: string): Promise<Device[]> => {
+    const params = new URLSearchParams();
+    if (branchId) params.append('branchId', branchId);
+    return await api.get(`/devices?${params.toString()}`);
 };
 
-export const fetchDeviceStats = async (): Promise<DeviceStats> => {
-    return await api.get('/devices/stats');
+export const fetchDeviceStats = async (branchId?: string): Promise<DeviceStats> => {
+    const params = new URLSearchParams();
+    if (branchId) params.append('branchId', branchId);
+    return await api.get(`/devices/stats?${params.toString()}`);
 };
 
 export const fetchDeviceDetail = async (id: string): Promise<Device> => {

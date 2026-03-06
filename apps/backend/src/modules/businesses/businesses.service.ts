@@ -28,7 +28,7 @@ export class BusinessesService {
     @InjectRepository(Visit)
     private visitRepository: Repository<Visit>,
     private readonly mailService: MailService,
-  ) { }
+  ) {}
 
   async create(businessData: Partial<Business>): Promise<Business> {
     if (businessData.ownerId) {

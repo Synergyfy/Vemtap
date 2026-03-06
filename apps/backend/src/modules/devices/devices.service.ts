@@ -68,9 +68,16 @@ export class DevicesService {
     return this.devicesRepository.save(device);
   }
 
-  async findAllByBusiness(businessId: string): Promise<Device[]> {
+  async findAllByBusiness(
+    businessId: string,
+    branchId?: string,
+  ): Promise<Device[]> {
+    const where: any = { businessId };
+    if (branchId) {
+      where.branchId = branchId;
+    }
     return this.devicesRepository.find({
-      where: { businessId },
+      where,
       order: { createdAt: 'DESC' },
     });
   }
@@ -225,8 +232,8 @@ export class DevicesService {
     await this.devicesRepository.remove(device);
   }
 
-  async getStats(businessId: string) {
-    const devices = await this.findAllByBusiness(businessId);
+  async getStats(businessId: string, branchId?: string) {
+    const devices = await this.findAllByBusiness(businessId, branchId);
     return {
       totalDevices: devices.length,
       activeNow: devices.filter((d) => d.status === DeviceStatus.ACTIVE).length,

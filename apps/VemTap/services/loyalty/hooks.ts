@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { 
     LoyaltyProfile, 
     LoyaltyRule, 
@@ -17,11 +18,9 @@ import {
 } from './types';
 
 function useResolvedBranchId(branchId?: string): string | undefined {
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const userBranchId = useAuthStore((state) => state.user?.branchId);
-    const userBusinessId = useAuthStore((state) => state.user?.businessId);
-    const resolved = branchId || (activeBranchId === 'all' ? undefined : activeBranchId) || userBranchId || userBusinessId;
-    return resolved || undefined;
+    const { activeBranchId: urlBranchId } = useActiveBranch();
+    const resolved = branchId || urlBranchId;
+    return (resolved === 'all' || !resolved) ? undefined : resolved;
 }
 
 export const useLoyaltyProfiles = (branchId?: string) => {
@@ -33,8 +32,7 @@ export const useLoyaltyProfiles = (branchId?: string) => {
             const params = new URLSearchParams();
             if (resolvedBranchId) params.append('branchId', resolvedBranchId);
             return await api.get(`/campaigns/loyalty/profiles?${params.toString()}`);
-        },
-        enabled: !!resolvedBranchId,
+        }
     });
 };
 
@@ -48,7 +46,7 @@ export const useLoyaltyProfile = (userId: string, branchId?: string) => {
             if (resolvedBranchId) params.append('branchId', resolvedBranchId);
             return await api.get(`/campaigns/loyalty/profile/${userId}?${params.toString()}`);
         },
-        enabled: !!userId && !!resolvedBranchId,
+        enabled: !!userId,
     });
 };
 
@@ -61,8 +59,7 @@ export const useLoyaltyRules = (branchId?: string) => {
             const params = new URLSearchParams();
             if (resolvedBranchId) params.append('branchId', resolvedBranchId);
             return await api.get(`/campaigns/loyalty/rules?${params.toString()}`);
-        },
-        enabled: !!resolvedBranchId,
+        }
     });
 };
 
@@ -91,8 +88,22 @@ export const useRewards = (branchId?: string) => {
             const params = new URLSearchParams();
             if (resolvedBranchId) params.append('branchId', resolvedBranchId);
             return await api.get(`/campaigns/loyalty/rewards?${params.toString()}`);
+        }
+    });
+};
+
+export const useBusinessLoyaltyStats = (branchId?: string) => {
+    const resolvedBranchId = useResolvedBranchId(branchId);
+    const businessId = useAuthStore((state) => state.user?.businessId);
+
+    return useQuery<any, Error>({
+        queryKey: ['loyalty', 'business-stats', resolvedBranchId, businessId],
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            if (resolvedBranchId) params.append('branchId', resolvedBranchId);
+            return await api.get(`/campaigns/loyalty/business-stats?${params.toString()}`);
         },
-        enabled: !!resolvedBranchId,
+        enabled: !!businessId,
     });
 };
 

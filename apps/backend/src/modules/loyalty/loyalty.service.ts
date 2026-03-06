@@ -52,9 +52,13 @@ export class LoyaltyService {
   async getProfile(
     userId: string,
     businessId: string,
+    branchId?: string,
   ): Promise<LoyaltyProfile & { totalVisits: number }> {
+    const where: any = { userId, businessId };
+    if (branchId) where.branchId = branchId;
+
     let profile = await this.loyaltyProfileRepository.findOne({
-      where: { userId, businessId },
+      where,
       relations: ['transactions', 'redemptions'],
     });
 
@@ -63,13 +67,17 @@ export class LoyaltyService {
       profile = this.loyaltyProfileRepository.create({
         userId,
         businessId,
+        branchId,
         tierLevel: TierLevel.BRONZE,
       });
       await this.loyaltyProfileRepository.save(profile);
     }
 
     const totalVisits = await this.visitRepository.count({
-      where: { customerId: userId, businessId },
+      where: {
+        customerId: userId,
+        ...(branchId ? { branchId } : { businessId }),
+      },
     });
 
     return { ...profile, totalVisits };
@@ -78,25 +86,27 @@ export class LoyaltyService {
   async getAllProfiles(userId: string): Promise<LoyaltyProfile[]> {
     return this.loyaltyProfileRepository.find({
       where: { userId },
-      relations: ['business'],
+      relations: ['business', 'branch'],
     });
   }
 
   // --- Rewards Management ---
 
-  async getRewards(businessId: string): Promise<Reward[]> {
-    return this.rewardRepository.find({
-      where: { businessId, isActive: true },
-    });
+  async getRewards(businessId: string, branchId?: string): Promise<Reward[]> {
+    const where: any = { businessId, isActive: true };
+    if (branchId) where.branchId = branchId;
+    return this.rewardRepository.find({ where });
   }
 
   async createReward(
     businessId: string,
     createRewardDto: CreateLoyaltyRewardDto,
+    branchId?: string,
   ): Promise<Reward> {
     const reward = this.rewardRepository.create({
       ...createRewardDto,
       businessId,
+      branchId: branchId || createRewardDto.branchId,
     });
     return this.rewardRepository.save(reward);
   }
@@ -106,24 +116,26 @@ export class LoyaltyService {
   async earnPoints(
     businessId: string,
     dto: EarnPointsDto,
+    branchId?: string,
   ): Promise<LoyaltyProfile> {
     return this.dataSource.transaction(async (manager) => {
       // Find profile with pessimistic lock to prevent concurrent updates
+      const where: any = { userId: dto.userId, businessId };
+      if (branchId) where.branchId = branchId;
+
       let profile = await manager.findOne(LoyaltyProfile, {
-        where: { userId: dto.userId, businessId },
+        where,
         lock: { mode: 'pessimistic_write' },
       });
 
       if (!profile) {
-        // Create profile if it doesn't exist (need to create without lock first, or just create)
-        // Since we are inside a transaction, creating it here is fine.
         profile = manager.create(LoyaltyProfile, {
           userId: dto.userId,
           businessId,
+          branchId,
           tierLevel: TierLevel.BRONZE,
         });
         await manager.save(profile);
-        // Re-fetch with lock? Not needed if we just created it and hold transaction.
       }
 
       profile.totalPointsEarned += dto.amount;
@@ -204,7 +216,11 @@ export class LoyaltyService {
     });
   }
 
-  async getHistory(userId: string, businessId?: string): Promise<any[]> {
+  async getHistory(
+    userId: string,
+    businessId?: string,
+    branchId?: string,
+  ): Promise<any[]> {
     // 1. Fetch Transactions (Earnings/Deductions)
     const txQuery = this.transactionRepository
       .createQueryBuilder('transaction')
@@ -215,6 +231,9 @@ export class LoyaltyService {
 
     if (businessId) {
       txQuery.andWhere('profile.businessId = :businessId', { businessId });
+    }
+    if (branchId) {
+      txQuery.andWhere('profile.branchId = :branchId', { branchId });
     }
 
     const transactions = await txQuery
@@ -233,6 +252,9 @@ export class LoyaltyService {
     if (businessId) {
       redQuery.andWhere('profile.businessId = :businessId', { businessId });
     }
+    if (branchId) {
+      redQuery.andWhere('profile.branchId = :branchId', { branchId });
+    }
 
     const redemptions = await redQuery
       .orderBy('redemption.createdAt', 'DESC')
@@ -247,6 +269,9 @@ export class LoyaltyService {
 
     if (businessId) {
       visitQuery.andWhere('visit.businessId = :businessId', { businessId });
+    }
+    if (branchId) {
+      visitQuery.andWhere('visit.branchId = :branchId', { branchId });
     }
 
     const visits = await visitQuery
@@ -509,6 +534,103 @@ export class LoyaltyService {
       visitTrends,
       pointsByVenue, // Renamed from category for now as we don't have business categories easily accessible
       topVenues,
+    };
+  }
+
+  async getBusinessLoyaltyStats(businessId: string, branchId?: string) {
+    const profileWhere: any = { businessId };
+    if (branchId) profileWhere.branchId = branchId;
+
+    // 1. Core Stats
+    const totalMembers = await this.loyaltyProfileRepository.count({ where: profileWhere });
+    
+    const pointsResult = await this.loyaltyProfileRepository
+      .createQueryBuilder('profile')
+      .select('SUM(profile.totalPointsEarned)', 'totalPoints')
+      .where('profile.businessId = :businessId', { businessId })
+      .andWhere(branchId ? 'profile.branchId = :branchId' : '1=1', { branchId })
+      .getRawOne();
+    const totalPointsEarned = parseInt(pointsResult.totalPoints, 10) || 0;
+
+    const redemptionWhere: any = { loyaltyProfile: { businessId } };
+    if (branchId) redemptionWhere.loyaltyProfile.branchId = branchId;
+    const rewardsClaimed = await this.redemptionRepository.count({ where: redemptionWhere });
+
+    const redemptionRate = totalMembers > 0 ? Math.round((rewardsClaimed / totalMembers) * 100) : 0;
+
+    // 2. Tier Distribution
+    const tiers = await this.loyaltyProfileRepository
+      .createQueryBuilder('profile')
+      .select('profile.tierLevel', 'tier')
+      .addSelect('COUNT(profile.id)', 'count')
+      .where('profile.businessId = :businessId', { businessId })
+      .andWhere(branchId ? 'profile.branchId = :branchId' : '1=1', { branchId })
+      .groupBy('profile.tierLevel')
+      .getRawMany();
+
+    const tierDistribution = Object.values(TierLevel).map(level => {
+      const match = tiers.find(t => t.tier === level);
+      const count = match ? parseInt(match.count, 10) : 0;
+      const percentage = totalMembers > 0 ? Math.round((count / totalMembers) * 100) : 0;
+      return { label: level.charAt(0).toUpperCase() + level.slice(1).toLowerCase(), value: percentage, count };
+    });
+
+    // 3. Activity Trends (Last 7 Days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const earningsTrendRaw = await this.transactionRepository
+      .createQueryBuilder('tx')
+      .innerJoin('tx.loyaltyProfile', 'profile')
+      .select("TO_CHAR(tx.createdAt, 'Mon DD')", 'day')
+      .addSelect("TO_CHAR(tx.createdAt, 'YYYY-MM-DD')", 'sortkey')
+      .addSelect('SUM(tx.pointsAmount)', 'amount')
+      .where('profile.businessId = :businessId', { businessId })
+      .andWhere(branchId ? 'profile.branchId = :branchId' : '1=1', { branchId })
+      .andWhere('tx.transactionType = :type', { type: 'earn' })
+      .andWhere('tx.createdAt >= :date', { date: sevenDaysAgo })
+      .groupBy('sortkey').addGroupBy('day')
+      .orderBy('sortkey', 'ASC')
+      .getRawMany();
+
+    const claimsTrendRaw = await this.redemptionRepository
+      .createQueryBuilder('red')
+      .innerJoin('red.loyaltyProfile', 'profile')
+      .select("TO_CHAR(red.createdAt, 'Mon DD')", 'day')
+      .addSelect("TO_CHAR(red.createdAt, 'YYYY-MM-DD')", 'sortkey')
+      .addSelect('COUNT(red.id)', 'count')
+      .where('profile.businessId = :businessId', { businessId })
+      .andWhere(branchId ? 'profile.branchId = :branchId' : '1=1', { branchId })
+      .andWhere('red.createdAt >= :date', { date: sevenDaysAgo })
+      .groupBy('sortkey').addGroupBy('day')
+      .orderBy('sortkey', 'ASC')
+      .getRawMany();
+
+    // Fill gaps for last 7 days
+    const activityTrend = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      const dayLabel = d.toLocaleString('default', { month: 'short', day: '2-digit' });
+      const earnMatch = earningsTrendRaw.find(e => e.day === dayLabel);
+      const claimMatch = claimsTrendRaw.find(c => c.day === dayLabel);
+      return {
+        name: d.toLocaleString('default', { weekday: 'short' }),
+        earnings: earnMatch ? parseInt(earnMatch.amount, 10) : 0,
+        claims: claimMatch ? parseInt(claimMatch.count, 10) : 0
+      };
+    });
+
+    return {
+      stats: [
+        { label: 'Total Members', value: totalMembers.toLocaleString(), change: 0, trend: 'up' },
+        { label: 'Points Earned', value: totalPointsEarned.toLocaleString(), change: 0, trend: 'up' },
+        { label: 'Rewards Claimed', value: rewardsClaimed.toLocaleString(), change: 0, trend: 'up' },
+        { label: 'Redemption Rate', value: `${redemptionRate}%`, change: 0, trend: 'up' },
+      ],
+      tierDistribution,
+      activityTrend,
+      growthForecast: '+0%' // We could calculate this based on month-over-month growth
     };
   }
 

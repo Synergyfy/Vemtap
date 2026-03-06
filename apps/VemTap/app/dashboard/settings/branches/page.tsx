@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { Building2, Plus, MapPin, Phone, Mail, MoreVertical, Trash2, Edit2, ExternalLink } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -10,7 +10,7 @@ import { useBranches, useCreateBranch } from '@/services/branches/hooks';
 import { Branch } from '@/services/branches/types';
 import { Loader2 } from 'lucide-react';
 
-export default function BranchesPage() {
+function BranchesContent() {
     const { storeName } = useCustomerFlowStore();
     const { data: branchesData, isLoading } = useBranches();
     const createBranchMutation = useCreateBranch();
@@ -132,7 +132,7 @@ export default function BranchesPage() {
                     onClick={() => setIsCreateModalOpen(true)}
                     className="bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-200 p-12 flex flex-col items-center justify-center text-center hover:bg-white hover:border-primary/20 transition-all group lg:min-h-[350px]"
                 >
-                    <div className="size-20 rounded-full bg-white border border-gray-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm">
+                    <div className="size-20 rounded-full bg-white border border-gray-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm">     
                         <Plus size={32} className="text-gray-300 group-hover:text-primary transition-colors" />
                     </div>
                     <h3 className="text-lg font-display font-bold text-text-main mb-2">Expand Your Reach</h3>
@@ -195,3 +195,12 @@ export default function BranchesPage() {
         </div>
     );
 }
+
+export default function BranchesPage() {
+    return (
+        <Suspense fallback={null}>
+            <BranchesContent />
+        </Suspense>
+    );
+}
+

@@ -41,9 +41,9 @@ describe('FormsController', () => {
     const expectedForms = [{ id: 'form-1', title: 'Form 1' }];
     mockFormsService.getFormsByBusiness.mockResolvedValue(expectedForms);
 
-    const result = await controller.findAll(req);
+    const result = await controller.findAll(req, {} as any);
 
-    expect(service.getFormsByBusiness).toHaveBeenCalledWith('bus-1');
+    expect(service.getFormsByBusiness).toHaveBeenCalledWith('bus-1', undefined);
     expect(result).toEqual(expectedForms);
   });
 
