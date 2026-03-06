@@ -11,252 +11,101 @@ import {
   Query,
   BadRequestException,
 } from '@nestjs/common';
-import { UsersService } from './users.service';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { Permissions } from '../../common/decorators/permissions.decorator';
-import { UserRole, UserStatus } from './entities/user.entity';
-import { BusinessesService } from '../businesses/businesses.service';
-import { BranchesService } from '../branches/branches.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiBody,
+  ApiQuery,
 } from '@nestjs/swagger';
-import { InviteStaffDto } from './dto/invite-staff.dto';
-import { GetStaffDto } from './dto/get-staff.dto';
+import { UsersService } from './users.service';
+import { User, UserRole } from './entities/user.entity';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateEngagementDto } from './dto/update-engagement.dto';
 import { AdminCreateAgentDto } from './dto/admin-create-agent.dto';
-import * as bcrypt from 'bcrypt';
-import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
+import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
 
-@ApiTags('users')
+@ApiTags('Users')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
-  constructor(
-    private readonly usersService: UsersService,
-    private readonly businessesService: BusinessesService,
-    private readonly branchesService: BranchesService,
-  ) {}
+  constructor(private readonly usersService: UsersService) {}
 
-  @Get('me')
-  @SkipSubscriptionCheck()
-  @Roles(
-    UserRole.CUSTOMER,
-    UserRole.OWNER,
-    UserRole.MANAGER,
-    UserRole.STAFF,
-    UserRole.ADMIN,
-  )
-  @ApiOperation({ summary: 'Get current logged-in user profile' })
-  async getMe(@Request() req) {
-    const user = await this.usersService.findOne(req.user.id);
-    if (!user) throw new BadRequestException('User not found');
-    const { password, ...rest } = user;
-    return rest;
-  }
-
-  @Patch('me')
-  @SkipSubscriptionCheck()
-  @Roles(
-    UserRole.CUSTOMER,
-    UserRole.OWNER,
-    UserRole.MANAGER,
-    UserRole.STAFF,
-    UserRole.ADMIN,
-  )
-  @ApiOperation({ summary: 'Update current logged-in user profile' })
-  async updateMe(@Request() req, @Body() body: UpdateProfileDto) {
-    return this.usersService.updateProfile(req.user.id, body);
-  }
-
-  @Patch('me/engagement')
-  @Roles(UserRole.OWNER)
-  @ApiOperation({
-    summary: 'Update My social media engagement links (Owner Only)',
-  })
-  @ApiResponse({ status: 200, description: 'Engagement details updated' })
-  async updateMyEngagement(@Request() req, @Body() body: UpdateEngagementDto) {
-    return this.usersService.updateEngagement(req.user.id, body.engagement);
-  }
-
-  @Delete('me')
-  @SkipSubscriptionCheck()
-  @Roles(
-    UserRole.CUSTOMER,
-    UserRole.OWNER,
-    UserRole.MANAGER,
-    UserRole.STAFF,
-    UserRole.ADMIN,
-  )
-  @ApiOperation({ summary: 'Deactivate current user account' })
-  async deleteMe(@Request() req) {
-    // We treat deletion as suspension
-    return this.usersService.adminDeleteUser(req.user.id);
-  }
-
-  @Get('staff')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @Permissions('staff')
-  @ApiOperation({
-    summary: 'Get all staff members for the business (including managers)',
-  })
-  async getStaff(@Request() req, @Query() queryDto: GetStaffDto) {
-    const uuidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    let targetBranchId: string | undefined = queryDto.branchId;
-
-    if (queryDto.branchId && !uuidRegex.test(queryDto.branchId)) {
-      // If frontend passes mock ID like "head-office", ignore it so we don't crash Postgres
-      targetBranchId = undefined;
-    }
-
-    // Determine business ID based on the logged-in user
-    let businessId = req.user.businessId;
-    if (req.user.role === UserRole.OWNER && !businessId) {
-      const ownedBusiness = await this.businessesService.findByOwner(
-        req.user.id,
-      );
-      if (ownedBusiness) {
-        businessId = ownedBusiness.id;
-      }
-    }
-
-    if (!businessId) {
-      throw new BadRequestException('Business context not found for the user');
-    }
-
-    return this.usersService.findByBusiness(businessId, targetBranchId);
-  }
-
-  @Get('staff/my-permissions')
-  @Roles(UserRole.MANAGER, UserRole.STAFF)
-  @ApiOperation({
-    summary: 'Get permissions for the currently logged-in staff or manager',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'List of permissions',
-    schema: {
-      type: 'object',
-      example: {
-        permissions: ['dashboard', 'visitors'],
-      },
-    },
-  })
-  async getMyPermissions(@Request() req) {
-    const user = await this.usersService.findOne(req.user.id);
-    if (!user) throw new BadRequestException('User not found');
-    return { permissions: user.permissions || [] };
-  }
-
-  @Post('staff/invite')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @Permissions('staff')
-  @ApiOperation({
-    summary: 'Invite a new staff member or manager',
-    description:
-      'Use the `role` field in the body to specify "Staff" or "Manager". Requires "staff" permission.',
-  })
-  @ApiBody({ type: InviteStaffDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Staff invited successfully',
-    schema: {
-      type: 'object',
-      example: {
-        id: 'user-uuid',
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'staff@example.com',
-        role: 'Staff',
-        permissions: ['dashboard', 'visitors'],
-        businessId: 'business-uuid',
-        branchId: 'branch-uuid',
-        createdAt: '2023-10-10T12:00:00Z',
-      },
-    },
-  })
-  async inviteStaff(@Request() req, @Body() inviteDto: InviteStaffDto) {
-    if (
-      inviteDto.role &&
-      ![UserRole.STAFF, UserRole.MANAGER].includes(inviteDto.role)
-    ) {
+  private getBranchId(req: any, queryBranchId?: string): string {
+    const branchId = queryBranchId || req.user?.branchId;
+    if (!branchId) {
       throw new BadRequestException(
-        'Only Staff and Manager roles can be assigned via invitation',
+        'User must be associated with a branch or provide branchId',
       );
     }
-
-    const existing = await this.usersService.findByEmail(inviteDto.email);
-    if (existing) {
-      throw new BadRequestException('User with this email already exists');
-    }
-
-    // Determine business ID based on the logged-in user
-    let businessId = req.user.businessId;
-    if (req.user.role === UserRole.OWNER && !businessId) {
-      const ownedBusiness = await this.businessesService.findByOwner(
-        req.user.id,
-      );
-      if (ownedBusiness) {
-        businessId = ownedBusiness.id;
-      }
-    }
-
-    if (!businessId) {
-      throw new BadRequestException('Business context not found for the user');
-    }
-
-    // Verify the branch belongs to the user's business if provided
-    const targetBranchId = inviteDto.branchId;
-    if (targetBranchId) {
-      const branch = await this.branchesService.findById(targetBranchId);
-      if (!branch || branch.businessId !== businessId) {
-        throw new BadRequestException(
-          'Branch not found or does not belong to your business',
-        );
-      }
-    }
-
-    // In a real app, we'd send an invite email. For this MVP, we create them with a default password.
-    const hashedPassword = await bcrypt.hash('staff123', 10);
-    return this.usersService.create({
-      ...inviteDto,
-      businessId,
-      branchId: targetBranchId,
-      password: hashedPassword,
-      status: UserStatus.INVITED,
-    });
+    return branchId;
   }
 
-  @Patch('staff/:id')
-  @Roles(UserRole.OWNER)
+  @Get('profile')
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({ status: 200, type: User })
+  async getProfile(@Request() req) {
+    return this.usersService.findOne(req.user.id);
+  }
+
+  @Patch('profile')
+  @ApiOperation({ summary: 'Update current user profile' })
+  @ApiResponse({ status: 200, type: User })
+  async updateProfile(@Request() req, @Body() updates: UpdateProfileDto) {
+    return this.usersService.updateProfile(req.user.id, updates);
+  }
+
+  @Patch('engagement')
+  @Roles(UserRole.CUSTOMER)
   @ApiOperation({
-    summary: 'Update a staff member (role, permissions, etc.)',
-    description: 'Can be used to promote a staff member to manager.',
+    summary: 'Update customer engagement links (Instagram, etc.)',
   })
-  @ApiBody({ type: UpdateStaffDto })
+  @ApiResponse({ status: 200, type: User })
+  async updateEngagement(@Request() req, @Body() updates: UpdateEngagementDto) {
+    return this.usersService.updateEngagement(req.user.id, updates.engagement);
+  }
+
+  // --- Team Management ---
+
+  @Get('team')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get all team members for the branch' })
+  @ApiResponse({ status: 200, type: [User] })
+  async getTeam(@Request() req, @Query() filter: BranchFilterDto) {
+    const branchId = this.getBranchId(req, filter.branchId);
+    return this.usersService.findByBranch(branchId);
+  }
+
+  @Patch('team/:id')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Update a team member' })
+  @ApiResponse({ status: 200, type: User })
   async updateStaff(
     @Request() req,
     @Param('id') id: string,
     @Body() updates: UpdateStaffDto,
+    @Query() filter: BranchFilterDto,
   ) {
-    return this.usersService.updateStaff(id, req.user.businessId, updates);
+    const branchId = this.getBranchId(req, filter.branchId);
+    return this.usersService.updateStaff(id, branchId, updates);
   }
 
-  @Delete('staff/:id')
-  @Roles(UserRole.OWNER)
-  @ApiOperation({ summary: 'Remove a staff member' })
-  async removeStaff(@Request() req, @Param('id') id: string) {
-    return this.usersService.remove(id, req.user.businessId);
+  @Delete('team/:id')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Remove a team member' })
+  @ApiResponse({ status: 200 })
+  async remove(
+    @Request() req,
+    @Param('id') id: string,
+    @Query() filter: BranchFilterDto,
+  ) {
+    const branchId = this.getBranchId(req, filter.branchId);
+    return this.usersService.remove(id, branchId);
   }
 
   // --- Admin Endpoints ---
@@ -264,6 +113,11 @@ export class UsersController {
   @Get('admin')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Get all users with filters and stats' })
+  @ApiQuery({ name: 'search', required: false })
+  @ApiQuery({ name: 'role', required: false })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   async findAllAdmin(
     @Query('search') search?: string,
     @Query('role') role?: string,
@@ -290,7 +144,7 @@ export class UsersController {
 
   @Post('admin')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Create a new user manually' })
+  @ApiOperation({ summary: 'Admin: Create a new user' })
   async adminCreateUser(@Body() createUserDto: any) {
     return this.usersService.adminCreateUser(createUserDto);
   }
@@ -304,59 +158,21 @@ export class UsersController {
 
   @Delete('admin/:id')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({
-    summary: 'Admin: Delete user account (Permanently removes user)',
-    description:
-      'Completely deletes the user record from the system. Use with caution.',
-  })
-  @ApiResponse({ status: 200, description: 'User deleted successfully' })
-  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiOperation({ summary: 'Admin: Delete user' })
   async adminDeleteUser(@Param('id') id: string) {
     return this.usersService.adminDeleteUser(id);
   }
 
-  @Patch('admin/:id/suspend')
+  @Post('admin/:id/suspend')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({
-    summary: 'Admin: Suspend a user account',
-    description:
-      'Sets the user status to Suspended. Suspended users can login but cannot perform any other actions.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'User suspended successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        id: { type: 'string', example: 'user-uuid' },
-        status: { type: 'string', example: 'Suspended' },
-      },
-    },
-  })
-  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiOperation({ summary: 'Admin: Suspend user account' })
   async suspendUser(@Param('id') id: string) {
     return this.usersService.suspendUser(id);
   }
 
-  @Patch('admin/:id/activate')
+  @Post('admin/:id/activate')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({
-    summary: 'Admin: Activate a suspended user account',
-    description:
-      'Sets the user status back to Active, restoring their access to the system.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'User activated successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        id: { type: 'string', example: 'user-uuid' },
-        status: { type: 'string', example: 'Active' },
-      },
-    },
-  })
-  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiOperation({ summary: 'Admin: Reactivate user account' })
   async activateUser(@Param('id') id: string) {
     return this.usersService.activateUser(id);
   }

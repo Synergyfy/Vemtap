@@ -6,6 +6,7 @@ import {
   Patch,
   UseGuards,
   Request,
+  BadRequestException,
 } from '@nestjs/common';
 import { SurveysService } from './surveys.service';
 import { CreateSurveyDto } from './dto/create-survey.dto';
@@ -20,14 +21,22 @@ import { UserRole } from '../users/entities/user.entity';
 export class SurveysController {
   constructor(private readonly surveysService: SurveysService) {}
 
+  private getBranchId(req: any): string {
+    const branchId = req.user?.branchId;
+    if (!branchId) {
+      throw new BadRequestException('User must be associated with a branch');
+    }
+    return branchId;
+  }
+
   @Get()
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @ApiOperation({ summary: 'Get survey settings for the business' })
+  @ApiOperation({ summary: 'Get survey settings for the branch' })
   async findOne(@Request() req) {
-    const survey = await this.surveysService.findByBusiness(
-      req.user.businessId,
+    const survey = await this.surveysService.findByBranch(
+      this.getBranchId(req),
     );
-    return survey || {}; // Return empty object if no survey yet? Or maybe 404? Frontend probably handles null/empty.
+    return survey || {};
   }
 
   @Post()
@@ -39,7 +48,7 @@ export class SurveysController {
     @Body() createSurveyDto: CreateSurveyDto,
   ) {
     return this.surveysService.createOrUpdate(
-      req.user.businessId,
+      this.getBranchId(req),
       createSurveyDto,
     );
   }
@@ -50,7 +59,7 @@ export class SurveysController {
   @ApiBody({ type: UpdateSurveyDto })
   async update(@Request() req, @Body() updateSurveyDto: UpdateSurveyDto) {
     return this.surveysService.createOrUpdate(
-      req.user.businessId,
+      this.getBranchId(req),
       updateSurveyDto,
     );
   }

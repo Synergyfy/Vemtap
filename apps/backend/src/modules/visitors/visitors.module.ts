@@ -11,6 +11,7 @@ import { MessagingModule } from '../messaging/messaging.module';
 import { ContactsModule } from '../contacts/contacts.module';
 import { MailModule } from '../mail/mail.module';
 import { DevicesModule } from '../devices/devices.module';
+import { BranchesModule } from '../branches/branches.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { DevicesModule } from '../devices/devices.module';
     ContactsModule,
     MailModule,
     DevicesModule,
+    BranchesModule,
   ],
   controllers: [VisitorsController],
   providers: [VisitorsService],

@@ -2,9 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AgentSupportController } from './agent-support.controller';
 import { SupportService } from './support.service';
 import { TicketStatus, TicketType } from './entities/support-ticket.entity';
-import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto';
-import { TicketReplyDto } from './dto/ticket-reply.dto';
-import { UpdateAgentProfileDto } from './dto/update-agent-profile.dto';
+import { UserRole } from '../users/entities/user.entity';
 
 describe('AgentSupportController', () => {
   let controller: AgentSupportController;
@@ -18,7 +16,7 @@ describe('AgentSupportController', () => {
     updateAgentProfile: jest.fn(),
   };
 
-  const mockAgent = { id: 'agent-1' };
+  const mockAgent = { id: 'agent-1', role: UserRole.AGENT };
   const mockReq = { user: mockAgent };
 
   beforeEach(async () => {
@@ -49,7 +47,7 @@ describe('AgentSupportController', () => {
       };
       mockSupportService.getAgentStats.mockResolvedValue(result);
 
-      expect(await controller.getStats(mockReq)).toBe(result);
+      expect(await controller.getStats(mockReq as any)).toBe(result);
       expect(mockSupportService.getAgentStats).toHaveBeenCalledWith(
         mockAgent.id,
       );
@@ -61,7 +59,7 @@ describe('AgentSupportController', () => {
       const result = [{ id: 'chat-1', type: TicketType.CHAT }];
       mockSupportService.findAssigned.mockResolvedValue(result);
 
-      expect(await controller.getAssignedChats(mockReq)).toBe(result);
+      expect(await controller.getAssignedChats(mockReq as any)).toBe(result);
       expect(mockSupportService.findAssigned).toHaveBeenCalledWith(
         mockAgent.id,
         TicketType.CHAT,
@@ -74,7 +72,7 @@ describe('AgentSupportController', () => {
       const result = [{ id: 'ticket-1', type: TicketType.TICKET }];
       mockSupportService.findAssigned.mockResolvedValue(result);
 
-      expect(await controller.getAssignedTickets(mockReq)).toBe(result);
+      expect(await controller.getAssignedTickets(mockReq as any)).toBe(result);
       expect(mockSupportService.findAssigned).toHaveBeenCalledWith(
         mockAgent.id,
         TicketType.TICKET,
@@ -96,11 +94,11 @@ describe('AgentSupportController', () => {
   describe('updateStatus', () => {
     it('should update ticket status', async () => {
       const ticketId = 'ticket-1';
-      const dto: UpdateTicketStatusDto = { status: TicketStatus.RESOLVED };
+      const dto = { status: TicketStatus.RESOLVED };
       const result = { id: ticketId, status: TicketStatus.RESOLVED };
       mockSupportService.updateStatusAgent.mockResolvedValue(result);
 
-      expect(await controller.updateStatus(mockReq, ticketId, dto)).toBe(
+      expect(await controller.updateStatus(mockReq as any, ticketId, dto)).toBe(
         result,
       );
       expect(mockSupportService.updateStatusAgent).toHaveBeenCalledWith(
@@ -114,11 +112,13 @@ describe('AgentSupportController', () => {
   describe('addMessage', () => {
     it('should add agent message', async () => {
       const ticketId = 'ticket-1';
-      const dto: TicketReplyDto = { message: 'Hello' };
+      const dto = { message: 'Hello' };
       const result = { id: 'msg-1', message: 'Hello' };
       mockSupportService.addAgentMessage.mockResolvedValue(result);
 
-      expect(await controller.addMessage(mockReq, ticketId, dto)).toBe(result);
+      expect(await controller.addMessage(mockReq as any, ticketId, dto)).toBe(
+        result,
+      );
       expect(mockSupportService.addAgentMessage).toHaveBeenCalledWith(
         ticketId,
         mockAgent.id,
@@ -129,11 +129,11 @@ describe('AgentSupportController', () => {
 
   describe('updateProfile', () => {
     it('should update agent profile', async () => {
-      const dto: UpdateAgentProfileDto = { firstName: 'New' };
+      const dto = { firstName: 'New' };
       const result = { id: mockAgent.id, firstName: 'New' };
       mockSupportService.updateAgentProfile.mockResolvedValue(result);
 
-      expect(await controller.updateProfile(mockReq, dto)).toBe(result);
+      expect(await controller.updateProfile(mockReq as any, dto)).toBe(result);
       expect(mockSupportService.updateAgentProfile).toHaveBeenCalledWith(
         mockAgent.id,
         dto,

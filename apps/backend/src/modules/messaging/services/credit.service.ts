@@ -1,13 +1,15 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Repository, DataSource, Between } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Business } from '../../businesses/entities/business.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 import { Channel } from '../enums/channel.enum';
-import {
-  Message,
-  MessageDirection,
-  MessageStatus,
-} from '../entities/message.entity';
+import { MessageDirection, MessageStatus } from '../enums/message.enum';
+import { Message } from '../entities/message.entity';
 import { BusinessCredit } from '../entities/business-credit.entity';
 import {
   Subscription,
@@ -27,6 +29,8 @@ export class CreditService {
   constructor(
     @InjectRepository(Business)
     private readonly businessRepository: Repository<Business>,
+    @InjectRepository(Branch)
+    private readonly branchRepository: Repository<Branch>,
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
     @InjectRepository(BusinessCredit)
@@ -36,24 +40,31 @@ export class CreditService {
     private readonly dataSource: DataSource,
   ) {}
 
-  public async getBalance(businessId: string): Promise<number> {
-    const business = await this.businessRepository.findOne({
-      where: { id: businessId },
+  public async getBalance(branchId: string): Promise<number> {
+    const branch = await this.branchRepository.findOne({
+      where: { id: branchId },
+      relations: ['business'],
     });
-    if (!business) {
-      throw new BadRequestException('Business not found');
+    if (!branch || !branch.business) {
+      throw new NotFoundException('Branch or associated business not found');
     }
-    return Number(business.balance) || 0;
+    // Wallet balance is still likely business-level, but accessed via branch
+    return Number(branch.business.balance) || 0;
   }
 
   public async deduct(
-    businessId: string,
+    branchId: string,
     amount: number,
     reason: string,
   ): Promise<void> {
+    const branch = await this.branchRepository.findOne({
+      where: { id: branchId },
+    });
+    if (!branch) throw new NotFoundException('Branch not found');
+
     await this.dataSource.transaction(async (manager) => {
       const business = await manager.findOne(Business, {
-        where: { id: businessId },
+        where: { id: branch.businessId },
         lock: { mode: 'pessimistic_write' },
       });
       if (!business) {
@@ -67,13 +78,11 @@ export class CreditService {
 
       business.balance = currentBalance - amount;
       await manager.save(business);
-
-      // TODO: Log transaction to wallet_transactions table when created
     });
   }
 
   public async deductChannelCredit(
-    businessId: string,
+    branchId: string,
     channel: Channel,
     amount: number,
   ): Promise<void> {
@@ -81,9 +90,17 @@ export class CreditService {
     const start = startOfMonth(now);
     const end = endOfMonth(now);
 
-    // 1. Get Subscription and Plan
+    const branch = await this.branchRepository.findOne({
+      where: { id: branchId },
+    });
+    if (!branch) throw new NotFoundException('Branch not found');
+
+    // 1. Get Subscription and Plan (Subscription is still Business-level)
     const subscription = await this.subscriptionRepo.findOne({
-      where: { businessId, status: SubscriptionStatus.ACTIVE },
+      where: {
+        businessId: branch.businessId,
+        status: SubscriptionStatus.ACTIVE,
+      },
       relations: ['plan'],
     });
 
@@ -98,10 +115,10 @@ export class CreditService {
     else if (channel === Channel.WHATSAPP)
       planLimit = Number(plan.whatsappCredits);
 
-    // 2. Check current month's usage
+    // 2. Check current month's usage for this branch
     const usage = await this.messageRepository.count({
       where: {
-        businessId,
+        branchId,
         channel,
         direction: MessageDirection.OUTBOUND,
         status: MessageStatus.SENT,
@@ -115,13 +132,13 @@ export class CreditService {
     if (topupNeeded > 0) {
       await this.dataSource.transaction(async (manager) => {
         const credits = await manager.findOne(BusinessCredit, {
-          where: { businessId },
+          where: { branchId },
           lock: { mode: 'pessimistic_write' },
         });
 
         if (!credits) {
           throw new BadRequestException(
-            `Plan ${channel} credits exhausted and no top-up balance found`,
+            `Plan ${channel} credits exhausted and no top-up balance found for this branch`,
           );
         }
 

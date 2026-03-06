@@ -130,8 +130,6 @@ export class ProductsService {
 
     const totalPrice = unitPrice * createOrderDto.quantity;
 
-    // For Owners, we skip online payment. Payment is physical.
-    // We default to PENDING.
     const paymentStatus = OrderPaymentStatus.PENDING;
 
     const order = this.orderRepository.create({
@@ -187,7 +185,7 @@ export class ProductsService {
 
   async remove(id: string): Promise<void> {
     const product = await this.findOne(id);
-    await this.productRepository.remove(product);
+    await this.productRepository.softDelete(product.id);
   }
 
   async countByProductType(productTypeId: string): Promise<number> {
@@ -364,7 +362,7 @@ export class ProductsService {
     if (!order) throw new NotFoundException('Order not found');
 
     order.status = OrderStatus.COMPLETED;
-    order.paymentStatus = OrderPaymentStatus.PAID; // Mark as Paid when Completed
+    order.paymentStatus = OrderPaymentStatus.PAID;
     return this.orderRepository.save(order);
   }
 
@@ -374,7 +372,6 @@ export class ProductsService {
       where: { status: ProductStatus.PUBLISHED },
     });
 
-    // Strategy for Low Stock: Count product types that have very few unlinked devices
     const lowStockThreshold = 10;
     const productTypes = await this.productTypeRepository.find({
       relations: ['devices'],
@@ -383,7 +380,7 @@ export class ProductsService {
     let lowStockCount = 0;
     for (const type of productTypes) {
       const availableDevices =
-        type.devices?.filter((d) => !d.businessId).length || 0;
+        type.devices?.filter((d) => !d.branchId).length || 0;
       if (availableDevices < lowStockThreshold) {
         lowStockCount++;
       }

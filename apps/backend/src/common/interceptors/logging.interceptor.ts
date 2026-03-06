@@ -5,6 +5,7 @@ import {
   CallHandler,
   Logger,
 } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { Observable, throwError } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 
@@ -13,7 +14,7 @@ export class LoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger('HTTP');
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
     const { method, url, body, query } = request;
     const now = Date.now();
 
@@ -23,13 +24,13 @@ export class LoggingInterceptor implements NestInterceptor {
       this.logger.debug(`Query Params: ${JSON.stringify(query, null, 2)}`);
     }
 
-    if (body && Object.keys(body).length > 0) {
+    if (body && Object.keys(body as Record<string, any>).length > 0) {
       this.logger.debug(`Request Body: ${JSON.stringify(body, null, 2)}`);
     }
 
     return next.handle().pipe(
-      tap((responseBody) => {
-        const response = context.switchToHttp().getResponse();
+      tap((responseBody: unknown) => {
+        const response = context.switchToHttp().getResponse<Response>();
         const statusCode = response.statusCode;
         const duration = Date.now() - now;
 
@@ -46,16 +47,16 @@ export class LoggingInterceptor implements NestInterceptor {
 
         this.logger.debug(`Response Body: ${loggableResponse}`);
       }),
-      catchError((error) => {
+      catchError((error: any) => {
         const duration = Date.now() - now;
-        const statusCode = error.status || 500;
+        const statusCode = (error?.status as number) || 500;
 
         this.logger.error(
-          `Error: ${method} ${url} - Status: ${statusCode} - Duration: ${duration}ms - Message: ${error.message}`,
-          error.stack,
+          `Error: ${method} ${url} - Status: ${statusCode} - Duration: ${duration}ms - Message: ${error?.message as string}`,
+          error?.stack as string,
         );
 
-        return throwError(() => error);
+        return throwError(() => error as Error);
       }),
     );
   }

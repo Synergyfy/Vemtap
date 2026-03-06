@@ -20,7 +20,10 @@ describe('TrialRestrictionGuard', () => {
   } as unknown as ExecutionContext;
 
   beforeEach(() => {
-    guard = new TrialRestrictionGuard(mockSubscriptionsService as any);
+    guard = new TrialRestrictionGuard(
+      mockSubscriptionsService as any,
+      { findById: jest.fn() } as any,
+    );
   });
 
   it('should be defined', () => {

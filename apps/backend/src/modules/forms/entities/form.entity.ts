@@ -1,6 +1,5 @@
 import { Entity, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
-import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { FormResponse } from './form-response.entity';
 import { FormField } from './form-field.entity';
@@ -22,20 +21,15 @@ export class Form extends AbstractBaseEntity {
   @Column({ default: false })
   adminDisabled: boolean;
 
-  @ManyToOne(() => Business, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'businessId' })
-  business: Business;
-
-  @Column()
-  businessId: string;
-
-  // Optional: If mapped to a specific branch
   @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'branchId' })
   branch: Branch;
 
   @Column({ nullable: true })
   branchId: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  businessId: string;
 
   @OneToMany(() => FormField, (field) => field.form, { cascade: true })
   fields: FormField[];

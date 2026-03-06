@@ -1,7 +1,7 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { FlowExecution } from './flow-execution.entity';
-import { Business } from '../../businesses/entities/business.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 
 @Entity('flow_logs')
 export class FlowLog extends AbstractBaseEntity {
@@ -12,12 +12,12 @@ export class FlowLog extends AbstractBaseEntity {
   @Column()
   flowSessionId: string;
 
-  @ManyToOne(() => Business, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'businessId' })
-  business: Business;
+  @ManyToOne(() => Branch, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'branchId' })
+  branch: Branch;
 
   @Column()
-  businessId: string;
+  branchId: string;
 
   @Column()
   actionType: string;

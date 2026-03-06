@@ -1,7 +1,6 @@
 import { Entity, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
-import { Business } from '../../businesses/entities/business.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Order } from '../../products/entities/order.entity';
 import { Branch } from '../../branches/entities/branch.entity';
@@ -57,19 +56,6 @@ export class Device extends AbstractBaseEntity {
   @Column({ nullable: true })
   lastActive: Date;
 
-  @ManyToOne(() => Business, (business) => business.devices, {
-    onDelete: 'CASCADE',
-  })
-  @JoinColumn({ name: 'businessId' })
-  business: Business;
-
-  @ApiProperty({
-    example: '123e4567-e89b-12d3-a456-426614174000',
-    description: 'Business ID',
-  })
-  @Column({ nullable: true })
-  businessId: string;
-
   @OneToMany(() => Visit, (visit) => visit.device)
   visits: Visit[];
 
@@ -88,7 +74,7 @@ export class Device extends AbstractBaseEntity {
   @Column({ nullable: true })
   orderId: string;
 
-  @ManyToOne(() => Branch, { onDelete: 'SET NULL', nullable: true })
+  @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'branchId' })
   branch: Branch;
 

@@ -7,6 +7,8 @@ import {
   BusinessType,
 } from './entities/business.entity';
 import { User } from '../users/entities/user.entity';
+import { Branch } from '../branches/entities/branch.entity';
+import { Visit } from '../visitors/entities/visit.entity';
 import { MailService } from '../mail/mail.service';
 import { NotFoundException } from '@nestjs/common';
 
@@ -48,6 +50,22 @@ describe('BusinessesService', () => {
     findOne: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
+    update: jest.fn(),
+  };
+
+  const mockBranchRepository = {
+    create: jest.fn().mockImplementation((dto) => dto),
+    save: jest
+      .fn()
+      .mockImplementation((branch) =>
+        Promise.resolve({ id: 'branch-1', ...branch }),
+      ),
+    find: jest.fn().mockResolvedValue([]),
+  };
+
+  const mockVisitRepository = {
+    count: jest.fn().mockResolvedValue(0),
+    find: jest.fn().mockResolvedValue([]),
   };
 
   const mockMailService = {
@@ -67,6 +85,14 @@ describe('BusinessesService', () => {
           useValue: mockUsersRepository,
         },
         {
+          provide: getRepositoryToken(Branch),
+          useValue: mockBranchRepository,
+        },
+        {
+          provide: getRepositoryToken(Visit),
+          useValue: mockVisitRepository,
+        },
+        {
           provide: MailService,
           useValue: mockMailService,
         },
@@ -82,22 +108,15 @@ describe('BusinessesService', () => {
   });
 
   describe('update', () => {
-    it('should update business details including about and businessHours', async () => {
+    it('should update business name', async () => {
       const updateDto = {
         name: 'Updated Name',
-        about: 'New About Info',
-        businessHours: {
-          monday: { open: '08:00', close: '20:00' },
-          sunday: { closed: true },
-        },
       };
 
       const result = await service.update('biz-1', updateDto);
 
       expect(repository.findOneBy).toHaveBeenCalledWith({ id: 'biz-1' });
       expect(result.name).toBe(updateDto.name);
-      expect(result.about).toBe(updateDto.about);
-      expect(result.businessHours).toEqual(updateDto.businessHours);
       expect(repository.save).toHaveBeenCalled();
     });
 

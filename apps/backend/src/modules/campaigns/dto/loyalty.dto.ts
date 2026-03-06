@@ -195,6 +195,10 @@ export class RewardRedeemRequestDto {
   rewardId: string;
 }
 
+export class EarnPointsDto extends PointEarnRequestDto {}
+export class RedeemRewardDto extends RewardRedeemRequestDto {}
+export class CreateLoyaltyRewardDto extends CreateRewardDto {}
+
 export class VerifyRedemptionDto {
   @ApiProperty({
     description: 'Branch ID',

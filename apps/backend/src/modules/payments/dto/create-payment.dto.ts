@@ -37,4 +37,8 @@ export class CreatePaymentDto {
   @IsString()
   @IsOptional()
   businessId?: string;
+
+  @IsString()
+  @IsOptional()
+  branchId?: string;
 }

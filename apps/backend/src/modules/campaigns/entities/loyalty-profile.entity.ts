@@ -10,7 +10,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { User } from '../../users/entities/user.entity';
 import { Branch } from '../../branches/entities/branch.entity';
-import { Business } from '../../businesses/entities/business.entity';
 import { PointTransaction } from './point-transaction.entity';
 import { Redemption } from './redemption.entity';
 
@@ -35,23 +34,22 @@ export class LoyaltyProfile extends AbstractBaseEntity {
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @ApiProperty({ description: 'The business ID', example: 'business_001' })
-  @Column({ type: 'uuid', nullable: false })
-  @Index()
-  businessId: string;
-
-  @ManyToOne(() => Business, { nullable: false })
-  @JoinColumn({ name: 'businessId' })
-  business: Business;
-
   @ApiProperty({ description: 'The branch ID', example: 'branch_001' })
-  @Column({ nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   @Index()
   branchId: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  @Index()
+  businessId: string;
 
   @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'branchId' })
   branch: Branch;
+
+  @ApiProperty({ description: 'Current available points', example: 1250 })
+  @Column({ type: 'int', default: 0 })
+  points: number;
 
   @ApiProperty({
     description: 'Total points earned over lifetime',

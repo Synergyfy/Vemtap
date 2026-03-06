@@ -83,18 +83,6 @@ export class User extends AbstractBaseEntity {
   @Column({ type: 'timestamp', nullable: true })
   lastActive: Date;
 
-  // Relation to the business they belong to (Staff/Manager/Owner)
-  @ManyToOne(() => Business, (business) => business.staff, {
-    nullable: true,
-    onDelete: 'SET NULL',
-  })
-  @JoinColumn({ name: 'businessId' })
-  business: Business;
-
-  @ApiProperty({ example: 'uuid-string', nullable: true })
-  @Column({ nullable: true })
-  businessId: string;
-
   // Relation to branch they belong to
   @ManyToOne(() => Branch, (branch) => branch.staff, {
     nullable: true,
@@ -106,6 +94,10 @@ export class User extends AbstractBaseEntity {
   @ApiProperty({ example: 'uuid-string', nullable: true })
   @Column({ nullable: true })
   branchId: string;
+
+  @ApiProperty({ example: 'uuid-string', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
+  businessId: string;
 
   // Relation to business they own
   @OneToOne(() => Business, (business) => business.owner)

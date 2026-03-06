@@ -10,7 +10,6 @@ import { PaymentsService } from '../../payments/payments.service';
 describe('CreditPlanService', () => {
   let service: CreditPlanService;
   let creditPlanRepo: Repository<CreditPlan>;
-  let businessCreditRepo: Repository<BusinessCredit>;
   let paymentsService: PaymentsService;
 
   const mockCreditPlan = {
@@ -24,11 +23,10 @@ describe('CreditPlanService', () => {
   };
 
   const mockBusinessCredit = {
-    businessId: 'bus-123',
+    branchId: 'branch-123',
     smsBalance: 10,
     emailBalance: 20,
     whatsappBalance: 5,
-    save: jest.fn().mockResolvedValue(this),
   };
 
   beforeEach(async () => {
@@ -67,9 +65,6 @@ describe('CreditPlanService', () => {
     creditPlanRepo = module.get<Repository<CreditPlan>>(
       getRepositoryToken(CreditPlan),
     );
-    businessCreditRepo = module.get<Repository<BusinessCredit>>(
-      getRepositoryToken(BusinessCredit),
-    );
     paymentsService = module.get<PaymentsService>(PaymentsService);
   });
 
@@ -80,14 +75,14 @@ describe('CreditPlanService', () => {
   describe('purchase', () => {
     it('should successfully award credits on valid payment', async () => {
       const reference = 'ref-123';
-      const businessId = 'bus-123';
+      const branchId = 'branch-123';
 
       jest.spyOn(paymentsService, 'verifyTransaction').mockResolvedValue({
         status: 'success',
         amount: 500000, // 5000 * 100
       });
 
-      const result = await service.purchase(businessId, 'plan-123', reference);
+      const result = await service.purchase(branchId, 'plan-123', reference);
 
       expect(result.smsBalance).toBe(110); // 10 initial + 100 plan
       expect(result.emailBalance).toBe(220); // 20 initial + 200 plan
@@ -99,7 +94,7 @@ describe('CreditPlanService', () => {
       jest.spyOn(paymentsService, 'verifyTransaction').mockResolvedValue(null);
 
       await expect(
-        service.purchase('bus-123', 'plan-123', 'ref-fail'),
+        service.purchase('branch-123', 'plan-123', 'ref-fail'),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -109,7 +104,7 @@ describe('CreditPlanService', () => {
       });
 
       await expect(
-        service.purchase('bus-123', 'plan-123', 'ref-low'),
+        service.purchase('branch-123', 'plan-123', 'ref-low'),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -117,7 +112,7 @@ describe('CreditPlanService', () => {
       jest.spyOn(creditPlanRepo, 'findOne').mockResolvedValue(null);
 
       await expect(
-        service.purchase('bus-123', 'invalid-plan', 'ref'),
+        service.purchase('branch-123', 'invalid-plan', 'ref'),
       ).rejects.toThrow(NotFoundException);
     });
   });

@@ -17,7 +17,6 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiParam,
-  ApiHeader,
 } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -55,6 +54,39 @@ export class MessagingController {
     private readonly inboxService: InboxService,
   ) {}
 
+  private async getBranchId(req: any, queryBranchId?: string): Promise<string> {
+    const user = req.user;
+
+    // For Owner and Admin: branchId MUST be provided in the request
+    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
+      if (!queryBranchId) {
+        throw new BadRequestException(
+          'branchId is required for Owners and Admins',
+        );
+      }
+
+      if (user.role === UserRole.OWNER) {
+        const hasAccess = await this.messagingEngine.checkBranchAccess(
+          user,
+          queryBranchId,
+        );
+        if (!hasAccess) {
+          throw new BadRequestException(
+            'You do not have access to this branch',
+          );
+        }
+      }
+      return queryBranchId;
+    }
+
+    // For Manager and Staff: ignore provided branchId, always use branchId from token
+    if (!user.branchId) {
+      throw new BadRequestException('User is not associated with any branch');
+    }
+
+    return user.branchId;
+  }
+
   @Post('send')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
@@ -68,18 +100,8 @@ export class MessagingController {
     @Body() dto: SendMessageDto,
     @Request() req: { user: User },
   ) {
-    // Ensures businessId matches the caller's business context
-    dto.businessId = req.user.businessId;
-
-    // Use user's branchId if available, unless overridden (e.g. by owner sending on behalf of branch)
-    // Staff should always use their branch.
-    if (req.user.role === UserRole.STAFF) {
-      dto.branchId = req.user.branchId;
-    } else if (!dto.branchId && req.user.branchId) {
-      // Default to user's branch if not provided
-      dto.branchId = req.user.branchId;
-    }
-
+    const branchId = await this.getBranchId(req, dto.branchId);
+    dto.branchId = branchId;
     return this.messagingEngine.sendMessage(dto);
   }
 
@@ -89,13 +111,14 @@ export class MessagingController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({
     summary:
-      'Get available templates for the business (System + Business specific)',
+      'Get available templates for the branch (System + Branch specific)',
   })
-  async getTemplates(@Request() req: { user: User }) {
-    if (!req.user.businessId && req.user.role !== UserRole.ADMIN) {
-      throw new BadRequestException('Business context required');
-    }
-    return this.templateService.getAvailableTemplates(req.user.businessId);
+  async getTemplates(
+    @Request() req: { user: User },
+    @Query() filter: BranchFilterDto,
+  ) {
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.templateService.getAvailableTemplates(branchId);
   }
 
   @Post('templates')
@@ -114,34 +137,27 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @ApiOperation({
-    summary: 'Get all messaging campaigns for a branch or business',
+    summary: 'Get all messaging campaigns for a branch',
   })
   async getCampaigns(
     @Query() filter: BranchFilterDto,
     @Request() req: { user: User },
   ) {
-    const resolvedBranchId = filter.branchId || req.user?.branchId;
-    return this.campaignService.getCampaigns(
-      resolvedBranchId,
-      req.user.businessId,
-    );
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.campaignService.getCampaigns(branchId);
   }
 
   @Get('analytics')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
-  @ApiOperation({ summary: 'Get messaging analytics by branch or business' })
+  @ApiOperation({ summary: 'Get messaging analytics by branch' })
   async getAnalytics(
     @Query('channel') channel: Channel,
     @Query() filter: BranchFilterDto,
     @Request() req: { user: User },
   ) {
-    const resolved = filter.branchId || req.user?.branchId;
-    return this.analyticsService.getDashboardMetrics(
-      req.user.businessId,
-      resolved,
-      channel,
-    );
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.analyticsService.getDashboardMetrics(branchId, channel);
   }
 
   @Get('inbox/:channel')
@@ -149,15 +165,15 @@ export class MessagingController {
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @ApiParam({ name: 'channel', enum: Channel })
   @ApiOperation({
-    summary: 'Get conversation threads by channel for a branch or business',
+    summary: 'Get conversation threads by channel for a branch',
   })
   async getInboxThreads(
     @Param('channel') channel: Channel,
     @Query() filter: BranchFilterDto,
     @Request() req: { user: User },
   ) {
-    const resolved = filter.branchId || req.user?.branchId;
-    return this.inboxService.getThreads(req.user.businessId, channel, resolved);
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.inboxService.getThreads(branchId, channel);
   }
 
   @Get('inbox/threads/:threadId')
@@ -169,12 +185,8 @@ export class MessagingController {
     @Query() filter: BranchFilterDto,
     @Request() req: { user: User },
   ) {
-    const resolved = filter.branchId || req.user?.branchId;
-    return this.inboxService.getThreadMessages(
-      req.user.businessId,
-      threadId,
-      resolved,
-    );
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.inboxService.getThreadMessages(threadId, branchId);
   }
 
   @Post('inbox/threads/:threadId/reply')
@@ -188,14 +200,9 @@ export class MessagingController {
     @Query() filter: BranchFilterDto,
     @Request() req: { user: User },
   ) {
-    const resolved = filter.branchId || req.user.branchId;
+    const branchId = await this.getBranchId(req, filter.branchId);
 
-    return this.inboxService.sendReply(
-      req.user.businessId,
-      threadId,
-      dto.content,
-      resolved,
-    );
+    return this.inboxService.sendReply(threadId, dto.content, branchId);
   }
 
   // --- Admin Endpoints ---

@@ -1,6 +1,6 @@
 import { Entity, Column, OneToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
-import { Business } from '../../businesses/entities/business.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 
 export enum SurveyTriggerType {
   INSTANT = 'INSTANT',
@@ -40,10 +40,10 @@ export class Survey extends AbstractBaseEntity {
   @Column({ default: true })
   isActive: boolean;
 
-  @OneToOne(() => Business, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'businessId' })
-  business: Business;
+  @OneToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'branchId' })
+  branch: Branch;
 
-  @Column()
-  businessId: string;
+  @Column({ nullable: true })
+  branchId: string;
 }

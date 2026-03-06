@@ -10,6 +10,7 @@ import { MessagingEngineService } from '../messaging/services/messaging-engine.s
 import { CampaignsService } from '../campaigns/campaigns.service';
 import { AutomationService } from '../messaging/services/automation.service';
 import { MailService } from '../mail/mail.service';
+import { DataSource } from 'typeorm';
 
 describe('VisitorsService', () => {
   let service: VisitorsService;
@@ -30,6 +31,7 @@ describe('VisitorsService', () => {
     getMany: jest.fn().mockResolvedValue([]),
     getCount: jest.fn().mockResolvedValue(0),
     getRawMany: jest.fn().mockResolvedValue([]),
+    clone: jest.fn().mockReturnThis(),
   };
 
   const mockUserRepo = {
@@ -41,6 +43,7 @@ describe('VisitorsService', () => {
       .fn()
       .mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
     softDelete: jest.fn(),
+    update: jest.fn(),
   };
 
   const mockVisitRepo = {
@@ -49,9 +52,10 @@ describe('VisitorsService', () => {
       .fn()
       .mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
     count: jest.fn().mockResolvedValue(0),
+    find: jest.fn(),
   };
 
-  const mockDeviceRepo = { findOne: jest.fn() };
+  const mockDeviceRepo = { findOne: jest.fn(), save: jest.fn() };
   const mockBranchRepo = { findOne: jest.fn() };
   const mockContactRepo = {
     findOne: jest.fn(),
@@ -71,12 +75,20 @@ describe('VisitorsService', () => {
         { provide: getRepositoryToken(Branch), useValue: mockBranchRepo },
         { provide: getRepositoryToken(Contact), useValue: mockContactRepo },
         {
+          provide: DataSource,
+          useValue: { transaction: jest.fn() },
+        },
+        {
           provide: MessagingEngineService,
           useValue: { sendMessage: jest.fn() },
         },
         {
           provide: CampaignsService,
-          useValue: { getRewards: jest.fn(), getLoyaltyRule: jest.fn() },
+          useValue: {
+            getRewards: jest.fn(),
+            getLoyaltyRule: jest.fn(),
+            findActiveRule: jest.fn(),
+          },
         },
         {
           provide: AutomationService,
@@ -118,7 +130,7 @@ describe('VisitorsService', () => {
       ]);
       mockQueryBuilder.getMany.mockResolvedValueOnce(mockUsers);
 
-      const result = await service.findAll({ page: 1, limit: 10 }, 'biz-1');
+      const result = await service.findAll({ page: 1, limit: 10 }, 'branch-1');
 
       expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
@@ -135,9 +147,10 @@ describe('VisitorsService', () => {
         email: 'new@example.com',
         phone: '123',
       };
-      const businessId = 'biz-1';
+      const branchId = 'branch-1';
 
-      mockUserRepo.findOne.mockResolvedValueOnce(null); // First check: user not found
+      mockUserRepo.findOne.mockResolvedValueOnce(null);
+      mockBranchRepo.findOne.mockResolvedValueOnce({ id: branchId });
 
       const savedUser = {
         id: 'u1',
@@ -152,19 +165,18 @@ describe('VisitorsService', () => {
       const savedVisit = {
         id: 'v1',
         customer: savedUser,
-        businessId,
+        branchId,
         createdAt: new Date(),
       };
       mockVisitRepo.create.mockReturnValueOnce(savedVisit);
       mockVisitRepo.save.mockResolvedValueOnce(savedVisit);
 
-      // Re-fetch returns user with visits
       mockUserRepo.findOne.mockResolvedValueOnce({
         ...savedUser,
         visits: [savedVisit],
       });
 
-      const result = await service.create(dto, businessId);
+      const result = await service.create(dto, branchId);
 
       expect(mockUserRepo.create).toHaveBeenCalled();
       expect(result.firstName).toBe('New');
@@ -177,7 +189,7 @@ describe('VisitorsService', () => {
     it('should return stats with trends', async () => {
       mockQueryBuilder.getCount.mockResolvedValue(100);
 
-      const result = await service.getStats('biz-1');
+      const result = await service.getStats('branch-1');
 
       expect(result.stats).toHaveLength(4);
       expect(result.stats[0].label).toBe('Total Visitors');

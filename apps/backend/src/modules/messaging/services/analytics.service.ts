@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { MessageLog } from '../entities/message-log.entity';
 import { MessageCampaign } from '../entities/message-campaign.entity';
 import { Channel } from '../enums/channel.enum';
-import { MessageStatus } from '../entities/message.entity';
+import { MessageStatus } from '../enums/message.enum';
 
 @Injectable()
 export class AnalyticsService {
@@ -15,22 +15,14 @@ export class AnalyticsService {
     private readonly campaignRepo: Repository<MessageCampaign>,
   ) {}
 
-  async getDashboardMetrics(
-    businessId: string,
-    branchId?: string,
-    channel?: Channel,
-  ) {
-    if (!businessId && !branchId) {
-      throw new BadRequestException('businessId or branchId is required');
+  async getDashboardMetrics(branchId: string, channel?: Channel) {
+    if (!branchId) {
+      throw new BadRequestException('branchId is required');
     }
 
-    const query = this.logRepo.createQueryBuilder('log');
-
-    if (branchId) {
-      query.where('log.branchId = :branchId', { branchId });
-    } else {
-      query.where('log.businessId = :businessId', { businessId });
-    }
+    const query = this.logRepo
+      .createQueryBuilder('log')
+      .where('log.branchId = :branchId', { branchId });
 
     if (channel) {
       query.andWhere('log.channel = :channel', { channel });

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Plan } from './entities/plan.entity';
 import { Subscription } from './entities/subscription.entity';
@@ -12,12 +12,24 @@ import { PlansService } from './plans.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { PaymentsModule } from '../payments/payments.module';
 import { TrialRestrictionGuard } from './guards/trial-restriction.guard';
+import { BranchesModule } from '../branches/branches.module';
+
+import { Branch } from '../branches/entities/branch.entity';
+import { Device } from '../devices/entities/device.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Plan, Subscription, Business, User]),
+    TypeOrmModule.forFeature([
+      Plan,
+      Subscription,
+      Business,
+      User,
+      Branch,
+      Device,
+    ]),
     BusinessesModule,
     PaymentsModule,
+    forwardRef(() => BranchesModule),
   ],
   controllers: [PlansController, SubscriptionsController],
   providers: [PlansService, SubscriptionsService, TrialRestrictionGuard],

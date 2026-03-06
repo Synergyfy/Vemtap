@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { SupportController } from './support.controller';
 import { SupportService } from './support.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
+import { UserRole } from '../users/entities/user.entity';
 
 describe('SupportController', () => {
   let controller: SupportController;
@@ -13,7 +14,7 @@ describe('SupportController', () => {
     addMessage: jest.fn(),
   };
 
-  const mockUser = { id: 'user-1' };
+  const mockUser = { id: 'user-1', role: UserRole.CUSTOMER };
   const mockReq = { user: mockUser };
 
   beforeEach(async () => {
@@ -44,7 +45,7 @@ describe('SupportController', () => {
       const result = { id: 'ticket-1', ...dto };
       mockSupportService.create.mockResolvedValue(result);
 
-      expect(await controller.createTicket(mockReq, dto)).toBe(result);
+      expect(await controller.createTicket(mockReq as any, dto)).toBe(result);
       expect(mockSupportService.create).toHaveBeenCalledWith(mockUser.id, dto);
     });
   });
@@ -54,7 +55,7 @@ describe('SupportController', () => {
       const result = [{ id: 'ticket-1' }];
       mockSupportService.findAll.mockResolvedValue(result);
 
-      expect(await controller.getTickets(mockReq)).toBe(result);
+      expect(await controller.getTickets(mockReq as any)).toBe(result);
       expect(mockSupportService.findAll).toHaveBeenCalledWith(mockUser.id);
     });
   });
@@ -65,7 +66,7 @@ describe('SupportController', () => {
       const result = { id: ticketId };
       mockSupportService.findOne.mockResolvedValue(result);
 
-      expect(await controller.getTicket(mockReq, ticketId)).toBe(result);
+      expect(await controller.getTicket(mockReq as any, ticketId)).toBe(result);
       expect(mockSupportService.findOne).toHaveBeenCalledWith(
         ticketId,
         mockUser.id,
@@ -80,9 +81,9 @@ describe('SupportController', () => {
       const result = { id: 'msg-1', message };
       mockSupportService.addMessage.mockResolvedValue(result);
 
-      expect(await controller.addMessage(mockReq, ticketId, message)).toBe(
-        result,
-      );
+      expect(
+        await controller.addMessage(mockReq as any, ticketId, message),
+      ).toBe(result);
       expect(mockSupportService.addMessage).toHaveBeenCalledWith(
         ticketId,
         mockUser.id,
