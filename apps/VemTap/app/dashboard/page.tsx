@@ -3,8 +3,10 @@
 import React, { useState } from 'react';
 import { Visitor } from '@/lib/store/mockDashboardStore';
 import toast from 'react-hot-toast';
-import { Users, UserPlus, Repeat, Calendar, TrendingUp, TrendingDown,
-    ChevronDown, Send, Download, Gift, ArrowRight, MessageSquare, Zap } from 'lucide-react';
+import {
+    Users, UserPlus, Repeat, Calendar, TrendingUp, TrendingDown,
+    ChevronDown, Send, Download, Gift, ArrowRight, MessageSquare, Zap
+} from 'lucide-react';
 import LogoIcon from '@/components/brand/LogoIcon';
 import { useRouter } from 'next/navigation';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
@@ -20,14 +22,15 @@ export default function DashboardPage() {
     const router = useRouter();
     const [showClearModal, setShowClearModal] = useState(false);
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' } | null>(null);
-    const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);     
+    const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
     const [rewardPreviewVisitor, setRewardPreviewVisitor] = useState<Visitor | null>(null);
 
     const user = useAuthStore((state) => state.user);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
     // eslint-disable-next-line no-console
-    console.log('[DASHBOARD PAGE] 🔍 isAuthenticated:', isAuthenticated, 'planId:', user?.planId);       
+    console.log('[DASHBOARD PAGE] 🔍 isAuthenticated:', isAuthenticated, 'planId:', user?.planId);
+
 
 
     // Fetch Dashboard Data
@@ -92,15 +95,16 @@ export default function DashboardPage() {
             };
         })
         : analyticsStats;
-const peakTimes = Array.isArray(data?.peakTimes)
-  ? data.peakTimes
-  : data?.peakTimes && typeof data.peakTimes === 'object'
-    ? Object.values(data.peakTimes)
-    : [];
 
-const maxVisits = peakTimes.length
-  ? Math.max(...peakTimes.map((d: any) => d.value))
-  : 100;
+    const peakTimes = Array.isArray(data?.peakTimes)
+        ? data.peakTimes
+        : data?.peakTimes && typeof data.peakTimes === 'object'
+            ? Object.values(data.peakTimes)
+            : [];
+
+    const maxVisits = peakTimes.length
+        ? Math.max(...peakTimes.map((d: any) => d.value))
+        : 100;
 
     // Computed audience breakdown
     const getStatValue = (labels: string[]) => {
@@ -134,7 +138,7 @@ const maxVisits = peakTimes.length
             {/* Page Header */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex-1">
-                    <h1 className="text-2xl font-display font-bold text-text-main mb-1">Dashboard</h1>    
+                    <h1 className="text-2xl font-display font-bold text-text-main mb-1">Dashboard</h1>
                     <p className="text-sm text-text-secondary font-medium">Welcome back! Here's what's happening today.</p>
                 </div>
 
@@ -183,7 +187,7 @@ const maxVisits = peakTimes.length
                     <div className="flex items-center justify-between mb-4">
                         <div>
                             <h2 className="text-base font-display font-bold text-text-main">Visitor Activity</h2>
-                            <p className="text-[10px] text-text-secondary">Today's hourly breakdown</p>   
+                            <p className="text-[10px] text-text-secondary">Today's hourly breakdown</p>
                         </div>
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-3">
@@ -192,7 +196,7 @@ const maxVisits = peakTimes.length
                                     <span className="text-[9px] font-bold text-text-secondary uppercase">All</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                    <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div>       
+                                    <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div>
                                     <span className="text-[9px] font-bold text-text-secondary uppercase">New</span>
                                 </div>
                             </div>
@@ -230,7 +234,7 @@ const maxVisits = peakTimes.length
                                         </div>
                                     </div>
                                     <div className="text-center">
-                                        <p className="text-[9px] font-bold text-text-main">{d.value}</p>  
+                                        <p className="text-[9px] font-bold text-text-main">{d.value}</p>
                                         <p className="text-[8px] text-text-secondary font-medium uppercase tracking-tighter">{d.hour}</p>
                                     </div>
                                 </div>
@@ -253,7 +257,7 @@ const maxVisits = peakTimes.length
                                     <circle cx="50" cy="50" r="40" fill="transparent" stroke="#10b981" strokeWidth="10" strokeDasharray={`${(newPct / 100) * 251.2} 251.2`} strokeDashoffset={`${-(returningPct / 100) * 251.2}`} strokeLinecap="round" transform="rotate(-90 50 50)" />
                                 </svg>
                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <p className="text-lg font-black text-slate-900">{totalVisitors}</p>  
+                                    <p className="text-lg font-black text-slate-900">{totalVisitors}</p>
                                     <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Total</p>
                                 </div>
                             </div>
@@ -316,7 +320,7 @@ const maxVisits = peakTimes.length
                 <div className="flex items-center justify-between mb-4">
                     <div>
                         <h2 className="text-base font-display font-bold text-text-main mb-0.5">Recent Visitors</h2>
-                        <p className="text-[10px] text-text-secondary">Latest customer check-ins</p>      
+                        <p className="text-[10px] text-text-secondary">Latest customer check-ins</p>
                     </div>
                     <button
                         onClick={() => router.push('/dashboard/visitors/all')}
@@ -337,8 +341,18 @@ const maxVisits = peakTimes.length
                             </tr>
                         </thead>
                         <tbody>
-                            {(data as any)?.recentVisitors?.length > 0 ? (
-                                (data as any).recentVisitors.slice(0, 5).map((visitor: Visitor) => {      
+                            {(() => {
+                                const recentVisitors = Array.isArray((data as any)?.recentVisitors) ? (data as any).recentVisitors : [];
+                                if (recentVisitors.length === 0) {
+                                    return (
+                                        <tr>
+                                            <td colSpan={5} className="py-8 text-center text-text-secondary font-medium">
+                                                No recent visitors found for this branch.
+                                            </td>
+                                        </tr>
+                                    );
+                                }
+                                return recentVisitors.slice(0, 5).map((visitor: Visitor) => {
                                     const fallbackFirstName = (visitor as any).firstName;
                                     const fallbackLastName = (visitor as any).lastName;
                                     const displayName = visitor.name?.trim()
@@ -396,14 +410,8 @@ const maxVisits = peakTimes.length
                                             </td>
                                         </tr>
                                     );
-                                })
-                            ) : (
-                                <tr>
-                                    <td colSpan={5} className="py-8 text-center text-text-secondary font-medium">
-                                        No recent visitors found for this branch.
-                                    </td>
-                                </tr>
-                            )}
+                                });
+                            })()}
                         </tbody>
                     </table>
                 </div>
