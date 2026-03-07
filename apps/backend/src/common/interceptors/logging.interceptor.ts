@@ -24,7 +24,7 @@ export class LoggingInterceptor implements NestInterceptor {
       this.logger.debug(`Query Params: ${JSON.stringify(query, null, 2)}`);
     }
 
-    if (body && Object.keys(body as Record<string, any>).length > 0) {
+    if (body && typeof body === 'object' && Object.keys(body).length > 0) {
       this.logger.debug(`Request Body: ${JSON.stringify(body, null, 2)}`);
     }
 
@@ -39,7 +39,13 @@ export class LoggingInterceptor implements NestInterceptor {
         );
 
         // Truncate response body if it's too large for logs
-        const responseString = JSON.stringify(responseBody);
+        let responseString = '';
+        try {
+          responseString = JSON.stringify(responseBody) || '';
+        } catch (e) {
+          responseString = '[Non-stringifiable body]';
+        }
+
         const loggableResponse =
           responseString.length > 500
             ? `${responseString.substring(0, 500)}... [TRUNCATED]`

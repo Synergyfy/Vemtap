@@ -15,41 +15,32 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiBody,
   ApiParam,
 } from '@nestjs/swagger';
-
+import { MessagingEngineService } from '../services/messaging-engine.service';
+import { CampaignService } from '../services/campaign.service';
+import { TemplateService } from '../services/template.service';
+import { AnalyticsService } from '../services/analytics.service';
+import { InboxService } from '../services/inbox.service';
+import { SendMessageDto } from '../dto/send-message.dto';
+import { CreateTemplateDto } from '../dto/template/create-template.dto';
+import { ReplyDto } from '../dto/reply.dto';
+import { Channel } from '../enums/channel.enum';
+import { User, UserRole } from '../../users/entities/user.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
-import { Permissions } from '../../../common/decorators/permissions.decorator';
-import { User, UserRole } from '../../users/entities/user.entity';
 import { TrialRestrictionGuard } from '../../subscriptions/guards/trial-restriction.guard';
-
-import { MessagingEngineService } from '../services/messaging-engine.service';
-import { TemplateService } from '../services/template.service';
-import { CampaignService } from '../services/campaign.service';
-import { AnalyticsService } from '../services/analytics.service';
-import { InboxService } from '../services/inbox.service';
-
-import { SendMessageDto } from '../dto/send-message.dto';
-import { Channel } from '../enums/channel.enum';
-import { CreateTemplateDto } from '../dto/template/create-template.dto';
 import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
 
-export class ReplyDto {
-  content: string;
-}
-
-@ApiTags('Messaging Center')
+@ApiTags('Messaging')
 @Controller('messaging')
-@Permissions('messages')
 export class MessagingController {
   constructor(
     private readonly messagingEngine: MessagingEngineService,
-    private readonly templateService: TemplateService,
     private readonly campaignService: CampaignService,
+    private readonly templateService: TemplateService,
     private readonly analyticsService: AnalyticsService,
     private readonly inboxService: InboxService,
   ) {}
@@ -71,9 +62,7 @@ export class MessagingController {
           queryBranchId,
         );
         if (!hasAccess) {
-          throw new BadRequestException(
-            'You do not have access to this branch',
-          );
+          throw new BadRequestException('You do not have access to this branch');
         }
       }
       return queryBranchId;
@@ -130,6 +119,9 @@ export class MessagingController {
     @Body() dto: CreateTemplateDto,
     @Request() req: { user: User },
   ) {
+    // Explicitly check for branchId if not provided in DTO for Owners/Admins
+    const branchId = await this.getBranchId(req, dto.branchId);
+    dto.branchId = branchId;
     return this.templateService.createTemplate(dto, req.user);
   }
 
@@ -205,35 +197,7 @@ export class MessagingController {
     return this.inboxService.sendReply(threadId, dto.content, branchId);
   }
 
-  // --- Admin Endpoints ---
-
-  @Get('admin/templates')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get all messaging templates' })
-  async getAllTemplates() {
-    return this.templateService.findAllAdmin();
-  }
-
-  @Post('admin/templates/:id/status')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Update template status' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        status: { type: 'string', enum: ['pending', 'approved', 'rejected'] },
-      },
-    },
-  })
-  async updateTemplateStatus(
-    @Param('id') id: string,
-    @Body('status') status: any,
-  ) {
-    return this.templateService.updateStatus(id, status);
-  }
-
-  @Post('templates/:id/delete')
-  @Delete('templates/:id/delete')
+  @Delete('templates/:id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
