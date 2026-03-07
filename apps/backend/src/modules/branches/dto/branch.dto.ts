@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
+  IsEmail,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -160,7 +161,7 @@ export class UpdateBranchDto {
   whatsappNumber?: string;
 
   @ApiPropertyOptional()
-  @IsString()
+  @IsEmail()
   @IsOptional()
   officialEmail?: string;
 

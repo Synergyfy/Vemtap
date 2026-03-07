@@ -20,6 +20,7 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import TrialBanner from './TrialBanner';
 import { useActiveSubscription } from '@/services/subscriptions/hooks';
+import DashboardMobileNav from './DashboardMobileNav';
 
 interface SidebarProps {
     children: React.ReactNode;
@@ -89,7 +90,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const handleLogout = () => {
         // 1. Clear React Query Cache
         queryClient.clear();
-        
+
         // 2. Clear Local Storage (Zustand persists here)
         if (typeof window !== 'undefined') {
             localStorage.clear();
@@ -97,7 +98,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
         // 3. Clear Auth Store State
         logout();
-        
+
         // 4. Redirect to login
         router.push('/login');
     };
@@ -432,7 +433,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                         href={item.href!}
                                         className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${primaryNavClasses(isActive(item.href!))
                                             }`}
-                                        >
+                                    >
                                         <div className="flex items-center gap-3">
                                             {IconComponent && <IconComponent size={18} />}
                                             <span>{item.label}</span>
@@ -442,8 +443,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                 {pendingRedemptions}
                                             </span>
                                         )}
-                                        </Link>
-                                        )}
+                                    </Link>
+                                )}
 
                             </div>
                         );
@@ -648,19 +649,21 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                 <LogOut size={16} />
                                                 <span>Logout</span>
                                             </button>
-                                            </div>
                                         </div>
-                                    </>
-                                )}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto bg-gray-50">
+                <main className="flex-1 overflow-y-auto bg-gray-50 pb-16 lg:pb-0">
                     {children}
                 </main>
             </div>
+
+            <DashboardMobileNav />
         </div>
     );
 }
