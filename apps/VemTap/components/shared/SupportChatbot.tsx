@@ -182,7 +182,7 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
                         onClick={() => setIsOpen(true)}
-                        className="fixed bottom-6 right-6 z-50 group"
+                        className="fixed bottom-24 lg:bottom-6 right-6 z-50 group"
                         aria-label="Open support chat"
                     >
                         <div className="relative">
@@ -207,7 +207,7 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
                         exit={{ opacity: 0, y: 50, scale: 0.95 }}
                         className={`fixed z-50 bg-white shadow-2xl overflow-hidden flex flex-col ${isFullScreen
                             ? 'inset-0 rounded-none'
-                            : 'bottom-6 right-6 w-[400px] h-[600px] rounded-2xl'
+                            : 'bottom-24 lg:bottom-6 right-6 w-[400px] h-[600px] rounded-2xl'
                             }`}
                         style={{
                             maxWidth: isFullScreen ? '100%' : '100vw',

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import PageHeader from '@/components/dashboard/PageHeader';
+import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
+import EngagementFeatureCards from '@/components/dashboard/engagement/EngagementFeatureCards';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
@@ -120,10 +121,52 @@ export default function EngagementSettingsPage() {
                 description="Configure how customers interact with your business after tapping"
             />
 
-            <div className="flex items-center gap-3 mt-6">
-                <span className="px-4 h-10 rounded-xl bg-primary text-white text-sm font-black flex items-center">Socials</span>
-                <Link href="/dashboard/settings/engagement/forms" className="px-4 h-10 rounded-xl bg-white border border-gray-200 text-sm font-bold text-text-secondary flex items-center">Form Creator</Link>
-                <Link href="/dashboard/settings/engagement/forms/responses" className="px-4 h-10 rounded-xl bg-white border border-gray-200 text-sm font-bold text-text-secondary flex items-center">Form Responses</Link>
+            <div className="mt-6">
+                <EngagementTabs
+                    tabs={[
+                        { label: 'Socials', active: true },
+                        { label: 'Form Creator', href: '/dashboard/settings/engagement/forms' },
+                        { label: 'Form Responses', href: '/dashboard/settings/engagement/forms/responses' },
+                        { label: 'Automation', href: '/dashboard/automations' },
+                        { label: 'Messaging', href: '/dashboard/messaging/compose' },
+                    ]}
+                />
+            </div>
+
+            <div className="mt-6 bg-blue-50 border border-blue-100 rounded-2xl p-6">
+                <p className="text-[10px] font-black uppercase tracking-widest text-primary">How Social Engagement Works</p>
+                <p className="text-sm text-blue-900 font-bold mt-2 leading-relaxed">
+                    Social engagement can be added to messaging, can drive customers into forms, and can be used as a visible top-of-funnel entry after a tap.
+                    Businesses should configure socials alongside forms so the customer flow stays connected from profile click to submission.
+                </p>
+            </div>
+
+            <div className="mt-6">
+                <EngagementFeatureCards
+                    cards={[
+                        {
+                            eyebrow: 'Business View',
+                            title: 'Drive customers to a form',
+                            description: 'Use your social links to send visitors into the form creator flow by link or QR-driven campaigns.',
+                            href: '/dashboard/settings/engagement/forms',
+                            cta: 'Open form creator',
+                        },
+                        {
+                            eyebrow: 'Business View',
+                            title: 'Add socials to messaging',
+                            description: 'Use messaging broadcasts that include your social CTA and attached form so the customer flow continues in one place.',
+                            href: '/dashboard/messaging/compose',
+                            cta: 'Open messaging',
+                        },
+                        {
+                            eyebrow: 'Business View',
+                            title: 'Automate the flow',
+                            description: 'Push customers from tap to social engagement, then into forms and follow-up messaging with automation rules.',
+                            href: '/dashboard/automations',
+                            cta: 'Open automation',
+                        },
+                    ]}
+                />
             </div>
 
             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 mb-8 mt-6">

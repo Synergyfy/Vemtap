@@ -92,8 +92,15 @@ export default function DashboardPage() {
             };
         })
         : analyticsStats;
+const peakTimes = Array.isArray(data?.peakTimes)
+  ? data.peakTimes
+  : data?.peakTimes && typeof data.peakTimes === 'object'
+    ? Object.values(data.peakTimes)
+    : [];
 
-    const maxVisits = data ? Math.max(...data.peakTimes.map(d => d.value)) : 100;
+const maxVisits = peakTimes.length
+  ? Math.max(...peakTimes.map((d: any) => d.value))
+  : 100;
 
     // Computed audience breakdown
     const getStatValue = (labels: string[]) => {
@@ -198,7 +205,7 @@ export default function DashboardPage() {
 
                     {/* Bar Chart */}
                     <div className="flex items-end justify-between gap-2 h-48">
-                        {data?.peakTimes.map((d: any, index: number) => {
+                        {peakTimes.map((d: any, index: number) => {
                             const newVisits = d.new || 0;
                             const totalPct = maxVisits > 0 ? (d.value / maxVisits) * 100 : 0;
                             const newPctBar = d.value > 0 ? (newVisits / d.value) * 100 : 0;
