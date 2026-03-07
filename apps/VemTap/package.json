@@ -5,7 +5,7 @@
     "scripts":  {
                     "dev":  "next dev --webpack",
                     "dev:turbo":  "next dev --turbopack",
-                    "build":  "export NODE_OPTIONS='--max-old-space-size=2048' && next build --webpack",
+                    "build":  "export NODE_OPTIONS=\u0027--max-old-space-size=2048\u0027 \u0026\u0026 next build --webpack",
                     "start":  "next start",
                     "lint":  "eslint"
                 },
