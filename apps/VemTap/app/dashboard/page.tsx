@@ -3,8 +3,10 @@
 import React, { useState } from 'react';
 import { Visitor } from '@/lib/store/mockDashboardStore';
 import toast from 'react-hot-toast';
-import { Users, UserPlus, Repeat, Calendar, TrendingUp, TrendingDown,
-    ChevronDown, Trash, Send, Download, Gift, ArrowRight, MessageSquare, Zap } from 'lucide-react';
+import {
+    Users, UserPlus, Repeat, Calendar, TrendingUp, TrendingDown,
+    ChevronDown, Trash, Send, Download, Gift, ArrowRight, MessageSquare, Zap
+} from 'lucide-react';
 import LogoIcon from '@/components/brand/LogoIcon';
 import { useRouter } from 'next/navigation';
 import Modal from '@/components/ui/Modal';
@@ -29,20 +31,20 @@ export default function DashboardPage() {
     // eslint-disable-next-line no-console
     console.log('[DASHBOARD PAGE] 🔍 isAuthenticated:', isAuthenticated, 'planId:', user?.planId);
 
+    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const isAdminMode = searchParams?.get('admin_mode') === '1';
+
     // Redirect to pricing if user is new and hasn't selected a plan
     React.useEffect(() => {
+        if (isAdminMode) return; // Skip plan check in Admin Mode
+
         const hasSelectedPlan = localStorage.getItem('has_selected_plan') === 'true';
         const isNewUser = user && !user.planId; // Mock check: if no planId, they are "new"
 
-        // eslint-disable-next-line no-console
-        console.log('[DASHBOARD PAGE] 📋 Checking plan', { isNewUser, hasSelectedPlan });
-
         if (isNewUser && !hasSelectedPlan) {
-            // eslint-disable-next-line no-console
-            console.log('[DASHBOARD PAGE] 🚀 Redirecting to subscription');
             router.push('/dashboard/settings/subscription');
         }
-    }, [user, router]);
+    }, [user, router, isAdminMode]);
 
     // Fetch Dashboard Data
     const { data, isLoading } = useDashboardAnalytics();
@@ -59,7 +61,7 @@ export default function DashboardPage() {
         toast.error("Clear disabled while backend integration is ongoing.");
     };
 
-    const stats = data?.stats.map((s) => {
+    const stats = data?.stats?.map((s) => {
         let icon = Users;
         let color = 'blue';
         if (s.label === 'New Customers') { icon = UserPlus; color = 'green'; }
@@ -76,11 +78,13 @@ export default function DashboardPage() {
         };
     }) || [];
 
-    const maxVisits = data ? Math.max(...data.peakTimes.map(d => d.value)) : 100;
+    const peakTimes = Array.isArray(data?.peakTimes) ? data.peakTimes : [];
+    const maxVisits = peakTimes.length > 0 ? Math.max(...peakTimes.map(d => d.value)) : 100;
 
     // Computed audience breakdown
     const getStatValue = (labels: string[]) => {
-        const stat = data?.stats.find(s => labels.includes(s.label));
+        const statsArray = Array.isArray(data?.stats) ? data.stats : [];
+        const stat = statsArray.find(s => labels.includes(s.label));
         return parseInt(stat?.value?.toString().replace(/,/g, '') || '0', 10);
     };
 
@@ -185,7 +189,7 @@ export default function DashboardPage() {
 
                     {/* Bar Chart */}
                     <div className="flex items-end justify-between gap-2 h-48">
-                        {data?.peakTimes.map((d: any, index: number) => {
+                        {peakTimes.map((d: any, index: number) => {
                             const newVisits = Math.floor(d.value * 0.4);
                             const totalPct = maxVisits > 0 ? (d.value / maxVisits) * 100 : 0;
                             const newPctBar = d.value > 0 ? (newVisits / d.value) * 100 : 0;
@@ -317,8 +321,18 @@ export default function DashboardPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {(data as any)?.recentVisitors?.length > 0 ? (
-                                (data as any).recentVisitors.slice(0, 5).map((visitor: Visitor) => {
+                            {(() => {
+                                const recentVisitors = Array.isArray((data as any)?.recentVisitors) ? (data as any).recentVisitors : [];
+                                if (recentVisitors.length === 0) {
+                                    return (
+                                        <tr>
+                                            <td colSpan={5} className="py-8 text-center text-text-secondary font-medium">
+                                                No recent visitors found for this branch.
+                                            </td>
+                                        </tr>
+                                    );
+                                }
+                                return recentVisitors.slice(0, 5).map((visitor: Visitor) => {
                                     const fallbackFirstName = (visitor as any).firstName;
                                     const fallbackLastName = (visitor as any).lastName;
                                     const displayName = visitor.name?.trim()
@@ -376,14 +390,8 @@ export default function DashboardPage() {
                                             </td>
                                         </tr>
                                     );
-                                })
-                            ) : (
-                                <tr>
-                                    <td colSpan={5} className="py-8 text-center text-text-secondary font-medium">
-                                        No recent visitors found for this branch.
-                                    </td>
-                                </tr>
-                            )}
+                                });
+                            })()}
                         </tbody>
                     </table>
                 </div>
