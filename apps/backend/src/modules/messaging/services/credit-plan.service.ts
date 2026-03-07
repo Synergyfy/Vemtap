@@ -27,13 +27,12 @@ export class CreditPlanService {
   ) {}
 
   async purchase(
-    businessId: string,
+    branchId: string,
     planId: string,
     reference: string,
   ): Promise<BusinessCredit> {
     const plan = await this.findOne(planId);
 
-    // Verify payment with Paystack
     const paymentData = await this.paymentsService.verifyTransaction(reference);
     if (!paymentData) {
       this.logger.error(
@@ -44,7 +43,6 @@ export class CreditPlanService {
       );
     }
 
-    // Check if amount matches
     const paidAmount = Math.round(paymentData.amount / 100);
     if (paidAmount < Math.round(plan.price)) {
       this.logger.warn(
@@ -55,23 +53,21 @@ export class CreditPlanService {
       );
     }
 
-    // Record the payment
     await this.paymentsService.recordPayment({
       reference,
       amount: plan.price,
       purpose: 'CREDIT_TOPUP' as PaymentPurpose,
       status: PaymentStatus.SUCCESS,
-      businessId,
+      branchId,
       metadata: { planId, ...plan },
     });
 
-    // Award credits
     let credits = await this.businessCreditRepo.findOne({
-      where: { businessId },
+      where: { branchId },
     });
     if (!credits) {
       credits = this.businessCreditRepo.create({
-        businessId,
+        branchId,
         smsBalance: 0,
         emailBalance: 0,
         whatsappBalance: 0,

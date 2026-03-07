@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { MessageLog } from '../entities/message-log.entity';
 import { MessageCampaign } from '../entities/message-campaign.entity';
 import { Channel } from '../enums/channel.enum';
-import { MessageStatus } from '../entities/message.entity';
+import { MessageStatus } from '../enums/message.enum';
 
 @Injectable()
 export class AnalyticsService {
@@ -15,22 +15,14 @@ export class AnalyticsService {
     private readonly campaignRepo: Repository<MessageCampaign>,
   ) {}
 
-  async getDashboardMetrics(
-    businessId: string,
-    branchId?: string,
-    channel?: Channel,
-  ) {
-    if (!businessId && !branchId) {
-      throw new BadRequestException('businessId or branchId is required');
+  async getDashboardMetrics(branchId: string, channel?: Channel) {
+    if (!branchId) {
+      throw new BadRequestException('branchId is required');
     }
 
-    const query = this.logRepo.createQueryBuilder('log');
-
-    if (branchId) {
-      query.where('log.branchId = :branchId', { branchId });
-    } else {
-      query.where('log.businessId = :businessId', { businessId });
-    }
+    const query = this.logRepo
+      .createQueryBuilder('log')
+      .where('log.branchId = :branchId', { branchId });
 
     if (channel) {
       query.andWhere('log.channel = :channel', { channel });
@@ -64,19 +56,29 @@ export class AnalyticsService {
       .clone()
       .select("TO_CHAR(log.createdAt, 'Mon DD')", 'day')
       .addSelect("TO_CHAR(log.createdAt, 'YYYY-MM-DD')", 'sortkey')
-      .addSelect("COUNT(CASE WHEN log.direction = 'OUTBOUND' THEN 1 END)", 'sent')
-      .addSelect("COUNT(CASE WHEN log.status = :status THEN 1 END)", 'delivered')
+      .addSelect(
+        "COUNT(CASE WHEN log.direction = 'OUTBOUND' THEN 1 END)",
+        'sent',
+      )
+      .addSelect(
+        'COUNT(CASE WHEN log.status = :status THEN 1 END)',
+        'delivered',
+      )
       .setParameter('status', MessageStatus.DELIVERED)
       .andWhere('log.createdAt >= :date', { date: sevenDaysAgo })
-      .groupBy('sortkey').addGroupBy('day')
+      .groupBy('sortkey')
+      .addGroupBy('day')
       .orderBy('sortkey', 'ASC')
       .getRawMany();
 
     const trafficTrend = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (6 - i));
-      const dayLabel = d.toLocaleString('default', { month: 'short', day: '2-digit' });
-      const match = trendsRaw.find(t => t.day === dayLabel);
+      const dayLabel = d.toLocaleString('default', {
+        month: 'short',
+        day: '2-digit',
+      });
+      const match = trendsRaw.find((t) => t.day === dayLabel);
       return {
         name: d.toLocaleString('default', { weekday: 'short' }),
         sent: match ? parseInt(match.sent, 10) : 0,

@@ -17,31 +17,19 @@ export class CampaignService {
     return this.campaignRepo.save(campaign);
   }
 
-  async getCampaigns(
-    branchId?: string,
-    businessId?: string,
-  ): Promise<MessageCampaign[]> {
-    const where: any = {};
-    if (branchId) where.branchId = branchId;
-    if (businessId) where.businessId = businessId;
-
+  async getCampaigns(branchId: string): Promise<MessageCampaign[]> {
     return this.campaignRepo.find({
-      where,
+      where: { branchId },
       order: { createdAt: 'DESC' },
     });
   }
 
   async getCampaignById(
     id: string,
-    branchId?: string,
-    businessId?: string,
+    branchId: string,
   ): Promise<MessageCampaign> {
-    const where: any = { id };
-    if (branchId) where.branchId = branchId;
-    if (businessId) where.businessId = businessId;
-
     const campaign = await this.campaignRepo.findOne({
-      where,
+      where: { id, branchId },
     });
     if (!campaign) {
       throw new NotFoundException('Campaign not found');

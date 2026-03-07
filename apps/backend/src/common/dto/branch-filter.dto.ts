@@ -1,5 +1,6 @@
-import { IsOptional, IsUUID } from 'class-validator';
+import { IsOptional, IsUUID, IsBoolean } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 
 export class BranchFilterDto {
   @ApiPropertyOptional({
@@ -9,4 +10,14 @@ export class BranchFilterDto {
   @IsOptional()
   @IsUUID('4', { message: 'branchId must be a valid UUID v4' })
   branchId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Fetch data for all branches in the business (Owner/Admin only)',
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true' || value === true)
+  allBranches?: boolean;
 }

@@ -28,6 +28,9 @@ export class FormResponse extends AbstractBaseEntity {
   @Column({ nullable: true })
   branchId: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  businessId: string;
+
   @OneToMany(() => FormAnswer, (answer) => answer.response, { cascade: true })
   answers: FormAnswer[];
 }

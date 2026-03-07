@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { User, UserRole, UserStatus } from './entities/user.entity';
 import { PasswordResetHistory } from './entities/password-reset-history.entity';
 import { UpdateStaffDto } from './dto/update-staff.dto';
+import { AdminCreateAgentDto } from './dto/admin-create-agent.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -49,22 +50,13 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-  async findByBusiness(
-    businessId: string,
-    branchId?: string,
-    roles?: UserRole[],
-  ): Promise<User[]> {
+  async findByBranch(branchId: string, roles?: UserRole[]): Promise<User[]> {
     const qb = this.usersRepository.createQueryBuilder('user');
-    qb.where('user.businessId = :businessId', { businessId });
-
-    if (branchId) {
-      qb.andWhere('user.branchId = :branchId', { branchId });
-    }
+    qb.where('user.branchId = :branchId', { branchId });
 
     if (roles && roles.length > 0) {
       qb.andWhere('user.role IN (:...roles)', { roles });
     } else {
-      // Default to staff and managers for this method's typical usage in listing team members
       qb.andWhere('user.role IN (:...roles)', {
         roles: [UserRole.STAFF, UserRole.MANAGER],
       });
@@ -76,32 +68,22 @@ export class UsersService {
 
   async updateStaff(
     id: string,
-    businessId: string,
+    branchId: string,
     updates: UpdateStaffDto,
   ): Promise<User> {
     const user = await this.findOne(id);
-    if (!user || user.businessId !== businessId) {
+    if (!user || user.branchId !== branchId) {
       throw new NotFoundException('Staff member not found');
     }
 
-    if (
-      updates.role &&
-      updates.role === UserRole.OWNER &&
-      user.role !== UserRole.OWNER
-    ) {
-      // Prevent changing non-owner to owner directly without checks?
-      // Assuming minimal checks for now as per MVP.
-    }
-
-    // Use Object.assign to copy properties from updates to user
     Object.assign(user, updates);
 
     return this.usersRepository.save(user);
   }
 
-  async remove(id: string, businessId: string): Promise<void> {
+  async remove(id: string, branchId: string): Promise<void> {
     const user = await this.findOne(id);
-    if (!user || user.businessId !== businessId) {
+    if (!user || user.branchId !== branchId) {
       throw new NotFoundException('Staff member not found');
     }
     if (user.role === UserRole.OWNER) {
@@ -195,6 +177,22 @@ export class UsersService {
       meta: { total, page, lastPage: Math.ceil(total / limit) },
       stats,
     };
+  }
+
+  async adminCreateAgent(dto: AdminCreateAgentDto): Promise<User> {
+    const existing = await this.findByEmail(dto.email);
+    if (existing) {
+      throw new BadRequestException('User with this email already exists');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const user = this.usersRepository.create({
+      ...dto,
+      password: hashedPassword,
+      role: UserRole.AGENT,
+      status: UserStatus.ACTIVE,
+    });
+    return this.usersRepository.save(user);
   }
 
   async adminCreateUser(userData: any): Promise<User> {
@@ -307,7 +305,6 @@ export class UsersService {
     const user = await this.findByEmail(email);
     if (!user) throw new NotFoundException('User not found');
 
-    // In actual implementation, send a real email using emailService.
     return true;
   }
 
@@ -322,7 +319,6 @@ export class UsersService {
     user.password = newPasswordHash;
     await this.usersRepository.save(user);
 
-    // Log history
     const history = this.passwordResetHistoryRepository.create({
       userId,
       ipAddress: meta?.ipAddress,

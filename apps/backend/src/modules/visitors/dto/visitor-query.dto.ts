@@ -1,49 +1,48 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsNumber, Min } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional, IsString, IsEnum, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
+export enum VisitorStatus {
+  NEW = 'new',
+  RETURNING = 'returning',
+  VIP = 'vip',
+  INACTIVE = 'inactive',
+  ALL = 'all',
+}
+
 export class VisitorQueryDto {
-  @ApiPropertyOptional({ example: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(1)
-  page?: number = 1;
-
-  @ApiPropertyOptional({ example: 10 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(1)
-  limit?: number = 10;
-
-  @ApiPropertyOptional({ example: 'John' })
+  @ApiProperty({
+    required: false,
+    description: 'Search by name, email or phone',
+  })
   @IsOptional()
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({
-    example: 'active',
-    enum: ['all', 'new', 'active', 'returning', 'vip', 'inactive'],
+  @ApiProperty({
+    required: false,
+    enum: VisitorStatus,
+    default: VisitorStatus.ALL,
   })
   @IsOptional()
-  @IsString()
+  @IsEnum(VisitorStatus)
   status?: string;
 
-  @ApiPropertyOptional({ example: 'business-id' })
+  @ApiProperty({ required: false, default: 1 })
   @IsOptional()
-  @IsString()
-  businessId?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
 
-  @ApiPropertyOptional({ example: 'owner-id' })
+  @ApiProperty({ required: false, default: 10 })
   @IsOptional()
-  @IsString()
-  ownerId?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit?: number = 10;
 
-  @ApiPropertyOptional({
-    example: 'branch-id',
-    description: 'Filter by specific branch ID',
-  })
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   branchId?: string;

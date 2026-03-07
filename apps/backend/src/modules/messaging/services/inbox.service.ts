@@ -3,7 +3,6 @@ import {
   NotFoundException,
   forwardRef,
   Inject,
-  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -27,38 +26,22 @@ export class InboxService {
   ) {}
 
   async getThreads(
-    businessId: string,
+    branchId: string,
     channel: Channel,
-    branchId?: string,
   ): Promise<ConversationThread[]> {
-    const where: any = { channel };
-    if (branchId) {
-      where.branchId = branchId;
-    } else {
-      where.businessId = businessId;
-    }
-
     return this.threadRepo.find({
-      where,
+      where: { branchId, channel },
       relations: ['contact'],
       order: { lastActivityAt: 'DESC' },
     });
   }
 
   async getThreadMessages(
-    businessId: string,
     threadId: string,
-    branchId?: string,
+    branchId: string,
   ): Promise<Message[]> {
-    const where: any = { id: threadId };
-    if (branchId) {
-      where.branchId = branchId;
-    } else {
-      where.businessId = businessId;
-    }
-
     const thread = await this.threadRepo.findOne({
-      where,
+      where: { id: threadId, branchId },
     });
     if (!thread) {
       throw new NotFoundException('Thread not found');
@@ -71,20 +54,12 @@ export class InboxService {
   }
 
   async sendReply(
-    businessId: string,
     threadId: string,
     content: string,
-    branchId?: string,
+    branchId: string,
   ): Promise<Message | null> {
-    const where: any = { id: threadId };
-    if (branchId) {
-      where.branchId = branchId;
-    } else {
-      where.businessId = businessId;
-    }
-
     const thread = await this.threadRepo.findOne({
-      where,
+      where: { id: threadId, branchId },
       relations: ['contact'],
     });
 
@@ -92,13 +67,11 @@ export class InboxService {
       throw new NotFoundException('Thread not found');
     }
 
-    // Call engine to handle actual send, credits, logging, socket emit etc.
     const messageId = await this.messagingEngine.sendReply(thread, content);
     if (!messageId) {
       return null;
     }
 
-    // Update thread activity
     thread.lastActivityAt = new Date();
     thread.status = ThreadStatus.OPEN;
     await this.threadRepo.save(thread);

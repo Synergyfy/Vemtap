@@ -26,7 +26,6 @@ export class AdminFormsController {
 
   @Get()
   @ApiOperation({ summary: 'Get all forms across the platform' })
-  @ApiQuery({ name: 'businessId', required: false, type: String })
   @ApiQuery({ name: 'branchId', required: false, type: String })
   @ApiResponse({
     status: 200,
@@ -38,7 +37,6 @@ export class AdminFormsController {
         properties: {
           id: { type: 'string', example: 'uuid-form-1234' },
           title: { type: 'string', example: 'Customer Feedback' },
-          businessId: { type: 'string', example: 'uuid-business-1234' },
           branchId: { type: 'string', example: 'uuid-branch-1234' },
           isActive: { type: 'boolean', example: true },
           isPublished: { type: 'boolean', example: true },
@@ -47,11 +45,8 @@ export class AdminFormsController {
       },
     },
   })
-  findAll(
-    @Query('businessId') businessId?: string,
-    @Query('branchId') branchId?: string,
-  ) {
-    return this.formsService.findAllForAdmin({ businessId, branchId });
+  findAll(@Query('branchId') branchId?: string) {
+    return this.formsService.findAllForAdmin({ branchId });
   }
 
   @Patch(':id/disable')

@@ -1,8 +1,18 @@
-const { Client } = require('pg');
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+import { Client, QueryResult } from 'pg';
+import * as path from 'path';
+import * as dotenv from 'dotenv';
 
-async function check() {
+dotenv.config({ path: path.join(__dirname, '../.env') });
+
+interface UserRow {
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  status: string;
+}
+
+async function check(): Promise<void> {
   const client = new Client({
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT || 5432),
@@ -12,11 +22,11 @@ async function check() {
     ssl: { rejectUnauthorized: false },
   });
   await client.connect();
-  const result = await client.query(
+  const result: QueryResult<UserRow> = await client.query(
     `SELECT "firstName", "lastName", email, role, status FROM users ORDER BY "createdAt" DESC LIMIT 10`,
   );
   console.log('\n=== Users in DB ===');
-  result.rows.forEach((u: any) => {
+  result.rows.forEach((u: UserRow) => {
     console.log(
       `  [${u.role}] ${u.firstName} ${u.lastName} — ${u.email} (${u.status})`,
     );
@@ -25,7 +35,7 @@ async function check() {
   await client.end();
   process.exit(0);
 }
-check().catch((e) => {
+check().catch((e: Error) => {
   console.error(e.message);
   process.exit(1);
 });

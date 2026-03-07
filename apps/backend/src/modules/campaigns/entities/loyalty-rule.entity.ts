@@ -6,10 +6,13 @@ import { Branch } from '../../branches/entities/branch.entity';
 @Entity('loyalty_rules')
 export class LoyaltyRule extends AbstractBaseEntity {
   @ApiProperty({ description: 'Branch ID', example: 'branch_001' })
-  @Column()
+  @Column({ nullable: true })
   branchId: string;
 
-  @ManyToOne(() => Branch, { onDelete: 'CASCADE' })
+  @Column({ type: 'uuid', nullable: true })
+  businessId: string;
+
+  @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'branchId' })
   branch: Branch;
 

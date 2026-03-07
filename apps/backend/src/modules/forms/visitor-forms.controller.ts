@@ -7,6 +7,7 @@ import {
   Query,
   Request,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { FormsService } from './forms.service';
 import { SubmitFormResponseDto } from './dto/submit-form-response.dto';
@@ -25,11 +26,10 @@ import {
 export class VisitorFormsController {
   constructor(private readonly formsService: FormsService) {}
 
-  @Get('business/:businessId')
+  @Get('branch/:branchId')
   @ApiOperation({
-    summary: 'Get all active forms for a specific business/branch',
+    summary: 'Get all active forms for a specific branch',
   })
-  @ApiQuery({ name: 'branchId', required: false, type: String })
   @ApiResponse({
     status: 200,
     description: 'Return all available forms.',
@@ -50,16 +50,13 @@ export class VisitorFormsController {
       },
     },
   })
-  findForms(
-    @Param('businessId') businessId: string,
-    @Query('branchId') branchId?: string,
-  ) {
-    return this.formsService.getFormsForVisitor(businessId, branchId);
+  findForms(@Param('branchId') branchId: string) {
+    return this.formsService.getFormsForVisitor(branchId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific form with its questions' })
-  @ApiQuery({ name: 'branchId', required: false, type: String })
+  @ApiQuery({ name: 'branchId', required: true, type: String })
   @ApiResponse({
     status: 200,
     description: 'Return the form with fields to answer.',
@@ -96,7 +93,8 @@ export class VisitorFormsController {
       },
     },
   })
-  findOne(@Param('id') id: string, @Query('branchId') branchId?: string) {
+  findOne(@Param('id') id: string, @Query('branchId') branchId: string) {
+    if (!branchId) throw new BadRequestException('branchId is required');
     return this.formsService.getFormByIdForVisitor(id, branchId);
   }
 
@@ -132,7 +130,7 @@ export class VisitorFormsController {
     @Param('id') id: string,
     @Body() submitResponseDto: SubmitFormResponseDto,
   ) {
-    const visitorId = req.user.id; // Authenticated visitor ID
+    const visitorId = req.user.id;
     return this.formsService.submitResponse(id, visitorId, submitResponseDto);
   }
 }

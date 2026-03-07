@@ -27,7 +27,7 @@ export class TermiiWebhookController {
     if (parsed.type === 'inbound') {
       await this.messagingEngine.handleInbound(parsed.data as InboundMessage);
     } else if (parsed.type === 'delivery') {
-      await this.messagingEngine.updateDeliveryStatus(
+      await this.messagingEngine.handleDeliveryReport(
         parsed.data as DeliveryReport,
       );
     }

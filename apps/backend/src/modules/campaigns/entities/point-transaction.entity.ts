@@ -9,6 +9,9 @@ export class PointTransaction extends AbstractBaseEntity {
   @Column()
   loyaltyProfileId: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  businessId: string;
+
   @ApiProperty({
     description: 'earn, redeem, bonus, adjustment',
     example: 'earn',
@@ -19,6 +22,10 @@ export class PointTransaction extends AbstractBaseEntity {
   @ApiProperty({ description: 'Amount of points', example: 100 })
   @Column({ type: 'int' })
   pointsAmount: number;
+
+  @ApiProperty({ description: 'Amount of points', example: 100 })
+  @Column({ type: 'int', default: 0 })
+  points: number;
 
   @ApiProperty({
     description: 'Reason for transaction',

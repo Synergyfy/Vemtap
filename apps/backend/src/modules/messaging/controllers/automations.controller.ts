@@ -16,7 +16,6 @@ import {
   ApiOperation,
   ApiBearerAuth,
   ApiQuery,
-  ApiResponse,
   ApiOkResponse,
   ApiCreatedResponse,
 } from '@nestjs/swagger';
@@ -46,6 +45,39 @@ import {
 export class AutomationsController {
   constructor(private readonly automationService: AutomationService) {}
 
+  private async getBranchId(req: any, queryBranchId?: string): Promise<string> {
+    const user = req.user;
+
+    // For Owner and Admin: branchId MUST be provided in the request
+    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
+      if (!queryBranchId) {
+        throw new BadRequestException(
+          'branchId is required for Owners and Admins',
+        );
+      }
+
+      if (user.role === UserRole.OWNER) {
+        const hasAccess = await this.automationService.checkBranchAccess(
+          user,
+          queryBranchId,
+        );
+        if (!hasAccess) {
+          throw new BadRequestException(
+            'You do not have access to this branch',
+          );
+        }
+      }
+      return queryBranchId;
+    }
+
+    // For Manager and Staff: ignore queryBranchId, always use branchId from token
+    if (!user.branchId) {
+      throw new BadRequestException('User is not associated with any branch');
+    }
+
+    return user.branchId;
+  }
+
   @Post()
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Create a new automation rule' })
@@ -54,26 +86,8 @@ export class AutomationsController {
     @Body() dto: CreateAutomationRuleDto,
     @Request() req: { user: User },
   ) {
-    if (req.user.businessId !== dto.businessId) {
-      // Allow admin to override, otherwise enforce business check
-      if (req.user.role !== UserRole.ADMIN) {
-        throw new BadRequestException(
-          'You can only create rules for your own business',
-        );
-      }
-    }
-
-    // Enforce branch access for managers
-    if (
-      req.user.role === UserRole.MANAGER &&
-      req.user.branchId &&
-      dto.branchId !== req.user.branchId
-    ) {
-      throw new BadRequestException(
-        'You can only create rules for your assigned branch',
-      );
-    }
-
+    const branchId = await this.getBranchId(req, dto.branchId);
+    dto.branchId = branchId; // Ensure DTO uses resolved branchId
     return this.automationService.create(dto);
   }
 
@@ -82,13 +96,11 @@ export class AutomationsController {
   @ApiQuery({ name: 'branchId', required: false })
   @ApiOkResponse({ type: [AutomationRule] })
   async findAll(
-    @Query('branchId') branchId: string,
+    @Query('branchId') queryBranchId: string,
     @Request() req: { user: User },
   ) {
-    // If user is manager/staff, enforce their branchId
-    const targetBranchId = req.user.branchId || branchId;
-
-    return this.automationService.findAll(req.user.businessId, targetBranchId);
+    const branchId = await this.getBranchId(req, queryBranchId);
+    return this.automationService.findAll(branchId);
   }
 
   @Get('logs')
@@ -108,18 +120,13 @@ export class AutomationsController {
     },
   })
   async getLogs(
-    @Query('branchId') branchId: string,
+    @Query('branchId') queryBranchId: string,
     @Query('limit') limit: number,
     @Query('offset') offset: number,
     @Request() req: { user: User },
   ) {
-    const targetBranchId = req.user.branchId || branchId;
-    return this.automationService.findLogs(
-      req.user.businessId,
-      targetBranchId,
-      limit || 50,
-      offset || 0,
-    );
+    const branchId = await this.getBranchId(req, queryBranchId);
+    return this.automationService.findLogs(branchId, limit || 50, offset || 0);
   }
 
   @Get('logs/:sessionId')
@@ -131,18 +138,16 @@ export class AutomationsController {
     @Param('sessionId') sessionId: string,
     @Request() req: { user: User },
   ) {
+    const branchId = await this.getBranchId(req);
     try {
-      return await this.automationService.findLogDetails(
-        sessionId,
-        req.user.businessId,
-      );
+      return await this.automationService.findLogDetails(sessionId, branchId);
     } catch (e: any) {
       throw new BadRequestException(e.message || 'Error fetching log details');
     }
   }
 
   @Get('connection-status')
-  @ApiOperation({ summary: 'Get WhatsApp connection status for the business' })
+  @ApiOperation({ summary: 'Get WhatsApp connection status for the branch' })
   @ApiQuery({ name: 'branchId', required: false })
   @ApiOkResponse({
     schema: {
@@ -154,14 +159,11 @@ export class AutomationsController {
     },
   })
   async getConnectionStatus(
-    @Query('branchId') branchId: string,
+    @Query('branchId') queryBranchId: string,
     @Request() req: { user: User },
   ) {
-    const targetBranchId = req.user.branchId || branchId;
-    return this.automationService.getConnectionStatus(
-      req.user.businessId,
-      targetBranchId,
-    );
+    const branchId = await this.getBranchId(req, queryBranchId);
+    return this.automationService.getConnectionStatus(branchId);
   }
 
   @Get('performance')
@@ -171,15 +173,14 @@ export class AutomationsController {
   @ApiQuery({ name: 'endDate', required: false, type: Date })
   @ApiOkResponse({ type: AutomationPerformanceResponseDto })
   async getPerformance(
-    @Query('branchId') branchId: string,
+    @Query('branchId') queryBranchId: string,
     @Query('startDate') startDate: Date,
     @Query('endDate') endDate: Date,
     @Request() req: { user: User },
   ) {
-    const targetBranchId = req.user.branchId || branchId;
+    const branchId = await this.getBranchId(req, queryBranchId);
     return this.automationService.getPerformanceAnalytics(
-      req.user.businessId,
-      targetBranchId,
+      branchId,
       startDate,
       endDate,
     );
@@ -189,12 +190,10 @@ export class AutomationsController {
   @ApiOperation({ summary: 'Get a specific automation rule' })
   @ApiOkResponse({ type: AutomationRule })
   async findOne(@Param('id') id: string, @Request() req: { user: User }) {
+    const branchId = await this.getBranchId(req);
     const rule = await this.automationService.findOne(id);
     if (!rule) throw new BadRequestException('Rule not found');
-    if (
-      rule.businessId !== req.user.businessId &&
-      req.user.role !== UserRole.ADMIN
-    )
+    if (rule.branchId !== branchId && req.user.role !== UserRole.ADMIN)
       throw new BadRequestException('Access denied');
     return rule;
   }
@@ -208,21 +207,11 @@ export class AutomationsController {
     @Body() dto: UpdateAutomationRuleDto,
     @Request() req: { user: User },
   ) {
+    const branchId = await this.getBranchId(req);
     const rule = await this.automationService.findOne(id);
     if (!rule) throw new BadRequestException('Rule not found');
-    if (
-      rule.businessId !== req.user.businessId &&
-      req.user.role !== UserRole.ADMIN
-    )
+    if (rule.branchId !== branchId && req.user.role !== UserRole.ADMIN)
       throw new BadRequestException('Access denied');
-
-    if (
-      req.user.role === UserRole.MANAGER &&
-      req.user.branchId &&
-      rule.branchId !== req.user.branchId
-    ) {
-      throw new BadRequestException('Access denied');
-    }
 
     return this.automationService.update(id, dto);
   }
@@ -232,21 +221,11 @@ export class AutomationsController {
   @ApiOperation({ summary: 'Delete an automation rule' })
   @ApiOkResponse({ description: 'Rule deleted successfully' })
   async remove(@Param('id') id: string, @Request() req: { user: User }) {
+    const branchId = await this.getBranchId(req);
     const rule = await this.automationService.findOne(id);
     if (!rule) throw new BadRequestException('Rule not found');
-    if (
-      rule.businessId !== req.user.businessId &&
-      req.user.role !== UserRole.ADMIN
-    )
+    if (rule.branchId !== branchId && req.user.role !== UserRole.ADMIN)
       throw new BadRequestException('Access denied');
-
-    if (
-      req.user.role === UserRole.MANAGER &&
-      req.user.branchId &&
-      rule.branchId !== req.user.branchId
-    ) {
-      throw new BadRequestException('Access denied');
-    }
 
     return this.automationService.remove(id);
   }
@@ -260,21 +239,11 @@ export class AutomationsController {
     @Body() dto: UpdateAutomationToggleDto,
     @Request() req: { user: User },
   ) {
+    const branchId = await this.getBranchId(req);
     const rule = await this.automationService.findOne(id);
     if (!rule) throw new BadRequestException('Rule not found');
-    if (
-      rule.businessId !== req.user.businessId &&
-      req.user.role !== UserRole.ADMIN
-    )
+    if (rule.branchId !== branchId && req.user.role !== UserRole.ADMIN)
       throw new BadRequestException('Access denied');
-
-    if (
-      req.user.role === UserRole.MANAGER &&
-      req.user.branchId &&
-      rule.branchId !== req.user.branchId
-    ) {
-      throw new BadRequestException('Access denied');
-    }
 
     return this.automationService.toggleAutomation(id, dto);
   }
@@ -288,21 +257,11 @@ export class AutomationsController {
     @Body() dto: UpdateAutomationConfigDto,
     @Request() req: { user: User },
   ) {
+    const branchId = await this.getBranchId(req);
     const rule = await this.automationService.findOne(id);
     if (!rule) throw new BadRequestException('Rule not found');
-    if (
-      rule.businessId !== req.user.businessId &&
-      req.user.role !== UserRole.ADMIN
-    )
+    if (rule.branchId !== branchId && req.user.role !== UserRole.ADMIN)
       throw new BadRequestException('Access denied');
-
-    if (
-      req.user.role === UserRole.MANAGER &&
-      req.user.branchId &&
-      rule.branchId !== req.user.branchId
-    ) {
-      throw new BadRequestException('Access denied');
-    }
 
     try {
       return await this.automationService.configureAutomation(id, dto);

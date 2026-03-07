@@ -31,6 +31,7 @@ import { MessageLog } from '../messaging/entities/message-log.entity';
 import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
 import { Redemption } from '../campaigns/entities/redemption.entity';
 import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
+import { BranchesService } from '../branches/branches.service';
 
 export class RecordVisitResponse {
   message: string;
@@ -38,10 +39,9 @@ export class RecordVisitResponse {
     id: string;
     createdAt: Date;
   };
-  loyalty: any | null; // Loyalty result depends on campaigns service
+  loyalty: any | null;
   context: {
-    businessId: string;
-    branchId?: string;
+    branchId: string;
   };
 }
 
@@ -68,26 +68,31 @@ export class VisitorsService {
     private campaignsService: CampaignsService,
     private automationService: AutomationService,
     private mailService: MailService,
+    private branchesService: BranchesService,
   ) {}
+
+  async checkBranchAccess(user: User, branchId: string): Promise<boolean> {
+    return this.branchesService.checkBranchAccess(user, branchId);
+  }
 
   // --- Main/All Visitors ---
 
   async findAll(
     query: VisitorQueryDto,
-    businessId: string,
     branchId?: string,
+    businessId?: string,
   ): Promise<PaginatedVisitorResponseDto> {
     const { page = 1, limit = 10, search, status } = query;
     const skip = (page - 1) * limit;
 
     const qb = this.userRepository
       .createQueryBuilder('user')
-      .leftJoinAndSelect('user.visits', 'visit')
-      .andWhere('user.role = :role', { role: UserRole.CUSTOMER });
+      .innerJoin('user.visits', 'visit')
+      .where('user.role = :role', { role: UserRole.CUSTOMER });
 
     if (branchId) {
       qb.andWhere('visit.branchId = :branchId', { branchId });
-    } else {
+    } else if (businessId) {
       qb.andWhere('visit.businessId = :businessId', { businessId });
     }
 
@@ -98,7 +103,6 @@ export class VisitorsService {
       );
     }
 
-    // Simplified approach: Fetch users with their visits.
     qb.select('user.id');
     qb.groupBy('user.id');
 
@@ -117,7 +121,7 @@ export class VisitorsService {
 
     if (branchId) {
       fullQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else {
+    } else if (businessId) {
       fullQb.andWhere('visit.businessId = :businessId', { businessId });
     }
 
@@ -147,20 +151,22 @@ export class VisitorsService {
   }
 
   async getStats(
-    businessId: string,
     branchId?: string,
+    businessId?: string,
   ): Promise<VisitorStatsResponseDto> {
     const totalVisitorsQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit');
+      .innerJoin('user.visits', 'visit')
+      .where('user.role = :role', { role: UserRole.CUSTOMER });
 
     if (branchId) {
       totalVisitorsQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else {
+    } else if (businessId) {
       totalVisitorsQb.andWhere('visit.businessId = :businessId', {
         businessId,
       });
     }
+
     const totalVisitors = await totalVisitorsQb.getCount();
 
     const startOfMonth = new Date();
@@ -170,34 +176,32 @@ export class VisitorsService {
     const newThisMonthQb = this.userRepository
       .createQueryBuilder('user')
       .innerJoin('user.visits', 'visit')
-      .where('user.createdAt >= :startOfMonth', { startOfMonth });
+      .andWhere('user.role = :role', { role: UserRole.CUSTOMER })
+      .andWhere('user.createdAt >= :startOfMonth', { startOfMonth });
 
     if (branchId) {
       newThisMonthQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else {
+    } else if (businessId) {
       newThisMonthQb.andWhere('visit.businessId = :businessId', { businessId });
     }
+
     const newThisMonth = await newThisMonthQb.getCount();
 
-    // Frequency = Total Visits / Total Visitors
-    const visitWhere: FindOptionsWhere<Visit> = branchId
-      ? { branchId }
-      : { businessId };
-
-    const totalVisitsCount = await this.visitRepository.count({
-      where: visitWhere,
-    });
+    const visitsCountQuery: any = branchId
+      ? { where: { branchId } }
+      : { where: { businessId } };
+    const totalVisitsCount = await this.visitRepository.count(visitsCountQuery);
     const avgFrequency =
       totalVisitors > 0 ? (totalVisitsCount / totalVisitors).toFixed(1) : '0';
 
-    // VIP Guests (e.g., > 10 visits)
     const vipCountQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit');
+      .innerJoin('user.visits', 'visit')
+      .where('user.role = :role', { role: UserRole.CUSTOMER });
 
     if (branchId) {
       vipCountQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else {
+    } else if (businessId) {
       vipCountQb.andWhere('visit.businessId = :businessId', { businessId });
     }
 
@@ -242,16 +246,16 @@ export class VisitorsService {
 
   async create(
     createVisitorDto: CreateVisitorDto | VisitorSignupDto,
-    businessId?: string,
-    branchId?: string,
+    branchId: string,
   ): Promise<VisitorResponseDto> {
-    const dto = createVisitorDto as (CreateVisitorDto & { branchId?: string; deviceId?: string });
-    // Check if user exists
+    const dto = createVisitorDto as CreateVisitorDto & {
+      deviceId?: string;
+    };
     let user = await this.userRepository.findOne({
       where: { email: dto.email },
     });
 
-    const defaultPassword: string = '123456';
+    const defaultPassword = '123456';
 
     if (!user) {
       const hashedPassword = await bcrypt.hash(defaultPassword, 10);
@@ -265,7 +269,6 @@ export class VisitorsService {
       });
       await this.userRepository.save(user);
 
-      // Send Welcome Email
       await this.mailService.sendWelcomeEmail(
         user.email,
         `${user.firstName} ${user.lastName}`.trim() || 'Visitor',
@@ -273,88 +276,53 @@ export class VisitorsService {
       );
     }
 
-    // Resolve branchId and businessId
-    let resolvedBranchId = branchId || dto.branchId;
-    let resolvedBusinessId = businessId;
-
-    if (dto.deviceId) {
-      const device = await this.deviceRepository.findOne({
-        where: { id: dto.deviceId },
-      });
-      if (device) {
-        if (!resolvedBranchId) resolvedBranchId = device.branchId;
-        if (!resolvedBusinessId) resolvedBusinessId = device.businessId;
-      }
+    const branch = await this.branchRepository.findOne({
+      where: { id: branchId },
+    });
+    if (!branch) {
+      throw new NotFoundException(`Branch with ID ${branchId} not found`);
     }
 
-    if (resolvedBranchId && !resolvedBusinessId) {
-      const branch = await this.branchRepository.findOne({
-        where: { id: resolvedBranchId },
-      });
-      if (branch) resolvedBusinessId = branch.businessId;
+    const visit = this.visitRepository.create({
+      customer: user,
+      branchId,
+      businessId: branch.businessId,
+      deviceId: dto.deviceId,
+      status: 'new',
+    } as any) as unknown as Visit;
+    await this.visitRepository.save(visit);
+
+    let contact = await this.contactRepository.findOne({
+      where: [
+        { branchId, email: user.email },
+        { branchId, phone: user.phone },
+      ],
+    });
+
+    if (!contact) {
+      contact = this.contactRepository.create({
+        branchId,
+        businessId: branch.businessId,
+        email: user.email,
+        phone: user.phone,
+        name: `${user.firstName} ${user.lastName}`,
+        optInChannels: [Channel.SMS, Channel.EMAIL, Channel.WHATSAPP],
+      } as any) as unknown as Contact;
+      await this.contactRepository.save(contact);
     }
 
-    // Only proceed with business-specific logic if businessId is resolved
-    if (resolvedBusinessId) {
-      // Validate that branch exists IF provided
-      if (resolvedBranchId) {
-        const branch = await this.branchRepository.findOne({
-          where: { id: resolvedBranchId },
-        });
-        if (!branch) {
-          throw new NotFoundException(
-            `Branch with ID ${resolvedBranchId} not found`,
-          );
-        }
-      }
+    const visitCount = await this.visitRepository.count({
+      where: { customer: { id: user.id }, branchId },
+    });
 
-      const visit = this.visitRepository.create({
-        customer: user,
-        businessId: resolvedBusinessId,
-        branchId: resolvedBranchId,
-        deviceId: dto.deviceId,
-        status: 'new',
-      });
-      await this.visitRepository.save(visit);
+    const triggerType =
+      visitCount === 1 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG;
 
-      // Contact Sync
-      let contact = await this.contactRepository.findOne({
-        where: [
-          { businessId: resolvedBusinessId, email: user.email },
-          { businessId: resolvedBusinessId, phone: user.phone },
-        ],
-      });
+    await this.automationService.trigger(triggerType, {
+      branchId,
+      contactId: contact.id,
+    });
 
-      if (!contact) {
-        contact = this.contactRepository.create({
-          businessId: resolvedBusinessId,
-          email: user.email,
-          phone: user.phone,
-          name: `${user.firstName} ${user.lastName}`,
-          optInChannels: [Channel.SMS, Channel.EMAIL, Channel.WHATSAPP],
-        });
-        await this.contactRepository.save(contact);
-      }
-
-      const visitWhere: FindOptionsWhere<Visit> = { customer: { id: user.id } };
-      if (resolvedBranchId) visitWhere.branchId = resolvedBranchId;
-      else visitWhere.businessId = resolvedBusinessId;
-
-      const visitCount = await this.visitRepository.count({
-        where: visitWhere,
-      });
-
-      const triggerType =
-        visitCount === 1 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG;
-
-      await this.automationService.trigger(triggerType, {
-        businessId: resolvedBusinessId,
-        branchId: resolvedBranchId,
-        contactId: contact.id,
-      });
-    }
-
-    // Re-fetch to get full structure
     const updatedUser = await this.userRepository.findOne({
       where: { id: user.id },
       relations: ['visits'],
@@ -363,8 +331,10 @@ export class VisitorsService {
     return this.mapToVisitorDto(updatedUser!);
   }
 
-  async recordVisit(userId: string, deviceCode: string): Promise<RecordVisitResponse> {
-    // 1. Identify customer
+  async recordVisit(
+    userId: string,
+    deviceCode: string,
+  ): Promise<RecordVisitResponse> {
     const user = await this.userRepository.findOne({
       where: { id: userId, role: UserRole.CUSTOMER },
     });
@@ -372,9 +342,9 @@ export class VisitorsService {
       throw new NotFoundException('Customer not found');
     }
 
-    // 2. Resolve device context
     const device = await this.deviceRepository.findOne({
       where: { code: deviceCode, status: DeviceStatus.ACTIVE },
+      relations: ['branch'],
     });
     if (!device) {
       throw new NotFoundException(
@@ -382,66 +352,59 @@ export class VisitorsService {
       );
     }
 
-    const businessId = device.businessId;
     const branchId = device.branchId;
+    const businessId = device.branch?.businessId;
 
-    // 3. Record visit
     const visit = this.visitRepository.create({
       customer: user,
-      businessId,
       branchId,
+      businessId,
       deviceId: device.id,
       status: 'returning',
-    });
+    } as any) as unknown as Visit;
     await this.visitRepository.save(visit);
 
-    // Increment device scans
     device.totalScans += 1;
     await this.deviceRepository.save(device);
 
-    // 4. Contact Sync/Automation
     let contact = await this.contactRepository.findOne({
       where: [
-        { businessId, email: user.email },
-        { businessId, phone: user.phone },
+        { branchId, email: user.email },
+        { branchId, phone: user.phone },
       ],
     });
 
     if (!contact) {
       contact = this.contactRepository.create({
+        branchId,
         businessId,
         email: user.email,
         phone: user.phone,
         name: `${user.firstName} ${user.lastName}`.trim(),
         optInChannels: [Channel.SMS, Channel.EMAIL, Channel.WHATSAPP],
-      });
+      } as any) as unknown as Contact;
       await this.contactRepository.save(contact);
     }
 
     const visitCount = await this.visitRepository.count({
       where: {
         customer: { id: user.id },
-        ...(branchId ? { branchId } : { businessId }),
+        branchId,
       },
     });
 
     await this.automationService.trigger(
       visitCount === 1 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG,
       {
-        businessId,
         branchId,
         contactId: contact.id,
       },
     );
 
-    // 5. Loyalty Integration (Branch context takes precedence)
-    const activeRule = branchId
-      ? await this.campaignsService.findActiveRule(branchId)
-      : null;
+    const activeRule = await this.campaignsService.findActiveRule(branchId);
 
     let loyaltyResult = null;
     if (activeRule) {
-      // Check if user has a profile in this branch/campaign
       const profile = await this.campaignsService.findProfile(
         user.id,
         branchId,
@@ -463,7 +426,6 @@ export class VisitorsService {
       },
       loyalty: loyaltyResult,
       context: {
-        businessId,
         branchId,
       },
     };
@@ -495,8 +457,6 @@ export class VisitorsService {
   }
 
   async remove(id: string): Promise<void> {
-    // Soft delete or just remove relationship?
-    // Typically we don't delete users easily, but for the requirement:
     await this.userRepository.softDelete(id);
   }
 
@@ -504,8 +464,8 @@ export class VisitorsService {
 
   async findNew(
     query: VisitorQueryDto,
-    businessId: string,
     branchId?: string,
+    businessId?: string,
   ): Promise<{ data: NewVisitorResponseDto[]; total: number }> {
     const { page = 1, limit = 10 } = query;
     const skip = (page - 1) * limit;
@@ -521,7 +481,7 @@ export class VisitorsService {
 
     if (branchId) {
       qb.andWhere('visit.branchId = :branchId', { branchId });
-    } else {
+    } else if (businessId) {
       qb.andWhere('visit.businessId = :businessId', { businessId });
     }
 
@@ -546,8 +506,8 @@ export class VisitorsService {
   }
 
   async getNewStats(
-    businessId: string,
     branchId?: string,
+    businessId?: string,
   ): Promise<VisitorStatsResponseDto> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -555,27 +515,32 @@ export class VisitorsService {
     const newTodayQb = this.userRepository
       .createQueryBuilder('user')
       .innerJoin('user.visits', 'visit')
-      .where('user.createdAt >= :today', { today });
+      .andWhere('user.role = :role', { role: UserRole.CUSTOMER })
+      .andWhere('user.createdAt >= :today', { today });
 
     if (branchId) {
       newTodayQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else {
+    } else if (businessId) {
       newTodayQb.andWhere('visit.businessId = :businessId', { businessId });
     }
+
     const newToday = await newTodayQb.getCount();
 
     const startOfWeek = new Date();
-    startOfWeek.setDate(startOfWeek.getDate() - 7);
+    startOfWeek.setDate(1);
+    startOfWeek.setHours(0, 0, 0, 0);
     const newWeeklyQb = this.userRepository
       .createQueryBuilder('user')
       .innerJoin('user.visits', 'visit')
-      .where('user.createdAt >= :startOfWeek', { startOfWeek });
+      .andWhere('user.role = :role', { role: UserRole.CUSTOMER })
+      .andWhere('user.createdAt >= :startOfWeek', { startOfWeek });
 
     if (branchId) {
       newWeeklyQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else {
+    } else if (businessId) {
       newWeeklyQb.andWhere('visit.businessId = :businessId', { businessId });
     }
+
     const newWeekly = await newWeeklyQb.getCount();
 
     return {
@@ -616,8 +581,8 @@ export class VisitorsService {
 
   async findReturning(
     query: VisitorQueryDto,
-    businessId: string,
     branchId?: string,
+    businessId?: string,
   ): Promise<{ data: ReturningVisitorResponseDto[]; total: number }> {
     const { page = 1, limit = 10 } = query;
     const skip = (page - 1) * limit;
@@ -625,15 +590,14 @@ export class VisitorsService {
     const qb = this.userRepository
       .createQueryBuilder('user')
       .innerJoinAndSelect('user.visits', 'visit')
-      .where('user.role = :role', { role: UserRole.CUSTOMER });
+      .andWhere('user.role = :role', { role: UserRole.CUSTOMER });
 
     if (branchId) {
       qb.andWhere('visit.branchId = :branchId', { branchId });
-    } else {
+    } else if (businessId) {
       qb.andWhere('visit.businessId = :businessId', { businessId });
     }
 
-    // Users with > 1 visit
     qb.groupBy('user.id')
       .having('COUNT(visit.id) > 1')
       .select([
@@ -662,11 +626,12 @@ export class VisitorsService {
 
     const totalQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit');
+      .innerJoin('user.visits', 'visit')
+      .andWhere('user.role = :role', { role: UserRole.CUSTOMER });
 
     if (branchId) {
       totalQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else {
+    } else if (businessId) {
       totalQb.andWhere('visit.businessId = :businessId', { businessId });
     }
 
@@ -691,29 +656,32 @@ export class VisitorsService {
   }
 
   async getReturningStats(
-    businessId: string,
     branchId?: string,
+    businessId?: string,
   ): Promise<VisitorStatsResponseDto> {
     const totalVisitorsQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit');
+      .innerJoin('user.visits', 'visit')
+      .andWhere('user.role = :role', { role: UserRole.CUSTOMER });
 
     if (branchId) {
       totalVisitorsQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else {
+    } else if (businessId) {
       totalVisitorsQb.andWhere('visit.businessId = :businessId', {
         businessId,
       });
     }
+
     const totalVisitors = await totalVisitorsQb.getCount();
 
     const returningCountQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit');
+      .innerJoin('user.visits', 'visit')
+      .andWhere('user.role = :role', { role: UserRole.CUSTOMER });
 
     if (branchId) {
       returningCountQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else {
+    } else if (businessId) {
       returningCountQb.andWhere('visit.businessId = :businessId', {
         businessId,
       });
@@ -731,11 +699,12 @@ export class VisitorsService {
 
     const vipCountQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit');
+      .innerJoin('user.visits', 'visit')
+      .andWhere('user.role = :role', { role: UserRole.CUSTOMER });
 
     if (branchId) {
       vipCountQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else {
+    } else if (businessId) {
       vipCountQb.andWhere('visit.businessId = :businessId', { businessId });
     }
 
@@ -780,12 +749,8 @@ export class VisitorsService {
 
   // --- Actions ---
 
-  async export(businessId: string, branchId?: string) {
-    const visitors = await this.findAll(
-      { page: 1, limit: 1000 },
-      businessId,
-      branchId,
-    );
+  async export(branchId: string) {
+    const visitors = await this.findAll({ page: 1, limit: 1000 }, branchId);
     let csv = 'First Name,Last Name,Email,Phone,Visits,Last Visit,Status\n';
     visitors.data.forEach((v) => {
       csv += `"${v.firstName}","${v.lastName}","${v.email}","${v.phone}",${v.visits},"${v.lastVisit.toISOString()}",${v.status}\n`;
@@ -793,23 +758,18 @@ export class VisitorsService {
     return {
       message: 'Export successful',
       data: csv,
-      filename: `visitors_${branchId || businessId}_${new Date().toISOString().split('T')[0]}.csv`,
+      filename: `visitors_${branchId}_${new Date().toISOString().split('T')[0]}.csv`,
     };
   }
 
-  async sendCampaign(businessId: string, body: SendCampaignBody, branchId?: string) {
-    const visitors = await this.findAll(
-      { page: 1, limit: 1000 },
-      businessId,
-      branchId,
-    );
+  async sendCampaign(branchId: string, body: SendCampaignBody) {
+    const visitors = await this.findAll({ page: 1, limit: 1000 }, branchId);
     const contactIds = visitors.data.map((v) => v.id);
 
     const channel = body.channel || Channel.SMS;
     const content = body.message;
 
     return this.messagingService.sendMessage({
-      businessId,
       branchId,
       channel,
       contactIds,
@@ -817,16 +777,11 @@ export class VisitorsService {
     });
   }
 
-  async sendWelcomeCampaign(businessId: string, branchId?: string) {
-    const newVisitors = await this.findNew(
-      { page: 1, limit: 1000 },
-      businessId,
-      branchId,
-    );
+  async sendWelcomeCampaign(branchId: string) {
+    const newVisitors = await this.findNew({ page: 1, limit: 1000 }, branchId);
     const contactIds = newVisitors.data.map((v) => v.id);
 
     return this.messagingService.sendMessage({
-      businessId,
       branchId,
       channel: Channel.SMS,
       contactIds,
@@ -835,14 +790,12 @@ export class VisitorsService {
   }
 
   async sendMessage(
-    businessId: string,
     visitorId: string,
     message: string,
     channel: Channel,
-    branchId?: string,
+    branchId: string,
   ) {
     return this.messagingService.sendMessage({
-      businessId,
       branchId,
       channel: channel || Channel.SMS,
       contactIds: [visitorId],
@@ -850,9 +803,8 @@ export class VisitorsService {
     });
   }
 
-  async sendWelcome(businessId: string, visitorId: string, branchId?: string) {
+  async sendWelcome(visitorId: string, branchId: string) {
     return this.sendMessage(
-      businessId,
       visitorId,
       'Welcome! Thank you for visiting us.',
       Channel.SMS,
@@ -860,24 +812,11 @@ export class VisitorsService {
     );
   }
 
-  async sendReward(
-    businessId: string,
-    visitorId: string,
-    rewardId: string,
-    branchId?: string,
-  ) {
-    // In a real system, you might generate a redemption code or similar.
-    // For now, we'll send a message with the reward details.
-    // If branchId is missing, we might have trouble finding the reward if rewards are branch-specific.
-    // Assuming we can find rewards by business too if needed, but for now we follow the existing pattern.
-    const rewards = branchId
-      ? await this.campaignsService.getRewards(branchId)
-      : [];
+  async sendReward(visitorId: string, rewardId: string, branchId: string) {
+    const rewards = await this.campaignsService.getRewards(branchId);
     const reward = rewards.find((r) => r.id === rewardId);
-    // if (!reward) throw new NotFoundException('Reward not found');
 
     return this.sendMessage(
-      businessId,
       visitorId,
       `You've received a reward! Use code REWARD123 to redeem.`,
       Channel.SMS,
@@ -885,35 +824,33 @@ export class VisitorsService {
     );
   }
 
-  async resetBusinessData(businessId: string, branchId?: string): Promise<void> {
-    const context: FindOptionsWhere<Visit | MessageLog | Contact | LoyaltyProfile> = branchId ? { branchId } : { businessId };
+  async resetBusinessData(branchId: string): Promise<void> {
+    const context: FindOptionsWhere<
+      Visit | MessageLog | Contact | LoyaltyProfile
+    > = { branchId };
 
-    // Use transaction for consistency
     await this.dataSource.transaction(async (manager) => {
-      // 1. Delete Visits
       await manager.delete(Visit, context as FindOptionsWhere<Visit>);
-
-      // 2. Delete Messaging Logs
       await manager.delete(MessageLog, context as FindOptionsWhere<MessageLog>);
 
-      // 3. Delete Loyalty Activity
-      // Note: Deleting profiles might be safer if we only delete transactions/redemptions to keep customer info
-      // but 'Reset everything' usually implies a clean slate.
-      const profiles = await manager.find(LoyaltyProfile, { where: context as FindOptionsWhere<LoyaltyProfile> });
-      const profileIds = profiles.map(p => p.id);
+      const profiles = await manager.find(LoyaltyProfile, {
+        where: context as FindOptionsWhere<LoyaltyProfile>,
+      });
+      const profileIds = profiles.map((p) => p.id);
 
       if (profileIds.length > 0) {
-        await manager.delete(PointTransaction, { loyaltyProfileId: In(profileIds) } as FindOptionsWhere<PointTransaction>);
-        await manager.delete(Redemption, { loyaltyProfileId: In(profileIds) } as FindOptionsWhere<Redemption>);
+        await manager.delete(PointTransaction, {
+          loyaltyProfileId: In(profileIds),
+        } as FindOptionsWhere<PointTransaction>);
+        await manager.delete(Redemption, {
+          loyaltyProfileId: In(profileIds),
+        } as FindOptionsWhere<Redemption>);
         await manager.delete(LoyaltyProfile, { id: In(profileIds) });
       }
 
-      // 4. Delete Contacts (Optionally keep them? Usually reset means reset)
       await manager.delete(Contact, context as FindOptionsWhere<Contact>);
     });
   }
-
-  // --- Helpers ---
 
   private mapToVisitorDto(user: User): VisitorResponseDto {
     const visits = user.visits || [];

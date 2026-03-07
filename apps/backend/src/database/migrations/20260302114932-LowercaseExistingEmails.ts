@@ -8,7 +8,7 @@ export class LowercaseExistingEmails20260302114932 implements MigrationInterface
     await queryRunner.query(`UPDATE "users" SET "email" = LOWER("email")`);
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {
+  public async down(_queryRunner: QueryRunner): Promise<void> {
     // No revert needed for lowercasing emails as it is a normalization step
   }
 }

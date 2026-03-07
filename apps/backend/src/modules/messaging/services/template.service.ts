@@ -13,13 +13,19 @@ import {
 import { Channel } from '../enums/channel.enum';
 import { CreateTemplateDto } from '../dto/template/create-template.dto';
 import { User, UserRole } from '../../users/entities/user.entity';
+import { BranchesService } from '../../branches/branches.service';
 
 @Injectable()
 export class TemplateService {
   constructor(
     @InjectRepository(MessageTemplate)
     private readonly templateRepo: Repository<MessageTemplate>,
+    private readonly branchesService: BranchesService,
   ) {}
+
+  async checkBranchAccess(user: User, branchId: string): Promise<boolean> {
+    return this.branchesService.checkBranchAccess(user, branchId);
+  }
 
   async createTemplate(
     dto: CreateTemplateDto,
@@ -27,32 +33,36 @@ export class TemplateService {
   ): Promise<MessageTemplate> {
     this.validateFormat(dto.channel, dto.content);
 
-    // Ensure only admins can create system templates
     if (dto.isSystem && user.role !== UserRole.ADMIN) {
       throw new ForbiddenException('Only admins can create system templates.');
     }
 
-    // System templates have no businessId, others use the user's businessId
-    const businessId = dto.isSystem ? null : user.businessId;
+    const branchId = dto.isSystem ? null : dto.branchId || user.branchId;
 
-    if (!dto.isSystem && !businessId) {
+    if (!dto.isSystem && !branchId) {
       throw new BadRequestException(
-        'Business context is required for non-system templates.',
+        'Branch context is required for non-system templates.',
       );
     }
 
-    const existing = await this.templateRepo.findOne({
-      where: {
-        businessId: businessId ?? IsNull(),
-        name: dto.name,
-        channel: dto.channel,
-      },
-    });
+    const where: any = {
+      branchId: branchId ?? IsNull(),
+      name: dto.name,
+      channel: dto.channel,
+    };
+
+    const existing = await this.templateRepo.findOne({ where });
 
     if (existing) {
       throw new BadRequestException(
         'Template with this name already exists for this scope.',
       );
+    }
+
+    let businessId: string | null = null;
+    if (branchId) {
+      const branch = await this.branchesService.findById(branchId);
+      businessId = branch.businessId;
     }
 
     const template = this.templateRepo.create({
@@ -62,7 +72,8 @@ export class TemplateService {
       category: dto.category,
       language: dto.language,
       isSystem: dto.isSystem || false,
-      businessId: businessId,
+      branchId: branchId as string,
+      businessId: businessId as string,
       createdById: user.id,
       status: dto.isSystem ? TemplateStatus.APPROVED : TemplateStatus.PENDING,
     });
@@ -70,20 +81,17 @@ export class TemplateService {
     return this.templateRepo.save(template);
   }
 
-  /**
-   * Returns templates available to a business: all system templates + business-specific templates.
-   */
-  async getAvailableTemplates(businessId: string): Promise<MessageTemplate[]> {
+  async getAvailableTemplates(branchId: string): Promise<MessageTemplate[]> {
     return this.templateRepo
       .createQueryBuilder('template')
       .where('template.isSystem = :isSystem', { isSystem: true })
-      .orWhere('template.businessId = :businessId', { businessId })
+      .orWhere('template.branchId = :branchId', { branchId })
       .orderBy('template.isSystem', 'DESC')
       .addOrderBy('template.name', 'ASC')
       .getMany();
   }
 
-  async getTemplate(id: string, user?: User): Promise<MessageTemplate> {
+  async findOne(id: string): Promise<MessageTemplate> {
     const template = await this.templateRepo.findOne({
       where: { id },
     });
@@ -91,18 +99,23 @@ export class TemplateService {
     if (!template) {
       throw new NotFoundException('Template not found');
     }
+    return template;
+  }
 
-    // Access control: System templates are public-ish to all business users.
-    // Business templates are restricted to that business.
-    // Admins can see everything.
-    // If no user is provided, we skip checks (internal system call).
-    if (
-      user &&
-      user.role !== UserRole.ADMIN &&
-      !template.isSystem &&
-      template.businessId !== user.businessId
-    ) {
-      throw new ForbiddenException('Access denied to this template.');
+  async getTemplate(id: string, user?: User): Promise<MessageTemplate> {
+    const template = await this.findOne(id);
+
+    if (user && user.role !== UserRole.ADMIN && !template.isSystem) {
+      if (user.role === UserRole.OWNER) {
+        const hasAccess = await this.branchesService.checkBranchAccess(
+          user,
+          template.branchId,
+        );
+        if (!hasAccess)
+          throw new ForbiddenException('Access denied to this template.');
+      } else if (template.branchId !== user.branchId) {
+        throw new ForbiddenException('Access denied to this template.');
+      }
     }
 
     return template;
@@ -112,7 +125,7 @@ export class TemplateService {
 
   async findAllAdmin(): Promise<MessageTemplate[]> {
     return this.templateRepo.find({
-      relations: ['business'],
+      relations: ['branch'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -131,8 +144,6 @@ export class TemplateService {
   async deleteTemplate(id: string, user: User): Promise<void> {
     const template = await this.getTemplate(id, user);
 
-    // Only owner/manager can delete their own business templates
-    // System templates can only be deleted by ADMIN
     if (template.isSystem && user.role !== UserRole.ADMIN) {
       throw new ForbiddenException('Only admins can delete system templates.');
     }
@@ -155,7 +166,6 @@ export class TemplateService {
     }
 
     if (channel === Channel.SMS && content.length > 320) {
-      // Extended limit for concatenated SMS
       throw new BadRequestException(
         'SMS content too long (max 320 characters for templates).',
       );

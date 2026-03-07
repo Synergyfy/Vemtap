@@ -9,6 +9,7 @@ import { PointTransaction } from '../campaigns/entities/point-transaction.entity
 import { DevicesModule } from '../devices/devices.module';
 import { CampaignsModule } from '../campaigns/campaigns.module';
 import { Visit } from '../visitors/entities/visit.entity';
+import { BranchesModule } from '../branches/branches.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { Visit } from '../visitors/entities/visit.entity';
     ]),
     DevicesModule,
     CampaignsModule,
+    BranchesModule,
   ],
   controllers: [LoyaltyController],
   providers: [LoyaltyService],

@@ -5,6 +5,12 @@ import { Visit } from '../visitors/entities/visit.entity';
 import { User } from '../users/entities/user.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { Device } from '../devices/entities/device.entity';
+import { MessageLog } from '../messaging/entities/message-log.entity';
+import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
+import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
+import { Redemption } from '../campaigns/entities/redemption.entity';
+import { Branch } from '../branches/entities/branch.entity';
+import { Message } from '../messaging/entities/message.entity';
 
 describe('AnalyticsService', () => {
   let service: AnalyticsService;
@@ -49,6 +55,30 @@ describe('AnalyticsService', () => {
           provide: getRepositoryToken(Device),
           useValue: mockRepository,
         },
+        {
+          provide: getRepositoryToken(MessageLog),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(LoyaltyProfile),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(PointTransaction),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(Redemption),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(Branch),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(Message),
+          useValue: mockRepository,
+        },
       ],
     }).compile();
 
@@ -59,17 +89,11 @@ describe('AnalyticsService', () => {
     expect(service).toBeDefined();
   });
 
-  const mockUser = { id: 'u1' } as any;
+  const mockUser = { id: 'u1', branchId: 'b1', businessId: 'biz1' } as User;
 
   describe('getDashboardAnalytics', () => {
     it('should return dashboard analytics data', async () => {
-      // Mock resolveBusinessContext to avoid deep mocking
-      jest
-        .spyOn(service as any, 'resolveBusinessContext')
-        .mockResolvedValue({ resolvedBranchId: 'b1' });
-      mockRepository.count.mockResolvedValue(10);
-
-      const result = await service.getDashboardAnalytics('b1', mockUser);
+      const result = await service.getDashboardAnalytics(mockUser, 'b1');
       expect(result).toBeDefined();
       expect(result.stats).toBeDefined();
       expect(result.peakTimes).toBeDefined();
@@ -81,10 +105,7 @@ describe('AnalyticsService', () => {
 
   describe('getFootfallAnalytics', () => {
     it('should return footfall analytics data', async () => {
-      jest
-        .spyOn(service as any, 'resolveBusinessContext')
-        .mockResolvedValue({ resolvedBranchId: 'b1' });
-      const result = await service.getFootfallAnalytics('b1', mockUser);
+      const result = await service.getFootfallAnalytics(mockUser, 'b1');
       expect(result).toBeDefined();
       expect(result.stats).toBeDefined();
       expect(result.hourlyData).toBeDefined();
@@ -95,10 +116,7 @@ describe('AnalyticsService', () => {
 
   describe('getPeakTimesAnalytics', () => {
     it('should return peak times analytics data', async () => {
-      jest
-        .spyOn(service as any, 'resolveBusinessContext')
-        .mockResolvedValue({ resolvedBranchId: 'b1' });
-      const result = await service.getPeakTimesAnalytics('b1', mockUser);
+      const result = await service.getPeakTimesAnalytics(mockUser, 'b1');
       expect(result).toBeDefined();
       expect(result.weeklyData).toBeDefined();
       expect(result.hoursLabels).toBeDefined();
@@ -107,8 +125,6 @@ describe('AnalyticsService', () => {
   });
   describe('getAdminSummary', () => {
     it('should return admin summary with statistics and trends', async () => {
-      // Mocking the repositories would be ideal here if this was a real DB test,
-      // but to match the style of existing tests we check the structure.
       const result = await service.getAdminSummary();
       expect(result).toBeDefined();
       expect(result.stats).toHaveLength(4);

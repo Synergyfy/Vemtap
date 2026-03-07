@@ -32,17 +32,14 @@ describe('VisitorFormsController', () => {
     jest.clearAllMocks();
   });
 
-  // Test: Ensure a visitor can fetch forms for a specific business, with an optional branchId filter
-  it('should find forms for a visitor with optional branchId', async () => {
+  // Test: Ensure a visitor can fetch forms for a specific branch
+  it('should find forms for a visitor with branchId', async () => {
     const forms = [{ id: 'form-1', title: 'Survey' }];
     mockFormsService.getFormsForVisitor.mockResolvedValue(forms);
 
-    const result = await controller.findForms('business-1', 'branch-2');
+    const result = await controller.findForms('branch-2');
 
-    expect(service.getFormsForVisitor).toHaveBeenCalledWith(
-      'business-1',
-      'branch-2',
-    );
+    expect(service.getFormsForVisitor).toHaveBeenCalledWith('branch-2');
     expect(result).toEqual(forms);
   });
 
@@ -71,7 +68,11 @@ describe('VisitorFormsController', () => {
 
     mockFormsService.submitResponse.mockResolvedValue(savedResponse);
 
-    const result = await controller.submitResponse(req, 'form-1', submitDto);
+    const result = await controller.submitResponse(
+      req,
+      'form-1',
+      submitDto as any,
+    );
 
     expect(service.submitResponse).toHaveBeenCalledWith(
       'form-1',

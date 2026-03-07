@@ -3,15 +3,20 @@ import { SupportService } from './support.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { SupportTicket, TicketStatus } from './entities/support-ticket.entity';
 import { TicketMessage } from './entities/ticket-message.entity';
+import { TicketActivity } from './entities/ticket-activity.entity';
+import { User } from '../users/entities/user.entity';
+import { NotFoundException } from '@nestjs/common';
 
 describe('SupportService', () => {
   let service: SupportService;
 
   const mockTicketRepository = {
     find: jest.fn(),
+    findAndCount: jest.fn(),
     findOne: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
+    count: jest.fn(),
   };
 
   const mockMessageRepository = {
@@ -19,7 +24,20 @@ describe('SupportService', () => {
     save: jest.fn(),
   };
 
+  const mockActivityRepository = {
+    create: jest.fn(),
+    save: jest.fn(),
+  };
+
+  const mockUserRepository = {
+    findOne: jest.fn(),
+    findAndCount: jest.fn(),
+    save: jest.fn(),
+  };
+
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SupportService,
@@ -30,6 +48,14 @@ describe('SupportService', () => {
         {
           provide: getRepositoryToken(TicketMessage),
           useValue: mockMessageRepository,
+        },
+        {
+          provide: getRepositoryToken(TicketActivity),
+          useValue: mockActivityRepository,
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: mockUserRepository,
         },
       ],
     }).compile();
@@ -42,21 +68,19 @@ describe('SupportService', () => {
   });
 
   describe('findAllAdmin', () => {
-    it('should return all tickets with user relation', async () => {
+    it('should return paginated tickets', async () => {
       const tickets = [{ id: '1' }, { id: '2' }];
-      mockTicketRepository.find.mockResolvedValue(tickets);
+      mockTicketRepository.findAndCount.mockResolvedValue([tickets, 2]);
 
       const result = await service.findAllAdmin();
-      expect(result).toEqual(tickets);
-      expect(mockTicketRepository.find).toHaveBeenCalledWith({
-        relations: ['user'],
-        order: { createdAt: 'DESC' },
-      });
+      expect(result.data).toEqual(tickets);
+      expect(result.meta.total).toBe(2);
+      expect(mockTicketRepository.findAndCount).toHaveBeenCalled();
     });
   });
 
   describe('findOneAdmin', () => {
-    it('should return a ticket with messages and sender', async () => {
+    it('should return a ticket with relations', async () => {
       const ticket = { id: '1', messages: [] };
       mockTicketRepository.findOne.mockResolvedValue(ticket);
 
@@ -67,28 +91,28 @@ describe('SupportService', () => {
     it('should throw NotFoundException if ticket not found', async () => {
       mockTicketRepository.findOne.mockResolvedValue(null);
       await expect(service.findOneAdmin('1')).rejects.toThrow(
-        'Ticket not found',
+        NotFoundException,
       );
     });
   });
 
   describe('updateStatus', () => {
     it('should update ticket status', async () => {
-      const ticket = { id: '1', status: TicketStatus.OPEN };
+      const ticket = { id: '1', status: TicketStatus.PENDING };
       mockTicketRepository.findOne.mockResolvedValue(ticket);
       mockTicketRepository.save.mockResolvedValue({
         ...ticket,
-        status: TicketStatus.CLOSED,
+        status: TicketStatus.RESOLVED,
       });
 
-      const result = await service.updateStatus('1', TicketStatus.CLOSED);
-      expect(result.status).toBe(TicketStatus.CLOSED);
+      const result = await service.updateStatus('1', TicketStatus.RESOLVED);
+      expect(result.status).toBe(TicketStatus.RESOLVED);
     });
   });
 
   describe('addAdminMessage', () => {
     it('should add a message and update status to IN_PROGRESS', async () => {
-      const ticket = { id: '1', status: TicketStatus.OPEN };
+      const ticket = { id: '1', status: TicketStatus.PENDING };
       const message = { id: 'm1', message: 'Hello' };
 
       mockTicketRepository.findOne.mockResolvedValue(ticket);
