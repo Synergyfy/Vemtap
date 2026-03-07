@@ -97,7 +97,8 @@ export const fetchProductDetail = async (id: string): Promise<ProductDetail | nu
             })) || [{ minQuantity: p.moq || 1, maxQuantity: null, price: Number(p.price) }],
             moq: p.moq || 1,
             rating: p.rating || 5,
-            reviews: undefined
+            reviews: undefined,
+            howToSteps: p.howToSteps || []
         };
     } catch (e) {
         console.error('Error fetching product detail', e);

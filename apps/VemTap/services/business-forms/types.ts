@@ -24,6 +24,16 @@ export interface BusinessForm {
   isPublished: boolean;
   businessId: string;
   branchId: string;
+  businessName?: string;
+  businessLogo?: string;
+  templateId?: string;
+  templateName?: string;
+  templateScope?: 'branch' | 'business' | 'global';
+  usageModes?: Array<'link' | 'qr' | 'messaging'>;
+  linkedTargets?: string[];
+  redirectUrl?: string;
+  redirectLabel?: string;
+  instructions?: string;
   fields: BusinessFormField[];
   createdAt?: string;
   updatedAt?: string;
@@ -35,10 +45,52 @@ export interface CreateBusinessFormRequest {
   isActive: boolean;
   isPublished: boolean;
   branchId: string;
+  businessId?: string;
+  businessName?: string;
+  businessLogo?: string;
+  templateId?: string;
+  templateName?: string;
+  templateScope?: 'branch' | 'business' | 'global';
+  usageModes?: Array<'link' | 'qr' | 'messaging'>;
+  linkedTargets?: string[];
+  redirectUrl?: string;
+  redirectLabel?: string;
+  instructions?: string;
   fields: Omit<BusinessFormField, 'id'>[];
 }
 
 export type UpdateBusinessFormRequest = Partial<CreateBusinessFormRequest>;
+
+export interface FormTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  businessId?: string;
+  businessName?: string;
+  branchId?: string;
+  scope: 'branch' | 'business' | 'global';
+  fields: Omit<BusinessFormField, 'id'>[];
+  redirectUrl?: string;
+  redirectLabel?: string;
+  linkedTargets?: string[];
+  usageModes?: Array<'link' | 'qr' | 'messaging'>;
+  instructions?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateFormTemplateRequest {
+  name: string;
+  description?: string;
+  branchId?: string;
+  scope: 'branch' | 'business' | 'global';
+  fields: Omit<BusinessFormField, 'id'>[];
+  redirectUrl?: string;
+  redirectLabel?: string;
+  linkedTargets?: string[];
+  usageModes?: Array<'link' | 'qr' | 'messaging'>;
+  instructions?: string;
+}
 
 export interface BusinessFormResponseItem {
   id: string;

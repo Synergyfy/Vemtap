@@ -7,12 +7,16 @@ import { fetchPricingPlans } from '@/lib/api/pricing';
 import { useAuthStore, AuthState } from '../../store/useAuthStore';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import { X, Mail, Phone, MessageSquare, Loader2 } from 'lucide-react';
 
 export default function Pricing() {
     const router = useRouter();
     const isAuthenticated = useAuthStore((state: AuthState) => state.isAuthenticated);
+    const { user } = useAuthStore();
     const [isRedirecting, setIsRedirecting] = useState(false);
     const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
+    const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const { data: plans = [], isLoading } = useQuery({
         queryKey: ['subscription-plans'],
@@ -232,8 +236,8 @@ export default function Pricing() {
                                 <div className="flex flex-col gap-3">
                                     {trialDays > 0 && !plan.isFree && (
                                         <button
-                                        onClick={() => handleSubscription(plan, true)}
-                                        className={`
+                                            onClick={() => handleSubscription(plan, true)}
+                                            className={`
                                                 w-full py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center transition-all cursor-pointer shadow-lg active:scale-[0.98]
                                                 ${highlight
                                                     ? 'bg-white text-primary hover:bg-gray-50 shadow-white/10'
@@ -252,9 +256,7 @@ export default function Pricing() {
                                                 ? trialDays > 0
                                                     ? 'bg-primary border border-white/20 text-white hover:bg-primary-hover shadow-none'
                                                     : 'bg-white text-primary hover:bg-gray-50 shadow-white/10'
-                                                : trialDays > 0
-                                                    ? 'bg-slate-100 text-slate-900 hover:bg-slate-200 shadow-none'
-                                                    : 'bg-primary text-white hover:bg-primary-hover shadow-primary/20'
+                                                : 'bg-primary text-white hover:bg-primary-hover shadow-primary/20'
                                             }
                                         `}
                                     >
@@ -298,27 +300,13 @@ export default function Pricing() {
                                 </div>
                                 <div className="flex flex-col items-center md:items-end gap-5 shrink-0">
                                     <div className="text-center md:text-right">
-                                        <span className="text-3xl md:text-4xl font-bold block leading-none">{formatPrice(price)}</span>
-                                        <span className="text-xs font-bold opacity-60 mt-1 block tracking-wider">/mo</span>
+                                        <span className="text-3xl md:text-4xl font-bold block leading-none">Custom /mo</span>
+                                        <span className="text-xs font-bold opacity-60 mt-1 block tracking-wider">Enterprise Pricing</span>
                                     </div>
                                     <div className="flex flex-col gap-3 min-w-[200px]">
-                                        {enterprisePlan.trialDurationDays > 0 && !enterprisePlan.isFree && (
-                                            <button
-                                                onClick={() => handleSubscription(enterprisePlan, true)}
-                                                className="px-8 py-3 rounded-xl text-sm font-bold text-center transition-all bg-white text-primary shadow-lg shadow-white/10 hover:scale-[1.02] active:scale-[0.98]"
-                                            >
-                                                Start {enterprisePlan.trialDurationDays}-Day Free Trial
-                                            </button>
-                                        )}
                                         <button
-                                            onClick={() => handleSubscription(enterprisePlan)}
-                                            className={`
-                                                px-8 py-3 rounded-xl text-sm font-bold text-center transition-all shadow-lg hover:scale-[1.02] active:scale-[0.98]
-                                                ${enterprisePlan.trialDurationDays > 0
-                                                    ? 'bg-primary border border-white/20 text-white hover:bg-primary-hover'
-                                                    : 'bg-white text-primary'
-                                                }
-                                            `}
+                                            onClick={() => setIsContactModalOpen(true)}
+                                            className="px-8 py-4 rounded-xl text-sm font-bold text-center transition-all bg-white text-primary shadow-lg hover:scale-[1.02] active:scale-[0.98] min-w-[200px]"
                                         >
                                             Contact Sales
                                         </button>
@@ -329,10 +317,78 @@ export default function Pricing() {
                     );
                 })()}
 
-                {isRedirecting && (
-                    <p className="text-center text-xs font-bold text-text-secondary uppercase tracking-widest">
-                        Redirecting to signup...
-                    </p>
+                {isContactModalOpen && (
+                    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setIsContactModalOpen(false)}></div>
+                        <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200">
+                            <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-primary text-white">
+                                <div>
+                                    <h3 className="font-display font-bold text-2xl">Contact Our Sales Team</h3>
+                                    <p className="text-sm text-white/80 mt-1 font-medium">Get a custom solution tailored for your business needs.</p>
+                                </div>
+                                <button onClick={() => setIsContactModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                setIsSubmitting(true);
+                                setTimeout(() => {
+                                    setIsSubmitting(false);
+                                    setIsContactModalOpen(false);
+                                    toast.success("Message sent! Our sales team will contact you shortly.");
+                                }, 1500);
+                            }} className="p-8 space-y-5">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1">Full Name</label>
+                                        <input type="text" defaultValue={user?.name || ''} required placeholder="John Doe" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1">Email Address</label>
+                                        <input type="email" defaultValue={user?.email || ''} required placeholder="john@company.com" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1">Company / Business Name</label>
+                                    <input type="text" required placeholder="Your Company Ltd." className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium" />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1">Subject</label>
+                                    <select className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-bold text-sm">
+                                        <option>Enterprise Licensing</option>
+                                        <option>White-label Solutions</option>
+                                        <option>Custom Hardware Integration</option>
+                                        <option>API Access</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1">Your Message</label>
+                                    <textarea rows={4} required placeholder="Tell us about your requirements..." className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium resize-none"></textarea>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="w-full py-4 bg-primary text-white font-black uppercase tracking-widest rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
+                                >
+                                    {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <><Mail size={18} /> Send Message</>}
+                                </button>
+
+                                <div className="flex items-center justify-center gap-6 pt-4 border-t border-gray-100 mt-2">
+                                    <div className="flex items-center gap-2 text-text-secondary text-xs font-bold">
+                                        <Phone size={14} className="text-primary" />
+                                        <span>+234 800 VEM TAP</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-text-secondary text-xs font-bold">
+                                        <MessageSquare size={14} className="text-primary" />
+                                        <span>Live Chat</span>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 )}
             </div>
         </section >

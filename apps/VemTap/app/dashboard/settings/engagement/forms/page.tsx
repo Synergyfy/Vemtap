@@ -1,509 +1,189 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { CircleHelp, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { CircleHelp, Copy, Ellipsis, MessageSquareText, Pencil, Plus, QrCode, Trash2 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/dashboard/PageHeader';
-import Tooltip from '@/components/ui/Tooltip';
+import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
+import Tooltip2 from '@/components/ui/Tooltip2';
+import PhoneFrame from '@/components/shared/PhoneFrame';
+import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBranches } from '@/services/branches/hooks';
-import {
-    useBusinessForms,
-    useCreateBusinessForm,
-    useDeleteBusinessForm,
-} from '@/services/business-forms/hooks';
-import type { ApiFormFieldType } from '@/services/business-forms/types';
+import { useBusinessForms, useCreateBusinessForm, useCreateFormTemplate, useDeleteBusinessForm, useFormTemplates, useUpdateBusinessForm } from '@/services/business-forms/hooks';
+import type { ApiFormFieldType, BusinessForm, CreateBusinessFormRequest } from '@/services/business-forms/types';
 
-type DraftField = {
-    id: string;
-    type: ApiFormFieldType;
-    question: string;
-    optionsText: string;
-    isRequired: boolean;
-};
+type DraftField = { id: string; type: ApiFormFieldType; question: string; optionsText: string; isRequired: boolean };
+const TYPES: ApiFormFieldType[] = ['text', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date'];
+const TARGETS = ['Messaging Center', 'Instagram bio', 'Google review flow', 'Post-subscription onboarding'];
+const MODES: Array<'link' | 'qr' | 'messaging'> = ['link', 'qr', 'messaging'];
+const mkField = (n: number): DraftField => ({ id: `draft-${n}`, type: 'text', question: '', optionsText: '', isRequired: false });
+const shareLink = (id: string) => (typeof window === 'undefined' ? `/user-step?formId=${id}` : `${window.location.origin}/user-step?formId=${id}`);
 
-const FIELD_TYPES: Array<{ label: string; value: ApiFormFieldType }> = [
-    { label: 'Text', value: 'text' },
-    { label: 'Textarea', value: 'textarea' },
-    { label: 'Number', value: 'number' },
-    { label: 'Select', value: 'select' },
-    { label: 'Radio', value: 'radio' },
-    { label: 'Checkbox', value: 'checkbox' },
-    { label: 'Date', value: 'date' },
-];
-
-const WIZARD_STEPS = [
-    { id: 1, title: 'Basics' },
-    { id: 2, title: 'Fields' },
-    { id: 3, title: 'Preview & Publish' },
-] as const;
-
-const createDraftField = (index: number): DraftField => ({
-    id: `draft-${index}`,
-    type: 'text',
-    question: '',
-    optionsText: '',
-    isRequired: false,
-});
-
-const LabelWithTip = ({ label, tip }: { label: string; tip: string }) => (
+const L = ({ label, tip }: { label: string; tip: string }) => (
     <div className="flex items-center gap-1">
         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{label}</label>
-        <Tooltip content={tip}>
-            <span className="text-text-secondary inline-flex cursor-help">
-                <CircleHelp size={12} />
-            </span>
-        </Tooltip>
+        <Tooltip2 content={tip} side="right"><span className="inline-flex cursor-help text-text-secondary"><CircleHelp size={12} /></span></Tooltip2>
     </div>
 );
 
-function FieldPreview({ field }: { field: DraftField }) {
-    if (field.type === 'radio' || field.type === 'select' || field.type === 'checkbox') {
-        const options = field.optionsText
-            .split(',')
-            .map((item) => item.trim())
-            .filter(Boolean);
-        return (
-            <div className="space-y-2">
-                {(options.length ? options : ['Option 1', 'Option 2']).map((option) => (
-                    <div key={`${field.id}-${option}`} className="h-9 rounded-lg border border-gray-200 bg-gray-50 px-3 flex items-center text-xs text-text-secondary">
-                        {option}
-                    </div>
-                ))}
-            </div>
-        );
-    }
-
-    if (field.type === 'textarea') {
-        return <div className="h-20 rounded-lg border border-gray-200 bg-gray-50" />;
-    }
-
-    if (field.type === 'date') {
-        return <div className="h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 flex items-center text-xs text-text-secondary">YYYY-MM-DD</div>;
-    }
-
-    return <div className="h-10 rounded-lg border border-gray-200 bg-gray-50" />;
-}
-
 export default function EngagementFormsBuilderPage() {
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const userBranchId = useAuthStore((state) => state.user?.branchId);
-
+    const router = useRouter();
+    const user = useAuthStore((s) => s.user);
+    const activeBranchId = useAuthStore((s) => s.activeBranchId);
+    const userBranchId = useAuthStore((s) => s.user?.branchId);
     const { data: branches = [] } = useBranches();
     const { data: forms = [], isLoading: formsLoading } = useBusinessForms();
+    const { data: templates = [] } = useFormTemplates();
     const createMutation = useCreateBusinessForm();
+    const createTemplateMutation = useCreateFormTemplate();
     const deleteMutation = useDeleteBusinessForm();
 
-    const defaultBranchId = activeBranchId || userBranchId || branches[0]?.id || '';
-
-    const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
+    const defaultBranchId = activeBranchId && activeBranchId !== 'all' ? activeBranchId : userBranchId || branches[0]?.id || '';
+    const [step, setStep] = useState<1 | 2 | 3>(1);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const updateMutation = useUpdateBusinessForm(editingId || '');
+    const [branchId, setBranchId] = useState(defaultBranchId);
+    const [templateId, setTemplateId] = useState('');
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [isActive, setIsActive] = useState(true);
-    const [isPublished, setIsPublished] = useState(true);
-    const [branchId, setBranchId] = useState(defaultBranchId);
+    const [instructions, setInstructions] = useState('Configure your business after tapping. Share the form by link, QR code, or Messaging Center.');
+    const [redirectLabel, setRedirectLabel] = useState('Thank You Page');
+    const [redirectUrl, setRedirectUrl] = useState('');
+    const [usageModes, setUsageModes] = useState<Array<'link' | 'qr' | 'messaging'>>(['link', 'qr', 'messaging']);
+    const [linkedTargets, setLinkedTargets] = useState<string[]>(['Messaging Center']);
+    const [fields, setFields] = useState<DraftField[]>([{ ...mkField(1), question: 'What was the reason for your visit?', isRequired: true }]);
     const [fieldCounter, setFieldCounter] = useState(2);
-    const [fields, setFields] = useState<DraftField[]>([
-        { ...createDraftField(1), question: 'What was the reason for your visit?', isRequired: true },
-    ]);
+    const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+    const [templateName, setTemplateName] = useState('');
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+    const [qrFormId, setQrFormId] = useState<string | null>(null);
 
-    const orderedFieldsPreview = useMemo(
-        () =>
-            fields.map((field, index) => ({
-                ...field,
-                order: index + 1,
-                label: field.question.trim() || `Question ${index + 1}`,
-            })),
-        [fields]
-    );
+    useEffect(() => { if (!branchId && defaultBranchId) setBranchId(defaultBranchId); }, [branchId, defaultBranchId]);
 
+    const selectedTemplate = useMemo(() => templates.find((t) => t.id === templateId) || null, [templates, templateId]);
     useEffect(() => {
-        if (!branchId && defaultBranchId) {
-            setBranchId(defaultBranchId);
-        }
-    }, [branchId, defaultBranchId]);
+        if (!selectedTemplate) return;
+        setDescription(selectedTemplate.description || '');
+        setInstructions(selectedTemplate.instructions || '');
+        setRedirectLabel(selectedTemplate.redirectLabel || 'Thank You Page');
+        setRedirectUrl(selectedTemplate.redirectUrl || '');
+        setUsageModes(selectedTemplate.usageModes?.length ? selectedTemplate.usageModes : ['link', 'qr', 'messaging']);
+        setLinkedTargets(selectedTemplate.linkedTargets?.length ? selectedTemplate.linkedTargets : []);
+        setFields(selectedTemplate.fields.map((f, i) => ({ id: `draft-${i + 1}`, type: f.type, question: f.question, optionsText: (f.options || []).join(', '), isRequired: f.isRequired })));
+        setFieldCounter(selectedTemplate.fields.length + 1);
+    }, [selectedTemplate]);
 
-    const updateField = (id: string, updates: Partial<DraftField>) => {
-        setFields((prev) => prev.map((field) => (field.id === id ? { ...field, ...updates } : field)));
-    };
+    const branchName = useMemo(() => branches.find((b) => b.id === branchId)?.name || branchId || 'No Branch', [branchId, branches]);
+    const previewForm = useMemo(() => ({
+        id: 'preview', title: title || 'Form title', description, instructions, branchName, businessName: user?.businessName || 'Your Business', businessLogo: user?.businessLogo, redirectLabel, redirectUrl: redirectUrl || undefined,
+        fields: fields.map((f, i) => ({ id: f.id, type: f.type, question: f.question || `Question ${i + 1}`, options: f.optionsText.split(',').map((x) => x.trim()).filter(Boolean), isRequired: f.isRequired, order: i + 1 })),
+    }), [branchName, description, fields, instructions, redirectLabel, redirectUrl, title, user?.businessLogo, user?.businessName]);
 
-    const addField = () => {
-        const next = fieldCounter + 1;
-        setFieldCounter(next);
-        setFields((prev) => [...prev, createDraftField(next)]);
-    };
-
-    const removeField = (id: string) => {
-        setFields((prev) => prev.filter((field) => field.id !== id));
-    };
-
-    const validateStep = (step: number) => {
-        if (step === 1) {
-            if (!title.trim()) {
-                toast.error('Title is required');
-                return false;
-            }
-            if (!branchId) {
-                toast.error('Branch is required');
-                return false;
-            }
-        }
-
-        if (step === 2) {
-            if (fields.length === 0) {
-                toast.error('Add at least one field');
-                return false;
-            }
-            if (fields.some((field) => !field.question.trim())) {
-                toast.error('Every field needs a question');
-                return false;
-            }
-            if (fields.some((field) => (field.type === 'radio' || field.type === 'select' || field.type === 'checkbox') && !field.optionsText.trim())) {
-                toast.error('Select/Radio/Checkbox fields require options');
-                return false;
-            }
-        }
-
+    const valid = () => {
+        if (!title.trim()) return toast.error('Title is required'), false;
+        if (!branchId) return toast.error('Branch is required'), false;
+        if (fields.some((f) => !f.question.trim())) return toast.error('Each field needs a question'), false;
+        if (fields.some((f) => (f.type === 'radio' || f.type === 'select' || f.type === 'checkbox') && !f.optionsText.trim())) return toast.error('Select, radio, and checkbox fields require options'), false;
         return true;
     };
+    const payload = (): CreateBusinessFormRequest => ({
+        title: title.trim(), description: description.trim() || undefined, instructions: instructions.trim() || undefined, redirectLabel: redirectLabel.trim() || undefined, redirectUrl: redirectUrl.trim() || undefined,
+        branchId, businessId: user?.businessId, businessName: user?.businessName || 'Your Business', businessLogo: user?.businessLogo, isActive: true, isPublished: true, templateId: templateId || undefined, templateName: selectedTemplate?.name, templateScope: selectedTemplate?.scope, usageModes, linkedTargets,
+        fields: fields.map((f, i) => ({ type: f.type, question: f.question.trim(), options: f.optionsText.split(',').map((x) => x.trim()).filter(Boolean), isRequired: f.isRequired, order: i + 1 })),
+    });
 
-    const onNextStep = () => {
-        if (!validateStep(wizardStep)) return;
-        setWizardStep((prev) => (prev < 3 ? ((prev + 1) as 1 | 2 | 3) : prev));
-    };
+    const reset = () => { setEditingId(null); setTemplateId(''); setTitle(''); setDescription(''); setInstructions('Configure your business after tapping. Share the form by link, QR code, or Messaging Center.'); setRedirectLabel('Thank You Page'); setRedirectUrl(''); setUsageModes(['link', 'qr', 'messaging']); setLinkedTargets(['Messaging Center']); setFields([{ ...mkField(1), question: 'What was the reason for your visit?', isRequired: true }]); setFieldCounter(2); setSaveAsTemplate(false); setTemplateName(''); setStep(1); };
+    const startEdit = (form: BusinessForm) => { setEditingId(form.id); setTemplateId(form.templateId || ''); setTitle(form.title || ''); setDescription(form.description || ''); setInstructions(form.instructions || ''); setRedirectLabel(form.redirectLabel || 'Thank You Page'); setRedirectUrl(form.redirectUrl || ''); setBranchId(form.branchId || defaultBranchId); setUsageModes(form.usageModes?.length ? form.usageModes : ['link', 'qr', 'messaging']); setLinkedTargets(form.linkedTargets?.length ? form.linkedTargets : []); setFields((form.fields || []).map((f, i) => ({ id: f.id || `draft-${i + 1}`, type: f.type, question: f.question, optionsText: (f.options || []).join(', '), isRequired: f.isRequired }))); setFieldCounter((form.fields || []).length + 1); setStep(1); };
 
-    const onPrevStep = () => {
-        setWizardStep((prev) => (prev > 1 ? ((prev - 1) as 1 | 2 | 3) : prev));
-    };
-
-    const onCreateForm = async () => {
-        if (!validateStep(1) || !validateStep(2)) return;
-
+    const save = async () => {
+        if (!valid()) return;
         try {
-            await createMutation.mutateAsync({
-                title: title.trim(),
-                description: description.trim() || undefined,
-                isActive,
-                isPublished,
-                branchId,
-                fields: fields.map((field, index) => ({
-                    type: field.type,
-                    question: field.question.trim(),
-                    options:
-                        field.type === 'radio' || field.type === 'select' || field.type === 'checkbox'
-                            ? field.optionsText
-                                  .split(',')
-                                  .map((option) => option.trim())
-                                  .filter(Boolean)
-                            : undefined,
-                    isRequired: field.isRequired,
-                    order: index + 1,
-                })),
-            });
-
-            setTitle('');
-            setDescription('');
-            setIsActive(true);
-            setIsPublished(true);
-            setFields([{ ...createDraftField(1), question: 'What was the reason for your visit?', isRequired: true }]);
-            setFieldCounter(2);
-            setWizardStep(1);
-            toast.success('Form created');
-        } catch (error: any) {
-            toast.error(error?.message || 'Failed to create form');
+            if (editingId) {
+                await updateMutation.mutateAsync(payload());
+                toast.success('Form updated');
+                setEditingId(null);
+            } else {
+                const created = await createMutation.mutateAsync(payload());
+                if (saveAsTemplate && templateName.trim()) await createTemplateMutation.mutateAsync({ name: templateName.trim(), description: description.trim() || undefined, branchId, scope: 'branch', fields: payload().fields, redirectLabel: redirectLabel.trim() || undefined, redirectUrl: redirectUrl.trim() || undefined, usageModes, linkedTargets, instructions: instructions.trim() || undefined });
+                toast.success('Form created');
+                setQrFormId(created.id);
+            }
+        } catch (e: any) {
+            toast.error(e?.message || 'Failed to save form');
         }
     };
 
-    const onDeleteForm = async (id: string) => {
+    const onDelete = async (id: string) => {
         try {
             await deleteMutation.mutateAsync(id);
             toast.success('Form deleted');
-        } catch (error: any) {
-            toast.error(error?.message || 'Failed to delete form');
+            if (editingId === id) reset();
+        } catch (e: any) {
+            toast.error(e?.message || 'Failed to delete form');
         }
     };
 
+    const formsWithLink = forms.map((f) => ({ ...f, s: shareLink(f.id) }));
+
     return (
         <div className="p-8 space-y-8">
-            <PageHeader
-                title="Business Forms"
-                description="Create and manage forms using the business-forms API."
-            />
+            <PageHeader title="Visitor Forms" description="Step-by-step form creator with mobile review and publishing." />
+            <EngagementTabs tabs={[{ label: 'Socials', href: '/dashboard/settings/engagement/socials' }, { label: 'Form Creator', active: true }, { label: 'Responses', href: '/dashboard/settings/engagement/forms/responses' }, { label: 'Automation', href: '/dashboard/automations' }, { label: 'Messaging', href: '/dashboard/messaging/compose' }]} />
 
-            <div className="flex items-center gap-3">
-                <Link href="/dashboard/settings/engagement/socials" className="px-4 h-10 rounded-xl bg-white border border-gray-200 text-sm font-bold text-text-secondary flex items-center">Socials</Link>
-                <span className="px-4 h-10 rounded-xl bg-primary text-white text-sm font-black flex items-center">Form Creator</span>
-                <Link href="/dashboard/settings/engagement/forms/responses" className="px-4 h-10 rounded-xl bg-white border border-gray-200 text-sm font-bold text-text-secondary flex items-center">Form Responses</Link>
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 grid grid-cols-1 md:grid-cols-3 gap-2">
+                {[1, 2, 3].map((n) => <button key={n} onClick={() => setStep(n as 1 | 2 | 3)} className={`h-11 rounded-xl text-xs font-black uppercase tracking-widest ${step === n ? 'bg-primary text-white' : 'border border-gray-200 text-text-secondary'}`}>Step {n}</button>)}
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6">
-                <div className="grid grid-cols-3 gap-3">
-                    {WIZARD_STEPS.map((step) => {
-                        const isActiveStep = wizardStep === step.id;
-                        const isDone = wizardStep > step.id;
-                        return (
-                            <div
-                                key={step.id}
-                                className={`h-11 rounded-xl border px-3 flex items-center gap-2 ${isActiveStep ? 'bg-primary text-white border-primary' : isDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'border-gray-200 text-text-secondary'}`}
-                            >
-                                <span className="text-xs font-black">{step.id}</span>
-                                <span className="text-xs font-black uppercase tracking-wider">{step.title}</span>
-                            </div>
-                        );
-                    })}
+            <div className="grid grid-cols-1 xl:grid-cols-[1.05fr,0.95fr] gap-6">
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+                    {editingId && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 flex items-center justify-between"><span>Editing existing form</span><button onClick={reset} className="underline">Create new</button></div>}
+                    {step === 1 && <>
+                        <L label="Template" tip="Choose a branch template or create from scratch." />
+                        <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"><option value="">Create from scratch</option>{templates.filter((t) => !t.branchId || !branchId || t.branchId === branchId).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
+                        <L label="Title" tip="Customer-facing form title." /><input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm" />
+                        <L label="Description" tip="Help text shown above the form." /><textarea value={description} onChange={(e) => setDescription(e.target.value)} className="w-full min-h-20 rounded-xl border border-gray-200 px-3 py-2 text-sm" />
+                        <L label="Branch" tip="This form is assigned to one branch." />
+                        <select value={branchId} onChange={(e) => setBranchId(e.target.value)} className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"><option value="">Select branch</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
+                        <L label="Instructions" tip="Explain what customer should do." /><textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} className="w-full min-h-24 rounded-xl border border-gray-200 px-3 py-2 text-sm" />
+                    </>}
+                    {step === 2 && <>
+                        <L label="Usage Modes" tip="Enable where this form should run." />
+                        <div className="grid grid-cols-3 gap-2">{MODES.map((m) => <button key={m} onClick={() => setUsageModes((p) => p.includes(m) ? p.filter((x) => x !== m) : [...p, m])} className={`h-11 rounded-xl border text-xs font-black uppercase tracking-widest ${usageModes.includes(m) ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-text-secondary'}`}>{m}</button>)}</div>
+                        <L label="Linked Targets" tip="Choose journey destinations linked with this form." />
+                        <div className="flex flex-wrap gap-2">{TARGETS.map((t) => <button key={t} onClick={() => setLinkedTargets((p) => p.includes(t) ? p.filter((x) => x !== t) : [...p, t])} className={`px-3 h-9 rounded-full border text-xs font-black ${linkedTargets.includes(t) ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-text-secondary'}`}>{t}</button>)}</div>
+                        <L label="Auto Redirect" tip="Optional redirect after form submit." />
+                        <input value={redirectLabel} onChange={(e) => setRedirectLabel(e.target.value)} className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm" placeholder="Thank You Page" />
+                        <input value={redirectUrl} onChange={(e) => setRedirectUrl(e.target.value)} className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm" placeholder="https://yourbusiness.com/thank-you" />
+                        <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+                            <div className="flex items-center justify-between"><L label="Fields" tip="Add and structure fields for this form." /><button onClick={() => { const n = fieldCounter + 1; setFieldCounter(n); setFields((p) => [...p, mkField(n)]); }} className="h-8 px-3 rounded-lg bg-primary text-white text-xs font-black"><Plus size={12} /></button></div>
+                            {fields.map((f) => <div key={f.id} className="rounded-xl border border-gray-200 p-3 space-y-2"><select value={f.type} onChange={(e) => setFields((p) => p.map((x) => x.id === f.id ? { ...x, type: e.target.value as ApiFormFieldType } : x))} className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm">{TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select><input value={f.question} onChange={(e) => setFields((p) => p.map((x) => x.id === f.id ? { ...x, question: e.target.value } : x))} className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm" placeholder="Question" />{(f.type === 'radio' || f.type === 'select' || f.type === 'checkbox') && <input value={f.optionsText} onChange={(e) => setFields((p) => p.map((x) => x.id === f.id ? { ...x, optionsText: e.target.value } : x))} className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm" placeholder="Options (comma separated)" />}<div className="flex items-center justify-between"><label className="text-xs text-text-secondary flex items-center gap-2"><input type="checkbox" checked={f.isRequired} onChange={(e) => setFields((p) => p.map((x) => x.id === f.id ? { ...x, isRequired: e.target.checked } : x))} />Required</label>{fields.length > 1 && <button onClick={() => setFields((p) => p.filter((x) => x.id !== f.id))} className="text-red-600"><Trash2 size={14} /></button>}</div></div>)}
+                        </div>
+                        {!editingId && <><label className="flex items-center gap-2 text-sm font-medium text-text-main"><input type="checkbox" checked={saveAsTemplate} onChange={(e) => setSaveAsTemplate(e.target.checked)} />Save this as a branch template</label>{saveAsTemplate && <input value={templateName} onChange={(e) => setTemplateName(e.target.value)} className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm" placeholder="Branch Feedback Template" />}</>}
+                    </>}
+                    {step === 3 && <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div className="rounded-xl border border-gray-200 p-3 flex items-center gap-3"><div className="size-12 rounded-xl border border-gray-200 overflow-hidden bg-white flex items-center justify-center">{user?.businessLogo ? <img src={user.businessLogo} alt={user.businessName || 'Business'} className="w-full h-full object-cover" /> : <span className="text-sm font-black text-slate-900">{(user?.businessName || 'B').charAt(0)}</span>}</div><div><p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Current Business</p><p className="text-sm font-bold text-text-main">{user?.businessName || 'Your Business'}</p></div></div><div className="rounded-xl border border-gray-200 p-3"><p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Branch</p><p className="text-sm font-bold text-text-main">{branchName}</p></div></div>}
+                    <div className="flex items-center justify-between pt-2"><button onClick={() => setStep((s) => s === 1 ? 1 : ((s - 1) as 1 | 2 | 3))} className="h-10 px-4 rounded-xl border border-gray-200 text-xs font-black uppercase tracking-widest text-text-secondary">Back</button><div className="flex items-center gap-2">{step < 3 && <button onClick={() => setStep((s) => (s + 1) as 1 | 2 | 3)} className="h-10 px-4 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest">Next</button>}{step === 3 && <button onClick={save} disabled={createMutation.isPending || createTemplateMutation.isPending || updateMutation.isPending} className="h-10 px-4 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest disabled:opacity-60">{editingId ? 'Update Form' : 'Publish Form'}</button>}</div></div>
                 </div>
-
-                {wizardStep === 1 && (
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                            <LabelWithTip label="Title" tip="Public form title shown to users." />
-                            <input
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
-                                placeholder="Customer Feedback"
-                            />
-
-                            <LabelWithTip label="Description" tip="Optional description shown under the title." />
-                            <textarea
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                className="w-full min-h-20 rounded-xl border border-gray-200 px-3 py-2 text-sm"
-                                placeholder="Let us know how your visit went"
-                            />
-
-                            <LabelWithTip label="Branch" tip="API requires a branchId for form creation." />
-                            <select
-                                value={branchId}
-                                onChange={(e) => setBranchId(e.target.value)}
-                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
-                            >
-                                <option value="">Select branch</option>
-                                {branches.map((branch) => (
-                                    <option key={branch.id} value={branch.id}>
-                                        {branch.name}
-                                    </option>
-                                ))}
-                            </select>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <label className="h-11 border border-gray-200 rounded-xl px-3 text-sm flex items-center justify-between">
-                                    <span className="font-semibold">Active</span>
-                                    <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-                                </label>
-                                <label className="h-11 border border-gray-200 rounded-xl px-3 text-sm flex items-center justify-between">
-                                    <span className="font-semibold">Published</span>
-                                    <input type="checkbox" checked={isPublished} onChange={(e) => setIsPublished(e.target.checked)} />
-                                </label>
-                            </div>
-                        </div>
-
-                        <div className="rounded-xl border border-gray-200 p-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Quick Summary</p>
-                            <h3 className="text-lg font-bold text-text-main mt-2">{title || 'Form title'}</h3>
-                            <p className="text-sm text-text-secondary mt-1">{description || 'Form description'}</p>
-                            <p className="text-xs text-text-secondary mt-4">Branch: {branchId || 'Not selected'}</p>
-                        </div>
-                    </div>
-                )}
-
-                {wizardStep === 2 && (
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Fields</p>
-                                <Tooltip content="These fields map directly to API field objects.">
-                                    <span className="text-text-secondary inline-flex cursor-help"><CircleHelp size={12} /></span>
-                                </Tooltip>
-                            </div>
-                            <button onClick={addField} className="h-8 px-3 rounded-lg bg-primary text-white text-xs font-black uppercase tracking-widest">
-                                Add Field
-                            </button>
-                        </div>
-
-                        {fields.map((field, index) => (
-                            <div key={field.id} className="rounded-xl border border-gray-200 p-3 space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <p className="text-xs font-black text-text-main">Field {index + 1}</p>
-                                    {fields.length > 1 && (
-                                        <button onClick={() => removeField(field.id)} className="text-red-600">
-                                            <Trash2 size={14} />
-                                        </button>
-                                    )}
-                                </div>
-                                <select
-                                    value={field.type}
-                                    onChange={(e) => updateField(field.id, { type: e.target.value as ApiFormFieldType })}
-                                    className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm"
-                                >
-                                    {FIELD_TYPES.map((type) => (
-                                        <option key={type.value} value={type.value}>{type.label}</option>
-                                    ))}
-                                </select>
-                                <input
-                                    value={field.question}
-                                    onChange={(e) => updateField(field.id, { question: e.target.value })}
-                                    className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm"
-                                    placeholder="Question"
-                                />
-                                {(field.type === 'radio' || field.type === 'select' || field.type === 'checkbox') && (
-                                    <input
-                                        value={field.optionsText}
-                                        onChange={(e) => updateField(field.id, { optionsText: e.target.value })}
-                                        className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm"
-                                        placeholder="Options (comma separated)"
-                                    />
-                                )}
-                                <label className="text-xs text-text-secondary flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={field.isRequired}
-                                        onChange={(e) => updateField(field.id, { isRequired: e.target.checked })}
-                                    />
-                                    Required
-                                </label>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {wizardStep === 3 && (
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                        <div className="rounded-xl border border-gray-200 p-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Desktop Preview</p>
-                            <div className="mt-3 rounded-xl border border-gray-200 p-4 bg-gray-50">
-                                <h3 className="text-lg font-bold text-text-main">{title || 'Form title'}</h3>
-                                <p className="text-sm text-text-secondary mt-1">{description || 'Form description'}</p>
-                                <div className="mt-4 space-y-3">
-                                    {orderedFieldsPreview.map((field) => (
-                                        <div key={`${field.id}-desktop`} className="space-y-1">
-                                            <p className="text-sm font-semibold text-text-main">
-                                                {field.order}. {field.label} {field.isRequired ? <span className="text-red-500">*</span> : null}
-                                            </p>
-                                            <FieldPreview field={field} />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="rounded-xl border border-gray-200 p-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Mobile Preview (Before Publish)</p>
-                            <div className="mx-auto mt-3 w-full max-w-[360px] rounded-[2rem] border border-gray-200 bg-white p-4 shadow-lg">
-                                <div className="relative mx-auto w-full max-w-[320px] aspect-[9/19] bg-slate-900 rounded-[2.5rem] border-[8px] border-slate-800 overflow-hidden">
-                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-5 bg-slate-800 rounded-b-2xl z-20"></div>
-                                    <div className="absolute inset-0 bg-gray-50 p-4 overflow-y-auto">
-                                        <h4 className="text-sm font-black text-text-main mt-6">{title || 'Form title'}</h4>
-                                        <p className="text-[10px] text-text-secondary mt-1">{description || 'Form description'}</p>
-                                        <div className="mt-4 space-y-3">
-                                            {orderedFieldsPreview.slice(0, 5).map((field) => (
-                                                <div key={`${field.id}-mobile`} className="space-y-1">
-                                                    <p className="text-[11px] font-semibold text-text-main">{field.label}</p>
-                                                    <FieldPreview field={field} />
-                                                </div>
-                                            ))}
-                                        </div>
-                                        <button className="mt-4 w-full h-9 rounded-lg bg-primary text-white text-[10px] font-black uppercase tracking-widest opacity-90 cursor-not-allowed">
-                                            Submit
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={onCreateForm}
-                                disabled={createMutation.isPending}
-                                className="mt-4 w-full h-11 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest disabled:opacity-60"
-                            >
-                                {createMutation.isPending ? 'Publishing...' : 'Publish Form'}
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                    <button
-                        onClick={onPrevStep}
-                        disabled={wizardStep === 1}
-                        className="h-11 px-5 rounded-xl border border-gray-200 text-xs font-black uppercase tracking-widest text-text-secondary disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                        Previous
-                    </button>
-                    {wizardStep < 3 && (
-                        <button onClick={onNextStep} className="h-11 px-5 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest">
-                            Next Step
-                        </button>
-                    )}
-                </div>
+                <div className="bg-white rounded-2xl border border-gray-200 p-6"><p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-4">Mobile Preview</p><div className="flex justify-center"><PhoneFrame title="Current form on mobile"><div className="px-4 pb-8 pt-2"><StepBusinessForm form={previewForm} onComplete={() => toast.success('Preview submission captured')} onSkip={() => toast('Preview skipped')} /></div></PhoneFrame></div></div>
             </div>
 
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100">
-                    <p className="text-sm font-black uppercase tracking-widest text-text-secondary">Existing Forms</p>
-                </div>
+                <div className="px-5 py-4 border-b border-gray-100"><p className="text-sm font-black uppercase tracking-widest text-text-secondary">Existing Forms</p></div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead>
-                            <tr className="text-[10px] uppercase tracking-widest text-text-secondary border-b border-gray-100">
-                                <th className="px-5 py-3 font-black">Title</th>
-                                <th className="px-5 py-3 font-black">Branch</th>
-                                <th className="px-5 py-3 font-black">State</th>
-                                <th className="px-5 py-3 font-black">Fields</th>
-                                <th className="px-5 py-3 font-black text-right">Actions</th>
-                            </tr>
-                        </thead>
+                        <thead><tr className="text-[10px] uppercase tracking-widest text-text-secondary border-b border-gray-100"><th className="px-5 py-3 font-black">Form</th><th className="px-5 py-3 font-black">Branch</th><th className="px-5 py-3 font-black">Usage</th><th className="px-5 py-3 font-black">Redirect</th><th className="px-5 py-3 font-black text-right">Actions</th></tr></thead>
                         <tbody>
-                            {formsLoading && (
-                                <tr>
-                                    <td colSpan={5} className="px-5 py-6 text-sm text-text-secondary">Loading forms...</td>
-                                </tr>
-                            )}
-                            {!formsLoading && forms.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="px-5 py-6 text-sm text-text-secondary">No forms yet.</td>
-                                </tr>
-                            )}
-                            {forms.map((form) => (
-                                <tr key={form.id} className="border-b border-gray-50">
-                                    <td className="px-5 py-4">
-                                        <p className="text-sm font-bold text-text-main">{form.title}</p>
-                                        <p className="text-xs text-text-secondary">{form.description || 'No description'}</p>
-                                    </td>
-                                    <td className="px-5 py-4 text-xs text-text-secondary">{form.branchId}</td>
-                                    <td className="px-5 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase ${form.isPublished ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                                                {form.isPublished ? 'Published' : 'Draft'}
-                                            </span>
-                                            <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase ${form.isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                {form.isActive ? 'Active' : 'Inactive'}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-5 py-4 text-sm font-bold text-text-main">{form.fields?.length}</td>
-                                    <td className="px-5 py-4">
-                                        <div className="flex justify-end items-center gap-2">
-                                            <Link href={`/dashboard/settings/engagement/forms/${form.id}`} className="h-8 px-3 rounded-lg border border-gray-200 text-xs font-bold text-text-secondary flex items-center">
-                                                Preview
-                                            </Link>
-                                            <Link href={`/dashboard/settings/engagement/forms/responses/${form.id}`} className="h-8 px-3 rounded-lg border border-gray-200 text-xs font-bold text-text-secondary flex items-center">
-                                                Responses
-                                            </Link>
-                                            <button
-                                                onClick={() => onDeleteForm(form.id)}
-                                                className="h-8 px-3 rounded-lg border border-red-200 text-xs font-bold text-red-600"
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                            {formsLoading && <tr><td colSpan={5} className="px-5 py-6 text-sm text-text-secondary">Loading forms...</td></tr>}
+                            {!formsLoading && formsWithLink.length === 0 && <tr><td colSpan={5} className="px-5 py-6 text-sm text-text-secondary">No forms yet.</td></tr>}
+                            {formsWithLink.map((form) => <tr key={form.id} className="border-b border-gray-50"><td className="px-5 py-4"><p className="text-sm font-bold text-text-main">{form.title}</p><p className="text-xs text-text-secondary">{form.description || 'No description'}</p></td><td className="px-5 py-4 text-xs text-text-secondary">{form.branchId}</td><td className="px-5 py-4 text-xs text-text-secondary">{(form.usageModes || []).join(', ')}</td><td className="px-5 py-4 text-xs text-text-secondary">{form.redirectLabel || 'Stay in flow'}</td><td className="px-5 py-4"><div className="flex justify-end"><div className="relative"><button onClick={() => setOpenMenuId((c) => c === form.id ? null : form.id)} className="size-9 rounded-xl border border-gray-200 flex items-center justify-center text-text-secondary"><Ellipsis size={16} /></button>{openMenuId === form.id && <div className="absolute right-0 top-11 z-20 w-56 rounded-2xl border border-gray-200 bg-white shadow-xl p-2 space-y-1"><button onClick={() => { startEdit(form); setOpenMenuId(null); toast('Loaded form in editor'); }} className="w-full h-10 px-3 rounded-xl text-left text-sm font-medium hover:bg-gray-50 flex items-center gap-2"><Pencil size={14} /> Edit Form</button><button onClick={async () => { await navigator.clipboard.writeText(shareLink(form.id)); toast.success('Link copied'); setOpenMenuId(null); }} className="w-full h-10 px-3 rounded-xl text-left text-sm font-medium hover:bg-gray-50 flex items-center gap-2"><Copy size={14} /> Copy Link</button><button onClick={() => { setQrFormId(form.id); setOpenMenuId(null); }} className="w-full h-10 px-3 rounded-xl text-left text-sm font-medium hover:bg-gray-50 flex items-center gap-2"><QrCode size={14} /> Show QR</button><button onClick={() => router.push(`/dashboard/messaging/compose?formId=${form.id}`)} className="w-full h-10 px-3 rounded-xl text-left text-sm font-medium hover:bg-gray-50 flex items-center gap-2"><MessageSquareText size={14} /> Send To Messaging</button><button onClick={async () => { setOpenMenuId(null); await onDelete(form.id); }} className="w-full h-10 px-3 rounded-xl text-left text-sm font-medium text-red-600 hover:bg-red-50 flex items-center gap-2"><Trash2 size={14} /> Delete</button></div>}</div></div></td></tr>)}
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            {qrFormId && <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/30" onClick={() => setQrFormId(null)} /><div className="relative bg-white rounded-3xl border border-gray-200 shadow-2xl p-8 w-full max-w-md text-center space-y-4"><p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">QR Share</p><div className="rounded-3xl bg-gray-50 border border-gray-100 p-6 flex justify-center"><QRCodeSVG value={shareLink(qrFormId)} size={220} /></div><p className="text-xs text-text-secondary break-all">{shareLink(qrFormId)}</p></div></div>}
         </div>
     );
 }

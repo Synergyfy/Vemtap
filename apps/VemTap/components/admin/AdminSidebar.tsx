@@ -8,9 +8,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminNotificationsApi } from '@/lib/api/admin';
 import {
     Home, Store, Users, Nfc, CreditCard, BarChart, MessageSquare, Activity,
-    Settings, ChevronDown, Shield, LogOut, Gift, Search, Bell, HelpCircle, Package, FileText, Tag, Menu, X, Workflow, Eye
+    Settings, ChevronDown, Shield, ShieldCheck, LogOut, Gift, Search, Bell, HelpCircle, Package, FileText, Tag, Menu, X, Workflow, Eye
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
+import AdminMobileNav from './AdminMobileNav';
 
 interface AdminSidebarProps {
     children: React.ReactNode;
@@ -194,6 +195,12 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             href: '/admin/agents',
         },
         {
+            id: 'verifications',
+            label: 'Verifications',
+            icon: ShieldCheck,
+            href: '/admin/verifications',
+        },
+        {
             id: 'agent-hub',
             label: 'Support Agent Hub',
             icon: HelpCircle,
@@ -254,10 +261,10 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                                             </div>
                                             <ChevronDown
                                                 size={16}
-                                                className={`transition-transform ${expandedMenus.includes(item.id) ? 'rotate-180' : ''}`}
+                                                className={`transition-transform ${(expandedMenus.includes(item.id) || isParentActive(item.submenu)) ? 'rotate-180' : ''}`}
                                             />
                                         </button>
-                                        {expandedMenus.includes(item.id) && (
+                                        {(expandedMenus.includes(item.id) || isParentActive(item.submenu)) && (
                                             <div className="mt-1 ml-9 space-y-1">
                                                 {item.submenu.map((subItem) => (
                                                     <Link
@@ -412,10 +419,12 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto bg-gray-50">
+                <main className="flex-1 overflow-y-auto bg-gray-50 pb-16 lg:pb-0">
                     {children}
                 </main>
             </div>
+
+            <AdminMobileNav />
         </div>
     );
 }
