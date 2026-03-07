@@ -175,6 +175,37 @@ const maxVisits = peakTimes.length
                 })}
             </div>
 
+            <div className="bg-white rounded-2xl p-5 border border-gray-100">
+                <div className="flex items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h2 className="text-base font-display font-bold text-text-main">Tutorial Center</h2>
+                        <p className="text-[11px] text-text-secondary">Learn how to run core workflows with step-by-step docs.</p>
+                    </div>
+                    <button
+                        onClick={() => router.push('/bussinesss')}
+                        className="px-4 py-2 text-xs font-black rounded-xl border border-primary/20 text-primary hover:bg-primary/5"
+                    >
+                        Open Tutorial
+                    </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {[
+                        { title: 'Build Forms', desc: 'Create forms, preview on mobile, and publish.', href: '/bussinesss' },
+                        { title: 'Send Messages', desc: 'Attach form links to SMS, WhatsApp, and Email.', href: '/bussinesss' },
+                        { title: 'Track Results', desc: 'Use analytics and visitor reports to improve.', href: '/bussinesss' },
+                    ].map((item) => (
+                        <button
+                            key={item.title}
+                            onClick={() => router.push(item.href)}
+                            className="text-left rounded-xl border border-gray-200 p-3 hover:border-primary/30 hover:bg-primary/[0.03] transition-colors"
+                        >
+                            <p className="text-sm font-black text-text-main">{item.title}</p>
+                            <p className="text-xs text-text-secondary mt-1">{item.desc}</p>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             {/* Main Content Grid: Chart + Audience + Quick Actions */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
