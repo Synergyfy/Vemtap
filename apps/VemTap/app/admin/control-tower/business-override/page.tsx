@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, ShieldCheck, ArrowRightLeft, KeyRound, Power } from 'lucide-react';
+import { Search, ShieldCheck, ArrowRightLeft, KeyRound, Power, ExternalLink } from 'lucide-react';
 import SudoActionPanel from '@/components/admin/control-tower/SudoActionPanel';
 import {
     getBusinessSudoActions,
@@ -124,13 +124,24 @@ export default function BusinessOverridePage() {
                             />
                         </div>
                     </div>
-                    <div className="w-64">
+                    <div className="w-64 space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Selected Business</label>
-                        <input
-                            readOnly
-                            value={selectedBusinessUid || 'None Selected'}
-                            className="mt-1 w-full h-11 px-3 bg-gray-100 border border-gray-200 rounded-lg text-sm font-mono"
-                        />
+                        <div className="flex gap-2">
+                            <input
+                                readOnly
+                                value={selectedBusinessUid || 'None Selected'}
+                                className="w-full h-11 px-3 bg-gray-100 border border-gray-200 rounded-lg text-sm font-mono"
+                            />
+                            {selectedBusinessUid && (
+                                <Link
+                                    href={`/dashboard?admin_mode=1&business_uid=${encodeURIComponent(selectedBusinessUid)}`}
+                                    className="flex items-center justify-center size-11 bg-primary text-white rounded-lg hover:bg-primary-hover transition-all shrink-0 shadow-lg shadow-primary/20"
+                                    title="Open Business Dashboard"
+                                >
+                                    <ExternalLink size={18} />
+                                </Link>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -209,13 +220,24 @@ export default function BusinessOverridePage() {
                             />
                         </div>
                     </div>
-                    <div className="w-64">
+                    <div className="w-64 space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Selected Customer</label>
-                        <input
-                            readOnly
-                            value={selectedCustomerUid || 'None Selected'}
-                            className="mt-1 w-full h-11 px-3 bg-gray-100 border border-gray-200 rounded-lg text-sm font-mono"
-                        />
+                        <div className="flex gap-2">
+                            <input
+                                readOnly
+                                value={selectedCustomerUid || 'None Selected'}
+                                className="w-full h-11 px-3 bg-gray-100 border border-gray-200 rounded-lg text-sm font-mono"
+                            />
+                            {selectedCustomerUid && (
+                                <Link
+                                    href={`/customer/dashboard?admin_mode=1&customer_uid=${encodeURIComponent(selectedCustomerUid)}&business_uid=${encodeURIComponent(customers?.find(c => c.uid === selectedCustomerUid)?.businessUid || '')}`}
+                                    className="flex items-center justify-center size-11 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all shrink-0 shadow-lg shadow-indigo-600/20"
+                                    title="Open Customer Dashboard"
+                                >
+                                    <ExternalLink size={18} />
+                                </Link>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -280,23 +302,6 @@ export default function BusinessOverridePage() {
                 </div>
             </div>
 
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                <p className="text-xs font-bold text-text-main">Support Links:</p>
-                <div className="flex flex-wrap gap-4 mt-3">
-                    <Link
-                        href={`/dashboard?admin_mode=1&business_uid=${encodeURIComponent(selectedBusinessUid)}`}
-                        className={`text-xs font-bold text-primary hover:underline ${!selectedBusinessUid ? 'opacity-50 pointer-events-none' : ''}`}
-                    >
-                        Open Business Dashboard
-                    </Link>
-                    <Link
-                        href={`/customer/dashboard?admin_mode=1&customer_uid=${encodeURIComponent(selectedCustomerUid)}&business_uid=${encodeURIComponent(customers?.find(c => c.uid === selectedCustomerUid)?.businessUid || '')}`}
-                        className={`text-xs font-bold text-primary hover:underline ${!selectedCustomerUid ? 'opacity-50 pointer-events-none' : ''}`}
-                    >
-                        Open Customer Dashboard
-                    </Link>
-                </div>
-            </div>
         </div>
     );
 }
