@@ -13,6 +13,7 @@ import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBranches } from '@/services/branches/hooks';
 import { useBusinessForms, useCreateBusinessForm, useCreateFormTemplate, useDeleteBusinessForm, useFormTemplates, useUpdateBusinessForm } from '@/services/business-forms/hooks';
+import { useMyBusiness } from '@/services/businesses/hooks';
 import type { ApiFormFieldType, BusinessForm, CreateBusinessFormRequest } from '@/services/business-forms/types';
 
 type DraftField = { id: string; type: ApiFormFieldType; question: string; optionsText: string; isRequired: boolean };
@@ -20,7 +21,7 @@ const TYPES: ApiFormFieldType[] = ['text', 'textarea', 'number', 'select', 'radi
 const TARGETS = ['Messaging Center', 'Instagram bio', 'Google review flow', 'Post-subscription onboarding'];
 const MODES: Array<'link' | 'qr' | 'messaging'> = ['link', 'qr', 'messaging'];
 const mkField = (n: number): DraftField => ({ id: `draft-${n}`, type: 'text', question: '', optionsText: '', isRequired: false });
-const shareLink = (id: string) => (typeof window === 'undefined' ? `/user-step?formId=${id}` : `${window.location.origin}/user-step?formId=${id}`);
+const shareLink = (id: string) => (typeof window === 'undefined' ? `/forms/${id}` : `${window.location.origin}/forms/${id}`);
 
 const L = ({ label, tip }: { label: string; tip: string }) => (
     <div className="flex items-center gap-1">
@@ -32,6 +33,7 @@ const L = ({ label, tip }: { label: string; tip: string }) => (
 export default function EngagementFormsBuilderPage() {
     const router = useRouter();
     const user = useAuthStore((s) => s.user);
+    const { data: myBusiness } = useMyBusiness();
     const activeBranchId = useAuthStore((s) => s.activeBranchId);
     const userBranchId = useAuthStore((s) => s.user?.branchId);
     const { data: branches = [] } = useBranches();
@@ -77,10 +79,12 @@ export default function EngagementFormsBuilderPage() {
     }, [selectedTemplate]);
 
     const branchName = useMemo(() => branches.find((b) => b.id === branchId)?.name || branchId || 'No Branch', [branchId, branches]);
+    const currentBusinessName = myBusiness?.name || user?.businessName || 'Your Business';
+    const currentBusinessLogo = myBusiness?.logoUrl || user?.businessLogo;
     const previewForm = useMemo(() => ({
-        id: 'preview', title: title || 'Form title', description, instructions, branchName, businessName: user?.businessName || 'Your Business', businessLogo: user?.businessLogo, redirectLabel, redirectUrl: redirectUrl || undefined,
+        id: 'preview', title: title || 'Form title', description, instructions, branchName, businessName: currentBusinessName, businessLogo: currentBusinessLogo, redirectLabel, redirectUrl: redirectUrl || undefined,
         fields: fields.map((f, i) => ({ id: f.id, type: f.type, question: f.question || `Question ${i + 1}`, options: f.optionsText.split(',').map((x) => x.trim()).filter(Boolean), isRequired: f.isRequired, order: i + 1 })),
-    }), [branchName, description, fields, instructions, redirectLabel, redirectUrl, title, user?.businessLogo, user?.businessName]);
+    }), [branchName, currentBusinessLogo, currentBusinessName, description, fields, instructions, redirectLabel, redirectUrl, title]);
 
     const valid = () => {
         if (!title.trim()) return toast.error('Title is required'), false;
@@ -91,7 +95,7 @@ export default function EngagementFormsBuilderPage() {
     };
     const payload = (): CreateBusinessFormRequest => ({
         title: title.trim(), description: description.trim() || undefined, instructions: instructions.trim() || undefined, redirectLabel: redirectLabel.trim() || undefined, redirectUrl: redirectUrl.trim() || undefined,
-        branchId, businessId: user?.businessId, businessName: user?.businessName || 'Your Business', businessLogo: user?.businessLogo, isActive: true, isPublished: true, templateId: templateId || undefined, templateName: selectedTemplate?.name, templateScope: selectedTemplate?.scope, usageModes, linkedTargets,
+        branchId, businessId: user?.businessId, businessName: currentBusinessName, businessLogo: currentBusinessLogo, isActive: true, isPublished: true, templateId: templateId || undefined, templateName: selectedTemplate?.name, templateScope: selectedTemplate?.scope, usageModes, linkedTargets,
         fields: fields.map((f, i) => ({ type: f.type, question: f.question.trim(), options: f.optionsText.split(',').map((x) => x.trim()).filter(Boolean), isRequired: f.isRequired, order: i + 1 })),
     });
 
@@ -133,11 +137,54 @@ export default function EngagementFormsBuilderPage() {
             <PageHeader title="Visitor Forms" description="Step-by-step form creator with mobile review and publishing." />
             <EngagementTabs tabs={[{ label: 'Socials', href: '/dashboard/settings/engagement/socials' }, { label: 'Form Creator', active: true }, { label: 'Responses', href: '/dashboard/settings/engagement/forms/responses' }, { label: 'Automation', href: '/dashboard/automations' }, { label: 'Messaging', href: '/dashboard/messaging/compose' }]} />
 
+            <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Engagement Overview</p>
+                        <h2 className="text-lg font-black text-text-main">How this form flow works</h2>
+                    </div>
+                    <button onClick={() => router.push('/bussinesss')} className="h-10 px-4 rounded-xl border border-primary/20 text-xs font-black text-primary hover:bg-primary/5">Open Tutorial Docs</button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {[
+                        {
+                            title: '1. Build Form',
+                            desc: 'Create fields, branch assignment, and submit behavior.',
+                            cta: 'Go to Builder Step',
+                            action: () => setStep(1),
+                        },
+                        {
+                            title: '2. Share Form',
+                            desc: 'Copy public form links or attach forms in messaging.',
+                            cta: 'Open Messaging',
+                            action: () => router.push('/dashboard/messaging/compose'),
+                        },
+                        {
+                            title: '3. Track Responses',
+                            desc: 'Monitor responses and optimize your engagement journey.',
+                            cta: 'View Responses',
+                            action: () => router.push('/dashboard/settings/engagement/forms/responses'),
+                        },
+                    ].map((card) => (
+                        <div key={card.title} className="rounded-xl border border-gray-200 p-4">
+                            <p className="text-sm font-black text-text-main">{card.title}</p>
+                            <p className="text-xs text-text-secondary mt-1 mb-3">{card.desc}</p>
+                            <button onClick={card.action} className="text-xs font-black text-primary hover:underline">{card.cta}</button>
+                        </div>
+                    ))}
+                </div>
+                <div className="mt-3">
+                    <button onClick={() => router.push('/bussinesss')} className="text-xs font-black text-text-secondary hover:text-primary">
+                        Read full walkthrough in Tutorial Dashboard
+                    </button>
+                </div>
+            </div>
+
             <div className="rounded-2xl border border-gray-200 bg-white p-4 grid grid-cols-1 md:grid-cols-3 gap-2">
                 {[1, 2, 3].map((n) => <button key={n} onClick={() => setStep(n as 1 | 2 | 3)} className={`h-11 rounded-xl text-xs font-black uppercase tracking-widest ${step === n ? 'bg-primary text-white' : 'border border-gray-200 text-text-secondary'}`}>Step {n}</button>)}
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[1.05fr,0.95fr] gap-6">
+            <div className="grid grid-cols-2 xl:grid-cols-[1.05fr,0.95fr] gap-6">
                 <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
                     {editingId && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 flex items-center justify-between"><span>Editing existing form</span><button onClick={reset} className="underline">Create new</button></div>}
                     {step === 1 && <>

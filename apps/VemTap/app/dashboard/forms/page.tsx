@@ -5,14 +5,12 @@ import Link from 'next/link';
 import { Copy, CheckCircle2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/dashboard/PageHeader';
-import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
 import { useBusinessForms } from '@/services/business-forms/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 
 export default function FormsPage() {
-    const { data: myBusiness } = useMyBusiness();
     const { data: forms = [], isLoading } = useBusinessForms();
     const { data: branches = [] } = useBranches();
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
@@ -24,7 +22,6 @@ export default function FormsPage() {
     const branchScope = activeBranchId || userBranchId || null;
 
     const defaultFormId = getDefaultFormId(branchScope || 'global');
-    const businessSlug = (myBusiness?.name || 'business').toLowerCase().replace(/\s+/g, '-');
     const branchName = branches.find((branch) => branch.id === branchScope)?.name || (!branchScope ? 'Full Business' : branchScope);
 
     const scopedForms = useMemo(() => {
@@ -33,7 +30,7 @@ export default function FormsPage() {
     }, [forms, branchScope]);
 
     const copyLink = async (formId: string) => {
-        const url = `${window.location.origin}/user-step?formId=${formId}`;
+        const url = `${window.location.origin}/forms/${formId}`;
         await navigator.clipboard.writeText(url);
         toast.success('Form link copied');
     };
@@ -83,7 +80,7 @@ export default function FormsPage() {
                                 </tr>
                             )}
                             {scopedForms.map((form) => {
-                                const shareUrl = `/user-step?formId=${form.id}`;
+                                const shareUrl = `/forms/${form.id}`;
                                 const isDefault = defaultFormId === form.id;
                                 return (
                                     <tr key={form.id} className="border-b border-gray-50">
