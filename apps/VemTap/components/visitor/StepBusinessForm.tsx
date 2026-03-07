@@ -16,8 +16,15 @@ type PreviewField = {
 type PreviewForm = {
     id: string;
     title: string;
+    description?: string;
+    instructions?: string;
     type?: string;
     typeLabel?: string;
+    businessName?: string;
+    businessLogo?: string;
+    branchName?: string;
+    redirectLabel?: string;
+    redirectUrl?: string;
     fields: PreviewField[];
 };
 
@@ -74,7 +81,34 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                 </button>
             </div>
 
+            <div className="mb-5 grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-2 rounded-xl border border-gray-100 bg-white p-2">
+                    <div className="size-10 rounded-xl bg-white border border-gray-100 overflow-hidden flex items-center justify-center shrink-0">
+                        {form.businessLogo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={form.businessLogo} alt={form.businessName || form.title} className="w-full h-full object-cover" />
+                        ) : (
+                            <span className="text-base font-black text-slate-900">{(form.businessName || form.title).charAt(0)}</span>
+                        )}
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Business</p>
+                        <p className="text-sm font-bold text-slate-900">{form.businessName || 'Business'}</p>
+                    </div>
+                </div>
+                <div className="rounded-xl border border-gray-100 bg-white p-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Branch</p>
+                    <p className="text-sm font-bold text-slate-900">{form.branchName || 'Main Branch'}</p>
+                </div>
+            </div>
+
             <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-6">{form.title}</h2>
+            {form.description ? <p className="text-sm text-slate-500 mb-4">{form.description}</p> : null}
+            {form.instructions ? (
+                <div className="mb-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
+                    {form.instructions}
+                </div>
+            ) : null}
 
             <div className="space-y-5 text-left">
                 {normalizedFields.map((field) => (
@@ -157,6 +191,12 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
             >
                 Submit Form
             </button>
+
+            {form.redirectLabel || form.redirectUrl ? (
+                <p className="mt-3 text-center text-[11px] font-medium text-slate-400">
+                    After submit, customers continue to {form.redirectLabel || form.redirectUrl}.
+                </p>
+            ) : null}
         </motion.div>
     );
 };
