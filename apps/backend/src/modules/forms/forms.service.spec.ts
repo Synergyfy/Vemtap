@@ -6,6 +6,7 @@ import { FormField } from './entities/form-field.entity';
 import { FormResponse } from './entities/form-response.entity';
 import { FormAnswer } from './entities/form-answer.entity';
 import { NotFoundException } from '@nestjs/common';
+import { BranchesService } from '../branches/branches.service';
 
 describe('FormsService', () => {
   let service: FormsService;
@@ -57,6 +58,13 @@ describe('FormsService', () => {
           provide: getRepositoryToken(FormAnswer),
           useValue: mockFormAnswersRepository,
         },
+        {
+          provide: BranchesService,
+          useValue: {
+            getBusinessId: jest.fn().mockResolvedValue('bus-1'),
+            findById: jest.fn().mockResolvedValue({ id: 'branch-1', businessId: 'bus-1' }),
+          },
+        },
       ],
     }).compile();
 
@@ -82,6 +90,7 @@ describe('FormsService', () => {
       expect(mockFormsRepository.create).toHaveBeenCalledWith({
         ...dto,
         branchId,
+        businessId: 'bus-1',
       });
     });
   });

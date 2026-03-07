@@ -99,6 +99,11 @@ export class UpdateAutomationToggleDto {
   @IsNotEmpty()
   @IsBoolean()
   isActive: boolean;
+
+  @ApiPropertyOptional({ example: 'uuid-of-branch' })
+  @IsOptional()
+  @IsString()
+  branchId?: string;
 }
 
 export class UpdateAutomationConfigDto {
@@ -118,6 +123,11 @@ export class UpdateAutomationConfigDto {
   @IsOptional()
   @IsNumber()
   delayDays?: number;
+
+  @ApiPropertyOptional({ example: 'uuid-of-branch' })
+  @IsOptional()
+  @IsString()
+  branchId?: string;
 }
 
 export class AutomationLogResponseDto {

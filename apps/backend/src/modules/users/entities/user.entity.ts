@@ -92,8 +92,12 @@ export class User extends AbstractBaseEntity {
   branch: Branch;
 
   @ApiProperty({ example: 'uuid-string', nullable: true })
-  @Column({ nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   branchId: string;
+
+  @ManyToOne(() => Business, { nullable: true })
+  @JoinColumn({ name: 'businessId' })
+  business: Business;
 
   @ApiProperty({ example: 'uuid-string', nullable: true })
   @Column({ type: 'uuid', nullable: true })

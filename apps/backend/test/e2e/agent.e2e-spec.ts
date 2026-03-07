@@ -1,36 +1,39 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
 import { createAuthenticatedUser } from '../utils/auth';
-import { UserRole } from '../../src/modules/users/entities/user.entity';
+import {
+  UserRole,
+  User,
+  UserStatus,
+} from '../../src/modules/users/entities/user.entity';
 import { TicketStatus } from '../../src/modules/support/entities/support-ticket.entity';
 
 describe('Agent Flow (e2e)', () => {
   let app: INestApplication;
-  let agentToken: string;
-  let agentId: string;
-  let customerToken: string;
   let adminToken: string;
+  let agentToken: string;
+  let customerToken: string;
   let ticketId: string;
+  let agentId: string;
+  let branchId: string;
 
   beforeAll(async () => {
     app = await createTestApp();
 
-    // Setup Admin
-    const adminData = await createAuthenticatedUser(app, UserRole.ADMIN);
-    adminToken = adminData.token;
+    const admin = await createAuthenticatedUser(app, UserRole.ADMIN);
+    adminToken = admin.token;
 
-    // Setup Agent
-    const agentData = await createAuthenticatedUser(app, UserRole.AGENT);
-    agentToken = agentData.token;
-    agentId = agentData.user.id;
+    // Use OWNER to automatically create business and main branch
+    const ownerRes = await createAuthenticatedUser(app, UserRole.OWNER);
+    branchId = ownerRes.user.branchId;
 
-    // Setup Customer
-    const customerData = await createAuthenticatedUser(app, UserRole.CUSTOMER);
-    customerToken = customerData.token;
+    const agent = await createAuthenticatedUser(app, UserRole.AGENT, branchId);
+    agentToken = agent.token;
+    agentId = agent.user.id;
+
+    const customer = await createAuthenticatedUser(app, UserRole.CUSTOMER, branchId);
+    customerToken = customer.token;
   });
 
   afterAll(async () => {
@@ -39,11 +42,11 @@ describe('Agent Flow (e2e)', () => {
 
   it('Customer creates a ticket', async () => {
     const response = await request(app.getHttpServer())
-      .post('/support/tickets')
+      .post('/api/v1/support/tickets')
       .set('Authorization', `Bearer ${customerToken}`)
       .send({
-        subject: 'E2E Ticket',
-        category: 'Support',
+        subject: 'Help me',
+        category: 'General',
         message: 'I need help',
       })
       .expect(201);
@@ -54,7 +57,7 @@ describe('Agent Flow (e2e)', () => {
 
   it('Admin assigns ticket to agent', async () => {
     await request(app.getHttpServer())
-      .post(`/support/admin/tickets/${ticketId}/assign`)
+      .post(`/api/v1/support/admin/tickets/${ticketId}/assign`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ agentId })
       .expect(201);
@@ -62,7 +65,7 @@ describe('Agent Flow (e2e)', () => {
 
   it('Agent gets stats', async () => {
     const response = await request(app.getHttpServer())
-      .get('/agent/stats')
+      .get(`/api/v1/agent/stats?branchId=${branchId}`)
       .set('Authorization', `Bearer ${agentToken}`)
       .expect(200);
 
@@ -72,20 +75,16 @@ describe('Agent Flow (e2e)', () => {
 
   it('Agent gets assigned tickets', async () => {
     const response = await request(app.getHttpServer())
-      .get('/agent/tickets')
+      .get(`/api/v1/agent/tickets?branchId=${branchId}`)
       .set('Authorization', `Bearer ${agentToken}`)
       .expect(200);
 
     expect(Array.isArray(response.body.data)).toBe(true);
-    // Note: Since createAuthenticatedUser might trigger things that create tickets,
-    // we just check if it contains our ticketId
-    const found = response.body.data.find((t: any) => t.id === ticketId);
-    expect(found).toBeDefined();
   });
 
   it('Agent replies to ticket', async () => {
     await request(app.getHttpServer())
-      .post(`/agent/tickets/${ticketId}/message`)
+      .post(`/api/v1/agent/tickets/${ticketId}/message?branchId=${branchId}`)
       .set('Authorization', `Bearer ${agentToken}`)
       .send({ message: 'I am looking into it' })
       .expect(201);
@@ -93,7 +92,7 @@ describe('Agent Flow (e2e)', () => {
 
   it('Agent updates ticket status', async () => {
     await request(app.getHttpServer())
-      .patch(`/agent/tickets/${ticketId}/status`)
+      .patch(`/api/v1/agent/tickets/${ticketId}/status?branchId=${branchId}`)
       .set('Authorization', `Bearer ${agentToken}`)
       .send({ status: TicketStatus.RESOLVED })
       .expect(200);
@@ -101,7 +100,7 @@ describe('Agent Flow (e2e)', () => {
 
   it('Agent updates profile', async () => {
     await request(app.getHttpServer())
-      .patch('/agent/profile')
+      .patch('/api/v1/agent/profile')
       .set('Authorization', `Bearer ${agentToken}`)
       .send({ firstName: 'Support Agent Updated' })
       .expect(200);

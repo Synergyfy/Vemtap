@@ -38,7 +38,7 @@ import {
 } from '../dto/automation-rule.dto';
 
 @ApiTags('Messaging Automations')
-@Controller('automations')
+@Controller('messaging/automations')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
 @Permissions('messaging')
@@ -239,7 +239,7 @@ export class AutomationsController {
     @Body() dto: UpdateAutomationToggleDto,
     @Request() req: { user: User },
   ) {
-    const branchId = await this.getBranchId(req);
+    const branchId = await this.getBranchId(req, dto.branchId);
     const rule = await this.automationService.findOne(id);
     if (!rule) throw new BadRequestException('Rule not found');
     if (rule.branchId !== branchId && req.user.role !== UserRole.ADMIN)
@@ -257,7 +257,7 @@ export class AutomationsController {
     @Body() dto: UpdateAutomationConfigDto,
     @Request() req: { user: User },
   ) {
-    const branchId = await this.getBranchId(req);
+    const branchId = await this.getBranchId(req, dto.branchId);
     const rule = await this.automationService.findOne(id);
     if (!rule) throw new BadRequestException('Rule not found');
     if (rule.branchId !== branchId && req.user.role !== UserRole.ADMIN)

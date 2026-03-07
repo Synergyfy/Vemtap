@@ -28,6 +28,7 @@ describe('LoyaltyController', () => {
   const mockReq = { user: mockUser };
 
   beforeEach(async () => {
+    mockLoyaltyService.checkBranchAccess.mockResolvedValue(true);
     const module: TestingModule = await Test.createTestingModule({
       controllers: [LoyaltyController],
       providers: [

@@ -20,6 +20,12 @@ export interface TieredPrice {
     price: number | 'quote';
 }
 
+export interface HowToStep {
+    id?: string;
+    title: string;
+    description: string;
+}
+
 export interface ProductDetail {
     id: string;
     sku: string;
@@ -52,6 +58,7 @@ export interface ProductDetail {
     moq?: number;
     reviews?: number; // Added for product detail page compatibility
     rating?: number; // Added for compatibility
+    howToSteps?: HowToStep[];
 }
 
 export type ProductsResponse = {

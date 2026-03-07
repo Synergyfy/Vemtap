@@ -20,13 +20,14 @@ import { RegisterAdminDto } from './dto/register-admin.dto';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { PasswordResetOtpDto } from './dto/password-reset-otp.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { SwitchRoleDto } from './dto/switch-role.dto';
 import {
   AuthResponseDto,
   MessageResponseDto,
   VerifyOtpResponseDto,
 } from './dto/responses.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -178,5 +179,18 @@ export class AuthController {
     const ip = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'];
     return this.authService.resetPassword(dto, { ip, userAgent });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('switch-role')
+  @ApiOperation({ summary: 'Switch current active role (e.g. Owner to Customer)' })
+  @ApiBody({ type: SwitchRoleDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Role switched successfully, returns new access token',
+    type: AuthResponseDto,
+  })
+  async switchRole(@Request() req, @Body() dto: SwitchRoleDto) {
+    return this.authService.switchRole(req.user, dto.role);
   }
 }

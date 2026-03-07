@@ -8,6 +8,7 @@ import { AutomationRule } from '../entities/automation-rule.entity';
 import { AutomationLog } from '../entities/automation-log.entity';
 import { MessagingEngineService } from './messaging-engine.service';
 import { TriggerType, ActionType } from '../enums/automation.enum';
+import { BranchesService } from '../../branches/branches.service';
 
 describe('AutomationService', () => {
   let service: AutomationService;
@@ -49,6 +50,12 @@ describe('AutomationService', () => {
           provide: getQueueToken('messaging-automation'),
           useValue: {
             add: jest.fn(),
+          },
+        },
+        {
+          provide: BranchesService,
+          useValue: {
+            getBusinessId: jest.fn().mockResolvedValue('bus-1'),
           },
         },
       ],

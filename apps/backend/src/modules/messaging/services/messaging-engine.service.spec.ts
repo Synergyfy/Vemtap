@@ -8,6 +8,7 @@ import { TemplateService } from './template.service';
 import { CampaignService } from './campaign.service';
 import { SettingsService } from '../../settings/settings.service';
 import { ProviderRouterService } from './provider-router.service';
+import { BranchesService } from '../../branches/branches.service';
 import { DataSource } from 'typeorm';
 
 import { Contact } from '../../contacts/entities/contact.entity';
@@ -20,17 +21,9 @@ import { Channel } from '../enums/channel.enum';
 
 describe('MessagingEngineService', () => {
   let service: MessagingEngineService;
-
-  const mockRepo = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn().mockImplementation((d) => d),
-    save: jest
-      .fn()
-      .mockImplementation((e) => Promise.resolve({ id: '1', ...e })),
-    findBy: jest.fn(),
-    update: jest.fn(),
-  };
+  let branchRepoMock: any;
+  let contactRepoMock: any;
+  let messageRepoMock: any;
 
   const mockQueue = {
     add: jest.fn(),
@@ -46,7 +39,7 @@ describe('MessagingEngineService', () => {
   };
 
   const mockSettingsService = {
-    getGlobalSettings: jest.fn().mockResolvedValue({
+    getSettings: jest.fn().mockResolvedValue({
       messagingCostSms: 0.05,
       messagingCostWhatsapp: 0.08,
       messagingCostEmail: 0.01,
@@ -61,21 +54,33 @@ describe('MessagingEngineService', () => {
   };
 
   beforeEach(async () => {
-    jest.clearAllMocks();
-    mockRepo.findOne.mockReset();
-    mockRepo.find.mockReset();
-    mockRepo.create.mockImplementation((d) => d);
-    mockRepo.save.mockImplementation((e) => Promise.resolve({ id: '1', ...e }));
+    branchRepoMock = {
+      findOne: jest.fn(),
+      findOneBy: jest.fn(),
+    };
+    contactRepoMock = {
+      find: jest.fn(),
+      findOneBy: jest.fn(),
+    };
+    messageRepoMock = {
+      create: jest.fn().mockImplementation((d) => d),
+      save: jest
+        .fn()
+        .mockImplementation((e) => Promise.resolve({ id: '1', ...e })),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MessagingEngineService,
-        { provide: getRepositoryToken(Contact), useValue: mockRepo },
-        { provide: getRepositoryToken(Message), useValue: mockRepo },
-        { provide: getRepositoryToken(MessageLog), useValue: mockRepo },
-        { provide: getRepositoryToken(ConversationThread), useValue: mockRepo },
-        { provide: getRepositoryToken(Business), useValue: mockRepo },
-        { provide: getRepositoryToken(Branch), useValue: mockRepo },
+        { provide: getRepositoryToken(Contact), useValue: contactRepoMock },
+        { provide: getRepositoryToken(Message), useValue: messageRepoMock },
+        { provide: getRepositoryToken(MessageLog), useValue: messageRepoMock },
+        {
+          provide: getRepositoryToken(ConversationThread),
+          useValue: messageRepoMock,
+        },
+        { provide: getRepositoryToken(Business), useValue: messageRepoMock },
+        { provide: getRepositoryToken(Branch), useValue: branchRepoMock },
         { provide: getQueueToken('messaging-batch-send'), useValue: mockQueue },
         {
           provide: ComplianceService,
@@ -87,11 +92,15 @@ describe('MessagingEngineService', () => {
         { provide: CreditService, useValue: mockCreditService },
         {
           provide: TemplateService,
-          useValue: { getTemplate: jest.fn(), render: jest.fn() },
+          useValue: { findOne: jest.fn(), render: jest.fn() },
         },
         { provide: CampaignService, useValue: mockCampaignService },
         { provide: SettingsService, useValue: mockSettingsService },
         { provide: ProviderRouterService, useValue: mockProviderRouter },
+        {
+          provide: BranchesService,
+          useValue: { checkBranchAccess: jest.fn() },
+        },
         { provide: DataSource, useValue: {} },
       ],
     }).compile();
@@ -100,112 +109,57 @@ describe('MessagingEngineService', () => {
   });
 
   describe('sendMessage', () => {
-    it('should throw an error if business is not found', async () => {
-      mockRepo.findOne.mockResolvedValueOnce(null);
+    it('should throw an error if branch is not found', async () => {
+      branchRepoMock.findOne.mockResolvedValueOnce(null);
       await expect(
         service.sendMessage({
-          businessId: 'b1',
           branchId: 'br1',
           channel: Channel.SMS,
           content: 'test',
         }),
-      ).rejects.toThrow('Business not found');
+      ).rejects.toThrow('Branch not found');
     });
 
-    it('should deduct credits and enqueue a batch job when targeting multiple contacts', async () => {
-      mockRepo.findOne.mockResolvedValueOnce({
-        id: 'b1',
-        name: 'TestBusiness',
+    it('should enqueue a batch job when targeting multiple contacts', async () => {
+      branchRepoMock.findOne.mockResolvedValueOnce({
+        id: 'br1',
+        businessId: 'biz1',
       });
-      // Mock resolveAudience
-      mockRepo.find.mockResolvedValueOnce([{ id: 'c1' }, { id: 'c2' }]);
-      // Mock branchRepo.findOne
-      mockRepo.findOne.mockResolvedValueOnce({ id: 'branch1' });
+      contactRepoMock.find.mockResolvedValueOnce([{ id: 'c1' }, { id: 'c2' }]);
+      contactRepoMock.findOneBy
+        .mockResolvedValueOnce({ id: 'c1', phone: '123' })
+        .mockResolvedValueOnce({ id: 'c2', phone: '456' });
 
       const result = await service.sendMessage({
-        businessId: 'b1',
-        branchId: 'branch1',
-        channel: Channel.SMS,
-        content: 'msg',
-      });
-
-      expect(mockCreditService.deductChannelCredit).toHaveBeenCalled();
-      expect(mockCampaignService.createCampaign).toHaveBeenCalledWith(
-        expect.objectContaining({
-          businessId: 'b1',
-          branchId: 'branch1',
-        }),
-      );
-      expect(mockQueue.add).toHaveBeenCalled();
-      expect(result.campaignId).toBe('c1');
-    });
-
-    it('should handle optional branchId by finding a default branch', async () => {
-      mockRepo.findOne
-        .mockResolvedValueOnce({ id: 'b1', name: 'TestBusiness' }) // businessRepo.findOne
-        .mockResolvedValueOnce({ id: 'default-branch' }); // branchRepo.findOne fallback
-
-      mockRepo.find.mockResolvedValueOnce([{ id: 'c1' }, { id: 'c2' }]);
-
-      await service.sendMessage({
-        businessId: 'b1',
+        branchId: 'br1',
+        contactIds: ['c1', 'c2'],
         channel: Channel.SMS,
         content: 'msg',
       });
 
       expect(mockCampaignService.createCampaign).toHaveBeenCalledWith(
         expect.objectContaining({
-          branchId: 'default-branch',
+          branchId: 'br1',
         }),
       );
+      // It sends individually if <= 50 contacts
+      expect(messageRepoMock.save).toHaveBeenCalled();
+      expect(result.messageIds).toHaveLength(2);
     });
 
-    it('should filter by RECENT audience type', async () => {
-      mockRepo.findOne
-        .mockResolvedValueOnce({ id: 'b1', name: 'TestBusiness' })
-        .mockResolvedValueOnce({ id: 'br1' });
-
-      mockRepo.find.mockResolvedValueOnce([{ id: 'c1' }]);
-
-      await service.sendMessage({
-        businessId: 'b1',
-        branchId: 'br1',
-        channel: Channel.SMS,
-        audienceType: 'RECENT' as any,
-        content: 'test',
+    it('should throw BadRequestException if no contacts provided', async () => {
+      branchRepoMock.findOne.mockResolvedValueOnce({
+        id: 'br1',
+        businessId: 'biz1',
       });
-
-      expect(mockRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            createdAt: expect.anything(),
-          }),
+      await expect(
+        service.sendMessage({
+          branchId: 'br1',
+          contactIds: [],
+          channel: Channel.SMS,
+          content: 'test',
         }),
-      );
-    });
-
-    it('should filter by TAGGED audience type', async () => {
-      mockRepo.findOne
-        .mockResolvedValueOnce({ id: 'b1', name: 'TestBusiness' })
-        .mockResolvedValueOnce({ id: 'br1' });
-
-      mockRepo.find.mockResolvedValueOnce([{ id: 'c1' }]);
-
-      await service.sendMessage({
-        businessId: 'b1',
-        branchId: 'br1',
-        channel: Channel.SMS,
-        audienceType: 'TAGGED' as any,
-        content: 'test',
-      });
-
-      expect(mockRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            tags: expect.anything(),
-          }),
-        }),
-      );
+      ).rejects.toThrow('No contacts provided');
     });
   });
 });

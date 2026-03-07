@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminMessagingApi } from '@/lib/api/admin';
+import { adminMessagingApi, adminBusinessesApi, adminUsersApi } from '@/lib/api/admin';
+import { fetchAdminPricingPlans } from '@/lib/api/pricing';
 import { format } from 'date-fns';
 import {
     MessageSquare,
@@ -37,8 +38,41 @@ export default function TemplateApprovalPage() {
         content: '',
         category: 'MARKETING' as 'MARKETING' | 'UTILITY' | 'AUTHENTICATION',
         language: 'English (US)',
-        isSystem: true
+        isSystem: true,
+        targetAudience: 'all' as string // New field for Plans
     });
+
+    // Fetch businesses for variable selection context
+    const { data: businessesData } = useQuery({
+        queryKey: ['admin-businesses-list'],
+        queryFn: () => adminBusinessesApi.getAll({ limit: 100 }),
+        enabled: isCreateModalOpen
+    });
+
+    // Fetch customers (users) for variable selection context 
+    const { data: customersData } = useQuery({
+        queryKey: ['admin-customers-list'],
+        queryFn: () => adminUsersApi.getAll({ role: 'customer', limit: 100 }),
+        enabled: isCreateModalOpen
+    });
+
+    // Fetch plans for Target Audience
+    const { data: plansData } = useQuery({
+        queryKey: ['admin-plans-list'],
+        queryFn: () => fetchAdminPricingPlans(),
+        enabled: isCreateModalOpen
+    });
+
+    const businesses = Array.isArray(businessesData?.data) ? businessesData.data : (Array.isArray(businessesData) ? businessesData : []);
+    const customers = Array.isArray(customersData?.data) ? customersData.data : (Array.isArray(customersData) ? customersData : []);
+    const plans = Array.isArray(plansData) ? plansData : [];
+
+    const insertVariable = (variable: string) => {
+        setTemplateForm(prev => ({
+            ...prev,
+            content: prev.content + ` {{${variable}}}`
+        }));
+    };
 
     // Fetch all templates
     const { data: templatesResponse, isLoading: isApprovalsLoading } = useQuery({
@@ -95,7 +129,8 @@ export default function TemplateApprovalPage() {
                 content: '',
                 category: 'MARKETING',
                 language: 'English (US)',
-                isSystem: true
+                isSystem: true,
+                targetAudience: 'all'
             });
         },
         onError: (error: any) => toast.error(error.message || 'Failed to create template'),
@@ -474,6 +509,55 @@ export default function TemplateApprovalPage() {
                                             <span className="text-[10px] font-black uppercase text-gray-400 group-hover:text-primary transition-colors">Global System Template</span>
                                         </label>
                                     </div>
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase text-gray-500 mb-1.5 block ml-1">Target Audience (By Plan)</label>
+                                        <select
+                                            value={templateForm.targetAudience}
+                                            onChange={(e) => setTemplateForm({ ...templateForm, targetAudience: e.target.value })}
+                                            className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:bg-white transition-all text-text-main"
+                                        >
+                                            <option value="all">All Plans</option>
+                                            {plans.map((plan: any) => (
+                                                <option key={plan.id} value={plan.id}>{plan.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black uppercase text-gray-500 block ml-1">Insert Dynamic Variables</label>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <select
+                                            onChange={(e) => { if (e.target.value) insertVariable(e.target.value); e.target.value = ''; }}
+                                            className="h-10 px-3 bg-gray-50 border border-gray-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary outline-none hover:bg-white transition-all"
+                                        >
+                                            <option value="">Select Business Field</option>
+                                            <option value="business.name">Business Name</option>
+                                            <option value="business.email">Business Email</option>
+                                            <option value="business.phone">Business Phone</option>
+                                            <option value="business.address">Business Address</option>
+                                            <optgroup label="Real Data Preview">
+                                                {businesses.slice(0, 10).map((b: any) => (
+                                                    <option key={b.id} value={`business:${b.name}`}>{b.name}</option>
+                                                ))}
+                                            </optgroup>
+                                        </select>
+                                        <select
+                                            onChange={(e) => { if (e.target.value) insertVariable(e.target.value); e.target.value = ''; }}
+                                            className="h-10 px-3 bg-gray-50 border border-gray-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary outline-none hover:bg-white transition-all"
+                                        >
+                                            <option value="">Select Customer Field</option>
+                                            <option value="customer.firstName">First Name</option>
+                                            <option value="customer.lastName">Last Name</option>
+                                            <option value="customer.email">Customer Email</option>
+                                            <option value="customer.phone">Customer Phone</option>
+                                            <optgroup label="Real Data Preview">
+                                                {customers.slice(0, 10).map((c: any) => (
+                                                    <option key={c.id} value={`customer:${c.firstName}`}>{c.firstName} {c.lastName}</option>
+                                                ))}
+                                            </optgroup>
+                                        </select>
+                                    </div>
                                 </div>
 
                                 <div>
@@ -486,7 +570,7 @@ export default function TemplateApprovalPage() {
                                         className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl font-medium text-sm outline-none focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all resize-none"
                                         required
                                     />
-                                    <p className="text-[10px] text-gray-400 mt-2 font-medium">Use {'{{1}}'}, {'{{2}}'} for dynamic variables.</p>
+                                    <p className="text-[10px] text-gray-400 mt-2 font-medium">Use the dropdowns above to insert dynamic variables or use {'{{1}}'}, {'{{2}}'} for generic placeholders.</p>
                                 </div>
 
                                 <div className="flex items-center gap-3 pt-2">

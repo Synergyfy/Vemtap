@@ -129,11 +129,16 @@ export const useProductFormStore = create<ProductFormState>((set) => ({
       productTypeId: product.productTypeId || '',
       msrp: Number(product.price) || 450,
       images: {
-        primary: { file: null, url: product.image || null },
-        side: { file: null, url: null },
-        detail: { file: null, url: null },
-        packaging: { file: null, url: null }
-      }
+        primary: { file: null, url: product.image || (product.images && product.images[0]) || null },
+        side: { file: null, url: (product.images && product.images[1]) || null },
+        detail: { file: null, url: (product.images && product.images[2]) || null },
+        packaging: { file: null, url: (product.images && product.images[3]) || null }
+      },
+      howToSteps: Array.isArray(product.howToSteps) ? product.howToSteps.map((s: any, i: number) => ({
+        id: s.id || String(i + 1),
+        title: s.title || '',
+        description: s.description || ''
+      })) : initialFormData.howToSteps
     }
   }),
   nextStep: () => set((state) => ({ currentStep: Math.min(state.currentStep + 1, 4) })),

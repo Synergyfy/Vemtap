@@ -63,6 +63,8 @@ describe('AgentSupportController', () => {
       expect(mockSupportService.findAssigned).toHaveBeenCalledWith(
         mockAgent.id,
         TicketType.CHAT,
+        undefined,
+        undefined,
       );
     });
   });
@@ -76,6 +78,8 @@ describe('AgentSupportController', () => {
       expect(mockSupportService.findAssigned).toHaveBeenCalledWith(
         mockAgent.id,
         TicketType.TICKET,
+        undefined,
+        undefined,
       );
     });
   });
