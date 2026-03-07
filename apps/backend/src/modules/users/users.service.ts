@@ -42,6 +42,13 @@ export class UsersService {
     });
   }
 
+  async updateProfile(id: string, updates: Partial<User>): Promise<User> {
+    await this.usersRepository.update(id, updates);
+    const user = await this.findOne(id);
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
   async update(id: string, updates: Partial<User>): Promise<User> {
     await this.usersRepository.update(id, updates);
     const user = await this.findOne(id);
@@ -186,7 +193,7 @@ export class UsersService {
   }
 
   async adminCreateUser(dto: any): Promise<User> {
-    const user = this.usersRepository.create(dto);
+    const user = this.usersRepository.create(dto as object) as User;
     return this.usersRepository.save(user);
   }
 
@@ -195,7 +202,7 @@ export class UsersService {
       ...dto,
       role: UserRole.AGENT,
       status: UserStatus.ACTIVE,
-    });
+    } as object) as User;
     return this.usersRepository.save(user);
   }
 
