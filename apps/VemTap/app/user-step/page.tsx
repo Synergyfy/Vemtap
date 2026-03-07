@@ -6,11 +6,10 @@ import { useSearchParams } from 'next/navigation';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useMockDashboardStore } from '@/lib/store/mockDashboardStore';
-import { useBusinessForms } from '@/services/business-forms/hooks';
+import { useBusinessForms, useSubmitBusinessFormResponse } from '@/services/business-forms/hooks';
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import { jwtDecode } from 'jwt-decode';
 import { toast } from 'react-hot-toast';
-import { api } from '@/lib/api';
 
 // Modular Components
 import { VisitorLayout } from '@/components/visitor/VisitorLayout';
@@ -40,6 +39,7 @@ function UserStepPageContent() {
     const preferredFormIdParam = searchParams.get('formId') || searchParams.get('form');
     const [selectedBusinessFormId, setSelectedBusinessFormId] = useState<string | null>(null);
     const { data: businessForms = [] } = useBusinessForms();
+    const submitBusinessFormResponse = useSubmitBusinessFormResponse(selectedBusinessFormId || '');
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const userBranchId = useAuthStore((state) => state.user?.branchId);
     const getDefaultFormId = useFormPreferencesStore((state) => state.getDefaultFormId);
@@ -54,7 +54,7 @@ function UserStepPageContent() {
                     (!businessId || f.businessId === businessId) &&
                     (!branchId || f.branchId === branchId)
             ),
-        [businessForms, businessId]
+        [branchId, businessForms, businessId]
     );
     const selectedBusinessForm = useMemo(
         () => approvedFormsForBusiness.find((f) => f.id === selectedBusinessFormId) || null,
@@ -239,7 +239,7 @@ function UserStepPageContent() {
         if (selectedBusinessForm && businessId) {
             const identity = userData || storedIdentity || user;
             try {
-                await api.post(`/business-forms/${selectedBusinessForm.id}/responses`, {
+                await submitBusinessFormResponse.mutateAsync({
                     customerName: identity?.name || 'Guest',
                     customerEmail: identity?.email || undefined,
                     customerPhone: identity?.phone || undefined,
@@ -253,6 +253,10 @@ function UserStepPageContent() {
 
         console.log('Survey completed:', answers);
         toast.success('Thank you for your feedback!');
+        if (selectedBusinessForm?.redirectUrl && typeof window !== 'undefined') {
+            window.location.assign(selectedBusinessForm.redirectUrl);
+            return;
+        }
         setSelectedBusinessFormId(null);
         setStep('FINAL_SUCCESS');
     };

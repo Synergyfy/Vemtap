@@ -282,6 +282,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const isActive = (href: string) => pathname === href;
     const isParentActive = (submenu?: any[]): boolean =>
         submenu?.some(item => (item.href && pathname === item.href) || (item.submenu && isParentActive(item.submenu))) || false;
+    const primaryNavClasses = (active: boolean) =>
+        active
+            ? 'bg-primary text-white shadow-lg shadow-primary/20'
+            : 'text-text-secondary hover:bg-blue-50 hover:text-primary';
+    const subNavClasses = (active: boolean) =>
+        active
+            ? 'bg-gray-100 text-text-main'
+            : 'text-text-secondary hover:bg-gray-100 hover:text-text-main';
 
     return (
         <div className="flex h-screen bg-gray-50 overflow-hidden relative">
@@ -315,9 +323,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                     <>
                                         <button
                                             onClick={() => toggleMenu(item.id)}
-                                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isParentActive(item.submenu)
-                                                ? 'bg-primary/5 text-primary'
-                                                : 'text-text-secondary hover:bg-gray-50 hover:text-text-main'
+                                            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${primaryNavClasses(isParentActive(item.submenu))
                                                 }`}
                                         >
                                             <div className="flex items-center gap-3">
@@ -330,15 +336,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                             />
                                         </button>
                                         {expandedMenus.includes(item.id) && (
-                                            <div className="mt-1 ml-9 space-y-1">
+                                            <div className="mt-2 ml-4 space-y-2">
                                                 {item.submenu.map((subItem: any, idx) => (
                                                     subItem.submenu ? (
                                                         <div key={subItem.id || idx} className="mb-1">
                                                             <button
                                                                 onClick={() => toggleMenu(subItem.id, item.id)}
-                                                                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isParentActive(subItem.submenu)
-                                                                    ? 'text-primary'
-                                                                    : 'text-text-secondary hover:bg-gray-50'
+                                                                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isParentActive(subItem.submenu))
                                                                     }`}
                                                             >
                                                                 <span>{subItem.label}</span>
@@ -348,15 +352,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                 />
                                                             </button>
                                                             {expandedMenus.includes(subItem.id) && (
-                                                                <div className="mt-1 ml-4 space-y-1 border-l border-gray-100">
+                                                                <div className="mt-2 ml-3 space-y-2">
                                                                     {subItem.submenu.map((nestedItem: any, nIdx: number) => (
                                                                         nestedItem.submenu ? (
                                                                             <div key={nestedItem.id || nIdx} className="mb-1">
                                                                                 <button
                                                                                     onClick={() => toggleMenu(nestedItem.id, subItem.id)}
-                                                                                    className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${isParentActive(nestedItem.submenu)
-                                                                                        ? 'text-primary'
-                                                                                        : 'text-text-secondary hover:bg-gray-50'
+                                                                                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isParentActive(nestedItem.submenu))
                                                                                         }`}
                                                                                 >
                                                                                     <span>{nestedItem.label}</span>
@@ -386,9 +388,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                             <Link
                                                                                 key={nestedItem.href}
                                                                                 href={nestedItem.href}
-                                                                                className={`block px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isActive(nestedItem.href)
-                                                                                    ? 'text-primary border-l-2 border-primary -ml-px'
-                                                                                    : 'text-text-secondary hover:text-text-main'
+                                                                                className={`block px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(nestedItem.href))
                                                                                     }`}
                                                                             >
                                                                                 {nestedItem.label}
@@ -403,9 +403,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                             key={subItem.href}
                                                             href={subItem.href}
                                                             onClick={() => setIsMobileOpen(false)}
-                                                            className={`block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive(subItem.href)
-                                                                ? 'bg-primary text-white'
-                                                                : 'text-text-secondary hover:bg-gray-50 hover:text-text-main'
+                                                            className={`block px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(subItem.href))
                                                                 }`}
                                                         >
                                                             {subItem.label}
@@ -418,9 +416,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                 ) : (
                                     <Link
                                         href={item.href!}
-                                        className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive(item.href!)
-                                            ? 'bg-primary/5 text-primary'
-                                            : 'text-text-secondary hover:bg-gray-50 hover:text-text-main'
+                                        className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${primaryNavClasses(isActive(item.href!))
                                             }`}
                                     >
                                         <div className="flex items-center gap-3">

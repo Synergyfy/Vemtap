@@ -6,9 +6,10 @@ import { useMessagingTemplates, useSendMessage } from '@/services/messaging/hook
 import { Channel, AudienceType } from '@/services/messaging/types';
 import { Users, Send, CheckCircle, Smartphone, MessageSquare, Mail } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useVisitors } from '@/services/visitors/hooks';
+import { useBusinessForms } from '@/services/business-forms/hooks';
 import Image from 'next/image';
 
 interface MessageBuilderProps {
@@ -177,9 +178,11 @@ function PhonePreview({
 
 export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user } = useAuthStore();
     const sendMessage = useSendMessage();
     const { data: visitorsData } = useVisitors('all');
+    const { data: businessForms = [] } = useBusinessForms();
     const [channel, setChannel] = useState<MessageChannel>(defaultChannel || 'SMS');
     const channelApiMap: Record<MessageChannel, Channel> = {
         WhatsApp: 'WHATSAPP',
@@ -198,11 +201,24 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
     const [messageName, setMessageName] = useState('');
     const [audience, setAudience] = useState('all');
     const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+    const [selectedFormId, setSelectedFormId] = useState<string>(searchParams.get('formId') || '');
     const [customContent, setCustomContent] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [isLiveEdit, setIsLiveEdit] = useState(false);
     const totalVisitors = visitorsData?.total || 0;
     const countLabel = audience === 'all' ? `${totalVisitors.toLocaleString()} Contacts` : 'Segmented Contacts';
+    const eligibleForms = businessForms.filter((form) => form.isPublished && form.isActive);
+    const selectedForm = eligibleForms.find((form) => form.id === selectedFormId) || null;
+    const selectedFormLink =
+        selectedFormId && typeof window !== 'undefined'
+            ? `${window.location.origin}/user-step?formId=${selectedFormId}`
+            : selectedFormId
+                ? `/user-step?formId=${selectedFormId}`
+                : '';
+    const contentWithFormLink =
+        selectedFormLink && customContent.trim()
+            ? `${customContent.trim()}\n\nComplete this form: ${selectedFormLink}`
+            : customContent;
 
     const handleSend = async () => {
         if (!customContent.trim() && !selectedTemplate) {
@@ -225,7 +241,7 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                 channel: channelApiMap[channel],
                 audienceType,
                 templateId: selectedTemplate || undefined,
-                content: selectedTemplate ? undefined : customContent,
+                content: selectedTemplate ? contentWithFormLink || undefined : contentWithFormLink,
             });
             toast.success('Message launched successfully!');
             router.push('/dashboard/messaging');
@@ -341,6 +357,23 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                         </div>
 
                         <div>
+                            <label className="block text-[10px] font-black uppercase text-text-secondary mb-2 tracking-widest ml-1">Attach Form</label>
+                            <select
+                                className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                value={selectedFormId}
+                                onChange={(e) => setSelectedFormId(e.target.value)}
+                            >
+                                <option value="">No form attached</option>
+                                {eligibleForms.map((form) => (
+                                    <option key={form.id} value={form.id}>{form.title}</option>
+                                ))}
+                            </select>
+                            <p className="text-[10px] text-text-secondary mt-2">
+                                When messaging is clicked, the selected form link is added to the outbound message automatically.
+                            </p>
+                        </div>
+
+                        <div>
                             <label className="block text-[10px] font-black uppercase text-text-secondary mb-2 tracking-widest ml-1">Target Audience</label>
                             <div className="grid grid-cols-3 gap-2">
                                 {[
@@ -397,6 +430,13 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                                 Characters: <span className="text-primary font-black">{customContent.length}</span>
                             </p>
                         </div>
+                        {selectedForm && (
+                            <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Attached Form</p>
+                                <p className="text-sm font-bold text-slate-900 mt-1">{selectedForm.title}</p>
+                                <p className="text-xs text-slate-600 mt-1">{selectedFormLink}</p>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex justify-between pt-4">
@@ -409,12 +449,12 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
 
                 <div className="hidden lg:block sticky top-8">
                     <label className="block text-[10px] font-black uppercase text-text-secondary mb-4 tracking-widest text-center">Live Preview</label>
-                    <PhonePreview
-                        channel={channel}
-                        content={customContent}
-                        businessName={businessName}
-                        businessLogo={businessLogo}
-                        isEditable={false}
+                        <PhonePreview
+                            channel={channel}
+                            content={contentWithFormLink}
+                            businessName={businessName}
+                            businessLogo={businessLogo}
+                            isEditable={false}
                     />
                 </div>
             </div>
@@ -461,7 +501,7 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                     <div className="flex justify-center py-4 bg-white rounded-3xl border border-gray-100 shadow-inner">
                         <PhonePreview
                             channel={channel}
-                            content={customContent}
+                            content={contentWithFormLink}
                             businessName={businessName}
                             businessLogo={businessLogo}
                             isEditable={isLiveEdit}
