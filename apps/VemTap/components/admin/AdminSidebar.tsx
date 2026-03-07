@@ -11,6 +11,7 @@ import {
     Settings, ChevronDown, Shield, ShieldCheck, LogOut, Gift, Search, Bell, HelpCircle, Package, FileText, Tag, Menu, X, Workflow, Eye
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
+import AdminMobileNav from './AdminMobileNav';
 
 interface AdminSidebarProps {
     children: React.ReactNode;
@@ -418,10 +419,12 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto bg-gray-50">
+                <main className="flex-1 overflow-y-auto bg-gray-50 pb-16 lg:pb-0">
                     {children}
                 </main>
             </div>
+
+            <AdminMobileNav />
         </div>
     );
 }

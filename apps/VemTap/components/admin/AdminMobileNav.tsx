@@ -1,0 +1,68 @@
+'use client';
+
+import React from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Home, Store, Users, Nfc } from 'lucide-react';
+
+export default function AdminMobileNav() {
+    const pathname = usePathname();
+
+    const navItems = [
+        {
+            label: 'Dashboard',
+            icon: Home,
+            href: '/admin/dashboard'
+        },
+        {
+            label: 'Businesses',
+            icon: Store,
+            href: '/admin/businesses'
+        },
+        {
+            label: 'Users',
+            icon: Users,
+            href: '/admin/users'
+        },
+        {
+            label: 'Devices',
+            icon: Nfc,
+            href: '/admin/devices'
+        }
+    ];
+
+    return (
+        <div
+            className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
+            <div className="flex justify-around items-center h-16 px-2">
+                {navItems.map((item) => {
+                    const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                    const Icon = item.icon;
+
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors relative ${isActive ? 'text-primary' : 'text-text-secondary hover:text-text-main'
+                                }`}
+                        >
+                            {/* Active indicator bar at top */}
+                            {isActive && (
+                                <div className="absolute top-0 w-8 h-1 bg-primary rounded-b-full shadow-[0_2px_8px_rgba(var(--primary-rgb),0.5)]"></div>
+                            )}
+
+                            <div className={`relative p-1.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-primary/10 mt-1' : 'mt-1'}`}>
+                                <Icon size={20} className={isActive ? 'stroke-[2.5px]' : 'stroke-2'} />
+                            </div>
+                            <span className={`text-[10px] font-black tracking-wide ${isActive ? 'text-primary' : 'font-semibold'}`}>
+                                {item.label}
+                            </span>
+                        </Link>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
