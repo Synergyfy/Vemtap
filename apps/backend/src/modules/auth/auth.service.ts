@@ -432,4 +432,42 @@ export class AuthService {
 
     return { message: 'Password reset successfully' };
   }
+
+  async switchRole(user: User, targetRole: UserRole) {
+    // Only Owners can switch to Customer
+    if (user.role === UserRole.OWNER && targetRole !== UserRole.CUSTOMER) {
+      throw new BadRequestException('Owners can only switch to Customer role');
+    }
+
+    // A user who is currently a CUSTOMER in their JWT but is an OWNER in DB can switch back
+    const dbUser = await this.usersService.findOne(user.id);
+    if (!dbUser) throw new NotFoundException('User not found');
+
+    if (targetRole === UserRole.OWNER && dbUser.role !== UserRole.OWNER) {
+      throw new BadRequestException('You are not an owner');
+    }
+
+    // Generate new token with target role
+    const payload = {
+      email: dbUser.email,
+      sub: dbUser.id,
+      role: targetRole,
+      branchId: dbUser.branchId,
+      // If switching to OWNER, we need businessId
+      businessId:
+        targetRole === UserRole.OWNER
+          ? (
+              await this.businessesService.findByOwner(dbUser.id)
+            )?.id
+          : undefined,
+    };
+
+    return {
+      access_token: this.jwtService.sign(payload),
+      user: {
+        ...dbUser,
+        role: targetRole,
+      },
+    };
+  }
 }

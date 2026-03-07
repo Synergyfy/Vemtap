@@ -11,6 +11,7 @@ import { CampaignsService } from '../campaigns/campaigns.service';
 import { AutomationService } from '../messaging/services/automation.service';
 import { MailService } from '../mail/mail.service';
 import { DataSource } from 'typeorm';
+import { BranchesService } from '../branches/branches.service';
 
 describe('VisitorsService', () => {
   let service: VisitorsService;
@@ -97,6 +98,12 @@ describe('VisitorsService', () => {
         {
           provide: MailService,
           useValue: { sendWelcomeEmail: jest.fn() },
+        },
+        {
+          provide: BranchesService,
+          useValue: {
+            getBusinessId: jest.fn().mockResolvedValue('bus-1'),
+          },
         },
       ],
     }).compile();

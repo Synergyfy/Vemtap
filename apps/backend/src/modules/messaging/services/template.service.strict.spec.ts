@@ -13,6 +13,7 @@ import {
 import { Channel } from '../enums/channel.enum';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { IsNull } from 'typeorm';
+import { BranchesService } from '../../branches/branches.service';
 
 describe('TemplateService (Strict)', () => {
   let service: TemplateService;
@@ -23,16 +24,19 @@ describe('TemplateService (Strict)', () => {
     id: 'owner1',
     role: UserRole.OWNER,
     businessId: 'bus1',
+    branchId: 'br1',
   } as User;
   const mockStaffUser = {
     id: 'staff1',
     role: UserRole.STAFF,
     businessId: 'bus1',
+    branchId: 'br1',
   } as User;
   const mockOtherUser = {
     id: 'other1',
     role: UserRole.OWNER,
     businessId: 'bus2',
+    branchId: 'br2',
   } as User;
 
   beforeEach(async () => {
@@ -64,6 +68,16 @@ describe('TemplateService (Strict)', () => {
           provide: getRepositoryToken(MessageTemplate),
           useValue: repoMock,
         },
+        {
+          provide: BranchesService,
+          useValue: {
+            checkBranchAccess: jest.fn().mockImplementation((user, branchId) => {
+              if (user.role === UserRole.ADMIN) return true;
+              return user.branchId === branchId;
+            }),
+            findById: jest.fn().mockResolvedValue({ businessId: 'bus1' }),
+          },
+        },
       ],
     }).compile();
 
@@ -83,10 +97,10 @@ describe('TemplateService (Strict)', () => {
       const result = await service.createTemplate(dto as any, mockAdminUser);
 
       expect(result.isSystem).toBe(true);
-      expect(result.businessId).toBeNull();
+      expect(result.branchId).toBeNull();
       expect(result.status).toBe(TemplateStatus.APPROVED);
       expect(repoMock.findOne).toHaveBeenCalledWith({
-        where: { businessId: IsNull(), name: dto.name, channel: dto.channel },
+        where: { branchId: IsNull(), name: dto.name, channel: dto.channel },
       });
     });
 
@@ -109,18 +123,24 @@ describe('TemplateService (Strict)', () => {
         name: 'Business Msg',
         channel: Channel.WHATSAPP,
         content: 'Hello',
+        branchId: 'br1',
       };
 
       const result = await service.createTemplate(dto as any, mockOwnerUser);
 
-      expect(result.businessId).toBe('bus1');
+      expect(result.branchId).toBe('br1');
       expect(result.isSystem).toBe(false);
       expect(result.status).toBe(TemplateStatus.PENDING);
     });
 
     it('should throw BadRequestException if template name exists in same scope', async () => {
       repoMock.findOne.mockResolvedValue({ id: 'exists' });
-      const dto = { name: 'Promo', channel: Channel.SMS, content: 'text' };
+      const dto = {
+        name: 'Promo',
+        channel: Channel.SMS,
+        content: 'text',
+        branchId: 'br1',
+      };
 
       await expect(
         service.createTemplate(dto as any, mockOwnerUser),
@@ -132,6 +152,7 @@ describe('TemplateService (Strict)', () => {
         name: 'Long Msg',
         channel: Channel.SMS,
         content: 'a'.repeat(321),
+        branchId: 'br1',
       };
       await expect(
         service.createTemplate(dto as any, mockOwnerUser),
@@ -142,21 +163,21 @@ describe('TemplateService (Strict)', () => {
   describe('getAvailableTemplates', () => {
     it('should query for both system and business specific templates', async () => {
       const qb = repoMock.createQueryBuilder();
-      await service.getAvailableTemplates('bus1');
+      await service.getAvailableTemplates('br1');
 
       expect(qb.where).toHaveBeenCalledWith('template.isSystem = :isSystem', {
         isSystem: true,
       });
       expect(qb.orWhere).toHaveBeenCalledWith(
-        'template.businessId = :businessId',
-        { businessId: 'bus1' },
+        'template.branchId = :branchId',
+        { branchId: 'br1' },
       );
     });
   });
 
   describe('getTemplate (Access Control)', () => {
     it('should allow anyone to view system templates', async () => {
-      const systemTemplate = { id: '1', isSystem: true, businessId: null };
+      const systemTemplate = { id: '1', isSystem: true, branchId: null };
       repoMock.findOne.mockResolvedValue(systemTemplate);
 
       const result = await service.getTemplate('1', mockOtherUser);
@@ -164,7 +185,7 @@ describe('TemplateService (Strict)', () => {
     });
 
     it('should allow business users to view their own templates', async () => {
-      const busTemplate = { id: '2', isSystem: false, businessId: 'bus1' };
+      const busTemplate = { id: '2', isSystem: false, branchId: 'br1' };
       repoMock.findOne.mockResolvedValue(busTemplate);
 
       const result = await service.getTemplate('2', mockStaffUser);
@@ -172,7 +193,7 @@ describe('TemplateService (Strict)', () => {
     });
 
     it('should NOT allow business users to view other business templates', async () => {
-      const otherBusTemplate = { id: '3', isSystem: false, businessId: 'bus2' };
+      const otherBusTemplate = { id: '3', isSystem: false, branchId: 'br2' };
       repoMock.findOne.mockResolvedValue(otherBusTemplate);
 
       await expect(service.getTemplate('3', mockOwnerUser)).rejects.toThrow(
@@ -181,7 +202,7 @@ describe('TemplateService (Strict)', () => {
     });
 
     it('should allow ADMIN to view any template', async () => {
-      const otherBusTemplate = { id: '3', isSystem: false, businessId: 'bus2' };
+      const otherBusTemplate = { id: '3', isSystem: false, branchId: 'br2' };
       repoMock.findOne.mockResolvedValue(otherBusTemplate);
 
       const result = await service.getTemplate('3', mockAdminUser);
@@ -191,7 +212,7 @@ describe('TemplateService (Strict)', () => {
 
   describe('deleteTemplate', () => {
     it('should allow ADMIN to delete system templates', async () => {
-      const systemTemplate = { id: '1', isSystem: true, businessId: null };
+      const systemTemplate = { id: '1', isSystem: true, branchId: null };
       repoMock.findOne.mockResolvedValue(systemTemplate);
 
       await service.deleteTemplate('1', mockAdminUser);
@@ -199,7 +220,7 @@ describe('TemplateService (Strict)', () => {
     });
 
     it('should NOT allow owner to delete system templates', async () => {
-      const systemTemplate = { id: '1', isSystem: true, businessId: null };
+      const systemTemplate = { id: '1', isSystem: true, branchId: null };
       repoMock.findOne.mockResolvedValue(systemTemplate);
 
       await expect(service.deleteTemplate('1', mockOwnerUser)).rejects.toThrow(

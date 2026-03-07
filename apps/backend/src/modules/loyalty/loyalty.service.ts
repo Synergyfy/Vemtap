@@ -73,7 +73,8 @@ export class LoyaltyService {
         branchId,
         businessId: branch.businessId,
         points: 0,
-        tierLevel: 'bronze',
+        tierLevel: TierLevel.BRONZE,
+        currentPointsBalance: 0,
       } as any) as unknown as LoyaltyProfile;
       await this.loyaltyProfileRepository.save(profile);
     }
@@ -83,6 +84,10 @@ export class LoyaltyService {
     }
 
     return profile;
+  }
+
+  async createCustomerProfile(userId: string, branchId: string): Promise<LoyaltyProfile> {
+    return this.getProfile(userId, branchId);
   }
 
   async getAllProfiles(userId: string): Promise<LoyaltyProfile[]> {

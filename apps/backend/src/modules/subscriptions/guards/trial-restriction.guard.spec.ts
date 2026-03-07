@@ -14,15 +14,19 @@ describe('TrialRestrictionGuard', () => {
   const mockContext = {
     switchToHttp: jest.fn().mockReturnValue({
       getRequest: jest.fn().mockReturnValue({
-        user: { businessId: 'b1' },
+        user: { branchId: 'br1' },
       }),
     }),
   } as unknown as ExecutionContext;
 
+  const mockBranchesService = {
+    getBusinessId: jest.fn().mockResolvedValue('b1'),
+  };
+
   beforeEach(() => {
     guard = new TrialRestrictionGuard(
       mockSubscriptionsService as any,
-      { findById: jest.fn() } as any,
+      mockBranchesService as any,
     );
   });
 

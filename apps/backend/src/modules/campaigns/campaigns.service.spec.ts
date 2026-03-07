@@ -13,30 +13,33 @@ import { Contact } from '../contacts/entities/contact.entity';
 import { BranchesService } from '../branches/branches.service';
 import { AutomationService } from '../messaging/services/automation.service';
 import { CampaignType, CampaignStatus } from './dto/create-campaign.dto';
+import { NotFoundException } from '@nestjs/common';
 
 describe('CampaignsService', () => {
   let service: CampaignsService;
-
-  const mockRepo = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn().mockImplementation((d) => d),
-    save: jest
-      .fn()
-      .mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
-    softDelete: jest.fn(),
-  };
-
-  const mockBranchesService = {
-    findById: jest.fn(),
-  };
-
-  const mockAutomationService = {
-    trigger: jest.fn(),
-  };
+  let mockRepo: any;
+  let mockBranchesService: any;
+  let mockAutomationService: any;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    mockRepo = {
+      find: jest.fn(),
+      findOne: jest.fn(),
+      create: jest.fn().mockImplementation((d) => d),
+      save: jest
+        .fn()
+        .mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
+      softDelete: jest.fn(),
+    };
+
+    mockBranchesService = {
+      findById: jest.fn(),
+    };
+
+    mockAutomationService = {
+      trigger: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CampaignsService,
@@ -73,6 +76,7 @@ describe('CampaignsService', () => {
       const expectedCampaign = {
         ...createDto,
         branchId,
+        businessId: 'biz-1',
         id: '1',
         sent: 0,
         delivered: '0%',
@@ -80,6 +84,10 @@ describe('CampaignsService', () => {
         status: CampaignStatus.DRAFT,
       };
 
+      mockBranchesService.findById.mockResolvedValue({
+        id: branchId,
+        businessId: 'biz-1',
+      });
       mockRepo.create.mockReturnValue(expectedCampaign);
       mockRepo.save.mockResolvedValue(expectedCampaign);
 
@@ -110,7 +118,7 @@ describe('CampaignsService', () => {
 
       expect(mockBranchesService.findById).toHaveBeenCalledWith(branchId);
       expect(mockRepo.findOne).toHaveBeenCalledWith({
-        where: { userId, businessId },
+        where: { userId, branchId },
       });
       expect(mockRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ businessId }),
@@ -118,13 +126,13 @@ describe('CampaignsService', () => {
       expect(result.businessId).toBe(businessId);
     });
 
-    it('getLoyaltyProfile should return existing profile by businessId regardless of branch', async () => {
+    it('getLoyaltyProfile should return existing profile by branchId', async () => {
       mockBranchesService.findById.mockResolvedValue(mockBranch);
       const existingProfile = {
         id: 'prof-1',
         userId,
         businessId,
-        branchId: 'different-branch',
+        branchId,
       };
       mockRepo.findOne.mockResolvedValue(existingProfile);
 
@@ -135,27 +143,28 @@ describe('CampaignsService', () => {
     });
 
     it('getLoyaltyProfile should throw NotFoundException if branch is invalid', async () => {
-      mockBranchesService.findById.mockResolvedValue(null);
+      mockBranchesService.findById.mockImplementation(() => {
+        throw new NotFoundException('Branch not found');
+      });
       await expect(
         service.getLoyaltyProfile(userId, 'invalid-branch'),
       ).rejects.toThrow('Branch not found');
     });
 
-    it('findProfile should return profile by businessId', async () => {
-      mockBranchesService.findById.mockResolvedValue(mockBranch);
-      const existingProfile = { id: 'prof-1', userId, businessId };
+    it('findProfile should return profile by branchId', async () => {
+      const existingProfile = { id: 'prof-1', userId, businessId, branchId };
       mockRepo.findOne.mockResolvedValue(existingProfile);
 
       const result = await service.findProfile(userId, branchId);
 
       expect(mockRepo.findOne).toHaveBeenCalledWith({
-        where: { userId, businessId },
+        where: { userId, branchId },
       });
       expect(result).toEqual(existingProfile);
     });
 
-    it('findProfile should return null if branch not found', async () => {
-      mockBranchesService.findById.mockResolvedValue(null);
+    it('findProfile should return null if profile not found', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
       const result = await service.findProfile(userId, 'invalid');
       expect(result).toBeNull();
     });

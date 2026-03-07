@@ -91,6 +91,9 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException('Staff member not found in this branch');
     }
+    if (user.role === UserRole.OWNER) {
+      throw new BadRequestException('Cannot remove business owner');
+    }
     await this.usersRepository.remove(user);
   }
 

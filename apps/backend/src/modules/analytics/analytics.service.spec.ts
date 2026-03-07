@@ -11,6 +11,7 @@ import { PointTransaction } from '../campaigns/entities/point-transaction.entity
 import { Redemption } from '../campaigns/entities/redemption.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Message } from '../messaging/entities/message.entity';
+import { DataSource } from 'typeorm';
 
 describe('AnalyticsService', () => {
   let service: AnalyticsService;
@@ -78,6 +79,12 @@ describe('AnalyticsService', () => {
         {
           provide: getRepositoryToken(Message),
           useValue: mockRepository,
+        },
+        {
+          provide: DataSource,
+          useValue: {
+            createQueryBuilder: jest.fn(),
+          },
         },
       ],
     }).compile();
