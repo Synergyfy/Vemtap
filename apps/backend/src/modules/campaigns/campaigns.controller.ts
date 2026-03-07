@@ -49,12 +49,42 @@ import { Roles } from '../../common/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('campaigns')
 export class CampaignsController {
-  constructor(private readonly campaignsService: CampaignsService) { }
+  constructor(private readonly campaignsService: CampaignsService) {}
 
-  private getBranchId(req: { user: User }, branchId?: string): string {
-    const resolved = branchId || req.user?.branchId;
-    if (!resolved) throw new BadRequestException('branchId is required');
-    return resolved;
+  private async getBranchId(
+    req: { user: User },
+    branchId?: string,
+  ): Promise<string> {
+    const user = req.user;
+
+    // For Owner and Admin: branchId MUST be provided in the request
+    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
+      if (!branchId) {
+        throw new BadRequestException(
+          'branchId is required for Owners and Admins',
+        );
+      }
+
+      if (user.role === UserRole.OWNER) {
+        const hasAccess = await this.campaignsService.checkBranchAccess(
+          user,
+          branchId,
+        );
+        if (!hasAccess) {
+          throw new BadRequestException(
+            'You do not have access to this branch',
+          );
+        }
+      }
+      return branchId;
+    }
+
+    // For Manager and Staff: ignore provided branchId, always use branchId from token
+    if (!user.branchId) {
+      throw new BadRequestException('User is not associated with any branch');
+    }
+
+    return user.branchId;
   }
 
   @Post()
@@ -65,15 +95,16 @@ export class CampaignsController {
     description: 'The campaign has been successfully created.',
     type: Campaign,
   })
-  create(
+  async create(
     @Body() createCampaignDto: CreateCampaignDto,
     @Req() req: { user: User },
     @Query() query: BranchQueryDto,
   ) {
-    return this.campaignsService.create(
-      createCampaignDto,
-      this.getBranchId(req, query.branchId || createCampaignDto.branchId),
+    const branchId = await this.getBranchId(
+      req,
+      query.branchId || createCampaignDto.branchId,
     );
+    return this.campaignsService.create(createCampaignDto, branchId);
   }
 
   @Get()
@@ -86,23 +117,22 @@ export class CampaignsController {
     description: 'List of campaigns',
     type: [Campaign],
   })
-  findAll(
+  async findAll(
     @Req() req: { user: User },
     @Query('status') status?: CampaignStatus,
     @Query() query?: BranchQueryDto,
   ) {
-    return this.campaignsService.findAll(
-      this.getBranchId(req, query?.branchId),
-      status,
-    );
+    const branchId = await this.getBranchId(req, query?.branchId);
+    return this.campaignsService.findAll(branchId, status);
   }
 
   @Get('stats')
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get campaign dashboard statistics' })
   @ApiResponse({ status: 200, description: 'Dashboard statistics cards' })
-  getStats(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
-    return this.campaignsService.getStats(this.getBranchId(req, query.branchId));
+  async getStats(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
+    const branchId = await this.getBranchId(req, query.branchId);
+    return this.campaignsService.getStats(branchId);
   }
 
   @Get('scheduled')
@@ -113,11 +143,12 @@ export class CampaignsController {
     description: 'List of scheduled campaigns',
     type: [Campaign],
   })
-  getScheduled(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
-    return this.campaignsService.findAll(
-      this.getBranchId(req, query.branchId),
-      CampaignStatus.SCHEDULED,
-    );
+  async getScheduled(
+    @Req() req: { user: User },
+    @Query() query: BranchQueryDto,
+  ) {
+    const branchId = await this.getBranchId(req, query.branchId);
+    return this.campaignsService.findAll(branchId, CampaignStatus.SCHEDULED);
   }
 
   @Get('templates')
@@ -128,10 +159,12 @@ export class CampaignsController {
     description: 'List of campaign templates',
     type: [CampaignTemplate],
   })
-  getTemplates(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
-    return this.campaignsService.getTemplates(
-      this.getBranchId(req, query.branchId),
-    );
+  async getTemplates(
+    @Req() req: { user: User },
+    @Query() query: BranchQueryDto,
+  ) {
+    const branchId = await this.getBranchId(req, query.branchId);
+    return this.campaignsService.getTemplates(branchId);
   }
 
   @Post('templates')
@@ -142,18 +175,16 @@ export class CampaignsController {
     description: 'The template has been created.',
     type: CampaignTemplate,
   })
-  createTemplate(
+  async createTemplate(
     @Body() createTemplateDto: CreateCampaignTemplateDto,
     @Req() req: { user: User },
     @Query() query: BranchQueryDto,
   ) {
-    return this.campaignsService.createTemplate(
-      createTemplateDto,
-      this.getBranchId(
-        req,
-        query.branchId ?? createTemplateDto.branchId ?? undefined,
-      ),
+    const branchId = await this.getBranchId(
+      req,
+      query.branchId ?? createTemplateDto.branchId ?? undefined,
     );
+    return this.campaignsService.createTemplate(createTemplateDto, branchId);
   }
 
   @Get(':id')
@@ -201,15 +232,13 @@ export class CampaignsController {
     description: 'The user loyalty profile',
     type: LoyaltyProfile,
   })
-  getLoyaltyProfile(
+  async getLoyaltyProfile(
     @Param('userId') userId: string,
     @Req() req: { user: User },
     @Query() query: BranchQueryDto,
   ) {
-    return this.campaignsService.getLoyaltyProfile(
-      userId,
-      this.getBranchId(req, query.branchId),
-    );
+    const branchId = await this.getBranchId(req, query.branchId);
+    return this.campaignsService.getLoyaltyProfile(userId, branchId);
   }
 
   @Get('loyalty/profiles')
@@ -222,27 +251,34 @@ export class CampaignsController {
     description: 'List of all loyalty profiles',
     type: [LoyaltyProfile],
   })
-  getLoyaltyProfiles(
+  async getLoyaltyProfiles(
     @Req() req: { user: User },
     @Query() query: BranchQueryDto,
   ) {
-    return this.campaignsService.getLoyaltyProfiles(
-      this.getBranchId(req, query.branchId),
-    );
+    const branchId = await this.getBranchId(req, query.branchId);
+    return this.campaignsService.getLoyaltyProfiles(branchId);
   }
 
   @Get('loyalty/rules')
-  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.CUSTOMER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.CUSTOMER,
+  )
   @ApiOperation({ summary: 'Get branch loyalty rules' })
   @ApiResponse({
     status: 200,
     description: 'The loyalty rules',
     type: LoyaltyRule,
   })
-  getLoyaltyRule(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
-    return this.campaignsService.getLoyaltyRule(
-      this.getBranchId(req, query.branchId),
-    );
+  async getLoyaltyRule(
+    @Req() req: { user: User },
+    @Query() query: BranchQueryDto,
+  ) {
+    const branchId = await this.getBranchId(req, query.branchId);
+    return this.campaignsService.getLoyaltyRule(branchId);
   }
 
   @Patch('loyalty/rules')
@@ -254,29 +290,32 @@ export class CampaignsController {
     description: 'Updated loyalty rules',
     type: LoyaltyRule,
   })
-  updateLoyaltyRule(
+  async updateLoyaltyRule(
     @Body() updates: UpdateLoyaltyRuleDto,
     @Req() req: { user: User },
     @Query() query: BranchQueryDto,
   ) {
-    return this.campaignsService.updateLoyaltyRule(
-      this.getBranchId(req, query.branchId),
-      updates,
-    );
+    const branchId = await this.getBranchId(req, query.branchId);
+    return this.campaignsService.updateLoyaltyRule(branchId, updates);
   }
 
   @Get('loyalty/rewards')
-  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.CUSTOMER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.CUSTOMER,
+  )
   @ApiOperation({ summary: 'Get all active rewards' })
   @ApiResponse({
     status: 200,
     description: 'List of rewards',
     type: [Reward],
   })
-  getRewards(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
-    return this.campaignsService.getRewards(
-      this.getBranchId(req, query.branchId),
-    );
+  async getRewards(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
+    const branchId = await this.getBranchId(req, query.branchId);
+    return this.campaignsService.getRewards(branchId);
   }
 
   @Post('loyalty/rewards')
@@ -288,15 +327,16 @@ export class CampaignsController {
     description: 'The created reward',
     type: Reward,
   })
-  createReward(
+  async createReward(
     @Body() dto: CreateRewardDto,
     @Req() req: { user: User },
     @Query() query: BranchQueryDto,
   ) {
-    return this.campaignsService.createReward(
-      this.getBranchId(req, query.branchId || dto.branchId),
-      dto,
+    const branchId = await this.getBranchId(
+      req,
+      query.branchId || dto.branchId,
     );
+    return this.campaignsService.createReward(branchId, dto);
   }
 
   @Patch('loyalty/rewards/:id')
@@ -308,17 +348,17 @@ export class CampaignsController {
     description: 'The updated reward',
     type: Reward,
   })
-  updateReward(
+  async updateReward(
     @Param('id') id: string,
     @Body() dto: UpdateRewardDto,
     @Req() req: { user: User },
     @Query() query: BranchQueryDto,
   ) {
-    return this.campaignsService.updateReward(
-      this.getBranchId(req, query.branchId || dto.branchId),
-      id,
-      dto,
+    const branchId = await this.getBranchId(
+      req,
+      query.branchId || dto.branchId,
     );
+    return this.campaignsService.updateReward(branchId, id, dto);
   }
 
   @Post('loyalty/earn')
@@ -339,15 +379,16 @@ export class CampaignsController {
       },
     },
   })
-  earnPoints(
+  async earnPoints(
     @Body() dto: PointEarnRequestDto,
     @Req() req: { user: User },
     @Query() query: BranchQueryDto,
   ) {
-    return this.campaignsService.earnPoints(
-      this.getBranchId(req, query.branchId || dto.branchId),
-      dto,
+    const branchId = await this.getBranchId(
+      req,
+      query.branchId || dto.branchId,
     );
+    return this.campaignsService.earnPoints(branchId, dto);
   }
 
   @Post('loyalty/redeem')
@@ -372,15 +413,16 @@ export class CampaignsController {
       },
     },
   })
-  redeemReward(
+  async redeemReward(
     @Body() dto: RewardRedeemRequestDto,
     @Req() req: { user: User },
     @Query() query: BranchQueryDto,
   ) {
-    return this.campaignsService.redeemReward(
-      this.getBranchId(req, query.branchId || dto.branchId),
-      dto,
+    const branchId = await this.getBranchId(
+      req,
+      query.branchId || dto.branchId,
     );
+    return this.campaignsService.redeemReward(branchId, dto);
   }
 
   @Post('loyalty/verify-redemption')
@@ -402,15 +444,16 @@ export class CampaignsController {
       },
     },
   })
-  verifyRedemption(
+  async verifyRedemption(
     @Body() dto: VerifyRedemptionDto,
     @Req() req: { user: User },
     @Query() query: BranchQueryDto,
   ) {
-    return this.campaignsService.verifyRedemption(
-      this.getBranchId(req, query.branchId || dto.branchId),
-      dto.code,
+    const branchId = await this.getBranchId(
+      req,
+      query.branchId || dto.branchId,
     );
+    return this.campaignsService.verifyRedemption(branchId, dto.code);
   }
 
   @Get('loyalty/transactions/:profileId')

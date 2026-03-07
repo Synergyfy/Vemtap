@@ -106,3 +106,31 @@ dropdown socials,form creator
 
 ===========
 
+--each branch has thier own dashboard.
+--GENERAL SHOULD RECORD TOTAL ANALYTICS
+
+
+--automation as tab section tab as tab
+--admin can be able to create form templates.
+-- template based on branch
+
+--when create main branch
+--main branch mantains its dashboard/under the bussiness
+--each branch should have thier own dashboard 
+--bussiness can choose to send list of forms and then load in the messaging and carry the coustomer flow.
+--in user step and share
+--enagagement 2.tutorial
+--choose a template or create 
+--description for form create and manage form and use it in threee ways tooltip
+--use by link,qr codem,attaching to messaging center,use it after coustomer submit thier data 
+auto redirect to the title please 2.live preview merge the form
+--bussiness can determine where thier forms will be linked.
+--when messaging is clicked send form link to message please
+--explanation under the bussiness 
+--configure your bussiness after tapping 
+--three ways to utilize the form after subscription
+--allow editing for form
+--three dots to show actions.
+-- three ways  to apply to socials and form creatorss and instructions.
+--engagment social can be added to messaging
+

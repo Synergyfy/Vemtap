@@ -1,36 +1,14 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
-import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { Contact } from '../../contacts/entities/contact.entity';
 import { ConversationThread } from './conversation-thread.entity';
 import { MessageCampaign } from './message-campaign.entity';
 import { Channel } from '../enums/channel.enum';
-
-export enum MessageDirection {
-  INBOUND = 'INBOUND',
-  OUTBOUND = 'OUTBOUND',
-}
-
-export enum MessageStatus {
-  PENDING = 'PENDING',
-  QUEUED = 'QUEUED',
-  SENT = 'SENT',
-  DELIVERED = 'DELIVERED',
-  FAILED = 'FAILED',
-  READ = 'READ',
-  REJECTED = 'REJECTED',
-}
+import { MessageDirection, MessageStatus } from '../enums/message.enum';
 
 @Entity('messages')
 export class Message extends AbstractBaseEntity {
-  @ManyToOne(() => Business, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'businessId' })
-  business: Business;
-
-  @Column()
-  businessId: string;
-
   @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'branchId' })
   branch: Branch;
@@ -73,6 +51,12 @@ export class Message extends AbstractBaseEntity {
 
   @Column({ type: 'enum', enum: MessageStatus, default: MessageStatus.PENDING })
   status: MessageStatus;
+
+  @Column({ nullable: true })
+  from: string;
+
+  @Column({ nullable: true })
+  to: string;
 
   @Column({ nullable: true })
   providerMessageId: string;

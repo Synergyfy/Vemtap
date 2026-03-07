@@ -40,8 +40,11 @@ export class CampaignTemplate extends AbstractBaseEntity {
     description: 'Branch ID (null for global templates)',
     required: false,
   })
-  @Column({ nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   branchId: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  businessId: string | null;
 
   @ManyToOne(() => Branch, { nullable: true })
   @JoinColumn({ name: 'branchId' })

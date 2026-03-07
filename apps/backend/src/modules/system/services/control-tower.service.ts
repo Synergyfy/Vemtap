@@ -1,9 +1,12 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, ILike } from 'typeorm';
-import { Business, BusinessStatus } from '../../businesses/entities/business.entity';
+import { Repository, ILike, In } from 'typeorm';
+import {
+  Business,
+  BusinessStatus,
+} from '../../businesses/entities/business.entity';
 import { Contact } from '../../contacts/entities/contact.entity';
-import { User } from '../../users/entities/user.entity';
+import { User, UserRole } from '../../users/entities/user.entity';
 import {
   BusinessControlRecord,
   CustomerControlRecord,
@@ -41,17 +44,30 @@ export class ControlTowerService {
 
     const businesses = await this.businessRepo.find({
       where,
-      relations: ['owner', 'staff'],
+      relations: ['owner', 'branches'],
       take: limit,
       order: { createdAt: 'DESC' },
     });
 
-    return businesses.map((biz) => ({
+    const businessStaffCounts = await Promise.all(
+      businesses.map(async (biz) => {
+        const branchIds = biz.branches.map((b) => b.id);
+        if (branchIds.length === 0) return 0;
+        return this.userRepo.count({
+          where: {
+            branchId: In(branchIds),
+            role: In([UserRole.STAFF, UserRole.MANAGER]),
+          },
+        });
+      }),
+    );
+
+    return businesses.map((biz, index) => ({
       uid: biz.id,
       name: biz.name,
       owner: biz.owner ? `${biz.owner.firstName} ${biz.owner.lastName}` : 'N/A',
       status: biz.status,
-      users: (biz.staff?.length || 0) + (biz.owner ? 1 : 0),
+      users: businessStaffCounts[index] + (biz.owner ? 1 : 0),
     }));
   }
 
@@ -70,7 +86,7 @@ export class ControlTowerService {
 
     const contacts = await this.contactRepo.find({
       where,
-      relations: ['business'],
+      relations: ['branch', 'branch.business'],
       take: limit,
       order: { createdAt: 'DESC' },
     });
@@ -78,10 +94,10 @@ export class ControlTowerService {
     return contacts.map((c) => ({
       uid: c.id,
       name: c.name || 'Anonymous',
-      businessUid: c.businessId,
-      businessName: c.business?.name || 'N/A',
-      tier: 'Bronze', // Placeholder: logic for tiers would go here
-      visits: 0, // Placeholder: logic for visit count would go here
+      businessUid: c.branch?.businessId || 'N/A',
+      businessName: c.branch?.business?.name || 'N/A',
+      tier: 'Bronze',
+      visits: 0,
     }));
   }
 
@@ -93,24 +109,23 @@ export class ControlTowerService {
     });
     if (!business) throw new NotFoundException('Business not found');
 
-    // Implement action logic based on actionKey
     switch (dto.actionKey) {
       case 'pause':
         business.status = BusinessStatus.SUSPENDED;
         business.suspensionReason = `Admin override: ${dto.ticketRef || 'Manual'}`;
         await this.businessRepo.save(business);
-        return { success: true, message: `Business ${business.name} suspended.` };
+        return {
+          success: true,
+          message: `Business ${business.name} suspended.`,
+        };
 
       case 'reset_access':
-        // Logic to reset access (e.g., invalidate tokens, etc.)
         return { success: true, message: `Access reset for ${business.name}.` };
 
       case 'add_user':
-        // Logic to create a staff user via dto.payload
         return { success: true, message: `User added to ${business.name}.` };
 
       case 'assume_session':
-        // Logic to generate an admin-impersonation token
         return {
           success: true,
           message: `Assume session token generated for ${business.name}.`,
@@ -133,17 +148,14 @@ export class ControlTowerService {
     });
     if (!contact) throw new NotFoundException('Customer not found');
 
-    // Implement action logic based on actionKey
     switch (dto.actionKey) {
       case 'award_points':
-        // Logic to award points via dto.payload
         return {
           success: true,
           message: `Points awarded to customer ${contact.name || contact.id}.`,
         };
 
       case 'update_contact':
-        // Logic to update contact details
         if (dto.payload?.new_email) contact.email = dto.payload.new_email;
         if (dto.payload?.new_phone) contact.phone = dto.payload.new_phone;
         await this.contactRepo.save(contact);

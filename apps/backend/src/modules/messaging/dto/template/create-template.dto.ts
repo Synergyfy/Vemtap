@@ -41,4 +41,9 @@ export class CreateTemplateDto {
   @IsBoolean()
   @IsOptional()
   isSystem?: boolean;
+
+  @ApiProperty({ example: 'uuid-branch', required: false })
+  @IsString()
+  @IsOptional()
+  branchId?: string;
 }

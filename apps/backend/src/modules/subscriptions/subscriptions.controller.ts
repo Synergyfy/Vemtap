@@ -4,7 +4,6 @@ import {
   Post,
   Body,
   UseGuards,
-  Param,
   Request,
   BadRequestException,
 } from '@nestjs/common';
@@ -22,20 +21,39 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { SkipSubscriptionCheck } from './decorators/skip-subscription-check.decorator';
+import { BranchesService } from '../branches/branches.service';
 
 @ApiTags('Subscriptions (Owner / Capabilities)')
 @Controller('subscriptions')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class SubscriptionsController {
-  constructor(private readonly subscriptionsService: SubscriptionsService) {}
+  constructor(
+    private readonly subscriptionsService: SubscriptionsService,
+    private readonly branchesService: BranchesService,
+  ) {}
+
+  private async getBusinessId(req: any): Promise<string> {
+    const branchId = req.user?.branchId;
+    if (!branchId) {
+      throw new BadRequestException('User must be associated with a branch');
+    }
+    const branch = await this.branchesService.findById(branchId);
+    if (!branch) {
+      throw new BadRequestException('Branch not found');
+    }
+    return branch.businessId;
+  }
 
   @Post('subscribe')
   @SkipSubscriptionCheck()
   @Roles(UserRole.OWNER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Subscribe to a pricing plan' })
   @ApiResponse({ status: 201, description: 'Successfully subscribed' })
-  subscribe(@Body() subscribeDto: SubscribeDto) {
+  async subscribe(@Request() req, @Body() subscribeDto: SubscribeDto) {
+    if (!subscribeDto.businessId) {
+      subscribeDto.businessId = await this.getBusinessId(req);
+    }
     return this.subscriptionsService.subscribe(subscribeDto);
   }
 
@@ -43,17 +61,13 @@ export class SubscriptionsController {
   @SkipSubscriptionCheck()
   @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({
-    summary: 'Get current active plan for the current business',
-    description: 'Uses businessId from the authenticated user token.',
+    summary: "Get current active plan for the branch's business",
   })
   @ApiOkResponse({
     description: 'Return current active plan details',
   })
-  getActivePlan(@Request() req) {
-    const businessId = req.user.businessId;
-    if (!businessId) {
-      throw new BadRequestException('User is not associated with a business');
-    }
+  async getActivePlan(@Request() req) {
+    const businessId = await this.getBusinessId(req);
     return this.subscriptionsService.activeSubscription(businessId);
   }
 
@@ -63,17 +77,12 @@ export class SubscriptionsController {
   @ApiOperation({
     summary:
       'View capability details and limits used for the current subscription',
-    description:
-      'Only accessible by business staff. Uses businessId from token.',
   })
   @ApiOkResponse({
     description: 'Return capability limits and used counts',
   })
-  getCapabilities(@Request() req) {
-    const businessId = req.user.businessId;
-    if (!businessId) {
-      throw new BadRequestException('User is not associated with a business');
-    }
+  async getCapabilities(@Request() req) {
+    const businessId = await this.getBusinessId(req);
     return this.subscriptionsService.getCapabilities(businessId);
   }
 

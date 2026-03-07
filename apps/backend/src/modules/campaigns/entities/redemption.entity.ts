@@ -38,6 +38,10 @@ export class Redemption extends AbstractBaseEntity {
   @Index()
   branchId: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  @Index()
+  businessId: string;
+
   @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'branchId' })
   branch: Branch;

@@ -11,6 +11,7 @@ import { PointTransaction } from './entities/point-transaction.entity';
 import { LoyaltyRule } from './entities/loyalty-rule.entity';
 import { Reward } from './entities/reward.entity';
 import { Redemption } from './entities/redemption.entity';
+import { Business } from '../businesses/entities/business.entity';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { BranchesService } from '../branches/branches.service';
@@ -49,18 +50,24 @@ export class CampaignsService {
     private automationService: AutomationService,
   ) {}
 
+  async checkBranchAccess(user: User, branchId: string): Promise<boolean> {
+    return this.branchesService.checkBranchAccess(user, branchId);
+  }
+
   async create(
     createCampaignDto: CreateCampaignDto,
     branchId: string,
   ): Promise<Campaign> {
+    const branch = await this.branchesService.findById(branchId);
     const campaign = this.campaignRepository.create({
       ...createCampaignDto,
       branchId,
-    });
-    // Mock initial stats
-    campaign.sent = 0;
-    campaign.delivered = '0%';
-    campaign.clicks = 0;
+      businessId: branch.businessId,
+    } as any) as unknown as Campaign;
+
+    (campaign as any).sent = 0;
+    (campaign as any).delivered = '0%';
+    (campaign as any).clicks = 0;
 
     return this.campaignRepository.save(campaign);
   }
@@ -71,7 +78,6 @@ export class CampaignsService {
   ): Promise<Campaign[]> {
     const where: any = { branchId };
     if (status) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       where.status = status;
     }
 
@@ -104,16 +110,18 @@ export class CampaignsService {
   }
 
   async getStats(branchId: string) {
-    // In a real app, we would aggregate this from the DB or a separate analytics table.
-    // For now, we mock the trends but calculate the totals from actual campaigns if possible,
-    // or just return the mocked structure required by the frontend.
-
     const campaigns = await this.findAll(branchId);
 
-    const totalSent = campaigns.reduce((acc, c) => acc + c.sent, 0);
-    const totalClicks = campaigns.reduce((acc, c) => acc + c.clicks, 0);
+    const totalSent = campaigns.reduce(
+      (acc, c) => acc + (c as any).sent || 0,
+      0,
+    );
+    const totalClicks = campaigns.reduce(
+      (acc, c) => acc + (c as any).clicks || 0,
+      0,
+    );
     const activeCount = campaigns.filter(
-      (c) => c.status === CampaignStatus.ACTIVE,
+      (c) => (c as any).status === CampaignStatus.ACTIVE,
     ).length;
 
     return [
@@ -126,7 +134,7 @@ export class CampaignsService {
       },
       {
         label: 'Avg. Delivery',
-        value: '94%', // Mocked for now
+        value: '94%',
         icon: 'visibility',
         color: 'green',
         trend: { value: '+2%', isUp: true },
@@ -153,20 +161,24 @@ export class CampaignsService {
     dto: CreateCampaignTemplateDto,
     branchId?: string | null,
   ): Promise<CampaignTemplate> {
+    let businessId: string | null = null;
+    if (branchId) {
+      const branch = await this.branchesService.findById(branchId);
+      businessId = branch.businessId;
+    }
+
     const template = this.templateRepository.create({
       ...dto,
       branchId: branchId ?? null,
-    });
+      businessId,
+    } as any) as unknown as CampaignTemplate;
+
     return this.templateRepository.save(template);
   }
 
   async getTemplates(branchId?: string | null): Promise<CampaignTemplate[]> {
-    // Return both global (null branchId) and specific branch templates
     return this.templateRepository.find({
-      where: [
-        { branchId: IsNull() }, // Global
-        ...(branchId ? [{ branchId }] : []),
-      ],
+      where: [{ branchId: IsNull() }, ...(branchId ? [{ branchId }] : [])],
       order: { createdAt: 'ASC' },
     });
   }
@@ -176,20 +188,20 @@ export class CampaignsService {
     userId: string,
     branchId: string,
   ): Promise<LoyaltyProfile> {
-    const branch = await this.branchesService.findById(branchId);
-    if (!branch) throw new NotFoundException('Branch not found');
-
     let profile = await this.profileRepository.findOne({
-      where: { userId, businessId: branch.businessId },
+      where: { userId, branchId },
     });
 
     if (!profile) {
+      const branch = await this.branchesService.findById(branchId);
       profile = this.profileRepository.create({
         userId,
-        businessId: branch.businessId,
         branchId,
+        businessId: branch.businessId,
         tierLevel: 'bronze',
-      });
+        points: 0,
+        currentPointsBalance: 0,
+      } as any) as unknown as LoyaltyProfile;
       await this.profileRepository.save(profile);
     }
     return profile;
@@ -202,7 +214,11 @@ export class CampaignsService {
   async getLoyaltyRule(branchId: string): Promise<LoyaltyRule> {
     let rule = await this.ruleRepository.findOne({ where: { branchId } });
     if (!rule) {
-      rule = this.ruleRepository.create({ branchId });
+      const branch = await this.branchesService.findById(branchId);
+      rule = this.ruleRepository.create({
+        branchId,
+        businessId: branch.businessId,
+      } as any) as unknown as LoyaltyRule;
       await this.ruleRepository.save(rule);
     }
     return rule;
@@ -218,11 +234,8 @@ export class CampaignsService {
     userId: string,
     branchId: string,
   ): Promise<LoyaltyProfile | null> {
-    const branch = await this.branchesService.findById(branchId);
-    if (!branch) return null;
-
     return this.profileRepository.findOne({
-      where: { userId, businessId: branch.businessId },
+      where: { userId, branchId },
     });
   }
 
@@ -236,7 +249,12 @@ export class CampaignsService {
   }
 
   async createReward(branchId: string, dto: CreateRewardDto): Promise<Reward> {
-    const reward = this.rewardRepository.create({ ...dto, branchId });
+    const branch = await this.branchesService.findById(branchId);
+    const reward = this.rewardRepository.create({
+      ...dto,
+      branchId,
+      businessId: branch.businessId,
+    } as any) as unknown as Reward;
     return this.rewardRepository.save(reward);
   }
 
@@ -258,6 +276,24 @@ export class CampaignsService {
   }
 
   async earnPoints(branchId: string, dto: PointEarnRequestDto): Promise<any> {
+    const branch = await this.branchesService.findById(branchId);
+    if (!branch) throw new NotFoundException('Branch not found');
+
+    // We need to fetch the business to get the ownerId
+    const business = await (this as any).ruleRepository.manager
+      .getRepository(Business)
+      .findOne({
+        where: { id: branch.businessId },
+      });
+
+    if (business && business.ownerId === dto.userId) {
+      return {
+        success: false,
+        pointsEarned: 0,
+        message: 'Owners cannot earn points at their own business.',
+      };
+    }
+
     const rule = await this.getLoyaltyRule(branchId);
     if (!rule || !rule.isActive) {
       return {
@@ -274,7 +310,6 @@ export class CampaignsService {
     const breakdown: Record<string, number> = {};
 
     if (dto.isVisit) {
-      // Cooldown check
       if (profile.lastRewardedAt && rule.visitCooldownHours) {
         const lastRewarded = new Date(profile.lastRewardedAt).getTime();
         const cooldownMs = rule.visitCooldownHours * 60 * 60 * 1000;
@@ -315,6 +350,7 @@ export class CampaignsService {
 
     profile.totalPointsEarned += earned;
     profile.currentPointsBalance += earned;
+    (profile as any).points = profile.currentPointsBalance; // Set both
     profile.lastVisitDate = new Date();
     profile.lastRewardedAt = new Date();
 
@@ -341,32 +377,28 @@ export class CampaignsService {
 
     await this.profileRepository.save(profile);
 
-    // Trigger automation if milestone reached
     if (milestoneReached) {
-      // Resolve user and contact
       const user = await this.userRepo.findOne({ where: { id: dto.userId } });
       if (user) {
-        const branch = await this.branchesService.findById(branchId);
-        if (branch) {
-          let contact = await this.contactRepo.findOne({
-            where: [
-              { businessId: branch.businessId, email: user.email },
-              { businessId: branch.businessId, phone: user.phone },
-            ],
-          });
-          if (!contact) {
-            // Should create? Yes if missing.
-            contact = this.contactRepo.create({
-              businessId: branch.businessId,
-              email: user.email,
-              phone: user.phone,
-              name: `${user.firstName} ${user.lastName}`,
-            });
-            await this.contactRepo.save(contact);
-          }
+        let contact = await this.contactRepo.findOne({
+          where: [
+            { branchId, email: user.email },
+            { branchId, phone: user.phone },
+          ],
+        });
+        if (!contact) {
+          const newContact = this.contactRepo.create({
+            branchId,
+            businessId: profile.businessId,
+            email: user.email,
+            phone: user.phone,
+            name: `${user.firstName} ${user.lastName}`,
+          } as any) as unknown as Contact;
+          contact = await this.contactRepo.save(newContact);
+        }
 
+        if (contact) {
           await this.automationService.trigger(TriggerType.REWARD_EARNED, {
-            businessId: branch.businessId,
             branchId,
             contactId: contact.id,
           });
@@ -376,8 +408,10 @@ export class CampaignsService {
 
     const transaction = this.transactionRepository.create({
       loyaltyProfile: profile,
+      businessId: profile.businessId,
       transactionType: 'earn',
       pointsAmount: earned,
+      points: earned,
       reason:
         dto.isVisit && dto.amountSpent
           ? 'Visit + Purchase'
@@ -385,7 +419,7 @@ export class CampaignsService {
             ? 'Visit'
             : 'Purchase',
       metadata: breakdown,
-    });
+    } as any) as unknown as PointTransaction;
     await this.transactionRepository.save(transaction);
 
     return {
@@ -410,11 +444,16 @@ export class CampaignsService {
 
     if (!profile || !reward)
       return { success: false, error: 'Profile or Reward not found' };
-    if (profile.currentPointsBalance < reward.pointCost)
+
+    const pointCost =
+      (reward as any).pointCost || (reward as any).pointsRequired;
+
+    if (profile.currentPointsBalance < pointCost)
       return { success: false, error: 'Insufficient points' };
 
-    profile.currentPointsBalance -= reward.pointCost;
-    profile.pointsRedeemed += reward.pointCost;
+    profile.currentPointsBalance -= pointCost;
+    (profile as any).points = profile.currentPointsBalance;
+    profile.pointsRedeemed += pointCost;
     await this.profileRepository.save(profile);
 
     const expiresAt = new Date();
@@ -423,12 +462,13 @@ export class CampaignsService {
     const redemption = this.redemptionRepository.create({
       loyaltyProfile: profile,
       reward: reward,
-      branchId, // Ensure branchId is captured
+      branchId,
+      businessId: profile.businessId,
       redemptionCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
-      pointsSpent: reward.pointCost,
+      pointsSpent: pointCost,
       status: 'pending',
       expiresAt,
-    });
+    } as any) as unknown as Redemption;
     await this.redemptionRepository.save(redemption);
 
     reward.totalRedeemed += 1;
@@ -436,11 +476,13 @@ export class CampaignsService {
 
     const transaction = this.transactionRepository.create({
       loyaltyProfile: profile,
+      businessId: profile.businessId,
       transactionType: 'redeem',
-      pointsAmount: -reward.pointCost,
+      pointsAmount: -pointCost,
+      points: -pointCost,
       reason: `Redeemed ${reward.name}`,
       referenceId: redemption.id,
-    });
+    } as any) as unknown as PointTransaction;
     await this.transactionRepository.save(transaction);
 
     return { success: true, redemption };

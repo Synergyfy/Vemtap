@@ -1,4 +1,4 @@
-# EntryConect Platform
+# vemtap Platform
 
 Monorepo for the EntryConect platform. It contains the web frontend (VemTap) and the backend API, managed with Turborepo and pnpm.
 

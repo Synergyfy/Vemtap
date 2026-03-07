@@ -35,6 +35,14 @@ export class AdminCreateDeviceDto {
   businessId?: string;
 
   @ApiPropertyOptional({
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    description: 'Branch ID (Optional) to assign the device to',
+  })
+  @IsUUID()
+  @IsOptional()
+  branchId?: string;
+
+  @ApiPropertyOptional({
     example: 'Main Lobby',
     description: 'Physical location of the device',
   })

@@ -61,6 +61,7 @@ export interface MessagingAnalytics {
         openRate: number;
         clickRate: number;
     };
+    trafficTrend?: any[];
 }
 
 export interface ChannelStat {

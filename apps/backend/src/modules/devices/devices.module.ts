@@ -5,9 +5,10 @@ import { DevicesService } from './devices.service';
 import { DevicesController } from './devices.controller';
 import { Order } from '../products/entities/order.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { BranchesModule } from '../branches/branches.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Device, Order, Branch])],
+  imports: [TypeOrmModule.forFeature([Device, Order, Branch]), BranchesModule],
   controllers: [DevicesController],
   providers: [DevicesService],
   exports: [DevicesService],

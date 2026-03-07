@@ -14,6 +14,7 @@ import { UpdateDeviceDto } from './dto/update-device.dto';
 import { UpdateAssetNamesDto } from './dto/update-asset-names.dto';
 import { Order, OrderStatus } from '../products/entities/order.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { BranchesService } from '../branches/branches.service';
 
 @Injectable()
 export class DevicesService {
@@ -24,10 +25,15 @@ export class DevicesService {
     private orderRepository: Repository<Order>,
     @InjectRepository(Branch)
     private branchRepository: Repository<Branch>,
+    private readonly branchesService: BranchesService,
   ) {}
 
+  async checkBranchAccess(user: any, branchId: string): Promise<boolean> {
+    return this.branchesService.checkBranchAccess(user, branchId);
+  }
+
   async create(
-    businessId: string,
+    branchId: string,
     createDeviceDto: CreateDeviceDto,
   ): Promise<Device> {
     const existing = await this.devicesRepository.findOneBy({
@@ -39,12 +45,12 @@ export class DevicesService {
 
     const device = this.devicesRepository.create({
       ...createDeviceDto,
-      businessId,
+      branchId,
     });
     return this.devicesRepository.save(device);
   }
 
-  async createAutoDevice(businessId: string): Promise<Device> {
+  async createAutoDevice(branchId: string): Promise<Device> {
     let code = '';
     let isUnique = false;
 
@@ -58,25 +64,42 @@ export class DevicesService {
     }
 
     const device = this.devicesRepository.create({
-      name: 'Primary Business Device',
+      name: 'Primary Branch Device',
       code,
       status: DeviceStatus.ACTIVE,
-      businessId,
+      branchId,
       type: 'Card', // Default type
     });
 
     return this.devicesRepository.save(device);
   }
 
-  async findAllByBusiness(businessId: string): Promise<Device[]> {
+  async findAllByBranch(branchId: string): Promise<Device[]> {
     return this.devicesRepository.find({
-      where: { businessId },
+      where: { branchId },
       order: { createdAt: 'DESC' },
     });
   }
 
-  async findOne(id: string, businessId: string): Promise<Device> {
-    const device = await this.devicesRepository.findOneBy({ id, businessId });
+  async findAllByContext(
+    branchId?: string,
+    businessId?: string,
+  ): Promise<Device[]> {
+    if (branchId) {
+      return this.findAllByBranch(branchId);
+    }
+    if (businessId) {
+      return this.devicesRepository.find({
+        where: { branch: { businessId } },
+        relations: ['branch'],
+        order: { createdAt: 'DESC' },
+      });
+    }
+    return [];
+  }
+
+  async findOne(id: string, branchId: string): Promise<Device> {
+    const device = await this.devicesRepository.findOneBy({ id, branchId });
     if (!device) {
       throw new NotFoundException('Device not found');
     }
@@ -89,30 +112,10 @@ export class DevicesService {
 
   async update(
     id: string,
-    businessId: string,
+    branchId: string,
     updateDeviceDto: UpdateDeviceDto,
   ): Promise<Device> {
-    const device = await this.findOne(id, businessId);
-
-    // If branchId is an empty string, treat it as null (to unset the branch)
-    if (updateDeviceDto.branchId === '') {
-      updateDeviceDto.branchId = null;
-    }
-
-    // Validate branchId if a new UUID is provided
-    if (updateDeviceDto.branchId) {
-      const branch = await this.branchRepository.findOneBy({
-        id: updateDeviceDto.branchId,
-      });
-      if (!branch) {
-        throw new NotFoundException('Branch not found');
-      }
-      if (branch.businessId !== businessId) {
-        throw new BadRequestException(
-          'Branch does not belong to your business',
-        );
-      }
-    }
+    const device = await this.findOne(id, branchId);
 
     Object.assign(device, updateDeviceDto);
 
@@ -131,6 +134,7 @@ export class DevicesService {
       where: { id: orderId },
       relations: [
         'user',
+        'user.branch',
         'product',
         'product.productType',
         'quote',
@@ -148,9 +152,9 @@ export class DevicesService {
       throw new ConflictException('Devices already generated for this order');
     }
 
-    const businessId = order.user?.businessId;
-    if (!businessId) {
-      throw new ConflictException('User does not have a business assigned');
+    const branchId = order.user?.branchId;
+    if (!branchId) {
+      throw new ConflictException('User does not have a branch assigned');
     }
 
     const quantity = order.quantity || order.quote?.quantity || 0;
@@ -201,15 +205,13 @@ export class DevicesService {
         name: `${productName} #${i + 1}`,
         code: codesArray[i],
         status: DeviceStatus.ACTIVE,
-        businessId,
+        branchId,
         orderId: order.id,
         type: productType?.name || 'Card',
         productTypeId: productType?.id,
       });
     }
 
-    // Bulk insert is more efficient than saving individual entities
-    // save() with an array handles insertion in batches
     const createdDevices = await this.devicesRepository.save(
       this.devicesRepository.create(newDevices as Device[]),
     );
@@ -220,13 +222,13 @@ export class DevicesService {
     return createdDevices;
   }
 
-  async remove(id: string, businessId: string): Promise<void> {
-    const device = await this.findOne(id, businessId);
+  async remove(id: string, branchId: string): Promise<void> {
+    const device = await this.findOne(id, branchId);
     await this.devicesRepository.remove(device);
   }
 
-  async getStats(businessId: string) {
-    const devices = await this.findAllByBusiness(businessId);
+  async getStats(branchId?: string, businessId?: string) {
+    const devices = await this.findAllByContext(branchId, businessId);
     return {
       totalDevices: devices.length,
       activeNow: devices.filter((d) => d.status === DeviceStatus.ACTIVE).length,
@@ -246,7 +248,7 @@ export class DevicesService {
 
   async generateDevicesForReadyOrders(
     userId: string,
-    businessId: string,
+    branchId: string,
   ): Promise<Device[]> {
     const readyOrders = await this.orderRepository.find({
       where: { userId, status: OrderStatus.READY },
@@ -276,7 +278,7 @@ export class DevicesService {
           name: '',
           code,
           status: DeviceStatus.ACTIVE,
-          businessId,
+          branchId,
           orderId: order.id,
           order,
         });
@@ -294,7 +296,7 @@ export class DevicesService {
   }
 
   async updateAssetNames(
-    businessId: string,
+    branchId: string,
     dto: UpdateAssetNamesDto,
   ): Promise<Device[]> {
     const updatedDevices: Device[] = [];
@@ -302,7 +304,7 @@ export class DevicesService {
     for (const asset of dto.assets) {
       const device = await this.devicesRepository.findOneBy({
         id: asset.id,
-        businessId,
+        branchId,
       });
 
       if (device) {
@@ -325,19 +327,20 @@ export class DevicesService {
   }) {
     const qb = this.devicesRepository
       .createQueryBuilder('device')
-      .leftJoinAndSelect('device.business', 'business');
+      .leftJoinAndSelect('device.branch', 'branch')
+      .leftJoinAndSelect('branch.business', 'business');
 
     if (query.status) {
       if (query.status === 'active') {
-        qb.andWhere('device.businessId IS NOT NULL');
+        qb.andWhere('device.branchId IS NOT NULL');
       } else if (query.status === 'inactive') {
-        qb.andWhere('device.businessId IS NULL');
+        qb.andWhere('device.branchId IS NULL');
       }
     }
 
     if (query.search) {
       qb.andWhere(
-        '(device.code ILIKE :search OR device.id ILIKE :search OR business.name ILIKE :search)',
+        '(device.code ILIKE :search OR device.id ILIKE :search OR branch.name ILIKE :search OR business.name ILIKE :search)',
         { search: `%${query.search}%` },
       );
     }
@@ -363,11 +366,11 @@ export class DevicesService {
     const total = await this.devicesRepository.count();
     const active = await this.devicesRepository
       .createQueryBuilder('d')
-      .where('d.businessId IS NOT NULL')
+      .where('d.branchId IS NOT NULL')
       .getCount();
     const inventory = await this.devicesRepository
       .createQueryBuilder('d')
-      .where('d.businessId IS NULL')
+      .where('d.branchId IS NULL')
       .getCount();
     const alerts = await this.devicesRepository
       .createQueryBuilder('d')
@@ -394,7 +397,7 @@ export class DevicesService {
       code: dto.code,
       name: dto.name || '',
       type: dto.type || 'Card',
-      businessId: dto.businessId,
+      branchId: dto.branchId,
       location: dto.location,
       status: DeviceStatus.ACTIVE,
     });

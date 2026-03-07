@@ -31,6 +31,7 @@ export interface CreateSurveyRequest {
     triggerDelay?: number;
     targetAudience: TargetAudience;
     isActive: boolean;
+    branchId?: string;
 }
 
 export interface UpdateSurveyRequest extends Partial<CreateSurveyRequest> { }

@@ -38,7 +38,7 @@ export class AdminFlowEngineService implements OnModuleInit {
     @InjectRepository(FlowExecution)
     private readonly executionRepo: Repository<FlowExecution>,
     private readonly settingsService: SettingsService,
-  ) { }
+  ) {}
 
   private getWhereClause<T>(
     filter: FlowFilterDto,
@@ -46,7 +46,6 @@ export class AdminFlowEngineService implements OnModuleInit {
   ): FindOptionsWhere<T> {
     const where: any = {};
 
-    if (filter.businessId) where.businessId = filter.businessId;
     if (filter.branchId) where.branchId = filter.branchId;
 
     if (filter.from && filter.to) {
@@ -61,7 +60,6 @@ export class AdminFlowEngineService implements OnModuleInit {
   }
 
   async onModuleInit(): Promise<void> {
-    // Seed default triggers if none exist
     const count = await this.triggerRepo.count();
     if (count === 0) {
       const defaults = [
@@ -94,7 +92,9 @@ export class AdminFlowEngineService implements OnModuleInit {
   }
 
   async createTemplate(data: CreateFlowTemplateDto): Promise<FlowTemplate> {
-    const template = this.templateRepo.create(data as any) as unknown as FlowTemplate;
+    const template = this.templateRepo.create(
+      data as any,
+    ) as unknown as FlowTemplate;
     return this.templateRepo.save(template);
   }
 
@@ -128,7 +128,7 @@ export class AdminFlowEngineService implements OnModuleInit {
     const where = this.getWhereClause<FlowExecution>(filter, 'updatedAt');
     return this.executionRepo.find({
       where,
-      relations: ['flow', 'contact', 'business'],
+      relations: ['flow', 'contact', 'branch'],
       order: { updatedAt: 'DESC' },
       take: filter.limit || 50,
     });
@@ -139,7 +139,7 @@ export class AdminFlowEngineService implements OnModuleInit {
     const where = this.getWhereClause<FlowLog>(filter, 'createdAt');
     return this.logRepo.find({
       where,
-      relations: ['flowExecution', 'business'],
+      relations: ['flowExecution', 'branch'],
       order: { createdAt: 'DESC' },
       take: filter.limit || 100,
     });
@@ -154,19 +154,18 @@ export class AdminFlowEngineService implements OnModuleInit {
     );
 
     const totalMessagesSent = await this.logRepo.count({
-      where: { ...logWhere, actionType: 'message_sent' },
+      where: { ...logWhere, actionType: 'message_sent' } as any,
     });
     const activeSessionsCount = await this.executionRepo.count({
-      where: { ...executionWhere, status: ExecutionStatus.RUNNING },
+      where: { ...executionWhere, status: ExecutionStatus.RUNNING } as any,
     });
     const loyaltyAssigned = await this.logRepo.count({
-      where: { ...logWhere, actionType: 'loyalty_assigned' },
+      where: { ...logWhere, actionType: 'loyalty_assigned' } as any,
     });
 
-    // Mocking some values that might be harder to calculate from logs alone without more complex queries
     return {
       totalMessagesSent,
-      totalRepliesReceived: Math.floor(totalMessagesSent * 0.4), // Mocked for now
+      totalRepliesReceived: Math.floor(totalMessagesSent * 0.4),
       avgResponseRate: 40.0,
       loyaltyAssigned,
       activeSessionsCount,

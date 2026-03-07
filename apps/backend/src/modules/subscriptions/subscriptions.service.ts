@@ -14,8 +14,10 @@ import { In, LessThanOrEqual, Repository } from 'typeorm';
 import { PlansService } from './plans.service';
 import { SubscribeDto } from './dto/subscribe.dto';
 import { Business } from '../businesses/entities/business.entity';
-import { User, UserStatus } from '../users/entities/user.entity';
+import { User, UserStatus, UserRole } from '../users/entities/user.entity';
+import { Branch } from '../branches/entities/branch.entity';
 import { PaymentsService } from '../payments/payments.service';
+import { Device } from '../devices/entities/device.entity';
 import {
   PaymentPurpose,
   PaymentStatus,
@@ -32,11 +34,16 @@ export class SubscriptionsService {
     private readonly businessRepository: Repository<Business>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Branch)
+    private readonly branchRepository: Repository<Branch>,
+    @InjectRepository(Device)
+    private readonly deviceRepository: Repository<Device>,
     private readonly plansService: PlansService,
     private readonly paymentsService: PaymentsService,
-  ) { }
+  ) {}
 
-  async activeSubscription(businessId: string): Promise<Subscription | null> {
+  async activeSubscription(businessId?: string): Promise<Subscription | null> {
+    if (!businessId) return null;
     const sub = await this.subscriptionRepository.findOne({
       where: {
         businessId,
@@ -79,17 +86,6 @@ export class SubscriptionsService {
       throw new NotFoundException('Business not found');
     }
 
-    // Role restriction: Only Owners (or Admins bypass anyway) can subscribe.
-    // Managers and Staff should not be allowed.
-    // Since we usually have the ownerId linked to the business, we check if there's an owner.
-    // However, if we want to check the *caller's* role, we'd need to pass it in.
-    // For now, let's assume if it's a business subscription, it's initiated for the business.
-    // But the request says "staff and manager should not be able to subscribe".
-    // If this service is called by the controller, the @Roles guard handles it.
-    // If we want to be absolutely sure here, we'd need the caller's role.
-    // Given the context, the controller restriction is likely sufficient, 
-    // but I will add a check if the business has an owner and ensure we are not violating business rules.
-
     let status = SubscriptionStatus.ACTIVE;
     let trialEndDate: Date | null = null;
     const startDate = new Date();
@@ -97,7 +93,6 @@ export class SubscriptionsService {
     let authCode = null;
 
     if (paymentReference) {
-      // Always verify payment if reference provided, to capture auth code for future billing
       const paymentData =
         await this.paymentsService.verifyTransaction(paymentReference);
       if (!paymentData) {
@@ -106,13 +101,10 @@ export class SubscriptionsService {
       authCode = paymentData.authorization?.authorization_code;
     }
 
-    // Determine status and endDate
     if (plan.isFree) {
-      // Free plan: Free forever
       endDate.setFullYear(endDate.getFullYear() + 10);
       status = SubscriptionStatus.ACTIVE;
     } else {
-      // Paid plan
       const trialDays = plan.trialDurationDays || 0;
 
       if (isTrial) {
@@ -127,25 +119,22 @@ export class SubscriptionsService {
         trialEndDate = trialEnd;
         endDate = trialEnd;
       } else {
-        // Direct Payment (Immediate charge required)
         if (!paymentReference) {
           throw new BadRequestException(
             'Payment reference is required for direct subscription',
           );
         }
-        // Verification already done above
 
         await this.paymentsService.recordPayment({
           reference: paymentReference,
-          amount: plan.monthlyPrice, // Ideally calculate based on period
+          amount: plan.monthlyPrice,
           purpose: PaymentPurpose.SUBSCRIPTION,
           status: PaymentStatus.SUCCESS,
           metadata: { planId, billingPeriod },
           businessId,
-          userId: business.ownerId, // Assuming business has ownerId
+          userId: business.ownerId,
         });
 
-        // Set endDate based on billing period
         if (billingPeriod === BillingPeriod.MONTHLY)
           endDate.setMonth(endDate.getMonth() + 1);
         else if (billingPeriod === BillingPeriod.QUARTERLY)
@@ -155,7 +144,6 @@ export class SubscriptionsService {
       }
     }
 
-    // Deactivate previous subscriptions
     const activeSub = await this.activeSubscription(businessId);
     if (activeSub) {
       activeSub.status = SubscriptionStatus.CANCELED;
@@ -176,13 +164,23 @@ export class SubscriptionsService {
 
     const savedSub = await this.subscriptionRepository.save(newSub);
 
-    // Update all business users (owner and staff) status to ACTIVE when they have an active subscription or trial
     if (
       status === SubscriptionStatus.ACTIVE ||
       status === SubscriptionStatus.TRIAL
     ) {
+      const branches = await this.branchRepository.find({
+        where: { businessId },
+      });
+      const branchIds = branches.map((b) => b.id);
+      if (branchIds.length > 0) {
+        await this.userRepository.update(
+          { branchId: In(branchIds) },
+          { status: UserStatus.ACTIVE },
+        );
+      }
+      // Also update owner who might not be in a branch? (Actually they should be in Main Branch now)
       await this.userRepository.update(
-        { businessId: business.id },
+        { id: business.ownerId },
         { status: UserStatus.ACTIVE },
       );
     }
@@ -193,22 +191,19 @@ export class SubscriptionsService {
   async getSubscriptionStatus(
     businessId: string,
   ): Promise<SubscriptionStatus | null> {
-    // Check for active/trial first (and update if expired)
     const active = await this.activeSubscription(businessId);
     if (active) return active.status;
 
-    // If no active, find the latest one to see if it expired
     const lastSub = await this.subscriptionRepository.findOne({
       where: { businessId },
       order: { createdAt: 'DESC' },
     });
 
     if (lastSub) {
-      // It might be EXPIRED or CANCELED
       return lastSub.status;
     }
 
-    return null; // Never subscribed
+    return null;
   }
 
   async processExpiredTrials() {
@@ -233,7 +228,6 @@ export class SubscriptionsService {
         continue;
       }
 
-      // Calculate Amount
       let amount = sub.plan.monthlyPrice;
       if (sub.billingPeriod === BillingPeriod.QUARTERLY)
         amount = sub.plan.quarterlyPrice;
@@ -272,12 +266,17 @@ export class SubscriptionsService {
         this.activateSubscription(sub);
         await this.subscriptionRepository.save(sub);
 
-        // Update all business users status to ACTIVE
         if (sub.businessId) {
-          await this.userRepository.update(
-            { businessId: sub.businessId },
-            { status: UserStatus.ACTIVE },
-          );
+          const branches = await this.branchRepository.find({
+            where: { businessId: sub.businessId },
+          });
+          const branchIds = branches.map((b) => b.id);
+          if (branchIds.length > 0) {
+            await this.userRepository.update(
+              { branchId: In(branchIds) },
+              { status: UserStatus.ACTIVE },
+            );
+          }
         }
       } else {
         this.logger.error(`Failed to charge subscription ${sub.id}. Expiring.`);
@@ -304,10 +303,8 @@ export class SubscriptionsService {
   async getCapabilities(businessId: string) {
     const sub = await this.activeSubscription(businessId);
 
-    // Default fallback if no plan
     let plan = sub?.plan;
     if (!plan) {
-      // Try to get a default free plan
       const plans = await this.plansService.findAll(true);
       plan = plans.find((p) => p.isFree);
     }
@@ -318,18 +315,22 @@ export class SubscriptionsService {
       );
     }
 
-    // Load business with relations to count usage
-    const business = await this.businessRepository.findOne({
-      where: { id: businessId },
-      relations: ['staff', 'devices', 'branches'],
+    const branches = await this.branchRepository.find({
+      where: { businessId },
     });
+    const branchIds = branches.map((b) => b.id);
 
-    const usedStaff = business?.staff?.length || 0;
-    const usedTags = business?.devices?.length || 0;
-    const usedBranches = business?.branches?.length || 0;
+    const usedStaff = await this.userRepository.count({
+      where: {
+        branchId: In(branchIds),
+        role: In([UserRole.MANAGER, UserRole.STAFF]),
+      },
+    });
+    const usedTags = await this.deviceRepository.count({
+      where: { branchId: In(branchIds) },
+    });
+    const usedBranches = branches.length;
 
-    // We can expand loyalty usage metrics as needed. For now just mock it or calculate it properly if entities exist.
-    // e.g. usedLoyaltyPrograms
     const usedLoyaltyPrograms = 0;
 
     return {
@@ -393,7 +394,7 @@ export class SubscriptionsService {
     return subs.map((sub) => ({
       id: sub.id,
       business: sub.business?.name || 'Unknown Business',
-      owner: sub.business?.ownerId ? 'Linked' : 'Unknown', // Add robust owner fetch if needed
+      owner: sub.business?.ownerId ? 'Linked' : 'Unknown',
       plan: sub.plan?.name || 'Unknown Plan',
       status: sub.status,
       renewal: sub.endDate
@@ -408,7 +409,6 @@ export class SubscriptionsService {
   }
 
   async getAdminStats() {
-    // Calculate dynamic real-time stats
     const allSubs = await this.subscriptionRepository.find({
       where: {
         status: In([SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL]),

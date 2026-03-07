@@ -1,4 +1,11 @@
-import { IsString, IsArray, IsObject, IsOptional, ValidateNested, IsNumber } from 'class-validator';
+import {
+  IsString,
+  IsArray,
+  IsObject,
+  IsOptional,
+  ValidateNested,
+  IsNumber,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class FlowPosition {

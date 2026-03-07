@@ -39,31 +39,37 @@ describe('AnalyticsController', () => {
   });
 
   describe('getDashboardAnalytics', () => {
-    it('should return dashboard analytics data', () => {
+    it('should return dashboard analytics data', async () => {
       const result = { test: 'data' } as any;
-      jest.spyOn(service, 'getDashboardAnalytics').mockReturnValue(result);
+      jest.spyOn(service, 'getDashboardAnalytics').mockResolvedValue(result);
 
-      expect(controller.getDashboardAnalytics({})).toBe(result);
+      expect(await controller.getDashboardAnalytics({} as any, {} as any)).toBe(
+        result,
+      );
       expect(service.getDashboardAnalytics).toHaveBeenCalled();
     });
   });
 
   describe('getFootfallAnalytics', () => {
-    it('should return footfall analytics data', () => {
+    it('should return footfall analytics data', async () => {
       const result = { test: 'data' } as any;
-      jest.spyOn(service, 'getFootfallAnalytics').mockReturnValue(result);
+      jest.spyOn(service, 'getFootfallAnalytics').mockResolvedValue(result);
 
-      expect(controller.getFootfallAnalytics({})).toBe(result);
+      expect(await controller.getFootfallAnalytics({} as any, {} as any)).toBe(
+        result,
+      );
       expect(service.getFootfallAnalytics).toHaveBeenCalled();
     });
   });
 
   describe('getPeakTimesAnalytics', () => {
-    it('should return peak times analytics data', () => {
+    it('should return peak times analytics data', async () => {
       const result = { test: 'data' } as any;
-      jest.spyOn(service, 'getPeakTimesAnalytics').mockReturnValue(result);
+      jest.spyOn(service, 'getPeakTimesAnalytics').mockResolvedValue(result);
 
-      expect(controller.getPeakTimesAnalytics({})).toBe(result);
+      expect(await controller.getPeakTimesAnalytics({} as any, {} as any)).toBe(
+        result,
+      );
       expect(service.getPeakTimesAnalytics).toHaveBeenCalled();
     });
   });

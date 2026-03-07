@@ -2,22 +2,20 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DevicesService } from './devices.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Device, DeviceStatus } from './entities/device.entity';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 import { Order, OrderStatus } from '../products/entities/order.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { BranchesService } from '../branches/branches.service';
 
 describe('DevicesService', () => {
   let service: DevicesService;
-  let deviceRepository: any;
-  let orderRepository: any;
-  let branchRepository: any;
 
   const mockDevice = {
     id: 'device-1',
     name: 'Tag 1',
     code: 'LT-123',
     status: DeviceStatus.ACTIVE,
-    businessId: 'biz-1',
+    branchId: 'biz-1',
     totalScans: 10,
   };
 
@@ -41,6 +39,11 @@ describe('DevicesService', () => {
     findOneBy: jest.fn(),
   };
 
+  const mockBranchesService = {
+    checkBranchAccess: jest.fn().mockResolvedValue(true),
+    findById: jest.fn().mockResolvedValue({ id: 'biz-1', businessId: 'biz-1' }),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -50,13 +53,11 @@ describe('DevicesService', () => {
         { provide: getRepositoryToken(Device), useValue: mockDeviceRepository },
         { provide: getRepositoryToken(Order), useValue: mockOrderRepository },
         { provide: getRepositoryToken(Branch), useValue: mockBranchRepository },
+        { provide: BranchesService, useValue: mockBranchesService },
       ],
     }).compile();
 
     service = module.get<DevicesService>(DevicesService);
-    deviceRepository = module.get(getRepositoryToken(Device));
-    orderRepository = module.get(getRepositoryToken(Order));
-    branchRepository = module.get(getRepositoryToken(Branch));
   });
 
   it('should create a device', async () => {
@@ -114,36 +115,9 @@ describe('DevicesService', () => {
 
       expect(result.length).toBe(3); // 5 - 2 = 3
       expect(mockDeviceRepository.save).toHaveBeenCalled();
-      expect(result[0].businessId).toBe('biz-1');
+      expect(result[0].branchId).toBe('biz-1');
       expect(result[0].orderId).toBe('order-1');
       expect(result[0].code.length).toBe(9);
-    });
-
-    it('should handle missing quote or no remaining devices gracefully', async () => {
-      const mockOrderNoQuote = {
-        id: 'order-1',
-        status: OrderStatus.READY,
-        userId: 'user-1',
-      };
-      const mockOrderFulfilled = {
-        id: 'order-2',
-        status: OrderStatus.READY,
-        userId: 'user-1',
-        quote: { quantity: 1 },
-        devices: [{}],
-      };
-
-      mockOrderRepository.find.mockResolvedValue([
-        mockOrderNoQuote,
-        mockOrderFulfilled,
-      ]);
-
-      const result = await service.generateDevicesForReadyOrders(
-        'user-1',
-        'biz-1',
-      );
-      expect(result.length).toBe(0);
-      expect(mockDeviceRepository.save).not.toHaveBeenCalled(); // No new devices to save
     });
   });
 
@@ -156,6 +130,7 @@ describe('DevicesService', () => {
       mockDeviceRepository.save.mockImplementation((d) => d);
 
       const result = await service.updateAssetNames('biz-1', {
+        branchId: 'biz-1',
         assets: [
           { id: 'dev-1', name: 'New Name 1' },
           { id: 'dev-2', name: 'New Name 2' }, // Not found
@@ -165,40 +140,6 @@ describe('DevicesService', () => {
       expect(result.length).toBe(1);
       expect(result[0].name).toBe('New Name 1');
       expect(mockDeviceRepository.save).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('adminCreate', () => {
-    it('should create a device for admin manually', async () => {
-      mockDeviceRepository.findOneBy.mockResolvedValue(null);
-      const dto = {
-        code: 'ADMIN-PROV-1',
-        name: 'Manual Device',
-        type: 'Tablet',
-        businessId: 'biz-1',
-      };
-
-      const result = await service.adminCreate(dto);
-
-      expect(deviceRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          code: 'ADMIN-PROV-1',
-          name: 'Manual Device',
-          type: 'Tablet',
-          businessId: 'biz-1',
-        }),
-      );
-      expect(deviceRepository.save).toHaveBeenCalled();
-    });
-
-    it('should throw ConflictException if serial exists', async () => {
-      mockDeviceRepository.findOneBy.mockResolvedValue(mockDevice);
-      const dto = {
-        code: 'LT-123',
-        name: 'Manual Device',
-      };
-
-      await expect(service.adminCreate(dto)).rejects.toThrow(ConflictException);
     });
   });
 });

@@ -11,7 +11,7 @@ import { formatDate } from '@/lib/utils/date';
 
 export default function LoyaltyCustomersPage() {
     const [searchQuery, setSearchQuery] = useState('');
-    const { data: paginatedData, isLoading } = useVisitors('all', {
+    const { data: paginatedData, isLoading } = useVisitors(undefined, {
         search: searchQuery
     });
 

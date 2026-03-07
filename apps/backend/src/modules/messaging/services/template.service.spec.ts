@@ -1,9 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TemplateService } from './template.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { MessageTemplate, TemplateStatus } from '../entities/message-template.entity';
+import {
+  MessageTemplate,
+  TemplateStatus,
+} from '../entities/message-template.entity';
 import { BadRequestException } from '@nestjs/common';
 import { Channel } from '../enums/channel.enum';
+import { BranchesService } from '../../branches/branches.service';
 
 describe('TemplateService', () => {
   let service: TemplateService;
@@ -28,6 +32,13 @@ describe('TemplateService', () => {
           provide: getRepositoryToken(MessageTemplate),
           useValue: repoMock,
         },
+        {
+          provide: BranchesService,
+          useValue: {
+            checkBranchAccess: jest.fn(),
+            findById: jest.fn().mockResolvedValue({ businessId: 'b1' }),
+          },
+        },
       ],
     }).compile();
 
@@ -50,6 +61,7 @@ describe('TemplateService', () => {
         channel: Channel.SMS,
         content: 'Hello visitor!',
         category: 'marketing',
+        branchId: 'br1',
       };
       const user = { id: 'u1', businessId: 'b1', role: 'Owner' } as any;
 
@@ -68,7 +80,7 @@ describe('TemplateService', () => {
       const result = await service.findAllAdmin();
       expect(result).toEqual(templates);
       expect(repoMock.find).toHaveBeenCalledWith({
-        relations: ['business'],
+        relations: ['branch'],
         order: { createdAt: 'DESC' },
       });
     });
@@ -78,7 +90,10 @@ describe('TemplateService', () => {
     it('should update template status', async () => {
       const template = { id: 't1', status: TemplateStatus.PENDING };
       repoMock.findOne.mockResolvedValue(template);
-      repoMock.save.mockResolvedValue({ ...template, status: TemplateStatus.APPROVED });
+      repoMock.save.mockResolvedValue({
+        ...template,
+        status: TemplateStatus.APPROVED,
+      });
 
       const result = await service.updateStatus('t1', TemplateStatus.APPROVED);
       expect(result.status).toBe(TemplateStatus.APPROVED);

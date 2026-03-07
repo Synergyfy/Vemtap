@@ -2,6 +2,8 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -17,8 +19,37 @@ export class BranchesService {
     private branchesRepository: Repository<Branch>,
     @InjectRepository(Business)
     private businessRepository: Repository<Business>,
+    @Inject(forwardRef(() => SubscriptionsService))
     private subscriptionsService: SubscriptionsService,
   ) {}
+
+  async checkBranchAccess(user: any, targetBranchId: string): Promise<boolean> {
+    if (user.role === 'Admin') return true;
+
+    if (user.role === 'Owner') {
+      // Owner can access any branch that belongs to their business
+      const branch = await this.branchesRepository.findOne({
+        where: { id: targetBranchId },
+      });
+      if (!branch) return false;
+
+      // We need to check if the branch belongs to the owner's business
+      // Using businessId from token if available, or fetching from DB
+      const businessId = user.businessId;
+      if (businessId) {
+        return branch.businessId === businessId;
+      }
+
+      // Fallback: check if the business belongs to this owner
+      const business = await this.businessRepository.findOne({
+        where: { ownerId: user.id },
+      });
+      return business ? branch.businessId === business.id : false;
+    }
+
+    // Manager and Staff can only access their assigned branch
+    return user.branchId === targetBranchId;
+  }
 
   async create(
     ownerId: string,
@@ -80,8 +111,15 @@ export class BranchesService {
     return branch;
   }
 
-  async findById(id: string): Promise<Branch | null> {
-    return this.branchesRepository.findOne({ where: { id } });
+  async findById(id: string): Promise<Branch> {
+    const branch = await this.branchesRepository.findOne({ where: { id } });
+    if (!branch) throw new NotFoundException(`Branch with ID ${id} not found`);
+    return branch;
+  }
+
+  async getBusinessId(branchId: string): Promise<string> {
+    const branch = await this.findById(branchId);
+    return branch.businessId;
   }
 
   async update(

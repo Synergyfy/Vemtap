@@ -59,7 +59,6 @@ export class FlowEngineService {
         where: { id: context.contactId },
       });
     }
-    // Handle other context lookups if needed (phone, etc.)
 
     if (!contact) {
       this.logger.warn(
@@ -70,12 +69,11 @@ export class FlowEngineService {
 
     // 3. Start Execution for each flow
     for (const flow of flows) {
-      // Check for duplicates? PRD says "Prevent duplicate enrollments"
       const existing = await this.executionRepo.findOne({
         where: {
           flowId: flow.id,
           contactId: contact.id,
-          status: ExecutionStatus.RUNNING, // or WAITING
+          status: ExecutionStatus.RUNNING,
         },
       });
       if (existing) {
@@ -91,7 +89,7 @@ export class FlowEngineService {
         businessId: flow.businessId,
         branchId: flow.branchId,
         status: ExecutionStatus.RUNNING,
-        state: { ...context }, // Initialize state with trigger context
+        state: { ...context },
         currentNodeId: this.getStartNodeId(flow.structure),
       });
       await this.executionRepo.save(execution);
@@ -112,7 +110,6 @@ export class FlowEngineService {
       (n: FlowNode) => n.id === nodeId,
     );
     if (!node) {
-      // End of flow or invalid node
       await this.completeExecution(execution);
       return;
     }
@@ -128,11 +125,10 @@ export class FlowEngineService {
           break;
         case 'delay':
           await this.handleDelay(execution, node);
-          return; // Stop execution here, wait for delay job
+          return;
         case 'condition':
           await this.handleCondition(execution, node);
-          return; // Logic branches, so we return to avoid default next step
-        // Add other types: tag, loyalty, etc.
+          return;
         default:
           this.logger.warn(`Unknown node type ${node.type}`);
           await this.moveToNextNode(execution, node.id);
@@ -148,10 +144,7 @@ export class FlowEngineService {
   // --- Handlers ---
 
   private async handleSendMessage(execution: FlowExecution, node: FlowNode) {
-    // PRD 7.1: Message Type, Content, Media
     const content = node.data?.message || '';
-    // Assuming channel is WhatsApp as per PRD "WhatsApp Flow Builder"
-    // But we could make it generic. For now, defaulting to WhatsApp via Termii.
 
     const dto: SendMessageDto = {
       businessId: execution.businessId,
@@ -159,19 +152,16 @@ export class FlowEngineService {
       channel: Channel.WHATSAPP,
       content,
       contactIds: [execution.contactId],
-      // templateId if node uses template
     };
 
     const result = await this.messagingEngine.sendMessage(dto);
     execution.lastMessageId = result.messageIds?.[0] || '';
     await this.executionRepo.save(execution);
 
-    // Move to next node immediately after sending
     await this.moveToNextNode(execution, node.id);
   }
 
   private async handleDelay(execution: FlowExecution, node: FlowNode) {
-    // PRD 7.2: Delay Time, Unit
     const time = node.data?.time || 0;
     const unit = node.data?.unit || 'minutes';
 
@@ -184,12 +174,11 @@ export class FlowEngineService {
     execution.nextRunAt = new Date(Date.now() + delayMs);
     await this.executionRepo.save(execution);
 
-    // Add to BullMQ with delay
     await this.delayQueue.add(
       'process-delay',
       {
         executionId: execution.id,
-        nodeId: node.id, // The current delay node
+        nodeId: node.id,
       },
       {
         delay: delayMs,
@@ -198,28 +187,16 @@ export class FlowEngineService {
   }
 
   private async handleCondition(execution: FlowExecution, node: FlowNode) {
-    // PRD 7.3: If User Replied, If No Reply, etc.
-    // This is tricky.
-    // 1. "If User Replied": We need to wait for a webhook.
-    // 2. "If specific keyword": Check last reply.
-
     const conditionType = node.data?.conditionType;
 
     if (conditionType === 'if_replied') {
-      // We must PAUSE execution and wait for inbound webhook.
       execution.status = ExecutionStatus.WAITING;
-      execution.currentNodeId = node.id; // Stay on this node? Or move to a "wait" state?
-      // Typically, we mark it as waiting for input.
+      execution.currentNodeId = node.id;
       await this.executionRepo.save(execution);
-      // We rely on handleInboundReply to resume this.
       return;
     }
 
-    // Simple logic check (e.g. contact tags)
-    // Evaluate...
-    // Determine next path
-    const result = true; // Placeholder evaluation
-
+    const result = true;
     const edgeLabel = result ? 'yes' : 'no';
     await this.moveToNextNode(execution, node.id, edgeLabel);
   }
@@ -233,23 +210,14 @@ export class FlowEngineService {
     });
     if (!execution) return;
 
-    // If we were waiting at a Delay node, move to next
-    // If we were waiting for Reply (Condition), process it
-
     if (execution.status === ExecutionStatus.WAITING) {
       execution.status = ExecutionStatus.RUNNING;
       await this.executionRepo.save(execution);
-
-      // If resuming from delay, move next
-      // If resuming from reply, logic is handled by handleReply
       await this.moveToNextNode(execution, execution.currentNodeId);
     }
   }
 
   private getStartNodeId(structure: FlowStructure): string {
-    // Find node with no incoming edges or marked as start
-    // For simplicity, assuming first node or specific type 'start'
-    // Or just the first in array if not specified.
     return structure.nodes?.[0]?.id;
   }
 
@@ -258,7 +226,6 @@ export class FlowEngineService {
     currentNodeId: string,
     edgeLabel?: string,
   ) {
-    // Find edge from currentNodeId
     const edges = execution.flow.structure.edges.filter(
       (e: FlowEdge) => e.source === currentNodeId,
     );
@@ -269,7 +236,7 @@ export class FlowEngineService {
         (e: FlowEdge) => e.label === edgeLabel || e.handle === edgeLabel,
       );
     } else {
-      nextEdge = edges[0]; // Default path
+      nextEdge = edges[0];
     }
 
     if (nextEdge) {

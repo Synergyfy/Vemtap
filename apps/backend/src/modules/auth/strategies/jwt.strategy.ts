@@ -22,6 +22,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       throw new UnauthorizedException();
     }
+    // Cast to any to add dynamic properties from token payload
+    (user as any).businessId = payload.businessId;
+    (user as any).branchId = payload.branchId;
     return user;
   }
 }

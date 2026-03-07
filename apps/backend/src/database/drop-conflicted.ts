@@ -19,7 +19,8 @@ async function dropConflicted() {
       await queryRunner.query(`DROP TABLE IF EXISTS "${table}" CASCADE`);
       console.log(`Dropped table: ${table}`);
     } catch (err) {
-      console.error(`Failed to drop table ${table}:`, err.message);
+      const error = err as Error;
+      console.error(`Failed to drop table ${table}:`, error.message);
     }
   }
 

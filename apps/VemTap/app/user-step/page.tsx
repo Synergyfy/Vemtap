@@ -6,7 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useMockDashboardStore } from '@/lib/store/mockDashboardStore';
-import { useBusinessFormsStore } from '@/store/useBusinessFormsStore';
+import { useBusinessForms, useSubmitBusinessFormResponse } from '@/services/business-forms/hooks';
+import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import { jwtDecode } from 'jwt-decode';
 import { toast } from 'react-hot-toast';
 
@@ -35,26 +36,39 @@ function UserStepPageContent() {
         customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, businessId
     } = useCustomerFlowStore();
     const searchParams = useSearchParams();
-    const preferredFormKey = searchParams.get('form');
+    const preferredFormIdParam = searchParams.get('formId') || searchParams.get('form');
     const [selectedBusinessFormId, setSelectedBusinessFormId] = useState<string | null>(null);
-    const { forms: businessForms, submitForm } = useBusinessFormsStore((state) => ({
-        forms: state.forms,
-        submitForm: state.submitForm
-    }));
+    const { data: businessForms = [] } = useBusinessForms();
+    const submitBusinessFormResponse = useSubmitBusinessFormResponse(selectedBusinessFormId || '');
+    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const userBranchId = useAuthStore((state) => state.user?.branchId);
+    const getDefaultFormId = useFormPreferencesStore((state) => state.getDefaultFormId);
+    const formBranchScope = branchId || activeBranchId || userBranchId || null;
+    const defaultFormId = getDefaultFormId(formBranchScope || 'global');
     const approvedFormsForBusiness = useMemo(
-        () => businessForms.filter((f) => f.status === 'approved' && (!businessId || f.businessId === businessId)),
-        [businessForms, businessId]
+        () =>
+            businessForms.filter(
+                (f) =>
+                    f.isPublished &&
+                    f.isActive &&
+                    (!businessId || f.businessId === businessId) &&
+                    (!branchId || f.branchId === branchId)
+            ),
+        [branchId, businessForms, businessId]
     );
     const selectedBusinessForm = useMemo(
         () => approvedFormsForBusiness.find((f) => f.id === selectedBusinessFormId) || null,
         [approvedFormsForBusiness, selectedBusinessFormId]
     );
     const preferredBusinessForm = useMemo(() => {
-        const preferred = preferredFormKey
-            ? approvedFormsForBusiness.find((form) => form.key === preferredFormKey)
+        const explicit = preferredFormIdParam
+            ? approvedFormsForBusiness.find((form) => form.id === preferredFormIdParam)
             : undefined;
-        return preferred || approvedFormsForBusiness.find((form) => form.type === 'survey') || approvedFormsForBusiness[0] || null;
-    }, [approvedFormsForBusiness, preferredFormKey]);
+        const branchDefault = defaultFormId
+            ? approvedFormsForBusiness.find((form) => form.id === defaultFormId)
+            : undefined;
+        return explicit || branchDefault || approvedFormsForBusiness[0] || null;
+    }, [approvedFormsForBusiness, preferredFormIdParam, defaultFormId]);
 
     const addRedemptionRequest = useMockDashboardStore(state => state.addRedemptionRequest);
     const redemptionRequests = useMockDashboardStore(state => state.redemptionRequests);
@@ -205,8 +219,8 @@ function UserStepPageContent() {
         } else if (type === 'social') {
             // Handled by the component's internal modal
         } else if (type === 'feedback') {
-            const explicitlyRequested = preferredFormKey
-                ? approvedFormsForBusiness.find((form) => form.key === preferredFormKey)
+            const explicitlyRequested = preferredFormIdParam
+                ? approvedFormsForBusiness.find((form) => form.id === preferredFormIdParam)
                 : null;
 
             if (explicitlyRequested) {
@@ -221,23 +235,28 @@ function UserStepPageContent() {
         }
     };
 
-    const handleSurveyComplete = (answers: Record<string, any>) => {
+    const handleSurveyComplete = async (answers: Record<string, any>) => {
         if (selectedBusinessForm && businessId) {
             const identity = userData || storedIdentity || user;
-            submitForm({
-                formId: selectedBusinessForm.id,
-                businessId,
-                formType: selectedBusinessForm.type,
-                formTitle: selectedBusinessForm.title,
-                customerName: identity?.name || 'Guest',
-                customerEmail: identity?.email,
-                customerPhone: identity?.phone,
-                answers
-            });
+            try {
+                await submitBusinessFormResponse.mutateAsync({
+                    customerName: identity?.name || 'Guest',
+                    customerEmail: identity?.email || undefined,
+                    customerPhone: identity?.phone || undefined,
+                    answers,
+                });
+            } catch (error) {
+                // Keep journey smooth even if response endpoint is unavailable.
+                console.warn('Form response submission failed:', error);
+            }
         }
 
         console.log('Survey completed:', answers);
         toast.success('Thank you for your feedback!');
+        if (selectedBusinessForm?.redirectUrl && typeof window !== 'undefined') {
+            window.location.assign(selectedBusinessForm.redirectUrl);
+            return;
+        }
         setSelectedBusinessFormId(null);
         setStep('FINAL_SUCCESS');
     };
@@ -329,7 +348,7 @@ function UserStepPageContent() {
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}
                         selectedFormTitle={preferredBusinessForm?.title || null}
-                        selectedFormType={preferredBusinessForm?.typeLabel || preferredBusinessForm?.type || null}
+                        selectedFormType="Form"
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
                             // Add other placeholder or config links here

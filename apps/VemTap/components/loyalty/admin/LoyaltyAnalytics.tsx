@@ -8,7 +8,10 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLoyaltyStore } from '@/store/loyaltyStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useBusinessStore } from '@/store/useBusinessStore';
+import { useBusinessLoyaltyStats } from '@/services/loyalty/hooks';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 interface AnalyticsStat {
     label: string;
@@ -19,33 +22,37 @@ interface AnalyticsStat {
 }
 
 export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }) => {
-    const { allProfiles, fetchAllProfiles, isLoading } = useLoyaltyStore();
-    const { activeBranchId } = useBusinessStore();
+    const { activeBranchId } = useAuthStore();
+    const { data, isLoading } = useBusinessLoyaltyStats(activeBranchId || undefined);
 
-    useEffect(() => {
-        if (activeBranchId && activeBranchId !== 'all') {
-            fetchAllProfiles(activeBranchId);
-        }
-    }, [activeBranchId, fetchAllProfiles]);
+    const stats: AnalyticsStat[] = (data?.stats || [
+        { label: 'Total Members', value: '0', change: 0, trend: 'up' },
+        { label: 'Points Earned', value: '0', change: 0, trend: 'up' },
+        { label: 'Rewards Claimed', value: '0', change: 0, trend: 'up' },
+        { label: 'Redemption Rate', value: '0%', change: 0, trend: 'up' },
+    ]).map((s: any, i: number) => {
+        const icons = [Users, Zap, Gift, Activity];
+        return {
+            ...s,
+            icon: icons[i] || Activity,
+            trend: s.trend || 'up'
+        };
+    });
 
-    const STATS: AnalyticsStat[] = [
-        {
-            label: 'Total Members',
-            value: activeBranchId === 'all' ? '---' : allProfiles.length.toLocaleString(),
-            change: 12.5,
-            icon: Users,
-            trend: 'up'
-        },
-        { label: 'Points Earned', value: '45,200', change: 8.2, icon: Zap, trend: 'up' },
-        { label: 'Rewards Claimed', value: '312', change: -2.4, icon: Gift, trend: 'down' },
-        { label: 'Redemption Rate', value: '24.8%', change: 5.1, icon: Activity, trend: 'up' },
+    const tierData = data?.tierDistribution || [
+        { label: 'Bronze', value: 0, color: 'bg-orange-600' },
+        { label: 'Silver', value: 0, color: 'bg-slate-400' },
+        { label: 'Gold', value: 0, color: 'bg-yellow-500' },
+        { label: 'Platinum', value: 0, color: 'bg-indigo-600' },
     ];
+
+    const activityData = data?.activityTrend || [];
 
     return (
         <div className={cn("space-y-8", className)}>
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {STATS.map((stat, index) => (
+                {stats.map((stat, index) => (
                     <motion.div
                         key={stat.label}
                         initial={{ opacity: 0, scale: 0.95 }}
@@ -77,29 +84,47 @@ export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Main Chart Placeholder */}
+                {/* Main Chart */}
                 <div className="lg:col-span-8 bg-white border border-slate-100 p-8">
                     <div className="flex items-center justify-between mb-10">
                         <div>
                             <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Activity Overview</h3>
-                            <p className="text-xs text-slate-500 font-medium">Trends in points earning vs redemptions (Last 30 days)</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                                <span className="w-3 h-3 bg-primary" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Earnings</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="w-3 h-3 bg-slate-200" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Claims</span>
-                            </div>
+                            <p className="text-xs text-slate-500 font-medium">Trends in points earning vs redemptions (Last 7 days)</p>
                         </div>
                     </div>
 
-                    <div className="h-[300px] w-full bg-slate-50/50 flex flex-col items-center justify-center border-2 border-dashed border-slate-100 relative group overflow-hidden">
-                        <BarChart3 className="w-16 h-16 text-slate-200 transition-transform group-hover:scale-110" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-4">Interactive Chart Data Rendering...</p>
-                        <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="h-[300px] w-full relative">
+                        {activityData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={activityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis
+                                        dataKey="name"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                                        dy={10}
+                                    />
+                                    <YAxis
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                                    />
+                                    <Tooltip
+                                        cursor={{ fill: '#f8fafc' }}
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }} />
+                                    <Bar name="Earnings" dataKey="earnings" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+                                    <Bar name="Claims" dataKey="claims" fill="#e2e8f0" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full w-full flex flex-col items-center justify-center border-2 border-dashed border-slate-100 bg-slate-50/50">
+                                <BarChart3 className="w-12 h-12 text-slate-200" />
+                                <p className="text-[10px] font-black uppercase text-slate-400 mt-4">No recent activity data</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -111,12 +136,7 @@ export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }
                     </div>
 
                     <div className="space-y-6">
-                        {[
-                            { label: 'Bronze', value: 65, color: 'bg-orange-600' },
-                            { label: 'Silver', value: 20, color: 'bg-slate-400' },
-                            { label: 'Gold', value: 10, color: 'bg-yellow-500' },
-                            { label: 'Platinum', value: 5, color: 'bg-indigo-600' },
-                        ].map((tier) => (
+                        {tierData.map((tier: any) => (
                             <div key={tier.label} className="space-y-2">
                                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
                                     <span className="text-slate-500">{tier.label} Members</span>
@@ -127,7 +147,7 @@ export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }
                                         initial={{ width: 0 }}
                                         animate={{ width: `${tier.value}%` }}
                                         transition={{ duration: 1, delay: 0.5 }}
-                                        className={cn("h-full", tier.color)}
+                                        className={cn("h-full", tier.color || 'bg-primary')}
                                     />
                                 </div>
                             </div>
@@ -137,7 +157,7 @@ export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }
                     <div className="mt-12 p-5 bg-slate-50 border border-slate-100 text-center">
                         <TrendingUp className="w-6 h-6 text-emerald-500 mx-auto mb-2" />
                         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Growth Forecast</p>
-                        <p className="text-lg font-display font-black text-slate-900">+18% Revenue Increase</p>
+                        <p className="text-lg font-display font-black text-slate-900">{data?.growthForecast || '+0%'} Growth</p>
                     </div>
                 </div>
             </div>

@@ -1,94 +1,68 @@
+import { Controller, Get, Query, UseGuards, Request } from '@nestjs/common';
 import {
-  BadRequestException,
-  Controller,
-  Get,
-  UseGuards,
-  Request,
-  Query,
-} from '@nestjs/common';
-import { AnalyticsService } from './analytics.service';
-import {
-  ApiBearerAuth,
-  ApiOkResponse,
+  ApiTags,
   ApiOperation,
   ApiResponse,
-  ApiTags,
+  ApiBearerAuth,
+  ApiQuery,
 } from '@nestjs/swagger';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { Permissions } from '../../common/decorators/permissions.decorator';
-import { UserRole } from '../users/entities/user.entity';
+import { AnalyticsService } from './analytics.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
-import { PermissionsGuard } from '../../common/guards/permissions.guard';
-import {
-  AdminSummaryResponseDto,
-  DashboardAnalyticsResponseDto,
-  FootfallAnalyticsResponseDto,
-  PeakTimesAnalyticsResponseDto,
-} from './dto/analytics-responses.dto';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { User, UserRole } from '../users/entities/user.entity';
+import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
 
-@ApiTags('analytics')
+@ApiTags('Analytics')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('analytics')
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
   @Get('dashboard')
-  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('dashboard')
-  @ApiOperation({ summary: 'Get primary analytics dashboard stats' })
-  @ApiOkResponse({
-    description: 'Analytics summary',
-    type: DashboardAnalyticsResponseDto,
-  })
-  getDashboardAnalytics(
-    @Request() req,
-    @Query('branchId') branchId?: string,
-  ): Promise<DashboardAnalyticsResponseDto> {
-    return this.analyticsService.getDashboardAnalytics(branchId, req.user);
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Get main dashboard analytics' })
+  async getDashboardAnalytics(
+    @Request() req: { user: User },
+    @Query() filter: BranchFilterDto,
+  ) {
+    return this.analyticsService.getDashboardAnalytics(
+      req.user,
+      filter.branchId,
+    );
   }
 
   @Get('footfall')
-  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('analytics')
-  @ApiOperation({ summary: 'Get footfall analytics' })
-  @ApiOkResponse({
-    description: 'Footfall stats',
-    type: FootfallAnalyticsResponseDto,
-  })
-  getFootfallAnalytics(
-    @Request() req,
-    @Query('branchId') branchId?: string,
-  ): Promise<FootfallAnalyticsResponseDto> {
-    return this.analyticsService.getFootfallAnalytics(branchId, req.user);
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get footfall (visits) analytics' })
+  async getFootfallAnalytics(
+    @Request() req: { user: User },
+    @Query() filter: BranchFilterDto,
+  ) {
+    return this.analyticsService.getFootfallAnalytics(
+      req.user,
+      filter.branchId,
+    );
   }
 
   @Get('peak-times')
-  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('analytics')
-  @ApiOperation({ summary: 'Get peak times analytics' })
-  @ApiOkResponse({
-    description: 'Peak times stats',
-    type: PeakTimesAnalyticsResponseDto,
-  })
-  getPeakTimesAnalytics(
-    @Request() req,
-    @Query('branchId') branchId?: string,
-  ): Promise<PeakTimesAnalyticsResponseDto> {
-    return this.analyticsService.getPeakTimesAnalytics(branchId, req.user);
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get peak visit hours and days' })
+  async getPeakTimesAnalytics(
+    @Request() req: { user: User },
+    @Query() filter: BranchFilterDto,
+  ) {
+    return this.analyticsService.getPeakTimesAnalytics(
+      req.user,
+      filter.branchId,
+    );
   }
-
-  // --- Admin Endpoints ---
 
   @Get('admin/summary')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get comprehensive platform summary' })
-  @ApiOkResponse({
-    description: 'Platform stats, growth trend, and sector split',
-    type: AdminSummaryResponseDto,
-  })
-  getAdminSummary(): Promise<AdminSummaryResponseDto> {
+  @ApiOperation({ summary: 'Global platform summary for super admins' })
+  async getAdminSummary() {
     return this.analyticsService.getAdminSummary();
   }
 }

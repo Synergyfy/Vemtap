@@ -32,7 +32,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { CampaignsService } from '../campaigns/campaigns.service';
-import { MessagingEngineService } from '../messaging/services/messaging-engine.service';
 import {
   VisitorResponseDto,
   PaginatedVisitorResponseDto,
@@ -40,6 +39,8 @@ import {
   ReturningVisitorResponseDto,
 } from './dto/visitor-response.dto';
 import { VisitorStatsResponseDto } from './dto/visitor-stats.dto';
+import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
+import { RecordVisitResponse, SendCampaignBody } from './visitors.service';
 
 @ApiTags('Visitors')
 @ApiBearerAuth()
@@ -49,19 +50,77 @@ export class VisitorsController {
   constructor(
     private readonly visitorsService: VisitorsService,
     private readonly campaignsService: CampaignsService,
-    private readonly messagingService: MessagingEngineService,
   ) {}
 
-  private getBusinessId(req: any): string {
-    const businessId = req.user?.businessId;
-    if (!businessId) {
-      throw new BadRequestException('User does not belong to any business');
+  private async getBranchId(req: any, queryBranchId?: string): Promise<string> {
+    const user = req.user;
+
+    // For Owner and Admin: branchId MUST be provided in the request for write operations
+    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
+      if (!queryBranchId) {
+        throw new BadRequestException(
+          'branchId is required for Owners and Admins for write operations',
+        );
+      }
+
+      if (user.role === UserRole.OWNER) {
+        const hasAccess = await this.visitorsService.checkBranchAccess(
+          user,
+          queryBranchId,
+        );
+        if (!hasAccess) {
+          throw new BadRequestException(
+            'You do not have access to this branch',
+          );
+        }
+      }
+      return queryBranchId;
     }
-    return businessId;
+
+    // For Manager and Staff: ignore queryBranchId, always use branchId from token
+    if (!user.branchId) {
+      throw new BadRequestException('User is not associated with any branch');
+    }
+
+    return user.branchId;
   }
 
-  private getBranchId(req: any, branchId?: string): string | undefined {
-    return branchId || req.user?.branchId;
+  private async getResolvedContext(
+    req: any,
+    filter: BranchFilterDto,
+  ): Promise<{ branchId?: string; businessId?: string }> {
+    const user = req.user;
+
+    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
+      if (filter.allBranches) {
+        if (user.role === UserRole.OWNER) {
+          return { businessId: user.businessId };
+        }
+        // For Admin, we could require a businessId in the query if allBranches is true
+        // If not provided, it might mean 'all businesses' which is usually not what we want here
+        return {
+          businessId: user.businessId || (req.query.businessId as string),
+        };
+      }
+
+      if (filter.branchId) {
+        if (user.role === UserRole.OWNER) {
+          const hasAccess = await this.visitorsService.checkBranchAccess(
+            user,
+            filter.branchId,
+          );
+          if (!hasAccess)
+            throw new BadRequestException('Access denied to this branch');
+        }
+        return { branchId: filter.branchId };
+      }
+
+      throw new BadRequestException(
+        'Either branchId or allBranches must be provided for Owners and Admins',
+      );
+    }
+
+    return { branchId: user.branchId };
   }
 
   // --- Stats ---
@@ -73,12 +132,10 @@ export class VisitorsController {
   @ApiResponse({ type: VisitorStatsResponseDto })
   async getStats(
     @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ): Promise<VisitorStatsResponseDto> {
-    return this.visitorsService.getStats(
-      this.getBusinessId(req),
-      this.getBranchId(req, branchId),
-    );
+    const context = await this.getResolvedContext(req, filter);
+    return this.visitorsService.getStats(context.branchId, context.businessId);
   }
 
   @Get('new/stats')
@@ -88,11 +145,12 @@ export class VisitorsController {
   @ApiResponse({ type: VisitorStatsResponseDto })
   async getNewStats(
     @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ): Promise<VisitorStatsResponseDto> {
+    const context = await this.getResolvedContext(req, filter);
     return this.visitorsService.getNewStats(
-      this.getBusinessId(req),
-      this.getBranchId(req, branchId),
+      context.branchId,
+      context.businessId,
     );
   }
 
@@ -103,11 +161,12 @@ export class VisitorsController {
   @ApiResponse({ type: VisitorStatsResponseDto })
   async getReturningStats(
     @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ): Promise<VisitorStatsResponseDto> {
+    const context = await this.getResolvedContext(req, filter);
     return this.visitorsService.getReturningStats(
-      this.getBusinessId(req),
-      this.getBranchId(req, branchId),
+      context.branchId,
+      context.businessId,
     );
   }
 
@@ -120,12 +179,13 @@ export class VisitorsController {
   async getNew(
     @Query() query: VisitorQueryDto,
     @Req() req: any,
-    @Query('branchId') branchId?: string,
-  ) {
+    @Query() filter: BranchFilterDto,
+  ): Promise<{ data: NewVisitorResponseDto[]; total: number }> {
+    const context = await this.getResolvedContext(req, filter);
     return this.visitorsService.findNew(
       query,
-      this.getBusinessId(req),
-      this.getBranchId(req, branchId),
+      context.branchId,
+      context.businessId,
     );
   }
 
@@ -136,12 +196,13 @@ export class VisitorsController {
   async getReturning(
     @Query() query: VisitorQueryDto,
     @Req() req: any,
-    @Query('branchId') branchId?: string,
-  ) {
+    @Query() filter: BranchFilterDto,
+  ): Promise<{ data: ReturningVisitorResponseDto[]; total: number }> {
+    const context = await this.getResolvedContext(req, filter);
     return this.visitorsService.findReturning(
       query,
-      this.getBusinessId(req),
-      this.getBranchId(req, branchId),
+      context.branchId,
+      context.businessId,
     );
   }
 
@@ -153,12 +214,13 @@ export class VisitorsController {
   async findAll(
     @Query() query: VisitorQueryDto,
     @Req() req: any,
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ): Promise<PaginatedVisitorResponseDto> {
+    const context = await this.getResolvedContext(req, filter);
     return this.visitorsService.findAll(
       query,
-      this.getBusinessId(req),
-      this.getBranchId(req, branchId),
+      context.branchId,
+      context.businessId,
     );
   }
 
@@ -168,11 +230,12 @@ export class VisitorsController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @Permissions('visitors')
   @ApiOperation({ summary: 'Export visitors to CSV' })
-  async export(@Req() req: any, @Query('branchId') branchId?: string) {
-    return this.visitorsService.export(
-      this.getBusinessId(req),
-      this.getBranchId(req, branchId),
-    );
+  async export(
+    @Req() req: any,
+    @Query() filter: BranchFilterDto,
+  ): Promise<{ message: string; data: string; filename: string }> {
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.visitorsService.export(branchId);
   }
 
   @Post('campaign')
@@ -181,14 +244,11 @@ export class VisitorsController {
   @ApiOperation({ summary: 'Send campaign to visitors' })
   async sendCampaign(
     @Req() req: any,
-    @Body() body: any,
-    @Query('branchId') branchId?: string,
-  ) {
-    return this.visitorsService.sendCampaign(
-      this.getBusinessId(req),
-      body,
-      this.getBranchId(req, branchId || body.branchId),
-    );
+    @Body() body: SendCampaignBody,
+    @Query() filter: BranchFilterDto,
+  ): Promise<any> {
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.visitorsService.sendCampaign(branchId, body);
   }
 
   @Post('welcome-campaign')
@@ -197,23 +257,33 @@ export class VisitorsController {
   @ApiOperation({ summary: 'Send welcome campaign to new visitors' })
   async sendWelcomeCampaign(
     @Req() req: any,
-    @Query('branchId') branchId?: string,
-  ) {
-    return this.visitorsService.sendWelcomeCampaign(
-      this.getBusinessId(req),
-      this.getBranchId(req, branchId),
-    );
+    @Query() filter: BranchFilterDto,
+  ): Promise<any> {
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.visitorsService.sendWelcomeCampaign(branchId);
+  }
+
+  @Delete('reset')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Reset all dashboard data for the branch' })
+  async resetDashboard(
+    @Req() req: any,
+    @Query() filter: BranchFilterDto,
+  ): Promise<void> {
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.visitorsService.resetBusinessData(branchId);
   }
 
   @Post('rewards')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('dashboard') // Rewards might fall under campaigns/loyalty/dashboard
+  @Permissions('dashboard')
   @ApiOperation({ summary: 'Create a reward for visitors' })
-  async createReward(@Req() req: any, @Body() body: CreateVisitorRewardDto) {
-    return this.campaignsService.createReward(
-      this.getBranchId(req, body.branchId)!, // Rewards might still need branchId, or we handle it in service
-      body,
-    );
+  async createReward(
+    @Req() req: any,
+    @Body() body: CreateVisitorRewardDto,
+  ): Promise<any> {
+    const branchId = await this.getBranchId(req, body.branchId);
+    return this.campaignsService.createReward(branchId, body);
   }
 
   // --- CRUD & Individual Actions ---
@@ -227,8 +297,13 @@ export class VisitorsController {
     description: 'Visitor registered successfully',
     type: VisitorResponseDto,
   })
-  async publicSignup(@Body() dto: VisitorSignupDto) {
-    return this.visitorsService.create(dto);
+  async publicSignup(
+    @Body() dto: VisitorSignupDto,
+    @Query('branchId') branchId: string,
+  ): Promise<VisitorResponseDto> {
+    if (!branchId)
+      throw new BadRequestException('branchId is required for signup');
+    return this.visitorsService.create(dto, branchId);
   }
 
   @Post()
@@ -241,18 +316,22 @@ export class VisitorsController {
     description: 'Visitor created successfully',
     type: VisitorResponseDto,
   })
-  async create(@Body() createVisitorDto: CreateVisitorDto, @Req() req: any) {
-    return this.visitorsService.create(
-      createVisitorDto,
-      this.getBusinessId(req),
-      this.getBranchId(req),
-    );
+  async create(
+    @Body() createVisitorDto: CreateVisitorDto,
+    @Req() req: any,
+    @Query() filter: BranchFilterDto,
+  ): Promise<VisitorResponseDto> {
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.visitorsService.create(createVisitorDto, branchId);
   }
 
   @Post('record-visit')
   @Roles(UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Record a visit via device tap (Customer Only)' })
-  async recordVisit(@Body() dto: DeviceTapDto, @Req() req: any) {
+  async recordVisit(
+    @Body() dto: DeviceTapDto,
+    @Req() req: any,
+  ): Promise<RecordVisitResponse> {
     return this.visitorsService.recordVisit(req.user.id, dto.deviceCode);
   }
 
@@ -293,14 +372,14 @@ export class VisitorsController {
     @Req() req: any,
     @Param('id') id: string,
     @Body() body: { message: string; channel: string },
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ) {
+    const branchId = await this.getBranchId(req, filter.branchId);
     return this.visitorsService.sendMessage(
-      this.getBusinessId(req),
       id,
       body.message,
       body.channel as any,
-      this.getBranchId(req, branchId),
+      branchId,
     );
   }
 
@@ -311,13 +390,10 @@ export class VisitorsController {
   async sendWelcome(
     @Req() req: any,
     @Param('id') id: string,
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ) {
-    return this.visitorsService.sendWelcome(
-      this.getBusinessId(req),
-      id,
-      this.getBranchId(req, branchId),
-    );
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.visitorsService.sendWelcome(id, branchId);
   }
 
   @Post(':id/reward')
@@ -328,13 +404,9 @@ export class VisitorsController {
     @Req() req: any,
     @Param('id') id: string,
     @Body() body: { rewardId: string },
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ) {
-    return this.visitorsService.sendReward(
-      this.getBusinessId(req),
-      id,
-      body.rewardId,
-      this.getBranchId(req, branchId),
-    );
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.visitorsService.sendReward(id, body.rewardId, branchId);
   }
 }

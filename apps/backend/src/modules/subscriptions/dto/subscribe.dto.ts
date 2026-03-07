@@ -14,12 +14,13 @@ export class SubscribeDto {
   @IsNotEmpty()
   planId: string;
 
-  @ApiProperty({
-    description: 'The ID of the business this subscription belongs to',
+  @ApiPropertyOptional({
+    description:
+      'The ID of the business this subscription belongs to (Optional if branch context exists)',
   })
   @IsString()
-  @IsNotEmpty()
-  businessId: string;
+  @IsOptional()
+  businessId?: string;
 
   @ApiProperty({
     enum: BillingPeriod,

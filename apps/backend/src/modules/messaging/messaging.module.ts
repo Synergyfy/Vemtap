@@ -27,6 +27,7 @@ import { SettingsModule } from '../settings/settings.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { MailModule } from '../mail/mail.module';
+import { BranchesModule } from '../branches/branches.module';
 
 import { MessagingEngineService } from './services/messaging-engine.service';
 import { TemplateService } from './services/template.service';
@@ -82,6 +83,7 @@ import { AutomationProcessor } from './processors/automation.processor';
     SubscriptionsModule,
     PaymentsModule,
     MailModule,
+    BranchesModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
@@ -161,4 +163,4 @@ import { AutomationProcessor } from './processors/automation.processor';
     MessagingFlowService,
   ],
 })
-export class MessagingModule { }
+export class MessagingModule {}

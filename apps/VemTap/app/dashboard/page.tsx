@@ -5,17 +5,17 @@ import { Visitor } from '@/lib/store/mockDashboardStore';
 import toast from 'react-hot-toast';
 import {
     Users, UserPlus, Repeat, Calendar, TrendingUp, TrendingDown,
-    ChevronDown, Trash, Send, Download, Gift, ArrowRight, MessageSquare, Zap
+    ChevronDown, Send, Download, Gift, ArrowRight, MessageSquare, Zap
 } from 'lucide-react';
 import LogoIcon from '@/components/brand/LogoIcon';
 import { useRouter } from 'next/navigation';
-import Modal from '@/components/ui/Modal';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import PreviewRewardModal from '@/components/dashboard/PreviewRewardModal';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
+import { useVisitorStats, useResetDashboard } from '@/services/visitors/hooks';
 
 
 export default function DashboardPage() {
@@ -31,23 +31,12 @@ export default function DashboardPage() {
     // eslint-disable-next-line no-console
     console.log('[DASHBOARD PAGE] 🔍 isAuthenticated:', isAuthenticated, 'planId:', user?.planId);
 
-    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-    const isAdminMode = searchParams?.get('admin_mode') === '1';
 
-    // Redirect to pricing if user is new and hasn't selected a plan
-    React.useEffect(() => {
-        if (isAdminMode) return; // Skip plan check in Admin Mode
-
-        const hasSelectedPlan = localStorage.getItem('has_selected_plan') === 'true';
-        const isNewUser = user && !user.planId; // Mock check: if no planId, they are "new"
-
-        if (isNewUser && !hasSelectedPlan) {
-            router.push('/dashboard/settings/subscription');
-        }
-    }, [user, router, isAdminMode]);
 
     // Fetch Dashboard Data
     const { data, isLoading } = useDashboardAnalytics();
+    const { data: visitorStatsData } = useVisitorStats();
+    const resetDashboardMutation = useResetDashboard();
 
     const { getPlan } = useSubscriptionStore();
     const currentPlan = getPlan();
@@ -56,12 +45,17 @@ export default function DashboardPage() {
         setShowClearModal(true);
     };
 
-    const confirmClear = () => {
-        setShowClearModal(false);
-        toast.error("Clear disabled while backend integration is ongoing.");
+    const confirmClear = async () => {
+        try {
+            await resetDashboardMutation.mutateAsync();
+            toast.success('Dashboard data cleared');
+            setShowClearModal(false);
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to reset dashboard');
+        }
     };
 
-    const stats = data?.stats?.map((s) => {
+    const analyticsStats = data?.stats.map((s) => {
         let icon = Users;
         let color = 'blue';
         if (s.label === 'New Customers') { icon = UserPlus; color = 'green'; }
@@ -78,19 +72,52 @@ export default function DashboardPage() {
         };
     }) || [];
 
-    const peakTimes = Array.isArray(data?.peakTimes) ? data.peakTimes : [];
-    const maxVisits = peakTimes.length > 0 ? Math.max(...peakTimes.map(d => d.value)) : 100;
+    const stats = visitorStatsData?.stats?.length
+        ? visitorStatsData.stats.map((s) => {
+            const label = s.label?.toString?.() || 'Metric';
+            const normalizedLabel = label.toLowerCase();
+            let icon = Users;
+            let color = 'blue';
+            if (normalizedLabel.includes('new')) { icon = UserPlus; color = 'green'; }
+            if (normalizedLabel.includes('repeat') || normalizedLabel.includes('returning') || normalizedLabel.includes('frequency')) {
+                icon = Repeat;
+                color = 'purple';
+            }
+            if (normalizedLabel.includes('vip')) { icon = Users; color = 'orange'; }
+
+            return {
+                label,
+                value: (s.value ?? '0').toString(),
+                change: s.trend?.value || '+0%',
+                trend: s.trend?.isUp ? 'up' : 'down',
+                icon,
+                color
+            };
+        })
+        : analyticsStats;
+
+    const peakTimes = Array.isArray(data?.peakTimes)
+        ? data.peakTimes
+        : data?.peakTimes && typeof data.peakTimes === 'object'
+            ? Object.values(data.peakTimes)
+            : [];
+
+    const maxVisits = peakTimes.length
+        ? Math.max(...peakTimes.map((d: any) => d.value))
+        : 100;
 
     // Computed audience breakdown
     const getStatValue = (labels: string[]) => {
-        const statsArray = Array.isArray(data?.stats) ? data.stats : [];
-        const stat = statsArray.find(s => labels.includes(s.label));
-        return parseInt(stat?.value?.toString().replace(/,/g, '') || '0', 10);
+        const stat = stats.find((s) => labels.includes(s.label));
+        const normalized = stat?.value?.toString().replace(/,/g, '').trim() || '0';
+        const parsed = Number.parseFloat(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
     };
 
-    const totalVisitors = getStatValue(['Total Visits', 'Total Customers']);
-    const newVisitors = getStatValue(['New Customers']);
-    const repeatVisitors = totalVisitors - newVisitors > 0 ? totalVisitors - newVisitors : 0;
+    const totalVisitors = getStatValue(['Total Visitors', 'Total Visits', 'Total Customers']);
+    const newVisitorsCount = getStatValue(['New This Month', 'New Customers']);
+    const knownReturning = getStatValue(['Returning', 'Repeat Visitors']);
+    const repeatVisitors = knownReturning > 0 ? knownReturning : (totalVisitors - newVisitorsCount > 0 ? totalVisitors - newVisitorsCount : 0);
 
     const returningPct = totalVisitors > 0 ? Math.round((repeatVisitors / totalVisitors) * 100) : 0;
     const newPct = totalVisitors > 0 ? 100 - returningPct : 0;
@@ -125,13 +152,6 @@ export default function DashboardPage() {
                             Upgrade
                         </button>
                     )}
-                    <button
-                        onClick={handleClearDashboard}
-                        className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
-                    >
-                        <Trash size={16} />
-                        Reset
-                    </button>
                 </div>
             </div>
 
@@ -190,7 +210,7 @@ export default function DashboardPage() {
                     {/* Bar Chart */}
                     <div className="flex items-end justify-between gap-2 h-48">
                         {peakTimes.map((d: any, index: number) => {
-                            const newVisits = Math.floor(d.value * 0.4);
+                            const newVisits = d.new || 0;
                             const totalPct = maxVisits > 0 ? (d.value / maxVisits) * 100 : 0;
                             const newPctBar = d.value > 0 ? (newVisits / d.value) * 100 : 0;
                             return (
@@ -259,7 +279,7 @@ export default function DashboardPage() {
                                         <span className="text-[10px] font-black uppercase text-slate-500">New</span>
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-sm font-black text-slate-900">{newVisitors}</span>
+                                        <span className="text-sm font-black text-slate-900">{newVisitorsCount}</span>
                                         <span className="text-[9px] font-bold text-slate-400 ml-1">({newPct}%)</span>
                                     </div>
                                 </div>
@@ -397,22 +417,6 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            <Modal
-                isOpen={showClearModal}
-                onClose={() => setShowClearModal(false)}
-                title="Clear Dashboard Data"
-                description="Are you sure you want to clear all dashboard data? This will reset all stats and visitor history."
-            >
-                <div className="flex gap-3 py-4">
-                    <button onClick={() => setShowClearModal(false)} className="flex-1 h-12 border border-gray-100 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm">
-                        Cancel
-                    </button>
-                    <button onClick={confirmClear} className="flex-1 h-12 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 text-sm">
-                        Clear Everything
-                    </button>
-                </div>
-            </Modal>
-
             <SendMessageModal
                 isOpen={!!selectedVisitorForMsg}
                 onClose={() => setSelectedVisitorForMsg(null)}
@@ -436,4 +440,3 @@ export default function DashboardPage() {
         </div >
     );
 }
-
