@@ -1,11 +1,14 @@
 'use client';
 
 
+import  { Suspense } from 'react';
 import MessageBuilder from '@/components/messaging/MessageBuilder';
 
 export default function ComposeMessagePage() {
     return (
-        <MessageBuilder />
+        <Suspense fallback={null}>
+            <MessageBuilder />
+        </Suspense>
     );
 }
 

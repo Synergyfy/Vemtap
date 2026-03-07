@@ -23,15 +23,7 @@ export default function MessagingOverview() {
         setIsChartMounted(true);
     }, []);
 
-    const chartData = [
-        { name: 'Mon', sent: 400, delivered: 240 },
-        { name: 'Tue', sent: 300, delivered: 139 },
-        { name: 'Wed', sent: 200, delivered: 980 },
-        { name: 'Thu', sent: 278, delivered: 390 },
-        { name: 'Fri', sent: 189, delivered: 480 },
-        { name: 'Sat', sent: 239, delivered: 380 },
-        { name: 'Sun', sent: 349, delivered: 430 },
-    ];
+    const chartData = analytics?.trafficTrend || [];
 
     const channelStats = analytics?.channelStats || {
         whatsapp: { totalSent: 0, deliveryRate: 0, growth: 0 },

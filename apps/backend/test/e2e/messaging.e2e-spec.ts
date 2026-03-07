@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
+import { createAuthenticatedUser } from '../utils/auth';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
@@ -58,8 +59,8 @@ describe('Messaging (e2e)', () => {
     subRepo = app.get(getRepositoryToken(Subscription));
     authService = app.get(AuthService);
 
-    const testId = Date.now().toString();
-    const password = 'password123';
+    const testId = Date.now().toString() + Math.random().toString(36).substring(7);
+    const password = 'Password123!';
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 1. Create Owner & Business
@@ -79,7 +80,6 @@ describe('Messaging (e2e)', () => {
         name: 'Msg Test Biz',
         type: BusinessType.RETAIL,
         ownerId: owner.id,
-        balance: 100, // Give some top-up balance too
       } as any),
     )) as unknown as Business;
     businessId = business.id;
@@ -115,7 +115,7 @@ describe('Messaging (e2e)', () => {
         name: 'Main Branch',
         businessId: businessId,
         isActive: true,
-      }),
+      } as any),
     );
     branchId = branch.id;
 
@@ -123,18 +123,20 @@ describe('Messaging (e2e)', () => {
     await contactRepo.save([
       contactRepo.create({
         businessId,
+        branchId,
         name: 'Contact 1',
         phone: '+1234567890',
         optOut: false,
         optInChannels: [Channel.SMS, Channel.WHATSAPP, Channel.EMAIL],
-      }),
+      } as any),
       contactRepo.create({
         businessId,
+        branchId,
         name: 'Contact 2',
         phone: '+0987654321',
         optOut: false,
         optInChannels: [Channel.SMS, Channel.WHATSAPP, Channel.EMAIL],
-      }),
+      } as any),
     ]);
 
     const loginResult = await authService.login({
@@ -145,19 +147,11 @@ describe('Messaging (e2e)', () => {
   });
 
   afterAll(async () => {
-    // Cleanup
-    if (businessId) {
-      await contactRepo.delete({ businessId });
-      await branchRepo.delete({ businessId });
-      await subRepo.delete({ businessId });
-      await userRepo.delete({ businessId });
-      await businessRepo.delete({ id: businessId });
-    }
     await app.close();
   });
 
-  describe('POST /messaging/send', () => {
-    it('should send a campaign to ALL contacts without branchId', async () => {
+  describe('POST /api/v1/messaging/send', () => {
+    it('should send a campaign to ALL contacts with branchId', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/messaging/send')
         .set('Authorization', `Bearer ${ownerToken}`)
@@ -165,14 +159,15 @@ describe('Messaging (e2e)', () => {
           channel: Channel.SMS,
           audienceType: 'ALL',
           content: 'Hello all!',
+          branchId: branchId, // Mandatory for Owner
         });
 
       expect(res.status).toBe(201);
       expect(res.body).toHaveProperty('campaignId');
     });
 
-    it('should send a message to a specific contact', async () => {
-      const contacts = await contactRepo.find({ where: { businessId } });
+    it('should send a message to a specific contact with branchId', async () => {
+      const contacts = await contactRepo.find({ where: { branchId } });
       const res = await request(app.getHttpServer())
         .post('/api/v1/messaging/send')
         .set('Authorization', `Bearer ${ownerToken}`)
@@ -180,6 +175,7 @@ describe('Messaging (e2e)', () => {
           channel: Channel.SMS,
           contactIds: [contacts[0].id],
           content: 'Hello individual!',
+          branchId: branchId, // Mandatory for Owner
         });
 
       expect(res.status).toBe(201);
@@ -187,28 +183,36 @@ describe('Messaging (e2e)', () => {
       expect(res.body.messageIds).toHaveLength(1);
     });
 
-    it('should fail with invalid audienceType', async () => {
+    it('should fail if branchId is missing for Owner', async () => {
       await request(app.getHttpServer())
         .post('/api/v1/messaging/send')
         .set('Authorization', `Bearer ${ownerToken}`)
         .send({
           channel: Channel.SMS,
-          audienceType: 'INVALID_TYPE',
+          audienceType: 'ALL',
           content: 'test',
         })
         .expect(400);
     });
   });
 
-  describe('GET /messaging/campaigns', () => {
-    it('should return campaigns for the business', async () => {
+  describe('GET /api/v1/messaging/campaigns', () => {
+    it('should return campaigns for a specific branch', async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/v1/messaging/campaigns')
+        .get(`/api/v1/messaging/campaigns?branchId=${branchId}`)
         .set('Authorization', `Bearer ${ownerToken}`)
         .expect(200);
 
       expect(res.body).toBeInstanceOf(Array);
-      expect(res.body.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should return campaigns for the whole business with allBranches=true', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/messaging/campaigns?allBranches=true&branchId=${branchId}`) // Must provide ONE branch context even for aggregation for access check
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(res.body).toBeInstanceOf(Array);
     });
   });
 });

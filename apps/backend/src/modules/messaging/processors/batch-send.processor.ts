@@ -6,19 +6,15 @@ import { Repository } from 'typeorm';
 
 import { MessagingEngineService } from '../services/messaging-engine.service';
 import { CampaignService } from '../services/campaign.service';
-import {
-  MessageCampaign,
-  CampaignStatus,
-} from '../entities/message-campaign.entity';
+import { CampaignStatus } from '../entities/message-campaign.entity';
 import { Contact } from '../../contacts/entities/contact.entity';
-import { Business } from '../../businesses/entities/business.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 import { TemplateService } from '../services/template.service';
 import { Channel } from '../enums/channel.enum';
 
 interface BatchJobData {
   campaignId: string;
-  businessId: string;
-  branchId?: string;
+  branchId: string;
   channel: Channel;
   contactIds: string[];
   templateId?: string;
@@ -35,21 +31,14 @@ export class BatchSendProcessor extends WorkerHost {
     private readonly templateService: TemplateService,
     @InjectRepository(Contact)
     private readonly contactRepo: Repository<Contact>,
-    @InjectRepository(Business)
-    private readonly businessRepo: Repository<Business>,
+    @InjectRepository(Branch)
+    private readonly branchRepo: Repository<Branch>,
   ) {
     super();
   }
 
   async process(job: Job<BatchJobData, any, string>): Promise<any> {
-    const {
-      campaignId,
-      businessId,
-      branchId,
-      contactIds,
-      templateId,
-      content,
-    } = job.data;
+    const { campaignId, branchId, contactIds, templateId, content } = job.data;
     this.logger.log(
       `Processing batch send for campaign ${campaignId}, targeting ${contactIds.length} contacts.`,
     );
@@ -58,12 +47,13 @@ export class BatchSendProcessor extends WorkerHost {
     let failureCount = 0;
 
     try {
-      const business = await this.businessRepo.findOne({
-        where: { id: businessId },
+      const branch = await this.branchRepo.findOne({
+        where: { id: branchId },
+        relations: ['business'],
       });
-      if (!business) {
+      if (!branch) {
         this.logger.error(
-          `Business ${businessId} not found for campaign ${campaignId}`,
+          `Branch ${branchId} not found for campaign ${campaignId}`,
         );
         return { successCount: 0, failureCount: 0 };
       }
@@ -73,7 +63,6 @@ export class BatchSendProcessor extends WorkerHost {
         template = await this.templateService.getTemplate(templateId);
       }
 
-      // Process in chunks or individually
       for (const contactId of contactIds) {
         try {
           const contact = await this.contactRepo.findOne({
@@ -81,31 +70,25 @@ export class BatchSendProcessor extends WorkerHost {
           });
           if (!contact) continue;
 
-          const dto = {
-            businessId,
-            branchId,
-            channel: job.data.channel,
-            content,
-          };
+          const from = branch.whatsappNumber || '';
           await this.messagingEngine.processSingleSend(
-            contact,
-            dto,
-            business,
-            template,
+            branchId,
+            contactId,
+            content || '',
+            job.data.channel,
+            from,
           );
           successCount++;
         } catch (err) {
-          // Log errors per target
           failureCount++;
         }
       }
 
-      // Update campaign status
       await this.campaignService.updateCampaign(campaignId, {
         status: CampaignStatus.SENT,
         actualCost: await this.messagingEngine.calculateCost(
-          successCount,
           job.data.channel,
+          successCount,
         ),
         sentAt: new Date(),
       });

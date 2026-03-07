@@ -20,6 +20,60 @@ export class Branch extends AbstractBaseEntity {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ default: false })
+  isMainBranch: boolean;
+
+  @Column({ nullable: true })
+  logoUrl: string;
+
+  @Column({ nullable: true })
+  website: string;
+
+  @Column({ nullable: true })
+  whatsappNumber: string;
+
+  @Column({ nullable: true })
+  officialEmail: string;
+
+  @Column({ type: 'text', nullable: true })
+  welcomeMessage: string;
+
+  @Column({ type: 'text', nullable: true })
+  successMessage: string;
+
+  @Column({ type: 'text', nullable: true })
+  privacyMessage: string;
+
+  @Column({ type: 'text', nullable: true })
+  rewardMessage: string;
+
+  @Column({ type: 'text', nullable: true })
+  about: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  businessHours: Record<string, any>;
+
+  @Column({ default: false })
+  rewardEnabled: boolean;
+
+  @Column({ default: 5 })
+  rewardVisitThreshold: number;
+
+  @Column({ nullable: true })
+  linkedinUrl: string;
+
+  @Column({ nullable: true })
+  reviewUrl: string;
+
+  @Column({ default: true })
+  showReview: boolean;
+
+  @Column({ default: true })
+  showSocial: boolean;
+
+  @Column({ default: true })
+  showFeedback: boolean;
+
   @ManyToOne(() => Business, (business) => business.branches, {
     onDelete: 'CASCADE',
   })

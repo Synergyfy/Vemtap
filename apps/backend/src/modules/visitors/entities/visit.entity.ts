@@ -1,7 +1,6 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { User } from '../../users/entities/user.entity';
-import { Business } from '../../businesses/entities/business.entity';
 import { Device } from '../../devices/entities/device.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 
@@ -14,13 +13,6 @@ export class Visit extends AbstractBaseEntity {
   @Column()
   customerId: string;
 
-  @ManyToOne(() => Business, { onDelete: 'CASCADE', nullable: false })
-  @JoinColumn({ name: 'businessId' })
-  business: Business;
-
-  @Column()
-  businessId: string;
-
   @ManyToOne(() => Branch, (branch) => branch.visits, {
     onDelete: 'CASCADE',
     nullable: true,
@@ -30,6 +22,9 @@ export class Visit extends AbstractBaseEntity {
 
   @Column({ nullable: true })
   branchId: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  businessId: string;
 
   @ManyToOne(() => Device, (device) => device.visits, {
     nullable: true,

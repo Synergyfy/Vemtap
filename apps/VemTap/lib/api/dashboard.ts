@@ -7,9 +7,9 @@ export const dashboardApi = {
   fetchDashboardData: async () => {
     await delay(800);
     const state = useMockDashboardStore.getState();
-    const { activeBranchId } = (await import('@/store/useBusinessStore')).useBusinessStore.getState();
+    const { activeBranchId } = (await import('@/store/useAuthStore')).useAuthStore.getState();
 
-    const isAllBranches = activeBranchId === 'all' || !activeBranchId;
+    const isAllBranches = !activeBranchId;
 
     // Filter data by branch
     const filteredVisitors = isAllBranches ? state.visitors : state.visitors.filter(v => v.branchId === activeBranchId);
@@ -75,8 +75,8 @@ export const dashboardApi = {
 
   addVisitor: async (visitor: Visitor) => {
     await delay(500);
-    const { activeBranchId } = (await import('@/store/useBusinessStore')).useBusinessStore.getState();
-    const visitorWithBranch = { ...visitor, branchId: visitor.branchId || activeBranchId };
+    const { activeBranchId } = (await import('@/store/useAuthStore')).useAuthStore.getState();
+    const visitorWithBranch = { ...visitor, branchId: visitor.branchId || activeBranchId || undefined };
     useMockDashboardStore.getState().addVisitor(visitorWithBranch);
     useMockDashboardStore.getState().addNotification({
       id: Math.random().toString(36).substr(2, 9),
@@ -99,8 +99,8 @@ export const dashboardApi = {
   // Reward Actions
   createReward: async (reward: Reward) => {
     await delay(600);
-    const { activeBranchId } = (await import('@/store/useBusinessStore')).useBusinessStore.getState();
-    const rewardWithBranch = { ...reward, branchId: reward.branchId || activeBranchId };
+    const { activeBranchId } = (await import('@/store/useAuthStore')).useAuthStore.getState();
+    const rewardWithBranch = { ...reward, branchId: reward.branchId || activeBranchId || undefined };
     useMockDashboardStore.getState().addReward(rewardWithBranch);
     useMockDashboardStore.getState().addNotification({
       id: Math.random().toString(36).substr(2, 9),
@@ -126,7 +126,7 @@ export const dashboardApi = {
     await delay(700);
     const state = useMockDashboardStore.getState();
     const reward = state.rewards.find(r => r.id === rewardId);
-    const { activeBranchId } = (await import('@/store/useBusinessStore')).useBusinessStore.getState();
+    const { activeBranchId } = (await import('@/store/useAuthStore')).useAuthStore.getState();
 
     if (reward) {
       useMockDashboardStore.getState().addNotification({
@@ -137,7 +137,7 @@ export const dashboardApi = {
         read: false,
         type: 'success',
         scope: 'DASHBOARD',
-        branchId: reward.branchId || activeBranchId
+        branchId: reward.branchId || activeBranchId || undefined
       });
     }
     return { userId, rewardId };
@@ -162,7 +162,7 @@ export const dashboardApi = {
   // Message Actions
   createMessage: async (message: any) => {
     await delay(1000);
-    const { activeBranchId } = (await import('@/store/useBusinessStore')).useBusinessStore.getState();
+    const { activeBranchId } = (await import('@/store/useAuthStore')).useAuthStore.getState();
     const id = Math.random().toString(36).substr(2, 9);
     const newMessage = {
       ...message,
@@ -208,7 +208,7 @@ export const dashboardApi = {
   // Staff Actions
   addStaff: async (staff: any) => {
     await delay(800);
-    const { activeBranchId } = (await import('@/store/useBusinessStore')).useBusinessStore.getState();
+    const { activeBranchId } = (await import('@/store/useAuthStore')).useAuthStore.getState();
     const id = Math.random().toString(36).substr(2, 9);
     const newStaff = { ...staff, id, lastActive: 'Never', status: 'Active', branchId: staff.branchId || activeBranchId };
     useMockDashboardStore.getState().addStaff(newStaff);
@@ -230,7 +230,7 @@ export const dashboardApi = {
   // Device Actions
   addDevice: async (device: any) => {
     await delay(800);
-    const { activeBranchId } = (await import('@/store/useBusinessStore')).useBusinessStore.getState();
+    const { activeBranchId } = (await import('@/store/useAuthStore')).useAuthStore.getState();
     const id = device.id || Math.random().toString(36).substr(2, 9);
     const newDevice = {
       ...device,

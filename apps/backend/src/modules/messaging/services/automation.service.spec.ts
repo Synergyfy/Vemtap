@@ -8,6 +8,7 @@ import { AutomationRule } from '../entities/automation-rule.entity';
 import { AutomationLog } from '../entities/automation-log.entity';
 import { MessagingEngineService } from './messaging-engine.service';
 import { TriggerType, ActionType } from '../enums/automation.enum';
+import { BranchesService } from '../../branches/branches.service';
 
 describe('AutomationService', () => {
   let service: AutomationService;
@@ -28,6 +29,7 @@ describe('AutomationService', () => {
             create: jest.fn(),
             save: jest.fn(),
             delete: jest.fn(),
+            count: jest.fn(),
           },
         },
         {
@@ -35,6 +37,7 @@ describe('AutomationService', () => {
           useValue: {
             create: jest.fn().mockImplementation((dto) => dto),
             save: jest.fn(),
+            createQueryBuilder: jest.fn(),
           },
         },
         {
@@ -47,6 +50,12 @@ describe('AutomationService', () => {
           provide: getQueueToken('messaging-automation'),
           useValue: {
             add: jest.fn(),
+          },
+        },
+        {
+          provide: BranchesService,
+          useValue: {
+            getBusinessId: jest.fn().mockResolvedValue('bus-1'),
           },
         },
       ],
@@ -70,7 +79,6 @@ describe('AutomationService', () => {
         triggerType: TriggerType.FIRST_TAG,
         delaySeconds: 0,
         actionType: ActionType.SEND_SMS,
-        businessId: 'biz1',
         branchId: 'br1',
         isActive: true,
       } as any as AutomationRule;
@@ -80,7 +88,6 @@ describe('AutomationService', () => {
       const executeSpy = jest.spyOn(service, 'executeRule');
 
       await service.trigger(TriggerType.FIRST_TAG, {
-        businessId: 'biz1',
         branchId: 'br1',
         contactId: 'c1',
       });
@@ -94,7 +101,6 @@ describe('AutomationService', () => {
         triggerType: TriggerType.FIRST_TAG,
         delaySeconds: 3600,
         actionType: ActionType.SEND_SMS,
-        businessId: 'biz1',
         branchId: 'br1',
         isActive: true,
       } as any as AutomationRule;
@@ -102,7 +108,6 @@ describe('AutomationService', () => {
       jest.spyOn(ruleRepo, 'find').mockResolvedValue([rule]);
 
       await service.trigger(TriggerType.FIRST_TAG, {
-        businessId: 'biz1',
         branchId: 'br1',
         contactId: 'c1',
       });
@@ -121,7 +126,6 @@ describe('AutomationService', () => {
         id: '1',
         actionType: ActionType.SEND_SMS,
         actionConfig: { content: 'Hello' },
-        businessId: 'biz1',
         branchId: 'br1',
         isActive: true,
       } as any as AutomationRule;
@@ -129,7 +133,6 @@ describe('AutomationService', () => {
       jest.spyOn(ruleRepo, 'findOne').mockResolvedValue(rule);
 
       await service.executeRule('1', {
-        businessId: 'biz1',
         branchId: 'br1',
         contactId: 'c1',
       });
@@ -138,62 +141,6 @@ describe('AutomationService', () => {
       expect(logRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'success' }),
       );
-    });
-  });
-
-  describe('configureAutomation', () => {
-    it('should update content and delayDays correctly', async () => {
-      const rule = {
-        id: '1',
-        actionConfig: {},
-      } as any as AutomationRule;
-
-      jest.spyOn(ruleRepo, 'findOne').mockResolvedValue(rule);
-      jest
-        .spyOn(ruleRepo, 'save')
-        .mockImplementation(async (r) => r as AutomationRule);
-
-      const result = await service.configureAutomation('1', {
-        content: 'Hello {{visitor_name}}',
-        delayDays: 2,
-        loyaltyPoints: 10,
-      });
-
-      expect(result.actionConfig.content).toBe('Hello {{visitor_name}}');
-      expect(result.actionConfig.loyaltyPoints).toBe(10);
-      expect(result.delaySeconds).toBe(2 * 24 * 60 * 60);
-    });
-
-    it('should throw error for invalid variables in content', async () => {
-      const rule = {
-        id: '1',
-      } as any as AutomationRule;
-
-      jest.spyOn(ruleRepo, 'findOne').mockResolvedValue(rule);
-
-      await expect(
-        service.configureAutomation('1', {
-          content: 'Hello {{invalid_var}}',
-        }),
-      ).rejects.toThrow('Invalid variable found: {{invalid_var}}');
-    });
-
-    it('should allow valid variables in content', async () => {
-      const rule = {
-        id: '1',
-      } as any as AutomationRule;
-
-      jest.spyOn(ruleRepo, 'findOne').mockResolvedValue(rule);
-      jest
-        .spyOn(ruleRepo, 'save')
-        .mockImplementation(async (r) => r as AutomationRule);
-
-      await expect(
-        service.configureAutomation('1', {
-          content:
-            'Hi {{visitor_name}}, welcome to {{business_name}} at {{branch_name}}. You earned {{loyalty_points}} points!',
-        }),
-      ).resolves.toBeDefined();
     });
   });
 });

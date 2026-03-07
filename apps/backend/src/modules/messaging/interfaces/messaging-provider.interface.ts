@@ -6,6 +6,7 @@ export interface SendMessagePayload {
   content: string;
   channel: Channel;
   mediaUrl?: string; // for whatsapp
+  metadata?: Record<string, any>;
 }
 
 export interface ProviderResponse {

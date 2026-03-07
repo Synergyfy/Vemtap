@@ -17,7 +17,7 @@ import toast from 'react-hot-toast';
 import { formatDate } from '@/lib/utils/date';
 
 function NewVisitorJoinedCell({ visitor }: { visitor: Visitor }) {
-    const { data: fullVisitor } = useVisitor(visitor.id, 'all');
+    const { data: fullVisitor } = useVisitor(visitor.id);
 
     const resolveJoinedDate = (item: Visitor) => {
         const enhanced = item as Visitor & {
@@ -64,8 +64,8 @@ export default function NewVisitorsPage() {
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
 
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const { data: paginatedData, isLoading } = useNewVisitors('all');
-    const { data: statsData } = useNewVisitorStats('all');
+    const { data: paginatedData, isLoading } = useNewVisitors();
+    const { data: statsData } = useNewVisitorStats();
 
     const newVisitors = paginatedData?.data || [];
 

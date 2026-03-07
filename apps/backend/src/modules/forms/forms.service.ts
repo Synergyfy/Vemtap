@@ -1,7 +1,6 @@
 import {
   Injectable,
   NotFoundException,
-  ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -12,10 +11,9 @@ import { FormResponse } from './entities/form-response.entity';
 import { FormAnswer } from './entities/form-answer.entity';
 import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
-import {
-  SubmitFormResponseDto,
-  FormAnswerDto,
-} from './dto/submit-form-response.dto';
+import { SubmitFormResponseDto } from './dto/submit-form-response.dto';
+import { BranchesService } from '../branches/branches.service';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class FormsService {
@@ -28,126 +26,94 @@ export class FormsService {
     private readonly formResponsesRepository: Repository<FormResponse>,
     @InjectRepository(FormAnswer)
     private readonly formAnswersRepository: Repository<FormAnswer>,
+    private readonly branchesService: BranchesService,
   ) {}
 
-  async createForm(businessId: string, dto: CreateFormDto): Promise<Form> {
+  async checkBranchAccess(user: User, branchId: string): Promise<boolean> {
+    return this.branchesService.checkBranchAccess(user, branchId);
+  }
+
+  async createForm(branchId: string, dto: CreateFormDto): Promise<Form> {
+    const branch = await this.branchesService.findById(branchId);
     const form = this.formsRepository.create({
       ...dto,
-      businessId,
-    });
+      branchId,
+      businessId: branch.businessId,
+    } as any) as unknown as Form;
     return this.formsRepository.save(form);
   }
 
-  async getFormsByBusiness(businessId: string): Promise<Form[]> {
+  async getFormsByBranch(branchId: string): Promise<Form[]> {
     return this.formsRepository.find({
-      where: { businessId },
+      where: { branchId },
       order: { createdAt: 'DESC' },
     });
   }
 
-  async getFormById(businessId: string, id: string): Promise<Form> {
+  async getFormById(branchId: string, id: string): Promise<Form> {
     const form = await this.formsRepository.findOne({
-      where: { id, businessId },
+      where: { id, branchId },
       relations: ['fields'],
     });
 
-    if (!form) {
-      throw new NotFoundException(`Form with ID ${id} not found`);
-    }
-
+    if (!form) throw new NotFoundException('Form not found');
     return form;
   }
 
   async updateForm(
-    businessId: string,
+    branchId: string,
     id: string,
     dto: UpdateFormDto,
   ): Promise<Form> {
-    const form = await this.getFormById(businessId, id);
-
-    if (dto.title !== undefined) form.title = dto.title;
-    if (dto.description !== undefined) form.description = dto.description;
-    if (dto.isActive !== undefined) form.isActive = dto.isActive;
-    if (dto.isPublished !== undefined) form.isPublished = dto.isPublished;
-    if (dto.branchId !== undefined) form.branchId = dto.branchId;
-
-    if (dto.fields) {
-      const responseCount = await this.formResponsesRepository.count({
-        where: { formId: id },
-      });
-      if (responseCount > 0) {
-        throw new BadRequestException(
-          'Cannot update fields of a form that already has responses.',
-        );
-      }
-      await this.formFieldsRepository.delete({ formId: id });
-      form.fields = dto.fields.map((field) =>
-        this.formFieldsRepository.create(field),
-      );
-    }
-
+    const form = await this.getFormById(branchId, id);
+    Object.assign(form, dto);
     return this.formsRepository.save(form);
   }
 
-  async deleteForm(businessId: string, id: string): Promise<void> {
-    const form = await this.getFormById(businessId, id);
+  async deleteForm(branchId: string, id: string): Promise<void> {
+    const form = await this.getFormById(branchId, id);
     await this.formsRepository.remove(form);
   }
 
   async getFormResponses(
-    businessId: string,
-    id: string,
+    branchId: string,
+    formId: string,
   ): Promise<FormResponse[]> {
-    // Assert form belongs to business
-    await this.getFormById(businessId, id);
-
     return this.formResponsesRepository.find({
-      where: { formId: id },
-      relations: ['answers', 'answers.field', 'visitor'],
+      where: { formId, branchId },
+      relations: ['answers', 'answers.field'],
       order: { createdAt: 'DESC' },
     });
   }
 
-  // --- Visitor Methods ---
-
-  async getFormsForVisitor(
-    businessId: string,
-    branchId?: string,
-  ): Promise<Form[]> {
-    const query = this.formsRepository
-      .createQueryBuilder('form')
-      .where('form.isActive = :isActive', { isActive: true })
-      .andWhere('form.isPublished = :isPublished', { isPublished: true })
-      .andWhere('form.businessId = :businessId', { businessId });
-
-    if (branchId) {
-      query.andWhere('(form.branchId IS NULL OR form.branchId = :branchId)', {
-        branchId,
-      });
-    } else {
-      query.andWhere('form.branchId IS NULL');
-    }
-
-    return query.getMany();
+  // Admin Methods
+  async findAllForAdmin(query: { branchId?: string }) {
+    const where: any = {};
+    if (query.branchId) where.branchId = query.branchId;
+    return this.formsRepository.find({ where, relations: ['branch'] });
   }
 
-  async getFormByIdForVisitor(
-    formId: string,
-    branchId?: string,
-  ): Promise<Form> {
+  async setAdminDisabledStatus(id: string, isDisabled: boolean) {
+    const form = await this.formsRepository.findOneBy({ id });
+    if (!form) throw new NotFoundException('Form not found');
+    (form as any).adminDisabled = isDisabled;
+    return this.formsRepository.save(form);
+  }
+
+  // Visitor actions
+  async getFormsForVisitor(branchId: string): Promise<Form[]> {
+    return this.formsRepository.find({
+      where: { branchId, isPublished: true, isActive: true },
+    });
+  }
+
+  async getFormByIdForVisitor(id: string, branchId: string): Promise<Form> {
     const form = await this.formsRepository.findOne({
-      where: { id: formId, isActive: true, isPublished: true },
+      where: { id, branchId, isPublished: true, isActive: true },
       relations: ['fields'],
     });
 
-    if (!form) {
-      throw new NotFoundException(`Form not found, inactive, or not published`);
-    }
-
-    if (form.branchId && form.branchId !== branchId) {
-      throw new ForbiddenException(`This form is specific to another branch`);
-    }
-
+    if (!form) throw new NotFoundException('Form not available');
     return form;
   }
 
@@ -156,40 +122,36 @@ export class FormsService {
     visitorId: string,
     dto: SubmitFormResponseDto,
   ): Promise<FormResponse> {
-    const form = await this.getFormByIdForVisitor(formId, dto.branchId);
+    const form = await this.formsRepository.findOneBy({ id: formId });
+    if (!form) throw new NotFoundException('Form not found');
 
-    // Validate required fields
-    const requiredFields = form.fields.filter((f) => f.isRequired);
-    for (const requiredField of requiredFields) {
-      const answer = dto.answers.find((a) => a.fieldId === requiredField.id);
-      if (!answer || !answer.value || answer.value.trim() === '') {
-        throw new BadRequestException(
-          `Field ${requiredField.question} is required`,
-        );
-      }
-    }
-
-    const response = this.formResponsesRepository.create({
-      formId,
-      visitorId,
-      branchId: dto.branchId,
-    });
-
-    const savedResponse = await this.formResponsesRepository.save(response);
-
-    const answers = dto.answers.map((ans) =>
-      this.formAnswersRepository.create({
-        responseId: savedResponse.id,
-        fieldId: ans.fieldId,
-        value: ans.value,
-      }),
+    const savedResponseResult = await this.formResponsesRepository.save(
+      this.formResponsesRepository.create({
+        formId,
+        visitorId,
+        branchId: form.branchId,
+        businessId: (form as any).businessId,
+      } as any) as unknown as FormResponse,
     );
 
-    if (answers.length > 0) {
+    const savedResponse = (
+      Array.isArray(savedResponseResult)
+        ? savedResponseResult[0]
+        : savedResponseResult
+    ) as FormResponse;
+
+    if (dto.answers && Array.isArray(dto.answers)) {
+      const answers = dto.answers.map((ans: any) =>
+        this.formAnswersRepository.create({
+          responseId: savedResponse.id,
+          fieldId: ans.fieldId,
+          value: ans.value,
+        }),
+      );
       await this.formAnswersRepository.save(answers);
+      (savedResponse as any).answers = answers;
     }
 
-    savedResponse.answers = answers;
     return savedResponse;
   }
 }

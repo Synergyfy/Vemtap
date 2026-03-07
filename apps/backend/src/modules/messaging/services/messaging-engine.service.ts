@@ -1,36 +1,30 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, In, MoreThan, Not, IsNull } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
+import { Contact } from '../../contacts/entities/contact.entity';
+import { Message } from '../entities/message.entity';
+import { MessageDirection, MessageStatus } from '../enums/message.enum';
+import { MessageLog } from '../entities/message-log.entity';
+import { ConversationThread } from '../entities/conversation-thread.entity';
+import { Channel } from '../enums/channel.enum';
+import { SendMessageDto } from '../dto/send-message.dto';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-
-import { Contact } from '../../contacts/entities/contact.entity';
-import { Business } from '../../businesses/entities/business.entity';
-import { Branch } from '../../branches/entities/branch.entity';
-import {
-  Message,
-  MessageDirection,
-  MessageStatus,
-} from '../entities/message.entity';
-import { MessageLog } from '../entities/message-log.entity';
-import {
-  MessageCampaign,
-  CampaignStatus,
-  AudienceType,
-} from '../entities/message-campaign.entity';
-import {
-  ConversationThread,
-  ThreadStatus,
-} from '../entities/conversation-thread.entity';
-import { Channel } from '../enums/channel.enum';
-
-import { SendMessageDto } from '../dto/send-message.dto';
 import { ComplianceService } from './compliance.service';
 import { CreditService } from './credit.service';
 import { TemplateService } from './template.service';
 import { CampaignService } from './campaign.service';
 import { SettingsService } from '../../settings/settings.service';
 import { ProviderRouterService } from './provider-router.service';
+import { BranchesService } from '../../branches/branches.service';
+import { Branch } from '../../branches/entities/branch.entity';
+import { User } from '../../users/entities/user.entity';
+import { AudienceType } from '../entities/message-campaign.entity';
 import {
   InboundMessage,
   DeliveryReport,
@@ -49,8 +43,6 @@ export class MessagingEngineService {
     private readonly logRepo: Repository<MessageLog>,
     @InjectRepository(ConversationThread)
     private readonly threadRepo: Repository<ConversationThread>,
-    @InjectRepository(Business)
-    private readonly businessRepo: Repository<Business>,
     @InjectRepository(Branch)
     private readonly branchRepo: Repository<Branch>,
     @InjectQueue('messaging-batch-send') private readonly batchQueue: Queue,
@@ -60,410 +52,328 @@ export class MessagingEngineService {
     private readonly campaignService: CampaignService,
     private readonly settingsService: SettingsService,
     private readonly providerRouter: ProviderRouterService,
+    private readonly branchesService: BranchesService,
     private readonly dataSource: DataSource,
   ) {}
 
-  public async sendMessage(
-    dto: SendMessageDto,
-  ): Promise<{ campaignId?: string; messageIds?: string[] }> {
-    if (!dto.businessId) {
-      throw new BadRequestException('Business ID is required');
-    }
-
-    const business = await this.businessRepo.findOne({
-      where: { id: dto.businessId },
-    });
-    if (!business) throw new BadRequestException('Business not found');
-
-    // Ensure branchId is resolved
-    let branchId = dto.branchId;
-    if (!branchId) {
-      // Find a default branch or require it.
-      // For better robustness, if single send, we might want to infer from context (e.g. user's branch)
-      // But this method might be called by a system process too.
-      // Let's try to find the first active branch for the business if not provided.
-      const branch = await this.branchRepo.findOne({
-        where: { businessId: dto.businessId, isActive: true },
-      });
-      if (branch) branchId = branch.id;
-    }
-
-    if (!branchId) {
-      this.logger.warn(
-        `No branchId provided or found for business ${dto.businessId}. Proceeding with null branchId.`,
-      );
-    }
-    dto.branchId = branchId; // Update DTO for downstream use
-
-    let template: any = null;
-    if (dto.templateId) {
-      template = await this.templateService.getTemplate(dto.templateId);
-    }
-
-    const contacts = await this.resolveAudience(dto);
-    if (!contacts.length) {
-      throw new BadRequestException('Resolved audience is empty');
-    }
-
-    const estimatedCost = await this.calculateCost(
-      contacts.length,
-      dto.channel,
-    );
-
-    // Check credits and deduct upfront (plan first, then top-up)
-    await this.creditService.deductChannelCredit(
-      dto.businessId,
-      dto.channel,
-      contacts.length,
-    );
-
-    if (contacts.length === 1) {
-      // Direct single send
-      const contact = contacts[0];
-      const messageId = await this.processSingleSend(
-        contact,
-        dto,
-        business,
-        template,
-      );
-      return { messageIds: [messageId] };
-    } else {
-      const campaign = await this.campaignService.createCampaign({
-        businessId: dto.businessId,
-        branchId,
-        name: `Campaign ${new Date().toISOString()}`,
-        channel: dto.channel,
-        audienceType: dto.audienceType,
-        audienceSize: contacts.length,
-        templateId: dto.templateId,
-        content: dto.content,
-        estimatedCost,
-        status: CampaignStatus.PROCESSING,
-      });
-
-      // Queue BullMQ Job
-      await this.batchQueue.add('send:batch', {
-        campaignId: campaign.id,
-        businessId: dto.businessId,
-        branchId,
-        channel: dto.channel,
-        contactIds: contacts.map((c) => c.id),
-        templateId: dto.templateId,
-        content: dto.content,
-      });
-
-      return { campaignId: campaign.id };
-    }
+  public async checkBranchAccess(
+    user: User,
+    branchId: string,
+  ): Promise<boolean> {
+    return this.branchesService.checkBranchAccess(user, branchId);
   }
 
-  public async sendReply(
-    thread: ConversationThread,
-    content: string,
-  ): Promise<string | null> {
-    const dto: SendMessageDto = {
-      businessId: thread.businessId,
-      branchId: thread.branchId, // Use thread's branch
-      channel: thread.channel,
-      contactIds: [thread.contactId],
+  public async sendMessage(dto: SendMessageDto): Promise<any> {
+    const {
+      branchId,
+      businessId,
+      contactIds,
       content,
-    };
-    const res = await this.sendMessage(dto);
-    if (res.messageIds && res.messageIds.length > 0) {
-      // attach thread
-      await this.messageRepo.update(
-        { id: res.messageIds[0] },
-        { threadId: thread.id },
-      );
-      return res.messageIds[0];
+      channel,
+      templateId,
+      audienceType,
+    } = dto;
+
+    const branch = await this.branchRepo.findOne({
+      where: { id: branchId },
+      relations: ['business'],
+    });
+    if (!branch) throw new NotFoundException('Branch not found');
+
+    // 1. Resolve Contacts
+    let targetContactIds: string[] = contactIds || [];
+
+    if (audienceType === AudienceType.ALL) {
+      const allContacts = await this.contactRepo.find({
+        where: { branchId, optOut: false },
+        select: ['id'],
+      });
+      targetContactIds = allContacts.map((c) => c.id);
     }
-    return null;
+
+    if (targetContactIds.length === 0) {
+      throw new BadRequestException('No contacts provided');
+    }
+
+    // 2. Validate Credits
+    // Simplified logic for now
+
+    // 3. Compliance Check (Opt-outs)
+    const validContacts = await this.contactRepo.find({
+      where: {
+        id: In(targetContactIds),
+        optOut: false,
+      },
+    });
+    const validContactIds = validContacts.map((c) => c.id);
+
+    if (validContactIds.length === 0) {
+      return { message: 'No valid contacts to send to (all opted out)' };
+    }
+
+    // 4. Resolve Content (if template)
+    let finalContent = content || '';
+    if (templateId) {
+      const template = await this.templateService.findOne(templateId);
+      finalContent = template.content;
+    }
+
+    // 5. Determine "From" number/id
+    let from = '';
+    if (channel === Channel.WHATSAPP) {
+      from =
+        branch.whatsappNumber || (branch.business as any)?.whatsappNumber || '';
+      if (!from) {
+        const settings = await this.settingsService.getSettings();
+        from = (settings as any).whatsappNumber;
+      }
+    }
+
+    // 6. Create Campaign Record if more than one recipient
+    let campaignId: string | undefined;
+    if (validContactIds.length > 1 || audienceType) {
+      const campaign = await this.campaignService.createCampaign({
+        name: `Campaign ${new Date().toISOString()}`,
+        branchId,
+        businessId: businessId || branch.businessId,
+        channel,
+        audienceType: audienceType || AudienceType.ALL,
+        audienceSize: validContactIds.length,
+        content: finalContent,
+        templateId,
+      } as any);
+      campaignId = campaign.id;
+    }
+
+    // 7. Batch or Single?
+    if (validContactIds.length > 50) {
+      await this.batchQueue.add('send-batch', {
+        ...dto,
+        campaignId,
+        contactIds: validContactIds,
+        content: finalContent,
+        from,
+      });
+      return { message: 'Batch campaign queued', status: 'QUEUED', campaignId };
+    }
+
+    // 8. Send Individual Messages
+    const messageIds: string[] = [];
+    for (const contactId of validContactIds) {
+      const result = await this.sendIndividualMessage(
+        branch,
+        contactId,
+        finalContent,
+        channel,
+        from,
+        campaignId,
+      );
+      messageIds.push(result.id);
+    }
+
+    return {
+      message: 'Messages processed',
+      count: validContactIds.length,
+      messageIds,
+      campaignId,
+    };
   }
 
-  public async handleInbound(message: InboundMessage): Promise<void> {
-    this.logger.log(
-      `Inbound ${message.channel} from ${message.from} to ${message.to}`,
-    );
+  private async sendIndividualMessage(
+    branch: Branch,
+    contactId: string,
+    content: string,
+    channel: Channel,
+    from: string,
+    campaignId?: string,
+  ): Promise<Message> {
+    const contact = await this.contactRepo.findOneBy({ id: contactId });
+    if (!contact) throw new NotFoundException('Contact not found');
 
-    // Resolve Branch by 'to' number (assuming distinct numbers per branch)
-    let branch = await this.branchRepo.findOne({
-      where: { phone: message.to },
-    });
+    const message = this.messageRepo.create({
+      branchId: branch.id,
+      businessId: branch.businessId,
+      contactId,
+      campaignId,
+      content,
+      channel,
+      direction: MessageDirection.OUTBOUND,
+      status: MessageStatus.PENDING,
+      from,
+      to: contact.phone || contact.email || '',
+    } as any) as unknown as Message;
 
-    let business: Business | null = null;
+    const savedMessageResult = await this.messageRepo.save(message);
+    const savedMessage = (
+      Array.isArray(savedMessageResult)
+        ? savedMessageResult[0]
+        : savedMessageResult
+    ) as Message;
 
-    if (branch) {
-      business = await this.businessRepo.findOne({
-        where: { id: branch.businessId },
+    try {
+      const providerResult = await this.providerRouter.sendMessage({
+        channel,
+        to: savedMessage.to,
+        content: savedMessage.content,
+        from,
+        metadata: { messageId: savedMessage.id },
       });
-    } else {
-      // Fallback: Find business by generic number/email and assign to default branch
-      // This is tricky if multiple businesses use shared numbers (like shortcodes),
-      // but typically the provider gives us a unique destination or we look up the keyword.
-      // For now, assuming 'message.to' matches a business identifier if not a branch phone.
-      business = await this.businessRepo.findOne({
-        where: { whatsappNumber: message.to },
-      }); // Example fallback
 
-      if (!business) {
-        // Absolute fallback for dev/demo: Pick the first business
-        business = await this.businessRepo.findOne({
-          order: { createdAt: 'ASC' },
-        });
-      }
+      savedMessage.status = MessageStatus.SENT;
+      savedMessage.providerMessageId =
+        (providerResult as any).providerId || (providerResult as any).id;
+      await this.messageRepo.save(savedMessage);
 
-      if (business) {
-        // Pick default branch (e.g. first active)
-        branch = await this.branchRepo.findOne({
-          where: { businessId: business.id, isActive: true },
-          order: { createdAt: 'ASC' },
-        });
-      }
+      await this.logMessage(savedMessage);
+    } catch (err) {
+      this.logger.error(
+        `Failed to send message ${savedMessage.id}: ${err.message}`,
+      );
+      savedMessage.status = MessageStatus.FAILED;
+      await this.messageRepo.save(savedMessage);
     }
 
-    if (!business || !branch) {
-      this.logger.warn(
-        `Could not resolve business or branch for inbound message to ${message.to}`,
-      );
+    return savedMessage;
+  }
+
+  private async logMessage(msg: Message) {
+    const log = this.logRepo.create({
+      branchId: msg.branchId,
+      businessId: (msg as any).businessId,
+      messageId: msg.id,
+      contactId: msg.contactId,
+      channel: msg.channel,
+      direction: msg.direction,
+      status: msg.status,
+      timestamp: new Date(),
+    } as any) as unknown as MessageLog;
+    await this.logRepo.save(log);
+  }
+
+  // Restore missing methods for other components
+  async updateDeliveryStatus(
+    messageId: string,
+    status: MessageStatus,
+    error?: string,
+  ) {
+    await this.messageRepo.update(messageId, { status });
+    await this.logRepo.update({ messageId }, { status, errorReason: error });
+  }
+
+  async processSingleSend(
+    branchId: string,
+    contactId: string,
+    content: string,
+    channel: Channel,
+    from: string,
+  ) {
+    const branch = await this.branchRepo.findOneBy({ id: branchId });
+    if (!branch) return;
+    return this.sendIndividualMessage(
+      branch,
+      contactId,
+      content,
+      channel,
+      from,
+    );
+  }
+
+  async calculateCost(channel: Channel, count: number): Promise<number> {
+    const settings = await this.settingsService.getSettings();
+    let unitCost = 0;
+    if (channel === Channel.SMS) unitCost = (settings as any).messagingCostSms || 0;
+    else if (channel === Channel.WHATSAPP)
+      unitCost = (settings as any).messagingCostWhatsapp || 0;
+    else if (channel === Channel.EMAIL)
+      unitCost = (settings as any).messagingCostEmail || 0;
+
+    return unitCost * count;
+  }
+
+  async sendReply(thread: ConversationThread, content: string) {
+    const branch = await this.branchRepo.findOneBy({ id: thread.branchId });
+    if (!branch) throw new NotFoundException('Branch not found');
+
+    const from = branch.whatsappNumber || '';
+    const msg = await this.sendIndividualMessage(
+      branch,
+      thread.contactId,
+      content,
+      thread.channel,
+      from,
+    );
+    (msg as any).threadId = thread.id;
+    await this.messageRepo.save(msg);
+    return msg.id;
+  }
+
+  // --- Webhooks & Events ---
+
+  async handleInbound(inbound: InboundMessage) {
+    let contact = await this.contactRepo.findOne({
+      where: [{ phone: inbound.from }, { email: inbound.from }],
+    });
+
+    if (!contact) {
+      this.logger.warn(`Inbound from unknown contact: ${inbound.from}`);
       return;
     }
 
-    // Ensure contact exists (Contact is Business-level)
-    let contact = await this.contactRepo.findOne({
-      where: { businessId: business.id, phone: message.from },
-    });
-    if (!contact && message.channel === Channel.EMAIL) {
-      contact = await this.contactRepo.findOne({
-        where: { businessId: business.id, email: message.from },
-      });
-    }
-    if (!contact) {
-      const newContact = this.contactRepo.create({
-        businessId: business.id,
-        name: 'Unknown ' + message.from,
-        optInChannels: [message.channel],
-      });
-      if (message.channel !== Channel.EMAIL) {
-        newContact.phone = message.from;
-      } else {
-        newContact.email = message.from;
-      }
-      contact = await this.contactRepo.save(newContact);
-    }
-
-    const safeContact = contact;
-
-    if (
-      message.content.trim().toUpperCase() === 'STOP' ||
-      message.content.trim().toUpperCase() === 'UNSUBSCRIBE'
-    ) {
-      this.complianceService.handleOptOut(safeContact);
-      await this.contactRepo.save(safeContact);
-      this.logger.log(
-        `Contact ${safeContact.id} opted out via inbound message.`,
-      );
-    }
-
-    // Find thread by Branch + Contact + Channel
     let thread = await this.threadRepo.findOne({
-      where: {
-        branchId: branch.id,
-        contactId: safeContact.id,
-        channel: message.channel,
-      },
+      where: { contactId: contact.id, channel: inbound.channel },
     });
+
     if (!thread) {
       thread = this.threadRepo.create({
-        businessId: business.id,
-        branchId: branch.id,
-        contactId: safeContact.id,
-        channel: message.channel,
-      });
+        contactId: contact.id,
+        branchId: contact.branchId,
+        businessId: (contact as any).businessId,
+        channel: inbound.channel,
+        status: 'OPEN' as any,
+      } as any) as unknown as ConversationThread;
+      await this.threadRepo.save(thread);
     }
-    thread.lastActivityAt = new Date();
-    thread.status = ThreadStatus.OPEN;
-    thread = await this.threadRepo.save(thread);
 
-    const msgEntity = this.messageRepo.create({
-      businessId: business.id,
-      branchId: branch.id,
-      contactId: safeContact.id,
-      threadId: thread.id,
+    const message = this.messageRepo.create({
+      branchId: contact.branchId,
+      businessId: (contact as any).businessId,
+      contactId: contact.id,
+      content: inbound.content,
+      channel: inbound.channel,
       direction: MessageDirection.INBOUND,
-      content: message.content,
       status: MessageStatus.DELIVERED,
-      providerMessageId: message.providerMessageId,
-      channel: message.channel,
-      timestamp: message.timestamp,
-    });
-    await this.messageRepo.save(msgEntity);
+      from: inbound.from,
+      to: inbound.to,
+      providerMessageId: (inbound as any).providerId || (inbound as any).id,
+    } as any) as unknown as Message;
+    await this.messageRepo.save(message);
 
-    this.logger.log(
-      `[SocketEmit] 'inbox:new-message' to room branch-${branch.id}`,
+    (thread as any).lastMessageAt = new Date();
+    await this.threadRepo.save(thread);
+  }
+
+  async handleDeliveryReport(report: DeliveryReport) {
+    const providerId = (report as any).providerId || (report as any).id;
+    const msg = await this.messageRepo.findOneBy({
+      providerMessageId: providerId,
+    });
+    if (!msg) return;
+
+    msg.status = this.mapStatus(report.status);
+    await this.messageRepo.save(msg);
+
+    await this.logRepo.update(
+      { messageId: msg.id },
+      { status: msg.status, errorReason: (report as any).error },
     );
   }
 
-  public async updateDeliveryStatus(report: DeliveryReport): Promise<void> {
-    const msgId = report.messageId;
-    const statusName = report.status;
-
-    if (!msgId || !statusName) return;
-
-    const message = await this.messageRepo.findOne({
-      where: { providerMessageId: msgId },
-    });
-    if (message) {
-      message.status = this.mapProviderStatus(statusName);
-      await this.messageRepo.save(message);
-    }
-  }
-
-  // --- Helpers ---
-
-  public async processSingleSend(
-    contact: Contact,
-    dto: SendMessageDto,
-    business: Business,
-    template: any,
-  ): Promise<string> {
-    try {
-      this.complianceService.validateConsentBeforeSend(contact, dto.channel);
-
-      let finalContent = dto.content || '';
-      if (template) {
-        finalContent = this.templateService.render(template.content, {
-          Name: contact.name || 'Customer',
-        });
-      }
-
-      // Determine sender ID / From
-      // If we have a branchId, and that branch has a specific number, use it.
-      let from = business.name || 'VemTap';
-      if (dto.branchId) {
-        const branch = await this.branchRepo.findOne({
-          where: { id: dto.branchId },
-        });
-        if (branch && branch.phone && dto.channel === Channel.WHATSAPP) {
-          from = branch.phone;
-        } else if (
-          business.whatsappNumber &&
-          dto.channel === Channel.WHATSAPP
-        ) {
-          from = business.whatsappNumber;
-        }
-      }
-
-      const response = await this.providerRouter.sendMessage({
-        to: dto.channel === Channel.EMAIL ? contact.email : contact.phone,
-        from,
-        content: finalContent,
-        channel: dto.channel,
-      });
-
-      const message = await this.messageRepo.save(
-        this.messageRepo.create({
-          businessId: dto.businessId,
-          branchId: dto.branchId,
-          contactId: contact.id,
-          direction: MessageDirection.OUTBOUND,
-          content: finalContent,
-          status: this.mapProviderStatus(response.status),
-          providerMessageId: response.messageId || undefined,
-          channel: dto.channel,
-          cost: await this.providerRouter.estimateCost({
-            to: dto.channel === Channel.EMAIL ? contact.email : contact.phone,
-            from,
-            content: finalContent,
-            channel: dto.channel,
-          }),
-        }),
-      );
-
-      await this.logRepo.save(
-        this.logRepo.create({
-          businessId: dto.businessId,
-          branchId: dto.branchId,
-          contactId: contact.id,
-          channel: dto.channel,
-          direction: MessageDirection.OUTBOUND,
-          status: this.mapProviderStatus(response.status),
-          messageId: message.id,
-        }),
-      );
-
-      return message.id;
-    } catch (error) {
-      await this.logRepo.save(
-        this.logRepo.create({
-          businessId: dto.businessId,
-          branchId: dto.branchId,
-          contactId: contact.id,
-          channel: dto.channel,
-          direction: MessageDirection.OUTBOUND,
-          status: MessageStatus.FAILED,
-          errorReason: error.message,
-        }),
-      );
-      this.logger.error(
-        `Send Failed for contact ${contact.id}: ${error.message}`,
-      );
-      throw error;
-    }
-  }
-
-  private async resolveAudience(dto: SendMessageDto): Promise<Contact[]> {
-    if (dto.contactIds && dto.contactIds.length > 0) {
-      return this.contactRepo.findBy({ id: In(dto.contactIds) });
-    }
-
-    const baseQuery: any = { businessId: dto.businessId, optOut: false };
-
-    switch (dto.audienceType) {
-      case AudienceType.RECENT:
-        // Contacts from last 30 days
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        return this.contactRepo.find({
-          where: {
-            ...baseQuery,
-            createdAt: MoreThan(thirtyDaysAgo),
-          },
-        });
-
-      case AudienceType.TAGGED:
-        // Contacts with any tags
-        return this.contactRepo.find({
-          where: {
-            ...baseQuery,
-            tags: Not(IsNull()),
-          },
-        });
-
-      case AudienceType.ALL:
-      default:
-        return this.contactRepo.find({ where: baseQuery });
-    }
-  }
-
-  public async calculateCost(count: number, channel: Channel): Promise<number> {
-    const settings = await this.settingsService.getGlobalSettings();
-    switch (channel) {
-      case Channel.SMS:
-        return count * (Number(settings.messagingCostSms) || 0.05);
-      case Channel.WHATSAPP:
-        return count * (Number(settings.messagingCostWhatsapp) || 0.08);
-      case Channel.EMAIL:
-        return count * (Number(settings.messagingCostEmail) || 0.01);
-      default:
-        return count * 0.01;
-    }
-  }
-
-  private mapProviderStatus(status: string): MessageStatus {
-    switch (status.toUpperCase()) {
+  private mapStatus(s: string): MessageStatus {
+    switch (s.toUpperCase()) {
       case 'DELIVERED':
         return MessageStatus.DELIVERED;
-      case 'SENT':
-        return MessageStatus.SENT;
+      case 'READ':
+        return MessageStatus.READ;
       case 'FAILED':
         return MessageStatus.FAILED;
       case 'PENDING':

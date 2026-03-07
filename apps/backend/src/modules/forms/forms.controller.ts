@@ -8,6 +8,7 @@ import {
   Delete,
   Request,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { FormsService } from './forms.service';
 import { CreateFormDto } from './dto/create-form.dto';
@@ -21,6 +22,8 @@ import {
 } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
+import { Query } from '@nestjs/common';
 
 @ApiTags('Business Forms')
 @ApiBearerAuth()
@@ -28,9 +31,42 @@ import { UserRole } from '../users/entities/user.entity';
 export class FormsController {
   constructor(private readonly formsService: FormsService) {}
 
+  private async getBranchId(req: any, queryBranchId?: string): Promise<string> {
+    const user = req.user;
+
+    // For Owner and Admin: branchId MUST be provided in the request
+    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
+      if (!queryBranchId) {
+        throw new BadRequestException(
+          'branchId is required for Owners and Admins',
+        );
+      }
+
+      if (user.role === UserRole.OWNER) {
+        const hasAccess = await this.formsService.checkBranchAccess(
+          user,
+          queryBranchId,
+        );
+        if (!hasAccess) {
+          throw new BadRequestException(
+            'You do not have access to this branch',
+          );
+        }
+      }
+      return queryBranchId;
+    }
+
+    // For Manager and Staff: ignore provided branchId, always use branchId from token
+    if (!user.branchId) {
+      throw new BadRequestException('User is not associated with any branch');
+    }
+
+    return user.branchId;
+  }
+
   @Post()
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @ApiOperation({ summary: 'Create a new form for the current business' })
+  @ApiOperation({ summary: 'Create a new form for the branch' })
   @ApiBody({
     type: CreateFormDto,
     examples: {
@@ -75,7 +111,6 @@ export class FormsController {
         },
         isActive: { type: 'boolean', example: true },
         isPublished: { type: 'boolean', example: true },
-        businessId: { type: 'string', example: 'uuid-business-1234' },
         branchId: { type: 'string', example: 'uuid-branch-1234' },
         fields: {
           type: 'array',
@@ -101,13 +136,14 @@ export class FormsController {
       },
     },
   })
-  create(@Request() req, @Body() createFormDto: CreateFormDto) {
-    return this.formsService.createForm(req.user.businessId, createFormDto);
+  async create(@Request() req, @Body() createFormDto: CreateFormDto) {
+    const branchId = await this.getBranchId(req, createFormDto.branchId);
+    return this.formsService.createForm(branchId, createFormDto);
   }
 
   @Get()
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @ApiOperation({ summary: 'Get all forms for the current business' })
+  @ApiOperation({ summary: 'Get all forms for the branch' })
   @ApiResponse({
     status: 200,
     description: 'Return all forms array.',
@@ -128,8 +164,9 @@ export class FormsController {
       },
     },
   })
-  findAll(@Request() req) {
-    return this.formsService.getFormsByBusiness(req.user.businessId);
+  async findAll(@Request() req, @Query() filter: BranchFilterDto) {
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.formsService.getFormsByBranch(branchId);
   }
 
   @Get(':id')
@@ -149,7 +186,7 @@ export class FormsController {
             type: 'object',
             properties: {
               id: { type: 'string', example: 'uuid-field-1234' },
-              type: { type: 'string', example: 'text' },
+              type: { type: 'string', example: 'radio' },
               question: {
                 type: 'string',
                 example: 'What was the reason for your visit?',
@@ -160,8 +197,13 @@ export class FormsController {
       },
     },
   })
-  findOne(@Request() req, @Param('id') id: string) {
-    return this.formsService.getFormById(req.user.businessId, id);
+  async findOne(
+    @Request() req,
+    @Param('id') id: string,
+    @Query() filter: BranchFilterDto,
+  ) {
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.formsService.getFormById(branchId, id);
   }
 
   @Patch(':id')
@@ -183,12 +225,17 @@ export class FormsController {
     status: 200,
     description: 'The form has been successfully updated.',
   })
-  update(
+  async update(
     @Request() req,
     @Param('id') id: string,
     @Body() updateFormDto: UpdateFormDto,
+    @Query() filter: BranchFilterDto,
   ) {
-    return this.formsService.updateForm(req.user.businessId, id, updateFormDto);
+    const branchId = await this.getBranchId(
+      req,
+      filter.branchId || updateFormDto.branchId,
+    );
+    return this.formsService.updateForm(branchId, id, updateFormDto);
   }
 
   @Delete(':id')
@@ -198,8 +245,13 @@ export class FormsController {
     status: 200,
     description: 'The form has been successfully deleted.',
   })
-  remove(@Request() req, @Param('id') id: string) {
-    return this.formsService.deleteForm(req.user.businessId, id);
+  async remove(
+    @Request() req,
+    @Param('id') id: string,
+    @Query() filter: BranchFilterDto,
+  ) {
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.formsService.deleteForm(branchId, id);
   }
 
   @Get(':id/responses')
@@ -242,7 +294,12 @@ export class FormsController {
       },
     },
   })
-  findResponses(@Request() req, @Param('id') id: string) {
-    return this.formsService.getFormResponses(req.user.businessId, id);
+  async findResponses(
+    @Request() req,
+    @Param('id') id: string,
+    @Query() filter: BranchFilterDto,
+  ) {
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.formsService.getFormResponses(branchId, id);
   }
 }

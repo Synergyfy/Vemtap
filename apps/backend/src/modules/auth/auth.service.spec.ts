@@ -26,6 +26,8 @@ describe('AuthService', () => {
 
   const mockUsersService = {
     findByEmail: jest.fn(),
+    findByIdentifier: jest.fn(),
+    findOne: jest.fn(),
     create: jest
       .fn()
       .mockImplementation((u) => Promise.resolve({ ...u, id: 'user-1' })),
@@ -35,6 +37,11 @@ describe('AuthService', () => {
     create: jest
       .fn()
       .mockImplementation((b) => Promise.resolve({ ...b, id: 'biz-1' })),
+    findById: jest.fn().mockResolvedValue({
+      id: 'biz-1',
+      branches: [{ id: 'br-1', isMainBranch: true }],
+    }),
+    findByOwner: jest.fn(),
   };
 
   const mockDevicesService = {
@@ -170,6 +177,12 @@ describe('AuthService', () => {
       });
 
       usersService.findByEmail.mockResolvedValue(null);
+      usersService.findOne.mockResolvedValue({
+        id: 'user-1',
+        email: otpDto.email,
+        role: UserRole.OWNER,
+        branchId: 'br-1',
+      });
 
       const result = await service.registerOwner(otpDto);
 
@@ -191,7 +204,7 @@ describe('AuthService', () => {
       );
 
       // Verify Device Creation
-      expect(devicesService.createAutoDevice).toHaveBeenCalledWith('biz-1');
+      expect(devicesService.createAutoDevice).toHaveBeenCalledWith('br-1');
 
       // Verify OTP consumed
       expect(otpRepository.remove).toHaveBeenCalled();
@@ -302,20 +315,32 @@ describe('AuthService', () => {
   describe('login', () => {
     it('should return access token and user', async () => {
       const user = {
-        id: '1',
+        id: 'user-1',
         email: 'test@example.com',
         role: UserRole.CUSTOMER,
+        password: 'hashed_password',
       };
-      const result = await service.login(user as any);
+      usersService.findByIdentifier.mockResolvedValue(user);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      const dto = { identifier: 'test@example.com', password: 'password123' };
+      const result = await service.login(dto);
+
       expect(result).toEqual({
         access_token: 'mock_token',
-        user: user,
+        user: {
+          id: 'user-1',
+          email: 'test@example.com',
+          role: UserRole.CUSTOMER,
+        },
       });
-      expect(jwtService.sign).toHaveBeenCalledWith({
-        email: user.email,
-        sub: user.id,
-        role: user.role,
-      });
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: user.email,
+          sub: user.id,
+          role: user.role,
+        }),
+      );
     });
   });
 });

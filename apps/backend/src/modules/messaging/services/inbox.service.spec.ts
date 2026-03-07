@@ -63,7 +63,7 @@ describe('InboxService', () => {
   describe('sendReply', () => {
     it('should throw NotFoundException if thread does not exist', async () => {
       threadRepoMock.findOne.mockResolvedValue(null);
-      await expect(service.sendReply('b1', 't1', 'hello')).rejects.toThrow(
+      await expect(service.sendReply('t1', 'hello', 'br1')).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -71,7 +71,7 @@ describe('InboxService', () => {
     it('should send reply via engine, update thread status to OPEN, and return message', async () => {
       const mockThread = {
         id: 't1',
-        businessId: 'b1',
+        branchId: 'br1',
         status: ThreadStatus.CLOSED,
       } as any;
       threadRepoMock.findOne.mockResolvedValue(mockThread);
@@ -81,7 +81,7 @@ describe('InboxService', () => {
         content: 'hello',
       } as any);
 
-      const result = await service.sendReply('b1', 't1', 'hello');
+      const result = await service.sendReply('t1', 'hello', 'br1');
 
       expect(engineMock.sendReply).toHaveBeenCalledWith(mockThread, 'hello');
       expect(mockThread.status).toBe(ThreadStatus.OPEN);

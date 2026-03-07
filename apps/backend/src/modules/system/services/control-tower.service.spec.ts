@@ -63,6 +63,7 @@ describe('ControlTowerService', () => {
         status: BusinessStatus.ACTIVE,
         owner: { firstName: 'John', lastName: 'Doe' },
         staff: [],
+        branches: [],
       } as any;
       businessRepo.find.mockResolvedValue([mockBusiness]);
 

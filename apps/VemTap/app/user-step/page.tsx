@@ -43,8 +43,8 @@ function UserStepPageContent() {
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const userBranchId = useAuthStore((state) => state.user?.branchId);
     const getDefaultFormId = useFormPreferencesStore((state) => state.getDefaultFormId);
-    const formBranchScope = branchId || (activeBranchId && activeBranchId !== 'all' ? activeBranchId : userBranchId || 'all');
-    const defaultFormId = getDefaultFormId(formBranchScope);
+    const formBranchScope = branchId || activeBranchId || userBranchId || null;
+    const defaultFormId = getDefaultFormId(formBranchScope || 'global');
     const approvedFormsForBusiness = useMemo(
         () =>
             businessForms.filter(

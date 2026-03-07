@@ -10,12 +10,14 @@ import { IS_PUBLIC_KEY } from '../../../common/decorators/public.decorator';
 import { SKIP_SUBSCRIPTION_CHECK_KEY } from '../decorators/skip-subscription-check.decorator';
 import { UserRole } from '../../users/entities/user.entity';
 import { SubscriptionStatus } from '../entities/subscription.entity';
+import { BranchesService } from '../../branches/branches.service';
 
 @Injectable()
 export class SubscriptionGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly branchesService: BranchesService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -40,23 +42,20 @@ export class SubscriptionGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    // If no user is authenticated (and not public), let AuthGuard handle it.
-    // If we are here, likely AuthGuard has passed or we are in a permissive mode.
-    // But usually this guard runs after AuthGuard.
     if (!user) {
       return true;
     }
 
-    // Admins bypass subscription checks
     if (user.role === UserRole.ADMIN) {
       return true;
     }
 
-    // Check business subscription
-    if (user.businessId) {
-      const status = await this.subscriptionsService.getSubscriptionStatus(
-        user.businessId,
+    if (user.branchId) {
+      const businessId = await this.branchesService.getBusinessId(
+        user.branchId,
       );
+      const status =
+        await this.subscriptionsService.getSubscriptionStatus(businessId);
 
       if (
         status === SubscriptionStatus.EXPIRED ||

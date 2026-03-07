@@ -6,12 +6,14 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { SubscriptionsService } from '../subscriptions.service';
+import { BranchesService } from '../../branches/branches.service';
 
 @Injectable()
 export class CapabilityGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
     private subscriptionsService: SubscriptionsService,
+    private branchesService: BranchesService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -24,22 +26,22 @@ export class CapabilityGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
-    // Assuming businessId is either in body, params, or decoded user
-    const businessId =
-      request.body?.businessId ||
-      request.params?.businessId ||
-      request.user?.businessId;
+    const user = request.user;
 
-    if (!businessId) {
+    const branchId =
+      user?.branchId || request.body?.branchId || request.query?.branchId;
+
+    if (!branchId) {
       throw new ForbiddenException(
-        'Business ID is required for capability check',
+        'Branch context is required for capability check',
       );
     }
+
+    const businessId = await this.branchesService.getBusinessId(branchId);
 
     const capabilitiesData =
       await this.subscriptionsService.getCapabilities(businessId);
 
-    // Format is capabilities.[feature] e.g. teamMembers, tags
     const feature = capabilitiesData.capabilities[requiredCapability];
     if (!feature) {
       throw new ForbiddenException(`Unknown capability ${requiredCapability}`);

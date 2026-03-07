@@ -9,36 +9,39 @@ describe('UsersService', () => {
   let service: UsersService;
   let userRepository: any;
 
-  const mockRepository = {
-    findOneBy: jest.fn(),
-    create: jest.fn().mockImplementation((dto) => dto),
-    save: jest
-      .fn()
-      .mockImplementation((user) => Promise.resolve({ id: '1', ...user })),
-    count: jest.fn(),
-    remove: jest.fn(),
-    createQueryBuilder: jest.fn().mockReturnValue({
-      where: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      getMany: jest.fn().mockResolvedValue([]),
-    }),
-  };
-
   beforeEach(async () => {
+    userRepository = {
+      findOne: jest.fn(),
+      findOneBy: jest.fn(),
+      create: jest.fn().mockImplementation((dto) => dto),
+      save: jest
+        .fn()
+        .mockImplementation((user) => Promise.resolve({ id: '1', ...user })),
+      count: jest.fn(),
+      remove: jest.fn(),
+      createQueryBuilder: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
-        { provide: getRepositoryToken(User), useValue: mockRepository },
+        { provide: getRepositoryToken(User), useValue: userRepository },
         {
           provide: getRepositoryToken(PasswordResetHistory),
-          useValue: mockRepository,
+          useValue: {
+            create: jest.fn(),
+            save: jest.fn(),
+          },
         },
       ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
-    userRepository = module.get(getRepositoryToken(User));
   });
 
   afterEach(() => {
@@ -61,29 +64,27 @@ describe('UsersService', () => {
 
   describe('updateStaff', () => {
     it('should update staff details', async () => {
-      const existingUser = { id: '1', businessId: 'biz-1', firstName: 'Old' };
-      userRepository.findOneBy.mockResolvedValue(existingUser);
+      const existingUser = { id: '1', branchId: 'br-1', firstName: 'Old' };
+      userRepository.findOne.mockResolvedValue(existingUser);
 
-      const updates: any = { firstName: 'New' };
-      const result = await service.updateStaff('1', 'biz-1', updates);
+      const updates: any = { name: 'New Name' };
+      const result = await service.updateStaff('1', 'br-1', updates);
 
       expect(result.firstName).toBe('New');
+      expect(result.lastName).toBe('Name');
       expect(userRepository.save).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if user not found', async () => {
-      userRepository.findOneBy.mockResolvedValue(null);
-      await expect(service.updateStaff('1', 'biz-1', {})).rejects.toThrow(
+      userRepository.findOne.mockResolvedValue(null);
+      await expect(service.updateStaff('1', 'br-1', {})).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it('should throw NotFoundException if user belongs to another business', async () => {
-      userRepository.findOneBy.mockResolvedValue({
-        id: '1',
-        businessId: 'other-biz',
-      });
-      await expect(service.updateStaff('1', 'biz-1', {})).rejects.toThrow(
+    it('should throw NotFoundException if user belongs to another branch', async () => {
+      userRepository.findOne.mockResolvedValue(null);
+      await expect(service.updateStaff('1', 'other-br', {})).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -91,22 +92,22 @@ describe('UsersService', () => {
 
   describe('remove', () => {
     it('should remove staff member', async () => {
-      userRepository.findOneBy.mockResolvedValue({
+      userRepository.findOne.mockResolvedValue({
         id: '1',
-        businessId: 'biz-1',
+        branchId: 'br-1',
         role: UserRole.STAFF,
       });
-      await service.remove('1', 'biz-1');
+      await service.remove('1', 'br-1');
       expect(userRepository.remove).toHaveBeenCalled();
     });
 
     it('should throw BadRequestException when trying to remove OWNER', async () => {
-      userRepository.findOneBy.mockResolvedValue({
+      userRepository.findOne.mockResolvedValue({
         id: '1',
-        businessId: 'biz-1',
+        branchId: 'br-1',
         role: UserRole.OWNER,
       });
-      await expect(service.remove('1', 'biz-1')).rejects.toThrow(
+      await expect(service.remove('1', 'br-1')).rejects.toThrow(
         BadRequestException,
       );
     });

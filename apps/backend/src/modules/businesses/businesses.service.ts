@@ -2,10 +2,9 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Business, BusinessStatus } from './entities/business.entity';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
@@ -30,15 +29,60 @@ export class BusinessesService {
     private readonly mailService: MailService,
   ) {}
 
-  async create(businessData: Partial<Business>): Promise<Business> {
+  async create(
+    businessData: Partial<Business> & {
+      logoUrl?: string;
+      address?: string;
+      website?: string;
+      whatsappNumber?: string;
+      officialEmail?: string;
+    },
+  ): Promise<Business> {
     if (businessData.ownerId) {
       const existing = await this.findByOwner(businessData.ownerId);
       if (existing) {
         throw new ConflictException('Owner already has a business');
       }
     }
-    const business = this.businessesRepository.create(businessData);
-    return this.businessesRepository.save(business);
+
+    // Extract branch specific data
+    const {
+      logoUrl,
+      address,
+      website,
+      whatsappNumber,
+      officialEmail,
+      ...businessBaseData
+    } = businessData;
+
+    const business = this.businessesRepository.create(
+      businessBaseData as Partial<Business>,
+    );
+    const savedBusiness = await this.businessesRepository.save(business);
+
+    // Automatically create Main Branch
+    const mainBranch = this.branchRepository.create({
+      name: 'Main Branch',
+      businessId: savedBusiness.id,
+      isMainBranch: true,
+      logoUrl,
+      address,
+      website,
+      whatsappNumber,
+      officialEmail,
+    } as any); // Cast to any because the repository might not be updated yet in TS context
+    const savedBranch = (await this.branchRepository.save(
+      mainBranch,
+    )) as unknown as Branch;
+
+    // Link owner to the main branch
+    if (businessData.ownerId) {
+      await this.usersRepository.update(businessData.ownerId, {
+        branchId: savedBranch.id,
+      });
+    }
+
+    return savedBusiness;
   }
 
   async findByOwner(ownerId: string): Promise<Business | null> {
@@ -48,7 +92,7 @@ export class BusinessesService {
   async findById(id: string): Promise<Business> {
     const business = await this.businessesRepository.findOne({
       where: { id },
-      relations: ['rewards', 'branches'],
+      relations: ['branches'],
     });
     if (!business) {
       throw new NotFoundException('Business not found');
@@ -65,8 +109,8 @@ export class BusinessesService {
     return this.businessesRepository.save(business);
   }
 
-  async importCustomers(businessId: string, importDto: ImportCustomersDto) {
-    const defaultPassword = 'mypassword';
+  async importCustomers(branchId: string, importDto: ImportCustomersDto) {
+    const defaultPassword = '123456';
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
     const results = {
       imported: 0,
@@ -94,7 +138,7 @@ export class BusinessesService {
           password: hashedPassword,
           role: UserRole.CUSTOMER,
           status: UserStatus.ACTIVE,
-          businessId,
+          branchId,
         });
 
         await this.usersRepository.save(newUser);
@@ -131,8 +175,7 @@ export class BusinessesService {
   }) {
     const qb = this.businessesRepository
       .createQueryBuilder('business')
-      .leftJoinAndSelect('business.owner', 'owner')
-      .leftJoinAndSelect('business.devices', 'devices');
+      .leftJoinAndSelect('business.owner', 'owner');
 
     if (query.status) {
       const normalizedStatus = String(
@@ -187,7 +230,7 @@ export class BusinessesService {
       .getRawOne();
 
     const avgWaitHours = waitTimeData?.avgSeconds
-      ? (parseFloat(waitTimeData.avgSeconds) / 3600).toFixed(1)
+      ? (parseFloat(waitTimeData.avgSeconds as string) / 3600).toFixed(1)
       : '0.0';
 
     return {
@@ -234,17 +277,27 @@ export class BusinessesService {
       ownerId: savedUser.id,
       type: dto.type,
       status: dto.status || BusinessStatus.ACTIVE,
+    } as Partial<Business>);
+
+    const savedBusiness = await this.businessesRepository.save(business);
+
+    // Automatically create Main Branch
+    const mainBranch = this.branchRepository.create({
+      name: 'Main Branch',
+      businessId: savedBusiness.id,
+      isMainBranch: true,
       logoUrl: dto.logoUrl,
       address: dto.address,
       website: dto.website,
       whatsappNumber: dto.whatsappNumber,
       officialEmail: dto.officialEmail,
-    });
+    } as any);
+    const savedBranch = (await this.branchRepository.save(
+      mainBranch,
+    )) as unknown as Branch;
 
-    const savedBusiness = await this.businessesRepository.save(business);
-
-    // Link businessId back to user for proper context
-    savedUser.businessId = savedBusiness.id;
+    // Link branchId back to user for proper context
+    savedUser.branchId = savedBranch.id;
     await this.usersRepository.save(savedUser);
 
     return savedBusiness;
@@ -263,7 +316,6 @@ export class BusinessesService {
 
   async reject(id: string): Promise<void> {
     const business = await this.findById(id);
-    // Hard delete or set status to something else if you don't wanna delete. Here we hard delete from queue.
     await this.businessesRepository.remove(business);
   }
 
@@ -286,30 +338,40 @@ export class BusinessesService {
   async getBusinessStatsForAdmin(businessId: string) {
     const business = await this.findById(businessId);
 
-    const totalBranches = await this.branchRepository.count({
+    const branches = await this.branchRepository.find({
       where: { businessId },
     });
+    const branchIds = branches.map((b) => b.id);
 
-    const totalTaps = await this.visitRepository.count({
-      where: { businessId },
-    });
+    const totalBranches = branches.length;
 
-    const totalVisitorsRaw = await this.visitRepository
-      .createQueryBuilder('visit')
-      .where('visit.businessId = :businessId', { businessId })
-      .select('COUNT(DISTINCT visit.customerId)', 'count')
-      .getRawOne();
+    let totalTaps = 0;
+    let totalVisitors = 0;
+    let recentVisits: Visit[] = [];
 
-    const recentVisits = await this.visitRepository.find({
-      where: { businessId },
-      relations: ['customer', 'branch'],
-      order: { createdAt: 'DESC' },
-      take: 5,
-    });
+    if (branchIds.length > 0) {
+      totalTaps = await this.visitRepository.count({
+        where: { branchId: In(branchIds) },
+      });
+
+      const totalVisitorsRaw = (await this.visitRepository
+        .createQueryBuilder('visit')
+        .where('visit.branchId IN (:...branchIds)', { branchIds })
+        .select('COUNT(DISTINCT visit.customerId)', 'count')
+        .getRawOne()) as { count: string };
+      totalVisitors = parseInt(totalVisitorsRaw?.count || '0');
+
+      recentVisits = await this.visitRepository.find({
+        where: { branchId: In(branchIds) },
+        relations: ['customer', 'branch'],
+        order: { createdAt: 'DESC' },
+        take: 5,
+      });
+    }
 
     return {
       businessName: business.name,
-      totalVisitors: parseInt(totalVisitorsRaw?.count || '0'),
+      totalVisitors,
       totalTaps,
       totalBranches,
       recentActivity: recentVisits.map((visit) => ({

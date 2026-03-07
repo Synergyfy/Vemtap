@@ -11,15 +11,15 @@ import {
 import { TriggerType, ActionType } from '../enums/automation.enum';
 
 export class CreateAutomationRuleDto {
-  @ApiProperty({ example: 'uuid-of-business' })
+  @ApiProperty({ example: 'uuid-of-branch' })
   @IsNotEmpty()
   @IsString()
-  businessId: string;
+  branchId: string;
 
-  @ApiPropertyOptional({ example: 'uuid-of-branch' })
+  @ApiPropertyOptional({ example: 'uuid-of-business' })
   @IsOptional()
   @IsString()
-  branchId?: string;
+  businessId?: string;
 
   @ApiProperty({ example: 'Post-Visit Welcome' })
   @IsNotEmpty()
@@ -89,8 +89,7 @@ export class UpdateAutomationRuleDto {
 }
 
 export class AutomationTriggerDto {
-  businessId: string;
-  branchId?: string;
+  branchId: string;
   contactId: string;
   metadata?: Record<string, any>;
 }
@@ -100,6 +99,11 @@ export class UpdateAutomationToggleDto {
   @IsNotEmpty()
   @IsBoolean()
   isActive: boolean;
+
+  @ApiPropertyOptional({ example: 'uuid-of-branch' })
+  @IsOptional()
+  @IsString()
+  branchId?: string;
 }
 
 export class UpdateAutomationConfigDto {
@@ -119,6 +123,11 @@ export class UpdateAutomationConfigDto {
   @IsOptional()
   @IsNumber()
   delayDays?: number;
+
+  @ApiPropertyOptional({ example: 'uuid-of-branch' })
+  @IsOptional()
+  @IsString()
+  branchId?: string;
 }
 
 export class AutomationLogResponseDto {

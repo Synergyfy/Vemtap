@@ -5,4 +5,9 @@ export class UpdateAssetNamesDto {
   @ApiProperty({ example: [{ id: 'uuid', name: 'Front door' }] })
   @IsNotEmpty()
   assets: { id: string; name: string }[];
+
+  @ApiProperty({ example: 'uuid-branch' })
+  @IsString()
+  @IsNotEmpty()
+  branchId: string;
 }

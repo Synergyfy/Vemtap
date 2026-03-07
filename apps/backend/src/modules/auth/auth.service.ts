@@ -123,6 +123,32 @@ export class AuthService {
     return null;
   }
 
+  private async generateAuthResponse(user: Partial<User>) {
+    let businessId: string | undefined;
+
+    if (user.role === UserRole.OWNER) {
+      const business = await this.businessesService.findByOwner(
+        user.id as string,
+      );
+      if (business) {
+        businessId = business.id;
+      }
+    }
+
+    const payload = {
+      email: user.email,
+      sub: user.id,
+      role: user.role,
+      branchId: user.branchId,
+      businessId: businessId || (user as any).businessId,
+    };
+    delete user.password;
+    return {
+      access_token: this.jwtService.sign(payload),
+      user,
+    };
+  }
+
   async login(dto: LoginDto) {
     const user = await this.usersService.findByIdentifier(dto.identifier);
     if (!user || !(await bcrypt.compare(dto.password, user.password))) {
@@ -130,16 +156,7 @@ export class AuthService {
     }
 
     const { password: _password, ...result } = user;
-    return this.generateAuthResponse(result);
-  }
-
-  private generateAuthResponse(user: Partial<User>) {
-    const payload = { email: user.email, sub: user.id, role: user.role };
-    delete user.password;
-    return {
-      access_token: this.jwtService.sign(payload),
-      user,
-    };
+    return this.generateAuthResponse(result as User);
   }
 
   // --- Original Generic Register (Kept for compatibility) ---
@@ -211,7 +228,7 @@ export class AuthService {
         status:
           role === UserRole.CUSTOMER ? UserStatus.ACTIVE : UserStatus.PENDING,
         phone: registrationData.phone || metadata.phone,
-        businessId: registrationData.businessId, // For staff/managers joining existing business
+        branchId: registrationData.branchId, // Use branchId instead of businessId
       });
     }
 
@@ -219,26 +236,26 @@ export class AuthService {
     if (
       user.role === UserRole.OWNER &&
       registrationData.businessName &&
-      !user.businessId
+      !user.branchId
     ) {
-      const business = await this.businessesService.create({
+      // BusinessesService.create handles main branch creation and linking owner
+      await this.businessesService.create({
         name: registrationData.businessName,
         category: registrationData.category,
         monthlyVisitors: registrationData.monthlyVisitors,
         goal: registrationData.goal,
         ownerId: user.id,
       });
-
-      // Optionally link the owner user to the new businessId
-      user.businessId = business.id;
-      await this.usersService.create(user); // Save update
+      // Fetch fresh user with branchId
+      const refreshed = await this.usersService.findOne(user.id);
+      if (refreshed) user = refreshed;
     }
 
     // Consume OTP session
     await this.otpRepository.remove(otpRecord);
 
     const { password: _password, ...result } = user;
-    return this.generateAuthResponse(result);
+    return this.generateAuthResponse(result as User);
   }
 
   // --- New Dedicated Owner Registration ---
@@ -303,22 +320,28 @@ export class AuthService {
       officialEmail: dto.officialEmail,
     });
 
-    // 4. Link User to Business
-    user.businessId = business.id;
-    await this.usersService.create(user);
+    // Fetch fresh user with branchId (linked during business creation)
+    const updatedUser = await this.usersService.findOne(user.id);
+    if (!updatedUser) {
+      throw new NotFoundException('User not found after registration');
+    }
 
-    // 5. Auto-Generate Device for Business
-    await this.devicesService.createAutoDevice(business.id);
+    // 5. Auto-Generate Device for Business (Needs update to handle branch)
+    // For now we'll fetch the main branch
+    const branches = await this.businessesService.findById(business.id);
+    const mainBranch = branches.branches.find((b) => b.isMainBranch);
+    if (mainBranch) {
+      await this.devicesService.createAutoDevice(mainBranch.id);
+    }
 
     // Consume OTP
     await this.otpRepository.remove(otpRecord);
 
-    return this.generateAuthResponse(user);
+    return this.generateAuthResponse(updatedUser);
   }
 
   // --- New Dedicated Admin Registration ---
   async registerAdmin(dto: RegisterAdminDto) {
-    const defaultCode = 'admin_secret_123';
     const envCode = process.env.ADMIN_ACCOUNT_CODE;
 
     // Safety check just in case env code is not set, don't allow open registration
@@ -355,8 +378,6 @@ export class AuthService {
   async requestPasswordReset(dto: PasswordResetOtpDto) {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) {
-      // For security, don't reveal if user exists, but we can log internally.
-      // However, usually we just say "If an account exists, you will receive an email".
       return {
         message:
           'If an account exists with this email, a reset code has been sent.',
@@ -410,5 +431,43 @@ export class AuthService {
     await this.otpRepository.remove(otpRecord);
 
     return { message: 'Password reset successfully' };
+  }
+
+  async switchRole(user: User, targetRole: UserRole) {
+    // Only Owners can switch to Customer
+    if (user.role === UserRole.OWNER && targetRole !== UserRole.CUSTOMER) {
+      throw new BadRequestException('Owners can only switch to Customer role');
+    }
+
+    // A user who is currently a CUSTOMER in their JWT but is an OWNER in DB can switch back
+    const dbUser = await this.usersService.findOne(user.id);
+    if (!dbUser) throw new NotFoundException('User not found');
+
+    if (targetRole === UserRole.OWNER && dbUser.role !== UserRole.OWNER) {
+      throw new BadRequestException('You are not an owner');
+    }
+
+    // Generate new token with target role
+    const payload = {
+      email: dbUser.email,
+      sub: dbUser.id,
+      role: targetRole,
+      branchId: dbUser.branchId,
+      // If switching to OWNER, we need businessId
+      businessId:
+        targetRole === UserRole.OWNER
+          ? (
+              await this.businessesService.findByOwner(dbUser.id)
+            )?.id
+          : undefined,
+    };
+
+    return {
+      access_token: this.jwtService.sign(payload),
+      user: {
+        ...dbUser,
+        role: targetRole,
+      },
+    };
   }
 }

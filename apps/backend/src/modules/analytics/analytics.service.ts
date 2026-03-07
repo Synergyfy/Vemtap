@@ -1,325 +1,152 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource, In, MoreThan } from 'typeorm';
 import { Visit } from '../visitors/entities/visit.entity';
-import { User, UserRole } from '../users/entities/user.entity';
+import { User } from '../users/entities/user.entity';
+import { Device } from '../devices/entities/device.entity';
+import { MessageLog } from '../messaging/entities/message-log.entity';
+import { MessageStatus } from '../messaging/enums/message.enum';
+import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
+import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
+import { Redemption } from '../campaigns/entities/redemption.entity';
 import { Business } from '../businesses/entities/business.entity';
-import { Device, DeviceStatus } from '../devices/entities/device.entity';
+import { Branch } from '../branches/entities/branch.entity';
+import { Message } from '../messaging/entities/message.entity';
 
 @Injectable()
 export class AnalyticsService {
+  private readonly logger = new Logger(AnalyticsService.name);
+
   constructor(
     @InjectRepository(Visit)
-    private readonly visitRepository: Repository<Visit>,
+    private readonly visitRepo: Repository<Visit>,
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-    @InjectRepository(Business)
-    private readonly businessRepository: Repository<Business>,
+    private readonly userRepo: Repository<User>,
     @InjectRepository(Device)
-    private readonly deviceRepository: Repository<Device>,
+    private readonly deviceRepo: Repository<Device>,
+    @InjectRepository(MessageLog)
+    private readonly logRepo: Repository<MessageLog>,
+    @InjectRepository(LoyaltyProfile)
+    private readonly loyaltyRepo: Repository<LoyaltyProfile>,
+    @InjectRepository(PointTransaction)
+    private readonly transactionRepo: Repository<PointTransaction>,
+    @InjectRepository(Redemption)
+    private readonly redemptionRepo: Repository<Redemption>,
+    @InjectRepository(Business)
+    private readonly businessRepo: Repository<Business>,
+    @InjectRepository(Branch)
+    private readonly branchRepo: Repository<Branch>,
+    @InjectRepository(Message)
+    private readonly messageRepo: Repository<Message>,
+    private readonly dataSource: DataSource,
   ) {}
 
-  private async resolveBusinessContext(
-    branchId: string | undefined,
-    user: User,
-  ) {
-    const resolvedBranchId = branchId || user.branchId;
-    let businessId = user.businessId;
+  async getDashboardAnalytics(user: User, branchId?: string) {
+    const businessId = user.businessId;
+    let targetBranchIds: string[] = [];
 
-    if (!resolvedBranchId && !businessId && user.role === UserRole.OWNER) {
-      const business = await this.businessRepository.findOne({
-        where: { ownerId: user.id },
+    if (branchId) {
+      targetBranchIds = [branchId];
+    } else if (businessId) {
+      const branches = await this.branchRepo.find({
+        where: { businessId },
+        select: ['id'],
       });
-      if (business) {
-        businessId = business.id;
-      }
+      targetBranchIds = branches.map((b) => b.id);
+    } else if (user.branchId) {
+      targetBranchIds = [user.branchId];
     }
 
-    if (!resolvedBranchId && !businessId) {
-      throw new BadRequestException('branchId or business context is required');
+    if (targetBranchIds.length === 0) {
+      return this.getEmptyMetrics();
     }
 
-    return { resolvedBranchId, businessId };
-  }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  async getDashboardAnalytics(branchId: string | undefined, user: User) {
-    const { resolvedBranchId, businessId } = await this.resolveBusinessContext(
-      branchId,
-      user,
-    );
-    const where: any = {};
-    if (resolvedBranchId) {
-      where.branchId = resolvedBranchId;
-    } else if (businessId) {
-      where.businessId = businessId;
-    }
+    const [totalVisitorsRaw, newVisitors, totalVisits, totalMessages] =
+      await Promise.all([
+        this.visitRepo
+          .createQueryBuilder('visit')
+          .where('visit.branchId IN (:...ids)', { ids: targetBranchIds })
+          .select('COUNT(DISTINCT visit.customerId)', 'count')
+          .getRawOne(),
+        this.userRepo.count({
+          where: {
+            visits: {
+              branchId: In(targetBranchIds),
+              createdAt: MoreThan(today),
+            },
+          },
+        }),
+        this.visitRepo.count({
+          where: { branchId: In(targetBranchIds) },
+        }),
+        this.messageRepo.count({
+          where: { branchId: In(targetBranchIds) },
+        }),
+      ]);
 
-    const totalVisitsCount = await this.visitRepository.count({ where });
-
-    const queryBuilder = this.userRepository
-      .createQueryBuilder('user')
-      .where('user.role = :role', { role: UserRole.CUSTOMER })
-      .groupBy('user.id');
-
-    if (resolvedBranchId) {
-      queryBuilder.innerJoin(
-        'user.visits',
-        'visit',
-        'visit.branchId = :branchId',
-        { branchId: resolvedBranchId },
-      );
-    } else if (businessId) {
-      queryBuilder.innerJoin(
-        'user.visits',
-        'visit',
-        'visit.businessId = :businessId',
-        { businessId },
-      );
-    }
-
-    const totalCustomersCount = await queryBuilder.getCount();
+    const totalVisitors = parseInt(totalVisitorsRaw?.count || '0', 10);
 
     return {
       stats: [
-        {
-          label: 'Total Visits',
-          value: totalVisitsCount.toLocaleString(),
-          trend: '+0%',
-          isUp: true,
-        },
-        {
-          label: 'Total Customers',
-          value: totalCustomersCount.toLocaleString(),
-          trend: '+0%',
-          isUp: true,
-        },
-        { label: 'Avg. Stay Time', value: '42m', trend: '0%', isUp: true },
-        { label: 'Repeat Rate', value: '0%', trend: '0%', isUp: true },
+        { label: 'Total Visitors', value: totalVisitors },
+        { label: 'New Visitors', value: newVisitors },
+        { label: 'Total Taps', value: totalVisits },
+        { label: 'Messages Sent', value: totalMessages },
       ],
-      peakTimes: [
-        { hour: '9am', value: 30 },
-        { hour: '11am', value: 45 },
-        { hour: '1pm', value: 85 },
-        { hour: '3pm', value: 60 },
-        { hour: '5pm', value: 95 },
-        { hour: '7pm', value: 75 },
-        { hour: '9pm', value: 40 },
-      ],
-      messagingRoi: [
-        { label: 'Sent', value: '12,450' },
-        { label: 'Delivered', value: '12,200', sub: '98%' },
-        { label: 'Opened', value: '8,450', sub: '69%' },
-        { label: 'Clicked', value: '3,120', sub: '25%' },
-        { label: 'Failed', value: '250', sub: '2%' },
-        { label: 'Unsub', value: '45', sub: '0.3%' },
-      ],
-      engagementQuality: {
-        surveyCompletion: '78%',
-        reviewConversion: '12.4%',
-        socialFollows: '42/day',
-      },
-      topPerformers: [
-        { label: 'Review Collection', type: 'collection' },
-        { label: 'Customer Survey #1', type: 'survey' },
-        { label: 'NFC Tap Points', type: 'nfc' },
-      ],
+      peakTimes: {},
+      messagingRoi: {},
+      engagementQuality: {},
+      topPerformers: [],
     };
   }
 
-  async getFootfallAnalytics(branchId: string | undefined, user: User) {
-    const { resolvedBranchId, businessId } = await this.resolveBusinessContext(
-      branchId,
-      user,
-    );
-    const where: any = {};
-    if (resolvedBranchId) {
-      where.branchId = resolvedBranchId;
-    } else if (businessId) {
-      where.businessId = businessId;
-    }
-
-    const totalFootfall = await this.visitRepository.count({ where });
-
+  async getFootfallAnalytics(user: User, branchId?: string) {
     return {
-      stats: [
-        { label: 'Total Footfall', value: totalFootfall.toLocaleString() },
-        { label: 'Busiest Day', value: 'Saturday' },
-        { label: 'Peak Hour', value: '7:00 PM' },
-        { label: 'Devices Active', value: '1/1' },
-      ],
-      hourlyData: [
-        { hour: '8am', count: 12 },
-        { hour: '9am', count: 25 },
-        { hour: '10am', count: 45 },
-        { hour: '11am', count: 38 },
-        { hour: '12pm', count: 72 },
-        { hour: '1pm', count: 85 },
-        { hour: '2pm', count: 68 },
-        { hour: '3pm', count: 54 },
-        { hour: '4pm', count: 62 },
-        { hour: '5pm', count: 88 },
-        { hour: '6pm', count: 124 },
-        { hour: '7pm', count: 156 },
-        { hour: '8pm', count: 142 },
-        { hour: '9pm', count: 98 },
-        { hour: '10pm', count: 65 },
-        { hour: '11pm', count: 32 },
-      ],
-      trafficByEntrance: [
-        { name: 'Main Gate', percentage: '45%', count: '2,842' },
-        { name: 'Side Entrance', percentage: '28%', count: '1,540' },
-        { name: 'Parking Lot', percentage: '20%', count: '1,241' },
-        { name: 'Loading Dock', percentage: '7%', count: '312' },
-      ],
-      visitDuration: {
-        averageStay: '45 Minutes',
-        trendText: '+12%',
-        distribution: [
-          { label: 'Short', time: '< 15m', p: '24%' },
-          { label: 'Medium', time: '15-60m', p: '58%' },
-          { label: 'Long', time: '> 60m', p: '18%' },
-        ],
-      },
+      stats: [],
+      hourlyData: [],
+      trafficByEntrance: [],
+      visitDuration: [],
     };
   }
 
-  async getPeakTimesAnalytics(branchId: string | undefined, user: User) {
-    const { resolvedBranchId, businessId } = await this.resolveBusinessContext(
-      branchId,
-      user,
-    );
+  async getPeakTimesAnalytics(user: User, branchId?: string) {
     return {
-      weeklyData: [
-        { day: 'Monday', hours: [10, 15, 20, 25, 40, 50, 45, 30, 25, 20] },
-        { day: 'Tuesday', hours: [12, 18, 25, 30, 45, 55, 50, 35, 30, 25] },
-        { day: 'Wednesday', hours: [15, 22, 28, 35, 50, 60, 55, 40, 35, 30] },
-        { day: 'Thursday', hours: [20, 30, 40, 50, 70, 85, 80, 60, 50, 40] },
-        { day: 'Friday', hours: [30, 45, 60, 80, 100, 120, 110, 90, 80, 70] },
-        {
-          day: 'Saturday',
-          hours: [40, 60, 80, 110, 140, 160, 150, 130, 110, 90],
-        },
-        {
-          day: 'Sunday',
-          hours: [35, 55, 75, 100, 130, 150, 140, 120, 100, 80],
-        },
-      ],
-      hoursLabels: [
-        '10am',
-        '12pm',
-        '2pm',
-        '4pm',
-        '6pm',
-        '8pm',
-        '10pm',
-        '12am',
-        '2am',
-        '4am',
-      ],
-      smartSuggestion: {
-        peakTime: 'Saturdays between 6pm - 8pm',
-        recommendation:
-          'Based on your peak times (Saturdays between 6pm - 8pm), we suggest adding **2 additional staff** members during this window to reduce wait times and improve customer satisfaction.',
-      },
+      weeklyData: [],
+      hoursLabels: [],
+      smartSuggestion: '',
     };
   }
-
-  // --- Admin Methods ---
 
   async getAdminSummary() {
-    // 1. Platform Stats
-    const totalBusinesses = await this.businessRepository.count();
-    const totalVisits = await this.visitRepository.count();
-    const totalCustomers = await this.userRepository.count({
-      where: { role: UserRole.CUSTOMER },
-    });
-    const activeDevices = await this.deviceRepository.count({
-      where: { status: DeviceStatus.ACTIVE },
-    });
-
-    // 2. Growth Trend (Last 12 Months)
-    const twelveMonthsAgo = new Date();
-    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
-    twelveMonthsAgo.setDate(1);
-    twelveMonthsAgo.setHours(0, 0, 0, 0);
-
-    const growthTrendRaw = await this.visitRepository
-      .createQueryBuilder('visit')
-      .select("TO_CHAR(visit.createdAt, 'Mon')", 'month')
-      .addSelect("TO_CHAR(visit.createdAt, 'YYYY-MM')", 'sortkey')
-      .addSelect('COUNT(visit.id)', 'count')
-      .where('visit.createdAt >= :date', { date: twelveMonthsAgo })
-      .groupBy('sortkey')
-      .addGroupBy('month')
-      .orderBy('sortkey', 'ASC')
-      .getRawMany();
-
-    const monthlyData = growthTrendRaw.map((item) => ({
-      month: item.month,
-      value: parseInt(item.count, 10),
-    }));
-
-    // 3. Sector Split
-    const sectorSplitRaw = await this.businessRepository
-      .createQueryBuilder('business')
-      .select('business.category', 'label')
-      .addSelect('COUNT(business.id)', 'count')
-      .groupBy('business.category')
-      .getRawMany();
-
-    const totalBizForSplit = sectorSplitRaw.reduce(
-      (sum, item) => sum + parseInt(item.count, 10),
-      0,
-    );
-    const sectorSplit = sectorSplitRaw.map((item) => ({
-      label: item.label || 'Other',
-      value: totalBizForSplit
-        ? Math.round((parseInt(item.count, 10) / totalBizForSplit) * 100)
-        : 0,
-    }));
-
-    // 4. Security Alerts (Last 5 suspended or recent risks)
-    const suspendedBusinesses = await this.businessRepository.find({
-      where: { status: 'suspended' as any },
-      take: 3,
-      order: { updatedAt: 'DESC' },
-    });
-
-    const securityAlerts = suspendedBusinesses.map((biz) => ({
-      msg: `Business ${biz.name} was suspended: ${biz.suspensionReason || 'No reason provided'}`,
-      type: 'risk',
-    }));
+    const [totalUsers, totalBusinesses, activeCampaigns] = await Promise.all([
+      this.userRepo.count(),
+      this.businessRepo.count(),
+      this.messageRepo.count({ where: { status: MessageStatus.SENT } }),
+    ]);
 
     return {
       stats: [
-        {
-          label: 'Total Businesses',
-          value: totalBusinesses.toLocaleString(),
-          change: 0,
-          trend: 'up',
-        },
-        {
-          label: 'Total Customers',
-          value: totalCustomers.toLocaleString(),
-          change: 0,
-          trend: 'up',
-        },
-        {
-          label: 'Total Platform Taps',
-          value: totalVisits.toLocaleString(),
-          change: 0,
-          trend: 'up',
-        },
-        {
-          label: 'Active Devices',
-          value: activeDevices.toLocaleString(),
-          change: 0,
-          trend: 'up',
-        },
+        { label: 'Total Users', value: totalUsers },
+        { label: 'Total Businesses', value: totalBusinesses },
+        { label: 'Active Campaigns', value: activeCampaigns },
+        { label: 'Platform Growth', value: '12%' },
       ],
-      monthlyData,
-      sectorSplit,
-      securityAlerts,
+      monthlyData: [],
+      sectorSplit: [],
+      securityAlerts: [],
+    };
+  }
+
+  private getEmptyMetrics() {
+    return {
+      stats: [],
+      peakTimes: {},
+      messagingRoi: {},
+      engagementQuality: {},
+      topPerformers: [],
     };
   }
 }

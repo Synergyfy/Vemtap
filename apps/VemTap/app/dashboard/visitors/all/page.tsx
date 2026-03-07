@@ -43,11 +43,11 @@ export default function AllVisitorsPage() {
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const { data: branches = [] } = useBranches();
 
-    const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors('all', {
+    const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(undefined, {
         search: searchQuery,
         status: filterStatus !== 'all' ? filterStatus : undefined
     });
-    const { data: statsData } = useVisitorStats('all');
+    const { data: statsData } = useVisitorStats();
 
     const visitors = paginatedData?.data || [];
     const isLoading = isLoadingVisitors;
@@ -326,7 +326,7 @@ export default function AllVisitorsPage() {
                 onSubmit={handleAddVisitor}
                 isLoading={isLoading || addVisitorMutation.isPending}
                 branches={branches}
-                defaultBranchId={activeBranchId && activeBranchId !== 'all' ? activeBranchId : branches[0]?.id}
+                defaultBranchId={activeBranchId || branches[0]?.id}
             />
 
             <ImportContactsModal

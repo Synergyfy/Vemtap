@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { AutomationRule } from '../entities/automation-rule.entity';
@@ -15,6 +15,7 @@ import {
 } from '../dto/automation-rule.dto';
 import { TriggerType, ActionType } from '../enums/automation.enum';
 import { Channel } from '../enums/channel.enum';
+import { BranchesService } from '../../branches/branches.service';
 
 @Injectable()
 export class AutomationService {
@@ -26,28 +27,31 @@ export class AutomationService {
     @InjectRepository(AutomationLog)
     private readonly logRepo: Repository<AutomationLog>,
     private readonly messagingEngine: MessagingEngineService,
+    private readonly branchesService: BranchesService,
     @InjectQueue('messaging-automation')
     private readonly automationQueue: Queue,
   ) {}
 
+  async checkBranchAccess(user: any, branchId: string): Promise<boolean> {
+    return this.branchesService.checkBranchAccess(user, branchId);
+  }
+
   // --- CRUD ---
 
   async create(dto: CreateAutomationRuleDto): Promise<AutomationRule> {
-    const rule = this.ruleRepo.create(dto);
+    if (!dto.businessId) {
+      const branch = await this.branchesService.findById(dto.branchId);
+      dto.businessId = branch.businessId;
+    }
+    const rule = this.ruleRepo.create(dto as any) as unknown as AutomationRule;
     return this.ruleRepo.save(rule);
   }
 
-  async findAll(
-    businessId: string,
-    branchId?: string,
-  ): Promise<AutomationRule[]> {
-    const where: any = { businessId };
-    if (branchId) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      where.branchId = branchId;
-    }
-
-    return this.ruleRepo.find({ where, order: { createdAt: 'DESC' } });
+  async findAll(branchId: string): Promise<AutomationRule[]> {
+    return this.ruleRepo.find({
+      where: { branchId },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async findOne(id: string): Promise<AutomationRule | null> {
@@ -87,18 +91,15 @@ export class AutomationService {
       throw new Error('Automation rule not found');
     }
 
-    // Validate variables if content is provided
     if (dto.content) {
       this.validateCustomContent(dto.content);
     }
 
-    // Merge into actionConfig
     rule.actionConfig = {
       ...(rule.actionConfig || {}),
       ...dto,
     };
 
-    // If delayDays is provided, map to delaySeconds (assuming PRD delayDays is standard)
     if (dto.delayDays !== undefined) {
       rule.delaySeconds = dto.delayDays * 24 * 60 * 60;
     }
@@ -111,7 +112,6 @@ export class AutomationService {
       throw new Error('Message content cannot be empty');
     }
     if (content.length > 1024) {
-      // General WhatsApp limit or typical limit
       throw new Error('Message is too long');
     }
 
@@ -137,30 +137,18 @@ export class AutomationService {
     await this.ruleRepo.delete(id);
   }
 
-  // --- Phase 2: Logs & Connections ---
+  // --- Logs & Connections ---
 
-  async findLogs(
-    businessId: string,
-    branchId?: string,
-    limit = 50,
-    offset = 0,
-  ) {
+  async findLogs(branchId: string, limit = 50, offset = 0) {
     const qb = this.logRepo
       .createQueryBuilder('log')
       .leftJoinAndSelect('log.rule', 'rule')
-      .where('rule.businessId = :businessId', { businessId });
-
-    if (branchId) {
-      qb.andWhere('(rule.branchId = :branchId OR rule.branchId IS NULL)', {
-        branchId,
-      });
-    }
+      .where('rule.branchId = :branchId', { branchId });
 
     qb.orderBy('log.executedAt', 'DESC').take(limit).skip(offset);
 
     const [logs, total] = await qb.getManyAndCount();
 
-    // Map to a nice format for the frontend log page
     return {
       data: logs.map((log) => ({
         id: log.id,
@@ -174,7 +162,7 @@ export class AutomationService {
     };
   }
 
-  async findLogDetails(logId: string, businessId: string) {
+  async findLogDetails(logId: string, branchId: string) {
     const log = await this.logRepo.findOne({
       where: { id: logId },
       relations: ['rule'],
@@ -184,42 +172,32 @@ export class AutomationService {
       throw new Error('Log not found');
     }
 
-    if (log.rule?.businessId !== businessId) {
+    if (log.rule?.branchId !== branchId) {
       throw new Error('Access denied');
     }
 
     return log;
   }
 
-  async getConnectionStatus(businessId: string, branchId?: string) {
-    // In a real implementation, you would check the business's WhatsApp Cloud API
-    // or external provider connection status via MessagingEngineService.
-    // For now, return a mock connected state.
+  async getConnectionStatus(branchId: string) {
     return {
-      status: 'Connected', // 'Connected' or 'Disconnected'
+      status: 'Connected',
       provider: 'WhatsApp',
       updatedAt: new Date(),
     };
   }
 
-  // --- Phase 3: Analytics ---
+  // --- Analytics ---
 
   async getPerformanceAnalytics(
-    businessId: string,
-    branchId?: string,
+    branchId: string,
     startDate?: Date,
     endDate?: Date,
   ) {
     const qb = this.logRepo
       .createQueryBuilder('log')
       .leftJoinAndSelect('log.rule', 'rule')
-      .where('rule.businessId = :businessId', { businessId });
-
-    if (branchId) {
-      qb.andWhere('(rule.branchId = :branchId OR rule.branchId IS NULL)', {
-        branchId,
-      });
-    }
+      .where('rule.branchId = :branchId', { branchId });
 
     if (startDate) {
       qb.andWhere('log.executedAt >= :startDate', { startDate });
@@ -233,14 +211,12 @@ export class AutomationService {
     const totalMessagesSent = logs.filter((l) => l.status === 'success').length;
     const totalFailures = logs.filter((l) => l.status === 'failed').length;
 
-    // We don't have reply tracking yet in log entity, so this is mocked/placeholder
     const totalRepliesReceived = 0;
     const replyRate =
       totalMessagesSent > 0
         ? (totalRepliesReceived / totalMessagesSent) * 100
         : 0;
 
-    // Calculate sum of loyalty points issued from successful logs
     let loyaltyPointsIssued = 0;
     for (const log of logs) {
       if (log.status === 'success' && log.rule?.actionConfig?.loyaltyPoints) {
@@ -249,7 +225,7 @@ export class AutomationService {
     }
 
     const activeRulesCount = await this.ruleRepo.count({
-      where: { businessId, isActive: true, ...(branchId ? { branchId } : {}) },
+      where: { branchId, isActive: true },
     });
 
     return {
@@ -269,35 +245,12 @@ export class AutomationService {
       `Triggering automation ${type} for contact ${dto.contactId}`,
     );
 
-    const whereConditions: any[] = [
-      {
-        businessId: dto.businessId,
+    const rules = await this.ruleRepo.find({
+      where: {
         branchId: dto.branchId,
         triggerType: type,
         isActive: true,
       },
-    ];
-    // Include global business rules if specific branch rules don't override (or in addition? typically in addition)
-    // The query finds ALL matching rules.
-    if (dto.branchId) {
-      whereConditions.push({
-        businessId: dto.businessId,
-        branchId: IsNull(),
-        triggerType: type,
-        isActive: true,
-      });
-    } else {
-      // If no branchId in trigger, only look for global rules or handle appropriately
-      whereConditions.push({
-        businessId: dto.businessId,
-        branchId: IsNull(),
-        triggerType: type,
-        isActive: true,
-      });
-    }
-
-    const rules = await this.ruleRepo.find({
-      where: whereConditions,
     });
 
     this.logger.log(`Found ${rules.length} matching rules`);
@@ -342,34 +295,27 @@ export class AutomationService {
       ) {
         const channel = this.mapActionToChannel(rule.actionType);
         await this.messagingEngine.sendMessage({
-          businessId: rule.businessId,
-          branchId: rule.branchId || triggerDto.branchId,
+          branchId: rule.branchId,
           channel,
           contactIds: [triggerDto.contactId],
           content: rule.actionConfig?.content,
           templateId: rule.actionConfig?.templateId,
         });
       } else if (rule.actionType === ActionType.PUSH_REVIEW) {
-        // Push Review Logic
         const reviewLink =
           rule.actionConfig?.reviewLink || 'https://google.com/review';
         const content =
           rule.actionConfig?.content ||
           `Thanks for visiting! Please review us here: ${reviewLink}`;
 
-        // Default to SMS if not specified? Or check user preference?
-        // For simplicity, default to SMS or WhatsApp if available.
-        // Assuming SMS for now as fallback.
         await this.messagingEngine.sendMessage({
-          businessId: rule.businessId,
-          branchId: rule.branchId || triggerDto.branchId,
+          branchId: rule.branchId,
           channel: Channel.SMS,
           contactIds: [triggerDto.contactId],
           content,
         });
       }
 
-      // Log success
       const log = this.logRepo.create({
         ruleId: rule.id,
         contactId: triggerDto.contactId,
@@ -377,13 +323,11 @@ export class AutomationService {
       });
       await this.logRepo.save(log);
     } catch (error: any) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       this.logger.error(`Rule execution failed: ${error.message}`);
       const log = this.logRepo.create({
         ruleId: rule.id,
         contactId: triggerDto.contactId,
         status: 'failed',
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         errorReason: error.message,
       });
       await this.logRepo.save(log);

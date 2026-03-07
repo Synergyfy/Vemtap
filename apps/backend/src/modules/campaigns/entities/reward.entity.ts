@@ -2,21 +2,15 @@ import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Branch } from '../../branches/entities/branch.entity';
-import { Business } from '../../businesses/entities/business.entity';
 
 @Entity('rewards')
 export class Reward extends AbstractBaseEntity {
-  @ApiProperty({ description: 'Business ID' })
-  @Column({ nullable: true })
-  businessId: string;
-
-  @ManyToOne(() => Business, { nullable: true })
-  @JoinColumn({ name: 'businessId' })
-  business: Business;
-
   @ApiProperty({ description: 'Branch ID', example: 'branch_001' })
   @Column({ nullable: true })
   branchId: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  businessId: string;
 
   @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'branchId' })
@@ -40,6 +34,10 @@ export class Reward extends AbstractBaseEntity {
   @ApiProperty({ description: 'Point cost to redeem', example: 500 })
   @Column({ type: 'int' })
   pointCost: number;
+
+  @ApiProperty({ description: 'Point cost to redeem', example: 500 })
+  @Column({ type: 'int', default: 0 })
+  pointsRequired: number;
 
   @ApiProperty({ description: 'Value amount', example: 5.0 })
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })

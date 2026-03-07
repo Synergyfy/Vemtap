@@ -37,8 +37,8 @@ export class InboxService {
   }
 
   async getThreadMessages(
-    branchId: string,
     threadId: string,
+    branchId: string,
   ): Promise<Message[]> {
     const thread = await this.threadRepo.findOne({
       where: { id: threadId, branchId },
@@ -54,9 +54,9 @@ export class InboxService {
   }
 
   async sendReply(
-    branchId: string,
     threadId: string,
     content: string,
+    branchId: string,
   ): Promise<Message | null> {
     const thread = await this.threadRepo.findOne({
       where: { id: threadId, branchId },
@@ -67,13 +67,11 @@ export class InboxService {
       throw new NotFoundException('Thread not found');
     }
 
-    // Call engine to handle actual send, credits, logging, socket emit etc.
     const messageId = await this.messagingEngine.sendReply(thread, content);
     if (!messageId) {
       return null;
     }
 
-    // Update thread activity
     thread.lastActivityAt = new Date();
     thread.status = ThreadStatus.OPEN;
     await this.threadRepo.save(thread);

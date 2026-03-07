@@ -2,7 +2,6 @@ import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Flow } from './flow.entity';
 import { Contact } from '../../contacts/entities/contact.entity';
-import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 
 export enum ExecutionStatus {
@@ -30,19 +29,15 @@ export class FlowExecution extends AbstractBaseEntity {
   @Column()
   contactId: string;
 
-  @ManyToOne(() => Business, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'businessId' })
-  business: Business;
-
-  @Column()
-  businessId: string;
-
   @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'branchId' })
   branch: Branch;
 
   @Column({ nullable: true })
   branchId: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  businessId: string;
 
   @Column({ nullable: true })
   currentNodeId: string; // The ID of the node currently being processed or waiting at

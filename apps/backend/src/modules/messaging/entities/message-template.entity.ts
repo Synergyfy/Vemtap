@@ -1,6 +1,6 @@
 import { Entity, Column, ManyToOne, JoinColumn, Unique } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
-import { Business } from '../../businesses/entities/business.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 import { Channel } from '../enums/channel.enum';
 
 export enum TemplateStatus {
@@ -16,14 +16,17 @@ export enum TemplateCategory {
 }
 
 @Entity('message_templates')
-@Unique(['businessId', 'name', 'channel'])
+@Unique(['branchId', 'name', 'channel'])
 export class MessageTemplate extends AbstractBaseEntity {
-  @ManyToOne(() => Business, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn({ name: 'businessId' })
-  business: Business;
+  @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'branchId' })
+  branch: Branch;
 
   @Column({ type: 'uuid', nullable: true })
-  businessId?: string | null;
+  branchId: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  businessId: string;
 
   @Column({ type: 'enum', enum: Channel })
   channel: Channel;

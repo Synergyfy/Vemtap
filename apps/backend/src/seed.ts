@@ -28,38 +28,35 @@ async function bootstrap() {
     });
     console.log('Created Owner: business@latap.com');
 
-    // Create Business for Owner
-    await businessesService.create({
+    // Create Business for Owner (this automatically creates Main Branch and links owner)
+    const biz = await businessesService.create({
       name: 'The Azure Bistro',
       type: BusinessType.RESTAURANT,
       category: 'Hospitality',
       monthlyVisitors: '501-2000',
       ownerId: owner.id,
-      welcomeMessage: 'Welcome to Azure Bistro!',
-      rewardEnabled: true,
     });
     console.log('Created Business: The Azure Bistro');
+
+    // Update Main Branch with settings
+    const branches = await branchesService.findAll(owner.id);
+    const mainBranch = branches[0];
+    if (mainBranch) {
+      await branchesService.update(owner.id, mainBranch.id, {
+        welcomeMessage: 'Welcome to Azure Bistro!',
+        rewardEnabled: true,
+      });
+      console.log('Updated Main Branch settings');
+    }
   }
 
-  // 2. Create Manager (Linked to Business & Branch)
+  // 2. Create Manager (Linked to Branch)
   const business = await businessesService.findByOwner(owner.id);
-  const businessId = business?.id;
 
-  // Create a default Branch for the business
   let branchId: string | undefined;
   if (business) {
     const branches = await branchesService.findAll(owner.id);
-    if (branches.length === 0) {
-      const branch = await branchesService.create(owner.id, {
-        name: 'Main Branch',
-        address: '123 Main St',
-        phone: '08012345678',
-      });
-      branchId = branch.id;
-      console.log('Created Default Branch: Main Branch');
-    } else {
-      branchId = branches[0].id;
-    }
+    branchId = branches[0]?.id;
   }
 
   const manager = await usersService.findByEmail('manager@latap.com');
@@ -71,7 +68,6 @@ async function bootstrap() {
       email: 'manager@latap.com',
       password: hashedPassword,
       role: UserRole.MANAGER,
-      businessId: businessId,
       branchId: branchId,
     });
     console.log('Created Manager: manager@latap.com');
@@ -87,7 +83,6 @@ async function bootstrap() {
       email: 'staff@latap.com',
       password: hashedPassword,
       role: UserRole.STAFF,
-      businessId: businessId,
       branchId: branchId,
     });
     console.log('Created Staff: staff@latap.com');

@@ -38,6 +38,10 @@ export class SettingsService implements OnModuleInit {
     return settings[0];
   }
 
+  async getSettings(): Promise<Setting> {
+    return this.getGlobalSettings();
+  }
+
   async updateSettings(updateDto: UpdateSettingDto): Promise<Setting> {
     const settings = await this.getGlobalSettings();
     Object.assign(settings, updateDto);

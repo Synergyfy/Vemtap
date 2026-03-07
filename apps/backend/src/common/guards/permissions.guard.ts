@@ -1,6 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { UserRole } from '../../modules/users/entities/user.entity';
+import { User, UserRole } from '../../modules/users/entities/user.entity';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 
 @Injectable()
@@ -17,7 +17,12 @@ export class PermissionsGuard implements CanActivate {
       return true;
     }
 
-    const { user } = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<{ user: User }>();
+    const user = request.user;
+
+    if (!user) {
+      return false;
+    }
 
     // Owners and Admins bypass permission checks
     if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
@@ -25,7 +30,6 @@ export class PermissionsGuard implements CanActivate {
     }
 
     // Check if user has ALL of the required permissions for this endpoint
-    // (Or we could do SOME, but usually permissions are granular)
     const userPermissions = user.permissions || [];
     return requiredPermissions.every((permission) =>
       userPermissions.includes(permission),

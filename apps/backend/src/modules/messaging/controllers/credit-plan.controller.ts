@@ -87,7 +87,7 @@ export class CreditPlanController {
     @Body() purchaseDto: PurchaseCreditPlanDto,
   ) {
     return this.creditPlanService.purchase(
-      purchaseDto.businessId,
+      purchaseDto.branchId,
       id,
       purchaseDto.reference,
     );

@@ -3,13 +3,16 @@ import {
   Logger,
   ValidationPipe,
   ClassSerializerInterceptor,
+  INestApplication,
 } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+
 // 1. Shared Configuration Function
 // This setup applies to both Local and Vercel environments
-export async function configureApp(app: any) {
+export function configureApp(app: INestApplication) {
   // CORS
   app.enableCors({
     origin: true,
@@ -31,8 +34,11 @@ export async function configureApp(app: any) {
     }),
   );
 
-  // Serialization
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+  // Serialization & Global Logging
+  app.useGlobalInterceptors(
+    new ClassSerializerInterceptor(app.get(Reflector)),
+    new LoggingInterceptor(),
+  );
 
   // Swagger
   const config = new DocumentBuilder()
@@ -61,32 +67,35 @@ export async function configureApp(app: any) {
 // 2. Local Development Bootstrap
 // This only runs if you execute the file directly (e.g., `nest start` or `node dist/main`)
 if (require.main === module) {
-  async function bootstrap() {
+  const bootstrap = async () => {
     const logger = new Logger('Bootstrap');
     const app = await NestFactory.create(AppModule, {
       logger: ['error', 'warn', 'log', 'debug', 'verbose'],
     });
 
-    await configureApp(app);
+    configureApp(app);
 
     const port = process.env.PORT || 3002;
     await app.listen(port);
     logger.log(`Application is running on: http://localhost:${port}/api/v1`);
     logger.log(`Swagger documentation: http://localhost:${port}/api-docs`);
-  }
-  bootstrap();
+  };
+  void bootstrap();
 }
 
 // 3. Vercel Serverless Handler
 // Vercel imports this file and calls the default export
 let cachedApp: any;
 
-export default async (req: any, res: any) => {
+export default async (req: unknown, res: unknown) => {
   if (!cachedApp) {
     const app = await NestFactory.create(AppModule);
-    await configureApp(app);
+    configureApp(app);
     await app.init();
-    cachedApp = app.getHttpAdapter().getInstance();
+    cachedApp = app.getHttpAdapter().getInstance() as unknown;
   }
-  return cachedApp(req, res);
+  return (cachedApp as (req: unknown, res: unknown) => Promise<unknown>)(
+    req,
+    res,
+  );
 };
