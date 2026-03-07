@@ -209,3 +209,12 @@ export const adminFlowEngineApi = {
     }) => api.post('/admin/flow-engine/templates', data),
     deleteTemplate: (id: string) => api.delete(`/admin/flow-engine/templates/${id}`),
 };
+
+export const adminAgentsApi = {
+    getAll: (params?: { page?: number; limit?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.page) q.set('page', String(params.page));
+        if (params?.limit) q.set('limit', String(params.limit));
+        return api.get(`/agent/all?${q.toString()}`);
+    }
+};
