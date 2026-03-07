@@ -1,15 +1,19 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { MessageCircle, Search, User, Send, Activity, CheckCircle2, ArrowRight, RefreshCw, Wand2 } from 'lucide-react';
+import { MessageCircle, Search, User, Send, Activity, CheckCircle2, ArrowRight, RefreshCw, Wand2, Loader2 } from 'lucide-react';
+import { adminAgentsApi } from '@/lib/api/admin';
+import { useQuery } from '@tanstack/react-query';
 
-const agents = [
-    { id: 'agent-1', name: 'Amara Obi', status: 'online', activeChats: 2 },
-    { id: 'agent-2', name: 'Tunde Bello', status: 'online', activeChats: 1 },
-    { id: 'agent-3', name: 'Zainab Yusuf', status: 'away', activeChats: 0 },
-];
 const statuses = ['unassigned', 'assigned'] as const;
+
+interface Agent {
+    id: string;
+    name: string;
+    status: string;
+    activeChats: number;
+}
 
 const initialConversations = [
     {
@@ -72,7 +76,32 @@ export default function AgentHubPage() {
     const [conversations, setConversations] = useState(initialConversations);
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
     const [replyText, setReplyText] = useState('');
-    const [selectedAgentId, setSelectedAgentId] = useState(agents[0].id);
+    const [selectedAgentId, setSelectedAgentId] = useState<string>('');
+
+    // Fetch Agents from API
+    const { data: agentsData, isLoading: isLoadingAgents, refetch: refetchAgents } = useQuery({
+        queryKey: ['admin-agents'],
+        queryFn: async () => {
+            const res = await adminAgentsApi.getAll({ page: 1, limit: 100 });
+            return Array.isArray(res) ? res : (res?.data || []);
+        }
+    });
+
+    const agents = useMemo<Agent[]>(() => {
+        return (agentsData || []).map((a: any) => ({
+            id: a.id,
+            name: a.name || `${a.firstName} ${a.lastName}` || 'Unknown Agent',
+            status: a.status || 'offline',
+            activeChats: a.activeChats || 0
+        }));
+    }, [agentsData]);
+
+    // Set initial selected agent
+    useEffect(() => {
+        if (agents.length > 0 && !selectedAgentId) {
+            setSelectedAgentId(agents[0].id);
+        }
+    }, [agents, selectedAgentId]);
 
     const activeConversation = conversations.find((c) => c.id === activeConversationId) || null;
 
@@ -152,8 +181,12 @@ export default function AgentHubPage() {
                             <option key={agent.id} value={agent.id}>{agent.name} ({agent.status})</option>
                         ))}
                     </select>
-                    <button className="h-11 px-4 bg-white border border-gray-200 rounded-xl text-sm font-bold flex items-center gap-2">
-                        <RefreshCw size={16} /> Refresh
+                    <button
+                        onClick={() => refetchAgents()}
+                        className="h-11 px-4 bg-white border border-gray-200 rounded-xl text-sm font-bold flex items-center gap-2"
+                    >
+                        {isLoadingAgents ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                        Refresh
                     </button>
                 </div>
             </div>
@@ -165,7 +198,13 @@ export default function AgentHubPage() {
                 </div>
                 <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
                     <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Active Agents</p>
-                    <p className="text-2xl font-display font-bold text-text-main mt-1">{agents.filter(a => a.status === 'online').length}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                        {isLoadingAgents ? (
+                            <Loader2 size={20} className="animate-spin text-gray-300" />
+                        ) : (
+                            <p className="text-2xl font-display font-bold text-text-main">{agents.filter(a => a.status === 'online').length}</p>
+                        )}
+                    </div>
                 </div>
                 <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
                     <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Chats In Progress</p>

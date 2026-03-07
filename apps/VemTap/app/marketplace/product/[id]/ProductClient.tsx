@@ -29,9 +29,9 @@ export default function ProductClient({ id }: { id: string }) {
 
     const { user } = useAuthStore();
     const [selectedImage, setSelectedImage] = useState(0);
-    const [activeTab, setActiveTab] = useState<'specs' | 'quote' | 'reviews'>('specs');
+    const [activeTab, setActiveTab] = useState<'specs' | 'how-to' | 'reviews'>('specs');
     const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
-    const [modalType, setModalType] = useState<'quote' | 'consultation'>('quote');
+    const [modalType, setModalType] = useState<'quote' | 'moq' | 'consultation'>('quote');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [moqWarning, setMoqWarning] = useState(false);
 
@@ -382,7 +382,7 @@ export default function ProductClient({ id }: { id: string }) {
                                 <a href="tel:+2348012345678" className="hover:underline">+234 801 234 5678</a>
                             </div>
                             <button
-                                onClick={() => { setModalType('quote'); setIsQuoteModalOpen(true); }}
+                                onClick={() => { setModalType('moq'); setIsQuoteModalOpen(true); }}
                                 className="w-full py-3 bg-amber-600 text-white font-bold rounded-2xl hover:bg-amber-700 transition-all flex items-center justify-center gap-2"
                             >
                                 <ChevronDown size={16} />
@@ -418,10 +418,10 @@ export default function ProductClient({ id }: { id: string }) {
                                     Specifications
                                 </button>
                                 <button
-                                    onClick={() => setActiveTab('quote')}
-                                    className={`border-b-2 py-4 text-sm font-bold transition-all ${activeTab === 'quote' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                                    onClick={() => setActiveTab('how-to')}
+                                    className={`border-b-2 py-4 text-sm font-bold transition-all ${activeTab === 'how-to' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                                 >
-                                    Request Quote
+                                    How to Use
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('reviews')}
@@ -483,150 +483,34 @@ export default function ProductClient({ id }: { id: string }) {
                                 </section>
                             )}
 
-                            {activeTab === 'quote' && (
-                                <section className="animate-in slide-in-from-bottom-4 duration-500 space-y-6">
+                            {activeTab === 'how-to' && (
+                                <section className="animate-in slide-in-from-bottom-4 duration-500 space-y-8">
                                     <div className="bg-slate-50 p-8 border border-slate-200 rounded-2xl">
-                                        <h3 className="text-2xl font-bold text-slate-900 mb-2">Bulk Pricing Request</h3>
-                                        <p className="text-slate-600 mb-8">Fill in the details below and our hardware team will reach out with customized pricing for {product.name}.</p>
+                                        <h3 className="text-2xl font-bold text-slate-900 mb-2">How to Use {product.name}</h3>
+                                        <p className="text-slate-600 mb-8">Follow these simple steps to get started with your new device.</p>
 
-                                        <form onSubmit={handleQuoteSubmit} className="space-y-6">
-                                            <div className="grid grid-cols-2 gap-6">
-                                                <div>
-                                                    <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">First Name</label>
-                                                    <input
-                                                        type="text"
-                                                        value={quoteData.firstName}
-                                                        onChange={(e) => setQuoteData({ ...quoteData, firstName: e.target.value })}
-                                                        placeholder="John"
-                                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium"
-                                                        required
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">Last Name</label>
-                                                    <input
-                                                        type="text"
-                                                        value={quoteData.lastName}
-                                                        onChange={(e) => setQuoteData({ ...quoteData, lastName: e.target.value })}
-                                                        placeholder="Doe"
-                                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium"
-                                                        required
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-6">
-                                                <div>
-                                                    <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">Work Email</label>
-                                                    <input
-                                                        type="email"
-                                                        value={quoteData.email}
-                                                        onChange={(e) => setQuoteData({ ...quoteData, email: e.target.value })}
-                                                        placeholder="john@company.com"
-                                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium"
-                                                        required
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">Phone Number</label>
-                                                    <input
-                                                        type="tel"
-                                                        value={quoteData.phone || ''}
-                                                        onChange={(e) => setQuoteData({ ...quoteData, phone: e.target.value })}
-                                                        placeholder="+234 800 000 0000"
-                                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium"
-                                                        required
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-6">
-                                                <div>
-                                                    <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">Location / State</label>
-                                                    <input
-                                                        type="text"
-                                                        value={quoteData.location}
-                                                        onChange={(e) => setQuoteData({ ...quoteData, location: e.target.value })}
-                                                        placeholder="Lagos, Nigeria"
-                                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium"
-                                                        required
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">Business Name</label>
-                                                    <input
-                                                        type="text"
-                                                        value={quoteData.company}
-                                                        onChange={(e) => setQuoteData({ ...quoteData, company: e.target.value })}
-                                                        placeholder="Company Ltd."
-                                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium"
-                                                        required
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">Quantity Needed</label>
-                                                <input
-                                                    type="number"
-                                                    value={quoteData.quantity}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        setQuoteData({ ...quoteData, quantity: val });
-                                                        const moq = product.moq || product.tieredPricing?.[0]?.minQuantity || 1;
-                                                        setMoqWarning(!!val && parseInt(val) > 0 && parseInt(val) < moq);
-                                                    }}
-                                                    placeholder="e.g. 100"
-                                                    className={`w-full px-4 py-3 bg-white border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium transition-colors ${moqWarning ? 'border-amber-400 bg-amber-50' : 'border-gray-200'
-                                                        }`}
-                                                    required
-                                                    min="1"
-                                                />
-                                            </div>
-
-                                            {moqWarning && (
-                                                <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-300 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300">
-                                                    <AlertTriangle size={18} className="text-amber-600 mt-0.5 shrink-0" />
-                                                    <div className="flex-1">
-                                                        <p className="text-sm font-bold text-amber-900">Quantity below minimum order ({product.moq || product.tieredPricing?.[0]?.minQuantity || 1} units)</p>
-                                                        <p className="text-xs text-amber-700 mt-1">Use the <strong>MOQ Quote Form</strong> below for smaller quantities.</p>
+                                        <div className="space-y-6">
+                                            {(product.howToSteps || []).map((step: any, index: number) => (
+                                                <div key={index} className="flex gap-4">
+                                                    <div className="flex-shrink-0 w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center font-bold text-sm">
+                                                        {index + 1}
                                                     </div>
-                                                    <ChevronDown size={18} className="text-amber-600 animate-bounce shrink-0" />
+                                                    <div>
+                                                        <h4 className="font-bold text-slate-900">{step.title}</h4>
+                                                        <p className="text-slate-600 text-sm mt-1">{step.description}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {(!product.howToSteps || product.howToSteps.length === 0) && (
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center gap-3 text-amber-600">
+                                                        <AlertTriangle size={20} />
+                                                        <p className="font-bold">Instructions Pending</p>
+                                                    </div>
+                                                    <p className="text-slate-500 italic">Admin has not yet provided specific usage steps for this product.</p>
                                                 </div>
                                             )}
-
-                                            {quoteData.quantity && !isNaN(parseInt(quoteData.quantity)) && parseInt(quoteData.quantity) > 0 && !moqWarning && (() => {
-                                                const qty = parseInt(quoteData.quantity);
-                                                const calculated = calculateQuotePrice(product.tieredPricing || [], qty);
-                                                const unitPrice = calculated === 'quote' ? product.price : calculated / qty;
-                                                const total = calculated === 'quote' ? null : calculated;
-                                                return (
-                                                    <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl flex justify-between items-center animate-in fade-in slide-in-from-top-2 duration-300">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[10px] font-black uppercase text-primary tracking-widest">Estimated Total</span>
-                                                            <span className="text-xs text-slate-500 font-medium">Based on ₦{unitPrice.toLocaleString()} / unit</span>
-                                                        </div>
-                                                        <span className="text-2xl font-black text-slate-900">
-                                                            {total !== null ? `₦${total.toLocaleString()}` : 'Contact for quote'}
-                                                        </span>
-                                                    </div>
-                                                );
-                                            })()}
-                                            <div>
-                                                <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">Additional Notes</label>
-                                                <textarea
-                                                    rows={4}
-                                                    value={quoteData.notes}
-                                                    onChange={(e) => setQuoteData({ ...quoteData, notes: e.target.value })}
-                                                    placeholder="Any specific requirements?"
-                                                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium resize-none"
-                                                ></textarea>
-                                            </div>
-                                            <button
-                                                type="submit"
-                                                disabled={isSubmitting}
-                                                className="w-full py-5 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-                                            >
-                                                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Submit Request'}
-                                            </button>
-                                        </form>
+                                        </div>
                                     </div>
                                 </section>
                             )}
@@ -787,12 +671,14 @@ export default function ProductClient({ id }: { id: string }) {
                             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                                 <div>
                                     <h3 className="font-display font-bold text-xl text-text-main">
-                                        {modalType === 'quote' ? 'Request MOQ Quote' : 'Request Consultation'}
+                                        {modalType === 'quote' ? 'Request Bulk Quote' : modalType === 'moq' ? 'Request MOQ Quote' : 'Request Consultation'}
                                     </h3>
-                                    <p className="text-sm text-text-secondary">
+                                    <p className="text-xs text-slate-500 font-medium mt-0.5">
                                         {modalType === 'quote'
-                                            ? `VemTap specialized pricing for ${product.name}`
-                                            : `Hardware customization for your business`}
+                                            ? 'Fill in the details for bulk pricing.'
+                                            : modalType === 'moq'
+                                                ? 'Request special pricing for smaller quantities.'
+                                                : 'Schedule a call with our technical team.'}
                                     </p>
                                 </div>
                                 <button onClick={() => setIsQuoteModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500">
@@ -872,7 +758,7 @@ export default function ProductClient({ id }: { id: string }) {
                                         />
                                     </div>
                                 </div>
-                                {modalType === 'quote' && (
+                                {(modalType === 'quote' || modalType === 'moq') && (
                                     <>
                                         <div>
                                             <label className="block text-[10px] font-black uppercase text-gray-500 mb-1">Quantity Needed</label>
@@ -893,18 +779,44 @@ export default function ProductClient({ id }: { id: string }) {
                                             />
                                         </div>
 
-                                        {moqWarning && (
+                                        {moqWarning && modalType === 'quote' && (
                                             <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-300 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300">
                                                 <AlertTriangle size={18} className="text-amber-600 mt-0.5 shrink-0" />
                                                 <div className="flex-1">
-                                                    <p className="text-sm font-bold text-amber-900">Quantity below minimum order ({product.moq || product.tieredPricing?.[0]?.minQuantity || 1} units)</p>
-                                                    <p className="text-xs text-amber-700 mt-1">Use the <strong>MOQ Quote Form</strong> for smaller quantities.</p>
+                                                    <p className="text-sm font-bold text-amber-900">Quantity below standard minimum ({product.moq || product.tieredPricing?.[0]?.minQuantity || 1} units)</p>
+                                                    <p className="text-xs text-amber-700 mt-1">For smaller quantities, please use the <strong>MOQ Quote</strong> option or contact sales.</p>
                                                 </div>
-                                                <ChevronDown size={18} className="text-amber-600 animate-bounce shrink-0" />
+                                            </div>
+                                        )}
+                                        {modalType === 'moq' && !moqWarning && quoteData.quantity && (
+                                            <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-300 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <AlertTriangle size={18} className="text-amber-600 mt-0.5 shrink-0" />
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-bold text-amber-900">Bulk Quantity Detected ({quoteData.quantity} units)</p>
+                                                    <p className="text-xs text-amber-700 mt-1">This quantity qualifies for standard Bulk Pricing. Please use the <strong>Request Bulk Quote</strong> form for faster processing.</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {modalType === 'moq' && moqWarning && (
+                                            <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <ShieldCheck size={18} className="text-blue-600 mt-0.5 shrink-0" />
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-bold text-blue-900">Custom MOQ Request</p>
+                                                    <p className="text-xs text-blue-700 mt-1">We specialize in custom batches. Our team will review your request for {quoteData.quantity || 'small quantities'} units.</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {modalType === 'quote' && !moqWarning && quoteData.quantity && (
+                                            <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <CheckCircle2 size={18} className="text-green-600 mt-0.5 shrink-0" />
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-bold text-green-900">Bulk Tier Pricing</p>
+                                                    <p className="text-xs text-green-700 mt-1">Your quantity qualifies for volume discounts. See the estimated total below.</p>
+                                                </div>
                                             </div>
                                         )}
 
-                                        {quoteData.quantity && !isNaN(parseInt(quoteData.quantity)) && parseInt(quoteData.quantity) > 0 && !moqWarning && (() => {
+                                        {quoteData.quantity && !isNaN(parseInt(quoteData.quantity)) && parseInt(quoteData.quantity) > 0 && (() => {
                                             const qty = parseInt(quoteData.quantity);
                                             const calculated = calculateQuotePrice(product.tieredPricing || [], qty);
                                             const unitPrice = calculated === 'quote' ? product.price : calculated / qty;

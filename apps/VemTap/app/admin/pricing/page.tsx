@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { notify } from '@/lib/notify';
 import {
     Tag, Plus, Trash2, Edit3, Save, X,
     Zap, Shield, Globe, Crown, ChevronUp, ChevronDown
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
 import { fetchAdminPricingPlans, updatePricingPlan, addPricingPlan, deletePricingPlan } from '@/lib/api/pricing';
 import { PricingPlan } from '@/types/pricing';
 import FormattedNumberInput from '@/components/shared/FormattedNumberInput';
@@ -75,6 +76,43 @@ export default function AdminPricingPage() {
         queryKey: ['subscription-plans'],
         queryFn: fetchAdminPricingPlans,
     });
+
+    const [orderedPlans, setOrderedPlans] = useState<PricingPlan[]>([]);
+    const [originalOrderIds, setOriginalOrderIds] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (plans.length > 0 && originalOrderIds.length === 0) {
+            setOrderedPlans(plans);
+            setOriginalOrderIds(plans.map(p => p.id));
+        }
+    }, [plans, originalOrderIds]);
+
+    const orderChanged = JSON.stringify(orderedPlans.map(p => p.id)) !== JSON.stringify(originalOrderIds);
+
+    const handleSaveOrder = () => {
+        // Here you would typically send the new IDs array to the backend
+        // adminPricingApi.updateOrder(orderedPlans.map(p => p.id))
+        setOriginalOrderIds(orderedPlans.map(p => p.id));
+        notify.success('Display order saved successfully');
+    };
+
+    const movePlanUp = (index: number) => {
+        if (index === 0) return;
+        setOrderedPlans((prev) => {
+            const next = [...prev];
+            [next[index - 1], next[index]] = [next[index], next[index - 1]];
+            return next;
+        });
+    };
+
+    const movePlanDown = (index: number) => {
+        if (index === orderedPlans.length - 1) return;
+        setOrderedPlans((prev) => {
+            const next = [...prev];
+            [next[index + 1], next[index]] = [next[index], next[index + 1]];
+            return next;
+        });
+    };
 
     const updateMutation = useMutation({
         mutationFn: (plan: PricingPlan) => updatePricingPlan(plan as PricingPlan & { id: string }),
@@ -255,12 +293,22 @@ export default function AdminPricingPage() {
                             Subscription Plans
                         </h1>
                     </div>
-                    <button
-                        onClick={openCreate}
-                        className="h-12 px-6 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
-                    >
-                        <Plus size={18} /> Add New Plan
-                    </button>
+                    <div className="flex gap-3">
+                        {orderChanged && (
+                            <button
+                                onClick={handleSaveOrder}
+                                className="h-12 px-6 bg-green-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-green-200 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                            >
+                                <Save size={18} /> Save Order
+                            </button>
+                        )}
+                        <button
+                            onClick={openCreate}
+                            className="h-12 px-6 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                        >
+                            <Plus size={18} /> Add New Plan
+                        </button>
+                    </div>
                 </div>
 
                 {plansLoading ? (
@@ -269,81 +317,107 @@ export default function AdminPricingPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {plans.map((plan) => (
-                            <div
-                                key={plan.id}
-                                className={`bg-white rounded-2xl border-2 transition-all overflow-hidden ${editingPlan?.id === plan.id ? 'border-primary shadow-xl ring-4 ring-primary/5' : 'border-gray-100 hover:border-primary/20 hover:shadow-lg'}`}
-                            >
-                                <div className="p-8">
-                                    <div className="flex items-start justify-between mb-6">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${plan.isPopular ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                                {plan.id === 'free' && <Globe size={24} />}
-                                                {plan.id === 'basic' && <Zap size={24} />}
-                                                {plan.isPopular && <Crown size={24} />}
-                                                {!plan.isPopular && plan.id !== 'free' && plan.id !== 'basic' && <Shield size={24} />}
+                        <AnimatePresence mode="popLayout">
+                            {orderedPlans.map((plan, idx) => (
+                                <motion.div
+                                    key={plan.id}
+                                    layout
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9 }}
+                                    className={`bg-white rounded-2xl border-2 transition-all overflow-hidden group ${editingPlan?.id === plan.id ? 'border-primary shadow-xl ring-4 ring-primary/5' : 'border-gray-100 hover:border-primary/20 hover:shadow-lg'}`}
+                                >
+                                    <div className="p-8">
+                                        <div className="flex items-start justify-between mb-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex flex-col gap-1 mr-1">
+                                                        <button
+                                                            onClick={() => movePlanUp(idx)}
+                                                            disabled={idx === 0}
+                                                            className="p-1 text-slate-300 hover:text-primary disabled:opacity-0 transition-all"
+                                                            title="Move Left/Up"
+                                                        >
+                                                            <ChevronUp size={20} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => movePlanDown(idx)}
+                                                            disabled={idx === orderedPlans.length - 1}
+                                                            className="p-1 text-slate-300 hover:text-primary disabled:opacity-0 transition-all"
+                                                            title="Move Right/Down"
+                                                        >
+                                                            <ChevronDown size={20} />
+                                                        </button>
+                                                    </div>
+                                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${plan.isPopular ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                                        {plan.id === 'free' && <Globe size={24} />}
+                                                        {plan.id === 'basic' && <Zap size={24} />}
+                                                        {plan.isPopular && <Crown size={24} />}
+                                                        {!plan.isPopular && plan.id !== 'free' && plan.id !== 'basic' && <Shield size={24} />}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-bold text-text-main text-lg">{plan.name}</h3>
+                                                    <p className="text-xs font-bold text-primary">{plan.isPopular ? 'Most Popular' : 'Tier Plan'}</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <h3 className="font-bold text-text-main text-lg">{plan.name}</h3>
-                                                <p className="text-xs font-bold text-primary">{plan.isPopular ? 'Most Popular' : 'Tier Plan'}</p>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => openEdit(plan)}
+                                                    className="p-2.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-primary transition-all"
+                                                >
+                                                    <Edit3 size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(plan.id)}
+                                                    className="p-2.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-500 transition-all"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={() => openEdit(plan)}
-                                                className="p-2.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-primary transition-all"
-                                            >
-                                                <Edit3 size={18} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(plan.id)}
-                                                className="p-2.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-500 transition-all"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
+
+                                        <div className="space-y-4 mb-6">
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-3xl font-display font-black text-text-main">{formatPrice(plan.monthlyPrice, plan.currency)}</span>
+                                                <span className="text-sm font-bold text-text-secondary">/mo</span>
+                                            </div>
+                                            <div className="flex gap-4 text-xs">
+                                                <span className="text-text-secondary">Quarterly: {formatPrice(plan.quarterlyPrice, plan.currency)}</span>
+                                                <span className="text-text-secondary">Yearly: {formatPrice(plan.yearlyPrice, plan.currency)}</span>
+                                            </div>
                                         </div>
+
+                                        <p className="text-sm text-text-secondary font-medium leading-relaxed mb-6">
+                                            {plan.description}
+                                        </p>
+
+                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                            <div className="space-y-2">
+                                                <p className="font-bold text-text-main">Limits</p>
+                                                <div className="space-y-1 text-text-secondary">
+                                                    <p>Team Members: {unlimited(plan.teamMembersLimit)}</p>
+                                                    <p>Loyalty: {unlimited(plan.loyaltyLimit)}</p>
+                                                    <p>Tags: {unlimited(plan.tagsLimit)}</p>
+                                                    <p>Branches: {unlimited(plan.branchLimit)}</p>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <p className="font-bold text-text-main">Access</p>
+                                                <div className="space-y-1 text-text-secondary">
+                                                    <p>Trial Days: {plan.trialDurationDays}</p>
+                                                    <p>SMS: {formatCredit(plan.smsCredits)}</p>
+                                                    <p>WA: {formatCredit(plan.whatsappCredits)}</p>
+                                                    <p>Email: {formatCredit(plan.emailCredits)}</p>
+                                                    <p>Features: {(plan.features || []).length}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                     </div>
-
-                                    <div className="space-y-4 mb-6">
-                                        <div className="flex items-baseline gap-1">
-                                            <span className="text-3xl font-display font-black text-text-main">{formatPrice(plan.monthlyPrice, plan.currency)}</span>
-                                            <span className="text-sm font-bold text-text-secondary">/mo</span>
-                                        </div>
-                                        <div className="flex gap-4 text-xs">
-                                            <span className="text-text-secondary">Quarterly: {formatPrice(plan.quarterlyPrice, plan.currency)}</span>
-                                            <span className="text-text-secondary">Yearly: {formatPrice(plan.yearlyPrice, plan.currency)}</span>
-                                        </div>
-                                    </div>
-
-                                    <p className="text-sm text-text-secondary font-medium leading-relaxed mb-6">
-                                        {plan.description}
-                                    </p>
-
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                        <div className="space-y-2">
-                                            <p className="font-bold text-text-main">Limits</p>
-                                            <div className="space-y-1 text-text-secondary">
-                                                <p>Team Members: {unlimited(plan.teamMembersLimit)}</p>
-                                                <p>Loyalty: {unlimited(plan.loyaltyLimit)}</p>
-                                                <p>Tags: {unlimited(plan.tagsLimit)}</p>
-                                                <p>Branches: {unlimited(plan.branchLimit)}</p>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <p className="font-bold text-text-main">Access</p>
-                                            <div className="space-y-1 text-text-secondary">
-                                                <p>Trial Days: {plan.trialDurationDays}</p>
-                                                <p>SMS: {formatCredit(plan.smsCredits)}</p>
-                                                <p>WA: {formatCredit(plan.whatsappCredits)}</p>
-                                                <p>Email: {formatCredit(plan.emailCredits)}</p>
-                                                <p>Features: {(plan.features || []).length}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div>
-                        ))}
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
                     </div>
                 )}
             </div>

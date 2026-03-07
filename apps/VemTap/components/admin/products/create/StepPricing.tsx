@@ -74,6 +74,10 @@ export default function StepPricing() {
                     return acc;
                 }, {} as Record<string, string>),
                 videos: videoUrl ? [videoUrl] : [],
+                howToSteps: formData.howToSteps.map(step => ({
+                    title: step.title,
+                    description: step.description
+                })),
                 rating: 5, // Default rating
                 requestQuoteThreshold: formData.bulkQuotesEnabled ? 100 : null
             };
