@@ -5,6 +5,7 @@ import { Reflector } from '@nestjs/core';
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { UserRole } from '../../users/entities/user.entity';
 import { SubscriptionStatus } from '../entities/subscription.entity';
+import { BranchesService } from '../../branches/branches.service';
 
 describe('SubscriptionGuard', () => {
   let guard: SubscriptionGuard;
@@ -17,6 +18,10 @@ describe('SubscriptionGuard', () => {
 
   const mockReflector = {
     getAllAndOverride: jest.fn(),
+  };
+
+  const mockBranchesService = {
+    getBusinessId: jest.fn().mockResolvedValue('b1'),
   };
 
   const mockContext = {
@@ -33,6 +38,7 @@ describe('SubscriptionGuard', () => {
         SubscriptionGuard,
         { provide: SubscriptionsService, useValue: mockSubscriptionsService },
         { provide: Reflector, useValue: mockReflector },
+        { provide: BranchesService, useValue: mockBranchesService },
       ],
     }).compile();
 
@@ -100,7 +106,7 @@ describe('SubscriptionGuard', () => {
       getClass: jest.fn(),
       switchToHttp: jest.fn().mockReturnValue({
         getRequest: jest.fn().mockReturnValue({
-          user: { role: UserRole.OWNER, businessId: 'b1' },
+          user: { role: UserRole.OWNER, branchId: 'br1' },
         }),
       }),
     } as unknown as ExecutionContext;
@@ -120,7 +126,7 @@ describe('SubscriptionGuard', () => {
       getClass: jest.fn(),
       switchToHttp: jest.fn().mockReturnValue({
         getRequest: jest.fn().mockReturnValue({
-          user: { role: UserRole.OWNER, businessId: 'b1' },
+          user: { role: UserRole.OWNER, branchId: 'br1' },
         }),
       }),
     } as unknown as ExecutionContext;

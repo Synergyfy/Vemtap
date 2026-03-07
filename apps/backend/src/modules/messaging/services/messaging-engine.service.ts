@@ -23,7 +23,8 @@ import { SettingsService } from '../../settings/settings.service';
 import { ProviderRouterService } from './provider-router.service';
 import { BranchesService } from '../../branches/branches.service';
 import { Branch } from '../../branches/entities/branch.entity';
-import { User, UserRole } from '../../users/entities/user.entity';
+import { User } from '../../users/entities/user.entity';
+import { AudienceType } from '../entities/message-campaign.entity';
 import {
   InboundMessage,
   DeliveryReport,
@@ -63,11 +64,15 @@ export class MessagingEngineService {
   }
 
   public async sendMessage(dto: SendMessageDto): Promise<any> {
-    const { branchId, contactIds, content, channel, templateId } = dto;
-
-    if (!contactIds || contactIds.length === 0) {
-      throw new BadRequestException('No contacts provided');
-    }
+    const {
+      branchId,
+      businessId,
+      contactIds,
+      content,
+      channel,
+      templateId,
+      audienceType,
+    } = dto;
 
     const branch = await this.branchRepo.findOne({
       where: { id: branchId },
@@ -75,13 +80,28 @@ export class MessagingEngineService {
     });
     if (!branch) throw new NotFoundException('Branch not found');
 
-    // 1. Validate Credits
-    // Simplified logic
+    // 1. Resolve Contacts
+    let targetContactIds: string[] = contactIds || [];
 
-    // 2. Compliance Check (Opt-outs)
+    if (audienceType === AudienceType.ALL) {
+      const allContacts = await this.contactRepo.find({
+        where: { branchId, optOut: false },
+        select: ['id'],
+      });
+      targetContactIds = allContacts.map((c) => c.id);
+    }
+
+    if (targetContactIds.length === 0) {
+      throw new BadRequestException('No contacts provided');
+    }
+
+    // 2. Validate Credits
+    // Simplified logic for now
+
+    // 3. Compliance Check (Opt-outs)
     const validContacts = await this.contactRepo.find({
       where: {
-        id: In(contactIds),
+        id: In(targetContactIds),
         optOut: false,
       },
     });
@@ -91,14 +111,14 @@ export class MessagingEngineService {
       return { message: 'No valid contacts to send to (all opted out)' };
     }
 
-    // 3. Resolve Content (if template)
+    // 4. Resolve Content (if template)
     let finalContent = content || '';
     if (templateId) {
       const template = await this.templateService.findOne(templateId);
       finalContent = template.content;
     }
 
-    // 4. Determine "From" number/id
+    // 5. Determine "From" number/id
     let from = '';
     if (channel === Channel.WHATSAPP) {
       from =
@@ -109,18 +129,35 @@ export class MessagingEngineService {
       }
     }
 
-    // 5. Batch or Single?
+    // 6. Create Campaign Record if more than one recipient
+    let campaignId: string | undefined;
+    if (validContactIds.length > 1 || audienceType) {
+      const campaign = await this.campaignService.createCampaign({
+        name: `Campaign ${new Date().toISOString()}`,
+        branchId,
+        businessId: businessId || branch.businessId,
+        channel,
+        audienceType: audienceType || AudienceType.ALL,
+        audienceSize: validContactIds.length,
+        content: finalContent,
+        templateId,
+      } as any);
+      campaignId = campaign.id;
+    }
+
+    // 7. Batch or Single?
     if (validContactIds.length > 50) {
       await this.batchQueue.add('send-batch', {
         ...dto,
+        campaignId,
         contactIds: validContactIds,
         content: finalContent,
         from,
       });
-      return { message: 'Batch campaign queued', status: 'QUEUED' };
+      return { message: 'Batch campaign queued', status: 'QUEUED', campaignId };
     }
 
-    // 6. Send Individual Messages
+    // 8. Send Individual Messages
     const messageIds: string[] = [];
     for (const contactId of validContactIds) {
       const result = await this.sendIndividualMessage(
@@ -129,6 +166,7 @@ export class MessagingEngineService {
         finalContent,
         channel,
         from,
+        campaignId,
       );
       messageIds.push(result.id);
     }
@@ -137,6 +175,7 @@ export class MessagingEngineService {
       message: 'Messages processed',
       count: validContactIds.length,
       messageIds,
+      campaignId,
     };
   }
 
@@ -146,6 +185,7 @@ export class MessagingEngineService {
     content: string,
     channel: Channel,
     from: string,
+    campaignId?: string,
   ): Promise<Message> {
     const contact = await this.contactRepo.findOneBy({ id: contactId });
     if (!contact) throw new NotFoundException('Contact not found');
@@ -154,6 +194,7 @@ export class MessagingEngineService {
       branchId: branch.id,
       businessId: branch.businessId,
       contactId,
+      campaignId,
       content,
       channel,
       direction: MessageDirection.OUTBOUND,
@@ -240,8 +281,7 @@ export class MessagingEngineService {
   async calculateCost(channel: Channel, count: number): Promise<number> {
     const settings = await this.settingsService.getSettings();
     let unitCost = 0;
-    if (channel === Channel.SMS)
-      unitCost = (settings as any).messagingCostSms || 0;
+    if (channel === Channel.SMS) unitCost = (settings as any).messagingCostSms || 0;
     else if (channel === Channel.WHATSAPP)
       unitCost = (settings as any).messagingCostWhatsapp || 0;
     else if (channel === Channel.EMAIL)
@@ -270,7 +310,7 @@ export class MessagingEngineService {
   // --- Webhooks & Events ---
 
   async handleInbound(inbound: InboundMessage) {
-    const contact = await this.contactRepo.findOne({
+    let contact = await this.contactRepo.findOne({
       where: [{ phone: inbound.from }, { email: inbound.from }],
     });
 
@@ -289,7 +329,7 @@ export class MessagingEngineService {
         branchId: contact.branchId,
         businessId: (contact as any).businessId,
         channel: inbound.channel,
-        status: 'open' as any,
+        status: 'OPEN' as any,
       } as any) as unknown as ConversationThread;
       await this.threadRepo.save(thread);
     }

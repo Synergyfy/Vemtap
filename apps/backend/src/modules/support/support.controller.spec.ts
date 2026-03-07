@@ -56,7 +56,11 @@ describe('SupportController', () => {
       mockSupportService.findAll.mockResolvedValue(result);
 
       expect(await controller.getTickets(mockReq as any)).toBe(result);
-      expect(mockSupportService.findAll).toHaveBeenCalledWith(mockUser.id);
+      expect(mockSupportService.findAll).toHaveBeenCalledWith(
+        mockUser.id,
+        undefined,
+        undefined,
+      );
     });
   });
 

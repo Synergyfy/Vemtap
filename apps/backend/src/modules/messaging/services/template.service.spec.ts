@@ -7,6 +7,7 @@ import {
 } from '../entities/message-template.entity';
 import { BadRequestException } from '@nestjs/common';
 import { Channel } from '../enums/channel.enum';
+import { BranchesService } from '../../branches/branches.service';
 
 describe('TemplateService', () => {
   let service: TemplateService;
@@ -31,6 +32,13 @@ describe('TemplateService', () => {
           provide: getRepositoryToken(MessageTemplate),
           useValue: repoMock,
         },
+        {
+          provide: BranchesService,
+          useValue: {
+            checkBranchAccess: jest.fn(),
+            findById: jest.fn().mockResolvedValue({ businessId: 'b1' }),
+          },
+        },
       ],
     }).compile();
 
@@ -53,6 +61,7 @@ describe('TemplateService', () => {
         channel: Channel.SMS,
         content: 'Hello visitor!',
         category: 'marketing',
+        branchId: 'br1',
       };
       const user = { id: 'u1', businessId: 'b1', role: 'Owner' } as any;
 
@@ -71,7 +80,7 @@ describe('TemplateService', () => {
       const result = await service.findAllAdmin();
       expect(result).toEqual(templates);
       expect(repoMock.find).toHaveBeenCalledWith({
-        relations: ['business'],
+        relations: ['branch'],
         order: { createdAt: 'DESC' },
       });
     });

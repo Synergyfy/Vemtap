@@ -2,9 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
 import { createAuthenticatedUser } from '../utils/auth';
-import { User, UserRole } from '../../src/modules/users/entities/user.entity';
-import { DataSource } from 'typeorm';
-import { Business } from '../../src/modules/businesses/entities/business.entity';
+import { UserRole } from '../../src/modules/users/entities/user.entity';
 
 describe('Businesses (E2E)', () => {
   let app: INestApplication;
@@ -16,36 +14,10 @@ describe('Businesses (E2E)', () => {
     app = await createTestApp();
     server = app.getHttpServer();
 
-    // Setup Owner and Business
+    // Helper now handles business and main branch creation automatically for OWNER
     const { token, user } = await createAuthenticatedUser(app, UserRole.OWNER);
     ownerToken = token;
-
-    // Create a business manually for this user if not automatically done
-    const dataSource = app.get(DataSource);
-    const businessRepo = dataSource.getRepository(Business);
-    const userRepo = dataSource.getRepository(User);
-
-    const business = await businessRepo.save(
-      businessRepo.create({
-        name: 'E2E Test Business',
-        ownerId: user.id,
-      }),
-    );
-    businessId = business.id;
-
-    // Update user with businessId (using type assertion or correct property)
-    (user as any).businessId = businessId;
-    await userRepo.save(user);
-
-    // Refresh token by logging in again with updated user
-    const loginRes = await request(server)
-      .post('/api/v1/auth/login')
-      .send({
-        identifier: user.email,
-        password: 'Password123!',
-      })
-      .expect(200);
-    ownerToken = (loginRes.body as { access_token: string }).access_token;
+    businessId = user.businessId;
   });
 
   afterAll(async () => {

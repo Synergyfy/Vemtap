@@ -275,6 +275,24 @@ export class CampaignsService {
   }
 
   async earnPoints(branchId: string, dto: PointEarnRequestDto): Promise<any> {
+    const branch = await this.branchesService.findById(branchId);
+    if (!branch) throw new NotFoundException('Branch not found');
+
+    // We need to fetch the business to get the ownerId
+    const business = await (this as any).ruleRepository.manager
+      .getRepository(Business)
+      .findOne({
+        where: { id: branch.businessId },
+      });
+
+    if (business && business.ownerId === dto.userId) {
+      return {
+        success: false,
+        pointsEarned: 0,
+        message: 'Owners cannot earn points at their own business.',
+      };
+    }
+
     const rule = await this.getLoyaltyRule(branchId);
     if (!rule || !rule.isActive) {
       return {

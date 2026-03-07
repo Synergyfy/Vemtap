@@ -20,6 +20,8 @@ describe('BusinessesService', () => {
     id: 'biz-1',
     name: 'Original Name',
     ownerId: 'owner-1',
+    owner: { id: 'owner-1' },
+    branches: [],
     save: jest.fn(),
   };
 
@@ -29,7 +31,7 @@ describe('BusinessesService', () => {
       .fn()
       .mockImplementation((dto) => ({ ...dto, save: jest.fn() })),
     save: jest.fn().mockImplementation((biz) => Promise.resolve(biz)),
-    findOne: jest.fn(),
+    findOne: jest.fn().mockResolvedValue(mockBusiness),
     createQueryBuilder: jest.fn(() => ({
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
@@ -115,13 +117,15 @@ describe('BusinessesService', () => {
 
       const result = await service.update('biz-1', updateDto);
 
-      expect(repository.findOneBy).toHaveBeenCalledWith({ id: 'biz-1' });
+      expect(repository.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'biz-1' } }),
+      );
       expect(result.name).toBe(updateDto.name);
       expect(repository.save).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if business not found', async () => {
-      repository.findOneBy.mockResolvedValue(null);
+      repository.findOne.mockResolvedValue(null);
       await expect(service.update('invalid-id', {})).rejects.toThrow(
         NotFoundException,
       );

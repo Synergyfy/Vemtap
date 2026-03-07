@@ -7,6 +7,7 @@ import { TemplateService } from '../services/template.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Contact } from '../../contacts/entities/contact.entity';
 import { Business } from '../../businesses/entities/business.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 import { Channel } from '../enums/channel.enum';
 import { Job } from 'bullmq';
 
@@ -16,7 +17,7 @@ describe('BatchSendProcessor', () => {
   let campaignMock: any;
   let templateMock: any;
   let contactRepoMock: any;
-  let businessRepoMock: any;
+  let branchRepoMock: any;
 
   beforeEach(async () => {
     engineMock = {
@@ -36,7 +37,7 @@ describe('BatchSendProcessor', () => {
       findOne: jest.fn(),
     };
 
-    businessRepoMock = {
+    branchRepoMock = {
       findOne: jest.fn(),
     };
 
@@ -47,7 +48,7 @@ describe('BatchSendProcessor', () => {
         { provide: CampaignService, useValue: campaignMock },
         { provide: TemplateService, useValue: templateMock },
         { provide: getRepositoryToken(Contact), useValue: contactRepoMock },
-        { provide: getRepositoryToken(Business), useValue: businessRepoMock },
+        { provide: getRepositoryToken(Branch), useValue: branchRepoMock },
       ],
     }).compile();
 
@@ -65,7 +66,7 @@ describe('BatchSendProcessor', () => {
       mockJob = {
         data: {
           campaignId: 'c1',
-          businessId: 'b1',
+          branchId: 'br1',
           channel: Channel.SMS,
           contactIds: ['contact1', 'contact2'],
           templateId: 't1',
@@ -74,22 +75,22 @@ describe('BatchSendProcessor', () => {
       } as any;
     });
 
-    it('should return 0 success if business is not found', async () => {
-      businessRepoMock.findOne.mockResolvedValue(null);
+    it('should return 0 success if branch is not found', async () => {
+      branchRepoMock.findOne.mockResolvedValue(null);
 
       const result = await processor.process(mockJob);
 
       expect(result).toEqual({ successCount: 0, failureCount: 0 });
-      expect(businessRepoMock.findOne).toHaveBeenCalledWith({
-        where: { id: 'b1' },
-      });
+      expect(branchRepoMock.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'br1' } }),
+      );
       expect(contactRepoMock.findOne).not.toHaveBeenCalled();
     });
 
     it('should process contacts and increment success/failure counts accordingly', async () => {
-      businessRepoMock.findOne.mockResolvedValue({
-        id: 'b1',
-        name: 'Test Business',
+      branchRepoMock.findOne.mockResolvedValue({
+        id: 'br1',
+        name: 'Test Branch',
       });
       templateMock.getTemplate.mockResolvedValue({
         id: 't1',
@@ -108,7 +109,7 @@ describe('BatchSendProcessor', () => {
       const result = await processor.process(mockJob);
 
       expect(result).toEqual({ successCount: 1, failureCount: 1 });
-      expect(engineMock.calculateCost).toHaveBeenCalledWith(1, Channel.SMS);
+      expect(engineMock.calculateCost).toHaveBeenCalledWith(Channel.SMS, 1);
       expect(campaignMock.updateCampaign).toHaveBeenCalledWith(
         'c1',
         expect.objectContaining({

@@ -6,6 +6,7 @@ import { Order, OrderStatus } from '../products/entities/order.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Repository } from 'typeorm';
 import { NotFoundException, ConflictException } from '@nestjs/common';
+import { BranchesService } from '../branches/branches.service';
 
 describe('DevicesService - Order Fulfillment', () => {
   let service: DevicesService;
@@ -37,6 +38,12 @@ describe('DevicesService - Order Fulfillment', () => {
         { provide: getRepositoryToken(Device), useValue: mockDeviceRepo },
         { provide: getRepositoryToken(Order), useValue: mockOrderRepo },
         { provide: getRepositoryToken(Branch), useValue: mockBranchRepo },
+        {
+          provide: BranchesService,
+          useValue: {
+            getBusinessId: jest.fn().mockResolvedValue('bus-1'),
+          },
+        },
       ],
     }).compile();
 
@@ -58,7 +65,7 @@ describe('DevicesService - Order Fulfillment', () => {
       const order = {
         id: orderId,
         quantity: 2,
-        user: { businessId },
+        user: { businessId, branchId: 'br-1' },
         product: {
           name: 'Product A',
           productType: { id: 'type-1', name: 'NFC Card' },

@@ -132,7 +132,7 @@ export class SupportService {
       assignedChats,
       openTickets,
       resolvedToday,
-      avgResponseTime: '4m', // Placeholder as calculating this requires more complex logic
+      avgResponseTime: '4m', // Placeholder
     };
   }
 
@@ -144,7 +144,7 @@ export class SupportService {
   ) {
     const [data, total] = await this.ticketRepository.findAndCount({
       where: { assignedToId: agentId, type },
-      relations: ['user', 'user.business'],
+      relations: ['user'],
       order: { updatedAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -163,7 +163,6 @@ export class SupportService {
         'messages',
         'messages.sender',
         'user',
-        'user.business',
         'activity',
       ],
     });
@@ -304,7 +303,6 @@ export class SupportService {
     const agent = await this.userRepository.findOne({
       where: { id: agentId, role: UserRole.AGENT },
     });
-    // For now, let's also allow assigning to admins if needed, but the prompt implies agents
     if (!agent) throw new NotFoundException('Agent not found');
 
     ticket.assignedToId = agentId;
