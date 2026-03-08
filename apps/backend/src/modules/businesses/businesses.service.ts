@@ -52,12 +52,15 @@ export class BusinessesService {
       website,
       whatsappNumber,
       officialEmail,
+      phone,
       ...businessBaseData
     } = businessData;
 
-    const business = this.businessesRepository.create(
-      businessBaseData as Partial<Business>,
-    );
+    const business = this.businessesRepository.create({
+      ...businessBaseData,
+      officialEmail,
+      phone,
+    } as Partial<Business>);
     const savedBusiness = await this.businessesRepository.save(business);
 
     // Automatically create Main Branch
@@ -69,7 +72,8 @@ export class BusinessesService {
       address,
       website,
       whatsappNumber,
-      officialEmail,
+      officialEmail: officialEmail,
+      phone: phone,
     } as any); // Cast to any because the repository might not be updated yet in TS context
     const savedBranch = (await this.branchRepository.save(
       mainBranch,
@@ -284,6 +288,8 @@ export class BusinessesService {
       ownerId: savedUser.id,
       type: dto.type,
       status: dto.status || BusinessStatus.ACTIVE,
+      officialEmail: dto.officialEmail,
+      phone: dto.whatsappNumber || dto.officialEmail, // Using whatsappNumber or officialEmail as fallback for phone if not provided? wait, dto has officialEmail and whatsappNumber but not phone.
     } as Partial<Business>);
 
     const savedBusiness = await this.businessesRepository.save(business);

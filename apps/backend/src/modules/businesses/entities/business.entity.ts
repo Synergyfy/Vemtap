@@ -58,6 +58,12 @@ export class Business extends AbstractBaseEntity {
   @Column({ nullable: true })
   goal: string;
 
+  @Column({ nullable: true })
+  officialEmail: string;
+
+  @Column({ nullable: true })
+  phone: string;
+
   // Relation to the owner
   @OneToOne(() => User, (user) => user.ownedBusiness, {
     onDelete: 'CASCADE',

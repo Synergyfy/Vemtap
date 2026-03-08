@@ -318,6 +318,7 @@ export class AuthService {
       website: dto.businessWebsite,
       whatsappNumber: dto.whatsappNumber,
       officialEmail: dto.officialEmail,
+      phone: dto.businessNumber,
     });
 
     // Fetch fresh user with branchId (linked during business creation)
