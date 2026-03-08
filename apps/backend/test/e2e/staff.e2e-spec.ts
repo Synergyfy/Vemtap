@@ -20,7 +20,11 @@ describe('Staff Management (e2e)', () => {
     branchId = ownerRes.user.branchId;
 
     // Create a staff member for testing
-    const staffRes = await createAuthenticatedUser(app, UserRole.STAFF, branchId);
+    const staffRes = await createAuthenticatedUser(
+      app,
+      UserRole.STAFF,
+      branchId,
+    );
     staffId = staffRes.user.id;
   });
 

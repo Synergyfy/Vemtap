@@ -32,7 +32,11 @@ describe('Agent Flow (e2e)', () => {
     agentToken = agent.token;
     agentId = agent.user.id;
 
-    const customer = await createAuthenticatedUser(app, UserRole.CUSTOMER, branchId);
+    const customer = await createAuthenticatedUser(
+      app,
+      UserRole.CUSTOMER,
+      branchId,
+    );
     customerToken = customer.token;
   });
 
