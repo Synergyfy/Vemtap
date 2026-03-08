@@ -54,6 +54,13 @@ export class Product extends AbstractBaseEntity {
   @Column({ nullable: true })
   tagColor: string;
 
+  @ApiProperty({
+    example: '1. Scan the QR code, 2. Follow the steps...',
+    required: false,
+  })
+  @Column({ type: 'text', nullable: true })
+  howToUse: string;
+
   @ApiProperty({ example: 4.5 })
   @Column('float', { default: 5 })
   rating: number;

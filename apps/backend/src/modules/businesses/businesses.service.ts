@@ -175,7 +175,14 @@ export class BusinessesService {
   }) {
     const qb = this.businessesRepository
       .createQueryBuilder('business')
-      .leftJoinAndSelect('business.owner', 'owner');
+      .leftJoinAndSelect('business.owner', 'owner')
+      .leftJoinAndSelect(
+        'business.branches',
+        'mainBranch',
+        'mainBranch.isMainBranch = :isMain',
+        { isMain: true },
+      )
+      .loadRelationCountAndMap('business.totalBranches', 'business.branches');
 
     if (query.status) {
       const normalizedStatus = String(
@@ -227,10 +234,10 @@ export class BusinessesService {
       )
       .where('business.status = :status', { status: BusinessStatus.ACTIVE })
       .andWhere('business.updatedAt >= :today', { today: todayStart })
-      .getRawOne();
+      .getRawOne<{ avgSeconds: string | null }>();
 
     const avgWaitHours = waitTimeData?.avgSeconds
-      ? (parseFloat(waitTimeData.avgSeconds as string) / 3600).toFixed(1)
+      ? (parseFloat(waitTimeData.avgSeconds) / 3600).toFixed(1)
       : '0.0';
 
     return {

@@ -183,7 +183,9 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('switch-role')
-  @ApiOperation({ summary: 'Switch current active role (e.g. Owner to Customer)' })
+  @ApiOperation({
+    summary: 'Switch current active role (e.g. Owner to Customer)',
+  })
   @ApiBody({ type: SwitchRoleDto })
   @ApiResponse({
     status: 200,

@@ -70,4 +70,6 @@ export class Business extends AbstractBaseEntity {
 
   @OneToMany(() => Branch, (branch) => branch.business)
   branches: Branch[];
+
+  totalBranches?: number;
 }

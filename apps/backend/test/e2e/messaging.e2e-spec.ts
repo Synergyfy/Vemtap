@@ -59,7 +59,8 @@ describe('Messaging (e2e)', () => {
     subRepo = app.get(getRepositoryToken(Subscription));
     authService = app.get(AuthService);
 
-    const testId = Date.now().toString() + Math.random().toString(36).substring(7);
+    const testId =
+      Date.now().toString() + Math.random().toString(36).substring(7);
     const password = 'Password123!';
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -208,7 +209,9 @@ describe('Messaging (e2e)', () => {
 
     it('should return campaigns for the whole business with allBranches=true', async () => {
       const res = await request(app.getHttpServer())
-        .get(`/api/v1/messaging/campaigns?allBranches=true&branchId=${branchId}`) // Must provide ONE branch context even for aggregation for access check
+        .get(
+          `/api/v1/messaging/campaigns?allBranches=true&branchId=${branchId}`,
+        ) // Must provide ONE branch context even for aggregation for access check
         .set('Authorization', `Bearer ${ownerToken}`)
         .expect(200);
 

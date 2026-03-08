@@ -281,7 +281,8 @@ export class MessagingEngineService {
   async calculateCost(channel: Channel, count: number): Promise<number> {
     const settings = await this.settingsService.getSettings();
     let unitCost = 0;
-    if (channel === Channel.SMS) unitCost = (settings as any).messagingCostSms || 0;
+    if (channel === Channel.SMS)
+      unitCost = (settings as any).messagingCostSms || 0;
     else if (channel === Channel.WHATSAPP)
       unitCost = (settings as any).messagingCostWhatsapp || 0;
     else if (channel === Channel.EMAIL)
@@ -310,7 +311,7 @@ export class MessagingEngineService {
   // --- Webhooks & Events ---
 
   async handleInbound(inbound: InboundMessage) {
-    let contact = await this.contactRepo.findOne({
+    const contact = await this.contactRepo.findOne({
       where: [{ phone: inbound.from }, { email: inbound.from }],
     });
 

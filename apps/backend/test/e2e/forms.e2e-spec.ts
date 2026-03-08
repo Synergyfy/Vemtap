@@ -19,7 +19,11 @@ describe('Forms Module (E2E)', () => {
     ownerToken = ownerRes.token;
     branchId = ownerRes.user.branchId;
 
-    const visitorRes = await createAuthenticatedUser(app, UserRole.CUSTOMER, branchId);
+    const visitorRes = await createAuthenticatedUser(
+      app,
+      UserRole.CUSTOMER,
+      branchId,
+    );
     visitorToken = visitorRes.token;
   });
 
