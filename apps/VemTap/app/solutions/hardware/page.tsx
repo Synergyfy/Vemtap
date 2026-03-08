@@ -16,9 +16,6 @@ import {
 } from 'lucide-react';
 import LogoIcon from '@/components/brand/LogoIcon';
 
-import Nfc1 from "@/assets/nfc/Card NFC Plate White Spec branded.avif"
-import Nfc2 from "@/assets/nfc/Chip_tag_NFC215.avif"
-import Nfc3 from "@/assets/nfc/Reading position.avif"
 
 export default function HardwareSolutionPage() {
     return (
@@ -194,21 +191,21 @@ export default function HardwareSolutionPage() {
                                 {
                                     heading: 'Merchant Plates',
                                     desc: 'Fixed identification point for receptionists, bars, and exit halls. Durable and professional.',
-                                    img: Nfc3.src,
+                                    img: "/assets/nfc/Reading position.avif",
                                     tags: ['Self-Adhesive', 'Branded', 'Industrial PVC'],
                                     color: 'bg-blue-600'
                                 },
                                 {
                                     heading: 'Identity Cards',
                                     desc: 'Credit-card sized NFC tags for staff or VIP priority members. Fits in any wallet.',
-                                    img: Nfc1.src,
+                                    img: "/assets/nfc/Card NFC Plate White Spec branded.avif",
                                     tags: ['Double-Sided', 'Durable', 'Personalized'],
                                     color: 'bg-purple-600'
                                 },
                                 {
                                     heading: 'Smart Stickers',
                                     desc: 'Low-profile tags for menus, table tents, and product packaging. Flexible and discrete.',
-                                    img: Nfc2.src,
+                                    img: "/assets/nfc/Chip_tag_NFC215.avif",
                                     tags: ['Flexible', 'Discrete', 'Clear Gloss'],
                                     color: 'bg-emerald-600'
                                 }
