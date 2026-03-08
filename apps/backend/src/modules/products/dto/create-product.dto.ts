@@ -68,6 +68,14 @@ export class CreateProductDto {
   @IsOptional()
   tagColor?: string;
 
+  @ApiProperty({
+    example: '1. Scan the QR code, 2. Follow the steps...',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  howToUse?: string;
+
   @ApiProperty({ example: 4.5, required: false })
   @IsNumber()
   @IsOptional()

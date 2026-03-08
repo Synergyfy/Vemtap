@@ -6,7 +6,6 @@ import {
   Param,
   Query,
   Request,
-  UseGuards,
   BadRequestException,
 } from '@nestjs/common';
 import { FormsService } from './forms.service';
@@ -19,6 +18,11 @@ import {
   ApiQuery,
   ApiBody,
 } from '@nestjs/swagger';
+import { User } from '../users/entities/user.entity';
+
+interface RequestWithUser extends Request {
+  user: User;
+}
 
 @ApiTags('Visitor Forms')
 @ApiBearerAuth()
@@ -126,7 +130,7 @@ export class VisitorFormsController {
     description: 'Form response successfully submitted.',
   })
   submitResponse(
-    @Request() req,
+    @Request() req: RequestWithUser,
     @Param('id') id: string,
     @Body() submitResponseDto: SubmitFormResponseDto,
   ) {
