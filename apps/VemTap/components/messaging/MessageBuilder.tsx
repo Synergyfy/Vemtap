@@ -211,9 +211,9 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
     const selectedForm = eligibleForms.find((form) => form.id === selectedFormId) || null;
     const selectedFormLink =
         selectedFormId && typeof window !== 'undefined'
-            ? `${window.location.origin}/user-step?formId=${selectedFormId}`
+            ? `${window.location.origin}/forms/${selectedFormId}`
             : selectedFormId
-                ? `/user-step?formId=${selectedFormId}`
+                ? `/forms/${selectedFormId}`
                 : '';
     const contentWithFormLink =
         selectedFormLink && customContent.trim()

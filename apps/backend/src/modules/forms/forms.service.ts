@@ -1,17 +1,18 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like, FindOptionsWhere } from 'typeorm';
 import { Form } from './entities/form.entity';
 import { FormField } from './entities/form-field.entity';
 import { FormResponse } from './entities/form-response.entity';
 import { FormAnswer } from './entities/form-answer.entity';
+import { FormTemplate } from './entities/form-template.entity';
+import { FormFieldTemplate } from './entities/form-field-template.entity';
 import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { SubmitFormResponseDto } from './dto/submit-form-response.dto';
+import { CreateFormTemplateDto } from './dto/create-form-template.dto';
+import { UpdateFormTemplateDto } from './dto/update-form-template.dto';
+import { FormTemplateQueryDto } from './dto/form-template-query.dto';
 import { BranchesService } from '../branches/branches.service';
 import { User } from '../users/entities/user.entity';
 
@@ -26,6 +27,10 @@ export class FormsService {
     private readonly formResponsesRepository: Repository<FormResponse>,
     @InjectRepository(FormAnswer)
     private readonly formAnswersRepository: Repository<FormAnswer>,
+    @InjectRepository(FormTemplate)
+    private readonly formTemplatesRepository: Repository<FormTemplate>,
+    @InjectRepository(FormFieldTemplate)
+    private readonly formFieldTemplatesRepository: Repository<FormFieldTemplate>,
     private readonly branchesService: BranchesService,
   ) {}
 
@@ -39,7 +44,7 @@ export class FormsService {
       ...dto,
       branchId,
       businessId: branch.businessId,
-    } as any) as unknown as Form;
+    });
     return this.formsRepository.save(form);
   }
 
@@ -86,9 +91,112 @@ export class FormsService {
     });
   }
 
+  // Template Methods
+  async createTemplate(dto: CreateFormTemplateDto): Promise<FormTemplate> {
+    const template = this.formTemplatesRepository.create({
+      name: dto.name,
+      description: dto.description,
+      fields: dto.fields.map((field) =>
+        this.formFieldTemplatesRepository.create(field),
+      ),
+    });
+    return this.formTemplatesRepository.save(template);
+  }
+
+  async findAllTemplates(
+    query: FormTemplateQueryDto,
+  ): Promise<{ items: FormTemplate[]; total: number }> {
+    const { search, page = 1, limit = 10 } = query;
+    const skip = (page - 1) * limit;
+
+    const where: FindOptionsWhere<FormTemplate>[] = [];
+    if (search) {
+      where.push({ name: Like(`%${search}%`) });
+      where.push({ description: Like(`%${search}%`) });
+    }
+
+    const [items, total] = await this.formTemplatesRepository.findAndCount({
+      where: where.length > 0 ? where : undefined,
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
+      relations: ['fields'],
+    });
+
+    return { items, total };
+  }
+
+  async findTemplateById(id: string): Promise<FormTemplate> {
+    const template = await this.formTemplatesRepository.findOne({
+      where: { id },
+      relations: ['fields'],
+    });
+    if (!template) throw new NotFoundException('Template not found');
+    return template;
+  }
+
+  async updateTemplate(
+    id: string,
+    dto: UpdateFormTemplateDto,
+  ): Promise<FormTemplate> {
+    const template = await this.findTemplateById(id);
+
+    if (dto.name) template.name = dto.name;
+    if (dto.description !== undefined)
+      template.description = dto.description ?? '';
+
+    if (dto.fields) {
+      // For simplicity in this implementation, we replace fields
+      // In a production app, you might want to sync them more granularly
+      await this.formFieldTemplatesRepository.delete({ templateId: id });
+      template.fields = dto.fields.map((field) =>
+        this.formFieldTemplatesRepository.create({ ...field, templateId: id }),
+      );
+    }
+
+    return this.formTemplatesRepository.save(template);
+  }
+
+  async deleteTemplate(id: string): Promise<void> {
+    const template = await this.findTemplateById(id);
+    await this.formTemplatesRepository.remove(template);
+  }
+
+  async useTemplate(branchId: string, templateId: string): Promise<Form> {
+    const template = await this.findTemplateById(templateId);
+    const branch = await this.branchesService.findById(branchId);
+
+    const form = this.formsRepository.create({
+      title: template.name,
+      description: template.description,
+      branchId,
+      businessId: branch.businessId,
+      isActive: true,
+      isPublished: false,
+    });
+
+    const savedForm = await this.formsRepository.save(form);
+
+    const fields = template.fields.map((tField) =>
+      this.formFieldsRepository.create({
+        formId: savedForm.id,
+        type: tField.type,
+        question: tField.question,
+        options: tField.options,
+        isRequired: tField.isRequired,
+        order: tField.order,
+      }),
+    );
+
+    await this.formFieldsRepository.save(fields);
+    savedForm.fields = fields;
+
+    return savedForm;
+  }
+
   // Admin Methods
   async findAllForAdmin(query: { branchId?: string }) {
-    const where: any = {};
+    const where: FindOptionsWhere<Form> = {};
     if (query.branchId) where.branchId = query.branchId;
     return this.formsRepository.find({ where, relations: ['branch'] });
   }
@@ -96,20 +204,31 @@ export class FormsService {
   async setAdminDisabledStatus(id: string, isDisabled: boolean) {
     const form = await this.formsRepository.findOneBy({ id });
     if (!form) throw new NotFoundException('Form not found');
-    (form as any).adminDisabled = isDisabled;
+    form.adminDisabled = isDisabled;
     return this.formsRepository.save(form);
   }
 
   // Visitor actions
   async getFormsForVisitor(branchId: string): Promise<Form[]> {
     return this.formsRepository.find({
-      where: { branchId, isPublished: true, isActive: true },
+      where: {
+        branchId,
+        isPublished: true,
+        isActive: true,
+        adminDisabled: false,
+      },
     });
   }
 
   async getFormByIdForVisitor(id: string, branchId: string): Promise<Form> {
     const form = await this.formsRepository.findOne({
-      where: { id, branchId, isPublished: true, isActive: true },
+      where: {
+        id,
+        branchId,
+        isPublished: true,
+        isActive: true,
+        adminDisabled: false,
+      },
       relations: ['fields'],
     });
 
@@ -125,23 +244,17 @@ export class FormsService {
     const form = await this.formsRepository.findOneBy({ id: formId });
     if (!form) throw new NotFoundException('Form not found');
 
-    const savedResponseResult = await this.formResponsesRepository.save(
-      this.formResponsesRepository.create({
-        formId,
-        visitorId,
-        branchId: form.branchId,
-        businessId: (form as any).businessId,
-      } as any) as unknown as FormResponse,
-    );
+    const response = this.formResponsesRepository.create({
+      formId,
+      visitorId,
+      branchId: form.branchId,
+      businessId: form.businessId ?? undefined,
+    });
 
-    const savedResponse = (
-      Array.isArray(savedResponseResult)
-        ? savedResponseResult[0]
-        : savedResponseResult
-    ) as FormResponse;
+    const savedResponse = await this.formResponsesRepository.save(response);
 
     if (dto.answers && Array.isArray(dto.answers)) {
-      const answers = dto.answers.map((ans: any) =>
+      const answers = dto.answers.map((ans) =>
         this.formAnswersRepository.create({
           responseId: savedResponse.id,
           fieldId: ans.fieldId,
@@ -149,7 +262,7 @@ export class FormsService {
         }),
       );
       await this.formAnswersRepository.save(answers);
-      (savedResponse as any).answers = answers;
+      savedResponse.answers = answers;
     }
 
     return savedResponse;

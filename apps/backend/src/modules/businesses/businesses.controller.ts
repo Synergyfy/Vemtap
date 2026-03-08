@@ -4,7 +4,6 @@ import {
   Patch,
   Body,
   Request,
-  UseGuards,
   Param,
   Query,
   Post,
@@ -22,10 +21,14 @@ import {
   ApiOkResponse,
 } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '../users/entities/user.entity';
+import { UserRole, User } from '../users/entities/user.entity';
 import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
 import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
 import { ImportCustomersDto } from './dto/import-customers.dto';
+
+interface RequestWithUser extends Request {
+  user: User;
+}
 
 @ApiTags('businesses')
 @ApiBearerAuth()
@@ -41,7 +44,7 @@ export class BusinessesController {
     description: 'Current business details',
     type: UpdateBusinessDto, // Business entity structure matches most of UpdateBusinessDto for swagger
   })
-  async getMyBusiness(@Request() req) {
+  async getMyBusiness(@Request() req: RequestWithUser) {
     return this.businessesService.findById(req.user.businessId);
   }
 
@@ -59,7 +62,7 @@ export class BusinessesController {
     type: UpdateBusinessDto,
   })
   async updateMyBusiness(
-    @Request() req,
+    @Request() req: RequestWithUser,
     @Body() updateBusinessDto: UpdateBusinessDto,
   ) {
     const businessId = req.user.businessId;
@@ -88,7 +91,10 @@ export class BusinessesController {
       },
     },
   })
-  async importCustomers(@Request() req, @Body() importDto: ImportCustomersDto) {
+  async importCustomers(
+    @Request() req: RequestWithUser,
+    @Body() importDto: ImportCustomersDto,
+  ) {
     const businessId = req.user.businessId;
     if (!businessId) {
       throw new BadRequestException('User is not associated with a business');

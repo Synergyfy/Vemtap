@@ -62,7 +62,9 @@ export class MessagingController {
           queryBranchId,
         );
         if (!hasAccess) {
-          throw new BadRequestException('You do not have access to this branch');
+          throw new BadRequestException(
+            'You do not have access to this branch',
+          );
         }
       }
       return queryBranchId;

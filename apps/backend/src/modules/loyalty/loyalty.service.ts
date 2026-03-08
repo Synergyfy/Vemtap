@@ -86,7 +86,10 @@ export class LoyaltyService {
     return profile;
   }
 
-  async createCustomerProfile(userId: string, branchId: string): Promise<LoyaltyProfile> {
+  async createCustomerProfile(
+    userId: string,
+    branchId: string,
+  ): Promise<LoyaltyProfile> {
     return this.getProfile(userId, branchId);
   }
 
