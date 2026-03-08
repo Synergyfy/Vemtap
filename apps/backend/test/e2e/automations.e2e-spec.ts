@@ -121,7 +121,9 @@ describe('AutomationsController (e2e)', () => {
 
     it('GET /messaging/automations/connection-status - should return whatsapp connection status', async () => {
       const res = await request(app.getHttpServer())
-        .get(`/api/v1/messaging/automations/connection-status?branchId=${branchId}`)
+        .get(
+          `/api/v1/messaging/automations/connection-status?branchId=${branchId}`,
+        )
         .set('Authorization', `Bearer ${ownerToken}`)
         .expect(200);
 

@@ -1,17 +1,26 @@
 export interface Product {
     id: string;
     name: string;
-    brand: string;
-    category: string;
+    brand?: string;
+    category?: string;
     rating: number;
     price: number;
-    originalPrice: number | null;
+    originalPrice?: number | null;
+    images?: string[];
     image: string;
-    desc: string;
+    description: string;
     tag: string;
     tagColor: string;
-    action: 'cart' | 'quote' | 'download';
+    action?: 'cart' | 'quote' | 'download';
     moq?: number;
+    videos?: string[];
+    technicalSpecifications?: Record<string, string>;
+    customBrandedCards?: boolean;
+    howToUse?: HowToStep[];
+    priceTiers?: { min: number; max: number | null; price: number }[];
+    requestQuoteThreshold?: number;
+    productTypeId?: string;
+    status: 'Published' | 'Unpublished';
 }
 
 export interface TieredPrice {
@@ -28,9 +37,9 @@ export interface HowToStep {
 
 export interface ProductDetail {
     id: string;
-    sku: string;
+    sku?: string;
     name: string;
-    brand: string;
+    brand?: string;
     price: number;
     description: string;
     longDescription?: string; // HTML or Markdown content for "Details" tab
@@ -38,27 +47,35 @@ export interface ProductDetail {
     mainImage: string;
     tag: string;
     tagColor: string;
-    specifications: Record<string, string>;
-    documents: {
+    specifications?: Record<string, string>;
+    technicalSpecifications?: Record<string, string>;
+    documents?: {
         name: string;
         size: string;
         date: string;
         downloads: number;
         type: 'sdk' | 'pdf';
     }[];
-    relatedProducts: {
+    relatedProducts?: {
         id: string;
         name: string;
         image: string;
         brand: string;
         price: number;
     }[];
-    features: string[];
+    features?: string[];
     tieredPricing?: TieredPrice[];
+    priceTiers?: { min: number; max: number | null; price: number }[];
     moq?: number;
     reviews?: number; // Added for product detail page compatibility
     rating?: number; // Added for compatibility
     howToSteps?: HowToStep[];
+    howToUse?: HowToStep[];
+    videos?: string[];
+    customBrandedCards?: boolean;
+    requestQuoteThreshold?: number;
+    productTypeId?: string;
+    status?: 'Published' | 'Unpublished';
 }
 
 export type ProductsResponse = {

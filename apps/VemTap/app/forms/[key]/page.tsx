@@ -2,21 +2,27 @@
 
 import React, { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useBusinessFormsStore } from '@/store/useBusinessFormsStore';
+import { useBusinessForms, useSubmitBusinessFormResponse } from '@/services/business-forms/hooks';
 import PhoneFrame from '@/components/shared/PhoneFrame';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { CheckCircle2 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 export default function PublicBusinessFormPage() {
     const params = useParams();
     const formKey = String(params?.key || '');
-    const forms = useBusinessFormsStore((state) => state.forms);
-    const submitForm = useBusinessFormsStore((state) => state.submitForm);
+    const { data: forms = [], isLoading } = useBusinessForms();
 
     const form = useMemo(
-        () => forms.find((item) => item.key === formKey && item.status === 'approved'),
+        () =>
+            forms.find((item: any) =>
+                item.isPublished &&
+                item.isActive &&
+                (item.id === formKey || item.key === formKey)
+            ),
         [forms, formKey]
     );
+    const submitFormResponse = useSubmitBusinessFormResponse(form?.id || '');
 
     const [identity, setIdentity] = useState({
         name: '',
@@ -25,7 +31,7 @@ export default function PublicBusinessFormPage() {
     });
     const [submitted, setSubmitted] = useState(false);
 
-    if (!form) {
+    if (!isLoading && !form) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
                 <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-md w-full text-center">
@@ -37,6 +43,7 @@ export default function PublicBusinessFormPage() {
             </div>
         );
     }
+    if (isLoading || !form) return null;
 
     if (submitted) {
         return (
@@ -88,18 +95,23 @@ export default function PublicBusinessFormPage() {
                         <div className="px-5 pb-8 pt-2">
                             <StepBusinessForm
                                 form={form}
-                                onComplete={(answers) => {
-                                    submitForm({
-                                        formId: form.id,
-                                        businessId: form.businessId,
-                                        formType: form.type,
-                                        formTitle: form.title,
-                                        customerName: identity.name.trim() || 'Anonymous',
-                                        customerEmail: identity.email.trim() || undefined,
-                                        customerPhone: identity.phone.trim() || undefined,
-                                        answers
-                                    });
+                                onComplete={async (answers) => {
+                                    try {
+                                        await submitFormResponse.mutateAsync({
+                                            customerName: identity.name.trim() || 'Anonymous',
+                                            customerEmail: identity.email.trim() || undefined,
+                                            customerPhone: identity.phone.trim() || undefined,
+                                            answers,
+                                        });
+                                    } catch {
+                                        toast.error('Failed to submit form');
+                                        return;
+                                    }
+
                                     setSubmitted(true);
+                                    if (form.redirectUrl && typeof window !== 'undefined') {
+                                        window.location.assign(form.redirectUrl);
+                                    }
                                 }}
                                 onSkip={() => setSubmitted(true)}
                             />

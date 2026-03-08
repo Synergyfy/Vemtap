@@ -54,6 +54,14 @@ export class Product extends AbstractBaseEntity {
   @Column({ nullable: true })
   tagColor: string;
 
+  @ApiProperty({
+    example: '[{"title": "Step 1", "description": "Scan the QR code"}]',
+    description: 'Instructions on how to use the product',
+    required: false,
+  })
+  @Column({ type: 'jsonb', nullable: true })
+  howToUse: { title: string; description: string }[];
+
   @ApiProperty({ example: 4.5 })
   @Column('float', { default: 5 })
   rating: number;

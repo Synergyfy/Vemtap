@@ -318,6 +318,7 @@ export class AuthService {
       website: dto.businessWebsite,
       whatsappNumber: dto.whatsappNumber,
       officialEmail: dto.officialEmail,
+      phone: dto.businessNumber,
     });
 
     // Fetch fresh user with branchId (linked during business creation)
@@ -456,9 +457,7 @@ export class AuthService {
       // If switching to OWNER, we need businessId
       businessId:
         targetRole === UserRole.OWNER
-          ? (
-              await this.businessesService.findByOwner(dbUser.id)
-            )?.id
+          ? (await this.businessesService.findByOwner(dbUser.id))?.id
           : undefined,
     };
 
