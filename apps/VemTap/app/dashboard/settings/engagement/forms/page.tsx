@@ -197,7 +197,7 @@ export default function EngagementFormsBuilderPage() {
     return (
         <div className="p-8 space-y-8">
             <PageHeader title="Visitor Forms" description="Step-by-step form creator with mobile review and publishing." />
-            <EngagementTabs tabs={[{ label: 'Socials', href: '/dashboard/settings/engagement/socials' }, { label: 'Form Creator', active: true }, { label: 'Responses', href: '/dashboard/settings/engagement/forms/responses' }, { label: 'Automation', href: '/dashboard/automations' }, { label: 'Messaging', href: '/dashboard/messaging/compose' }]} />
+            <EngagementTabs tabs={[{ label: 'Socials', href: '/dashboard/settings/engagement/socials' }, { label: 'Form Creator', active: true }, { label: 'Responses', href: '/dashboard/settings/engagement/forms/responses' }]} />
 
             <div className="bg-white rounded-2xl border border-gray-200 p-5">
                 <div className="flex items-center justify-between gap-3 mb-4">
