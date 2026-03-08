@@ -59,8 +59,8 @@ export default function AdminAgentsPage() {
     };
 
     const filteredStaff = staffList.filter((s: any) =>
-        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.email.toLowerCase().includes(searchQuery.toLowerCase())
+        (s.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (s.email?.toLowerCase() || '').includes(searchQuery.toLowerCase())
     );
 
     const inviteLink = useMemo(() => {

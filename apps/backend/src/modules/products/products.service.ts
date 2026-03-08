@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, FindOptionsWhere } from 'typeorm';
 import { Product, ProductStatus } from './entities/product.entity';
 import { Quote, QuoteStatus } from './entities/quote.entity';
 import {
@@ -149,7 +149,9 @@ export class ProductsService {
   }
 
   async findAllPublished(productTypeId?: string): Promise<Product[]> {
-    const where: any = { status: ProductStatus.PUBLISHED };
+    const where: FindOptionsWhere<Product> = {
+      status: ProductStatus.PUBLISHED,
+    };
     if (productTypeId) {
       where.productTypeId = productTypeId;
     }

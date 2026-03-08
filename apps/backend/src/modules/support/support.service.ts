@@ -159,12 +159,7 @@ export class SupportService {
   async findOneAgent(id: string): Promise<SupportTicket> {
     const ticket = await this.ticketRepository.findOne({
       where: { id },
-      relations: [
-        'messages',
-        'messages.sender',
-        'user',
-        'activity',
-      ],
+      relations: ['messages', 'messages.sender', 'user', 'activity'],
     });
     if (!ticket) throw new NotFoundException('Ticket not found');
     return ticket;
