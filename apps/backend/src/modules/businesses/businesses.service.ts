@@ -176,6 +176,12 @@ export class BusinessesService {
     const qb = this.businessesRepository
       .createQueryBuilder('business')
       .leftJoinAndSelect('business.owner', 'owner')
+      .leftJoinAndSelect(
+        'business.branches',
+        'mainBranch',
+        'mainBranch.isMainBranch = :isMain',
+        { isMain: true },
+      )
       .loadRelationCountAndMap('business.totalBranches', 'business.branches');
 
     if (query.status) {
