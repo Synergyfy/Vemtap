@@ -13,10 +13,11 @@ const mockProducts: Product[] = [
         price: 124999,
         originalPrice: 149000,
         image: "https://lh3.googleusercontent.com/aida-public/AB6AXuB6J_11qPV0OmQwFJoKJtTMpD_qjs1SsBP9UsQg0ecJWY2IONWb79e03v7EMbPHEBzTJtdwTiWa4uHBlwQpbnU0EI9XkmDEOrQF_F57RfXBMpzCz3WITiymIK5fKWEIyOxSSyurDKwi32cxVO-m90-snIAYuoCD8Yr181lIcfNaCRwZr0bXXLyxdrvlnrxIO6jof5lw-BXhuVlPaRUFxFKCg5okpbY0Vrtjw1r2KKRGWGcmaZz_OUHZQ7qJnz8J7LCbuEvtvZWaxQWL",
-        desc: 'Dual-interface Smart Card Reader with CCID Support',
+        description: 'Dual-interface Smart Card Reader with CCID Support',
         tag: 'In Stock',
         tagColor: 'bg-emerald-500',
-        action: 'cart'
+        action: 'cart',
+        status: 'Published'
     },
     {
         id: 'omnikey-5422',
@@ -27,10 +28,11 @@ const mockProducts: Product[] = [
         price: 189000,
         originalPrice: null,
         image: "https://lh3.googleusercontent.com/aida-public/AB6AXuA13i7tJ7UvtV5AeSpw3wOHaYE8eOSOAHsJtyf9B8QtVXaQpAPS3C7Teyqjev3z6_-2UBAUUsl9_wQrPFQB4dsL21qcM803GIIhce48iGdAgKXjYlhpJBNo1PKjrd-FnkGqZzA9IKKpAIcee1B396E-WCSuonb2_wSUSBjZpX_9OT6hB2FsxRZYweRceLiA9MfmDMM0f3rXJHKAq-TzdbZ2XPvvKlIxen5gbQNQZlFxGq791xkCofDQmiLKdWXKTXx5bV39FHTL2Zxu",
-        desc: 'Contactless 13.56 MHz and Contact Smart Card',
+        description: 'Contactless 13.56 MHz and Contact Smart Card',
         tag: 'Bulk Choice',
         tagColor: 'bg-blue-500',
-        action: 'cart'
+        action: 'cart',
+        status: 'Published'
     },
     {
         id: 'sdk-bundle',
@@ -41,10 +43,11 @@ const mockProducts: Product[] = [
         price: 499000,
         originalPrice: null,
         image: "https://lh3.googleusercontent.com/aida-public/AB6AXuB9fUTe24WCXHHYE4D4j0PVwg79HTdwdPmXG64DA9YOPJgE3IueN-3HHmLPcpgz0mA8Zv-HKS9rL6Wkpp0FRhDePtzWdJ8_vVpFbqT8grR6SyWyuQJlAYEZMHdIjcJAkZASE4iH8WHSJS0bqM0mvzNzPuctGZfYF0QsdbMOcQ6NuiCqpWrfcnaU-XlodX_ZGJcMfXXdD-uW2yjKMdzwsrPxqDjvTp8eIYbZWNSV2IIKpeWykSDBLl3dNFlzK8D46MQVO4EpHHXmsIsE",
-        desc: 'Python, C++, Java & WebHID API wrappers',
+        description: 'Python, C++, Java & WebHID API wrappers',
         tag: 'Software',
         tagColor: 'bg-indigo-500',
-        action: 'cart'
+        action: 'cart',
+        status: 'Published'
     }
 ];
 
