@@ -233,7 +233,7 @@ export default function MarketplacePage() {
                                         <h3 className="font-display font-bold text-xl text-text-main leading-snug mb-3 group-hover:text-primary transition-colors line-clamp-2">
                                             {product.name}
                                         </h3>
-                                        <p className="text-sm text-text-secondary line-clamp-2 mb-8 leading-relaxed font-medium">{product.desc}</p>
+                                        <p className="text-sm text-text-secondary line-clamp-2 mb-8 leading-relaxed font-medium">{product.description}</p>
 
                                         <div className="mt-auto space-y-3">
                                             {/* Price per unit and MOQ */}
