@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useBusinessFormsStore } from '@/store/useBusinessFormsStore';
-import { CheckCircle2, XCircle, Clock3, Plus, Trash2, FilePlus, Layout, Settings2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock3, Plus, Trash2, FilePlus, Layout, Settings2, Pencil } from 'lucide-react';
 import { notify } from '@/lib/notify';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -12,6 +12,7 @@ export default function AdminFormsPage() {
     const templates = useBusinessFormsStore((state) => state.templates);
     const setFormStatus = useBusinessFormsStore((state) => state.setFormStatus);
     const createTemplate = useBusinessFormsStore((state) => state.createTemplate);
+    const updateTemplate = useBusinessFormsStore((state) => state.updateTemplate);
     const deleteTemplate = useBusinessFormsStore((state) => state.deleteTemplate);
     const fetchTemplates = useBusinessFormsStore((state) => state.fetchTemplates);
     const fetchForms = useBusinessFormsStore((state) => state.fetchForms);
@@ -29,6 +30,7 @@ export default function AdminFormsPage() {
     const pendingForms = useMemo(() => forms.filter((form) => form.status === 'pending'), [forms]);
     const [activeTab, setActiveTab] = useState<'pending' | 'all' | 'responses' | 'templates'>('pending');
 
+    const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [templateForm, setTemplateForm] = useState({
         title: '',
@@ -40,15 +42,35 @@ export default function AdminFormsPage() {
 
     const [newField, setNewField] = useState({ label: '', type: 'short_text' });
 
+    const openCreateModal = () => {
+        setEditingTemplateId(null);
+        setTemplateForm({ title: '', description: '', type: 'survey', isSystem: true, fields: [] });
+        setNewField({ label: '', type: 'short_text' });
+        setIsTemplateModalOpen(true);
+    };
+
+    const openEditModal = (template: any) => {
+        setEditingTemplateId(template.id);
+        setTemplateForm({
+            title: template.title,
+            description: template.description || '',
+            type: template.type || 'survey',
+            isSystem: template.isSystem || false,
+            fields: template.fields || []
+        });
+        setNewField({ label: '', type: 'short_text' });
+        setIsTemplateModalOpen(true);
+    };
+
     const scopedForms = activeTab === 'pending' ? pendingForms : forms;
 
-    const handleCreateTemplate = async (e: React.FormEvent) => {
+    const handleSaveTemplate = async (e: React.FormEvent) => {
         e.preventDefault();
 
         // Auto-add pending field if exists
         let finalFields = [...templateForm.fields];
         if (newField.label.trim()) {
-            finalFields.push({ id: Date.now().toString(), ...newField });
+            finalFields.push({ id: Date.now().toString(), label: newField.label.trim(), type: newField.type as any });
         }
 
         if (!templateForm.title || finalFields.length === 0) {
@@ -57,16 +79,25 @@ export default function AdminFormsPage() {
         }
 
         try {
-            await createTemplate({
-                ...templateForm,
-                fields: finalFields
-            });
-            notify.success('Template created successfully');
+            if (editingTemplateId) {
+                await updateTemplate(editingTemplateId, {
+                    ...templateForm,
+                    fields: finalFields
+                });
+                notify.success('Template updated successfully');
+            } else {
+                await createTemplate({
+                    ...templateForm,
+                    fields: finalFields
+                });
+                notify.success('Template created successfully');
+            }
             setIsTemplateModalOpen(false);
+            setEditingTemplateId(null);
             setTemplateForm({ title: '', description: '', type: 'survey', isSystem: true, fields: [] });
             setNewField({ label: '', type: 'short_text' });
         } catch (err: any) {
-            notify.error(err.message || 'Failed to create template');
+            notify.error(err.message || 'Failed to save template');
         }
     };
 
@@ -126,7 +157,7 @@ export default function AdminFormsPage() {
                 </div>
                 {activeTab === 'templates' && (
                     <button
-                        onClick={() => setIsTemplateModalOpen(true)}
+                        onClick={openCreateModal}
                         className="flex items-center gap-2 px-6 py-3 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 active:scale-95"
                     >
                         <Plus size={16} />
@@ -166,22 +197,30 @@ export default function AdminFormsPage() {
                                     <div className="size-12 bg-primary/5 text-primary rounded-2xl flex items-center justify-center">
                                         <Layout size={24} />
                                     </div>
-                                    <button
-                                        onClick={async () => {
-                                            if (confirm('Are you sure you want to delete this template?')) {
-                                                try {
-                                                    await deleteTemplate(template.id);
-                                                    notify.success('Template deleted');
-                                                } catch (err: any) {
-                                                    notify.error(err.message || 'Failed to delete template');
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                        <button
+                                            onClick={() => openEditModal(template)}
+                                            className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-all"
+                                        >
+                                            <Pencil size={18} />
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                if (confirm('Are you sure you want to delete this template?')) {
+                                                    try {
+                                                        await deleteTemplate(template.id);
+                                                        notify.success('Template deleted');
+                                                    } catch (err: any) {
+                                                        notify.error(err.message || 'Failed to delete template');
+                                                    }
                                                 }
-                                            }
-                                        }}
-                                        disabled={isSubmitting}
-                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
+                                            }}
+                                            disabled={isSubmitting}
+                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all disabled:opacity-50"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
                                 </div>
                                 <h3 className="font-bold text-text-main text-lg mb-1">{template.title}</h3>
                                 <p className="text-sm text-text-secondary font-medium line-clamp-2 mb-4">{template.description}</p>
@@ -195,7 +234,7 @@ export default function AdminFormsPage() {
                         ))
                     )}
                     <button
-                        onClick={() => setIsTemplateModalOpen(true)}
+                        onClick={openCreateModal}
                         className="border-2 border-dashed border-gray-200 p-6 rounded-3xl flex flex-col items-center justify-center gap-3 text-gray-400 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all"
                     >
                         <Plus size={32} />
@@ -317,11 +356,15 @@ export default function AdminFormsPage() {
                             <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="size-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
-                                        <FilePlus size={20} />
+                                        {editingTemplateId ? <Settings2 size={20} /> : <FilePlus size={20} />}
                                     </div>
                                     <div>
-                                        <h3 className="font-black text-text-main text-sm uppercase tracking-tight">Create Form Template</h3>
-                                        <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">Global templates for businesses</p>
+                                        <h3 className="font-black text-text-main text-sm uppercase tracking-tight">
+                                            {editingTemplateId ? 'Edit Form Template' : 'Create Form Template'}
+                                        </h3>
+                                        <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">
+                                            {editingTemplateId ? 'Update your template details' : 'Global templates for businesses'}
+                                        </p>
                                     </div>
                                 </div>
                                 <button onClick={() => setIsTemplateModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -329,7 +372,7 @@ export default function AdminFormsPage() {
                                 </button>
                             </div>
 
-                            <form onSubmit={handleCreateTemplate} className="p-8 space-y-6 overflow-y-auto">
+                            <form onSubmit={handleSaveTemplate} className="p-8 space-y-6 overflow-y-auto">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
                                         <label className="text-[10px] font-black uppercase text-gray-500 ml-1">Template Title</label>
@@ -444,7 +487,7 @@ export default function AdminFormsPage() {
                                         disabled={isSubmitting}
                                         className="flex-2 h-12 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 disabled:opacity-50 flex items-center justify-center"
                                     >
-                                        {isSubmitting ? <Clock3 size={16} className="animate-spin" /> : 'Save Template'}
+                                        {isSubmitting ? <Clock3 size={16} className="animate-spin" /> : editingTemplateId ? 'Update Template' : 'Save Template'}
                                     </button>
                                 </div>
                             </form>
