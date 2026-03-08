@@ -11,6 +11,7 @@ import Tooltip2 from '@/components/ui/Tooltip2';
 import PhoneFrame from '@/components/shared/PhoneFrame';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useBranches } from '@/services/branches/hooks';
 import { useBusinessForms, useCreateBusinessForm, useCreateFormTemplate, useDeleteBusinessForm, useFormTemplates, useUpdateBusinessForm } from '@/services/business-forms/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
@@ -34,6 +35,8 @@ export default function EngagementFormsBuilderPage() {
     const router = useRouter();
     const user = useAuthStore((s) => s.user);
     const { data: myBusiness } = useMyBusiness();
+    const updateEngagementSettings = useCustomerFlowStore((s) => s.updateEngagementSettings);
+    const existingEngagementSettings = useCustomerFlowStore((s) => s.engagementSettings);
     const activeBranchId = useAuthStore((s) => s.activeBranchId);
     const userBranchId = useAuthStore((s) => s.user?.branchId);
     const { data: branches = [] } = useBranches();
@@ -62,8 +65,15 @@ export default function EngagementFormsBuilderPage() {
     const [templateName, setTemplateName] = useState('');
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
     const [qrFormId, setQrFormId] = useState<string | null>(null);
+    const [postSubmitFormIds, setPostSubmitFormIds] = useState<string[]>([]);
 
     useEffect(() => { if (!branchId && defaultBranchId) setBranchId(defaultBranchId); }, [branchId, defaultBranchId]);
+    useEffect(() => {
+        const ids = Array.isArray(user?.engagement?.postSubmitFormIds)
+            ? user.engagement.postSubmitFormIds
+            : [];
+        setPostSubmitFormIds(ids);
+    }, [user?.engagement?.postSubmitFormIds]);
 
     const selectedTemplate = useMemo(() => templates.find((t) => t.id === templateId) || null, [templates, templateId]);
     useEffect(() => {
@@ -128,6 +138,58 @@ export default function EngagementFormsBuilderPage() {
         } catch (e: any) {
             toast.error(e?.message || 'Failed to delete form');
         }
+    };
+
+    const savePostSubmitForms = async (ids: string[]) => {
+        const nextEngagement = {
+            ...(user?.engagement || {}),
+            ...(existingEngagementSettings || {}),
+            postSubmitFormIds: ids,
+        };
+
+        try {
+            const { usersApi } = await import('@/lib/api/users');
+            await usersApi.updateEngagement(nextEngagement);
+        } catch (e) {
+            // Keep local state in sync even if the endpoint role policy blocks this request.
+            console.warn('Failed to persist post-submit form ids:', e);
+        }
+
+        await useAuthStore.getState().updateUser({ engagement: nextEngagement });
+        updateEngagementSettings({ postSubmitFormIds: ids });
+    };
+
+    const togglePostSubmitForm = async (formId: string) => {
+        const exists = postSubmitFormIds.includes(formId);
+        const nextIds = exists
+            ? postSubmitFormIds.filter((id) => id !== formId)
+            : [...postSubmitFormIds, formId];
+        setPostSubmitFormIds(nextIds);
+        await savePostSubmitForms(nextIds);
+        toast.success(
+            exists
+                ? 'Removed from post-submit journey'
+                : 'Form attached to post-submit journey'
+        );
+    };
+
+    const downloadQrCode = (id: string) => {
+        const svg = document.getElementById(`form-qr-${id}`) as SVGSVGElement | null;
+        if (!svg) {
+            toast.error('QR not ready');
+            return;
+        }
+        const source = new XMLSerializer().serializeToString(svg);
+        const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${id}-qr.svg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.success('QR downloaded');
     };
 
     const formsWithLink = forms.map((f) => ({ ...f, s: shareLink(f.id) }));
@@ -224,13 +286,53 @@ export default function EngagementFormsBuilderPage() {
                         <tbody>
                             {formsLoading && <tr><td colSpan={5} className="px-5 py-6 text-sm text-text-secondary">Loading forms...</td></tr>}
                             {!formsLoading && formsWithLink.length === 0 && <tr><td colSpan={5} className="px-5 py-6 text-sm text-text-secondary">No forms yet.</td></tr>}
-                            {formsWithLink.map((form) => <tr key={form.id} className="border-b border-gray-50"><td className="px-5 py-4"><p className="text-sm font-bold text-text-main">{form.title}</p><p className="text-xs text-text-secondary">{form.description || 'No description'}</p></td><td className="px-5 py-4 text-xs text-text-secondary">{form.branchId}</td><td className="px-5 py-4 text-xs text-text-secondary">{(form.usageModes || []).join(', ')}</td><td className="px-5 py-4 text-xs text-text-secondary">{form.redirectLabel || 'Stay in flow'}</td><td className="px-5 py-4"><div className="flex justify-end"><div className="relative"><button onClick={() => setOpenMenuId((c) => c === form.id ? null : form.id)} className="size-9 rounded-xl border border-gray-200 flex items-center justify-center text-text-secondary"><Ellipsis size={16} /></button>{openMenuId === form.id && <div className="absolute right-0 top-11 z-20 w-56 rounded-2xl border border-gray-200 bg-white shadow-xl p-2 space-y-1"><button onClick={() => { startEdit(form); setOpenMenuId(null); toast('Loaded form in editor'); }} className="w-full h-10 px-3 rounded-xl text-left text-sm font-medium hover:bg-gray-50 flex items-center gap-2"><Pencil size={14} /> Edit Form</button><button onClick={async () => { await navigator.clipboard.writeText(shareLink(form.id)); toast.success('Link copied'); setOpenMenuId(null); }} className="w-full h-10 px-3 rounded-xl text-left text-sm font-medium hover:bg-gray-50 flex items-center gap-2"><Copy size={14} /> Copy Link</button><button onClick={() => { setQrFormId(form.id); setOpenMenuId(null); }} className="w-full h-10 px-3 rounded-xl text-left text-sm font-medium hover:bg-gray-50 flex items-center gap-2"><QrCode size={14} /> Show QR</button><button onClick={() => router.push(`/dashboard/messaging/compose?formId=${form.id}`)} className="w-full h-10 px-3 rounded-xl text-left text-sm font-medium hover:bg-gray-50 flex items-center gap-2"><MessageSquareText size={14} /> Send To Messaging</button><button onClick={async () => { setOpenMenuId(null); await onDelete(form.id); }} className="w-full h-10 px-3 rounded-xl text-left text-sm font-medium text-red-600 hover:bg-red-50 flex items-center gap-2"><Trash2 size={14} /> Delete</button></div>}</div></div></td></tr>)}
+                            {formsWithLink.map((form) => {
+                                const isAttached = postSubmitFormIds.includes(form.id);
+                                return (
+                                    <tr key={form.id} className="border-b border-gray-50">
+                                        <td className="px-5 py-4">
+                                            <p className="text-sm font-bold text-text-main">{form.title}</p>
+                                            <p className="text-xs text-text-secondary">{form.description || 'No description'}</p>
+                                            {isAttached && (
+                                                <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                                                    Added after default submission
+                                                </p>
+                                            )}
+                                        </td>
+                                        <td className="px-5 py-4 text-xs text-text-secondary">{form.branchId}</td>
+                                        <td className="px-5 py-4 text-xs text-text-secondary">{(form.usageModes || []).join(', ')}</td>
+                                        <td className="px-5 py-4 text-xs text-text-secondary">{form.redirectLabel || 'Stay in flow'}</td>
+                                        <td className="px-5 py-4">
+                                            <div className="flex justify-end">
+                                                <div className="relative">
+                                                    <button
+                                                        onClick={() => setOpenMenuId((c) => c === form.id ? null : form.id)}
+                                                        className="size-9 rounded-xl border border-gray-200 flex items-center justify-center text-text-secondary"
+                                                    >
+                                                        <Ellipsis size={16} />
+                                                    </button>
+                                                    {openMenuId === form.id && (
+                                                        <div className="absolute right-0 top-11 z-20 w-64 rounded-2xl border border-gray-200 bg-white shadow-xl p-2 space-y-1">
+                                                            <button onClick={() => { startEdit(form); setOpenMenuId(null); toast('Loaded form in editor'); }} className="w-full h-10 px-3 rounded-xl text-left text-sm font-medium hover:bg-gray-50 flex items-center gap-2"><Pencil size={14} /> Edit Form</button>
+                                                            <button onClick={async () => { await navigator.clipboard.writeText(shareLink(form.id)); toast.success('Link copied'); setOpenMenuId(null); }} className="w-full h-10 px-3 rounded-xl text-left text-sm font-medium hover:bg-gray-50 flex items-center gap-2"><Copy size={14} /> Copy Link</button>
+                                                            <button onClick={() => { setQrFormId(form.id); setOpenMenuId(null); }} className="w-full h-10 px-3 rounded-xl text-left text-sm font-medium hover:bg-gray-50 flex items-center gap-2"><QrCode size={14} /> Show QR</button>
+                                                            <button onClick={async () => { setOpenMenuId(null); await togglePostSubmitForm(form.id); }} className={`w-full h-10 px-3 rounded-xl text-left text-sm font-medium hover:bg-gray-50 flex items-center gap-2 ${isAttached ? 'text-emerald-700' : ''}`}><MessageSquareText size={14} /> {isAttached ? 'Remove After Default Submit' : 'Use After Default Submit'}</button>
+                                                            <button onClick={() => router.push(`/dashboard/messaging/compose?formId=${form.id}`)} className="w-full h-10 px-3 rounded-xl text-left text-sm font-medium hover:bg-gray-50 flex items-center gap-2"><MessageSquareText size={14} /> Send To Messaging</button>
+                                                            <button onClick={async () => { setOpenMenuId(null); await onDelete(form.id); }} className="w-full h-10 px-3 rounded-xl text-left text-sm font-medium text-red-600 hover:bg-red-50 flex items-center gap-2"><Trash2 size={14} /> Delete</button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            {qrFormId && <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/30" onClick={() => setQrFormId(null)} /><div className="relative bg-white rounded-3xl border border-gray-200 shadow-2xl p-8 w-full max-w-md text-center space-y-4"><p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">QR Share</p><div className="rounded-3xl bg-gray-50 border border-gray-100 p-6 flex justify-center"><QRCodeSVG value={shareLink(qrFormId)} size={220} /></div><p className="text-xs text-text-secondary break-all">{shareLink(qrFormId)}</p></div></div>}
+            {qrFormId && <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/30" onClick={() => setQrFormId(null)} /><div className="relative bg-white rounded-3xl border border-gray-200 shadow-2xl p-8 w-full max-w-md text-center space-y-4"><p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">QR Share</p><div className="rounded-3xl bg-gray-50 border border-gray-100 p-6 flex justify-center"><QRCodeSVG id={`form-qr-${qrFormId}`} value={shareLink(qrFormId)} size={220} /></div><p className="text-xs text-text-secondary break-all">{shareLink(qrFormId)}</p><button onClick={() => downloadQrCode(qrFormId)} className="h-10 px-4 rounded-xl border border-gray-200 text-xs font-black uppercase tracking-widest text-text-secondary">Download QR</button></div></div>}
         </div>
     );
 }

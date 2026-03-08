@@ -193,7 +193,7 @@ export default function EngagementSettingsPage() {
                                 <Star size={24} />
                             </div>
                             <div>
-                                <h3 className="font-display font-bold text-text-main">Google Business Review</h3>
+                                <h3 className="font-display font-bold text-text-main">Add Google Review After Initial Form</h3>
                                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Capture 5-Star ratings on Google</p>
                             </div>
                         </div>
@@ -231,7 +231,7 @@ export default function EngagementSettingsPage() {
                                 <Share2 size={24} />
                             </div>
                             <div>
-                                <h3 className="font-display font-bold text-text-main">Social Multipaint</h3>
+                                <h3 className="font-display font-bold text-text-main">Add Socials After Initial Form</h3>
                                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Grow your following</p>
                             </div>
                         </div>
