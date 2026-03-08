@@ -95,15 +95,7 @@ export default function DashboardPage() {
             };
         })
         : analyticsStats;
-const peakTimes = Array.isArray(data?.peakTimes)
-  ? data.peakTimes
-  : data?.peakTimes && typeof data.peakTimes === 'object'
-    ? Object.values(data.peakTimes)
-    : [];
 
-const maxVisits = peakTimes.length
-  ? Math.max(...peakTimes.map((d: any) => d.value))
-  : 100;
     const peakTimes = Array.isArray(data?.peakTimes)
         ? data.peakTimes
         : data?.peakTimes && typeof data.peakTimes === 'object'

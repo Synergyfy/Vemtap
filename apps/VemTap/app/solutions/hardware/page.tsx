@@ -16,9 +16,9 @@ import {
 } from 'lucide-react';
 import LogoIcon from '@/components/brand/LogoIcon';
 
-import Nfc1 from "@/assets/nfc/Card NFC Plate White Spec branded.avif"
-import Nfc2 from "@/assets/nfc/Chip_tag_NFC215.avif"
-import Nfc3 from "@/assets/nfc/Reading position.avif"
+import Nfc1 from "@/public/assets/nfc/Card NFC Plate White Spec branded.avif"
+import Nfc2 from "@/public/assets/nfc/Chip_tag_NFC215.avif"
+import Nfc3 from "@/public/assets/nfc/Reading position.avif"
 
 export default function HardwareSolutionPage() {
     return (
