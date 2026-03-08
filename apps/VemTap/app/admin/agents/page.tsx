@@ -4,13 +4,24 @@ import React, { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminUsersApi } from '@/lib/api/admin';
 import { notify } from '@/lib/notify';
-import { User, Shield, Search, Loader2, UserPlus, Link2, Mail } from 'lucide-react';
+import { User, Shield, Search, Loader2, UserPlus, Link2, Mail, AlertCircle, Check } from 'lucide-react';
 
 export default function AdminAgentsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [inviteForm, setInviteForm] = useState({ name: '', email: '', phone: '' });
     const [invites, setInvites] = useState<Array<{ id: string; name: string; email: string; phone: string; status: 'Pending' | 'Sent' | 'Accepted'; createdAt: string }>>([]);
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        agentId: string;
+        agentName: string;
+        currentPermissions: string[];
+    }>({
+        isOpen: false,
+        agentId: '',
+        agentName: '',
+        currentPermissions: []
+    });
     const queryClient = useQueryClient();
 
     const { data: userData, isLoading } = useQuery({
@@ -217,7 +228,18 @@ export default function AdminAgentsPage() {
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <button
-                                                    onClick={() => toggleAgentStatus(person.id, person.permissions || [], person.name)}
+                                                    onClick={() => {
+                                                        if (isAgent) {
+                                                            toggleAgentStatus(person.id, person.permissions || [], person.name);
+                                                        } else {
+                                                            setConfirmModal({
+                                                                isOpen: true,
+                                                                agentId: person.id,
+                                                                agentName: person.name,
+                                                                currentPermissions: person.permissions || []
+                                                            });
+                                                        }
+                                                    }}
                                                     disabled={toggleAgentMutation.isPending}
                                                     className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50 ${isAgent
                                                         ? 'bg-red-50 text-red-600 hover:bg-red-100'
@@ -319,6 +341,40 @@ export default function AdminAgentsPage() {
                                     Send Invite
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Confirmation Modal */}
+            {confirmModal.isOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))} />
+                    <div className="relative w-full max-w-sm bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in slide-in-from-bottom-4 duration-300 text-center">
+                        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Shield className="text-primary" size={32} />
+                        </div>
+                        <h2 className="text-2xl font-display font-bold text-text-main mb-2">Assign Agent</h2>
+                        <p className="text-sm text-text-secondary font-medium mb-8">
+                            Are you sure you want to assign <span className="font-bold text-text-main">{confirmModal.agentName}</span> as a support agent? They will have access to the agent dashboard and active chats.
+                        </p>
+                        <div className="flex gap-3 mt-8">
+                            <button
+                                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                                className="flex-1 h-12 bg-gray-100 text-text-secondary font-bold rounded-xl hover:bg-gray-200 transition-all text-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    toggleAgentStatus(confirmModal.agentId, confirmModal.currentPermissions, confirmModal.agentName);
+                                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                                }}
+                                className="flex-1 h-12 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-sm active:scale-95"
+                            >
+                                <Check size={18} />
+                                Confirm Assign
+                            </button>
                         </div>
                     </div>
                 </div>
