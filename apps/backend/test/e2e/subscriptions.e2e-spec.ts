@@ -7,7 +7,11 @@ import { DataSource } from 'typeorm';
 import { Business } from '../../src/modules/businesses/entities/business.entity';
 import { Branch } from '../../src/modules/branches/entities/branch.entity';
 import { Plan } from '../../src/modules/subscriptions/entities/plan.entity';
-import { Subscription, SubscriptionStatus, BillingPeriod } from '../../src/modules/subscriptions/entities/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+  BillingPeriod,
+} from '../../src/modules/subscriptions/entities/subscription.entity';
 
 describe('Subscriptions & Trial System (e2e)', () => {
   let app: INestApplication;
@@ -26,14 +30,16 @@ describe('Subscriptions & Trial System (e2e)', () => {
     const planRepo = dataSource.getRepository(Plan);
 
     // 2. Setup Plan
-    const plan = await planRepo.save(planRepo.create({
-      name: 'Pro Plan',
-      smsCredits: 100,
-      whatsappCredits: 100,
-      emailCredits: 100,
-      isActive: true,
-      monthlyPrice: 50
-    }));
+    const plan = await planRepo.save(
+      planRepo.create({
+        name: 'Pro Plan',
+        smsCredits: 100,
+        whatsappCredits: 100,
+        emailCredits: 100,
+        isActive: true,
+        monthlyPrice: 50,
+      }),
+    );
     planId = plan.id;
   });
 
@@ -49,7 +55,7 @@ describe('Subscriptions & Trial System (e2e)', () => {
         .send({
           planId: planId,
           billingPeriod: BillingPeriod.MONTHLY,
-          paymentReference: 'test-ref-123'
+          paymentReference: 'test-ref-123',
         })
         .expect(201);
     });

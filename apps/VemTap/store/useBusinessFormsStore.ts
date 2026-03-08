@@ -80,9 +80,21 @@ interface CreateSubmissionInput {
   answers: Record<string, unknown>;
 }
 
+export interface FormTemplate {
+  id: string;
+  title: string;
+  description: string;
+  type: BusinessFormType;
+  typeLabel?: string;
+  fields: BusinessFormField[];
+  isSystem: boolean;
+  createdAt: string;
+}
+
 interface BusinessFormsState {
   forms: BusinessForm[];
   submissions: FormSubmission[];
+  templates: FormTemplate[];
   customTypeOptionsByBusiness: Record<string, string[]>;
   createForm: (input: CreateBusinessFormInput) => BusinessForm;
   updateForm: (id: string, updates: Partial<BusinessForm>) => void;
@@ -95,6 +107,8 @@ interface BusinessFormsState {
   ) => void;
   addCustomTypeOption: (businessId: string, label: string) => void;
   removeCustomTypeOption: (businessId: string, label: string) => void;
+  createTemplate: (template: Omit<FormTemplate, 'id' | 'createdAt'>) => FormTemplate;
+  deleteTemplate: (id: string) => void;
 }
 
 const nowIso = () => new Date().toISOString();
@@ -250,11 +264,28 @@ const mockSubmissions: FormSubmission[] = [
   }
 ];
 
+const mockTemplates: FormTemplate[] = [
+  {
+    id: 'tmpl-birthday',
+    title: 'Birthday Celebration Form',
+    description: 'Perfect for collecting birthday details from customers for special rewards.',
+    type: 'social',
+    fields: [
+      { id: 'f-b1', label: 'Full Name', type: 'short_text', required: true },
+      { id: 'f-b2', label: 'Birth Date', type: 'short_text', required: true },
+      { id: 'f-b3', label: 'Favorite Drink/Snack', type: 'short_text' }
+    ],
+    isSystem: true,
+    createdAt: nowIso()
+  }
+];
+
 export const useBusinessFormsStore = create<BusinessFormsState>()(
   persist(
     (set, get) => ({
       forms: mockForms,
       submissions: mockSubmissions,
+      templates: mockTemplates,
       customTypeOptionsByBusiness: {},
       createForm: (input) => {
         const key = ensureUniqueKey(input.key || input.title, get().forms);
@@ -287,13 +318,13 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
           forms: state.forms.map((form) =>
             form.id === id
               ? {
-                  ...form,
-                  status,
-                  reviewedAt: nowIso(),
-                  reviewedBy,
-                  reviewNote,
-                  updatedAt: nowIso()
-                }
+                ...form,
+                status,
+                reviewedAt: nowIso(),
+                reviewedBy,
+                reviewNote,
+                updatedAt: nowIso()
+              }
               : form
           )
         })),
@@ -325,13 +356,13 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
           submissions: state.submissions.map((submission) =>
             submission.id === id
               ? {
-                  ...submission,
-                  status: 'responded',
-                  response: {
-                    ...payload,
-                    respondedAt: nowIso()
-                  }
+                ...submission,
+                status: 'responded',
+                response: {
+                  ...payload,
+                  respondedAt: nowIso()
                 }
+              }
               : submission
           )
         })),
@@ -357,7 +388,20 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
               [businessId]: existing.filter((item) => item !== label)
             }
           };
-        })
+        }),
+      createTemplate: (input) => {
+        const template: FormTemplate = {
+          ...input,
+          id: `tmpl-${Date.now().toString(36)}`,
+          createdAt: nowIso()
+        };
+        set((state) => ({ templates: [template, ...state.templates] }));
+        return template;
+      },
+      deleteTemplate: (id) =>
+        set((state) => ({
+          templates: state.templates.filter((t) => t.id !== id)
+        }))
     }),
     {
       name: 'business-forms-storage-v1'

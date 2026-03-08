@@ -74,21 +74,21 @@ export class RegisterOwnerDto {
   @IsString()
   whatsappNumber?: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 'hello@greenterrace.com',
     description: 'Official public-facing email',
   })
-  @IsOptional()
   @IsEmail()
-  officialEmail?: string;
+  @IsNotEmpty()
+  officialEmail: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: '+2348012345678',
     description: 'Primary business phone number',
   })
-  @IsOptional()
   @IsString()
-  businessNumber?: string;
+  @IsNotEmpty()
+  businessNumber: string;
 
   @ApiPropertyOptional({
     example: '123 Business Ave, Lagos',

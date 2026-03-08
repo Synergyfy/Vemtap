@@ -8,6 +8,8 @@ const withSerwist = withSerwistInit({
 });
 
 const nextConfig: NextConfig = {
+  images: { unoptimized: true },
+  output: "standalone",
   /* config options here */
   turbopack: {
     root: process.cwd(),

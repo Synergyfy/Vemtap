@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsNotEmpty,
   IsUUID,
+  IsEmail,
 } from 'class-validator';
 import { BusinessType, BusinessStatus } from '../entities/business.entity';
 
@@ -37,7 +38,7 @@ export class AdminCreateBusinessDto {
     example: 'john@example.com',
     description: 'The email address of the business owner',
   })
-  @IsString()
+  @IsEmail()
   @IsNotEmpty()
   ownerEmail: string;
 
@@ -88,7 +89,7 @@ export class AdminCreateBusinessDto {
   whatsappNumber?: string;
 
   @ApiPropertyOptional({ example: 'hello@vemtap.com' })
-  @IsString()
+  @IsEmail()
   @IsOptional()
   officialEmail?: string;
 }
