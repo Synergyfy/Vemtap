@@ -90,11 +90,11 @@ export default function GetStarted() {
 
     const calculatePersonalPrice = () => {
         let base = 15000;
-const branchVal = formData.branchCount === 'No branch' ? 0 :
+        const branchVal = formData.branchCount === 'No branch' ? 0 :
             formData.branchCount === '1' ? 0 :
-            formData.branchCount === '2-5' ? 5000 :
-                formData.branchCount === '6-10' ? 15000 :
-                    formData.branchCount === '11-50' ? 40000 : 100000;
+                formData.branchCount === '2-5' ? 5000 :
+                    formData.branchCount === '6-10' ? 15000 :
+                        formData.branchCount === '11-50' ? 40000 : 100000;
 
         const visitorVal = formData.visitors === '0-500' ? 0 :
             formData.visitors === '501-2000' ? 10000 :
@@ -180,12 +180,14 @@ const branchVal = formData.branchCount === 'No branch' ? 0 :
             let businessLogoUrl = cleanData.businessLogo;
 
             if (!isManager && cleanData.businessLogo && cleanData.businessLogo.startsWith('data:image')) {
+                const uploadToast = toast.loading('Uploading business logo...');
                 try {
                     // Upload to Cloudinary and get secure URL
                     businessLogoUrl = await uploadToCloudinary(cleanData.businessLogo);
+                    toast.success('Logo uploaded!', { id: uploadToast });
                 } catch (uploadError: any) {
                     console.error('Logo upload failed:', uploadError);
-                    toast.error('Failed to upload business logo. Proceeding without it.');
+                    toast.error('Logo upload failed. Proceeding...', { id: uploadToast });
                     businessLogoUrl = null;
                 }
             }
@@ -376,10 +378,10 @@ const branchVal = formData.branchCount === 'No branch' ? 0 :
 
                                         <button
                                             onClick={handleCreateAccount}
-                                            disabled={!formData.agreeToTerms || isOtpLoading || !formData.email || !formData.password || !formData.firstName || !formData.lastName || !formData.phone}
+                                            disabled={!formData.agreeToTerms || isOtpLoading || isRegistering || !formData.email || !formData.password || !formData.firstName || !formData.lastName || !formData.phone}
                                             className="w-full h-14 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all flex items-center justify-center gap-2 text-sm mt-4 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                                         >
-                                            {isOtpLoading ? (
+                                            {isOtpLoading || isRegistering ? (
                                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                             ) : (
                                                 <>
@@ -598,7 +600,7 @@ const branchVal = formData.branchCount === 'No branch' ? 0 :
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Number of Branches</label>
                                                 <div className="grid grid-cols-1 gap-2">
-{['No branch', '1', '2-5', '6-10', '11-50', '50+'].map(range => (
+                                                    {['No branch', '1', '2-5', '6-10', '11-50', '50+'].map(range => (
                                                         <button
                                                             key={range}
                                                             onClick={() => setFormData({ ...formData, branchCount: range })}
@@ -726,7 +728,7 @@ const branchVal = formData.branchCount === 'No branch' ? 0 :
                                                     required
                                                     tooltip="Physical location of your business — helps localize your customer profile"
                                                 />
-<SanitizedInput
+                                                <SanitizedInput
                                                     label="Business Website"
                                                     type="url"
                                                     value={formData.businessWebsite}
@@ -851,7 +853,7 @@ const branchVal = formData.branchCount === 'No branch' ? 0 :
                                             disabled={isLoading || isRegistering || isRegisteringGeneric}
                                             className="flex-1 h-12 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all text-sm flex items-center justify-center gap-2"
                                         >
-                                            {isLoading ? (
+                                            {isLoading || isRegistering || isRegisteringGeneric ? (
                                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                             ) : (
                                                 <>

@@ -110,13 +110,22 @@ export function sanitizeUrl(input: string): string {
 
 /**
  * Sanitize a full form data object by applying sanitizeText to all string values.
+ * Skips sanitization for keys that are likely to contain base64 data URLs or 
+ * legitimate external URLs (e.g., Cloudinary links) to prevent corruption.
  */
 export function sanitizeFormData<T extends Record<string, unknown>>(data: T): T {
     const sanitized = { ...data };
+    const skipKeys = ['businessLogo', 'logoUrl', 'imageUrl', 'profilePic', 'coverUrl', 'qrCode', 'logo'];
+
     for (const key in sanitized) {
         const value = sanitized[key];
         if (typeof value === 'string') {
-            (sanitized as Record<string, unknown>)[key] = sanitizeText(value);
+            if (skipKeys.includes(key) || value.startsWith('data:image/') || value.startsWith('http')) {
+                // Preserve URLs and Data URLs
+                (sanitized as Record<string, unknown>)[key] = value;
+            } else {
+                (sanitized as Record<string, unknown>)[key] = sanitizeText(value);
+            }
         }
     }
     return sanitized;
