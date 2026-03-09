@@ -256,7 +256,9 @@ export class AuthService {
       // BusinessesService.create handles main branch creation and linking owner
       await this.businessesService.create({
         name: registrationData.businessName,
-        category: registrationData.category,
+        categoryId: registrationData.categoryId,
+        subcategoryId: registrationData.subcategoryId,
+        otherSubcategoryName: registrationData.otherSubcategoryName,
         monthlyVisitors: registrationData.monthlyVisitors,
         goal: registrationData.goal,
         ownerId: user.id,
@@ -340,7 +342,9 @@ export class AuthService {
       if (!business) {
         business = await this.businessesService.create({
           name: dto.businessName,
-          category: dto.category,
+          categoryId: dto.categoryId,
+          subcategoryId: dto.subcategoryId,
+          otherSubcategoryName: dto.otherSubcategoryName,
           monthlyVisitors: dto.visitors,
           goal: goalString,
           logoUrl: dto.businessLogo,
@@ -355,7 +359,9 @@ export class AuthService {
         // Update existing business if needed
         await this.businessesService.update(business.id, {
           name: dto.businessName,
-          category: dto.category,
+          categoryId: dto.categoryId,
+          subcategoryId: dto.subcategoryId,
+          otherSubcategoryName: dto.otherSubcategoryName,
           monthlyVisitors: dto.visitors,
           goal: goalString,
           logoUrl: dto.businessLogo,

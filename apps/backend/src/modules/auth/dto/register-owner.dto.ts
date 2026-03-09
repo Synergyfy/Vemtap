@@ -8,6 +8,7 @@ import {
   IsUrl,
   IsArray,
   IsStrongPassword,
+  IsUUID,
 } from 'class-validator';
 
 export class RegisterOwnerDto {
@@ -49,13 +50,29 @@ export class RegisterOwnerDto {
   @IsString()
   businessLogo?: string;
 
+  @ApiProperty({
+    example: 'uuid',
+    description: 'Category ID of the business',
+  })
+  @IsNotEmpty()
+  @IsUUID()
+  categoryId: string;
+
+  @ApiProperty({
+    example: 'uuid',
+    description: 'Subcategory ID of the business',
+  })
+  @IsNotEmpty()
+  @IsUUID()
+  subcategoryId: string;
+
   @ApiPropertyOptional({
-    example: 'Hospitality',
-    description: 'Category of business',
+    example: 'Art Studio',
+    description: 'Name of the subcategory if "Others" is selected',
   })
   @IsOptional()
   @IsString()
-  category?: string;
+  otherSubcategoryName?: string;
 
   @ApiPropertyOptional({
     example: '501-2000',

@@ -27,6 +27,7 @@ import { SupportModule } from './modules/support/support.module';
 import { SystemModule } from './modules/system/system.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
 import { FormsModule } from './modules/forms/forms.module';
+import { CategoriesModule } from './modules/categories/categories.module';
 
 import { dataSourceOptions } from './database/data-source';
 
@@ -71,6 +72,7 @@ import { dataSourceOptions } from './database/data-source';
     SystemModule,
     MessagingModule,
     FormsModule,
+    CategoriesModule,
   ],
   controllers: [AppController],
   providers: [

@@ -289,7 +289,10 @@ export class BusinessesService {
       type: dto.type,
       status: dto.status || BusinessStatus.ACTIVE,
       officialEmail: dto.officialEmail,
-      phone: dto.whatsappNumber || dto.officialEmail, // Using whatsappNumber or officialEmail as fallback for phone if not provided? wait, dto has officialEmail and whatsappNumber but not phone.
+      categoryId: dto.categoryId,
+      subcategoryId: dto.subcategoryId,
+      otherSubcategoryName: dto.otherSubcategoryName,
+      phone: dto.whatsappNumber || dto.officialEmail,
     } as Partial<Business>);
 
     const savedBusiness = await this.businessesRepository.save(business);
