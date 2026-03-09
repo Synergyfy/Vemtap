@@ -201,14 +201,25 @@ export class LoyaltyService {
     const device = await this.devicesService.findByCode(code);
     if (!device) throw new NotFoundException('Device not found');
 
+    if (!userId) {
+      // For guest visits, we could record a generic visit in the future
+      // For now, just return success so the frontend flow continues smoothly
+      return {
+        success: true,
+        message: 'Guest visit acknowledged',
+        pointsEarned: 0,
+      };
+    }
+
     return this.earnPoints(device.branchId, { userId, isVisit: true });
   }
-
   async getDeviceByCode(code: string, userId?: string): Promise<any> {
     const device = await this.devicesService.findByCode(code);
     if (!device) throw new NotFoundException('Device not found');
 
-    const branch = await this.branchesService.findById(device.branchId);
+    const branch = await this.branchesService.findById(device.branchId, [
+      'business',
+    ]);
 
     let profile: LoyaltyProfile | null = null;
     if (userId) {
@@ -219,13 +230,22 @@ export class LoyaltyService {
       }
     }
 
+    const isFirstTimeVisit = userId
+      ? !(await this.checkVisit(userId, device.branchId))
+      : true;
+
     return {
-      deviceName: device.name,
-      branchName: branch.name,
+      id: device.id,
+      name: device.name,
+      code: device.code,
       branchId: branch.id,
+      branchName: branch.name,
       welcomeMessage: branch.welcomeMessage,
       rewardEnabled: branch.rewardEnabled,
+      business: branch.business,
+      businessId: branch.businessId,
       userProfile: profile,
+      isFirstTimeVisit,
     };
   }
 

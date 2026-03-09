@@ -45,7 +45,7 @@ export default function DynamicTapJourneyPage() {
     const addRedemptionRequest = useMockDashboardStore(state => state.addRedemptionRequest);
     const redemptionRequests = useMockDashboardStore(state => state.redemptionRequests);
 
-    const { user, isAuthenticated, login } = useAuthStore();
+    const { user, isAuthenticated, login, access_token, logout } = useAuthStore();
     const { lastEarnedResponse, setLastEarnedResponse } = useLoyaltyStore();
     const config = getBusinessConfig();
 
@@ -56,6 +56,23 @@ export default function DynamicTapJourneyPage() {
     const [isSyncingReal, setIsSyncingReal] = useState(false);
     const [isDeviceSynced, setIsDeviceSynced] = useState(false);
     const [hasVisitedBefore, setHasVisitedBefore] = useState(false);
+
+    // 0. Early Token Expiration Check
+    useEffect(() => {
+        if (isAuthenticated && access_token) {
+            try {
+                const decoded: any = jwtDecode(access_token);
+                const currentTime = Date.now() / 1000;
+                if (decoded.exp < currentTime) {
+                    console.warn('[TAP JOURNEY] Session expired, logging out...');
+                    logout();
+                }
+            } catch (err) {
+                console.error('[TAP JOURNEY] Failed to decode token:', err);
+                logout();
+            }
+        }
+    }, [isAuthenticated, access_token, logout]);
 
     // Fetch full user details if authenticated
     useEffect(() => {
