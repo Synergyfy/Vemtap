@@ -1,5 +1,5 @@
 export const normalizeBaseUrl = (raw?: string) => {
-    if (!raw) return 'http://localhost:3002/api/v1';
+    if (!raw) return 'http://localhost:3001/api/v1';
     const trimmed = raw.replace(/\/+$/, '');
     if (trimmed.endsWith('/api/v1')) return trimmed;
     return `${trimmed}/api/v1`;

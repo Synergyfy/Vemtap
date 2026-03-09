@@ -69,12 +69,12 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const redemptionRequests = data?.redemptionRequests || [];
     const unreadCount = notifications.filter((n: Notification) => !n.read).length;
     const pendingRedemptions = redemptionRequests.filter((r: any) => r.status === 'pending').length;
-    const subscriptionPlanId = String(activeSubscription?.planId || '').toLowerCase();
+    const isFreePlan = Boolean(activeSubscription?.plan?.isFree) || String(activeSubscription?.planId || '').toLowerCase().includes('free');
     const showPlanPill = Boolean(activeSubscription)
         && activeSubscription?.status !== 'cancelled'
         && activeSubscription?.status !== 'expired'
         && activeSubscription?.status !== 'pending'
-        && !subscriptionPlanId.includes('free');
+        && !isFreePlan;
     const planPillLabel = activeSubscription?.plan?.name || 'Paid Plan';
 
     const readNotificationMutation = useMutation({
