@@ -71,10 +71,12 @@ describe('TemplateService (Strict)', () => {
         {
           provide: BranchesService,
           useValue: {
-            checkBranchAccess: jest.fn().mockImplementation((user, branchId) => {
-              if (user.role === UserRole.ADMIN) return true;
-              return user.branchId === branchId;
-            }),
+            checkBranchAccess: jest
+              .fn()
+              .mockImplementation((user, branchId) => {
+                if (user.role === UserRole.ADMIN) return true;
+                return user.branchId === branchId;
+              }),
             findById: jest.fn().mockResolvedValue({ businessId: 'bus1' }),
           },
         },
@@ -168,10 +170,9 @@ describe('TemplateService (Strict)', () => {
       expect(qb.where).toHaveBeenCalledWith('template.isSystem = :isSystem', {
         isSystem: true,
       });
-      expect(qb.orWhere).toHaveBeenCalledWith(
-        'template.branchId = :branchId',
-        { branchId: 'br1' },
-      );
+      expect(qb.orWhere).toHaveBeenCalledWith('template.branchId = :branchId', {
+        branchId: 'br1',
+      });
     });
   });
 

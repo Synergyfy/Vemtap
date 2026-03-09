@@ -33,7 +33,9 @@ export class UsersService {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { email: email.toLowerCase() } });
+    return this.usersRepository.findOne({
+      where: { email: email.toLowerCase() },
+    });
   }
 
   async findByIdentifier(identifier: string): Promise<User | null> {
@@ -193,7 +195,7 @@ export class UsersService {
   }
 
   async adminCreateUser(dto: any): Promise<User> {
-    const user = this.usersRepository.create(dto as object) as User;
+    const user = this.usersRepository.create(dto as object);
     return this.usersRepository.save(user);
   }
 
@@ -202,7 +204,7 @@ export class UsersService {
       ...dto,
       role: UserRole.AGENT,
       status: UserStatus.ACTIVE,
-    } as object) as User;
+    } as object);
     return this.usersRepository.save(user);
   }
 
@@ -211,17 +213,22 @@ export class UsersService {
     const qb = this.usersRepository.createQueryBuilder('user');
 
     if (search) {
-      qb.andWhere('(user.firstName ILIKE :search OR user.lastName ILIKE :search OR user.email ILIKE :search)', { search: `%${search}%` });
+      qb.andWhere(
+        '(user.firstName ILIKE :search OR user.lastName ILIKE :search OR user.email ILIKE :search)',
+        { search: `%${search}%` },
+      );
     }
     if (role) qb.andWhere('user.role = :role', { role });
     if (status) qb.andWhere('user.status = :status', { status });
 
-    qb.skip((page - 1) * limit).take(limit).orderBy('user.createdAt', 'DESC');
+    qb.skip((page - 1) * limit)
+      .take(limit)
+      .orderBy('user.createdAt', 'DESC');
 
     const [data, total] = await qb.getManyAndCount();
     return {
       data,
-      meta: { total, page, lastPage: Math.ceil(total / limit) }
+      meta: { total, page, lastPage: Math.ceil(total / limit) },
     };
   }
 }

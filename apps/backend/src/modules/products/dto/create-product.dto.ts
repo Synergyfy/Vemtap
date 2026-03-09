@@ -8,9 +8,23 @@ import {
   IsArray,
   IsObject,
   IsBoolean,
+  ValidateNested,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ProductStatus } from '../entities/product.entity';
+import { Type } from 'class-transformer';
+
+export class HowToUseDto {
+  @ApiProperty({ example: 'Step 1' })
+  @IsString()
+  @IsNotEmpty()
+  title: string;
+
+  @ApiProperty({ example: 'Scan the QR code' })
+  @IsString()
+  @IsNotEmpty()
+  description: string;
+}
 
 export class CreateProductDto {
   @ApiProperty({ example: 'NFC Card' })
@@ -67,6 +81,17 @@ export class CreateProductDto {
   @IsString()
   @IsOptional()
   tagColor?: string;
+
+  @ApiProperty({
+    type: [HowToUseDto],
+    example: [{ title: 'Step 1', description: 'Scan the QR code' }],
+    required: false,
+  })
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => HowToUseDto)
+  howToUse?: HowToUseDto[];
 
   @ApiProperty({ example: 4.5, required: false })
   @IsNumber()

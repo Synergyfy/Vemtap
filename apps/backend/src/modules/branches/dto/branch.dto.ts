@@ -86,6 +86,11 @@ export class CreateBranchDto {
   @IsString()
   @IsOptional()
   phone?: string;
+
+  @ApiProperty({ example: 'branch@example.com', required: false })
+  @IsEmail()
+  @IsOptional()
+  officialEmail?: string;
 }
 
 export class UpdateBranchDto {

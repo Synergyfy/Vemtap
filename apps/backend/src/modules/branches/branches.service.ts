@@ -12,6 +12,8 @@ import { CreateBranchDto, UpdateBranchDto } from './dto/branch.dto';
 import { Business } from '../businesses/entities/business.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
+import { User } from '../users/entities/user.entity';
+
 @Injectable()
 export class BranchesService {
   constructor(
@@ -23,7 +25,10 @@ export class BranchesService {
     private subscriptionsService: SubscriptionsService,
   ) {}
 
-  async checkBranchAccess(user: any, targetBranchId: string): Promise<boolean> {
+  async checkBranchAccess(
+    user: User,
+    targetBranchId: string,
+  ): Promise<boolean> {
     if (user.role === 'Admin') return true;
 
     if (user.role === 'Owner') {
@@ -78,6 +83,8 @@ export class BranchesService {
     const branch = this.branchesRepository.create({
       ...createBranchDto,
       businessId: business.id,
+      phone: createBranchDto.phone || business.phone,
+      officialEmail: createBranchDto.officialEmail || business.officialEmail,
     });
     return this.branchesRepository.save(branch);
   }

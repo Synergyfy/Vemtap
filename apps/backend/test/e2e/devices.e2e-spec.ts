@@ -50,7 +50,7 @@ describe('Devices (E2E)', () => {
       const listRes = await request(app.getHttpServer())
         .get(`/api/v1/devices?branchId=${branchId}`)
         .set('Authorization', `Bearer ${ownerToken}`);
-      
+
       if (listRes.body.length > 0) {
         deviceId = listRes.body[0].id;
         await request(app.getHttpServer())
