@@ -1,10 +1,9 @@
 import * as dotenv from 'dotenv';
 import { join } from 'path';
 
-const envFile = '../../.env';
-console.log('__dirname:', __dirname);
-const targetPath = join(__dirname, envFile);
-console.log('Target path:', targetPath);
+console.log('Current Working Directory (process.cwd()):', process.cwd());
+const targetPath = join(process.cwd(), '.env');
+console.log('Target path (process.cwd() + .env):', targetPath);
 
 dotenv.config({ path: targetPath });
 

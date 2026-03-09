@@ -36,8 +36,8 @@ import { dataSourceOptions } from './database/data-source';
       isGlobal: true,
       envFilePath:
         process.env.NODE_ENV === 'test'
-          ? [join(__dirname, '../.env.test'), '.env.test']
-          : [join(__dirname, '../.env'), '.env'],
+          ? join(process.cwd(), '.env.test')
+          : join(process.cwd(), '.env'),
     }),
     TypeOrmModule.forRoot({
       ...dataSourceOptions,

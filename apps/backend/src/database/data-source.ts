@@ -3,10 +3,9 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 import { join } from 'path';
 import * as dotenv from 'dotenv';
 
-// Support both .env and .env.local
-const envFile =
-  process.env.NODE_ENV === 'test' ? '../../.env.test' : '../../.env';
-dotenv.config({ path: join(__dirname, envFile) });
+// Use process.cwd() for robust environment variable loading across local and dist/
+const envFile = process.env.NODE_ENV === 'test' ? '.env.test' : '.env';
+dotenv.config({ path: join(process.cwd(), envFile) });
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
