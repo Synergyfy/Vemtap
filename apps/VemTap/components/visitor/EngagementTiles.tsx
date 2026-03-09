@@ -28,9 +28,10 @@ const EngagementTile: React.FC<EngagementTileProps> = ({ icon, label, descriptio
 );
 
 interface EngagementTilesProps {
-    onAction: (type: 'review' | 'social' | 'feedback' | 'rewards') => void;
+    onAction: (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => void;
     selectedFormTitle?: string | null;
     selectedFormType?: string | null;
+    attachedForms?: Array<{ id: string; title: string; description?: string }>;
     settings?: {
         showReview?: boolean;
         showSocial?: boolean;
@@ -49,6 +50,7 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
     onAction,
     selectedFormTitle,
     selectedFormType,
+    attachedForms = [],
     settings = {}
 }) => {
     const hasSocial = !!(settings.instagram || settings.twitter || settings.facebook || settings.linkedin || settings.socialUrl);
@@ -61,7 +63,18 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
                 Boost Your Experience
             </h3>
 
-            {hasSelectedForm ? (
+            {attachedForms.length > 0 ? (
+                attachedForms.map((form) => (
+                    <EngagementTile
+                        key={form.id}
+                        icon="assignment"
+                        label={form.title || 'Open Form'}
+                        description={form.description || 'Fill this form'}
+                        color="bg-amber-50 text-amber-600"
+                        onClick={() => onAction('feedback', form.id)}
+                    />
+                ))
+            ) : hasSelectedForm ? (
                 <EngagementTile
                     icon="assignment"
                     label={selectedFormTitle || 'Open Form'}

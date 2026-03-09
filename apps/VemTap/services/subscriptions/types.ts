@@ -77,7 +77,7 @@ export interface SubscriptionCapabilities {
 }
 
 export interface SubscribeRequest {
-    businessId: string;
+    businessId?: string;
     planId: string;
     billingPeriod: 'monthly' | 'quarterly' | 'yearly';
     paymentReference?: string;
