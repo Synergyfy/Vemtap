@@ -34,11 +34,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             toast.error('User email not found. Please log in again.');
             return;
         }
-        const resolvedBusinessId = businessId || user?.businessId || '';
-        if (!resolvedBusinessId) {
-            toast.error('Business ID not found. Please refresh and try again.');
-            return;
-        }
+        const resolvedBusinessId = businessId || user?.businessId;
 
         setIsProcessing(true);
 
@@ -102,9 +98,8 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                 });
             }
         });
-
         handler.openIframe();
-    };
+        };
 
     const getPriceByCycle = () => {
         if (billingPeriod === 'yearly') return plan.yearlyPrice;

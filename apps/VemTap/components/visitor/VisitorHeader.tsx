@@ -1,5 +1,4 @@
 import React from 'react';
-import defaultLogo from '@/public/VEMTAP_PNG.png';
 
 interface VisitorHeaderProps {
     logoUrl?: string | null;
@@ -12,7 +11,7 @@ export const VisitorHeader: React.FC<VisitorHeaderProps> = ({ logoUrl, storeName
         <div className="flex flex-col items-center gap-4 mb-8">
             <div className="size-24 rounded-full bg-white shadow-xl shadow-primary/10 border border-slate-100 overflow-hidden flex items-center justify-center p-2">
                 <img
-                    src={logoUrl || defaultLogo.src}
+                    src={logoUrl || '/VEMTAP_PNG.png'}
                     alt={storeName}
                     className="w-full h-full object-contain"
                 />

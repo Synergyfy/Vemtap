@@ -26,21 +26,22 @@ export const fetchProducts = async (
         price: Number(p.price),
         originalPrice: null,
         image: Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : "/assets/nfc/Card NFC Plate White.avif",
-        desc: p.description,
+        description: p.description || '',
         tag: p.tag || 'New',
         tagColor: p.tagColor || 'bg-emerald-500',
         action: p.requestQuoteThreshold ? 'quote' : 'cart',
-        moq: p.moq || 1
+        moq: p.moq || 1,
+        status: p.isPublished ? 'Published' : 'Unpublished'
     }));
 
     // Apply filtering (same as mock implementation but on real data)
     let filtered = mappedProducts.filter(p => {
         const matchesCategory = category === 'All Products' || p.category === category;
         const matchesPrice = p.price >= priceRange[0] && p.price <= priceRange[1];
-        const matchesBrand = brands.length === 0 || brands.includes(p.brand);
+        const matchesBrand = brands.length === 0 || (p.brand ? brands.includes(p.brand) : false);
         const matchesSearch = searchQuery === '' ||
             p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.desc.toLowerCase().includes(searchQuery.toLowerCase());
+            p.description.toLowerCase().includes(searchQuery.toLowerCase());
 
         return matchesCategory && matchesPrice && matchesBrand && matchesSearch;
     });
@@ -91,10 +92,10 @@ export const fetchProductDetail = async (id: string): Promise<ProductDetail | nu
             relatedProducts: [], // Can be fetched if there's a related endpoint
             features: [],
             tieredPricing: p.priceTiers?.map((t: any) => ({
-                minQuantity: t.min,
-                maxQuantity: t.max,
+                minQuantity: Number(t.min),
+                maxQuantity: t.max ? Number(t.max) : undefined,
                 price: t.price
-            })) || [{ minQuantity: p.moq || 1, maxQuantity: null, price: Number(p.price) }],
+            })) || [{ minQuantity: p.moq || 1, maxQuantity: undefined, price: Number(p.price) }],
             moq: p.moq || 1,
             rating: p.rating || 5,
             reviews: undefined,

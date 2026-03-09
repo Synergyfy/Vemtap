@@ -9,7 +9,7 @@ import type { NextRequest } from 'next/server';
  * we sync a `vemtap-auth-token` cookie on login/logout
  * so that this middleware can verify authentication.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // Check for the auth token cookie
