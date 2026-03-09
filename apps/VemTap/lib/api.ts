@@ -60,7 +60,8 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
 
         let errorData;
         try {
-            errorData = await response.json();
+            const text = await response.text();
+            errorData = text ? JSON.parse(text) : { message: `API Error: ${response.status}` };
         } catch (e) {
             errorData = { message: `API Error: ${response.status}` };
         }
@@ -68,7 +69,8 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
         throw new Error(errorData.message || `API Error: ${response.status}`);
     }
 
-    return response.json();
+    const text = await response.text();
+    return text ? JSON.parse(text) : {};
 };
 
 export const api = {
