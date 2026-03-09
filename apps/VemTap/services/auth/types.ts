@@ -19,6 +19,10 @@ export interface RegisterOwnerRequest {
     businessNumber?: string;
     businessAddress?: string;
     businessWebsite?: string;
+    isRegistered?: boolean;
+    registrationNumber?: string;
+    state?: string;
+    city?: string;
 }
 
 export interface AuthResponse {

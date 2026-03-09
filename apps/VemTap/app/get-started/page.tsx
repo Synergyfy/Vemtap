@@ -45,14 +45,18 @@ export default function GetStarted() {
         branchCount: '',
         visitors: '',
         whatsappNumber: '',
-        phone: '', // Added for Phase 1 OTP request
+        phone: '',
         officialEmail: '',
         businessNumber: '',
         businessAddress: '',
         businessWebsite: '',
+        isRegistered: 'No' as 'Yes' | 'No',
+        registrationNumber: '',
+        state: '',
+        city: '',
         goals: [] as string[],
         serialNumber: '',
-        businessId: '', // For Manager flow: join existing business
+        businessId: '',
         otp: '',
         agreeToTerms: false
     });
@@ -62,9 +66,22 @@ export default function GetStarted() {
     const categories = ['Retail', 'Hospitality', 'Events & Booths', 'Service Centers', 'Professional Office'];
     const goals = ['Capture Leads', 'Automated Rewards', 'Customer Feedback', 'Digital Loyalty'];
 
-    // Manager skips business-detail sub-steps (4-10) and jumps to a businessId step
+    const statesData: Record<string, string[]> = {
+        'Lagos': ['Ikeja', 'Lekki', 'Victoria Island', 'Surulere', 'Yaba', 'Ajah', 'Ikorodu', 'Epe'],
+        'Abuja (FCT)': ['Garki', 'Wuse', 'Maitama', 'Asokoro', 'Gwarinpa', 'Kubwa', 'Jabi'],
+        'Rivers': ['Port Harcourt', 'Obio-Akpor', 'Eleme', 'Oyigbo'],
+        'Oyo': ['Ibadan', 'Ogbomosho', 'Oyo Town', 'Iseyin'],
+        'Kano': ['Kano City', 'Wudil', 'Gwarzo'],
+        'Ogun': ['Abeokuta', 'Ijebu Ode', 'Sango Ota', 'Ilaro'],
+        'Edo': ['Benin City', 'Auchi', 'Ekpoma'],
+        'Delta': ['Warri', 'Asaba', 'Sapele', 'Agbor'],
+        'Enugu': ['Enugu City', 'Nsukka'],
+        'Kaduna': ['Kaduna City', 'Zaria'],
+        'Anambra': ['Awka', 'Onitsha', 'Nnewi']
+    };
+
     const isManager = formData.selectedRole === 'Manager';
-    const maxSubStep = isManager ? 4 : 10; // Manager: 1=name, 2=logo, 3=role, 4=businessId; Owner: 1-10
+    const maxSubStep = isManager ? 3 : 8;
 
     const nextStep = () => {
         if (step === 3 && subStep < maxSubStep) {
@@ -80,7 +97,7 @@ export default function GetStarted() {
     const prevStep = () => {
         if (step === 5) {
             setStep(3);
-            setSubStep(10);
+            setSubStep(8);
         } else if (step === 3 && subStep > 1) {
             setSubStep(prev => prev - 1);
         } else {
@@ -96,7 +113,7 @@ export default function GetStarted() {
                     formData.branchCount === '6-10' ? 15000 :
                         formData.branchCount === '11-50' ? 40000 : 100000;
 
-        const visitorVal = formData.visitors === '0-500' ? 0 :
+        const visitorVal = formData.visitors === 'Less than 500' ? 0 :
             formData.visitors === '501-2000' ? 10000 :
                 formData.visitors === '2001-5000' ? 25000 : 60000;
 
@@ -214,11 +231,15 @@ export default function GetStarted() {
                     category: cleanData.category || undefined,
                     visitors: cleanData.visitors || undefined,
                     goals: cleanData.goals && cleanData.goals.length > 0 ? cleanData.goals : undefined,
-                    whatsappNumber: cleanData.whatsappNumber || cleanData.phone || undefined,
+                    whatsappNumber: cleanData.whatsappNumber || undefined,
                     officialEmail: cleanData.officialEmail || undefined,
                     businessNumber: cleanData.businessNumber || undefined,
                     businessAddress: cleanData.businessAddress || undefined,
                     businessWebsite: cleanData.businessWebsite || undefined,
+                    isRegistered: cleanData.isRegistered === 'Yes',
+                    registrationNumber: cleanData.registrationNumber || undefined,
+                    state: cleanData.state || undefined,
+                    city: cleanData.city || undefined,
                 };
                 response = await registerOwner(payload as any);
             }
@@ -258,7 +279,7 @@ export default function GetStarted() {
                                 let progress = 0;
                                 if (step > s) progress = 100;
                                 else if (step === s) {
-                                    if (step === 3) progress = (subStep / 10) * 100;
+                                    if (step === 3) progress = (subStep / 8) * 100;
                                     else progress = 100;
                                 }
                                 return (
@@ -481,20 +502,18 @@ export default function GetStarted() {
                                 >
                                     <div>
                                         <h1 className="text-2xl font-display font-bold text-text-main mb-2 leading-tight tracking-tight">
-                                            {subStep === 9 && "What are your goals?"}
-                                            {subStep === 10 && "Vital Business Info"}
+                                            {subStep === 7 && "What are your goals?"}
+                                            {subStep === 8 && "Vital Business Info"}
                                         </h1>
                                         <p className="text-[13px] text-text-secondary font-medium leading-relaxed">
                                             {subStep === 1 && "Start with the name customers know you by."}
                                             {subStep === 2 && "Upload your logo to personalize your dashboard and customer tags."}
-                                            {subStep === 3 && "This helps us tailor the dashboard features for you."}
-                                            {subStep === 4 && "How many branches does your business have?"}
-                                            {subStep === 5 && "Select the category that best fits your business."}
-                                            {subStep === 6 && "Important for campaign communications and support."}
-                                            {subStep === 7 && "The primary number for your business operations."}
-                                            {subStep === 8 && "This helps us optimize your experience for your footfall volume."}
-                                            {subStep === 9 && "Tell us what you want to achieve with VemTap."}
-                                            {subStep === 10 && "Adding your address and website helps us localize your profile."}
+                                            {subStep === 3 && "How many branches does your business have?"}
+                                            {subStep === 4 && "Select the category that best fits your business."}
+                                            {subStep === 5 && "Important for campaign communications and support."}
+                                            {subStep === 6 && "This helps us optimize your experience for your footfall volume."}
+                                            {subStep === 7 && "Tell us what you want to achieve with VemTap."}
+                                            {subStep === 8 && "Adding your address, location and website helps us localize your profile."}
                                         </p>
                                     </div>
 
@@ -551,34 +570,7 @@ export default function GetStarted() {
                                             </motion.div>
                                         )}
 
-                                        {subStep === 3 && (
-                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Your Role</label>
-                                                <div className="grid grid-cols-1 gap-3">
-                                                    {(['Owner', 'Manager'] as const).map((r) => (
-                                                        <button
-                                                            key={r}
-                                                            onClick={() => setFormData({ ...formData, selectedRole: r })}
-                                                            className={`h-20 rounded-2xl text-xs font-bold transition-all border flex items-center justify-between px-6 ${formData.selectedRole === r ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-gray-50 border-gray-100 text-text-secondary hover:bg-gray-100'}`}
-                                                        >
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="material-icons-round text-xl">{r === 'Owner' ? 'grade' : 'badge'}</span>
-                                                                <div className="text-left">
-                                                                    <p className="font-bold">Business {r}</p>
-                                                                    <p className="text-[10px] font-medium text-text-secondary mt-0.5">
-                                                                        {r === 'Owner' ? 'Create and manage your own business' : 'Join an existing business as a manager'}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            {formData.selectedRole === r && <span className="material-icons-round text-primary text-sm">check_circle</span>}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </motion.div>
-                                        )}
-
-                                        {/* Manager-only: Business Invite Code */}
-                                        {subStep === 4 && isManager && (
+                                        {subStep === 3 && isManager && (
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                                                 <div>
                                                     <h1 className="text-2xl font-display font-bold text-text-main mb-2 leading-tight tracking-tight">Join a Business</h1>
@@ -596,7 +588,7 @@ export default function GetStarted() {
                                             </motion.div>
                                         )}
 
-                                        {subStep === 4 && (
+                                        {subStep === 3 && !isManager && (
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Number of Branches</label>
                                                 <div className="grid grid-cols-1 gap-2">
@@ -614,7 +606,7 @@ export default function GetStarted() {
                                             </motion.div>
                                         )}
 
-                                        {subStep === 5 && (
+                                        {subStep === 4 && !isManager && (
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Business Type</label>
                                                 <div className="grid grid-cols-2 gap-2">
@@ -631,33 +623,31 @@ export default function GetStarted() {
                                             </motion.div>
                                         )}
 
-                                        {subStep === 6 && (
-                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                                                <SanitizedInput
-                                                    label="WhatsApp Number"
-                                                    type="tel"
-                                                    value={formData.whatsappNumber}
-                                                    onChange={(v) => setFormData({ ...formData, whatsappNumber: v })}
-                                                    icon="message"
-                                                    placeholder="+234 801 234 5678"
-                                                    required
-                                                    tooltip="Used for WhatsApp campaign delivery and customer support"
-                                                />
-                                                <SanitizedInput
-                                                    label="Official Email"
-                                                    type="email"
-                                                    value={formData.officialEmail}
-                                                    onChange={(v) => setFormData({ ...formData, officialEmail: v })}
-                                                    icon="alternate_email"
-                                                    placeholder="hello@business.com"
-                                                    required
-                                                    tooltip="Public-facing email for customer communications and campaigns"
-                                                />
-                                            </motion.div>
-                                        )}
+                                        {subStep === 5 && !isManager && (
+                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <SanitizedInput
+                                                        label="Business WhatsApp Number"
+                                                        type="tel"
+                                                        value={formData.whatsappNumber}
+                                                        onChange={(v) => setFormData({ ...formData, whatsappNumber: v })}
+                                                        icon="message"
+                                                        placeholder="+234 801 234 5678"
+                                                        required
+                                                        tooltip="Used for WhatsApp campaign delivery and customer support"
+                                                    />
+                                                    <SanitizedInput
+                                                        label="Business Official Email"
+                                                        type="email"
+                                                        value={formData.officialEmail}
+                                                        onChange={(v) => setFormData({ ...formData, officialEmail: v })}
+                                                        icon="alternate_email"
+                                                        placeholder="hello@business.com"
+                                                        required
+                                                        tooltip="Public-facing email for customer communications and campaigns"
+                                                    />
+                                                </div>
 
-                                        {subStep === 7 && (
-                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                                                 <SanitizedInput
                                                     label="Business Phone Number"
                                                     type="tel"
@@ -666,22 +656,54 @@ export default function GetStarted() {
                                                     icon="phone"
                                                     placeholder="+234 801 234 5678"
                                                     required
-                                                    tooltip="Primary phone number for your business operations"
+                                                    tooltip="Primary number for your business operations."
                                                 />
+
+                                                <div className="space-y-3">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Is your business registered?</label>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        {['Yes', 'No'].map(opt => (
+                                                            <button
+                                                                key={opt}
+                                                                onClick={() => setFormData({ ...formData, isRegistered: opt as any })}
+                                                                className={`px-4 py-3 rounded-xl text-xs font-bold transition-all border text-center ${formData.isRegistered === opt ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-gray-50 border-gray-100 text-text-secondary hover:bg-gray-100'}`}
+                                                            >
+                                                                {opt === 'Yes' ? 'Yes – Registered' : 'No – Not Registered'}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    {formData.isRegistered === 'Yes' ? (
+                                                        <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 mt-2">
+                                                            <p className="text-[11px] text-blue-600 font-medium mb-3">Your business is officially registered with a government authority. Please provide your registration number.</p>
+                                                            <SanitizedInput
+                                                                label="Registration Number"
+                                                                value={formData.registrationNumber}
+                                                                onChange={(v) => setFormData({ ...formData, registrationNumber: v })}
+                                                                icon="description"
+                                                                placeholder="RC-1234567"
+                                                                required={formData.isRegistered === 'Yes'}
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-100 mt-2">
+                                                            <p className="text-[11px] text-amber-600 font-medium">Your business is not officially registered yet. You can still proceed, but some campaign features may require verification later.</p>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </motion.div>
                                         )}
 
-                                        {subStep === 8 && (
+                                        {subStep === 6 && !isManager && (
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Monthly Visitors</label>
                                                 <div className="grid grid-cols-1 gap-2">
-                                                    {['0-500', '501-2000', '2001-5000', '5000+'].map(range => (
+                                                    {['Less than 500', '501-2000', '2001-5000', '5000+'].map(range => (
                                                         <button
                                                             key={range}
                                                             onClick={() => setFormData({ ...formData, visitors: range })}
                                                             className={`w-full h-14 rounded-xl px-6 text-sm font-bold transition-all border flex items-center justify-between ${formData.visitors === range ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-gray-50 border-gray-100 text-text-secondary hover:bg-gray-100'}`}
                                                         >
-                                                            <span>{range.includes('+') ? range : `${range} visitors`}</span>
+                                                            <span>{range === 'Less than 500' ? range : range.includes('+') ? range : `${range} visitors`}</span>
                                                             {formData.visitors === range && <span className="material-icons-round text-primary text-sm">check_circle</span>}
                                                         </button>
                                                     ))}
@@ -689,7 +711,7 @@ export default function GetStarted() {
                                             </motion.div>
                                         )}
 
-                                        {subStep === 9 && (
+                                        {subStep === 7 && !isManager && (
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
                                                 <div>
                                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Select Goals</label>
@@ -716,8 +738,8 @@ export default function GetStarted() {
                                             </motion.div>
                                         )}
 
-                                        {subStep === 10 && (
-                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                                        {subStep === 8 && !isManager && (
+                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
                                                 <SanitizedInput
                                                     label="Business Address"
                                                     type="businessName"
@@ -728,6 +750,35 @@ export default function GetStarted() {
                                                     required
                                                     tooltip="Physical location of your business — helps localize your customer profile"
                                                 />
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">State</label>
+                                                        <select
+                                                            value={formData.state}
+                                                            onChange={(e) => setFormData({ ...formData, state: e.target.value, city: '' })}
+                                                            className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 text-xs font-bold text-text-main focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none"
+                                                        >
+                                                            <option value="">Select State</option>
+                                                            {Object.keys(statesData).sort().map(s => (
+                                                                <option key={s} value={s}>{s}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">City</label>
+                                                        <select
+                                                            value={formData.city}
+                                                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                                            disabled={!formData.state}
+                                                            className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 text-xs font-bold text-text-main focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none disabled:opacity-50"
+                                                        >
+                                                            <option value="">Select City</option>
+                                                            {formData.state && statesData[formData.state]?.sort().map(c => (
+                                                                <option key={c} value={c}>{c}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
                                                 <SanitizedInput
                                                     label="Business Website"
                                                     type="url"
@@ -747,15 +798,13 @@ export default function GetStarted() {
                                                 onClick={nextStep}
                                                 disabled={
                                                     (subStep === 1 && !formData.businessName) ||
-                                                    (subStep === 3 && !formData.selectedRole) ||
-                                                    (subStep === 4 && isManager && !formData.businessId) ||
-                                                    (!isManager && subStep === 4 && !formData.branchCount) ||
-                                                    (!isManager && subStep === 5 && !formData.category) ||
-                                                    (!isManager && subStep === 6 && (!formData.whatsappNumber || !formData.officialEmail)) ||
-                                                    (!isManager && subStep === 7 && !formData.businessNumber) ||
-                                                    (!isManager && subStep === 8 && !formData.visitors) ||
-                                                    (!isManager && subStep === 9 && formData.goals.length === 0) ||
-                                                    (!isManager && subStep === 10 && !formData.businessAddress)
+                                                    (subStep === 3 && isManager && !formData.businessId) ||
+                                                    (!isManager && subStep === 3 && !formData.branchCount) ||
+                                                    (!isManager && subStep === 4 && !formData.category) ||
+                                                    (!isManager && subStep === 5 && (!formData.whatsappNumber || !formData.officialEmail || !formData.businessNumber || (formData.isRegistered === 'Yes' && !formData.registrationNumber))) ||
+                                                    (!isManager && subStep === 6 && !formData.visitors) ||
+                                                    (!isManager && subStep === 7 && formData.goals.length === 0) ||
+                                                    (!isManager && subStep === 8 && (!formData.businessAddress || !formData.state || !formData.city))
                                                 }
                                                 className="flex-1 h-12 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all text-sm disabled:opacity-50"
                                             >
@@ -830,17 +879,27 @@ export default function GetStarted() {
                                                     <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Branches</p>
                                                     <p className="text-xs font-bold text-text-main">{formData.branchCount}</p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">WhatsApp</p>
-                                                    <p className="text-xs font-bold text-text-main">{formData.whatsappNumber || 'Not set'}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Official Email</p>
-                                                    <p className="text-xs font-bold text-text-main break-all">{formData.officialEmail || 'Not set'}</p>
-                                                </div>
-                                                <div className="col-span-2">
-                                                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Business Phone</p>
-                                                    <p className="text-xs font-bold text-text-main">{formData.businessNumber || 'Not set'}</p>
+                                                <div className="col-span-2 grid grid-cols-2 gap-4 border-t border-gray-100 pt-3 mt-1">
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">WhatsApp</p>
+                                                        <p className="text-xs font-bold text-text-main">{formData.whatsappNumber || 'Not set'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Official Email</p>
+                                                        <p className="text-xs font-bold text-text-main break-all">{formData.officialEmail || 'Not set'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Business Phone</p>
+                                                        <p className="text-xs font-bold text-text-main">{formData.businessNumber || 'Not set'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Registered</p>
+                                                        <p className="text-xs font-bold text-text-main">{formData.isRegistered} {formData.isRegistered === 'Yes' ? `(${formData.registrationNumber})` : ''}</p>
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Location</p>
+                                                        <p className="text-xs font-bold text-text-main">{formData.city}, {formData.state}</p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
