@@ -118,24 +118,42 @@ describe('AuthService', () => {
       expect(result).toEqual({ message: 'OTP sent successfully' });
     });
 
-    it('should generate and send OTP if email is unique (case-insensitive)', async () => {
+    it('should allow OTP request for existing PENDING user (resumption)', async () => {
       const dto: RequestOtpDto = {
         firstName: 'John',
         lastName: 'Doe',
-        email: 'John@Example.com',
+        email: 'pending@example.com',
         phone: '1234567890',
         role: UserRole.OWNER,
       };
 
-      usersService.findByEmail.mockResolvedValue(null);
+      usersService.findByEmail.mockResolvedValue({
+        id: 'user-1',
+        status: 'Pending',
+      });
 
       const result = await service.requestOwnerOtp(dto);
 
-      expect(usersService.findByEmail).toHaveBeenCalledWith('john@example.com');
-      expect(otpRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          email: 'John@Example.com'.toLowerCase(),
-        }),
+      expect(otpRepository.save).toHaveBeenCalled();
+      expect(result).toEqual({ message: 'OTP sent successfully' });
+    });
+
+    it('should throw ConflictException if ACTIVE user tries to request registration OTP', async () => {
+      const dto: RequestOtpDto = {
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'active@example.com',
+        phone: '1234567890',
+        role: UserRole.OWNER,
+      };
+
+      usersService.findByEmail.mockResolvedValue({
+        id: 'user-1',
+        status: 'Active',
+      });
+
+      await expect(service.requestOwnerOtp(dto)).rejects.toThrow(
+        ConflictException,
       );
     });
   });

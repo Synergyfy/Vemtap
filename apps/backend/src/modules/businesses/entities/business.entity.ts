@@ -1,7 +1,9 @@
-import { Entity, Column, OneToMany, JoinColumn, OneToOne } from 'typeorm';
+import { Entity, Column, OneToMany, JoinColumn, OneToOne, ManyToOne } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { User } from '../../users/entities/user.entity';
 import { Branch } from '../../branches/entities/branch.entity';
+import { Category } from './category.entity';
+import { Subcategory } from './subcategory.entity';
 
 export enum BusinessType {
   RESTAURANT = 'RESTAURANT',
@@ -49,8 +51,22 @@ export class Business extends AbstractBaseEntity {
   @Column({ type: 'simple-array', nullable: true })
   documents: string[];
 
+  @ManyToOne(() => Category, { nullable: true })
+  @JoinColumn({ name: 'categoryId' })
+  category: Category;
+
   @Column({ nullable: true })
-  category: string;
+  categoryId: string;
+
+  @ManyToOne(() => Subcategory, { nullable: true })
+  @JoinColumn({ name: 'subcategoryId' })
+  subcategory: Subcategory;
+
+  @Column({ nullable: true })
+  subcategoryId: string;
+
+  @Column({ nullable: true })
+  otherSubcategoryName: string;
 
   @Column({ nullable: true })
   monthlyVisitors: string;
@@ -63,6 +79,18 @@ export class Business extends AbstractBaseEntity {
 
   @Column({ nullable: true })
   phone: string;
+
+  @Column({ nullable: true })
+  logoUrl: string;
+
+  @Column({ nullable: true })
+  address: string;
+
+  @Column({ nullable: true })
+  website: string;
+
+  @Column({ nullable: true })
+  whatsappNumber: string;
 
   // Relation to the owner
   @OneToOne(() => User, (user) => user.ownedBusiness, {

@@ -322,7 +322,7 @@ export default function EngagementSettingsPage() {
                 </div>
 
                 {/* Rewards Awareness */}
-                <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm hover:shadow-md transition-shadow opacity-50 grayscale cursor-not-allowed">
+                <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between mb-8">
                         <div className="flex items-center gap-4">
                             <div className="size-12 bg-pink-50 text-pink-600 rounded-2xl flex items-center justify-center shadow-inner">
@@ -333,7 +333,7 @@ export default function EngagementSettingsPage() {
                                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Configure in Loyalty Settings</p>
                             </div>
                         </div>
-                        <div className="px-3 py-1 bg-gray-100 rounded-full text-[9px] font-black uppercase tracking-tighter">Locked</div>
+                        <div className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-tighter border border-emerald-100">Auto-managed</div>
                     </div>
                     <p className="text-sm text-text-secondary font-medium leading-relaxed">
                         This tile is automatically managed via your Rewards catalog. To edit rewards, please visit the Loyalty section.
