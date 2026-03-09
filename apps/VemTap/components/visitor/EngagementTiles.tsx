@@ -95,8 +95,8 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
             {settings.showSocial && hasSocial && (
                 <EngagementTile
                     icon="share"
-                    label="Follow on Social"
-                    description="Stay updated with our latest news"
+                    label="Show Social Links"
+                    description="Open social links after default submission"
                     color="bg-blue-50 text-blue-500"
                     onClick={() => onAction('social')}
                 />

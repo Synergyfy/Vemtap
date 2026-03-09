@@ -5,7 +5,6 @@ import { AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useMockDashboardStore } from '@/lib/store/mockDashboardStore';
 import { useBusinessForms, useSubmitBusinessFormResponse } from '@/services/business-forms/hooks';
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import { jwtDecode } from 'jwt-decode';
@@ -31,7 +30,7 @@ function UserStepPageContent() {
         getBusinessConfig, customWelcomeMessage, customSuccessMessage,
         customPrivacyMessage, customRewardMessage, hasRewardSetup,
         setBusinessType, userData, branchId, logoUrl, visitCount, rewardVisitThreshold,
-        redemptionStatus, lastRedemptionId, requestRedemption, setRedemptionStatus, resetVisitCountAfterRedemption,
+        redemptionStatus, requestRedemption,
         engagementSettings, surveyQuestions,
         customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, businessId
     } = useCustomerFlowStore();
@@ -81,29 +80,9 @@ function UserStepPageContent() {
         [approvedFormsForBusiness, attachedFormIds]
     );
 
-    const addRedemptionRequest = useMockDashboardStore(state => state.addRedemptionRequest);
-    const redemptionRequests = useMockDashboardStore(state => state.redemptionRequests);
-
     const { user } = useAuthStore();
     const { lastEarnedResponse, setLastEarnedResponse } = useLoyaltyStore();
     const config = getBusinessConfig();
-
-    // Live Sync Simulation: Listen for approvals/declines from the business dashboard
-    useEffect(() => {
-        if (redemptionStatus === 'pending' && lastRedemptionId) {
-            const request = redemptionRequests.find(r => r.id === lastRedemptionId);
-            if (request && request.status !== 'pending') {
-                if (request.status === 'approved') {
-                    setRedemptionStatus('approved');
-                    resetVisitCountAfterRedemption(rewardVisitThreshold);
-                    toast.success('Your reward has been approved! Claim it now.', { duration: 5000 });
-                } else if (request.status === 'declined') {
-                    setRedemptionStatus('declined');
-                    toast.error('Redemption declined by staff.');
-                }
-            }
-        }
-    }, [redemptionRequests, redemptionStatus, lastRedemptionId, setRedemptionStatus, resetVisitCountAfterRedemption, rewardVisitThreshold]);
 
     const [isDownloading, setIsDownloading] = useState(false);
     const [isSyncingReal, setIsSyncingReal] = useState(false);
@@ -211,17 +190,9 @@ function UserStepPageContent() {
         }
 
         const name = userData?.name || storedIdentity?.name || 'Guest';
-        // 1. Request in business dashboard
-        addRedemptionRequest({
-            visitorId: userData?.uniqueId || `V-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
-            visitorName: name,
-            rewardTitle: customRewardMessage || "Free Reward",
-            branchId: useCustomerFlowStore.getState().businessId || 'head-office'
-        });
 
-        // 2. Update customer state
         requestRedemption(customRewardMessage || "Free Reward");
-        toast.success('Redemption request sent to staff!');
+        toast.success(`Redemption request sent for ${name}.`);
     };
 
     const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
