@@ -129,8 +129,11 @@ export default function GetStarted() {
         if (!formData.phone) errors.phone = 'Phone number is required';
         if (!formData.password) errors.password = 'Password is required';
 
-        if (formData.password && formData.password.length < 6) {
-            errors.password = 'Password must be at least 6 characters';
+        if (formData.password) {
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+            if (!passwordRegex.test(formData.password)) {
+                errors.password = 'Password must be at least 8 characters, include uppercase, lowercase, a number and a special symbol';
+            }
         }
         if (formData.password !== formData.confirmPassword) {
             errors.confirmPassword = 'Passwords do not match';
@@ -362,7 +365,7 @@ export default function GetStarted() {
                                                 icon="lock"
                                                 placeholder="••••••••"
                                                 required
-                                                tooltip="Min 8 characters with at least one number and symbol"
+                                                tooltip="Min 8 characters, with uppercase, lowercase, number and symbol"
                                                 error={fieldErrors.password}
                                                 showPasswordToggle
                                                 showPassword={showPassword}
