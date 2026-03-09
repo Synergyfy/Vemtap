@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useBusinessStore } from '@/store/useBusinessStore';
-import defaultLogo from '@/public/VEMTAP_PNG.png';
+const defaultLogo = '/VEMTAP_PNG.png';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
 import { Notification } from '@/lib/store/mockDashboardStore';
@@ -37,6 +37,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const { data: activeSubscription } = useActiveSubscription();
     const { getLinkWithBranch } = useActiveBranch();
 
+    const mainBranch = myBusiness?.branches?.find(b => b.isMainBranch);
+    const businessLogo = myBusiness?.logoUrl || mainBranch?.logoUrl || defaultLogo;
+    const businessName = myBusiness?.name || user?.businessName || 'Business Profile';
+
     // eslint-disable-next-line no-console
     console.log('[DASHBOARD SIDEBAR] 🔍 isAuthenticated:', isAuthenticated, 'path:', pathname);
 
@@ -65,12 +69,12 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const redemptionRequests = data?.redemptionRequests || [];
     const unreadCount = notifications.filter((n: Notification) => !n.read).length;
     const pendingRedemptions = redemptionRequests.filter((r: any) => r.status === 'pending').length;
-    const subscriptionPlanId = String(activeSubscription?.planId || '').toLowerCase();
+    const isFreePlan = Boolean(activeSubscription?.plan?.isFree) || String(activeSubscription?.planId || '').toLowerCase().includes('free');
     const showPlanPill = Boolean(activeSubscription)
         && activeSubscription?.status !== 'cancelled'
         && activeSubscription?.status !== 'expired'
         && activeSubscription?.status !== 'pending'
-        && !subscriptionPlanId.includes('free');
+        && !isFreePlan;
     const planPillLabel = activeSubscription?.plan?.name || 'Paid Plan';
 
     const readNotificationMutation = useMutation({
@@ -454,14 +458,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 {/* User Profile */}
                 <div className="border-t border-gray-200 p-4">
                     <Link
-                        href={`/business/${(myBusiness?.name || user?.businessName || 'profile').toLowerCase().replace(/\s+/g, '-')}`}
+                        href={`/business/${businessName.toLowerCase().replace(/\s+/g, '-')}`}
                         className="flex items-center gap-3 mb-3 hover:bg-gray-50 p-2 rounded-xl transition-colors group"
                     >
                         <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-gray-100 group-hover:scale-105 transition-transform">
-                            {myBusiness?.logoUrl || defaultLogo ? (
+                            {businessLogo ? (
                                 <img
-                                    src={myBusiness?.logoUrl || defaultLogo.src}
-                                    alt={myBusiness?.name || 'Store'}
+                                    src={businessLogo}
+                                    alt={businessName}
                                     className="w-full h-full object-contain p-1"
                                 />
                             ) : (
@@ -470,7 +474,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-text-main truncate">{user?.name || 'Business Owner'}</p>
-                            <p className="text-xs text-text-secondary truncate">{myBusiness?.name || user?.businessName || 'Business Profile'}</p>
+                            <p className="text-xs text-text-secondary truncate">{businessName}</p>
                         </div>
                     </Link>
                     <button
@@ -594,10 +598,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                 className="flex items-center gap-2 p-0.5 hover:bg-gray-100 rounded-full transition-all focus:outline-none border border-transparent hover:border-gray-200"
                             >
                                 <div className="size-8 rounded-full bg-primary/5 flex items-center justify-center overflow-hidden border border-gray-100 shadow-sm transition-transform hover:scale-105 active:scale-95">
-                                    {myBusiness?.logoUrl || (defaultLogo as any)?.src ? (
+                                    {businessLogo ? (
                                         <img
-                                            src={myBusiness?.logoUrl || (defaultLogo as any).src}
-                                            alt={myBusiness?.name || 'Store'}
+                                            src={businessLogo}
+                                            alt={businessName}
                                             className="w-full h-full object-contain p-1"
                                         />
                                     ) : (

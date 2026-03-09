@@ -94,12 +94,19 @@ import { AutomationProcessor } from './processors/automation.processor';
           configService.get<string>('REDIS_TLS') === 'true' ||
           host.includes('upstash.io');
 
+        const isUpstash = host.includes('upstash.io');
+
         return {
           connection: {
             host,
             port,
             password,
             ...(useTls ? { tls: {} } : {}),
+          },
+          // Global defaults to reduce Redis requests on Upstash
+          defaultJobOptions: {
+            removeOnComplete: true,
+            removeOnFail: 1000,
           },
         };
       },
