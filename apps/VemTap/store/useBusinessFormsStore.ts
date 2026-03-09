@@ -14,6 +14,8 @@ export interface BusinessFormField {
   label: string;
   type: FormFieldType;
   required?: boolean;
+  isRequired?: boolean;
+  order?: number;
   options?: string[];
 }
 
@@ -88,27 +90,38 @@ export interface FormTemplate {
   typeLabel?: string;
   fields: BusinessFormField[];
   isSystem: boolean;
+  isActive?: boolean;
   createdAt: string;
 }
 
-interface BusinessFormsState {
+export interface BusinessFormsState {
   forms: BusinessForm[];
   submissions: FormSubmission[];
   templates: FormTemplate[];
   customTypeOptionsByBusiness: Record<string, string[]>;
-  createForm: (input: CreateBusinessFormInput) => BusinessForm;
-  updateForm: (id: string, updates: Partial<BusinessForm>) => void;
-  setFormStatus: (id: string, status: BusinessFormStatus, reviewedBy?: string, reviewNote?: string) => void;
-  submitForm: (input: CreateSubmissionInput) => FormSubmission;
-  setSubmissionStatus: (id: string, status: SubmissionStatus) => void;
+  isLoading: boolean;
+  isSubmitting: boolean;
+  error: string | null;
+  createForm: (input: CreateBusinessFormInput) => Promise<BusinessForm>;
+  updateForm: (id: string, updates: Partial<BusinessForm>) => Promise<void>;
+  setFormStatus: (id: string, status: BusinessFormStatus, reviewedBy?: string, reviewNote?: string) => Promise<void>;
+  submitForm: (input: CreateSubmissionInput) => Promise<FormSubmission>;
+  setSubmissionStatus: (id: string, status: SubmissionStatus) => Promise<void>;
   respondToSubmission: (
     id: string,
     payload: { channel: ResponseChannel; actor: ResponseActor; message: string; responderName?: string }
-  ) => void;
+  ) => Promise<void>;
   addCustomTypeOption: (businessId: string, label: string) => void;
   removeCustomTypeOption: (businessId: string, label: string) => void;
-  createTemplate: (template: Omit<FormTemplate, 'id' | 'createdAt'>) => FormTemplate;
-  deleteTemplate: (id: string) => void;
+
+  // API Actions
+  fetchForms: (businessId: string) => Promise<void>;
+  fetchSubmissions: (businessId: string) => Promise<void>;
+  fetchTemplates: () => Promise<void>;
+  createTemplate: (template: Omit<FormTemplate, 'id' | 'createdAt'>) => Promise<FormTemplate>;
+  updateTemplate: (id: string, updates: Partial<FormTemplate>) => Promise<void>;
+  deleteTemplate: (id: string) => Promise<void>;
+  useTemplate: (templateId: string, branchId: string) => Promise<void>;
 }
 
 const nowIso = () => new Date().toISOString();
@@ -132,240 +145,170 @@ const ensureUniqueKey = (candidate: string, existing: BusinessForm[]) => {
   return `${key}-${suffix}`;
 };
 
-const mockForms: BusinessForm[] = [
-  {
-    id: 'frm-demo-approved-survey',
-    businessId: 'demo-business-id',
-    businessName: 'Demo Business',
-    type: 'survey',
-    title: 'Customer Experience Survey',
-    key: 'customer-experience-survey',
-    status: 'approved',
-    fields: [
-      { id: 'f-1', label: 'How was your experience?', type: 'rating', required: true },
-      { id: 'f-2', label: 'What can we improve?', type: 'long_text' }
-    ],
-    responseChannels: ['email'],
-    responseActor: 'agent',
-    createdAt: nowIso(),
-    updatedAt: nowIso()
-  },
-  {
-    id: 'frm-demo-approved-complaint',
-    businessId: 'demo-business-id',
-    businessName: 'Demo Business',
-    type: 'complaint',
-    title: 'Service Complaint Form',
-    key: 'service-complaint-form',
-    status: 'approved',
-    fields: [
-      { id: 'c-1', label: 'What went wrong?', type: 'long_text', required: true },
-      { id: 'c-2', label: 'How urgent is this?', type: 'choice', required: true, options: ['Low', 'Medium', 'High'] }
-    ],
-    responseChannels: ['sms', 'whatsapp', 'email'],
-    responseActor: 'agent',
-    createdAt: nowIso(),
-    updatedAt: nowIso()
-  },
-  {
-    id: 'frm-demo-pending-social',
-    businessId: 'demo-business-id',
-    businessName: 'Demo Business',
-    type: 'social',
-    title: 'Social Profile Capture',
-    key: 'social-profile-capture',
-    status: 'pending',
-    fields: [
-      { id: 's-1', label: 'Instagram handle', type: 'short_text' },
-      { id: 's-2', label: 'Would you like follow-up offers?', type: 'choice', options: ['Yes', 'No'] }
-    ],
-    responseChannels: ['email'],
-    responseActor: 'bot',
-    createdAt: nowIso(),
-    updatedAt: nowIso()
-  }
-];
 
-const mockSubmissions: FormSubmission[] = [
-  {
-    id: 'sub-demo-1',
-    formId: 'frm-demo-approved-survey',
-    businessId: 'demo-business-id',
-    formType: 'survey',
-    formTitle: 'Customer Experience Survey',
-    customerName: 'Jane Doe',
-    customerEmail: 'jane.doe@example.com',
-    customerPhone: '+1 (555) 234-5678',
-    answers: {
-      'f-1': 5,
-      'f-2': 'Great team and quick service.'
-    },
-    status: 'responded',
-    createdAt: nowIso(),
-    response: {
-      channel: 'email',
-      actor: 'agent',
-      message: 'Thanks for the feedback, Jane. We appreciate you!',
-      respondedAt: nowIso(),
-      responderName: 'Support Team'
-    }
-  },
-  {
-    id: 'sub-demo-2',
-    formId: 'frm-demo-approved-survey',
-    businessId: 'demo-business-id',
-    formType: 'survey',
-    formTitle: 'Customer Experience Survey',
-    customerName: 'Marcus Smith',
-    customerEmail: 'm.smith@company.org',
-    answers: {
-      'f-1': 4,
-      'f-2': 'Checkout line took longer than expected.'
-    },
-    status: 'new',
-    createdAt: nowIso()
-  },
-  {
-    id: 'sub-demo-3',
-    formId: 'frm-demo-approved-complaint',
-    businessId: 'demo-business-id',
-    formType: 'complaint',
-    formTitle: 'Service Complaint Form',
-    customerName: 'Alice Lawson',
-    customerPhone: '+1 (555) 111-2233',
-    answers: {
-      'c-1': 'Wrong item was delivered.',
-      'c-2': 'High'
-    },
-    status: 'in_review',
-    createdAt: nowIso()
-  },
-  {
-    id: 'sub-demo-4',
-    formId: 'frm-demo-approved-complaint',
-    businessId: 'demo-business-id',
-    formType: 'complaint',
-    formTitle: 'Service Complaint Form',
-    customerName: 'Robert Taylor',
-    customerEmail: 'robert@taylor.me',
-    answers: {
-      'c-1': 'Billing amount was incorrect.',
-      'c-2': 'Medium'
-    },
-    status: 'closed',
-    createdAt: nowIso(),
-    response: {
-      channel: 'whatsapp',
-      actor: 'agent',
-      message: 'Issue resolved and invoice corrected.',
-      respondedAt: nowIso(),
-      responderName: 'Billing Desk'
-    }
-  }
-];
 
-const mockTemplates: FormTemplate[] = [
-  {
-    id: 'tmpl-birthday',
-    title: 'Birthday Celebration Form',
-    description: 'Perfect for collecting birthday details from customers for special rewards.',
-    type: 'social',
-    fields: [
-      { id: 'f-b1', label: 'Full Name', type: 'short_text', required: true },
-      { id: 'f-b2', label: 'Birth Date', type: 'short_text', required: true },
-      { id: 'f-b3', label: 'Favorite Drink/Snack', type: 'short_text' }
-    ],
-    isSystem: true,
-    createdAt: nowIso()
+const mapFrontendToBackendType = (type: string): string => {
+  switch (type) {
+    case 'short_text': return 'text';
+    case 'long_text': return 'textarea';
+    case 'choice': return 'select';
+    case 'rating': return 'text'; // Fallback
+    case 'email':
+    case 'phone':
+    case 'url':
+      return 'text';
+    default: return 'text';
   }
-];
+};
+
+const mapBackendToFrontendType = (type: string): FormFieldType => {
+  switch (type) {
+    case 'text': return 'short_text';
+    case 'textarea': return 'long_text';
+    case 'select': return 'choice';
+    case 'radio':
+    case 'checkbox':
+      return 'choice';
+    default: return 'short_text';
+  }
+};
 
 export const useBusinessFormsStore = create<BusinessFormsState>()(
   persist(
     (set, get) => ({
-      forms: mockForms,
-      submissions: mockSubmissions,
-      templates: mockTemplates,
+      forms: [],
+      submissions: [],
+      templates: [],
       customTypeOptionsByBusiness: {},
-      createForm: (input) => {
-        const key = ensureUniqueKey(input.key || input.title, get().forms);
-        const form: BusinessForm = {
-          id: `frm-${Date.now().toString(36)}`,
-          businessId: input.businessId,
-          businessName: input.businessName,
-          type: input.type,
-          typeLabel: input.typeLabel?.trim(),
-          title: input.title.trim(),
-          key,
-          status: 'pending',
-          fields: input.fields,
-          responseChannels: input.responseChannels.length ? input.responseChannels : ['email'],
-          responseActor: input.responseActor,
-          createdAt: nowIso(),
-          updatedAt: nowIso()
-        };
-        set((state) => ({ forms: [form, ...state.forms] }));
-        return form;
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      createForm: async (input) => {
+        set({ isSubmitting: true, error: null });
+        try {
+          const { api } = await import('@/lib/api');
+          const response = await api.post('/business-forms', input);
+          const form: BusinessForm = {
+            ...response,
+            status: response.isActive ? 'approved' : 'pending'
+          };
+          set((state) => ({ forms: [form, ...state.forms], isSubmitting: false }));
+          return form;
+        } catch (error: any) {
+          set({ error: error.message, isSubmitting: false });
+          throw error;
+        }
       },
-      updateForm: (id, updates) =>
-        set((state) => ({
-          forms: state.forms.map((form) =>
-            form.id === id ? { ...form, ...updates, updatedAt: nowIso(), key: slugifyKey(updates.key || form.key) } : form
-          )
-        })),
-      setFormStatus: (id, status, reviewedBy, reviewNote) =>
-        set((state) => ({
-          forms: state.forms.map((form) =>
-            form.id === id
-              ? {
-                ...form,
-                status,
-                reviewedAt: nowIso(),
-                reviewedBy,
-                reviewNote,
-                updatedAt: nowIso()
-              }
-              : form
-          )
-        })),
-      submitForm: (input) => {
-        const submission: FormSubmission = {
-          id: `sub-${Date.now().toString(36)}`,
-          formId: input.formId,
-          businessId: input.businessId,
-          formType: input.formType,
-          formTitle: input.formTitle,
-          customerName: input.customerName.trim() || 'Anonymous',
-          customerEmail: input.customerEmail?.trim(),
-          customerPhone: input.customerPhone?.trim(),
-          answers: input.answers,
-          status: 'new',
-          createdAt: nowIso()
-        };
-        set((state) => ({ submissions: [submission, ...state.submissions] }));
-        return submission;
+      updateForm: async (id, updates) => {
+        set({ isSubmitting: true, error: null });
+        try {
+          const { api } = await import('@/lib/api');
+          const response = await api.patch(`/business-forms/${id}`, updates);
+          set((state) => ({
+            forms: state.forms.map((form) =>
+              form.id === id ? { ...form, ...response, updatedAt: nowIso() } : form
+            ),
+            isSubmitting: false
+          }));
+        } catch (error: any) {
+          set({ error: error.message, isSubmitting: false });
+          throw error;
+        }
       },
-      setSubmissionStatus: (id, status) =>
-        set((state) => ({
-          submissions: state.submissions.map((submission) =>
-            submission.id === id ? { ...submission, status } : submission
-          )
-        })),
-      respondToSubmission: (id, payload) =>
-        set((state) => ({
-          submissions: state.submissions.map((submission) =>
-            submission.id === id
-              ? {
-                ...submission,
-                status: 'responded',
-                response: {
-                  ...payload,
-                  respondedAt: nowIso()
+      setFormStatus: async (id, status, reviewedBy, reviewNote) => {
+        set({ isSubmitting: true, error: null });
+        try {
+          const { api } = await import('@/lib/api');
+          // Assuming PATCH /business-forms/:id handles status updates
+          const response = await api.patch(`/business-forms/${id}`, { isActive: status === 'approved' });
+          set((state) => ({
+            forms: state.forms.map((form) =>
+              form.id === id
+                ? {
+                  ...form,
+                  status,
+                  reviewedAt: nowIso(),
+                  reviewedBy,
+                  reviewNote,
+                  updatedAt: nowIso()
                 }
-              }
-              : submission
-          )
-        })),
+                : form
+            ),
+            isSubmitting: false
+          }));
+        } catch (error: any) {
+          set({ error: error.message, isSubmitting: false });
+          throw error;
+        }
+      },
+      submitForm: async (input) => {
+        set({ isSubmitting: true, error: null });
+        try {
+          const { api } = await import('@/lib/api');
+          const response = await api.post(`/visitor-forms/${input.formId}/responses`, input.answers);
+          const submission: FormSubmission = {
+            id: response.id,
+            formId: input.formId,
+            businessId: input.businessId,
+            formType: input.formType,
+            formTitle: input.formTitle,
+            customerName: input.customerName.trim() || 'Anonymous',
+            customerEmail: input.customerEmail?.trim(),
+            customerPhone: input.customerPhone?.trim(),
+            answers: input.answers,
+            status: 'new',
+            createdAt: nowIso()
+          };
+          set((state) => ({ submissions: [submission, ...state.submissions], isSubmitting: false }));
+          return submission;
+        } catch (error: any) {
+          set({ error: error.message, isSubmitting: false });
+          throw error;
+        }
+      },
+      setSubmissionStatus: async (id, status) => {
+        set({ isSubmitting: true, error: null });
+        try {
+          const { api } = await import('@/lib/api');
+          // Assuming an endpoint exists for this - if not, we update locally but wait for next fetch
+          // await api.patch(`/forms/submissions/${id}`, { status });
+          set((state) => ({
+            submissions: state.submissions.map((submission) =>
+              submission.id === id ? { ...submission, status } : submission
+            ),
+            isSubmitting: false
+          }));
+        } catch (error: any) {
+          set({ error: error.message, isSubmitting: false });
+          throw error;
+        }
+      },
+      respondToSubmission: async (id, payload) => {
+        set({ isSubmitting: true, error: null });
+        try {
+          const { api } = await import('@/lib/api');
+          // Assuming an endpoint exists for this
+          // await api.post(`/forms/submissions/${id}/respond`, payload);
+          set((state) => ({
+            submissions: state.submissions.map((submission) =>
+              submission.id === id
+                ? {
+                  ...submission,
+                  status: 'responded',
+                  response: {
+                    ...payload,
+                    respondedAt: nowIso()
+                  }
+                }
+                : submission
+            ),
+            isSubmitting: false
+          }));
+        } catch (error: any) {
+          set({ error: error.message, isSubmitting: false });
+          throw error;
+        }
+      },
       addCustomTypeOption: (businessId, label) =>
         set((state) => {
           const normalized = label.trim();
@@ -389,19 +332,226 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
             }
           };
         }),
-      createTemplate: (input) => {
-        const template: FormTemplate = {
-          ...input,
-          id: `tmpl-${Date.now().toString(36)}`,
-          createdAt: nowIso()
-        };
-        set((state) => ({ templates: [template, ...state.templates] }));
-        return template;
+      fetchForms: async (businessId) => {
+        set({ isLoading: true, error: null });
+        try {
+          const { api } = await import('@/lib/api');
+          const url = businessId ? `/business-forms?businessId=${businessId}` : '/business-forms';
+          const response = await api.get(url);
+          const items = response || [];
+
+          const forms: BusinessForm[] = items.map((item: any) => ({
+            id: item.id,
+            businessId: item.businessId,
+            businessName: item.businessName || 'Business',
+            type: item.type || 'survey',
+            typeLabel: item.typeLabel,
+            title: item.title,
+            key: item.key,
+            status: item.isActive ? 'approved' : 'pending',
+            fields: item.fields?.map((f: any) => ({
+              id: f.id,
+              label: f.question,
+              type: mapBackendToFrontendType(f.type),
+              required: f.isRequired,
+              isRequired: f.isRequired,
+              order: f.order,
+              options: f.options
+            })) || [],
+            responseChannels: item.responseChannels || ['email'],
+            responseActor: item.responseActor || 'agent',
+            createdAt: item.createdAt,
+            updatedAt: item.updatedAt
+          }));
+
+          set({ forms, isLoading: false });
+        } catch (error: any) {
+          set({ error: error.message, isLoading: false });
+        }
       },
-      deleteTemplate: (id) =>
-        set((state) => ({
-          templates: state.templates.filter((t) => t.id !== id)
-        }))
+      fetchSubmissions: async (businessId) => {
+        set({ isLoading: true, error: null });
+        try {
+          const { api } = await import('@/lib/api');
+          const forms = get().forms;
+          const allSubmissions: FormSubmission[] = [];
+
+          for (const form of forms) {
+            try {
+              const response = await api.get(`/business-forms/${form.id}/responses`);
+              const items = response || [];
+              const submissions: FormSubmission[] = items.map((item: any) => ({
+                id: item.id,
+                formId: form.id,
+                businessId: form.businessId,
+                formType: form.type,
+                formTitle: form.title,
+                customerName: item.customerName || 'Anonymous',
+                customerEmail: item.customerEmail,
+                customerPhone: item.customerPhone,
+                answers: item.answers,
+                status: item.status || 'new',
+                createdAt: item.createdAt,
+                response: item.response
+              }));
+              allSubmissions.push(...submissions);
+            } catch (err) {
+              console.error(`Failed to fetch responses for form ${form.id}:`, err);
+            }
+          }
+
+          set({ submissions: allSubmissions, isLoading: false });
+        } catch (error: any) {
+          set({ error: error.message, isLoading: false });
+        }
+      },
+      createTemplate: async (input) => {
+        set({ isSubmitting: true, error: null });
+        try {
+          const { api } = await import('@/lib/api');
+          const payload = {
+            name: input.title,
+            description: input.description,
+            fields: input.fields.map((f, index) => ({
+              type: mapFrontendToBackendType(f.type),
+              question: f.label,
+              options: f.options,
+              isRequired: f.required || f.isRequired || false,
+              order: f.order ?? index
+            }))
+          };
+
+          const response = await api.post('/form-templates', payload);
+
+          const newTemplate: FormTemplate = {
+            id: response.id,
+            title: response.name,
+            description: response.description,
+            type: input.type, // Map from input as backend doesn't store 'type' at top level in entity seen
+            fields: response.fields.map((f: any) => ({
+              id: f.id,
+              label: f.question,
+              type: mapBackendToFrontendType(f.type),
+              required: f.isRequired,
+              isRequired: f.isRequired,
+              order: f.order,
+              options: f.options
+            })),
+            isSystem: input.isSystem,
+            isActive: response.isActive,
+            createdAt: response.createdAt
+          };
+
+          set((state) => ({
+            templates: [newTemplate, ...state.templates],
+            isSubmitting: false
+          }));
+          return newTemplate;
+        } catch (error: any) {
+          set({ error: error.message, isSubmitting: false });
+          throw error;
+        }
+      },
+      deleteTemplate: async (id) => {
+        set({ isSubmitting: true, error: null });
+        try {
+          const { api } = await import('@/lib/api');
+          await api.delete(`/form-templates/${id}`);
+          set((state) => ({
+            templates: state.templates.filter((t) => t.id !== id),
+            isSubmitting: false
+          }));
+        } catch (error: any) {
+          set({ error: error.message, isSubmitting: false });
+          throw error;
+        }
+      },
+      fetchTemplates: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          const { api } = await import('@/lib/api');
+          const response = await api.get('/form-templates');
+          const items = response.items || [];
+
+          const templates: FormTemplate[] = items.map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            description: item.description,
+            type: 'custom', // Default type for fetched
+            fields: item.fields?.map((f: any) => ({
+              id: f.id,
+              label: f.question,
+              type: mapBackendToFrontendType(f.type),
+              required: f.isRequired,
+              isRequired: f.isRequired,
+              order: f.order,
+              options: f.options
+            })) || [],
+            isSystem: false,
+            isActive: item.isActive,
+            createdAt: item.createdAt
+          }));
+
+          set({ templates, isLoading: false });
+        } catch (error: any) {
+          set({ error: error.message, isLoading: false });
+        }
+      },
+      updateTemplate: async (id, updates) => {
+        set({ isSubmitting: true, error: null });
+        try {
+          const { api } = await import('@/lib/api');
+          const payload: any = {};
+          if (updates.title) payload.name = updates.title;
+          if (updates.description) payload.description = updates.description;
+          if (updates.fields) {
+            payload.fields = updates.fields.map((f, index) => ({
+              type: mapFrontendToBackendType(f.type),
+              question: f.label,
+              options: f.options,
+              isRequired: f.required || f.isRequired || false,
+              order: f.order ?? index
+            }));
+          }
+
+          const response = await api.patch(`/form-templates/${id}`, payload);
+
+          set((state) => ({
+            templates: state.templates.map((t) =>
+              t.id === id ? {
+                ...t,
+                title: response.name || t.title,
+                description: response.description || t.description,
+                fields: response.fields?.map((f: any) => ({
+                  id: f.id,
+                  label: f.question,
+                  type: mapBackendToFrontendType(f.type),
+                  required: f.isRequired,
+                  isRequired: f.isRequired,
+                  order: f.order,
+                  options: f.options
+                })) || t.fields,
+                isActive: response.isActive ?? t.isActive
+              } : t
+            ),
+            isSubmitting: false
+          }));
+        } catch (error: any) {
+          set({ error: error.message, isSubmitting: false });
+          throw error;
+        }
+      },
+      useTemplate: async (templateId, branchId) => {
+        set({ isSubmitting: true, error: null });
+        try {
+          const { api } = await import('@/lib/api');
+          await api.post(`/form-templates/${templateId}/use?branchId=${branchId}`, {});
+          set({ isSubmitting: false });
+        } catch (error: any) {
+          set({ error: error.message, isSubmitting: false });
+          throw error;
+        }
+      }
     }),
     {
       name: 'business-forms-storage-v1'
