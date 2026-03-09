@@ -12,7 +12,7 @@ import { dashboardApi } from '@/lib/api/dashboard';
 import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Nfc, Send, Gift, BarChart, Users2, Settings,
-    ChevronDown, LogOut, Bell, Search, HelpCircle, Menu, X, Zap, MessageSquare, Smartphone, Building2, ShieldCheck
+    ChevronDown, LogOut, Bell, Search, HelpCircle, Menu, X, Zap, MessageSquare, Smartphone, ShieldCheck
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
@@ -231,13 +231,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 { label: 'Footfall', href: '/dashboard/analytics/footfall' },
                 { label: 'Peak Times', href: '/dashboard/analytics/peak-times' },
             ]
-        },
-        {
-            id: 'forms',
-            label: 'Forms',
-            icon: Building2,
-            href: '/dashboard/forms',
-            roles: ['owner', 'manager']
         },
         {
             id: 'support',

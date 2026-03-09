@@ -1,130 +1,209 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Copy, CheckCircle2 } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { CheckCircle2, MoreVertical } from 'lucide-react';
+import { QRCodeCanvas } from 'qrcode.react';
 import { toast } from 'react-hot-toast';
+import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useBranches } from '@/services/branches/hooks';
-import { useBusinessForms } from '@/services/business-forms/hooks';
+import { useBusinessForms, useDeleteBusinessForm } from '@/services/business-forms/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 
 export default function FormsPage() {
-    const { data: forms = [], isLoading } = useBusinessForms();
-    const { data: branches = [] } = useBranches();
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const userBranchId = useAuthStore((state) => state.user?.branchId);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: forms = [], isLoading } = useBusinessForms();
+  const deleteMutation = useDeleteBusinessForm();
+  const { data: branches = [] } = useBranches();
+  const activeBranchId = useAuthStore((state) => state.activeBranchId);
+  const userBranchId = useAuthStore((state) => state.user?.branchId);
 
-    const setDefaultForm = useFormPreferencesStore((state) => state.setDefaultForm);
-    const getDefaultFormId = useFormPreferencesStore((state) => state.getDefaultFormId);
+  const setDefaultForm = useFormPreferencesStore((state) => state.setDefaultForm);
+  const getDefaultFormId = useFormPreferencesStore((state) => state.getDefaultFormId);
+  const toggleActiveForm = useFormPreferencesStore((state) => state.toggleActiveForm);
+  const isActiveForm = useFormPreferencesStore((state) => state.isActiveForm);
 
-    const branchScope = activeBranchId || userBranchId || null;
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const focusFormId = searchParams.get('focus');
 
-    const defaultFormId = getDefaultFormId(branchScope || 'global');
-    const branchName = branches.find((branch) => branch.id === branchScope)?.name || (!branchScope ? 'Full Business' : branchScope);
+  const branchScope = activeBranchId === 'all' ? null : (activeBranchId || userBranchId || null);
+  const defaultFormId = getDefaultFormId(branchScope || 'global');
+  const branchName = branches.find((branch) => branch.id === branchScope)?.name || (!branchScope ? 'Full Business' : branchScope);
 
-    const scopedForms = useMemo(() => {
-        if (!branchScope) return forms;
-        return forms.filter((form) => form.branchId === branchScope);
-    }, [forms, branchScope]);
+  const scopedForms = useMemo(() => {
+    if (!branchScope) return forms;
+    return forms.filter((form) => form.branchId === branchScope);
+  }, [forms, branchScope]);
 
-    const copyLink = async (formId: string) => {
-        const url = `${window.location.origin}/forms/${formId}`;
-        await navigator.clipboard.writeText(url);
-        toast.success('Form link copied');
-    };
+  const getFormUrl = (formId: string) =>
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/forms/${formId}`
+      : `/forms/${formId}`;
 
-    return (
-        <div className="p-8 space-y-8">
-            <PageHeader
-                title="Forms"
-                description="Set default form for tap flow and share form links."
-            />
+  const copyLink = async (formId: string) => {
+    await navigator.clipboard.writeText(getFormUrl(formId));
+    toast.success('Form link copied');
+    setOpenMenuId(null);
+  };
 
-            <div className="flex items-center gap-3">
-                <span className="px-4 h-10 rounded-xl bg-primary text-white text-sm font-black flex items-center">Forms</span>
-                <Link href="/dashboard/settings/engagement/forms" className="px-4 h-10 rounded-xl bg-white border border-gray-200 text-sm font-bold text-text-secondary flex items-center">Builder</Link>
-                <Link href="/dashboard/settings/engagement/forms/responses" className="px-4 h-10 rounded-xl bg-white border border-gray-200 text-sm font-bold text-text-secondary flex items-center">Responses</Link>
-            </div>
+  const copyQrCode = async (formId: string) => {
+    const canvas = document.getElementById(`form-qr-${formId}`) as HTMLCanvasElement | null;
+    if (!canvas) {
+      toast.error('QR not ready yet');
+      return;
+    }
 
-            <div className="bg-white rounded-2xl border border-gray-200 p-5">
-                <p className="text-xs font-bold text-text-secondary">Current Scope: <span className="text-text-main">{branchName}</span></p>
-                <p className="text-xs text-text-secondary mt-1">Default form is used when a user taps and chooses feedback.</p>
-            </div>
+    if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          toast.error('Failed to generate QR image');
+          return;
+        }
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+          toast.success('QR code copied');
+          setOpenMenuId(null);
+        } catch {
+          await navigator.clipboard.writeText(getFormUrl(formId));
+          toast.success('QR link copied');
+          setOpenMenuId(null);
+        }
+      });
+      return;
+    }
 
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100">
-                    <p className="text-sm font-black uppercase tracking-widest text-text-secondary">Available Forms</p>
+    await navigator.clipboard.writeText(getFormUrl(formId));
+    toast.success('QR link copied');
+    setOpenMenuId(null);
+  };
+
+  useEffect(() => {
+    if (!focusFormId) return;
+    const target = document.getElementById(`form-card-${focusFormId}`);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [focusFormId, scopedForms.length]);
+
+  return (
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
+      <PageHeader
+        title="Forms"
+        description="Manage default form, active user-step forms, and sharing actions."
+      />
+
+      <EngagementTabs
+        tabs={[
+          { label: 'Socials', href: '/dashboard/settings/engagement/socials' },
+          { label: 'Form Creator', href: '/dashboard/settings/engagement/forms' },
+          { label: 'Responses', href: '/dashboard/settings/engagement/forms/responses' },
+        ]}
+      />
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5">
+        <p className="text-xs font-bold text-text-secondary">Current Scope: <span className="text-text-main">{branchName}</span></p>
+        <p className="text-xs text-text-secondary mt-1">Set one default form and toggle multiple active forms for user-step buttons.</p>
+      </div>
+
+      {isLoading && <p className="text-sm text-text-secondary">Loading forms...</p>}
+      {!isLoading && scopedForms.length === 0 && <p className="text-sm text-text-secondary">No forms for this branch scope.</p>}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+        {scopedForms.map((form) => {
+          const isDefault = defaultFormId === form.id;
+          const isActiveInUserStep = isActiveForm(branchScope || 'global', form.id);
+          return (
+            <div id={`form-card-${form.id}`} key={form.id} className={`relative rounded-3xl bg-white border p-5 sm:p-6 shadow-sm space-y-4 ${focusFormId === form.id ? 'border-primary ring-2 ring-primary/20' : 'border-gray-200'}`}>
+              <QRCodeCanvas id={`form-qr-${form.id}`} value={getFormUrl(form.id)} size={160} className="hidden" />
+
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-lg font-black text-text-main">{form.title}</p>
+                  <p className="text-xs text-text-secondary mt-1">{form.description || 'No description'}</p>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead>
-                            <tr className="text-[10px] uppercase tracking-widest text-text-secondary border-b border-gray-100">
-                                <th className="px-5 py-3 font-black">Default</th>
-                                <th className="px-5 py-3 font-black">Title</th>
-                                <th className="px-5 py-3 font-black">Branch</th>
-                                <th className="px-5 py-3 font-black">Status</th>
-                                <th className="px-5 py-3 font-black">Share</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {isLoading && (
-                                <tr>
-                                    <td colSpan={5} className="px-5 py-6 text-sm text-text-secondary">Loading forms...</td>
-                                </tr>
-                            )}
-                            {!isLoading && scopedForms.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="px-5 py-6 text-sm text-text-secondary">No forms for this branch scope.</td>
-                                </tr>
-                            )}
-                            {scopedForms.map((form) => {
-                                const shareUrl = `/forms/${form.id}`;
-                                const isDefault = defaultFormId === form.id;
-                                return (
-                                    <tr key={form.id} className="border-b border-gray-50">
-                                        <td className="px-5 py-4">
-                                            <button
-                                                onClick={() => {
-                                                    setDefaultForm(branchScope || 'global', form.id);
-                                                    toast.success('Default form updated');
-                                                }}
-                                                className={`size-5 rounded-full border flex items-center justify-center ${isDefault ? 'border-primary bg-primary text-white' : 'border-gray-300 text-transparent'}`}
-                                                aria-label={`Set ${form.title} as default`}
-                                            >
-                                                <CheckCircle2 size={12} />
-                                            </button>
-                                        </td>
-                                        <td className="px-5 py-4">
-                                            <p className="text-sm font-bold text-text-main">{form.title}</p>
-                                            <p className="text-xs text-text-secondary">{form.description || 'No description'}</p>
-                                        </td>
-                                        <td className="px-5 py-4 text-xs text-text-secondary">{form.branchId}</td>
-                                        <td className="px-5 py-4">
-                                            <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase ${form.isPublished ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                                                {form.isPublished ? 'Published' : 'Draft'}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <code className="text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-1">{shareUrl}</code>
-                                                <button
-                                                    onClick={() => copyLink(form.id)}
-                                                    className="h-8 px-3 rounded-lg border border-gray-200 text-xs font-bold text-text-secondary inline-flex items-center gap-1"
-                                                >
-                                                    <Copy size={12} />
-                                                    Copy
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                <div className="relative">
+                  <button
+                    onClick={() => setOpenMenuId((prev) => prev === form.id ? null : form.id)}
+                    className="h-9 w-9 rounded-xl border border-gray-200 inline-flex items-center justify-center text-text-secondary"
+                  >
+                    <MoreVertical size={16} />
+                  </button>
+                  {openMenuId === form.id && (
+                    <div className="absolute right-0 mt-2 w-44 rounded-xl border border-gray-200 bg-white shadow-lg z-20 p-1">
+                      <button onClick={() => copyLink(form.id)} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg hover:bg-gray-50">Copy as link</button>
+                      <button onClick={() => { router.push(`/dashboard/messaging/compose?formId=${encodeURIComponent(form.id)}`); setOpenMenuId(null); }} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg hover:bg-gray-50">Share to messaging</button>
+                      <button onClick={() => copyQrCode(form.id)} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg hover:bg-gray-50">Copy QR code</button>
+                      <button onClick={() => { router.push(`/dashboard/settings/engagement/forms?edit=${encodeURIComponent(form.id)}`); setOpenMenuId(null); }} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg hover:bg-gray-50">Edit</button>
+                      <button onClick={async () => { try { await deleteMutation.mutateAsync(form.id); toast.success('Form deleted'); setOpenMenuId(null); } catch (e: any) { toast.error(e?.message || 'Delete failed'); } }} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg text-red-600 hover:bg-red-50">Delete</button>
+                    </div>
+                  )}
                 </div>
+              </div>
+
+              <div className="text-xs text-text-secondary space-y-1">
+                <p>Branch: <span className="font-semibold text-text-main">{form.branchId}</span></p>
+                <p>Fields: <span className="font-semibold text-text-main">{form.fields?.length || 0}</span></p>
+              </div>
+
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    setDefaultForm(branchScope || 'global', form.id);
+                    toast.success('Default form updated');
+                  }}
+                  className={`w-full h-10 px-4 rounded-xl text-xs font-black inline-flex items-center justify-center gap-2 ${isDefault ? 'bg-primary text-white' : 'border border-gray-300 text-text-secondary bg-white'}`}
+                >
+                  <CheckCircle2 size={14} />
+                  {isDefault ? 'Default Form' : 'Set as Default'}
+                </button>
+
+                <button
+                  onClick={() => {
+                    toggleActiveForm(branchScope || 'global', form.id);
+                    toast.success(isActiveInUserStep ? 'Removed from user-step buttons' : 'Added to user-step buttons');
+                  }}
+                  className={`w-full h-10 px-4 rounded-xl text-xs font-black ${isActiveInUserStep ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'border border-gray-300 text-text-secondary bg-white'}`}
+                >
+                  {isActiveInUserStep ? 'Active in User Step' : 'Toggle Active in User Step'}
+                </button>
+              </div>
+
+              <Link
+                href={`/dashboard/settings/engagement/forms/${form.id}`}
+                className="block text-center h-10 leading-10 rounded-xl border border-gray-300 text-xs font-black text-text-secondary"
+              >
+                Preview
+              </Link>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => router.push(`/dashboard/settings/engagement/forms?edit=${encodeURIComponent(form.id)}`)}
+                  className="h-10 rounded-xl border border-gray-300 text-xs font-black text-text-secondary"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await deleteMutation.mutateAsync(form.id);
+                      toast.success('Form deleted');
+                    } catch (e: any) {
+                      toast.error(e?.message || 'Delete failed');
+                    }
+                  }}
+                  className="h-10 rounded-xl bg-red-50 text-red-700 text-xs font-black"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
-        </div>
-    );
+          );
+        })}
+      </div>
+    </div>
+  );
 }

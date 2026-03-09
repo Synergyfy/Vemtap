@@ -121,7 +121,6 @@ export default function EngagementSocialSettingsPage() {
 
             <EngagementTabs
                 tabs={[
-                    { label: 'Overview', href: '/dashboard/settings/engagement' },
                     { label: 'Socials', active: true },
                     { label: 'Form Creator', href: '/dashboard/settings/engagement/forms' },
                     { label: 'Form Responses', href: '/dashboard/settings/engagement/forms/responses' },
