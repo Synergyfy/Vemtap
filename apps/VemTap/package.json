@@ -5,7 +5,7 @@
     "scripts": {
         "dev": "next dev --webpack",
         "dev:turbo": "next dev --turbopack",
-        "build": "export NODE_OPTIONS=\u0027--max-old-space-size=2048\u0027 \u0026\u0026 next build --webpack",
+        "build": "cross-env NODE_OPTIONS='--max-old-space-size=2048' next build --webpack",
         "start": "next start",
         "lint": "eslint"
     },
@@ -37,10 +37,10 @@
         "react-icons": "^5.5.0",
         "recharts": "^3.7.0",
         "serwist": "^9.0.0",
+        "sharp": "^0.32.6",
         "tailwind-merge": "^3.4.0",
         "zod": "^4.3.6",
-        "zustand": "^5.0.11",
-        "sharp": "^0.32.6"
+        "zustand": "^5.0.11"
     },
     "devDependencies": {
         "@tailwindcss/postcss": "^4",
@@ -49,6 +49,7 @@
         "@types/react": "^19",
         "@types/react-dom": "^19",
         "babel-plugin-react-compiler": "1.0.0",
+        "cross-env": "^10.1.0",
         "eslint": "^9",
         "eslint-config-next": "16.1.6",
         "tailwindcss": "^4",

@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useBusinessStore } from '@/store/useBusinessStore';
-import defaultLogo from '@/public/VEMTAP_PNG.png';
+const defaultLogo = '/VEMTAP_PNG.png';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
 import { Notification } from '@/lib/store/mockDashboardStore';
@@ -460,7 +460,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-gray-100 group-hover:scale-105 transition-transform">
                             {myBusiness?.logoUrl || defaultLogo ? (
                                 <img
-                                    src={myBusiness?.logoUrl || defaultLogo.src}
+                                    src={myBusiness?.logoUrl || defaultLogo}
                                     alt={myBusiness?.name || 'Store'}
                                     className="w-full h-full object-contain p-1"
                                 />
@@ -594,9 +594,9 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                 className="flex items-center gap-2 p-0.5 hover:bg-gray-100 rounded-full transition-all focus:outline-none border border-transparent hover:border-gray-200"
                             >
                                 <div className="size-8 rounded-full bg-primary/5 flex items-center justify-center overflow-hidden border border-gray-100 shadow-sm transition-transform hover:scale-105 active:scale-95">
-                                    {myBusiness?.logoUrl || (defaultLogo as any)?.src ? (
+                                    {myBusiness?.logoUrl || defaultLogo ? (
                                         <img
-                                            src={myBusiness?.logoUrl || (defaultLogo as any).src}
+                                            src={myBusiness?.logoUrl || defaultLogo}
                                             alt={myBusiness?.name || 'Store'}
                                             className="w-full h-full object-contain p-1"
                                         />
