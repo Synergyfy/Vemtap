@@ -23,6 +23,7 @@ export interface RegisterOwnerRequest {
     registrationNumber?: string;
     state?: string;
     city?: string;
+    verificationDoc?: string;
 }
 
 export interface AuthResponse {
