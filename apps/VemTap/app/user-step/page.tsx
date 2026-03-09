@@ -42,8 +42,10 @@ function UserStepPageContent() {
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const userBranchId = useAuthStore((state) => state.user?.branchId);
     const getDefaultFormId = useFormPreferencesStore((state) => state.getDefaultFormId);
+    const getActiveFormIds = useFormPreferencesStore((state) => state.getActiveFormIds);
     const formBranchScope = branchId || activeBranchId || userBranchId || null;
     const defaultFormId = getDefaultFormId(formBranchScope || 'global');
+    const locallyActiveFormIds = getActiveFormIds(formBranchScope || 'global');
     const approvedFormsForBusiness = useMemo(
         () =>
             businessForms.filter(
@@ -69,15 +71,17 @@ function UserStepPageContent() {
         return explicit || branchDefault || approvedFormsForBusiness[0] || null;
     }, [approvedFormsForBusiness, preferredFormIdParam, defaultFormId]);
     const attachedFormIds = useMemo(
-        () =>
-            Array.isArray(engagementSettings?.postSubmitFormIds)
+        () => {
+            const serverIds = Array.isArray(engagementSettings?.postSubmitFormIds)
                 ? engagementSettings.postSubmitFormIds
-                : [],
-        [engagementSettings?.postSubmitFormIds]
+                : [];
+            return Array.from(new Set([...serverIds, ...locallyActiveFormIds]));
+        },
+        [engagementSettings?.postSubmitFormIds, locallyActiveFormIds]
     );
     const attachedBusinessForms = useMemo(
-        () => approvedFormsForBusiness.filter((form) => attachedFormIds.includes(form.id)),
-        [approvedFormsForBusiness, attachedFormIds]
+        () => approvedFormsForBusiness.filter((form) => attachedFormIds.includes(form.id) && form.id !== preferredBusinessForm?.id),
+        [approvedFormsForBusiness, attachedFormIds, preferredBusinessForm?.id]
     );
 
     const { user } = useAuthStore();
