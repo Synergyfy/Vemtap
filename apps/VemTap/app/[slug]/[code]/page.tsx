@@ -298,7 +298,7 @@ export default function DynamicTapJourneyPage() {
         toast.success('Redemption request sent to staff!');
     };
 
-    const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards') => {
+    const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
         if (type === 'review') {
             window.open(engagementSettings.reviewUrl, '_blank');
         } else if (type === 'feedback') {
