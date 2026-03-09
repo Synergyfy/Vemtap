@@ -32,7 +32,6 @@ async function bootstrap() {
     const biz = await businessesService.create({
       name: 'The Azure Bistro',
       type: BusinessType.RESTAURANT,
-      category: 'Hospitality',
       monthlyVisitors: '501-2000',
       ownerId: owner.id,
     });

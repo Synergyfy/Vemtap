@@ -9,10 +9,13 @@ import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useBranches, useCreateBranch } from '@/services/branches/hooks';
 import { Branch } from '@/services/branches/types';
 import { Loader2 } from 'lucide-react';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import UsageIndicator from '@/components/dashboard/UsageIndicator';
 
 function BranchesContent() {
     const { storeName } = useCustomerFlowStore();
     const { data: branchesData, isLoading } = useBranches();
+    const { capabilities } = useSubscriptionStore();
     const createBranchMutation = useCreateBranch();
 
     const branches = branchesData || [];
@@ -62,14 +65,29 @@ function BranchesContent() {
                 description="Manage multiple locations and outlets for your business."
                 actions={
                     <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20"
+                        onClick={() => {
+                            if (capabilities && capabilities.capabilities.branches.limit !== 'unlimited' &&
+                                capabilities.capabilities.branches.used >= (capabilities.capabilities.branches.limit as number)) {
+                                toast.error('Branch limit reached. Please upgrade your plan.');
+                                return;
+                            }
+                            setIsCreateModalOpen(true);
+                        }}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <Plus size={18} />
                         Add New Branch
                     </button>
                 }
             />
+
+            <div className="mt-8 max-w-md">
+                <UsageIndicator
+                    label="Active Branches"
+                    usage={capabilities?.capabilities.branches}
+                    icon={<Building2 size={20} />}
+                />
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
                 {branches.map((branch, i) => (
@@ -129,10 +147,17 @@ function BranchesContent() {
 
                 {/* Empty State / Add Branch Card */}
                 <button
-                    onClick={() => setIsCreateModalOpen(true)}
+                    onClick={() => {
+                        if (capabilities && capabilities.capabilities.branches.limit !== 'unlimited' &&
+                            capabilities.capabilities.branches.used >= (capabilities.capabilities.branches.limit as number)) {
+                            toast.error('Branch limit reached. Please upgrade your plan.');
+                            return;
+                        }
+                        setIsCreateModalOpen(true);
+                    }}
                     className="bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-200 p-12 flex flex-col items-center justify-center text-center hover:bg-white hover:border-primary/20 transition-all group lg:min-h-[350px]"
                 >
-                    <div className="size-20 rounded-full bg-white border border-gray-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm">     
+                    <div className="size-20 rounded-full bg-white border border-gray-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm">
                         <Plus size={32} className="text-gray-300 group-hover:text-primary transition-colors" />
                     </div>
                     <h3 className="text-lg font-display font-bold text-text-main mb-2">Expand Your Reach</h3>

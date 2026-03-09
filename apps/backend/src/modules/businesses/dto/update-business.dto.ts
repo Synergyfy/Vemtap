@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsUUID } from 'class-validator';
 import { BusinessType } from '../entities/business.entity';
 
 export class UpdateBusinessDto {
@@ -12,4 +12,19 @@ export class UpdateBusinessDto {
   @IsEnum(BusinessType)
   @IsOptional()
   type?: BusinessType;
+
+  @ApiPropertyOptional({ example: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @ApiPropertyOptional({ example: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  subcategoryId?: string;
+
+  @ApiPropertyOptional({ example: 'Art Studio' })
+  @IsOptional()
+  @IsString()
+  otherSubcategoryName?: string;
 }

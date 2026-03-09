@@ -68,6 +68,21 @@ export class AdminCreateBusinessDto {
   @IsOptional()
   status?: BusinessStatus;
 
+  @ApiPropertyOptional({ example: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @ApiPropertyOptional({ example: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  subcategoryId?: string;
+
+  @ApiPropertyOptional({ example: 'Art Studio' })
+  @IsOptional()
+  @IsString()
+  otherSubcategoryName?: string;
+
   @ApiPropertyOptional({ example: 'https://example.com/logo.png' })
   @IsString()
   @IsOptional()

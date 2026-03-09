@@ -13,11 +13,12 @@ interface StepOutcomeProps {
     onDownload: () => void;
     onFinish: () => void;
     onRestart: () => void;
-    onEngagement?: (type: 'review' | 'social' | 'feedback' | 'rewards') => void;
+    onEngagement?: (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => void;
     engagementSettings?: any;
     socialLinks?: any;
     selectedFormTitle?: string | null;
     selectedFormType?: string | null;
+    attachedForms?: Array<{ id: string; title: string; description?: string }>;
 }
 
 export const StepOutcome: React.FC<StepOutcomeProps> = ({
@@ -33,7 +34,8 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
     engagementSettings,
     socialLinks,
     selectedFormTitle,
-    selectedFormType
+    selectedFormType,
+    attachedForms
 }) => {
     const [isSocialModalOpen, setIsSocialModalOpen] = React.useState(false);
 
@@ -44,11 +46,11 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
 
     const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards);
 
-    const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards') => {
+    const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
         if (type === 'social') {
             setIsSocialModalOpen(true);
         }
-        onEngagement?.(type);
+        onEngagement?.(type, formId);
     };
     return (
         <motion.div key="outcome" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={presets.card}>
@@ -89,6 +91,7 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
                         settings={engagementSettings}
                         selectedFormTitle={selectedFormTitle}
                         selectedFormType={selectedFormType}
+                        attachedForms={attachedForms}
                     />
                 )}
 

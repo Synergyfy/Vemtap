@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, Mail, MessageCircle, Phone, Star, X } from 'lucide-react';
+import { ArrowLeft, Mail, MessageCircle, Star, X } from 'lucide-react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import {
     useBusinessForm,
@@ -255,11 +255,13 @@ export default function SingleFormResponsesPage() {
                                         SMS
                                     </a>
                                     <a
-                                        href={resolveContact(selected).phone ? `tel:${resolveContact(selected).phone}` : undefined}
+                                        href={resolveContact(selected).phone ? `https://wa.me/${String(resolveContact(selected).phone).replace(/\D/g, '')}` : undefined}
+                                        target="_blank"
+                                        rel="noreferrer"
                                         className={`h-10 rounded-xl border text-xs font-black uppercase tracking-widest flex items-center justify-center gap-1 ${resolveContact(selected).phone ? 'border-gray-200 text-text-secondary' : 'border-gray-100 text-gray-300 pointer-events-none'}`}
                                     >
-                                        <Phone size={12} />
-                                        Call
+                                        <MessageCircle size={12} />
+                                        WhatsApp
                                     </a>
                                 </div>
                             </div>
