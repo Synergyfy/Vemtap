@@ -37,7 +37,7 @@ export class AuthService {
   async requestOwnerOtp(dto: RequestOtpDto) {
     const email = dto.email.toLowerCase();
     const existingUser = await this.usersService.findByEmail(email);
-    if (existingUser) {
+    if (existingUser && existingUser.status !== UserStatus.PENDING) {
       throw new ConflictException('User with this email already exists');
     }
 
@@ -214,6 +214,21 @@ export class AuthService {
       existingUser.phone =
         registrationData.phone || metadata.phone || existingUser.phone;
       user = await this.usersService.create(existingUser);
+    } else if (existingUser && existingUser.status === UserStatus.PENDING) {
+      // Resume registration for pending user
+      existingUser.firstName =
+        registrationData.firstName ||
+        metadata.firstName ||
+        existingUser.firstName;
+      existingUser.lastName =
+        registrationData.lastName || metadata.lastName || existingUser.lastName;
+      existingUser.password = hashedPassword;
+      existingUser.role =
+        (registrationData.role as UserRole) || existingUser.role;
+      existingUser.status = UserStatus.ACTIVE;
+      existingUser.phone =
+        registrationData.phone || metadata.phone || existingUser.phone;
+      user = await this.usersService.create(existingUser);
     } else {
       if (existingUser) {
         throw new ConflictException('Email already exists');
@@ -286,53 +301,88 @@ export class AuthService {
     }
 
     const existingUser = await this.usersService.findByEmail(dto.email);
-    if (existingUser) {
+    if (existingUser && existingUser.status !== UserStatus.PENDING) {
       throw new ConflictException('Email already exists');
     }
 
-    // 2. Create User (Owner)
+    // 2. Create or Update User (Owner)
     const hashedPassword = await bcrypt.hash(dto.password, 10);
-    const user = await this.usersService.create({
-      firstName: registrationData.firstName,
-      lastName: registrationData.lastName,
-      email: dto.email,
-      password: hashedPassword,
-      role: UserRole.OWNER,
-      status: UserStatus.PENDING,
-      phone: registrationData.phone,
-    });
+    let user: User;
 
-    // 3. Create Business with detailed info
-    const goalString = Array.isArray(dto.goals)
-      ? dto.goals.join(', ')
-      : dto.goals;
+    if (existingUser) {
+      // Update existing pending user
+      existingUser.firstName = registrationData.firstName;
+      existingUser.lastName = registrationData.lastName;
+      existingUser.password = hashedPassword;
+      existingUser.phone = registrationData.phone;
+      user = await this.usersService.create(existingUser);
+    } else {
+      user = await this.usersService.create({
+        firstName: registrationData.firstName,
+        lastName: registrationData.lastName,
+        email: dto.email,
+        password: hashedPassword,
+        role: UserRole.OWNER,
+        status: UserStatus.PENDING,
+        phone: registrationData.phone,
+      });
+    }
 
-    const business = await this.businessesService.create({
-      name: dto.businessName,
-      category: dto.category,
-      monthlyVisitors: dto.visitors,
-      goal: goalString,
-      logoUrl: dto.businessLogo,
-      ownerId: user.id,
-      address: dto.businessAddress,
-      website: dto.businessWebsite,
-      whatsappNumber: dto.whatsappNumber,
-      officialEmail: dto.officialEmail,
-      phone: dto.businessNumber,
-    });
+    // 3. Create Business with detailed info (Optional - user can finish later)
+    if (dto.businessName) {
+      const goalString = Array.isArray(dto.goals)
+        ? dto.goals.join(', ')
+        : dto.goals;
+
+      // Check if business already exists for this owner
+      let business = await this.businessesService.findByOwner(user.id);
+
+      if (!business) {
+        business = await this.businessesService.create({
+          name: dto.businessName,
+          category: dto.category,
+          monthlyVisitors: dto.visitors,
+          goal: goalString,
+          logoUrl: dto.businessLogo,
+          ownerId: user.id,
+          address: dto.businessAddress,
+          website: dto.businessWebsite,
+          whatsappNumber: dto.whatsappNumber,
+          officialEmail: dto.officialEmail,
+          phone: dto.businessNumber,
+        });
+      } else {
+        // Update existing business if needed
+        await this.businessesService.update(business.id, {
+          name: dto.businessName,
+          category: dto.category,
+          monthlyVisitors: dto.visitors,
+          goal: goalString,
+          logoUrl: dto.businessLogo,
+          address: dto.businessAddress,
+          website: dto.businessWebsite,
+          whatsappNumber: dto.whatsappNumber,
+          officialEmail: dto.officialEmail,
+          phone: dto.businessNumber,
+        } as any);
+      }
+
+      // 4. Finalize User Status if business is created
+      user.status = UserStatus.ACTIVE;
+      await this.usersService.create(user);
+
+      // 5. Auto-Generate Device for Business
+      const branches = await this.businessesService.findById(business.id);
+      const mainBranch = branches.branches.find((b) => b.isMainBranch);
+      if (mainBranch) {
+        await this.devicesService.createAutoDevice(mainBranch.id);
+      }
+    }
 
     // Fetch fresh user with branchId (linked during business creation)
     const updatedUser = await this.usersService.findOne(user.id);
     if (!updatedUser) {
       throw new NotFoundException('User not found after registration');
-    }
-
-    // 5. Auto-Generate Device for Business (Needs update to handle branch)
-    // For now we'll fetch the main branch
-    const branches = await this.businessesService.findById(business.id);
-    const mainBranch = branches.branches.find((b) => b.isMainBranch);
-    if (mainBranch) {
-      await this.devicesService.createAutoDevice(mainBranch.id);
     }
 
     // Consume OTP
