@@ -115,7 +115,7 @@ export function sanitizeUrl(input: string): string {
  */
 export function sanitizeFormData<T extends Record<string, unknown>>(data: T): T {
     const sanitized = { ...data };
-    const skipKeys = ['businessLogo', 'logoUrl', 'imageUrl', 'profilePic', 'coverUrl', 'qrCode', 'logo'];
+    const skipKeys = ['businessLogo', 'logoUrl', 'imageUrl', 'profilePic', 'coverUrl', 'qrCode', 'logo', 'verificationDoc'];
 
     for (const key in sanitized) {
         const value = sanitized[key];

@@ -52,6 +52,7 @@ export default function GetStarted() {
         businessWebsite: '',
         isRegistered: 'No' as 'Yes' | 'No',
         registrationNumber: '',
+        verificationDoc: null as string | null,
         state: '',
         city: '',
         goals: [] as string[],
@@ -198,17 +199,33 @@ export default function GetStarted() {
             let response: any;
 
             let businessLogoUrl = cleanData.businessLogo;
+            let verificationDocUrl = cleanData.verificationDoc;
 
-            if (!isManager && cleanData.businessLogo && cleanData.businessLogo.startsWith('data:image')) {
-                const uploadToast = toast.loading('Uploading business logo...');
-                try {
-                    // Upload to Cloudinary and get secure URL
-                    businessLogoUrl = await uploadToCloudinary(cleanData.businessLogo);
-                    toast.success('Logo uploaded!', { id: uploadToast });
-                } catch (uploadError: any) {
-                    console.error('Logo upload failed:', uploadError);
-                    toast.error('Logo upload failed. Proceeding...', { id: uploadToast });
-                    businessLogoUrl = null;
+            if (!isManager) {
+                // Upload business logo
+                if (cleanData.businessLogo && cleanData.businessLogo.startsWith('data:image')) {
+                    const uploadToast = toast.loading('Uploading business logo...');
+                    try {
+                        businessLogoUrl = await uploadToCloudinary(cleanData.businessLogo);
+                        toast.success('Logo uploaded!', { id: uploadToast });
+                    } catch (uploadError: any) {
+                        console.error('Logo upload failed:', uploadError);
+                        toast.error('Logo upload failed. Proceeding...', { id: uploadToast });
+                        businessLogoUrl = null;
+                    }
+                }
+
+                // Upload verification document
+                if (cleanData.verificationDoc && (cleanData.verificationDoc.startsWith('data:image') || cleanData.verificationDoc.startsWith('data:application'))) {
+                    const docToast = toast.loading('Uploading verification document...');
+                    try {
+                        verificationDocUrl = await uploadToCloudinary(cleanData.verificationDoc);
+                        toast.success('Document uploaded!', { id: docToast });
+                    } catch (docError: any) {
+                        console.error('Document upload failed:', docError);
+                        toast.error('Document upload failed. Proceeding...', { id: docToast });
+                        verificationDocUrl = null;
+                    }
                 }
             }
 
@@ -241,6 +258,7 @@ export default function GetStarted() {
                     businessWebsite: cleanData.businessWebsite || undefined,
                     isRegistered: cleanData.isRegistered === 'Yes',
                     registrationNumber: cleanData.registrationNumber || undefined,
+                    verificationDoc: verificationDocUrl || undefined,
                     state: cleanData.state || undefined,
                     city: cleanData.city || undefined,
                 };
@@ -675,23 +693,74 @@ export default function GetStarted() {
                                                             </button>
                                                         ))}
                                                     </div>
-                                                    {formData.isRegistered === 'Yes' ? (
-                                                        <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 mt-2">
-                                                            <p className="text-[11px] text-blue-600 font-medium mb-3">Your business is officially registered with a government authority. Please provide your registration number.</p>
-                                                            <SanitizedInput
-                                                                label="Registration Number"
-                                                                value={formData.registrationNumber}
-                                                                onChange={(v) => setFormData({ ...formData, registrationNumber: v })}
-                                                                icon="description"
-                                                                placeholder="RC-1234567"
-                                                                required={formData.isRegistered === 'Yes'}
-                                                            />
+
+                                                    <div className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 mt-2 space-y-4">
+                                                        {formData.isRegistered === 'Yes' ? (
+                                                            <div className="space-y-4">
+                                                                <p className="text-[11px] text-blue-600 font-medium p-3 bg-blue-50/50 rounded-xl border border-blue-100">
+                                                                    Your business is officially registered. Please provide your CAC number and upload your certificate.
+                                                                </p>
+                                                                <SanitizedInput
+                                                                    label="Registration Number (CAC)"
+                                                                    value={formData.registrationNumber}
+                                                                    onChange={(v) => setFormData({ ...formData, registrationNumber: v })}
+                                                                    icon="description"
+                                                                    placeholder="RC-1234567"
+                                                                    required
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-4">
+                                                                <p className="text-[11px] text-amber-600 font-medium p-3 bg-amber-50/50 rounded-xl border border-amber-100">
+                                                                    Not registered? Please upload a valid government ID (National ID, NIMC, or Passport) for verification.
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">
+                                                                {formData.isRegistered === 'Yes' ? 'Upload CAC Document' : 'Upload ID Document'}
+                                                            </label>
+                                                            <div className="flex items-center gap-4 p-4 border border-dashed border-gray-200 rounded-xl bg-white">
+                                                                <div className="size-12 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden">
+                                                                    {formData.verificationDoc ? (
+                                                                        formData.verificationDoc.startsWith('data:image') ? (
+                                                                            <img src={formData.verificationDoc} className="w-full h-full object-cover" />
+                                                                        ) : (
+                                                                            <span className="material-icons-round text-primary text-xl">description</span>
+                                                                        )
+                                                                    ) : (
+                                                                        <span className="material-icons-round text-gray-300 text-xl">file_upload</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <input
+                                                                        type="file"
+                                                                        id="doc-upload"
+                                                                        className="hidden"
+                                                                        accept="image/*,.pdf"
+                                                                        onChange={(e) => {
+                                                                            const file = e.target.files?.[0];
+                                                                            if (file) {
+                                                                                const reader = new FileReader();
+                                                                                reader.onloadend = () => {
+                                                                                    setFormData({ ...formData, verificationDoc: reader.result as string });
+                                                                                };
+                                                                                reader.readAsDataURL(file);
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                    <label htmlFor="doc-upload" className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[11px] font-bold text-text-main cursor-pointer hover:bg-gray-50 transition-all">
+                                                                        {formData.verificationDoc ? 'Change Document' : 'Select Document'}
+                                                                    </label>
+                                                                    <p className="text-[10px] text-text-secondary mt-1">PDF, JPG or PNG. Max 5MB</p>
+                                                                </div>
+                                                                {formData.verificationDoc && (
+                                                                    <span className="material-icons-round text-green-500">check_circle</span>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                    ) : (
-                                                        <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-100 mt-2">
-                                                            <p className="text-[11px] text-amber-600 font-medium">Your business is not officially registered yet. You can still proceed, but some campaign features may require verification later.</p>
-                                                        </div>
-                                                    )}
+                                                    </div>
                                                 </div>
                                             </motion.div>
                                         )}
@@ -804,7 +873,7 @@ export default function GetStarted() {
                                                     (subStep === 3 && isManager && !formData.businessId) ||
                                                     (!isManager && subStep === 3 && !formData.branchCount) ||
                                                     (!isManager && subStep === 4 && !formData.category) ||
-                                                    (!isManager && subStep === 5 && (!formData.whatsappNumber || !formData.officialEmail || !formData.businessNumber || (formData.isRegistered === 'Yes' && !formData.registrationNumber))) ||
+                                                    (!isManager && subStep === 5 && (!formData.whatsappNumber || !formData.officialEmail || !formData.businessNumber || !formData.verificationDoc || (formData.isRegistered === 'Yes' && !formData.registrationNumber))) ||
                                                     (!isManager && subStep === 6 && !formData.visitors) ||
                                                     (!isManager && subStep === 7 && formData.goals.length === 0) ||
                                                     (!isManager && subStep === 8 && (!formData.businessAddress || !formData.state || !formData.city))
