@@ -134,3 +134,33 @@ auto redirect to the title please 2.live preview merge the form
 -- three ways  to apply to socials and form creatorss and instructions.
 --engagment social can be added to messaging
 
+
+---error pnpm outdated lockfile 
+
+--immediatley after social media uploads button that say use as link
+--use coustom admin template or coustom flow 
+--when you come to engagment 
+--add the active social links to be shown on the review link please
+--remove the tabs in social
+--save your config 
+--want to decide where sharing 
+--allow my socials to allow to show after forms
+--allow the socials to be reflected anywhere they are added either in socials or profile
+--engagements
+--create overview page to handle the info 
+--allow to use after default form to capture social media and links
+-show all the links 
+--we dont need to add toggle and it automatically shows
+--form creation create form 
+--two cards 
+--after creating the form remove the qr and messaging etc
+--auto redirect to bussiness profile after redirect
+--after form creation they will see three options button to see the form 
+
+--after create form see the list of form page
+--Add question
+
+--under saved as branch template 
+--use after default submission
+--eg created 5 forms eg. button feedback.
+--

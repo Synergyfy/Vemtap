@@ -136,6 +136,7 @@ interface CustomerFlowState {
         twitter?: string;
         facebook?: string;
         linkedin?: string;
+        postSubmitFormIds?: string[];
     };
     surveyQuestions: Array<{
         id: string;
@@ -226,7 +227,8 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 instagram: 'https://instagram.com/vemtap',
                 twitter: '',
                 facebook: '',
-                linkedin: ''
+                linkedin: '',
+                postSubmitFormIds: [],
             },
             surveyQuestions: [
                 { id: 'q3', text: 'Any other feedback?', type: 'text' }
@@ -269,6 +271,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             initializeFromBusiness: (device) => {
                 const b = device.business || {};
                 const hasEngagement = !!device.owner?.engagement;
+                const ownerEngagement = device.owner?.engagement || {};
 
                 set({
                     businessId: b.id || device.businessId,
@@ -294,15 +297,24 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                     isFirstTimeVisit: device.isFirstTimeVisit ?? true,
                     isReturningUser: !(device.isFirstTimeVisit ?? true),
                     engagementSettings: {
-                        showReview: hasEngagement ? (b.showReview ?? true) : false,
-                        showSocial: hasEngagement ? (b.showSocial ?? true) : false,
-                        showFeedback: hasEngagement ? (b.showFeedback ?? true) : false,
-                        reviewUrl: b.reviewUrl || '',
-                        socialUrl: b.instagramUrl || b.socialUrl || '',
-                        instagram: b.instagramUrl || '',
-                        twitter: b.twitterUrl || '',
-                        facebook: b.facebookUrl || '',
-                        linkedin: b.linkedinUrl || '',
+                        showReview: hasEngagement
+                            ? (b.showReview ?? ownerEngagement.showReview ?? true)
+                            : false,
+                        showSocial: hasEngagement
+                            ? (b.showSocial ?? ownerEngagement.showSocial ?? true)
+                            : false,
+                        showFeedback: hasEngagement
+                            ? (b.showFeedback ?? ownerEngagement.showFeedback ?? true)
+                            : false,
+                        reviewUrl: b.reviewUrl || ownerEngagement.reviewUrl || '',
+                        socialUrl: b.instagramUrl || b.socialUrl || ownerEngagement.socialUrl || '',
+                        instagram: b.instagramUrl || ownerEngagement.instagram || '',
+                        twitter: b.twitterUrl || ownerEngagement.twitter || '',
+                        facebook: b.facebookUrl || ownerEngagement.facebook || '',
+                        linkedin: b.linkedinUrl || ownerEngagement.linkedin || '',
+                        postSubmitFormIds: Array.isArray(ownerEngagement.postSubmitFormIds)
+                            ? ownerEngagement.postSubmitFormIds
+                            : [],
                     },
                     currentStep: 'SCANNING'
                 });
