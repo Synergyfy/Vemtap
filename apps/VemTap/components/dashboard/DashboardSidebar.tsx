@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useBusinessStore } from '@/store/useBusinessStore';
 const defaultLogo = '/VEMTAP_PNG.png';
@@ -21,9 +22,22 @@ import { useMyBusiness } from '@/services/businesses/hooks';
 import TrialBanner from './TrialBanner';
 import { useActiveSubscription } from '@/services/subscriptions/hooks';
 import DashboardMobileNav from './DashboardMobileNav';
+import UpgradeModal from './UpgradeModal';
 
 interface SidebarProps {
     children: React.ReactNode;
+}
+
+interface MenuItem {
+    id?: string;
+    label: string;
+    icon?: any;
+    href?: string;
+    roles?: string[];
+    feature?: string;
+    featureName?: string;
+    submenu?: MenuItem[];
+    onClick?: () => void;
 }
 
 export default function DashboardSidebar({ children }: SidebarProps) {
@@ -36,6 +50,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const { data: myBusiness } = useMyBusiness();
     const { data: activeSubscription } = useActiveSubscription();
     const { getLinkWithBranch } = useActiveBranch();
+    const { fetchCapabilities, isFeatureLocked, capabilities } = useSubscriptionStore();
+    const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
+
+    useEffect(() => {
+        if (isAuthenticated && !capabilities) {
+            fetchCapabilities();
+        }
+    }, [isAuthenticated, capabilities, fetchCapabilities]);
 
     const mainBranch = myBusiness?.branches?.find(b => b.isMainBranch);
     const businessLogo = myBusiness?.logoUrl || mainBranch?.logoUrl || defaultLogo;
@@ -125,7 +147,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         });
     };
 
-    const menuItems = [
+    const menuItems: MenuItem[] = [
         {
             id: 'overview',
             label: 'Dashboard',
@@ -159,6 +181,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             label: 'Messaging Center',
             icon: MessageSquare,
             roles: ['owner', 'manager'],
+            feature: 'messages',
+            featureName: 'Messaging Center',
             submenu: [
                 { label: 'Overview', href: '/dashboard/messaging' },
                 {
@@ -211,6 +235,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             label: 'Loyalty',
             icon: Gift,
             roles: ['owner', 'manager', 'staff'],
+            feature: 'loyalty',
+            featureName: 'Loyalty Programs',
             submenu: [
                 { label: 'Overview', href: '/dashboard/loyalty' },
                 { label: 'Rewards', href: '/dashboard/loyalty/rewards' },
@@ -303,6 +329,19 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ? 'bg-gray-100 text-text-main'
             : 'text-text-secondary hover:bg-gray-100 hover:text-text-main';
 
+    const handleItemClick = (e: React.MouseEvent, item: any) => {
+        if (item.feature && isFeatureLocked(item.feature)) {
+            e.preventDefault();
+            e.stopPropagation();
+            setUpgradeModal({ isOpen: true, featureName: item.featureName || item.label });
+            return false;
+        }
+        if (item.submenu) {
+            toggleMenu(item.id);
+        }
+        return true;
+    };
+
     return (
         <div className="flex h-screen bg-gray-50 overflow-hidden relative">
             {/* Mobile Overlay */}
@@ -329,68 +368,87 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 <nav className="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
                     {filteredMenuItems.map((item) => {
                         const IconComponent = item.icon;
+                        const isLocked = item.feature && isFeatureLocked(item.feature);
                         return (
                             <div key={item.id} className="mb-1">
                                 {item.submenu ? (
                                     <>
                                         <button
-                                            onClick={() => toggleMenu(item.id)}
+                                            onClick={(e) => handleItemClick(e, item)}
                                             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${primaryNavClasses(isParentActive(item.submenu))
-                                                }`}
+                                                } ${isLocked ? 'opacity-70' : ''}`}
                                         >
                                             <div className="flex items-center gap-3">
                                                 {IconComponent && <IconComponent size={18} />}
                                                 <span>{item.label}</span>
                                             </div>
-                                            <ChevronDown
-                                                size={16}
-                                                className={`transition-transform ${expandedMenus.includes(item.id) ? 'rotate-180' : ''}`}
-                                            />
+                                            <div className="flex items-center gap-2">
+                                                {isLocked && <Lock size={14} className="text-text-secondary" />}
+                                                <ChevronDown
+                                                    size={16}
+                                                    className={`transition-transform ${expandedMenus.includes(item.id || '') ? 'rotate-180' : ''}`}
+                                                />
+                                            </div>
                                         </button>
-                                        {expandedMenus.includes(item.id) && (
+                                        {expandedMenus.includes(item.id || '') && !isLocked && (
                                             <div className="mt-2 ml-4 space-y-2">
-                                                {item.submenu.map((subItem: any, idx) => (
-                                                    subItem.submenu ? (
+                                                {item.submenu.map((subItem: any, idx) => {
+                                                    const isSubLocked = subItem.feature && isFeatureLocked(subItem.feature);
+                                                    return subItem.submenu ? (
                                                         <div key={subItem.id || idx} className="mb-1">
                                                             <button
-                                                                onClick={() => toggleMenu(subItem.id, item.id)}
+                                                                onClick={(e) => handleItemClick(e, subItem)}
                                                                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isParentActive(subItem.submenu))
-                                                                    }`}
+                                                                    } ${isSubLocked ? 'opacity-70' : ''}`}
                                                             >
                                                                 <span>{subItem.label}</span>
-                                                                <ChevronDown
-                                                                    size={14}
-                                                                    className={`transition-transform ${expandedMenus.includes(subItem.id) ? 'rotate-180' : ''}`}
-                                                                />
+                                                                <div className="flex items-center gap-2">
+                                                                    {isSubLocked && <Lock size={12} className="text-text-secondary" />}
+                                                                    <ChevronDown
+                                                                        size={14}
+                                                                        className={`transition-transform ${expandedMenus.includes(subItem.id) ? 'rotate-180' : ''}`}
+                                                                    />
+                                                                </div>
                                                             </button>
-                                                            {expandedMenus.includes(subItem.id) && (
+                                                            {expandedMenus.includes(subItem.id) && !isSubLocked && (
                                                                 <div className="mt-2 ml-3 space-y-2">
-                                                                    {subItem.submenu.map((nestedItem: any, nIdx: number) => (
-                                                                        nestedItem.submenu ? (
+                                                                    {subItem.submenu.map((nestedItem: any, nIdx: number) => {
+                                                                        const isNestedLocked = nestedItem.feature && isFeatureLocked(nestedItem.feature);
+                                                                        return nestedItem.submenu ? (
                                                                             <div key={nestedItem.id || nIdx} className="mb-1">
                                                                                 <button
-                                                                                    onClick={() => toggleMenu(nestedItem.id, subItem.id)}
+                                                                                    onClick={(e) => handleItemClick(e, nestedItem)}
                                                                                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isParentActive(nestedItem.submenu))
-                                                                                        }`}
+                                                                                        } ${isNestedLocked ? 'opacity-70' : ''}`}
                                                                                 >
                                                                                     <span>{nestedItem.label}</span>
-                                                                                    <ChevronDown
-                                                                                        size={12}
-                                                                                        className={`transition-transform ${expandedMenus.includes(nestedItem.id) ? 'rotate-180' : ''}`}
-                                                                                    />
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        {isNestedLocked && <Lock size={12} className="text-text-secondary" />}
+                                                                                        <ChevronDown
+                                                                                            size={12}
+                                                                                            className={`transition-transform ${expandedMenus.includes(nestedItem.id) ? 'rotate-180' : ''}`}
+                                                                                        />
+                                                                                    </div>
                                                                                 </button>
-                                                                                {expandedMenus.includes(nestedItem.id) && (
+                                                                                {expandedMenus.includes(nestedItem.id) && !isNestedLocked && (
                                                                                     <div className="mt-1 ml-3 space-y-1 border-l border-gray-100">
                                                                                         {nestedItem.submenu.map((deepItem: any) => (
                                                                                             <Link
                                                                                                 key={deepItem.href}
                                                                                                 href={getLinkWithBranch(deepItem.href)}
-                                                                                                className={`block px-3 py-1 rounded-lg text-[10px] font-medium transition-colors ${isActive(deepItem.href)
+                                                                                                onClick={(e) => {
+                                                                                                    if (deepItem.feature && isFeatureLocked(deepItem.feature)) {
+                                                                                                        e.preventDefault();
+                                                                                                        setUpgradeModal({ isOpen: true, featureName: deepItem.featureName || deepItem.label });
+                                                                                                    }
+                                                                                                }}
+                                                                                                className={`flex items-center justify-between px-3 py-1 rounded-lg text-[10px] font-medium transition-colors ${isActive(deepItem.href)
                                                                                                     ? 'text-primary border-l-2 border-primary -ml-px'
                                                                                                     : 'text-text-secondary hover:text-text-main'
                                                                                                     }`}
                                                                                             >
-                                                                                                {deepItem.label}
+                                                                                                <span>{deepItem.label}</span>
+                                                                                                {deepItem.feature && isFeatureLocked(deepItem.feature) && <Lock size={10} className="text-text-secondary" />}
                                                                                             </Link>
                                                                                         ))}
                                                                                     </div>
@@ -400,13 +458,20 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                             <Link
                                                                                 key={nestedItem.href}
                                                                                 href={nestedItem.href}
-                                                                                className={`block px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(nestedItem.href))
+                                                                                onClick={(e) => {
+                                                                                    if (nestedItem.feature && isFeatureLocked(nestedItem.feature)) {
+                                                                                        e.preventDefault();
+                                                                                        setUpgradeModal({ isOpen: true, featureName: nestedItem.featureName || nestedItem.label });
+                                                                                    }
+                                                                                }}
+                                                                                className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(nestedItem.href))
                                                                                     }`}
                                                                             >
-                                                                                {nestedItem.label}
+                                                                                <span>{nestedItem.label}</span>
+                                                                                {nestedItem.feature && isFeatureLocked(nestedItem.feature) && <Lock size={12} className="text-text-secondary" />}
                                                                             </Link>
-                                                                        )
-                                                                    ))}
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                             )}
                                                         </div>
@@ -414,32 +479,48 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                         <Link
                                                             key={subItem.href}
                                                             href={getLinkWithBranch(subItem.href)}
-                                                            onClick={() => setIsMobileOpen(false)}
-                                                            className={`block px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(subItem.href))
+                                                            onClick={(e) => {
+                                                                setIsMobileOpen(false);
+                                                                if (subItem.feature && isFeatureLocked(subItem.feature)) {
+                                                                    e.preventDefault();
+                                                                    setUpgradeModal({ isOpen: true, featureName: subItem.featureName || subItem.label });
+                                                                }
+                                                            }}
+                                                            className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(subItem.href))
                                                                 }`}
                                                         >
-                                                            {subItem.label}
+                                                            <span>{subItem.label}</span>
+                                                            {subItem.feature && isFeatureLocked(subItem.feature) && <Lock size={12} className="text-text-secondary" />}
                                                         </Link>
-                                                    )
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </>
                                 ) : (
                                     <Link
                                         href={item.href!}
+                                        onClick={(e) => {
+                                            if (item.feature && isFeatureLocked(item.feature)) {
+                                                e.preventDefault();
+                                                setUpgradeModal({ isOpen: true, featureName: item.featureName || item.label });
+                                            }
+                                        }}
                                         className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${primaryNavClasses(isActive(item.href!))
-                                            }`}
+                                            } ${isLocked ? 'opacity-70' : ''}`}
                                     >
                                         <div className="flex items-center gap-3">
                                             {IconComponent && <IconComponent size={18} />}
                                             <span>{item.label}</span>
                                         </div>
-                                        {item.id === 'loyalty' && pendingRedemptions > 0 && (
-                                            <span className="w-5 h-5 bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center rounded-full shadow-sm shadow-emerald-500/20">
-                                                {pendingRedemptions}
-                                            </span>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {isLocked && <Lock size={14} className="text-text-secondary" />}
+                                            {item.id === 'loyalty' && pendingRedemptions > 0 && !isLocked && (
+                                                <span className="w-5 h-5 bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center rounded-full shadow-sm shadow-emerald-500/20">
+                                                    {pendingRedemptions}
+                                                </span>
+                                            )}
+                                        </div>
                                     </Link>
                                 )}
 
@@ -661,6 +742,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             </div>
 
             <DashboardMobileNav />
+            <UpgradeModal 
+                isOpen={upgradeModal.isOpen} 
+                onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })} 
+                featureName={upgradeModal.featureName} 
+            />
         </div>
     );
 }

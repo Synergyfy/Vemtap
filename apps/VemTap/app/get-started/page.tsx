@@ -41,6 +41,7 @@ export default function GetStarted() {
         businessName: '',
         businessLogo: null as string | null,
         category: '',
+        subcategory: '',
         selectedRole: 'Owner' as 'Owner' | 'Manager',
         branchCount: '',
         visitors: '',
@@ -52,6 +53,7 @@ export default function GetStarted() {
         businessWebsite: '',
         isRegistered: 'No' as 'Yes' | 'No',
         registrationNumber: '',
+        verificationDoc: null as string | null,
         state: '',
         city: '',
         goals: [] as string[],
@@ -63,7 +65,98 @@ export default function GetStarted() {
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const categories = ['Retail', 'Hospitality', 'Events & Booths', 'Service Centers', 'Professional Office'];
+    const categoriesData = [
+        {
+            name: 'Retail & Shops',
+            description: 'Businesses that sell physical products directly to customers either in a shop, store, market stall, or online.',
+            subcategories: ['Supermarket / Grocery Store', 'Boutique / Fashion Store', 'Shoe Store', 'Phone & Accessories Store', 'Electronics Store', 'Computer Store', 'Cosmetics / Beauty Products Store', 'Perfume Store', 'Baby Store', 'Toy Store', 'Gift Shop', 'Bookshop / Stationery', 'Jewelry Store', 'Home Appliances Store', 'Furniture Store', 'Building Materials Store', 'Lighting / Electrical Shop', 'Kitchenware Store', 'Sports Equipment Store', 'Pet Store', 'Pharmacy / Drug Store', 'Agricultural Produce Shop', 'Auto Spare Parts Shop', 'Market Trader / General Merchandise', 'Others']
+        },
+        {
+            name: 'Food & Hospitality',
+            description: 'Businesses that prepare, sell, or serve food, drinks, or provide accommodation to customers.',
+            subcategories: ['Restaurant', 'Fast Food / Quick Service', 'Local Food Canteen / Bukka', 'Café / Coffee Shop', 'Bakery', 'Ice Cream Shop', 'Juice / Smoothie Bar', 'Bar / Lounge', 'Nightclub', 'Catering Services', 'Event Food Vendor', 'Hotel', 'Guest House', 'Short-let Apartment', 'Resort', 'Others']
+        },
+        {
+            name: 'Beauty & Personal Care',
+            description: 'Businesses that help customers improve their appearance, grooming, hygiene, and personal care.',
+            subcategories: ['Hair Salon', 'Barbing Salon', 'Nail Studio', 'Spa / Massage', 'Makeup Artist', 'Skincare / Facial Studio', 'Beauty Clinic', 'Tattoo Studio', 'Piercing Studio', 'Cosmetics Studio', 'Others']
+        },
+        {
+            name: 'Health & Medical',
+            description: 'Businesses that provide healthcare, medical services, or wellness treatments.',
+            subcategories: ['Hospital', 'Clinic', 'Dental Clinic', 'Eye Clinic / Optometrist', 'Pharmacy', 'Laboratory / Diagnostic Center', 'Physiotherapy', 'Mental Health / Therapy Center', 'Maternity Center', 'Medical Supply Store', 'Others']
+        },
+        {
+            name: 'Professional Services',
+            description: 'Businesses that provide expert advice, consulting, or professional services.',
+            subcategories: ['Law Firm / Legal Services', 'Accounting / Audit Firm', 'Tax Consultant', 'Business Consultant', 'Marketing Agency', 'Branding Agency', 'Advertising Agency', 'HR Consulting', 'Management Consulting', 'Public Relations (PR)', 'Others']
+        },
+        {
+            name: 'Technology & Digital Services',
+            description: 'Businesses that provide technology services, digital solutions, or IT-related services.',
+            subcategories: ['Software Development', 'Website Development', 'Mobile App Development', 'IT Support Services', 'Cybersecurity Services', 'Data & Analytics Services', 'SaaS / Tech Platform', 'Digital Marketing Agency', 'Social Media Management', 'Graphic Design', 'UI/UX Design', 'Printing & Branding Services', 'Computer Repair', 'Phone Repair', 'Internet Service Provider', 'Others']
+        },
+        {
+            name: 'Education & Training',
+            description: 'Businesses that provide learning, academic training, or skill development.',
+            subcategories: ['Nursery / Primary School', 'Secondary School', 'University / Polytechnic', 'Private Tutor', 'Training Institute', 'Professional Certification Training', 'Tech Bootcamp', 'Driving School', 'Music School', 'Language School', 'Online Course Provider', 'Coaching Center', 'Others']
+        },
+        {
+            name: 'Real Estate & Property',
+            description: 'Businesses involved in buying, selling, renting, managing, or developing properties.',
+            subcategories: ['Real Estate Agency', 'Property Developer', 'Property Management', 'Land Sales Company', 'Facility Management', 'Surveying Services', 'Estate Valuation', 'Short-let Management', 'Others']
+        },
+        {
+            name: 'Automotive',
+            description: 'Businesses that sell vehicles or provide car-related services.',
+            subcategories: ['Car Dealership', 'Used Car Dealer', 'Car Rental', 'Mechanic Workshop', 'Auto Spare Parts', 'Car Wash', 'Auto Electrical Repair', 'Tire Shop', 'Vehicle Inspection', 'Vehicle Tracking Services', 'Others']
+        },
+        {
+            name: 'Logistics & Transportation',
+            description: 'Businesses that move people, goods, or deliveries from one place to another.',
+            subcategories: ['Courier Service', 'Delivery Company', 'Logistics Company', 'Trucking Services', 'Bike Delivery', 'Moving Company', 'Bus Transport Company', 'Taxi / Ride Hailing', 'Freight Forwarding', 'Shipping Company', 'Others']
+        },
+        {
+            name: 'Construction & Home Services',
+            description: 'Businesses that build, repair, install, or maintain homes, buildings, or infrastructure.',
+            subcategories: ['Construction Company', 'Building Contractor', 'Architecture Firm', 'Interior Design', 'Plumbing Services', 'Electrical Installation', 'Painting Services', 'Carpentry', 'Tiling Services', 'Welding / Metal Fabrication', 'Cleaning Services', 'Pest Control', 'Security Services', 'Others']
+        },
+        {
+            name: 'Events & Entertainment',
+            description: 'Businesses that provide entertainment, event planning, and event services.',
+            subcategories: ['Event Planning', 'Wedding Planner', 'Event Hall / Venue', 'DJ Services', 'Photography', 'Videography', 'MC / Host', 'Equipment Rental', 'Stage & Lighting', 'Decor Services', 'Entertainment Company', 'Others']
+        },
+        {
+            name: 'Finance & Financial Services',
+            description: 'Businesses that help people manage, invest, borrow, insure, or move money.',
+            subcategories: ['Bank', 'Microfinance Bank', 'Fintech Company', 'POS Agent / POS Business', 'Bureau De Change', 'Insurance Company', 'Investment Company', 'Loan Services', 'Mortgage Services', 'Cooperative Society', 'Others']
+        },
+        {
+            name: 'Agriculture & Farming',
+            description: 'Businesses involved in farming, livestock, food production, or agricultural supply.',
+            subcategories: ['Crop Farming', 'Livestock Farming', 'Poultry Farm', 'Fish Farm', 'Agro Processing', 'Farm Produce Trading', 'Fertilizer & Farm Input Supply', 'Agricultural Equipment Supply', 'Others']
+        },
+        {
+            name: 'Manufacturing & Production',
+            description: 'Businesses that produce goods or manufacture products.',
+            subcategories: ['Food Processing', 'Beverage Production', 'Clothing Manufacturing', 'Furniture Manufacturing', 'Plastic Manufacturing', 'Cosmetics Manufacturing', 'Pharmaceutical Manufacturing', 'Packaging Production', 'Printing Production', 'Others']
+        },
+        {
+            name: 'Religious & Non-Profit Organizations',
+            description: 'Organizations that operate for religious, charity, or social impact purposes.',
+            subcategories: ['Church', 'Mosque', 'NGO', 'Charity Organization', 'Foundation', 'Community Organization', 'Others']
+        },
+        {
+            name: 'Government & Public Services',
+            description: 'Government institutions or public service providers.',
+            subcategories: ['Government Office', 'Public Agency', 'Public Utility Service', 'Public Healthcare Facility', 'Public School', 'Others']
+        },
+        {
+            name: 'Others',
+            description: 'If your business does not fit into any of the categories above, select this option and specify what your business does.',
+            subcategories: ['Others']
+        }
+    ];
     const goals = ['Capture Leads', 'Automated Rewards', 'Customer Feedback', 'Digital Loyalty'];
 
     const statesData: Record<string, string[]> = {
@@ -198,17 +291,33 @@ export default function GetStarted() {
             let response: any;
 
             let businessLogoUrl = cleanData.businessLogo;
+            let verificationDocUrl = cleanData.verificationDoc;
 
-            if (!isManager && cleanData.businessLogo && cleanData.businessLogo.startsWith('data:image')) {
-                const uploadToast = toast.loading('Uploading business logo...');
-                try {
-                    // Upload to Cloudinary and get secure URL
-                    businessLogoUrl = await uploadToCloudinary(cleanData.businessLogo);
-                    toast.success('Logo uploaded!', { id: uploadToast });
-                } catch (uploadError: any) {
-                    console.error('Logo upload failed:', uploadError);
-                    toast.error('Logo upload failed. Proceeding...', { id: uploadToast });
-                    businessLogoUrl = null;
+            if (!isManager) {
+                // Upload business logo
+                if (cleanData.businessLogo && cleanData.businessLogo.startsWith('data:image')) {
+                    const uploadToast = toast.loading('Uploading business logo...');
+                    try {
+                        businessLogoUrl = await uploadToCloudinary(cleanData.businessLogo);
+                        toast.success('Logo uploaded!', { id: uploadToast });
+                    } catch (uploadError: any) {
+                        console.error('Logo upload failed:', uploadError);
+                        toast.error('Logo upload failed. Proceeding...', { id: uploadToast });
+                        businessLogoUrl = null;
+                    }
+                }
+
+                // Upload verification document
+                if (cleanData.verificationDoc && (cleanData.verificationDoc.startsWith('data:image') || cleanData.verificationDoc.startsWith('data:application'))) {
+                    const docToast = toast.loading('Uploading verification document...');
+                    try {
+                        verificationDocUrl = await uploadToCloudinary(cleanData.verificationDoc);
+                        toast.success('Document uploaded!', { id: docToast });
+                    } catch (docError: any) {
+                        console.error('Document upload failed:', docError);
+                        toast.error('Document upload failed. Proceeding...', { id: docToast });
+                        verificationDocUrl = null;
+                    }
                 }
             }
 
@@ -232,6 +341,7 @@ export default function GetStarted() {
                     businessName: cleanData.businessName,
                     businessLogo: businessLogoUrl || undefined,
                     category: cleanData.category || undefined,
+                    subcategory: formData.subcategory || undefined,
                     visitors: cleanData.visitors || undefined,
                     goals: cleanData.goals && cleanData.goals.length > 0 ? cleanData.goals : undefined,
                     whatsappNumber: cleanData.whatsappNumber || undefined,
@@ -241,6 +351,7 @@ export default function GetStarted() {
                     businessWebsite: cleanData.businessWebsite || undefined,
                     isRegistered: cleanData.isRegistered === 'Yes',
                     registrationNumber: cleanData.registrationNumber || undefined,
+                    verificationDoc: verificationDocUrl || undefined,
                     state: cleanData.state || undefined,
                     city: cleanData.city || undefined,
                 };
@@ -610,19 +721,57 @@ export default function GetStarted() {
                                         )}
 
                                         {subStep === 4 && !isManager && (
-                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Business Type</label>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    {categories.map(c => (
-                                                        <button
-                                                            key={c}
-                                                            onClick={() => setFormData({ ...formData, category: c })}
-                                                            className={`px-4 py-3 rounded-xl text-[11px] font-bold transition-all border text-center ${formData.category === c ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-gray-50 border-gray-100 text-text-secondary hover:bg-gray-100'}`}
-                                                        >
-                                                            {c}
-                                                        </button>
-                                                    ))}
+                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                                                <div className="space-y-3">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Business Category</label>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                        {categoriesData.map(c => (
+                                                            <button
+                                                                key={c.name}
+                                                                onClick={() => setFormData({ ...formData, category: c.name, subcategory: '' })}
+                                                                className={`px-4 py-4 rounded-xl text-[11px] font-bold transition-all border text-left flex flex-col gap-1 ${formData.category === c.name ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' : 'bg-gray-50 border-gray-100 text-text-secondary hover:bg-gray-100'}`}
+                                                            >
+                                                                <span className="block truncate">{c.name}</span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                 </div>
+
+                                                <AnimatePresence mode="wait">
+                                                    {formData.category && (
+                                                        <motion.div
+                                                            key={formData.category}
+                                                            initial={{ opacity: 0, height: 0 }}
+                                                            animate={{ opacity: 1, height: 'auto' }}
+                                                            exit={{ opacity: 0, height: 0 }}
+                                                            className="space-y-6 overflow-hidden"
+                                                        >
+                                                            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 flex gap-3">
+                                                                <div className="shrink-0">
+                                                                    <span className="material-icons-round text-blue-500 text-lg">info</span>
+                                                                </div>
+                                                                <p className="text-xs text-blue-800 font-medium leading-relaxed italic">
+                                                                    {categoriesData.find(c => c.name === formData.category)?.description}
+                                                                </p>
+                                                            </div>
+
+                                                            <div className="space-y-3">
+                                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Select Subcategory</label>
+                                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                                    {categoriesData.find(c => c.name === formData.category)?.subcategories.map(sub => (
+                                                                        <button
+                                                                            key={sub}
+                                                                            onClick={() => setFormData({ ...formData, subcategory: sub })}
+                                                                            className={`px-3 py-2.5 rounded-lg text-[10px] font-bold transition-all border text-center leading-tight ${formData.subcategory === sub ? 'bg-primary/10 border-primary text-primary shadow-sm' : 'bg-white border-gray-100 text-text-secondary hover:bg-gray-50'}`}
+                                                                        >
+                                                                            {sub}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
                                             </motion.div>
                                         )}
 
@@ -675,23 +824,74 @@ export default function GetStarted() {
                                                             </button>
                                                         ))}
                                                     </div>
-                                                    {formData.isRegistered === 'Yes' ? (
-                                                        <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 mt-2">
-                                                            <p className="text-[11px] text-blue-600 font-medium mb-3">Your business is officially registered with a government authority. Please provide your registration number.</p>
-                                                            <SanitizedInput
-                                                                label="Registration Number"
-                                                                value={formData.registrationNumber}
-                                                                onChange={(v) => setFormData({ ...formData, registrationNumber: v })}
-                                                                icon="description"
-                                                                placeholder="RC-1234567"
-                                                                required={formData.isRegistered === 'Yes'}
-                                                            />
+
+                                                    <div className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 mt-2 space-y-4">
+                                                        {formData.isRegistered === 'Yes' ? (
+                                                            <div className="space-y-4">
+                                                                <p className="text-[11px] text-blue-600 font-medium p-3 bg-blue-50/50 rounded-xl border border-blue-100">
+                                                                    Your business is officially registered. Please provide your CAC number and upload your certificate.
+                                                                </p>
+                                                                <SanitizedInput
+                                                                    label="Registration Number (CAC)"
+                                                                    value={formData.registrationNumber}
+                                                                    onChange={(v) => setFormData({ ...formData, registrationNumber: v })}
+                                                                    icon="description"
+                                                                    placeholder="RC-1234567"
+                                                                    required
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-4">
+                                                                <p className="text-[11px] text-amber-600 font-medium p-3 bg-amber-50/50 rounded-xl border border-amber-100">
+                                                                    Not registered? Please upload a valid government ID (National ID, NIMC, or Passport) for verification.
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">
+                                                                {formData.isRegistered === 'Yes' ? 'Upload CAC Document' : 'Upload ID Document'}
+                                                            </label>
+                                                            <div className="flex items-center gap-4 p-4 border border-dashed border-gray-200 rounded-xl bg-white">
+                                                                <div className="size-12 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden">
+                                                                    {formData.verificationDoc ? (
+                                                                        formData.verificationDoc.startsWith('data:image') ? (
+                                                                            <img src={formData.verificationDoc} className="w-full h-full object-cover" />
+                                                                        ) : (
+                                                                            <span className="material-icons-round text-primary text-xl">description</span>
+                                                                        )
+                                                                    ) : (
+                                                                        <span className="material-icons-round text-gray-300 text-xl">file_upload</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <input
+                                                                        type="file"
+                                                                        id="doc-upload"
+                                                                        className="hidden"
+                                                                        accept="image/*,.pdf"
+                                                                        onChange={(e) => {
+                                                                            const file = e.target.files?.[0];
+                                                                            if (file) {
+                                                                                const reader = new FileReader();
+                                                                                reader.onloadend = () => {
+                                                                                    setFormData({ ...formData, verificationDoc: reader.result as string });
+                                                                                };
+                                                                                reader.readAsDataURL(file);
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                    <label htmlFor="doc-upload" className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[11px] font-bold text-text-main cursor-pointer hover:bg-gray-50 transition-all">
+                                                                        {formData.verificationDoc ? 'Change Document' : 'Select Document'}
+                                                                    </label>
+                                                                    <p className="text-[10px] text-text-secondary mt-1">PDF, JPG or PNG. Max 5MB</p>
+                                                                </div>
+                                                                {formData.verificationDoc && (
+                                                                    <span className="material-icons-round text-green-500">check_circle</span>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                    ) : (
-                                                        <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-100 mt-2">
-                                                            <p className="text-[11px] text-amber-600 font-medium">Your business is not officially registered yet. You can still proceed, but some campaign features may require verification later.</p>
-                                                        </div>
-                                                    )}
+                                                    </div>
                                                 </div>
                                             </motion.div>
                                         )}
@@ -804,7 +1004,7 @@ export default function GetStarted() {
                                                     (subStep === 3 && isManager && !formData.businessId) ||
                                                     (!isManager && subStep === 3 && !formData.branchCount) ||
                                                     (!isManager && subStep === 4 && !formData.category) ||
-                                                    (!isManager && subStep === 5 && (!formData.whatsappNumber || !formData.officialEmail || !formData.businessNumber || (formData.isRegistered === 'Yes' && !formData.registrationNumber))) ||
+                                                    (!isManager && subStep === 5 && (!formData.whatsappNumber || !formData.officialEmail || !formData.businessNumber || !formData.verificationDoc || (formData.isRegistered === 'Yes' && !formData.registrationNumber))) ||
                                                     (!isManager && subStep === 6 && !formData.visitors) ||
                                                     (!isManager && subStep === 7 && formData.goals.length === 0) ||
                                                     (!isManager && subStep === 8 && (!formData.businessAddress || !formData.state || !formData.city))

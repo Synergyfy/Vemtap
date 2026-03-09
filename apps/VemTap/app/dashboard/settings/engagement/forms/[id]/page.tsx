@@ -7,6 +7,7 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import PhoneFrame from '@/components/shared/PhoneFrame';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { useBusinessForm } from '@/services/business-forms/hooks';
+import { useBranches } from '@/services/branches/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { toast } from 'react-hot-toast';
@@ -15,9 +16,11 @@ export default function FormPreviewPage() {
     const params = useParams();
     const formId = String(params?.id || '');
     const { data: form, isLoading } = useBusinessForm(formId);
+    const { data: branches = [] } = useBranches();
     const { data: myBusiness } = useMyBusiness();
     const user = useAuthStore((state) => state.user);
     const mainBranch = myBusiness?.branches?.find((b) => b.isMainBranch);
+    const branchName = branches.find((b) => b.id === form?.branchId)?.name || 'Unknown Branch';
     const [lastPreviewSubmission, setLastPreviewSubmission] = useState<Record<string, any> | null>(null);
 
     if (isLoading) {
@@ -66,8 +69,8 @@ export default function FormPreviewPage() {
                         <p className="text-xs font-medium text-text-secondary">{form.id}</p>
                     </div>
                     <div>
-                        <p className="text-sm font-bold text-text-main">Branch ID</p>
-                        <p className="text-xs font-medium text-text-secondary">{form.branchId}</p>
+                        <p className="text-sm font-bold text-text-main">Branch</p>
+                        <p className="text-xs font-medium text-text-secondary">{branchName}</p>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${form.isPublished ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>

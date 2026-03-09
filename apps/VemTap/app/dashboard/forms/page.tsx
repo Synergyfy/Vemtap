@@ -38,6 +38,10 @@ export default function FormsPage() {
     if (!branchScope) return forms;
     return forms.filter((form) => form.branchId === branchScope);
   }, [forms, branchScope]);
+  const branchNameById = useMemo(
+    () => new Map(branches.map((branch) => [branch.id, branch.name])),
+    [branches]
+  );
 
   const getFormUrl = (formId: string) =>
     typeof window !== 'undefined'
@@ -117,7 +121,7 @@ export default function FormsPage() {
           const isDefault = defaultFormId === form.id;
           const isActiveInUserStep = isActiveForm(branchScope || 'global', form.id);
           return (
-            <div id={`form-card-${form.id}`} key={form.id} className={`relative rounded-3xl bg-white border p-5 sm:p-6 shadow-sm space-y-4 ${focusFormId === form.id ? 'border-primary ring-2 ring-primary/20' : 'border-gray-200'}`}>
+            <div id={`form-card-${form.id}`} key={form.id} className={`relative rounded-2xl bg-white border p-5 sm:p-6 shadow-sm space-y-4 ${focusFormId === form.id ? 'border-primary ring-2 ring-primary/20' : 'border-gray-200'}`}>
               <QRCodeCanvas id={`form-qr-${form.id}`} value={getFormUrl(form.id)} size={160} className="hidden" />
 
               <div className="flex items-start justify-between gap-3">
@@ -145,7 +149,7 @@ export default function FormsPage() {
               </div>
 
               <div className="text-xs text-text-secondary space-y-1">
-                <p>Branch: <span className="font-semibold text-text-main">{form.branchId}</span></p>
+                <p>Branch: <span className="font-semibold text-text-main">{branchNameById.get(form.branchId) || 'Unknown Branch'}</span></p>
                 <p>Fields: <span className="font-semibold text-text-main">{form.fields?.length || 0}</span></p>
               </div>
 

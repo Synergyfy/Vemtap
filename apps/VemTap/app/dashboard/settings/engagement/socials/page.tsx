@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, Trophy } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/dashboard/PageHeader';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
@@ -220,6 +220,22 @@ export default function EngagementSocialSettingsPage() {
                         active={localSettings.showFeedback}
                         onChange={(val) => setLocalSettings((prev) => ({ ...prev, showFeedback: val }))}
                     />
+                </div>
+            </div>
+
+            {/* Rewards Awareness */}
+            <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-4">
+                        <div className="size-12 bg-pink-50 text-pink-600 rounded-2xl flex items-center justify-center shadow-inner">
+                            <Trophy size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-display font-bold text-text-main">Reward Awareness</h3>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Configure in Loyalty Settings</p>
+                        </div>
+                    </div>
+                    <div className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-tighter border border-emerald-100">Auto-managed</div>
                 </div>
             </div>
 

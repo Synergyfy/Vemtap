@@ -75,6 +75,7 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             icon: Store,
             submenu: [
                 { label: 'All Businesses', href: '/admin/businesses' },
+                { label: 'Business Categories', href: '/admin/categories' },
                 { label: 'Pending Approval', href: '/admin/businesses/pending' },
                 { label: 'Suspended', href: '/admin/businesses/suspended' },
             ]

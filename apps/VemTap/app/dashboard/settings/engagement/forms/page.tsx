@@ -69,6 +69,10 @@ export default function EngagementFormsBuilderPage() {
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
   const selectedBranchName = branches.find((b) => b.id === branchId)?.name || branchId || 'Main Branch';
+  const branchNameById = useMemo(
+    () => new Map(branches.map((branch) => [branch.id, branch.name])),
+    [branches]
+  );
 
   const resetBuilder = () => {
     setEditing(null);
@@ -220,9 +224,9 @@ export default function EngagementFormsBuilderPage() {
             {formsLoading && <p className="text-sm text-slate-500">Loading forms...</p>}
             {!formsLoading && filteredForms.length === 0 && <p className="text-sm text-slate-500">No forms found.</p>}
             {filteredForms.map((f) => (
-              <div key={f.id} className="rounded-3xl bg-white border border-slate-200 shadow-sm p-5 sm:p-6 flex flex-col gap-4">
+              <div key={f.id} className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 sm:p-6 flex flex-col gap-4">
                 <div className="flex items-start justify-between gap-3"><div><h3 className="text-xl font-black text-slate-900">{f.title}</h3><p className="text-sm text-slate-500">{f.description || 'No description'}</p></div><span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700">{statusOf(f)}</span></div>
-                <div className="text-xs text-slate-500 flex justify-between"><span>{f.fields?.length || 0} fields</span><span>{f.branchId}</span></div>
+                <div className="text-xs text-slate-500 flex justify-between"><span>{f.fields?.length || 0} fields</span><span>{branchNameById.get(f.branchId) || 'Unknown Branch'}</span></div>
                 <div className="mt-auto grid grid-cols-3 gap-2">
                   <button onClick={() => router.push(`/dashboard/settings/engagement/forms/${f.id}`)} className="h-10 rounded-xl border border-slate-200 text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-1"><Eye size={14} />Preview</button>
                   <button onClick={() => openEdit(f)} className="h-10 rounded-xl border border-slate-200 text-xs sm:text-sm font-bold">Edit</button>
@@ -241,12 +245,12 @@ export default function EngagementFormsBuilderPage() {
             <p className="text-sm text-slate-500">Start from scratch or load an admin template.</p>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
-            <button onClick={() => { resetBuilder(); setViewMode('builder'); }} className="text-left rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <button onClick={() => { resetBuilder(); setViewMode('builder'); }} className="text-left rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="size-12 rounded-2xl bg-slate-900 text-yellow-300 flex items-center justify-center mb-4"><Plus size={22} /></div>
               <h3 className="text-xl font-black text-slate-900">Create from Scratch</h3>
               <p className="text-sm text-slate-600 mt-2">Build your own custom form.</p>
             </button>
-            <button onClick={() => setViewMode('templates')} className="text-left rounded-3xl border border-slate-900 bg-slate-900 p-6 text-white shadow-sm">
+            <button onClick={() => setViewMode('templates')} className="text-left rounded-2xl border border-slate-900 bg-slate-900 p-6 text-white shadow-sm">
               <div className="size-12 rounded-2xl bg-yellow-300 text-slate-900 flex items-center justify-center mb-4"><LayoutTemplate size={22} /></div>
               <h3 className="text-xl font-black">Use Admin Template</h3>
               <p className="text-sm text-slate-300 mt-2">Pick from fetched templates.</p>
@@ -271,7 +275,7 @@ export default function EngagementFormsBuilderPage() {
             {templatesLoading && <p className="text-sm text-slate-500">Loading templates...</p>}
             {!templatesLoading && templates.length === 0 && <p className="text-sm text-slate-500">No templates available.</p>}
             {templates.map((template) => (
-              <div key={template.id} className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm space-y-3">
+              <div key={template.id} className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm space-y-3">
                 <div className="size-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><LayoutTemplate size={18} /></div>
                 <h3 className="text-lg font-black text-slate-900">{template.name}</h3>
                 <p className="text-sm text-slate-500">{template.description || 'No description'}</p>
