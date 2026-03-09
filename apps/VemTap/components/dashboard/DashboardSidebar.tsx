@@ -13,7 +13,7 @@ import { dashboardApi } from '@/lib/api/dashboard';
 import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Nfc, Send, Gift, BarChart, Users2, Settings,
-    ChevronDown, LogOut, Bell, Search, HelpCircle, Menu, X, Zap, MessageSquare, Smartphone, ShieldCheck
+    ChevronDown,Lock, LogOut, Bell, Search, HelpCircle, Menu, X, Zap, MessageSquare, Smartphone, ShieldCheck
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
