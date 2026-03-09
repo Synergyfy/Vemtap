@@ -134,3 +134,6 @@ auto redirect to the title please 2.live preview merge the form
 -- three ways  to apply to socials and form creatorss and instructions.
 --engagment social can be added to messaging
 
+
+---error pnpm outdated lockfile 
+
