@@ -65,8 +65,8 @@ export default function AnalyticsDashboardPage() {
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
                         <button className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 rounded-lg transition-all">7D</button>
-                        <button className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main rounded-lg transition-all">30D</button>
-                        <button className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main rounded-lg transition-all">90D</button>
+                        <button className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main rounded-lg transition-all">30D</button>    
+                        <button className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main rounded-lg transition-all">90D</button>    
                     </div>
                     <button
                         onClick={() => {
@@ -127,7 +127,7 @@ export default function AnalyticsDashboardPage() {
                         };
                         const colors = roiColors[stat.label] || { color: 'text-gray-500', bg: 'bg-gray-50' };
                         return (
-                            <div key={i} className="bg-white p-4 rounded-lg border border-gray-100 flex flex-col items-center justify-center text-center hover:shadow-md transition-all">
+                            <div key={i} className="bg-white p-4 rounded-lg border border-gray-100 flex flex-col items-center justify-center text-center hover:shadow-md transition-all"> 
                                 <span className={`text-[10px] font-black uppercase tracking-widest ${colors.color} mb-1`}>{stat.label}</span>
                                 <span className="text-2xl font-black text-text-main tracking-tight">{stat.value}</span>
                                 {stat.sub && <span className="text-xs font-bold text-gray-400 mt-1">{stat.sub}</span>}
@@ -235,4 +235,3 @@ export default function AnalyticsDashboardPage() {
         </div>
     );
 }
-

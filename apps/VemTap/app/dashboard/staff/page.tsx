@@ -12,6 +12,8 @@ import toast from 'react-hot-toast';
 import { UserPlus, Shield, Edit3, Trash2, Eye, MessageSquare, BarChart3, Users as UsersIcon, Settings as SettingsIcon, Building2, Loader2 } from 'lucide-react';
 import { useBranches } from '@/services/branches/hooks';
 import Modal from '@/components/ui/Modal';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import UsageIndicator from '@/components/dashboard/UsageIndicator';
 
 const PERMISSIONS = [
     { id: 'dashboard', label: 'Dashboard', icon: Eye },
@@ -25,13 +27,13 @@ const PERMISSIONS = [
 export default function StaffManagementPage() {
     const router = useRouter();
     const { user, activeBranchId } = useAuthStore();
+    const { capabilities } = useSubscriptionStore();
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
     const [staffToDelete, setStaffToDelete] = useState<{ id: string, name: string } | null>(null);        
     const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['dashboard', 'visitors']);  
 
     const { data: realBranches = [] } = useBranches();
-    // We'll use real branches if available, otherwise an empty array (DataTable handles it)
     const branches = realBranches;
 
     const { data: staffMembers, isLoading: isStaffLoading } = useStaff(activeBranchId || undefined);
@@ -51,6 +53,14 @@ export default function StaffManagementPage() {
 
     const handleInviteStaff = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        
+        // Check limits
+        if (capabilities && capabilities.capabilities.teamMembers.limit !== 'unlimited' && 
+            capabilities.capabilities.teamMembers.used >= (capabilities.capabilities.teamMembers.limit as number)) {
+            toast.error('Team member limit reached. Please upgrade your plan.');
+            return;
+        }
+
         const formData = new FormData(e.currentTarget);
         const roleValue = formData.get('role') as string;
         const branchId = formData.get('branchId') as string;
@@ -200,6 +210,14 @@ export default function StaffManagementPage() {
                         ) : undefined
                     }
                 />
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <UsageIndicator 
+                        label="Team Members" 
+                        usage={capabilities?.capabilities.teamMembers} 
+                        icon={<UsersIcon size={20} />} 
+                    />
+                </div>
 
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                     {isLoading ? (
@@ -431,4 +449,3 @@ export default function StaffManagementPage() {
         </>
     );
 }
-
