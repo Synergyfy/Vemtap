@@ -8,6 +8,8 @@ import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
 import { BusinessHours } from '@/services/businesses/types';
 import { Loader2 } from 'lucide-react';
+import { uploadToCloudinary } from '@/lib/cloudinary';
+import { useUpdateBranch } from '@/services/branches/hooks';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
@@ -16,6 +18,7 @@ export default function BusinessProfilePage() {
 
     const { data: business, isLoading } = useMyBusiness();
     const updateMutation = useUpdateBusiness();
+    const updateBranchMutation = useUpdateBranch();
 
     const [name, setName] = useState('');
     const [logo, setLogo] = useState('');
@@ -62,12 +65,14 @@ export default function BusinessProfilePage() {
 
     useEffect(() => {
         if (business) {
+            const mainBranch = business.branches?.find(b => b.isMainBranch);
+
             setName(business.name || storeName);
             setLogo(business.logoUrl || logoUrl || '');
-            setBusinessType(business.category || 'RESTAURANT');
+            setBusinessType(business.type || business.category?.toUpperCase() || 'RESTAURANT');
             setSupportEmail(business.officialEmail || 'hello@vemtap.com');
-            setSupportPhone(business.whatsappNumber || '+234 801 234 5678');
-            setAddress(business.address || '42 Admiralty Way, Lekki Phase 1, Lagos, Nigeria');
+            setSupportPhone(mainBranch?.phone || business.phone || business.whatsappNumber || '');
+            setAddress(mainBranch?.address || business.address || '');
 
             setAbout(business.about || '');
             setWelcomeMessage(business.welcomeMessage || '');
@@ -109,50 +114,103 @@ export default function BusinessProfilePage() {
         }
     }, [business, storeName, logoUrl, origin]);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!business) return;
+        const mainBranch = business.branches?.find(b => b.isMainBranch);
 
-        updateMutation.mutate({
-            id: business.id,
-            updates: {
-                name,
-                logoUrl: logo,
-                category: businessType,
-                officialEmail: supportEmail,
-                whatsappNumber: supportPhone,
-                address: address,
-                about,
-                welcomeMessage,
-                successMessage,
-                privacyMessage,
-                rewardMessage,
-                businessHours,
-                rewardEnabled,
-                rewardVisitThreshold,
-                facebookUrl,
-                instagramUrl,
-                tiktokUrl,
-                xUrl,
-                youtubeUrl,
-                customLink,
-                linkedinUrl,
-                reviewUrl,
-                showReview,
-                showSocial,
-                showFeedback
+        const hasChanged = (current: any, original: any) => {
+            const normalizedCurrent = current === '' || current === null ? undefined : current;
+            const normalizedOriginal = original === '' || original === null ? undefined : original;
+            return normalizedCurrent !== normalizedOriginal;
+        };
+
+        try {
+            // 1. Upload logo to Cloudinary if it's a new local image
+            let finalLogoUrl = logo;
+            if (logo && logo.startsWith('data:image')) {
+                const uploadToast = toast.loading('Uploading new logo...');
+                try {
+                    finalLogoUrl = await uploadToCloudinary(logo);
+                    setLogo(finalLogoUrl);
+                    toast.dismiss(uploadToast);
+                } catch (error) {
+                    toast.error('Failed to upload logo.');
+                    toast.dismiss(uploadToast);
+                    return;
+                }
             }
-        }, {
-            onSuccess: () => {
-                updateCustomSettings({ logoUrl: logo });
-                useCustomerFlowStore.setState({ storeName: name });
-                const fullProfileUrl = `${origin}/${profileSlug}`;
-                setRedirect(qrId, fullProfileUrl);
-                toast.success('Business profile and QR Link updated!');
-            },
-            onError: () => {
-                toast.error('Failed to update business profile.');
+
+            // 2. Prepare Business Updates
+            const businessUpdates: any = {};
+            if (hasChanged(name, business.name)) businessUpdates.name = name;
+            if (hasChanged(businessType, business.type)) businessUpdates.type = businessType;
+
+            // Re-evaluating Social Links: User said they were rejected on both.
+            // Let's only include them if they are truly changed.
+            if (hasChanged(facebookUrl, business.facebookUrl)) businessUpdates.facebookUrl = facebookUrl;
+            if (hasChanged(instagramUrl, business.instagramUrl)) businessUpdates.instagramUrl = instagramUrl;
+            if (hasChanged(tiktokUrl, business.tiktokUrl)) businessUpdates.tiktokUrl = tiktokUrl;
+            if (hasChanged(xUrl, business.xUrl)) businessUpdates.xUrl = xUrl;
+            if (hasChanged(youtubeUrl, business.youtubeUrl)) businessUpdates.youtubeUrl = youtubeUrl;
+            if (hasChanged(customLink, business.customLink)) businessUpdates.customLink = customLink;
+            if (hasChanged(linkedinUrl, business.linkedinUrl)) businessUpdates.linkedinUrl = linkedinUrl;
+
+            // 3. Prepare Branch Updates
+            const branchUpdates: any = {};
+            if (mainBranch) {
+                if (hasChanged(finalLogoUrl, mainBranch.logoUrl)) branchUpdates.logoUrl = finalLogoUrl;
+                if (hasChanged(supportEmail, mainBranch.officialEmail)) branchUpdates.officialEmail = supportEmail;
+                if (hasChanged(supportPhone, mainBranch.phone)) branchUpdates.phone = supportPhone;
+                if (hasChanged(supportPhone, mainBranch.whatsappNumber)) branchUpdates.whatsappNumber = supportPhone;
+                if (hasChanged(address, mainBranch.address)) branchUpdates.address = address;
+                if (hasChanged(about, mainBranch.about)) branchUpdates.about = about;
+                if (hasChanged(welcomeMessage, mainBranch.welcomeMessage)) branchUpdates.welcomeMessage = welcomeMessage;
+                if (hasChanged(successMessage, mainBranch.successMessage)) branchUpdates.successMessage = successMessage;
+                if (hasChanged(privacyMessage, mainBranch.privacyMessage)) branchUpdates.privacyMessage = privacyMessage;
+                if (hasChanged(rewardMessage, mainBranch.rewardMessage)) branchUpdates.rewardMessage = rewardMessage;
+
+                const originalHours = mainBranch.businessHours || {};
+                if (JSON.stringify(businessHours) !== JSON.stringify(originalHours)) {
+                    branchUpdates.businessHours = businessHours;
+                }
+
+                if (hasChanged(rewardEnabled, mainBranch.rewardEnabled)) branchUpdates.rewardEnabled = rewardEnabled;
+                if (hasChanged(rewardVisitThreshold, mainBranch.rewardVisitThreshold)) branchUpdates.rewardVisitThreshold = rewardVisitThreshold;
+
+                if (hasChanged(reviewUrl, mainBranch.reviewUrl)) branchUpdates.reviewUrl = reviewUrl;
+                if (hasChanged(showReview, mainBranch.showReview)) branchUpdates.showReview = showReview;
+                if (hasChanged(showSocial, mainBranch.showSocial)) branchUpdates.showSocial = showSocial;
+                if (hasChanged(showFeedback, mainBranch.showFeedback)) branchUpdates.showFeedback = showFeedback;
             }
-        });
+
+            const hasBusinessChanges = Object.keys(businessUpdates).length > 0;
+            const hasBranchChanges = Object.keys(branchUpdates).length > 0;
+
+            if (!hasBusinessChanges && !hasBranchChanges) {
+                toast.success('No changes discovered.');
+                return;
+            }
+
+            const promises = [];
+            if (hasBusinessChanges) {
+                promises.push(updateMutation.mutateAsync({ id: business.id, updates: businessUpdates }));
+            }
+            if (hasBranchChanges && mainBranch) {
+                promises.push(updateBranchMutation.mutateAsync({ id: mainBranch.id, updates: branchUpdates }));
+            }
+
+            await Promise.all(promises);
+
+            updateCustomSettings({ logoUrl: finalLogoUrl });
+            useCustomerFlowStore.setState({ storeName: name });
+            const fullProfileUrl = `${origin}/${profileSlug}`;
+            setRedirect(qrId, fullProfileUrl);
+
+            toast.success('Profile updated successfully!');
+        } catch (error) {
+            console.error('Save error:', error);
+            toast.error('Failed to update business profile.');
+        }
     };
 
     if (isLoading) {
@@ -172,10 +230,10 @@ export default function BusinessProfilePage() {
                 actions={
                     <button
                         onClick={handleSave}
-                        disabled={updateMutation.isPending}
+                        disabled={updateMutation.isPending || updateBranchMutation.isPending}
                         className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20 disabled:opacity-50"
                     >
-                        {updateMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
+                        {updateMutation.isPending || updateBranchMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
                     </button>
                 }
             />
@@ -304,7 +362,7 @@ export default function BusinessProfilePage() {
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Support Phone</label>
                             <input type="tel" value={supportPhone} onChange={e => setSupportPhone(e.target.value)} placeholder="+234 801 234 5678" className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" />
                         </div>
-                    <div className="col-span-1 md:col-span-2 space-y-2">
+                        <div className="col-span-1 md:col-span-2 space-y-2">
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Detailed Address</label>
                             <textarea value={address} onChange={e => setAddress(e.target.value)} placeholder="42 Admiralty Way, Lekki Phase 1, Lagos, Nigeria" rows={3} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none" />
                         </div>
@@ -645,7 +703,7 @@ export default function BusinessProfilePage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Current Destination</label>
-                                <div 
+                                <div
                                     onClick={() => window.open(`/${profileSlug}`, '_blank')}
                                     className="h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 flex items-center text-sm font-bold text-primary cursor-pointer hover:bg-primary/5 hover:border-primary/30 transition-all"
                                 >

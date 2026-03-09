@@ -4,6 +4,36 @@ export interface BusinessHours {
     closed: boolean;
 }
 
+export interface Branch {
+    id: string;
+    name: string;
+    address: string;
+    phone: string;
+    isActive: boolean;
+    isMainBranch: boolean;
+    logoUrl?: string;
+    website?: string;
+    whatsappNumber?: string;
+    officialEmail?: string;
+    welcomeMessage?: string;
+    successMessage?: string;
+    privacyMessage?: string;
+    rewardMessage?: string;
+    about?: string;
+    businessHours?: Record<string, BusinessHours>;
+    rewardEnabled: boolean;
+    rewardVisitThreshold: number;
+    linkedinUrl?: string;
+    reviewUrl?: string;
+    showReview: boolean;
+    showSocial: boolean;
+    showFeedback: boolean;
+    businessId: string;
+    createdAt: string;
+    updatedAt: string;
+    deletedAt?: string | null;
+}
+
 export interface Business {
     id: string;
     name: string;
@@ -19,15 +49,7 @@ export interface Business {
     privacyMessage?: string;
     rewardMessage?: string;
     about?: string;
-    businessHours?: {
-        monday?: BusinessHours;
-        tuesday?: BusinessHours;
-        wednesday?: BusinessHours;
-        thursday?: BusinessHours;
-        friday?: BusinessHours;
-        saturday?: BusinessHours;
-        sunday?: BusinessHours;
-    };
+    businessHours?: Record<string, BusinessHours>;
     rewardEnabled?: boolean;
     rewardVisitThreshold?: number;
     rewardSetup?: any;
@@ -36,6 +58,7 @@ export interface Business {
     address?: string;
     website?: string;
     whatsappNumber?: string;
+    phone?: string;
     officialEmail?: string;
     facebookUrl?: string;
     instagramUrl?: string;
@@ -44,12 +67,13 @@ export interface Business {
     youtubeUrl?: string;
     customLink?: string;
     isActive: boolean;
-    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+    status: 'pending' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
     linkedinUrl?: string;
     reviewUrl?: string;
     showReview?: boolean;
     showSocial?: boolean;
     showFeedback?: boolean;
+    branches?: Branch[];
     createdAt?: string;
     updatedAt?: string;
 }
