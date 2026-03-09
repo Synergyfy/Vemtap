@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/dashboard/PageHeader';
-import PremiumFeatureWrapper from '@/components/dashboard/PremiumFeatureWrapper';
+import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 import { LoyaltyAnalytics } from '@/components/loyalty/admin/LoyaltyAnalytics';
 import { Gift, Users, Settings, Smartphone, ArrowRight, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -45,9 +45,9 @@ const QUICK_LINKS = [
 
 export default function LoyaltyOverviewPage() {
     return (
-        <PremiumFeatureWrapper
-            featureName="Loyalty Program"
-            description="Build customer retention with points, tiers, and exclusive rewards."
+        <PageLockWrapper
+            feature="loyalty"
+            featureName="Loyalty Programs"
         >
             <div className="p-8 space-y-10">
                 <PageHeader
@@ -75,7 +75,7 @@ export default function LoyaltyOverviewPage() {
                             <Link
                                 key={link.title}
                                 href={link.href}
-                                className="group p-6 bg-white border border-slate-200 hover:border-primary transition-all shadow-sm hover:shadow-md relative overflow-hidden rounded-2xl"
+                                className="group p-6 bg-white border border-slate-200 hover:border-primary transition-all shadow-sm hover:shadow-md relative overflow-hidden rounded-2xl" 
                             >
                                 <div className={cn("w-12 h-12 flex items-center justify-center mb-4 transition-colors rounded-xl", link.bgColor, link.color, "group-hover:bg-primary group-hover:text-white")}>
                                     <link.icon size={24} />
@@ -95,8 +95,6 @@ export default function LoyaltyOverviewPage() {
                     </div>
                 </section>
             </div>
-        </PremiumFeatureWrapper>
+        </PageLockWrapper>
     );
 }
-
-

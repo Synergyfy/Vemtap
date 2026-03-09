@@ -1,14 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Loader2, Save, Trophy } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/dashboard/PageHeader';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
-import EngagementFeatureCards from '@/components/dashboard/engagement/EngagementFeatureCards';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
-import { toast } from 'react-hot-toast';
-import { Star, Share2, MessageCircle, Trophy, Link as LinkIcon, Save, Smartphone, Loader2 } from 'lucide-react';
 
 const Toggle = ({ active, onChange }: { active: boolean; onChange: (val: boolean) => void }) => (
     <button
@@ -19,7 +18,7 @@ const Toggle = ({ active, onChange }: { active: boolean; onChange: (val: boolean
     </button>
 );
 
-export default function EngagementSettingsPage() {
+export default function EngagementSocialSettingsPage() {
     const { user, updateUser } = useAuthStore();
     const { engagementSettings, updateEngagementSettings } = useCustomerFlowStore();
     const [isSaving, setIsSaving] = useState(false);
@@ -39,12 +38,17 @@ export default function EngagementSettingsPage() {
 
     useEffect(() => {
         if (business || user) {
+            const profileFacebook = (user as any)?.facebookUrl || (user as any)?.businessFacebookUrl || '';
+            const profileInstagram = (user as any)?.instagramUrl || (user as any)?.businessInstagramUrl || '';
+            const profileX = (user as any)?.xUrl || (user as any)?.twitterUrl || '';
+            const profileLinkedin = (user as any)?.linkedinUrl || (user as any)?.businessLinkedinUrl || '';
+
             setLocalSettings({
                 reviewUrl: business?.reviewUrl || user?.engagement?.reviewUrl || '',
-                instagram: business?.instagramUrl || user?.engagement?.instagram || '',
-                twitter: business?.xUrl || user?.engagement?.twitter || '',
-                facebook: business?.facebookUrl || user?.engagement?.facebook || '',
-                linkedin: business?.linkedinUrl || user?.engagement?.linkedin || '',
+                instagram: business?.instagramUrl || profileInstagram || user?.engagement?.instagram || '',
+                twitter: business?.xUrl || profileX || user?.engagement?.twitter || '',
+                facebook: business?.facebookUrl || profileFacebook || user?.engagement?.facebook || '',
+                linkedin: business?.linkedinUrl || profileLinkedin || user?.engagement?.linkedin || '',
                 showReview: business?.showReview ?? user?.engagement?.showReview ?? true,
                 showSocial: business?.showSocial ?? user?.engagement?.showSocial ?? true,
                 showFeedback: business?.showFeedback ?? user?.engagement?.showFeedback ?? true,
@@ -67,14 +71,9 @@ export default function EngagementSettingsPage() {
             };
 
             const { usersApi } = await import('@/lib/api/users');
-
-            // 1. Update User Engagement (The new endpoint requested)
             await usersApi.updateEngagement(engagementPayload);
-
-            // Sync with local Auth Store
             await updateUser({ engagement: engagementPayload });
 
-            // 2. Update Business (Existing logic)
             if (business) {
                 await updateMutation.mutateAsync({
                     id: business.id,
@@ -87,14 +86,13 @@ export default function EngagementSettingsPage() {
                         showReview: localSettings.showReview,
                         showSocial: localSettings.showSocial,
                         showFeedback: localSettings.showFeedback,
-                    }
+                    },
                 });
             }
 
-            // Also update local flow store for immediate UI updates in the journey
             updateEngagementSettings({
                 ...engagementSettings,
-                ...engagementPayload
+                ...engagementPayload,
             });
 
             toast.success('Engagement settings updated successfully');
@@ -115,245 +113,141 @@ export default function EngagementSettingsPage() {
     }
 
     return (
-        <div className="p-8">
+        <div className="p-8 space-y-6">
             <PageHeader
-                title="Engagement Settings"
-                description="Configure how customers interact with your business after tapping"
+                title="Social Engagement"
+                description="Control social links and related post-submission actions."
             />
 
-            <div className="mt-6">
-                <EngagementTabs
-                    tabs={[
-                        { label: 'Socials', active: true },
-                        { label: 'Form Creator', href: '/dashboard/settings/engagement/forms' },
-                        { label: 'Form Responses', href: '/dashboard/settings/engagement/forms/responses' },
-                        { label: 'Automation', href: '/dashboard/automations' },
-                        { label: 'Messaging', href: '/dashboard/messaging/compose' },
-                    ]}
-                />
-            </div>
+            <EngagementTabs
+                tabs={[
+                    { label: 'Overview', href: '/dashboard/settings/engagement' },
+                    { label: 'Socials', active: true },
+                    { label: 'Form Creator', href: '/dashboard/settings/engagement/forms' },
+                    { label: 'Form Responses', href: '/dashboard/settings/engagement/forms/responses' },
+                ]}
+            />
 
-            <div className="mt-6 bg-blue-50 border border-blue-100 rounded-2xl p-6">
-                <p className="text-[10px] font-black uppercase tracking-widest text-primary">How Social Engagement Works</p>
-                <p className="text-sm text-blue-900 font-bold mt-2 leading-relaxed">
-                    Social engagement can be added to messaging, can drive customers into forms, and can be used as a visible top-of-funnel entry after a tap.
-                    Businesses should configure socials alongside forms so the customer flow stays connected from profile click to submission.
-                </p>
-            </div>
-
-            <div className="mt-6">
-                <EngagementFeatureCards
-                    cards={[
-                        {
-                            eyebrow: 'Business View',
-                            title: 'Drive customers to a form',
-                            description: 'Use your social links to send visitors into the form creator flow by link or QR-driven campaigns.',
-                            href: '/dashboard/settings/engagement/forms',
-                            cta: 'Open form creator',
-                        },
-                        {
-                            eyebrow: 'Business View',
-                            title: 'Add socials to messaging',
-                            description: 'Use messaging broadcasts that include your social CTA and attached form so the customer flow continues in one place.',
-                            href: '/dashboard/messaging/compose',
-                            cta: 'Open messaging',
-                        },
-                        {
-                            eyebrow: 'Business View',
-                            title: 'Automate the flow',
-                            description: 'Push customers from tap to social engagement, then into forms and follow-up messaging with automation rules.',
-                            href: '/dashboard/automations',
-                            cta: 'Open automation',
-                        },
-                    ]}
-                />
-            </div>
-
-            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 mb-8 mt-6">
-                <div className="flex items-start gap-4">
-                    <div className="size-10 bg-blue-500 text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20">
-                        <Smartphone size={20} />
-                    </div>
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-6">
+                <div className="flex items-start justify-between gap-4">
                     <div>
-                        <h4 className="font-bold text-blue-900 mb-1">Conversion Optimized</h4>
-                        <p className="text-xs text-blue-700 leading-relaxed font-medium">
-                            Your capture form is currently set to "High-Speed" mode (Name + Phone/Email).
-                            Load times are under 800ms to ensure maximum conversion.
+                        <h3 className="font-display font-bold text-text-main">Show social links after default submission</h3>
+                        <p className="text-xs text-text-secondary mt-1">
+                            When enabled, customers see a social links action in the step right after they submit the default form.
                         </p>
                     </div>
+                    <Toggle
+                        active={localSettings.showSocial}
+                        onChange={(val) => setLocalSettings((prev) => ({ ...prev, showSocial: val }))}
+                    />
                 </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Review Configuration */}
-                <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between mb-8">
-                        <div className="flex items-center gap-4">
-                            <div className="size-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center shadow-inner">
-                                <Star size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-display font-bold text-text-main">Add Google Review After Initial Form</h3>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Capture 5-Star ratings on Google</p>
-                            </div>
-                        </div>
-                        <Toggle
-                            active={localSettings.showReview}
-                            onChange={(val) => setLocalSettings((prev: any) => ({ ...prev, showReview: val }))}
-                        />
-                    </div>
-
-                    <div className="space-y-6">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Google Review / Trustpilot URL</label>
-                            <div className="relative">
-                                <LinkIcon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type="url"
-                                    placeholder="https://g.page/review/your-business"
-                                    value={localSettings.reviewUrl}
-                                    onChange={(e) => setLocalSettings((prev: any) => ({ ...prev, reviewUrl: e.target.value }))}
-                                    className="w-full h-14 bg-gray-50 border border-gray-100 rounded-2xl pl-12 pr-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                />
-                            </div>
-                        </div>
-                        <p className="text-[10px] text-text-secondary font-medium leading-relaxed px-1">
-                            Tip: A direct link to your "Write a review" modal increases conversion by 40%.
+                {localSettings.showSocial && (
+                    <div className="space-y-4">
+                        <p className="text-xs text-text-secondary">
+                            Existing links from your business profile are auto-filled below. If none exist, add them here.
                         </p>
-                    </div>
-                </div>
-
-                {/* Social Growth */}
-                <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between mb-8">
-                        <div className="flex items-center gap-4">
-                            <div className="size-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner">
-                                <Share2 size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-display font-bold text-text-main">Add Socials After Initial Form</h3>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Grow your following</p>
-                            </div>
-                        </div>
-                        <Toggle
-                            active={localSettings.showSocial}
-                            onChange={(val) => setLocalSettings((prev: any) => ({ ...prev, showSocial: val }))}
-                        />
-                    </div>
-
-                    <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary ml-1">Instagram</label>
-                                <div className="relative">
-                                    <LinkIcon size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-pink-500" />
-                                    <input
-                                        type="text"
-                                        placeholder="instagram.com/user"
-                                        value={localSettings.instagram || ''}
-                                        onChange={(e) => setLocalSettings((prev: any) => ({ ...prev, instagram: e.target.value }))}
-                                        className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl pl-10 pr-4 text-xs font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary ml-1">X / Twitter</label>
-                                <div className="relative">
-                                    <LinkIcon size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-900" />
-                                    <input
-                                        type="text"
-                                        placeholder="x.com/user"
-                                        value={localSettings.twitter || ''}
-                                        onChange={(e) => setLocalSettings((prev: any) => ({ ...prev, twitter: e.target.value }))}
-                                        className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl pl-10 pr-4 text-xs font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary ml-1">Facebook</label>
-                                <div className="relative">
-                                    <LinkIcon size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600" />
-                                    <input
-                                        type="text"
-                                        placeholder="facebook.com/page"
-                                        value={localSettings.facebook || ''}
-                                        onChange={(e) => setLocalSettings((prev: any) => ({ ...prev, facebook: e.target.value }))}
-                                        className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl pl-10 pr-4 text-xs font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary ml-1">LinkedIn</label>
-                                <div className="relative">
-                                    <LinkIcon size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-700" />
-                                    <input
-                                        type="text"
-                                        placeholder="linkedin.com/company"
-                                        value={localSettings.linkedin || ''}
-                                        onChange={(e) => setLocalSettings((prev: any) => ({ ...prev, linkedin: e.target.value }))}
-                                        className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl pl-10 pr-4 text-xs font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                    />
-                                </div>
-                            </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Instagram URL</label>
+                            <input
+                                type="url"
+                                placeholder="https://instagram.com/your-handle"
+                                value={localSettings.instagram}
+                                onChange={(e) => setLocalSettings((prev) => ({ ...prev, instagram: e.target.value }))}
+                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">X / Twitter URL</label>
+                            <input
+                                type="url"
+                                placeholder="https://x.com/your-handle"
+                                value={localSettings.twitter}
+                                onChange={(e) => setLocalSettings((prev) => ({ ...prev, twitter: e.target.value }))}
+                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Facebook URL</label>
+                            <input
+                                type="url"
+                                placeholder="https://facebook.com/your-page"
+                                value={localSettings.facebook}
+                                onChange={(e) => setLocalSettings((prev) => ({ ...prev, facebook: e.target.value }))}
+                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">LinkedIn URL</label>
+                            <input
+                                type="url"
+                                placeholder="https://linkedin.com/company/your-company"
+                                value={localSettings.linkedin}
+                                onChange={(e) => setLocalSettings((prev) => ({ ...prev, linkedin: e.target.value }))}
+                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                            />
+                        </div>
                         </div>
                     </div>
-                </div>
+                )}
+            </div>
 
-                {/* Feedback System */}
-                <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between mb-8">
-                        <div className="flex items-center gap-4">
-                            <div className="size-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center shadow-inner">
-                                <MessageCircle size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-display font-bold text-text-main">Direct Feedback</h3>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Capture private complaints</p>
-                            </div>
-                        </div>
-                        <Toggle
-                            active={localSettings.showFeedback}
-                            onChange={(val) => setLocalSettings((prev: any) => ({ ...prev, showFeedback: val }))}
-                        />
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 className="font-display font-bold text-text-main">Show review request</h3>
+                        <p className="text-xs text-text-secondary mt-1">Enable Google/Trustpilot review prompt in post-submission flow.</p>
                     </div>
-                    <p className="text-sm text-text-secondary font-medium leading-relaxed">
-                        Enabled feedback allows customers to send private messages directly to your dashboard. High-friction issues are caught before they reach Google Reviews.
-                    </p>
+                    <Toggle
+                        active={localSettings.showReview}
+                        onChange={(val) => setLocalSettings((prev) => ({ ...prev, showReview: val }))}
+                    />
                 </div>
+                <input
+                    type="url"
+                    placeholder="https://g.page/review/your-business"
+                    value={localSettings.reviewUrl}
+                    onChange={(e) => setLocalSettings((prev) => ({ ...prev, reviewUrl: e.target.value }))}
+                    className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                />
 
-                {/* Rewards Awareness */}
-                <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm hover:shadow-md transition-shadow opacity-50 grayscale cursor-not-allowed">
-                    <div className="flex items-center justify-between mb-8">
-                        <div className="flex items-center gap-4">
-                            <div className="size-12 bg-pink-50 text-pink-600 rounded-2xl flex items-center justify-center shadow-inner">
-                                <Trophy size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-display font-bold text-text-main">Reward Awareness</h3>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Configure in Loyalty Settings</p>
-                            </div>
-                        </div>
-                        <div className="px-3 py-1 bg-gray-100 rounded-full text-[9px] font-black uppercase tracking-tighter">Locked</div>
+                <div className="flex items-start justify-between gap-4 border-t border-gray-100 pt-4">
+                    <div>
+                        <h3 className="font-display font-bold text-text-main">Show quick feedback</h3>
+                        <p className="text-xs text-text-secondary mt-1">Allow a quick feedback option in the same post-submission journey.</p>
                     </div>
-                    <p className="text-sm text-text-secondary font-medium leading-relaxed">
-                        This tile is automatically managed via your Rewards catalog. To edit rewards, please visit the Loyalty section.
-                    </p>
+                    <Toggle
+                        active={localSettings.showFeedback}
+                        onChange={(val) => setLocalSettings((prev) => ({ ...prev, showFeedback: val }))}
+                    />
                 </div>
             </div>
 
-            {/* Action Button */}
-            <div className="flex justify-end pt-12 border-t border-gray-100 mt-12">
+            {/* Rewards Awareness */}
+            <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-4">
+                        <div className="size-12 bg-pink-50 text-pink-600 rounded-2xl flex items-center justify-center shadow-inner">
+                            <Trophy size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-display font-bold text-text-main">Reward Awareness</h3>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Configure in Loyalty Settings</p>
+                        </div>
+                    </div>
+                    <div className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-tighter border border-emerald-100">Auto-managed</div>
+                </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
                 <button
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="h-14 px-10 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3 disabled:opacity-50"
+                    className="h-12 px-6 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
                 >
-                    {isSaving ? <Loader2 size={18} className="animate-spin" /> : (
-                        <>
-                            <Save size={18} />
-                            Save Configuration
-                        </>
-                    )}
+                    {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                    Save Configuration
                 </button>
             </div>
         </div>
