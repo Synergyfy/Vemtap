@@ -8,7 +8,9 @@ interface FlowDelayJobData {
   nodeId: string;
 }
 
-@Processor('messaging-flow-delay')
+@Processor('messaging-flow-delay', {
+  drainDelay: 30,
+})
 export class FlowDelayProcessor extends WorkerHost {
   private readonly logger = new Logger(FlowDelayProcessor.name);
 
