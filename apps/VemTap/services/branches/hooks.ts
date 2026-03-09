@@ -32,13 +32,14 @@ export const useCreateBranch = () => {
 };
 
 // ─── Update a branch ─────────────────────────────────────────────────────────
-export const useUpdateBranch = (id: string) => {
+export const useUpdateBranch = () => {
     const queryClient = useQueryClient();
-    return useMutation<Branch, Error, UpdateBranchRequest>({
-        mutationFn: async (dto) => await api.patch(`/branches/${id}`, dto),
-        onSuccess: () => {
+    return useMutation<Branch, Error, { id: string; updates: UpdateBranchRequest }>({
+        mutationFn: async ({ id, updates }) => await api.patch(`/branches/${id}`, updates),
+        onSuccess: (_, { id }) => {
             queryClient.invalidateQueries({ queryKey: ['branches'] });
             queryClient.invalidateQueries({ queryKey: ['branches', id] });
+            queryClient.invalidateQueries({ queryKey: ['my-business'] });
         },
     });
 };
