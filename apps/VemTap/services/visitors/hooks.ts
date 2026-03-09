@@ -4,8 +4,75 @@ import { PaginatedVisitorResponse, VisitorStatsResponse } from './types';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 
+const UUID_V4_REGEX =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const isUuidV4 = (value?: string | null): value is string =>
+    !!value && UUID_V4_REGEX.test(value);
+
+const normalizeRole = (role?: string | null) => String(role || '').toLowerCase();
+
+const getReadContextParams = ({
+    role,
+    businessId,
+    branchId,
+}: {
+    role?: string | null;
+    businessId?: string | null;
+    branchId?: string | null;
+}) => {
+    const params = new URLSearchParams();
+    const normalizedRole = normalizeRole(role);
+    const hasBranchId = isUuidV4(branchId);
+
+    if (normalizedRole === 'owner') {
+        if (hasBranchId && branchId) {
+            params.append('branchId', branchId);
+        } else {
+            params.append('allBranches', 'true');
+        }
+        return params;
+    }
+
+    if (normalizedRole === 'admin') {
+        if (hasBranchId && branchId) {
+            params.append('branchId', branchId);
+            return params;
+        }
+        params.append('allBranches', 'true');
+        if (isUuidV4(businessId)) {
+            params.append('businessId', businessId);
+        }
+        return params;
+    }
+
+    // Staff/Manager are branch-locked by backend token context.
+    return params;
+};
+
+const getWriteBranchId = ({
+    role,
+    activeBranchId,
+    userBranchId,
+}: {
+    role?: string | null;
+    activeBranchId?: string | null;
+    userBranchId?: string | null;
+}) => {
+    const normalizedRole = normalizeRole(role);
+    if (normalizedRole === 'manager' || normalizedRole === 'staff') {
+        return undefined;
+    }
+
+    const candidate = activeBranchId || userBranchId;
+    if (!isUuidV4(candidate)) {
+        throw new Error('A valid branchId (UUID v4) is required for this action.');
+    }
+    return candidate;
+};
+
 /**
- * Helper hook – resolves which branchId to use.
+ * Helper hook to resolve which branchId to use.
  * Source: explicit arg > URL param (from useActiveBranch)
  */
 function useResolvedBranchId(branchId?: string): string | undefined {
@@ -17,12 +84,13 @@ function useResolvedBranchId(branchId?: string): string | undefined {
 export const useVisitors = (branchId?: string, query?: Record<string, any>) => {
     const resolvedBranchId = useResolvedBranchId(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const role = useAuthStore((state) => state.user?.role);
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId });
 
     return useQuery<PaginatedVisitorResponse, Error>({
-        queryKey: ['visitors', businessId, resolvedBranchId, query],
+        queryKey: ['visitors', businessId, role, resolvedBranchId, query, contextParams.toString()],
         queryFn: async () => {
-            const searchParams = new URLSearchParams();
-            if (resolvedBranchId) searchParams.append('branchId', resolvedBranchId);
+            const searchParams = new URLSearchParams(contextParams);
             if (query?.search) searchParams.append('search', query.search);
             if (query?.status) searchParams.append('status', query.status);
             return await api.get(`/visitors?${searchParams.toString()}`);
@@ -34,12 +102,13 @@ export const useVisitors = (branchId?: string, query?: Record<string, any>) => {
 export const useVisitorStats = (branchId?: string) => {
     const resolvedBranchId = useResolvedBranchId(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const role = useAuthStore((state) => state.user?.role);
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId });
 
     return useQuery<VisitorStatsResponse, Error>({
-        queryKey: ['visitors', 'stats', businessId, resolvedBranchId],
+        queryKey: ['visitors', 'stats', businessId, role, resolvedBranchId, contextParams.toString()],
         queryFn: async () => {
-            const searchParams = new URLSearchParams();
-            if (resolvedBranchId) searchParams.append('branchId', resolvedBranchId);
+            const searchParams = new URLSearchParams(contextParams);
             return await api.get(`/visitors/stats?${searchParams.toString()}`);
         },
         enabled: !!businessId,
@@ -49,12 +118,13 @@ export const useVisitorStats = (branchId?: string) => {
 export const useNewVisitors = (branchId?: string, query?: Record<string, any>) => {
     const resolvedBranchId = useResolvedBranchId(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const role = useAuthStore((state) => state.user?.role);
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId });
 
     return useQuery<PaginatedVisitorResponse, Error>({
-        queryKey: ['visitors', 'new', businessId, resolvedBranchId, query],
+        queryKey: ['visitors', 'new', businessId, role, resolvedBranchId, query, contextParams.toString()],
         queryFn: async () => {
-            const searchParams = new URLSearchParams();
-            if (resolvedBranchId) searchParams.append('branchId', resolvedBranchId);
+            const searchParams = new URLSearchParams(contextParams);
             if (query?.search) searchParams.append('search', query.search);
             if (query?.status) searchParams.append('status', query.status);
             return await api.get(`/visitors/new?${searchParams.toString()}`);
@@ -66,12 +136,13 @@ export const useNewVisitors = (branchId?: string, query?: Record<string, any>) =
 export const useNewVisitorStats = (branchId?: string) => {
     const resolvedBranchId = useResolvedBranchId(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const role = useAuthStore((state) => state.user?.role);
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId });
 
     return useQuery<VisitorStatsResponse, Error>({
-        queryKey: ['visitors', 'new', 'stats', businessId, resolvedBranchId],
+        queryKey: ['visitors', 'new', 'stats', businessId, role, resolvedBranchId, contextParams.toString()],
         queryFn: async () => {
-            const searchParams = new URLSearchParams();
-            if (resolvedBranchId) searchParams.append('branchId', resolvedBranchId);
+            const searchParams = new URLSearchParams(contextParams);
             return await api.get(`/visitors/new/stats?${searchParams.toString()}`);
         },
         enabled: !!businessId,
@@ -81,12 +152,13 @@ export const useNewVisitorStats = (branchId?: string) => {
 export const useReturningVisitors = (branchId?: string, query?: Record<string, any>) => {
     const resolvedBranchId = useResolvedBranchId(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const role = useAuthStore((state) => state.user?.role);
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId });
 
     return useQuery<PaginatedVisitorResponse, Error>({
-        queryKey: ['visitors', 'returning', businessId, resolvedBranchId, query],
+        queryKey: ['visitors', 'returning', businessId, role, resolvedBranchId, query, contextParams.toString()],
         queryFn: async () => {
-            const searchParams = new URLSearchParams();
-            if (resolvedBranchId) searchParams.append('branchId', resolvedBranchId);
+            const searchParams = new URLSearchParams(contextParams);
             if (query?.search) searchParams.append('search', query.search);
             if (query?.status) searchParams.append('status', query.status);
             return await api.get(`/visitors/returning?${searchParams.toString()}`);
@@ -98,12 +170,13 @@ export const useReturningVisitors = (branchId?: string, query?: Record<string, a
 export const useReturningVisitorStats = (branchId?: string) => {
     const resolvedBranchId = useResolvedBranchId(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const role = useAuthStore((state) => state.user?.role);
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId });
 
     return useQuery<VisitorStatsResponse, Error>({
-        queryKey: ['visitors', 'returning', 'stats', businessId, resolvedBranchId],
+        queryKey: ['visitors', 'returning', 'stats', businessId, role, resolvedBranchId, contextParams.toString()],
         queryFn: async () => {
-            const searchParams = new URLSearchParams();
-            if (resolvedBranchId) searchParams.append('branchId', resolvedBranchId);
+            const searchParams = new URLSearchParams(contextParams);
             return await api.get(`/visitors/returning/stats?${searchParams.toString()}`);
         },
         enabled: !!businessId,
@@ -113,12 +186,13 @@ export const useReturningVisitorStats = (branchId?: string) => {
 export const useVisitor = (id: string, branchId?: string) => {
     const resolvedBranchId = useResolvedBranchId(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const role = useAuthStore((state) => state.user?.role);
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId });
 
     return useQuery<any, Error>({
-        queryKey: ['visitors', id, businessId, resolvedBranchId],
+        queryKey: ['visitors', id, businessId, role, resolvedBranchId, contextParams.toString()],
         queryFn: async () => {
-            const searchParams = new URLSearchParams();
-            if (resolvedBranchId) searchParams.append('branchId', resolvedBranchId);
+            const searchParams = new URLSearchParams(contextParams);
             return await api.get(`/visitors/${id}?${searchParams.toString()}`);
         },
         enabled: !!id && !!businessId,
@@ -128,11 +202,22 @@ export const useVisitor = (id: string, branchId?: string) => {
 export const useResetDashboard = () => {
     const queryClient = useQueryClient();
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const role = useAuthStore((state) => state.user?.role);
+    const userBranchId = useAuthStore((state) => state.user?.branchId);
 
     return useMutation<void, Error, void>({
         mutationFn: async () => {
             const params = new URLSearchParams();
-            if (activeBranchId) params.append('branchId', activeBranchId);
+            const branchId = getWriteBranchId({
+                role,
+                activeBranchId: !activeBranchId || activeBranchId === 'all' ? undefined : activeBranchId,
+                userBranchId,
+            });
+
+            if (branchId) {
+                params.append('branchId', branchId);
+            }
+
             return await api.delete(`/visitors/reset?${params.toString()}`);
         },
         onSuccess: () => {

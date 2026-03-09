@@ -21,7 +21,9 @@ interface BatchJobData {
   content?: string;
 }
 
-@Processor('messaging-batch-send')
+@Processor('messaging-batch-send', {
+  drainDelay: 30,
+})
 export class BatchSendProcessor extends WorkerHost {
   private readonly logger = new Logger(BatchSendProcessor.name);
 

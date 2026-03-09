@@ -21,13 +21,19 @@ export default function BusinessSupportPage() {
     const { data: ticketsData, isLoading: isLoadingTickets } = useCustomerSupportTickets();
     const createTicket = useCreateCustomerSupportTicket();
 
-    const tickets = ticketsData?.map((ticket: any) => ({
-        id: ticket.id.slice(0, 8).toUpperCase(),
-        subject: ticket.subject,
-        status: ticket.status,
-        category: ticket.category,
-        date: new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-    })) || [];
+    const rawTickets = Array.isArray(ticketsData)
+        ? ticketsData
+        : Array.isArray((ticketsData as any)?.data)
+            ? (ticketsData as any).data
+            : [];
+
+    const tickets = rawTickets.map((ticket: any) => ({
+        id: String(ticket?.id || 'ticket').slice(0, 8).toUpperCase(),
+        subject: ticket?.subject || 'Untitled Ticket',
+        status: ticket?.status || 'Open',
+        category: ticket?.category || 'General',
+        date: new Date(ticket?.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    }));
 
     const handleCreateTicket = (data: any) => {
         createTicket.mutate(data, {

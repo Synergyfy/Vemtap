@@ -69,6 +69,17 @@ function UserStepPageContent() {
             : undefined;
         return explicit || branchDefault || approvedFormsForBusiness[0] || null;
     }, [approvedFormsForBusiness, preferredFormIdParam, defaultFormId]);
+    const attachedFormIds = useMemo(
+        () =>
+            Array.isArray(engagementSettings?.postSubmitFormIds)
+                ? engagementSettings.postSubmitFormIds
+                : [],
+        [engagementSettings?.postSubmitFormIds]
+    );
+    const attachedBusinessForms = useMemo(
+        () => approvedFormsForBusiness.filter((form) => attachedFormIds.includes(form.id)),
+        [approvedFormsForBusiness, attachedFormIds]
+    );
 
     const addRedemptionRequest = useMockDashboardStore(state => state.addRedemptionRequest);
     const redemptionRequests = useMockDashboardStore(state => state.redemptionRequests);
@@ -213,12 +224,21 @@ function UserStepPageContent() {
         toast.success('Redemption request sent to staff!');
     };
 
-    const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards') => {
+    const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
         if (type === 'review') {
             window.open(engagementSettings.reviewUrl, '_blank');
         } else if (type === 'social') {
             // Handled by the component's internal modal
         } else if (type === 'feedback') {
+            if (formId) {
+                const attached = approvedFormsForBusiness.find((form) => form.id === formId);
+                if (attached) {
+                    setSelectedBusinessFormId(attached.id);
+                    setStep('SURVEY');
+                    return;
+                }
+            }
+
             const explicitlyRequested = preferredFormIdParam
                 ? approvedFormsForBusiness.find((form) => form.id === preferredFormIdParam)
                 : null;
@@ -349,6 +369,11 @@ function UserStepPageContent() {
                         engagementSettings={engagementSettings}
                         selectedFormTitle={preferredBusinessForm?.title || null}
                         selectedFormType="Form"
+                        attachedForms={attachedBusinessForms.map((form) => ({
+                            id: form.id,
+                            title: form.title,
+                            description: form.description,
+                        }))}
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
                             // Add other placeholder or config links here
@@ -384,6 +409,11 @@ function UserStepPageContent() {
                         onFinish={resetFlow}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}
+                        attachedForms={attachedBusinessForms.map((form) => ({
+                            id: form.id,
+                            title: form.title,
+                            description: form.description,
+                        }))}
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
                         }}
