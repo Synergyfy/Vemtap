@@ -78,13 +78,9 @@ export default function DashboardPricingPage() {
         const trialDays = plan.isFree ? 0 : (plan.trialDurationDays || plan.freeDurationDays || 0);
 
         if (plan.isFree) {
-            if (!user?.businessId) {
-                toast.error('Business ID not found. Please log in again.');
-                return;
-            }
             const shouldStartTrial = trialDays > 0;
             subscribeMutation.mutate({
-                businessId: user.businessId,
+                businessId: user?.businessId,
                 planId: plan.id,
                 billingPeriod: 'monthly',
                 isTrial: shouldStartTrial

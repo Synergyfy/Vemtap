@@ -9,7 +9,9 @@ interface AutomationJobData {
   triggerDto: AutomationTriggerDto;
 }
 
-@Processor('messaging-automation')
+@Processor('messaging-automation', {
+  drainDelay: 30,
+})
 export class AutomationProcessor extends WorkerHost {
   private readonly logger = new Logger(AutomationProcessor.name);
 
