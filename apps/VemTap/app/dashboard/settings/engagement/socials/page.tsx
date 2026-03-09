@@ -1,39 +1,103 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Save, Loader2, Trophy } from 'lucide-react';
-import { toast } from 'sonner';
+import React, { useEffect, useState } from 'react';
+import { Loader2, Save, Trophy } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/dashboard/PageHeader';
-import EngagementTabs from '@/components/dashboard/settings/EngagementTabs';
-import Toggle from '@/components/ui/Toggle';
+import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
+import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
 
-export default function SocialEngagementPage() {
-    const [isLoading, setIsLoading] = useState(true);
+const Toggle = ({ active, onChange }: { active: boolean; onChange: (val: boolean) => void }) => (
+    <button
+        onClick={() => onChange(!active)}
+        className={`${active ? 'bg-primary' : 'bg-gray-200'} relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20`}
+    >
+        <span className={`${active ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm`} />
+    </button>
+);
+
+export default function EngagementSocialSettingsPage() {
+    const { user, updateUser } = useAuthStore();
+    const { engagementSettings, updateEngagementSettings } = useCustomerFlowStore();
     const [isSaving, setIsSaving] = useState(false);
+    const { data: business, isLoading } = useMyBusiness();
+    const updateMutation = useUpdateBusiness();
+
     const [localSettings, setLocalSettings] = useState({
-        showSocial: true,
+        reviewUrl: '',
         instagram: '',
         twitter: '',
         facebook: '',
         linkedin: '',
         showReview: true,
-        reviewUrl: '',
+        showSocial: true,
         showFeedback: true,
     });
 
     useEffect(() => {
-        // Mock fetch
-        setTimeout(() => {
-            setIsLoading(false);
-        }, 500);
-    }, []);
+        if (business || user) {
+            const profileFacebook = (user as any)?.facebookUrl || (user as any)?.businessFacebookUrl || '';
+            const profileInstagram = (user as any)?.instagramUrl || (user as any)?.businessInstagramUrl || '';
+            const profileX = (user as any)?.xUrl || (user as any)?.twitterUrl || '';
+            const profileLinkedin = (user as any)?.linkedinUrl || (user as any)?.businessLinkedinUrl || '';
+
+            setLocalSettings({
+                reviewUrl: business?.reviewUrl || user?.engagement?.reviewUrl || '',
+                instagram: business?.instagramUrl || profileInstagram || user?.engagement?.instagram || '',
+                twitter: business?.xUrl || profileX || user?.engagement?.twitter || '',
+                facebook: business?.facebookUrl || profileFacebook || user?.engagement?.facebook || '',
+                linkedin: business?.linkedinUrl || profileLinkedin || user?.engagement?.linkedin || '',
+                showReview: business?.showReview ?? user?.engagement?.showReview ?? true,
+                showSocial: business?.showSocial ?? user?.engagement?.showSocial ?? true,
+                showFeedback: business?.showFeedback ?? user?.engagement?.showFeedback ?? true,
+            });
+        }
+    }, [business, user]);
 
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            toast.success('Settings updated successfully');
+            const engagementPayload = {
+                reviewUrl: localSettings.reviewUrl,
+                instagram: localSettings.instagram,
+                twitter: localSettings.twitter,
+                facebook: localSettings.facebook,
+                linkedin: localSettings.linkedin,
+                showReview: localSettings.showReview,
+                showSocial: localSettings.showSocial,
+                showFeedback: localSettings.showFeedback,
+            };
+
+            const { usersApi } = await import('@/lib/api/users');
+            await usersApi.updateEngagement(engagementPayload);
+            await updateUser({ engagement: engagementPayload });
+
+            if (business) {
+                await updateMutation.mutateAsync({
+                    id: business.id,
+                    updates: {
+                        reviewUrl: localSettings.reviewUrl,
+                        instagramUrl: localSettings.instagram,
+                        xUrl: localSettings.twitter,
+                        facebookUrl: localSettings.facebook,
+                        linkedinUrl: localSettings.linkedin,
+                        showReview: localSettings.showReview,
+                        showSocial: localSettings.showSocial,
+                        showFeedback: localSettings.showFeedback,
+                    },
+                });
+            }
+
+            updateEngagementSettings({
+                ...engagementSettings,
+                ...engagementPayload,
+            });
+
+            toast.success('Engagement settings updated successfully');
         } catch (error) {
+            console.error('Update failed:', error);
             toast.error('Failed to update settings');
         } finally {
             setIsSaving(false);
