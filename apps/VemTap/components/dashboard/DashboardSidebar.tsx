@@ -47,7 +47,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-    const { data: myBusiness } = useMyBusiness();
+    const { data: myBusiness, isLoading: isBusinessLoading } = useMyBusiness();
     const { data: activeSubscription } = useActiveSubscription();
     const { getLinkWithBranch } = useActiveBranch();
     const { fetchCapabilities, isFeatureLocked, capabilities } = useSubscriptionStore();
