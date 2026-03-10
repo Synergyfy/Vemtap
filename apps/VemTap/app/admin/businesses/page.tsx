@@ -28,6 +28,7 @@ interface Business {
     branches?: any[];
     devices?: any[];
     category?: string;
+    subcategory?: string;
     monthlyVisitors?: string;
     goal?: string;
     totalBranches?: number;
@@ -349,7 +350,7 @@ export default function AdminBusinessesPage() {
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Owner</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Contact Info</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Location</th>
-                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Branches</th>
+                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Business Locations</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Status</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Joined</th>
                                 <th className="text-right py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Actions</th>
@@ -618,6 +619,7 @@ export default function AdminBusinessesPage() {
                                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-4">Onboarding Details</h3>
                                         <div className="space-y-4">
                                             <DetailItem label="Business Category" value={detailBusiness.category} icon="category" />
+                                            <DetailItem label="Subcategory" value={detailBusiness.subcategory || 'N/A'} icon="subdirectory_arrow_right" />
                                             <DetailItem label="Monthly Visitors" value={detailBusiness.monthlyVisitors} icon="groups" />
                                             <DetailItem label="Business Goals" value={detailBusiness.goal} icon="flag" />
                                         </div>
@@ -675,7 +677,7 @@ export default function AdminBusinessesPage() {
                                     </div>
                                     <div className="space-y-4">
                                         <DetailItem label="Website URL" value={detailBusiness.branches?.[0]?.website || detailBusiness.businessWebsite} icon="language" link />
-                                        <DetailItem label="Total Branches" value={detailBusiness.totalBranches !== undefined ? detailBusiness.totalBranches : detailBusiness.branches?.length} icon="account_tree" />
+                                        <DetailItem label="Total Business Locations" value={detailBusiness.totalBranches !== undefined ? detailBusiness.totalBranches : detailBusiness.branches?.length} icon="account_tree" />
                                     </div>
                                 </div>
                             </div>
