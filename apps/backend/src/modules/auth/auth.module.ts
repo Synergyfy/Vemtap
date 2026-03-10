@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -16,8 +16,8 @@ import { Otp } from './entities/otp.entity';
 @Module({
   imports: [
     UsersModule,
-    BusinessesModule,
-    DevicesModule,
+    forwardRef(() => BusinessesModule),
+    forwardRef(() => DevicesModule),
     MailModule,
     PassportModule,
     TypeOrmModule.forFeature([Otp]),

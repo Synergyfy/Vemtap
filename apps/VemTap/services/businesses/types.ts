@@ -74,6 +74,9 @@ export interface Business {
     showReview?: boolean;
     showSocial?: boolean;
     showFeedback?: boolean;
+    isRegistered?: boolean;
+    registrationNumber?: string;
+    documents?: string[];
     branches?: Branch[];
     createdAt?: string;
     updatedAt?: string;

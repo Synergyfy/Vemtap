@@ -102,13 +102,17 @@ export default function BusinessPublicPage() {
                     <div className="absolute bottom-[-10%] right-[-5%] size-96 bg-indigo-500/5 rounded-full blur-3xl" />
                 </div>
 
-                <div className="absolute top-8 left-8 right-8 flex justify-between items-center z-10 font-bold uppercase tracking-widest text-[10px]">
-                    <button
-                        onClick={() => router.back()}
-                        className="flex items-center gap-2 text-slate-400 hover:text-primary transition-colors"
-                    >
-                        <ChevronRight size={14} className="rotate-180" /> Back
-                    </button>
+                <div className="absolute top-6 left-4 right-4 md:top-8 md:left-8 md:right-8 flex justify-between items-center z-10 font-bold uppercase tracking-widest text-[10px]">
+                    {isBusinessAccount ? (
+                        <button
+                            onClick={() => router.back()}
+                            className="flex items-center gap-2 text-slate-400 hover:text-primary transition-colors"
+                        >
+                            <ChevronRight size={14} className="rotate-180" /> Back
+                        </button>
+                    ) : (
+                        <div />
+                    )}
                     <div className="text-slate-900 tracking-[0.3em] font-black">
                         Business Profile
                     </div>
@@ -204,12 +208,14 @@ export default function BusinessPublicPage() {
                                     <p className="text-slate-500 font-bold mb-6 leading-relaxed">
                                         {business.rewardMessage || `Visit us ${business.rewardVisitThreshold || 5} times to unlock special rewards and benefits tailored for you.`}
                                     </p>
-                                    <button
-                                        onClick={() => router.push(`/customer/dashboard`)}
-                                        className="inline-flex items-center gap-2 text-primary font-black uppercase tracking-widest text-[10px] hover:gap-3 transition-all underline underline-offset-8"
-                                    >
-                                        View your progress <ExternalLink size={14} />
-                                    </button>
+                                    {isCustomerAccount && (
+                                        <button
+                                            onClick={() => router.push(`/customer/dashboard`)}
+                                            className="inline-flex items-center gap-2 text-primary font-black uppercase tracking-widest text-[10px] hover:gap-3 transition-all underline underline-offset-8"
+                                        >
+                                            View your progress <ExternalLink size={14} />
+                                        </button>
+                                    )}
                                 </section>
                             )}
 
@@ -344,21 +350,23 @@ export default function BusinessPublicPage() {
 
                 {/* Main CTA - Prominent and Stunning */}
                 <div className="mt-12 text-center flex flex-col items-center">
-                    <button
-                        onClick={() => router.push('/customer/dashboard')}
-                        className="group relative px-12 h-20 bg-slate-900 text-white rounded-[2rem] overflow-hidden shadow-2xl shadow-slate-900/40 hover:scale-105 transition-all duration-500"
-                    >
-                        <div className="absolute inset-0 bg-linear-to-r from-primary/20 to-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="relative flex items-center gap-4">
-                            <div className="flex flex-col items-start">
-                                <span className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">Ready to engage?</span>
-                                <span className="text-lg font-black tracking-tight">Open Customer Dashboard</span>
+                    {isCustomerAccount && (
+                        <button
+                            onClick={() => router.push('/customer/dashboard')}
+                            className="group relative px-12 h-20 bg-slate-900 text-white rounded-[2rem] overflow-hidden shadow-2xl shadow-slate-900/40 hover:scale-105 transition-all duration-500"
+                        >
+                            <div className="absolute inset-0 bg-linear-to-r from-primary/20 to-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="relative flex items-center gap-4">
+                                <div className="flex flex-col items-start">
+                                    <span className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">Ready to engage?</span>
+                                    <span className="text-lg font-black tracking-tight">Open Customer Dashboard</span>
+                                </div>
+                                <div className="size-10 rounded-2xl bg-white/10 flex items-center justify-center group-hover:rotate-12 transition-transform">
+                                    <LayoutDashboard size={20} />
+                                </div>
                             </div>
-                            <div className="size-10 rounded-2xl bg-white/10 flex items-center justify-center group-hover:rotate-12 transition-transform">
-                                <LayoutDashboard size={20} />
-                            </div>
-                        </div>
-                    </button>
+                        </button>
+                    )}
 
                     <div className="mt-12 flex items-center gap-4 grayscale opacity-30 hover:grayscale-0 hover:opacity-100 transition-all duration-700 cursor-default">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Powered by</span>

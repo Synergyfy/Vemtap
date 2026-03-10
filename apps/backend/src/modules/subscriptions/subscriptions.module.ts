@@ -27,7 +27,7 @@ import { Device } from '../devices/entities/device.entity';
       Branch,
       Device,
     ]),
-    BusinessesModule,
+    forwardRef(() => BusinessesModule),
     PaymentsModule,
     forwardRef(() => BranchesModule),
   ],
