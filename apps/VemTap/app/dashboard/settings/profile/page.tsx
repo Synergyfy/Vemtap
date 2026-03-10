@@ -10,8 +10,8 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { BusinessHours } from '@/services/businesses/types';
 import { Loader2, Lock, Info } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
-import { useUpdateBranch, useBranch } from '@/services/branches/hooks';
-import { useCategories, useSubcategories } from '@/services/categories/hooks';
+import { useUpdateBranch } from '@/services/branches/hooks';
+import { fetchDevices } from '@/lib/api/devices';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
@@ -82,6 +82,7 @@ export default function BusinessProfilePage() {
 
     const [activeTab, setActiveTab] = useState('general');
     const [origin, setOrigin] = useState('https://vemtap.com');
+    const [deviceCode, setDeviceCode] = useState('');
 
     // Dropdown Hooks
     const { data: categoriesData } = useCategories({ limit: 100 });
@@ -96,6 +97,22 @@ export default function BusinessProfilePage() {
     }, []);
 
     const qrId = 'biz-profile-main';
+    const publicProfileUrl = business?.id
+        ? `${origin}/b/${business.id}`
+        : `${origin}/${profileSlug}`;
+
+    const syncRedirect = async (url: string) => {
+        setRedirect(qrId, url);
+        try {
+            await fetch('/api/q/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: qrId, url }),
+            });
+        } catch (error) {
+            console.error('Failed to sync redirect mapping:', error);
+        }
+    };
 
     // Synchronization Logic
     useEffect(() => {
@@ -154,7 +171,7 @@ export default function BusinessProfilePage() {
             if (!profileSlug && business.name) {
                 const slug = business.name.toLowerCase().replace(/\s+/g, '-');
                 setProfileSlug(slug);
-                setRedirect(qrId, `${origin}/${slug}`);
+                void syncRedirect(publicProfileUrl);
             }
         } else if (activeBranchId && branch) {
             setName(branch.name || '');
@@ -189,7 +206,26 @@ export default function BusinessProfilePage() {
             setShowSocial(branch.showSocial ?? true);
             setShowFeedback(branch.showFeedback ?? true);
         }
-    }, [business, branch, isAllBranches, activeBranchId, origin]);
+    }, [business, storeName, logoUrl, origin, profileSlug, publicProfileUrl]);
+
+    useEffect(() => {
+        const loadDeviceCode = async () => {
+            if (!business) return;
+            const mainBranch = business.branches?.find(b => b.isMainBranch);
+            const selectedBranch = activeBranchId ? business.branches?.find(b => b.id === activeBranchId) : null;
+            const currentBranch = selectedBranch || mainBranch;
+            if (!currentBranch?.id) return;
+
+            try {
+                const devices = await fetchDevices(currentBranch.id);
+                const preferred = devices.find((d) => d.status === 'active') || devices[0];
+                if (preferred?.code) setDeviceCode(preferred.code);
+            } catch (error) {
+                console.error('Failed to load devices for profile link:', error);
+            }
+        };
+        loadDeviceCode();
+    }, [business, activeBranchId]);
 
     const handleSave = async () => {
         const hasChanged = (current: any, original: any) => {
@@ -275,6 +311,9 @@ export default function BusinessProfilePage() {
 
             updateCustomSettings({ logoUrl: finalLogoUrl });
             useCustomerFlowStore.setState({ storeName: name });
+            await syncRedirect(publicProfileUrl);
+
+            toast.success('Profile updated successfully!');
         } catch (error) {
             console.error('Save error:', error);
             toast.error('Update failed.');
@@ -572,14 +611,53 @@ export default function BusinessProfilePage() {
                                 <span className="text-sm font-bold text-text-main">Is Business Registered?</span>
                                 <p className="text-xs text-text-secondary">Toggle if your business has formal registration</p>
                             </div>
-                            <button onClick={() => setIsRegistered(!isRegistered)} className={`w-12 h-6 rounded-full transition-all ${isRegistered ? 'bg-primary' : 'bg-gray-300'}`}>
-                                <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${isRegistered ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                            <button
+                                onClick={() => window.open(publicProfileUrl, '_blank')}
+                                className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary/20 transition-colors"
+                            >
+                                <span className="material-icons-round text-sm">open_in_new</span>
+                                View Public Profile
                             </button>
                         </div>
-                        {isRegistered && (
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Registration Number (RC/BN)</label>
-                                <input type="text" value={registrationNumber} onChange={e => setRegistrationNumber(e.target.value)} className="w-full h-12 bg-gray-50 border rounded-xl px-4 text-sm font-bold outline-none" />
+                        <div className="p-8 flex flex-col md:flex-row items-center md:items-start gap-8">
+                            <DynamicQRCode
+                                redirectId={qrId}
+                                label="Scan to Visit Profile"
+                                subLabel={origin.replace(/^https?:\/\//, '')}
+                                color="#000000"
+                            />
+                            <div className="space-y-4 flex-1">
+                                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                                    <h4 className="font-bold text-blue-900 text-sm mb-2 flex items-center gap-2">
+                                        <span className="material-icons-round text-base">info</span>
+                                        How it works
+                                    </h4>
+                                    <p className="text-xs text-blue-800 leading-relaxed">
+                                        This QR code points to a permanent redirection service. When scanned, it instantly redirects users to your <strong>Profile URL / Handle</strong> configured above.
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Current Destination</label>
+                                    <div
+                                        onClick={() => window.open(publicProfileUrl, '_blank')}
+                                        className="h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 flex items-center text-sm font-bold text-primary cursor-pointer hover:bg-primary/5 hover:border-primary/30 transition-all"
+                                    >
+                                        {publicProfileUrl.replace(/^https?:\/\//, '')}
+                                        <span className="material-icons-round text-sm ml-auto">open_in_new</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                )}
+
+                {activeTab === 'documents' && (
+                    <div className="space-y-6">
+                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
+                                <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Business Documents</h3>
+                                <p className="text-xs text-text-secondary font-medium mt-1">Upload your business registration documents for verification</p>
                             </div>
                         )}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
