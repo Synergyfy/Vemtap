@@ -13,7 +13,7 @@ import { dashboardApi } from '@/lib/api/dashboard';
 import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Nfc, Send, Gift, BarChart, Users2, Settings,
-    ChevronDown, LogOut, Bell, Search, HelpCircle, Menu, X, Zap, MessageSquare, Smartphone, Building2, ShieldCheck, Lock
+    ChevronDown,Lock, LogOut, Bell, Search, HelpCircle, Menu, X, Zap, MessageSquare, Smartphone, ShieldCheck
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
@@ -47,7 +47,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-    const { data: myBusiness } = useMyBusiness();
+    const { data: myBusiness, isLoading: isBusinessLoading } = useMyBusiness();
     const { data: activeSubscription } = useActiveSubscription();
     const { getLinkWithBranch } = useActiveBranch();
     const { fetchCapabilities, isFeatureLocked, capabilities } = useSubscriptionStore();
@@ -259,13 +259,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ]
         },
         {
-            id: 'forms',
-            label: 'Forms',
-            icon: Building2,
-            href: '/dashboard/forms',
-            roles: ['owner', 'manager']
-        },
-        {
             id: 'support',
             label: 'Support',
             icon: HelpCircle,
@@ -302,7 +295,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             roles: ['owner', 'manager'],
             submenu: [
                 { label: 'Profile', href: '/dashboard/settings/profile' },
-                { label: 'Branches', href: '/dashboard/settings/branches' },
+                { label: 'Business Locations', href: '/dashboard/settings/branches' },
                 {
                     id: 'engagement',
                     label: 'Engagement',
@@ -336,7 +329,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ? 'bg-gray-100 text-text-main'
             : 'text-text-secondary hover:bg-gray-100 hover:text-text-main';
 
-    const handleItemClick = (e: React.MouseEvent, item: any) => {
+    const handleItemClick = (e: React.MouseEvent, item: any, parentId?: string) => {
         if (item.feature && isFeatureLocked(item.feature)) {
             e.preventDefault();
             e.stopPropagation();
@@ -344,7 +337,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             return false;
         }
         if (item.submenu) {
-            toggleMenu(item.id);
+            if (!item.id) {
+                return true;
+            }
+            toggleMenu(item.id, parentId);
         }
         return true;
     };
@@ -404,7 +400,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                     return subItem.submenu ? (
                                                         <div key={subItem.id || idx} className="mb-1">
                                                             <button
-                                                                onClick={(e) => handleItemClick(e, subItem)}
+                                                                onClick={(e) => handleItemClick(e, subItem, item.id)}
                                                                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isParentActive(subItem.submenu))
                                                                     } ${isSubLocked ? 'opacity-70' : ''}`}
                                                             >
@@ -424,7 +420,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                         return nestedItem.submenu ? (
                                                                             <div key={nestedItem.id || nIdx} className="mb-1">
                                                                                 <button
-                                                                                    onClick={(e) => handleItemClick(e, nestedItem)}
+                                                                                    onClick={(e) => handleItemClick(e, nestedItem, subItem.id)}
                                                                                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isParentActive(nestedItem.submenu))
                                                                                         } ${isNestedLocked ? 'opacity-70' : ''}`}
                                                                                 >

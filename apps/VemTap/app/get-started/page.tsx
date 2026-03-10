@@ -13,11 +13,11 @@ import { sanitizeFormData } from '@/lib/utils/sanitize';
 import { useRegisterOwner, useOtp, useRegister } from '@/services/auth/hooks';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPricingPlans } from '@/lib/api/pricing';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Loader2 } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
+import { useCategories } from '@/services/categories/hooks';
 
-export default function GetStarted() {
-    const { registerOwner, requestOwnerOtp, isLoading: isRegistering } = useRegisterOwner();
+export default function GetStarted() {    const { registerOwner, requestOwnerOtp, isLoading: isRegistering } = useRegisterOwner();
     const { registerUser, isLoading: isRegisteringGeneric } = useRegister();
     const { sendOtp, verifyOtp, isLoading: isOtpLoading } = useOtp();
     const router = useRouter();
@@ -32,6 +32,7 @@ export default function GetStarted() {
         queryKey: ['subscription-plans'],
         queryFn: fetchPricingPlans
     });
+
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
@@ -41,19 +42,19 @@ export default function GetStarted() {
         businessName: '',
         businessLogo: null as string | null,
         category: '',
+        categoryId: '',
         subcategory: '',
+        subcategoryId: '',
         selectedRole: 'Owner' as 'Owner' | 'Manager',
         branchCount: '',
         visitors: '',
         whatsappNumber: '',
         phone: '',
         officialEmail: '',
-        businessNumber: '',
         businessAddress: '',
         businessWebsite: '',
         isRegistered: 'No' as 'Yes' | 'No',
-        registrationNumber: '',
-        verificationDoc: null as string | null,
+        otherSubcategoryName: '',
         state: '',
         city: '',
         goals: [] as string[],
@@ -62,101 +63,13 @@ export default function GetStarted() {
         otp: '',
         agreeToTerms: false
     });
+
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    const { data: categoryData, isLoading: isCategoriesLoading } = useCategories({ limit: 100 });
+    const categories = categoryData?.items || [];
+
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const categoriesData = [
-        {
-            name: 'Retail & Shops',
-            description: 'Businesses that sell physical products directly to customers either in a shop, store, market stall, or online.',
-            subcategories: ['Supermarket / Grocery Store', 'Boutique / Fashion Store', 'Shoe Store', 'Phone & Accessories Store', 'Electronics Store', 'Computer Store', 'Cosmetics / Beauty Products Store', 'Perfume Store', 'Baby Store', 'Toy Store', 'Gift Shop', 'Bookshop / Stationery', 'Jewelry Store', 'Home Appliances Store', 'Furniture Store', 'Building Materials Store', 'Lighting / Electrical Shop', 'Kitchenware Store', 'Sports Equipment Store', 'Pet Store', 'Pharmacy / Drug Store', 'Agricultural Produce Shop', 'Auto Spare Parts Shop', 'Market Trader / General Merchandise', 'Others']
-        },
-        {
-            name: 'Food & Hospitality',
-            description: 'Businesses that prepare, sell, or serve food, drinks, or provide accommodation to customers.',
-            subcategories: ['Restaurant', 'Fast Food / Quick Service', 'Local Food Canteen / Bukka', 'Café / Coffee Shop', 'Bakery', 'Ice Cream Shop', 'Juice / Smoothie Bar', 'Bar / Lounge', 'Nightclub', 'Catering Services', 'Event Food Vendor', 'Hotel', 'Guest House', 'Short-let Apartment', 'Resort', 'Others']
-        },
-        {
-            name: 'Beauty & Personal Care',
-            description: 'Businesses that help customers improve their appearance, grooming, hygiene, and personal care.',
-            subcategories: ['Hair Salon', 'Barbing Salon', 'Nail Studio', 'Spa / Massage', 'Makeup Artist', 'Skincare / Facial Studio', 'Beauty Clinic', 'Tattoo Studio', 'Piercing Studio', 'Cosmetics Studio', 'Others']
-        },
-        {
-            name: 'Health & Medical',
-            description: 'Businesses that provide healthcare, medical services, or wellness treatments.',
-            subcategories: ['Hospital', 'Clinic', 'Dental Clinic', 'Eye Clinic / Optometrist', 'Pharmacy', 'Laboratory / Diagnostic Center', 'Physiotherapy', 'Mental Health / Therapy Center', 'Maternity Center', 'Medical Supply Store', 'Others']
-        },
-        {
-            name: 'Professional Services',
-            description: 'Businesses that provide expert advice, consulting, or professional services.',
-            subcategories: ['Law Firm / Legal Services', 'Accounting / Audit Firm', 'Tax Consultant', 'Business Consultant', 'Marketing Agency', 'Branding Agency', 'Advertising Agency', 'HR Consulting', 'Management Consulting', 'Public Relations (PR)', 'Others']
-        },
-        {
-            name: 'Technology & Digital Services',
-            description: 'Businesses that provide technology services, digital solutions, or IT-related services.',
-            subcategories: ['Software Development', 'Website Development', 'Mobile App Development', 'IT Support Services', 'Cybersecurity Services', 'Data & Analytics Services', 'SaaS / Tech Platform', 'Digital Marketing Agency', 'Social Media Management', 'Graphic Design', 'UI/UX Design', 'Printing & Branding Services', 'Computer Repair', 'Phone Repair', 'Internet Service Provider', 'Others']
-        },
-        {
-            name: 'Education & Training',
-            description: 'Businesses that provide learning, academic training, or skill development.',
-            subcategories: ['Nursery / Primary School', 'Secondary School', 'University / Polytechnic', 'Private Tutor', 'Training Institute', 'Professional Certification Training', 'Tech Bootcamp', 'Driving School', 'Music School', 'Language School', 'Online Course Provider', 'Coaching Center', 'Others']
-        },
-        {
-            name: 'Real Estate & Property',
-            description: 'Businesses involved in buying, selling, renting, managing, or developing properties.',
-            subcategories: ['Real Estate Agency', 'Property Developer', 'Property Management', 'Land Sales Company', 'Facility Management', 'Surveying Services', 'Estate Valuation', 'Short-let Management', 'Others']
-        },
-        {
-            name: 'Automotive',
-            description: 'Businesses that sell vehicles or provide car-related services.',
-            subcategories: ['Car Dealership', 'Used Car Dealer', 'Car Rental', 'Mechanic Workshop', 'Auto Spare Parts', 'Car Wash', 'Auto Electrical Repair', 'Tire Shop', 'Vehicle Inspection', 'Vehicle Tracking Services', 'Others']
-        },
-        {
-            name: 'Logistics & Transportation',
-            description: 'Businesses that move people, goods, or deliveries from one place to another.',
-            subcategories: ['Courier Service', 'Delivery Company', 'Logistics Company', 'Trucking Services', 'Bike Delivery', 'Moving Company', 'Bus Transport Company', 'Taxi / Ride Hailing', 'Freight Forwarding', 'Shipping Company', 'Others']
-        },
-        {
-            name: 'Construction & Home Services',
-            description: 'Businesses that build, repair, install, or maintain homes, buildings, or infrastructure.',
-            subcategories: ['Construction Company', 'Building Contractor', 'Architecture Firm', 'Interior Design', 'Plumbing Services', 'Electrical Installation', 'Painting Services', 'Carpentry', 'Tiling Services', 'Welding / Metal Fabrication', 'Cleaning Services', 'Pest Control', 'Security Services', 'Others']
-        },
-        {
-            name: 'Events & Entertainment',
-            description: 'Businesses that provide entertainment, event planning, and event services.',
-            subcategories: ['Event Planning', 'Wedding Planner', 'Event Hall / Venue', 'DJ Services', 'Photography', 'Videography', 'MC / Host', 'Equipment Rental', 'Stage & Lighting', 'Decor Services', 'Entertainment Company', 'Others']
-        },
-        {
-            name: 'Finance & Financial Services',
-            description: 'Businesses that help people manage, invest, borrow, insure, or move money.',
-            subcategories: ['Bank', 'Microfinance Bank', 'Fintech Company', 'POS Agent / POS Business', 'Bureau De Change', 'Insurance Company', 'Investment Company', 'Loan Services', 'Mortgage Services', 'Cooperative Society', 'Others']
-        },
-        {
-            name: 'Agriculture & Farming',
-            description: 'Businesses involved in farming, livestock, food production, or agricultural supply.',
-            subcategories: ['Crop Farming', 'Livestock Farming', 'Poultry Farm', 'Fish Farm', 'Agro Processing', 'Farm Produce Trading', 'Fertilizer & Farm Input Supply', 'Agricultural Equipment Supply', 'Others']
-        },
-        {
-            name: 'Manufacturing & Production',
-            description: 'Businesses that produce goods or manufacture products.',
-            subcategories: ['Food Processing', 'Beverage Production', 'Clothing Manufacturing', 'Furniture Manufacturing', 'Plastic Manufacturing', 'Cosmetics Manufacturing', 'Pharmaceutical Manufacturing', 'Packaging Production', 'Printing Production', 'Others']
-        },
-        {
-            name: 'Religious & Non-Profit Organizations',
-            description: 'Organizations that operate for religious, charity, or social impact purposes.',
-            subcategories: ['Church', 'Mosque', 'NGO', 'Charity Organization', 'Foundation', 'Community Organization', 'Others']
-        },
-        {
-            name: 'Government & Public Services',
-            description: 'Government institutions or public service providers.',
-            subcategories: ['Government Office', 'Public Agency', 'Public Utility Service', 'Public Healthcare Facility', 'Public School', 'Others']
-        },
-        {
-            name: 'Others',
-            description: 'If your business does not fit into any of the categories above, select this option and specify what your business does.',
-            subcategories: ['Others']
-        }
-    ];
     const goals = ['Capture Leads', 'Automated Rewards', 'Customer Feedback', 'Digital Loyalty'];
 
     const statesData: Record<string, string[]> = {
@@ -200,11 +113,11 @@ export default function GetStarted() {
 
     const calculatePersonalPrice = () => {
         let base = 15000;
-        const branchVal = formData.branchCount === 'No branch' ? 0 :
-            formData.branchCount === '1' ? 0 :
-                formData.branchCount === '2-5' ? 5000 :
-                    formData.branchCount === '6-10' ? 15000 :
-                        formData.branchCount === '11-50' ? 40000 : 100000;
+        const branchNum = parseInt(formData.branchCount) || 1;
+        const branchVal = branchNum <= 1 ? 0 :
+            branchNum <= 5 ? 5000 :
+                branchNum <= 10 ? 15000 :
+                    branchNum <= 50 ? 40000 : 100000;
 
         const visitorVal = formData.visitors === 'Less than 500' ? 0 :
             formData.visitors === '501-2000' ? 10000 :
@@ -291,7 +204,6 @@ export default function GetStarted() {
             let response: any;
 
             let businessLogoUrl = cleanData.businessLogo;
-            let verificationDocUrl = cleanData.verificationDoc;
 
             if (!isManager) {
                 // Upload business logo
@@ -306,20 +218,8 @@ export default function GetStarted() {
                         businessLogoUrl = null;
                     }
                 }
-
-                // Upload verification document
-                if (cleanData.verificationDoc && (cleanData.verificationDoc.startsWith('data:image') || cleanData.verificationDoc.startsWith('data:application'))) {
-                    const docToast = toast.loading('Uploading verification document...');
-                    try {
-                        verificationDocUrl = await uploadToCloudinary(cleanData.verificationDoc);
-                        toast.success('Document uploaded!', { id: docToast });
-                    } catch (docError: any) {
-                        console.error('Document upload failed:', docError);
-                        toast.error('Document upload failed. Proceeding...', { id: docToast });
-                        verificationDocUrl = null;
-                    }
-                }
             }
+
 
             if (isManager) {
                 // Manager flow: POST /auth/register with role=Manager and businessId
@@ -334,27 +234,36 @@ export default function GetStarted() {
                 response = await registerUser(payload);
             } else {
                 // Owner flow: POST /auth/register/owner (creates business)
-                // NO personal info (names, phone) in this payload! retrieved from session.
+                // Resolve Category IDs from backend data
+                const selectedCategory = categories.find((c: any) => c.name === cleanData.category);
+                const selectedSubcategory = selectedCategory?.subcategories?.find((s: any) => s.name === formData.subcategory);
+
+                if (!selectedCategory || (!selectedSubcategory && formData.subcategory !== 'Others')) {
+                    toast.error('Please select a valid category and subcategory.');
+                    setIsLoading(false);
+                    return;
+                }
+
                 const payload = {
                     email: cleanData.email,
                     password: formData.password,
                     businessName: cleanData.businessName,
                     businessLogo: businessLogoUrl || undefined,
-                    category: cleanData.category || undefined,
-                    subcategory: formData.subcategory || undefined,
+                    categoryId: selectedCategory.id,
+                    subcategoryId: selectedSubcategory?.id || selectedCategory.subcategories?.find((s: any) => s.name === 'Others')?.id || '',
+                    otherSubcategoryName: formData.subcategory === 'Others' ? (cleanData as any).otherSubcategoryName : undefined,
                     visitors: cleanData.visitors || undefined,
                     goals: cleanData.goals && cleanData.goals.length > 0 ? cleanData.goals : undefined,
                     whatsappNumber: cleanData.whatsappNumber || undefined,
-                    officialEmail: cleanData.officialEmail || undefined,
-                    businessNumber: cleanData.businessNumber || undefined,
+                    officialEmail: cleanData.officialEmail || cleanData.email,
+                    businessNumber: formData.phone,
                     businessAddress: cleanData.businessAddress || undefined,
                     businessWebsite: cleanData.businessWebsite || undefined,
                     isRegistered: cleanData.isRegistered === 'Yes',
-                    registrationNumber: cleanData.registrationNumber || undefined,
-                    verificationDoc: verificationDocUrl || undefined,
                     state: cleanData.state || undefined,
                     city: cleanData.city || undefined,
                 };
+
                 response = await registerOwner(payload as any);
             }
 
@@ -616,24 +525,26 @@ export default function GetStarted() {
                                 >
                                     <div>
                                         <h1 className="text-2xl font-display font-bold text-text-main mb-2 leading-tight tracking-tight">
+                                            {subStep === 3 && "Business Locations / Branch"}
                                             {subStep === 7 && "What are your goals?"}
                                             {subStep === 8 && "Vital Business Info"}
                                         </h1>
                                         <p className="text-[13px] text-text-secondary font-medium leading-relaxed">
                                             {subStep === 1 && "Start with the name customers know you by."}
                                             {subStep === 2 && "Upload your logo to personalize your dashboard and customer tags."}
-                                            {subStep === 3 && "How many branches does your business have?"}
+                                            {subStep === 3 && "How many business locations/branches do you have?"}
                                             {subStep === 4 && "Select the category that best fits your business."}
                                             {subStep === 5 && "Important for campaign communications and support."}
                                             {subStep === 6 && "This helps us optimize your experience for your footfall volume."}
                                             {subStep === 7 && "Tell us what you want to achieve with VemTap."}
                                             {subStep === 8 && "Adding your address, location and website helps us localize your profile."}
                                         </p>
+
                                     </div>
 
                                     <div className="space-y-6">
                                         {subStep === 1 && (
-                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                                                 <SanitizedInput
                                                     label="Business Name"
                                                     type="businessName"
@@ -644,6 +555,26 @@ export default function GetStarted() {
                                                     required
                                                     tooltip="The name customers know your business by — shown on your NFC tags and dashboard"
                                                 />
+
+                                                <div className="space-y-3">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Is your business registered?</label>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        <button
+                                                            onClick={() => setFormData({ ...formData, isRegistered: 'Yes' })}
+                                                            className={`p-4 rounded-xl text-left transition-all border ${formData.isRegistered === 'Yes' ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-gray-50 border-gray-100 text-text-secondary hover:bg-gray-100'}`}
+                                                        >
+                                                            <div className="text-sm font-bold mb-1">YES</div>
+                                                            <div className="text-[10px] leading-relaxed opacity-80">My business has the approval, documentation, and licences required to operate legally.</div>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setFormData({ ...formData, isRegistered: 'No' })}
+                                                            className={`p-4 rounded-xl text-left transition-all border ${formData.isRegistered === 'No' ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-gray-50 border-gray-100 text-text-secondary hover:bg-gray-100'}`}
+                                                        >
+                                                            <div className="text-sm font-bold mb-1">NO</div>
+                                                            <div className="text-[10px] leading-relaxed opacity-80">My business is not formally registered yet.</div>
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </motion.div>
                                         )}
 
@@ -704,38 +635,46 @@ export default function GetStarted() {
 
                                         {subStep === 3 && !isManager && (
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Number of Branches</label>
-                                                <div className="grid grid-cols-1 gap-2">
-                                                    {['No branch', '1', '2-5', '6-10', '11-50', '50+'].map(range => (
-                                                        <button
-                                                            key={range}
-                                                            onClick={() => setFormData({ ...formData, branchCount: range })}
-                                                            className={`w-full h-14 rounded-xl px-6 text-sm font-bold transition-all border flex items-center justify-between ${formData.branchCount === range ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-gray-50 border-gray-100 text-text-secondary hover:bg-gray-100'}`}
-                                                        >
-                                                            <span>{range} {range === '1' ? 'Branch' : range === 'No branch' ? '' : 'Branches'}</span>
-                                                            {formData.branchCount === range && <span className="material-icons-round text-primary text-sm">check_circle</span>}
-                                                        </button>
-                                                    ))}
-                                                </div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">How many business locations/branches do you have?</label>
+                                                <p className="text-[11px] text-gray-500 ml-1 mb-2">Enter the total number of locations your business operates from, including your main location.</p>
+                                                <SanitizedInput
+                                                    label=""
+                                                    type="number"
+                                                    value={formData.branchCount}
+                                                    onChange={(v) => setFormData({ ...formData, branchCount: v })}
+                                                    icon="store"
+                                                    placeholder="e.g. 1"
+                                                    required
+                                                />
                                             </motion.div>
                                         )}
+
 
                                         {subStep === 4 && !isManager && (
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                                                 <div className="space-y-3">
                                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Business Category</label>
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                        {categoriesData.map(c => (
-                                                            <button
-                                                                key={c.name}
-                                                                onClick={() => setFormData({ ...formData, category: c.name, subcategory: '' })}
-                                                                className={`px-4 py-4 rounded-xl text-[11px] font-bold transition-all border text-left flex flex-col gap-1 ${formData.category === c.name ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' : 'bg-gray-50 border-gray-100 text-text-secondary hover:bg-gray-100'}`}
-                                                            >
-                                                                <span className="block truncate">{c.name}</span>
-                                                            </button>
-                                                        ))}
-                                                    </div>
+                                                    {isCategoriesLoading ? (
+                                                        <div className="col-span-full flex items-center justify-center p-8">
+                                                            <Loader2 size={24} className="animate-spin text-primary" />
+                                                        </div>
+                                                    ) : (
+<select
+                                                            value={formData.categoryId}
+                                                            onChange={(e) => {
+                                                                const selected = categories.find((c: any) => c.id === e.target.value);
+                                                                setFormData({ ...formData, categoryId: e.target.value, category: selected?.name || '', subcategory: '', subcategoryId: '' });
+                                                            }}
+                                                            className="w-full h-14 bg-gray-50 border border-gray-100 rounded-xl px-4 text-sm font-bold text-text-main focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
+                                                        >
+                                                            <option value="">Select Category</option>
+                                                            {categories.map((c: any) => (
+                                                                <option key={c.id} value={c.id}>{c.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    )}
                                                 </div>
+
 
                                                 <AnimatePresence mode="wait">
                                                     {formData.category && (
@@ -750,33 +689,81 @@ export default function GetStarted() {
                                                                 <div className="shrink-0">
                                                                     <span className="material-icons-round text-blue-500 text-lg">info</span>
                                                                 </div>
-                                                                <p className="text-xs text-blue-800 font-medium leading-relaxed italic">
-                                                                    {categoriesData.find(c => c.name === formData.category)?.description}
+<p className="text-xs text-blue-800 font-medium leading-relaxed italic">
+                                                                    {categories.find((c: any) => c.id === formData.categoryId)?.description}
                                                                 </p>
                                                             </div>
 
                                                             <div className="space-y-3">
                                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Select Subcategory</label>
-                                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                                                    {categoriesData.find(c => c.name === formData.category)?.subcategories.map(sub => (
-                                                                        <button
-                                                                            key={sub}
-                                                                            onClick={() => setFormData({ ...formData, subcategory: sub })}
-                                                                            className={`px-3 py-2.5 rounded-lg text-[10px] font-bold transition-all border text-center leading-tight ${formData.subcategory === sub ? 'bg-primary/10 border-primary text-primary shadow-sm' : 'bg-white border-gray-100 text-text-secondary hover:bg-gray-50'}`}
-                                                                        >
-                                                                            {sub}
-                                                                        </button>
+                                                                <select
+                                                                    value={formData.subcategoryId}
+                                                                    onChange={(e) => {
+                                                                        const selected = categories.find((c: any) => c.id === formData.categoryId)?.subcategories?.find((s: any) => s.id === e.target.value);
+                                                                        setFormData({ ...formData, subcategoryId: e.target.value, subcategory: selected?.name || '' });
+                                                                    }}
+                                                                    className="w-full h-14 bg-white border border-gray-100 rounded-xl px-4 text-sm font-bold text-text-main focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
+                                                                >
+                                                                    <option value="">Select Subcategory</option>
+                                                                    {categories.find((c: any) => c.id === formData.categoryId)?.subcategories?.map((sub: any) => (
+                                                                        <option key={sub.id} value={sub.id}>{sub.name}</option>
                                                                     ))}
-                                                                </div>
+                                                                </select>
                                                             </div>
+
+                                                            {formData.subcategory === 'Others' && (
+                                                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                                                                    <SanitizedInput
+                                                                        label="Specify Your Business Type"
+                                                                        value={formData.otherSubcategoryName}
+                                                                        onChange={(v) => setFormData({ ...formData, otherSubcategoryName: v })}
+                                                                        icon="edit"
+                                                                        placeholder="e.g. Art Gallery, Fitness Center"
+                                                                        required
+                                                                        tooltip="Tell us specifically what your business does if it's not listed above."
+                                                                    />
+                                                                </motion.div>
+                                                            )}
                                                         </motion.div>
                                                     )}
                                                 </AnimatePresence>
                                             </motion.div>
                                         )}
 
-                                        {subStep === 5 && !isManager && (
+{subStep === 5 && !isManager && (
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                                                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex flex-col gap-3">
+                                                    <p className="text-xs text-blue-800 font-bold">Use the same email and phone number from your account registration?</p>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                setFormData({
+                                                                    ...formData,
+                                                                    officialEmail: formData.email,
+                                                                    whatsappNumber: formData.phone
+                                                                });
+                                                            }}
+                                                            className="px-4 py-2 bg-white text-blue-700 font-bold text-xs rounded-lg border border-blue-200 hover:bg-blue-100 shadow-sm"
+                                                        >
+                                                            Yes, use same details
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                setFormData({
+                                                                    ...formData,
+                                                                    officialEmail: '',
+                                                                    whatsappNumber: ''
+                                                                });
+                                                            }}
+                                                            className="px-4 py-2 bg-transparent text-blue-600 font-bold text-xs hover:bg-blue-100 rounded-lg"
+                                                        >
+                                                            No, enter new details
+                                                        </button>
+                                                    </div>
+                                                </div>
+
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <SanitizedInput
                                                         label="Business WhatsApp Number"
@@ -799,102 +786,9 @@ export default function GetStarted() {
                                                         tooltip="Public-facing email for customer communications and campaigns"
                                                     />
                                                 </div>
-
-                                                <SanitizedInput
-                                                    label="Business Phone Number"
-                                                    type="tel"
-                                                    value={formData.businessNumber}
-                                                    onChange={(v) => setFormData({ ...formData, businessNumber: v })}
-                                                    icon="phone"
-                                                    placeholder="+234 801 234 5678"
-                                                    required
-                                                    tooltip="Primary number for your business operations."
-                                                />
-
-                                                <div className="space-y-3">
-                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Is your business registered?</label>
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        {['Yes', 'No'].map(opt => (
-                                                            <button
-                                                                key={opt}
-                                                                onClick={() => setFormData({ ...formData, isRegistered: opt as any })}
-                                                                className={`px-4 py-3 rounded-xl text-xs font-bold transition-all border text-center ${formData.isRegistered === opt ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-gray-50 border-gray-100 text-text-secondary hover:bg-gray-100'}`}
-                                                            >
-                                                                {opt === 'Yes' ? 'Yes – Registered' : 'No – Not Registered'}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-
-                                                    <div className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 mt-2 space-y-4">
-                                                        {formData.isRegistered === 'Yes' ? (
-                                                            <div className="space-y-4">
-                                                                <p className="text-[11px] text-blue-600 font-medium p-3 bg-blue-50/50 rounded-xl border border-blue-100">
-                                                                    Your business is officially registered. Please provide your CAC number and upload your certificate.
-                                                                </p>
-                                                                <SanitizedInput
-                                                                    label="Registration Number (CAC)"
-                                                                    value={formData.registrationNumber}
-                                                                    onChange={(v) => setFormData({ ...formData, registrationNumber: v })}
-                                                                    icon="description"
-                                                                    placeholder="RC-1234567"
-                                                                    required
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="space-y-4">
-                                                                <p className="text-[11px] text-amber-600 font-medium p-3 bg-amber-50/50 rounded-xl border border-amber-100">
-                                                                    Not registered? Please upload a valid government ID (National ID, NIMC, or Passport) for verification.
-                                                                </p>
-                                                            </div>
-                                                        )}
-
-                                                        <div className="space-y-2">
-                                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">
-                                                                {formData.isRegistered === 'Yes' ? 'Upload CAC Document' : 'Upload ID Document'}
-                                                            </label>
-                                                            <div className="flex items-center gap-4 p-4 border border-dashed border-gray-200 rounded-xl bg-white">
-                                                                <div className="size-12 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden">
-                                                                    {formData.verificationDoc ? (
-                                                                        formData.verificationDoc.startsWith('data:image') ? (
-                                                                            <img src={formData.verificationDoc} className="w-full h-full object-cover" />
-                                                                        ) : (
-                                                                            <span className="material-icons-round text-primary text-xl">description</span>
-                                                                        )
-                                                                    ) : (
-                                                                        <span className="material-icons-round text-gray-300 text-xl">file_upload</span>
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                    <input
-                                                                        type="file"
-                                                                        id="doc-upload"
-                                                                        className="hidden"
-                                                                        accept="image/*,.pdf"
-                                                                        onChange={(e) => {
-                                                                            const file = e.target.files?.[0];
-                                                                            if (file) {
-                                                                                const reader = new FileReader();
-                                                                                reader.onloadend = () => {
-                                                                                    setFormData({ ...formData, verificationDoc: reader.result as string });
-                                                                                };
-                                                                                reader.readAsDataURL(file);
-                                                                            }
-                                                                        }}
-                                                                    />
-                                                                    <label htmlFor="doc-upload" className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[11px] font-bold text-text-main cursor-pointer hover:bg-gray-50 transition-all">
-                                                                        {formData.verificationDoc ? 'Change Document' : 'Select Document'}
-                                                                    </label>
-                                                                    <p className="text-[10px] text-text-secondary mt-1">PDF, JPG or PNG. Max 5MB</p>
-                                                                </div>
-                                                                {formData.verificationDoc && (
-                                                                    <span className="material-icons-round text-green-500">check_circle</span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
                                             </motion.div>
                                         )}
+
 
                                         {subStep === 6 && !isManager && (
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
@@ -1004,7 +898,7 @@ export default function GetStarted() {
                                                     (subStep === 3 && isManager && !formData.businessId) ||
                                                     (!isManager && subStep === 3 && !formData.branchCount) ||
                                                     (!isManager && subStep === 4 && !formData.category) ||
-                                                    (!isManager && subStep === 5 && (!formData.whatsappNumber || !formData.officialEmail || !formData.businessNumber || !formData.verificationDoc || (formData.isRegistered === 'Yes' && !formData.registrationNumber))) ||
+                                                    (!isManager && subStep === 5 && (!formData.whatsappNumber?.trim() || !formData.officialEmail?.trim())) ||
                                                     (!isManager && subStep === 6 && !formData.visitors) ||
                                                     (!isManager && subStep === 7 && formData.goals.length === 0) ||
                                                     (!isManager && subStep === 8 && (!formData.businessAddress || !formData.state || !formData.city))
@@ -1079,7 +973,7 @@ export default function GetStarted() {
                                                     <p className="text-xs font-bold text-text-main">{formData.selectedRole}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Branches</p>
+                                                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Business Locations</p>
                                                     <p className="text-xs font-bold text-text-main">{formData.branchCount}</p>
                                                 </div>
                                                 <div className="col-span-2 grid grid-cols-2 gap-4 border-t border-gray-100 pt-3 mt-1">
@@ -1091,13 +985,10 @@ export default function GetStarted() {
                                                         <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Official Email</p>
                                                         <p className="text-xs font-bold text-text-main break-all">{formData.officialEmail || 'Not set'}</p>
                                                     </div>
-                                                    <div>
-                                                        <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Business Phone</p>
-                                                        <p className="text-xs font-bold text-text-main">{formData.businessNumber || 'Not set'}</p>
-                                                    </div>
+                                                    
                                                     <div>
                                                         <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Registered</p>
-                                                        <p className="text-xs font-bold text-text-main">{formData.isRegistered} {formData.isRegistered === 'Yes' ? `(${formData.registrationNumber})` : ''}</p>
+                                                        <p className="text-xs font-bold text-text-main">{formData.isRegistered}</p>
                                                     </div>
                                                     <div className="col-span-2">
                                                         <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Location</p>
@@ -1152,7 +1043,7 @@ export default function GetStarted() {
                                                 `${plan.teamMembersLimit} Team Members`,
                                                 `${plan.loyaltyLimit} Loyalty Points`,
                                                 `${plan.tagsLimit} Tags`,
-                                                `${plan.branchLimit} Branches`,
+                                                `${plan.branchLimit} Business Locations`,
                                             ] : [];
 
                                             return (

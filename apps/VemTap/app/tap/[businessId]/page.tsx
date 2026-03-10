@@ -50,9 +50,10 @@ export default function PublicTapPage() {
 
                     // Get the business slug (prefer name for the URL)
                     const businessSlug = (device.business?.name || 'business').toLowerCase().replace(/\s+/g, '-');
+                    const targetCode = device.code || businessId;
 
                     // Redirect to the dynamic business/code route
-                    router.push(`/${businessSlug}/${device.code}`);
+                    router.push(`/${businessSlug}/${targetCode}`);
                 } else {
                     console.warn('Device not found for code:', businessId);
                     setError(true);

@@ -81,9 +81,9 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                 </button>
             </div>
 
-            <div className="mb-5 grid grid-cols-2 gap-2">
-                <div className="flex items-center gap-2 rounded-xl border border-gray-100 bg-white p-2">
-                    <div className="size-10 rounded-xl bg-white border border-gray-100 overflow-hidden flex items-center justify-center shrink-0">
+            <div className="mb-5 rounded-2xl border border-[#0b7f74] bg-[#075E54] text-white p-2.5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                    <div className="size-10 rounded-full bg-white border border-white/30 overflow-hidden flex items-center justify-center shrink-0">
                         {form.businessLogo ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={form.businessLogo} alt={form.businessName || form.title} className="w-full h-full object-cover" />
@@ -91,14 +91,14 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                             <span className="text-base font-black text-slate-900">{(form.businessName || form.title).charAt(0)}</span>
                         )}
                     </div>
-                    <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Business</p>
-                        <p className="text-sm font-bold text-slate-900">{form.businessName || 'Business'}</p>
+                    <div className="min-w-0">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-200">Business</p>
+                        <p className="text-sm font-black text-white truncate">{form.businessName || 'Business'}</p>
                     </div>
                 </div>
-                <div className="rounded-xl border border-gray-100 bg-white p-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Branch</p>
-                    <p className="text-sm font-bold text-slate-900">{form.branchName || 'Main Branch'}</p>
+                <div className="text-right">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-emerald-200">Branch</p>
+                    <p className="text-xs font-bold text-white">{form.branchName || 'Main Branch'}</p>
                 </div>
             </div>
 

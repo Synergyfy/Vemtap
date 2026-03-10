@@ -58,7 +58,7 @@ export default function NFCManagerPage() {
 
     // Mutations
     const generateMutation = useMutation({
-        mutationFn: generateDevices,
+        mutationFn: (branchId?: string) => generateDevices(branchId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['devices'] });
             queryClient.invalidateQueries({ queryKey: ['my-orders'] });
@@ -79,7 +79,7 @@ export default function NFCManagerPage() {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: deleteDevice,
+        mutationFn: ({ id, branchId }: { id: string, branchId?: string }) => deleteDevice(id, branchId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['devices'] });
             queryClient.invalidateQueries({ queryKey: ['device-stats'] });
@@ -95,15 +95,20 @@ export default function NFCManagerPage() {
         }
 
         // Check subscription limits
-        if (capabilities && capabilities.capabilities.tags.limit !== 'unlimited' && 
+        if (capabilities && capabilities.capabilities.tags.limit !== 'unlimited' &&
             capabilities.capabilities.tags.used >= (capabilities.capabilities.tags.limit as number)) {
             toast.error('NFC Tag limit reached. Please upgrade your plan.');
             return;
         }
 
-        generateMutation.mutate();
-    };
+        // For Owners and Admins, a branchId is required for write operations
+        if (!urlBranchId && (user?.role === 'owner' || user?.role === 'admin')) {
+            toast.error('Please select a specific branch before generating assets.');
+            return;
+        }
 
+        generateMutation.mutate(urlBranchId || undefined);
+    };
     const openEditModal = (device: any) => {
         const fallbackTapUrl = `${window.location.origin}/tap/${device.code}`;
         const currentTargetUrl = device.targetUrl || device.redirectUrl || device.url || fallbackTapUrl;
@@ -412,7 +417,7 @@ export default function NFCManagerPage() {
                                                         <button
                                                             onClick={() => {
                                                                 if (confirm('Decommission this asset?')) {
-                                                                    deleteMutation.mutate(device.id);
+                                                                    deleteMutation.mutate({ id: device.id, branchId: device.branchId });
                                                                 }
                                                             }}
                                                             disabled={deleteMutation.isPending}

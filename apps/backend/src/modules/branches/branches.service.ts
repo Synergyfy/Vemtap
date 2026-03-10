@@ -11,6 +11,7 @@ import { Branch } from './entities/branch.entity';
 import { CreateBranchDto, UpdateBranchDto } from './dto/branch.dto';
 import { Business } from '../businesses/entities/business.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { DevicesService } from '../devices/devices.service';
 
 import { User } from '../users/entities/user.entity';
 
@@ -23,6 +24,8 @@ export class BranchesService {
     private businessRepository: Repository<Business>,
     @Inject(forwardRef(() => SubscriptionsService))
     private subscriptionsService: SubscriptionsService,
+    @Inject(forwardRef(() => DevicesService))
+    private devicesService: DevicesService,
   ) {}
 
   async checkBranchAccess(
@@ -86,7 +89,20 @@ export class BranchesService {
       phone: createBranchDto.phone || business.phone,
       officialEmail: createBranchDto.officialEmail || business.officialEmail,
     });
-    return this.branchesRepository.save(branch);
+    const savedBranch = await this.branchesRepository.save(branch);
+
+    // Automatically generate a device for the new branch
+    try {
+      await this.devicesService.createAutoDevice(savedBranch.id);
+    } catch (error) {
+      console.error(
+        `Failed to automatically create device for branch ${savedBranch.id}:`,
+        error,
+      );
+      // We don't throw here to avoid failing branch creation if device auto-gen fails
+    }
+
+    return savedBranch;
   }
 
   async findAll(ownerId: string): Promise<Branch[]> {
@@ -118,8 +134,8 @@ export class BranchesService {
     return branch;
   }
 
-  async findById(id: string): Promise<Branch> {
-    const branch = await this.branchesRepository.findOne({ where: { id } });
+  async findById(id: string, relations: string[] = []): Promise<Branch> {
+    const branch = await this.branchesRepository.findOne({ where: { id }, relations });
     if (!branch) throw new NotFoundException(`Branch with ID ${id} not found`);
     return branch;
   }

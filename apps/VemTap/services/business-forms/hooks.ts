@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { useAuthStore } from '@/store/useAuthStore';
 import type {
   BusinessForm,
   BusinessFormResponseItem,
@@ -13,8 +12,16 @@ import type {
 const toList = <T,>(payload: unknown): T[] => {
   if (Array.isArray(payload)) return payload as T[];
   if (payload && typeof payload === 'object') {
-    const maybeData = (payload as { data?: unknown }).data;
-    if (Array.isArray(maybeData)) return maybeData as T[];
+    const objectPayload = payload as {
+      data?: unknown;
+      items?: unknown;
+      forms?: unknown;
+      results?: unknown;
+    };
+    if (Array.isArray(objectPayload.data)) return objectPayload.data as T[];
+    if (Array.isArray(objectPayload.items)) return objectPayload.items as T[];
+    if (Array.isArray(objectPayload.forms)) return objectPayload.forms as T[];
+    if (Array.isArray(objectPayload.results)) return objectPayload.results as T[];
   }
   return [];
 };
@@ -23,9 +30,7 @@ export const useBusinessForms = () =>
   useQuery<BusinessForm[], Error>({
     queryKey: ['business-forms'],
     queryFn: async () => {
-      const businessId = useAuthStore.getState().user?.businessId;
-      if (!businessId) return [];
-      const response = await api.get(`/visitor-forms/business/${businessId}`);
+      const response = await api.get('/business-forms');
       return toList<BusinessForm>(response);
     },
   });
@@ -34,7 +39,7 @@ export const useBusinessForm = (id?: string) =>
   useQuery<BusinessForm, Error>({
     queryKey: ['business-forms', id],
     queryFn: async () => {
-      return await api.get(`/visitor-forms/${id}`);
+      return await api.get(`/business-forms/${id}`);
     },
     enabled: !!id,
   });
@@ -45,7 +50,13 @@ export const useCreateBusinessForm = () => {
     mutationFn: async (payload) => {
       return await api.post('/business-forms', payload);
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
+      queryClient.setQueryData<BusinessForm[]>(['business-forms'], (previous) => {
+        if (!previous) return created ? [created] : [];
+        if (!created?.id) return previous;
+        if (previous.some((item) => item.id === created.id)) return previous;
+        return [created, ...previous];
+      });
       queryClient.invalidateQueries({ queryKey: ['business-forms'] });
     },
   });
