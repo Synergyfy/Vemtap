@@ -37,10 +37,11 @@ export default function PeakTimesPage() {
         return [];
     };
 
+    type WeeklyRow = { day: string; hours: number[] };
     const hoursLabels = toList<string>(data.hoursLabels);
-    const weeklyData = toList<any>(data.weeklyData).map((d) => ({
+    const weeklyData = toList<WeeklyRow>(data.weeklyData).map((d) => ({
         ...d,
-        hours: Array.isArray(d?.hours) ? d.hours : [],
+        hours: Array.isArray(d?.hours) ? (d.hours as number[]) : [],
     }));
     const maxHourlyValue = Math.max(1, ...weeklyData.flatMap(d => d.hours || []));
 
@@ -149,4 +150,5 @@ export default function PeakTimesPage() {
         </div>
     );
 }
+
 
