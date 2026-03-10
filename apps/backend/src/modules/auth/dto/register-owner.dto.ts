@@ -129,4 +129,27 @@ export class RegisterOwnerDto {
   @IsOptional()
   @IsUrl()
   businessWebsite?: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Whether the business is officially registered',
+  })
+  @IsOptional()
+  isRegistered?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'RC1234567',
+    description: 'Business registration number (CAC, etc.)',
+  })
+  @IsOptional()
+  @IsString()
+  registrationNumber?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/doc.pdf',
+    description: 'URL of the business registration document',
+  })
+  @IsOptional()
+  @IsString()
+  verificationDoc?: string;
 }

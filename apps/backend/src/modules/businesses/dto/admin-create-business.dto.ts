@@ -107,4 +107,18 @@ export class AdminCreateBusinessDto {
   @IsEmail()
   @IsOptional()
   officialEmail?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  isRegistered?: boolean;
+
+  @ApiPropertyOptional({ example: 'RC1234567' })
+  @IsOptional()
+  @IsString()
+  registrationNumber?: string;
+
+  @ApiPropertyOptional({ example: ['https://example.com/doc.pdf'] })
+  @IsOptional()
+  @IsString({ each: true })
+  documents?: string[];
 }

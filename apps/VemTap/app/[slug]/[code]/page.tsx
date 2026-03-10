@@ -240,19 +240,20 @@ export default function DynamicTapJourneyPage() {
                 const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
                 const firstName = nameParts[0];
                 const lastName = nameParts.slice(1).join(' ') || ' ';
+                const defaultPassword = '123456';
 
                 // 1. Register user via public signup endpoint
-                await api.post('/visitors/signup', {
+                await api.post(`/visitors/signup?branchId=${branchId}`, {
                     firstName,
                     lastName,
                     email: data.email,
                     phone: data.phone
                 });
 
-                // 2. Performance Silent Login to get a token (Backend uses 'mypassword' for default signup)
+                // 2. Performance Silent Login to get a token (Backend uses '123456' for default signup)
                 const authResponse = await api.post('/auth/login', {
                     identifier: data.email,
-                    password: 'mypassword'
+                    password: defaultPassword
                 });
 
                 if (authResponse?.access_token) {
@@ -393,11 +394,15 @@ export default function DynamicTapJourneyPage() {
                             if (isCustomer) {
                                 onFormSubmit({});
                             } else {
-                                if (!user && (userData || storedIdentity)) {
-                                    const identity = userData || storedIdentity;
-                                    recordLoyaltyTap(identity);
+                                const identity = userData || storedIdentity;
+                                if (identity) {
+                                    // If we recognize them, run them through the signup/login flow 
+                                    // to ensure they earn points and are authenticated.
+                                    onFormSubmit(identity);
+                                } else {
+                                    // Fallback if no identity found (shouldn't happen in StepWelcomeBack)
+                                    setStep('FORM');
                                 }
-                                setStep('OUTCOME');
                             }
                         }}
                         onClear={() => {

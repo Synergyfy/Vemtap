@@ -354,6 +354,9 @@ export class AuthService {
           whatsappNumber: dto.whatsappNumber,
           officialEmail: dto.officialEmail,
           phone: dto.businessNumber,
+          isRegistered: dto.isRegistered,
+          registrationNumber: dto.registrationNumber,
+          documents: dto.verificationDoc ? [dto.verificationDoc] : undefined,
         });
       } else {
         // Update existing business if needed
@@ -370,6 +373,9 @@ export class AuthService {
           whatsappNumber: dto.whatsappNumber,
           officialEmail: dto.officialEmail,
           phone: dto.businessNumber,
+          isRegistered: dto.isRegistered,
+          registrationNumber: dto.registrationNumber,
+          documents: dto.verificationDoc ? [dto.verificationDoc] : undefined,
         } as any);
       }
 

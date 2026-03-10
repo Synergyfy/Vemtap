@@ -51,6 +51,12 @@ export class Business extends AbstractBaseEntity {
   @Column({ type: 'simple-array', nullable: true })
   documents: string[];
 
+  @Column({ default: false })
+  isRegistered: boolean;
+
+  @Column({ nullable: true })
+  registrationNumber: string;
+
   @ManyToOne(() => Category, { nullable: true })
   @JoinColumn({ name: 'categoryId' })
   category: Category;

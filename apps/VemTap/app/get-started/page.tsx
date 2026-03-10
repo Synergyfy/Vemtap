@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchPricingPlans } from '@/lib/api/pricing';
 import { CheckCircle2 } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
+import { fetchCategories } from '@/services/categories';
 
 export default function GetStarted() {
     const { registerOwner, requestOwnerOtp, isLoading: isRegistering } = useRegisterOwner();
@@ -31,6 +32,11 @@ export default function GetStarted() {
     const { data: plans = [] } = useQuery({
         queryKey: ['subscription-plans'],
         queryFn: fetchPricingPlans
+    });
+
+    const { data: categories = [] } = useQuery({
+        queryKey: ['categories'],
+        queryFn: fetchCategories
     });
     const [formData, setFormData] = useState({
         firstName: '',
@@ -54,6 +60,7 @@ export default function GetStarted() {
         isRegistered: 'No' as 'Yes' | 'No',
         registrationNumber: '',
         verificationDoc: null as string | null,
+        otherSubcategoryName: '',
         state: '',
         city: '',
         goals: [] as string[],
@@ -334,26 +341,34 @@ export default function GetStarted() {
                 response = await registerUser(payload);
             } else {
                 // Owner flow: POST /auth/register/owner (creates business)
-                // NO personal info (names, phone) in this payload! retrieved from session.
+                // Resolve Category IDs from backend data
+                const selectedCategory = categories.find((c: any) => c.name === cleanData.category);
+                const selectedSubcategory = selectedCategory?.subcategories?.find((s: any) => s.name === formData.subcategory);
+
+                if (!selectedCategory || (!selectedSubcategory && formData.subcategory !== 'Others')) {
+                    toast.error('Please select a valid category and subcategory.');
+                    setIsLoading(false);
+                    return;
+                }
+
                 const payload = {
                     email: cleanData.email,
                     password: formData.password,
                     businessName: cleanData.businessName,
                     businessLogo: businessLogoUrl || undefined,
-                    category: cleanData.category || undefined,
-                    subcategory: formData.subcategory || undefined,
+                    categoryId: selectedCategory.id,
+                    subcategoryId: selectedSubcategory?.id || selectedCategory.subcategories?.find((s: any) => s.name === 'Others')?.id || '',
+                    otherSubcategoryName: formData.subcategory === 'Others' ? (cleanData as any).otherSubcategoryName : undefined,
                     visitors: cleanData.visitors || undefined,
                     goals: cleanData.goals && cleanData.goals.length > 0 ? cleanData.goals : undefined,
                     whatsappNumber: cleanData.whatsappNumber || undefined,
-                    officialEmail: cleanData.officialEmail || undefined,
-                    businessNumber: cleanData.businessNumber || undefined,
+                    officialEmail: cleanData.officialEmail || cleanData.email,
+                    businessNumber: cleanData.businessNumber || formData.phone,
                     businessAddress: cleanData.businessAddress || undefined,
                     businessWebsite: cleanData.businessWebsite || undefined,
                     isRegistered: cleanData.isRegistered === 'Yes',
                     registrationNumber: cleanData.registrationNumber || undefined,
                     verificationDoc: verificationDocUrl || undefined,
-                    state: cleanData.state || undefined,
-                    city: cleanData.city || undefined,
                 };
                 response = await registerOwner(payload as any);
             }
@@ -769,6 +784,20 @@ export default function GetStarted() {
                                                                     ))}
                                                                 </div>
                                                             </div>
+
+                                                            {formData.subcategory === 'Others' && (
+                                                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                                                                    <SanitizedInput
+                                                                        label="Specify Your Business Type"
+                                                                        value={formData.otherSubcategoryName}
+                                                                        onChange={(v) => setFormData({ ...formData, otherSubcategoryName: v })}
+                                                                        icon="edit"
+                                                                        placeholder="e.g. Art Gallery, Fitness Center"
+                                                                        required
+                                                                        tooltip="Tell us specifically what your business does if it's not listed above."
+                                                                    />
+                                                                </motion.div>
+                                                            )}
                                                         </motion.div>
                                                     )}
                                                 </AnimatePresence>
