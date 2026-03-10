@@ -44,6 +44,15 @@ export const useBusinessForm = (id?: string) =>
     enabled: !!id,
   });
 
+export const usePublicBusinessForm = (id?: string) =>
+  useQuery<BusinessForm, Error>({
+    queryKey: ['public-business-form', id],
+    queryFn: async () => {
+      return await api.get(`/visitor-forms/public/${id}`);
+    },
+    enabled: !!id,
+  });
+
 export const useCreateBusinessForm = () => {
   const queryClient = useQueryClient();
   return useMutation<BusinessForm, Error, CreateBusinessFormRequest>({

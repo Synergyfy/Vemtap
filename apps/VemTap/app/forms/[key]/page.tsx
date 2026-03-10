@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useBusinessForms, useSubmitBusinessFormResponse } from '@/services/business-forms/hooks';
+import { usePublicBusinessForm, useSubmitBusinessFormResponse } from '@/services/business-forms/hooks';
 import PhoneFrame from '@/components/shared/PhoneFrame';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { CheckCircle2 } from 'lucide-react';
@@ -11,17 +11,7 @@ import { toast } from 'react-hot-toast';
 export default function PublicBusinessFormPage() {
     const params = useParams();
     const formKey = String(params?.key || '');
-    const { data: forms = [], isLoading } = useBusinessForms();
-
-    const form = useMemo(
-        () =>
-            forms.find((item: any) =>
-                item.isPublished &&
-                item.isActive &&
-                (item.id === formKey || item.key === formKey)
-            ),
-        [forms, formKey]
-    );
+    const { data: form, isLoading } = usePublicBusinessForm(formKey);
     const submitFormResponse = useSubmitBusinessFormResponse(form?.id || '');
 
     const [identity, setIdentity] = useState({
