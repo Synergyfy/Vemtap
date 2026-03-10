@@ -35,6 +35,7 @@ export class VisitorFormsController {
 
   @Public()
   @Get('branch/:branchId')
+  @Public()
   @ApiOperation({
     summary: 'Get all active forms for a specific branch',
   })
