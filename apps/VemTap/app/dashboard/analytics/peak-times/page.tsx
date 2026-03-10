@@ -75,7 +75,7 @@ export default function PeakTimesPage() {
                                         <div className="col-span-1 text-[10px] font-black uppercase tracking-widest text-text-main line-clamp-1">
                                             {d.day}
                                         </div>
-                                        {d.hours.map((v, j) => {
+                                        {d.hours.map((v:number, j:number) => {
                                             const opacity = v / maxHourlyValue;
                                             return (
                                                 <div key={j} className="h-10 mx-1 rounded-lg transition-all hover:scale-105 group relative cursor-pointer flex items-center justify-center" style={{ backgroundColor: `rgba(37, 99, 235, ${Math.max(opacity, 0.05)})` }}>
@@ -111,7 +111,7 @@ export default function PeakTimesPage() {
                                 </div>
                             )}
                             {weeklyData.map((d, idx) => {
-                                const total = d.hours.reduce((a, b) => a + b, 0);
+                                const total = d.hours.reduce((a:number, b:number) => a + b, 0);
                                 const maxTotal = Math.max(1, ...weeklyData.map(w => w.hours.reduce((a, b) => a + b, 0)));
                                 return (
                                     <div key={idx} className="flex flex-col items-center gap-3 w-12 group relative">
