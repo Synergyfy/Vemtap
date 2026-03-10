@@ -227,12 +227,18 @@ export default function DashboardPricingPage() {
                     </div>
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Period</p>
-                        <p className="mt-2 text-lg font-black text-text-main">
-                            {periodStart ? `Start ${new Date(periodStart).toLocaleDateString()}` : 'Start N/A'}
-                        </p>
-                        <p className="mt-1 text-xs font-bold text-slate-500">
-                            {displayPeriodEnd ? `End ${new Date(displayPeriodEnd).toLocaleDateString()}` : 'End N/A'}
-                        </p>
+                        {activePlan?.isFree ? (
+                            <p className="mt-2 text-lg font-black text-green-600">Free Plan</p>
+                        ) : (
+                            <>
+                                <p className="mt-2 text-lg font-black text-text-main">
+                                    {periodStart ? `Start ${new Date(periodStart).toLocaleDateString()}` : 'Start N/A'}
+                                </p>
+                                <p className="mt-1 text-xs font-bold text-slate-500">
+                                    {displayPeriodEnd ? `End ${new Date(displayPeriodEnd).toLocaleDateString()}` : 'End N/A'}
+                                </p>
+                            </>
+                        )}
                     </div>
                 </div>
 

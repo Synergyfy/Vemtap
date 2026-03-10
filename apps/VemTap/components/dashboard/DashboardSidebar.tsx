@@ -581,7 +581,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                     </div>
                     <div className="flex items-center gap-2 lg:gap-4 relative">
                         <TrialBanner compact />
-                        {showPlanPill && (
+                        {isFreePlan ? (
+                            <Link
+                                href="/dashboard/settings/subscription"
+                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
+                            >
+                                Free Plan
+                            </Link>
+                        ) : showPlanPill && (
                             <Link
                                 href="/dashboard/settings/subscription/manage"
                                 className="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"

@@ -22,7 +22,7 @@ export default function NFCManagerPage() {
     const queryClient = useQueryClient();
     const { user } = useAuthStore();
     const { capabilities } = useSubscriptionStore();
-    const { activeBranchId: urlBranchId } = useActiveBranch();
+    const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
     const [selectedLink, setSelectedLink] = useState<any | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editData, setEditData] = useState({ name: '', location: '', branchId: '', targetUrl: '', status: 'active' });
@@ -31,13 +31,13 @@ export default function NFCManagerPage() {
 
     // API Data
     const { data: devices = [], isLoading: devicesLoading } = useQuery({
-        queryKey: ['devices', user?.businessId, urlBranchId],
-        queryFn: () => fetchDevices(urlBranchId || undefined)
+        queryKey: ['devices', user?.businessId, urlBranchId, isAllBranches],
+        queryFn: () => fetchDevices(urlBranchId || undefined, isAllBranches)
     });
 
     const { data: stats, isLoading: statsLoading } = useQuery({
-        queryKey: ['device-stats', user?.businessId, urlBranchId],
-        queryFn: () => fetchDeviceStats(urlBranchId || undefined)
+        queryKey: ['device-stats', user?.businessId, urlBranchId, isAllBranches],
+        queryFn: () => fetchDeviceStats(urlBranchId || undefined, isAllBranches)
     });
 
     const { data: orders = [], isLoading: ordersLoading } = useQuery<MarketplaceOrder[]>({

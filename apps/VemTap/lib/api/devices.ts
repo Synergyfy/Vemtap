@@ -72,15 +72,23 @@ export interface DeviceStats {
     offline: number;
 }
 
-export const fetchDevices = async (branchId?: string): Promise<Device[]> => {
+export const fetchDevices = async (branchId?: string, allBranches?: boolean): Promise<Device[]> => {
     const params = new URLSearchParams();
-    if (branchId) params.append('branchId', branchId);
+    if (branchId) {
+        params.append('branchId', branchId);
+    } else if (allBranches) {
+        params.append('allBranches', 'true');
+    }
     return await api.get(`/devices?${params.toString()}`);
 };
 
-export const fetchDeviceStats = async (branchId?: string): Promise<DeviceStats> => {
+export const fetchDeviceStats = async (branchId?: string, allBranches?: boolean): Promise<DeviceStats> => {
     const params = new URLSearchParams();
-    if (branchId) params.append('branchId', branchId);
+    if (branchId) {
+        params.append('branchId', branchId);
+    } else if (allBranches) {
+        params.append('allBranches', 'true');
+    }
     return await api.get(`/devices/stats?${params.toString()}`);
 };
 
