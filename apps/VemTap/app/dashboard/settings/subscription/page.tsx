@@ -42,7 +42,8 @@ export default function DashboardPricingPage() {
     const subscribeMutation = useSubscribe();
 
     const isLoading = plansLoading || subLoading;
-    const activePlanId = subscription?.planId || 'free';
+    const freePlan = plans.find((p: PricingPlan) => p.isFree);
+    const activePlanId = subscription?.planId || freePlan?.id || 'free';
     const activePlan = plans.find((p: PricingPlan) => p.id === activePlanId);
     const activeBillingPeriod = (subscription as any)?.billingPeriod || 'monthly';
     const isOnTrial = subscription?.status === 'trial' || subscription?.status === 'trialing';
@@ -134,7 +135,7 @@ export default function DashboardPricingPage() {
         if (plan.teamMembersLimit) derivedFeatures.push(`${plan.teamMembersLimit} Team Members`);
         if (plan.loyaltyLimit) derivedFeatures.push(`${plan.loyaltyLimit} Loyalty Points`);
         if (plan.tagsLimit) derivedFeatures.push(`${plan.tagsLimit} Tags`);
-        if (plan.branchLimit) derivedFeatures.push(`${plan.branchLimit} Branches`);
+        if (plan.branchLimit) derivedFeatures.push(`${plan.branchLimit} Business Locations`);
         if (plan.analyticsLevel && plan.analyticsLevel !== 'none') {
             const level = plan.analyticsLevel.charAt(0).toUpperCase() + plan.analyticsLevel.slice(1);
             derivedFeatures.push(`${level} Analytics`);
@@ -404,8 +405,8 @@ export default function DashboardPricingPage() {
                                             ? isOnTrial && !plan.isFree && isOwner
                                                 ? highlight ? 'bg-primary text-white hover:bg-primary-hover' : 'bg-primary text-white hover:bg-primary-hover shadow-primary/20'
                                                 : isPersonal && isOwner
-                                                ? highlight ? 'bg-primary text-white hover:bg-primary-hover' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20'
-                                                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                                    ? highlight ? 'bg-primary text-white hover:bg-primary-hover' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20'
+                                                    : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                             : !isOwner
                                                 ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                                 : highlight

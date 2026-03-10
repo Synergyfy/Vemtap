@@ -8,39 +8,63 @@ import {
     ChevronRight, LayoutDashboard, Loader2, Star, Clock, Youtube, Link as LinkIcon
 } from 'lucide-react';
 import { fetchDeviceByCode, Device } from '@/lib/api/devices';
-import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
-import { useAuthStore } from '@/store/useAuthStore';
 
-export default function BusinessPublicPage() {
+export default function BusinessPublicByIdPage() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
-
-    // The slug is the business name (e.g. "green"), NOT the device code.
-    // The actual device code lives in the zustand store (set during the tap journey)
-    // or can be passed as ?code= in the URL as a fallback.
-    const storeDeviceCode = useCustomerFlowStore(state => state.deviceCode);
-    const queryCode = searchParams.get('code');
-    const deviceCode = storeDeviceCode || queryCode;
-
-    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-    const user = useAuthStore((state) => state.user);
-    const isBusinessAccount = isAuthenticated && user?.role?.toLowerCase() !== 'customer';
-    const isCustomerAccount = isAuthenticated && user?.role?.toLowerCase() === 'customer';
+    const businessId = typeof params?.id === 'string' ? params.id : '';
+    const deviceCode = searchParams.get('code');
 
     const [businessData, setBusinessData] = useState<Device | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        if (!isAuthenticated && deviceCode) {
-            router.replace(`/${params.slug}/${deviceCode}`);
-        }
-    }, [deviceCode, isAuthenticated, params.slug, router]);
+    const mockBusinesses: Record<string, any> = {
+        '5920c360-d04c-4ff5-8da1-49c6fca1b115': {
+            id: '5920c360-d04c-4ff5-8da1-49c6fca1b115',
+            name: 'Green Wellness Lounge',
+            logoUrl: '/assets/VEMTAP_PNG.png',
+            rating: 4.8,
+            about: 'A calm, modern wellness space focused on holistic care, premium products, and exceptional service.',
+            rewardEnabled: true,
+            rewardVisitThreshold: 5,
+            rewardMessage: 'Visit 5 times to unlock a premium welcome gift.',
+            businessHours: {
+                monday: { open: '09:00', close: '18:00', closed: false },
+                tuesday: { open: '09:00', close: '18:00', closed: false },
+                wednesday: { open: '09:00', close: '18:00', closed: false },
+                thursday: { open: '09:00', close: '18:00', closed: false },
+                friday: { open: '09:00', close: '19:00', closed: false },
+                saturday: { open: '10:00', close: '16:00', closed: false },
+                sunday: { open: '00:00', close: '00:00', closed: true },
+            },
+            address: '12 Green Street, Lagos',
+            website: 'greenwellness.ng',
+            whatsappNumber: '+2348012345678',
+            officialEmail: 'hello@greenwellness.ng',
+            branches: [
+                { id: 'b-main', name: 'Main Branch', address: '12 Green Street, Lagos' },
+                { id: 'b-2', name: 'Lekki Branch', address: '45 Coastal Ave, Lekki' },
+            ],
+            showSocial: true,
+            instagramUrl: 'https://instagram.com/greenwellness',
+            facebookUrl: 'https://facebook.com/greenwellness',
+            xUrl: '',
+            linkedinUrl: '',
+            tiktokUrl: '',
+            youtubeUrl: '',
+            customLink: '',
+            showReview: true,
+            reviewUrl: 'https://maps.google.com',
+            monthlyVisitors: '3,200',
+            goal: 'Wellness + Community',
+            category: 'Wellness',
+        },
+    };
 
     useEffect(() => {
         const loadBusiness = async () => {
             if (!deviceCode) {
-                // No code available — cannot look up business
                 setIsLoading(false);
                 return;
             }
@@ -64,7 +88,10 @@ export default function BusinessPublicPage() {
         );
     }
 
-    if (!businessData?.business) {
+    const resolvedBusiness = businessData?.business || mockBusinesses[businessId] || null;
+    const resolvedOwner = businessData?.owner || null;
+
+    if (!resolvedBusiness || !businessId) {
         return (
             <div className="min-h-screen bg-[#fafbfc] flex flex-col items-center justify-center p-6 text-center">
                 <Building2 size={64} className="text-slate-300 mb-4" />
@@ -80,7 +107,8 @@ export default function BusinessPublicPage() {
         );
     }
 
-    const { business, owner } = businessData;
+    const business = resolvedBusiness;
+    const owner = resolvedOwner;
     const businessName = business.name || 'VemTap Business';
     const logoUrl = business.logoUrl;
 
@@ -94,9 +122,7 @@ export default function BusinessPublicPage() {
 
     return (
         <div className="min-h-screen bg-[#fafbfc] font-sans selection:bg-primary/10">
-            {/* Minimal Header */}
             <div className="h-[40vh] bg-linear-to-b from-slate-50 to-[#fafbfc] relative overflow-hidden flex items-center justify-center">
-                {/* Abstract background elements for a "premium" feel */}
                 <div className="absolute top-0 left-0 w-full h-full">
                     <div className="absolute top-[-10%] left-[-5%] size-96 bg-primary/5 rounded-full blur-3xl animate-pulse" />
                     <div className="absolute bottom-[-10%] right-[-5%] size-96 bg-indigo-500/5 rounded-full blur-3xl" />
@@ -117,8 +143,7 @@ export default function BusinessPublicPage() {
                     </button>
                 </div>
 
-                {/* Hero Content */}
-                <div className="flex flex-col items-center text-center z-10 px-4 md:px-6">
+                <div className="flex flex-col items-center text-center z-10 px-6">
                     <div className="size-28 md:size-32 rounded-3xl bg-white p-1.5 shadow-2xl shadow-slate-200/50 mb-6 border border-white">
                         {logoUrl ? (
                             <img
@@ -147,14 +172,17 @@ export default function BusinessPublicPage() {
                             </>
                         )}
                     </p>
+                    {typeof business.rating === 'number' && (
+                        <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 text-xs font-black">
+                            <Star size={14} fill="currentColor" />
+                            {business.rating.toFixed(1)} Rating
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Main Content Area */}
-            <div className="max-w-4xl mx-auto px-4 md:px-6 -mt-10 relative z-20 pb-24">
+            <div className="max-w-4xl mx-auto px-6 -mt-10 relative z-20 pb-24">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-
-                    {/* Primary Info Card */}
                     <div className="md:col-span-8 space-y-6">
                         <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-xl shadow-slate-200/40 border border-white/50">
                             {business.about && (
@@ -213,7 +241,6 @@ export default function BusinessPublicPage() {
                                 </section>
                             )}
 
-                            {/* Stats Summary */}
                             <div className="grid grid-cols-2 gap-8 mt-12 pt-12 border-t border-slate-50 text-center md:text-left">
                                 <div>
                                     <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 mb-1">Impact</p>
@@ -226,10 +253,26 @@ export default function BusinessPublicPage() {
                                     <p className="text-[10px] font-bold text-slate-400">Primary Goal</p>
                                 </div>
                             </div>
+
+                            {Array.isArray(business.branches) && business.branches.length > 0 && (
+                                <div className="mt-10 pt-10 border-t border-slate-50">
+                                    <h3 className="text-[10px] uppercase tracking-[0.3em] font-black text-primary mb-5">Branches</h3>
+                                    <div className="space-y-3">
+                                        {business.branches.map((branch: any) => (
+                                            <div key={branch.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                                                <div>
+                                                    <p className="text-sm font-black text-slate-900">{branch.name}</p>
+                                                    <p className="text-xs text-slate-500">{branch.address || 'Address not set'}</p>
+                                                </div>
+                                                <span className="text-[10px] font-black text-slate-400 uppercase">Branch</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    {/* Contact Sidebar (Light) */}
                     <div className="md:col-span-4 space-y-6">
                         <div className="bg-white rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/40 border border-white/50">
                             <h3 className="text-sm font-black text-slate-900 mb-8 tracking-tight">Direct Connect</h3>
@@ -272,7 +315,6 @@ export default function BusinessPublicPage() {
                                 )}
                             </div>
 
-                            {/* Small Social Row */}
                             {business.showSocial && (business.instagramUrl || business.xUrl || business.facebookUrl || business.linkedinUrl || business.tiktokUrl || business.youtubeUrl || business.customLink) ? (
                                 <div className="mt-10 pt-8 border-t border-slate-50 flex flex-wrap gap-2">
                                     {business.facebookUrl && (
@@ -342,7 +384,6 @@ export default function BusinessPublicPage() {
                     </div>
                 </div>
 
-                {/* Main CTA - Prominent and Stunning */}
                 <div className="mt-12 text-center flex flex-col items-center">
                     <button
                         onClick={() => router.push('/customer/dashboard')}
@@ -370,5 +411,3 @@ export default function BusinessPublicPage() {
         </div>
     );
 }
-
-

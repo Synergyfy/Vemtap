@@ -8,6 +8,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { toast } from 'react-hot-toast';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import PageHeader from '@/components/dashboard/PageHeader';
+import Spinner from '@/components/ui/Spinner';
 import { useBranches } from '@/services/branches/hooks';
 import { useBusinessForms, useDeleteBusinessForm } from '@/services/business-forms/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -44,6 +45,12 @@ export default function FormsPage() {
     [branches]
   );
 
+  const statusOf = (form: { isPublished?: boolean; isActive?: boolean }) => {
+    if (!form.isPublished) return { label: 'Draft', tone: 'bg-slate-100 text-slate-700' };
+    if (!form.isActive) return { label: 'Archived', tone: 'bg-amber-100 text-amber-700' };
+    return { label: 'Active', tone: 'bg-emerald-100 text-emerald-700' };
+  };
+
   const getFormUrl = (formId: string) =>
     typeof window !== 'undefined'
       ? `${window.location.origin}/forms/${formId}`
@@ -69,6 +76,7 @@ export default function FormsPage() {
     link.href = canvas.toDataURL('image/png');
     link.click();
   };
+
 
   useEffect(() => {
     if (!focusFormId) return;
@@ -116,13 +124,19 @@ export default function FormsPage() {
         </div>
       </div>
 
-      {isLoading && <p className="text-sm text-text-secondary">Loading forms...</p>}
+      {isLoading && (
+        <div className="flex items-center gap-3 text-sm text-text-secondary">
+          <Spinner size="md" />
+          Loading forms...
+        </div>
+      )}
       {!isLoading && scopedForms.length === 0 && <p className="text-sm text-text-secondary">No forms for this branch scope.</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
         {scopedForms.map((form) => {
           const isDefault = defaultFormId === form.id;
           const isActiveInUserStep = isActiveForm(branchScope || 'global', form.id);
+          const status = statusOf(form);
           return (
             <div id={`form-card-${form.id}`} key={form.id} className={`relative rounded-2xl bg-white border border-slate-200 shadow-sm p-5 sm:p-6 flex flex-col gap-4 ${focusFormId === form.id ? 'ring-2 ring-primary/20 border-primary' : ''}`}>
               <QRCodeCanvas id={`form-qr-${form.id}`} value={getFormUrl(form.id)} size={160} className="hidden" />
@@ -132,7 +146,8 @@ export default function FormsPage() {
                   <p className="text-xl font-black text-slate-900">{form.title}</p>
                   <p className="text-xs text-slate-500 mt-1">{form.description || 'No description'}</p>
                 </div>
-                <div className="relative">
+                <div className="flex items-center gap-2 relative">
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-black ${status.tone}`}>{status.label}</span>
                   <button
                     onClick={() => setOpenMenuId((prev) => prev === form.id ? null : form.id)}
                     className="h-9 w-9 rounded-xl border border-slate-200 inline-flex items-center justify-center text-slate-500"
@@ -252,6 +267,7 @@ export default function FormsPage() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

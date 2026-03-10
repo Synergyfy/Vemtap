@@ -6,15 +6,18 @@ import { toast } from 'react-hot-toast';
 import DynamicQRCode from '@/components/shared/DynamicQRCode';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { BusinessHours } from '@/services/businesses/types';
 import { Loader2 } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { useUpdateBranch } from '@/services/branches/hooks';
+import { fetchDevices } from '@/lib/api/devices';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
 export default function BusinessProfilePage() {
     const { storeName, logoUrl, updateCustomSettings, setRedirect } = useCustomerFlowStore();
+    const { activeBranchId, isAllBranches } = useActiveBranch();
 
     const { data: business, isLoading } = useMyBusiness();
     const updateMutation = useUpdateBusiness();
@@ -37,6 +40,9 @@ export default function BusinessProfilePage() {
     const [businessHours, setBusinessHours] = useState<Record<string, BusinessHours>>({});
 
     const [rewardEnabled, setRewardEnabled] = useState(false);
+
+    const [cacDocument, setCacDocument] = useState('');
+    const [idDocument, setIdDocument] = useState('');
     const [rewardVisitThreshold, setRewardVisitThreshold] = useState(5);
 
     const [facebookUrl, setFacebookUrl] = useState('');
@@ -54,6 +60,7 @@ export default function BusinessProfilePage() {
     const [activeTab, setActiveTab] = useState('general');
 
     const [origin, setOrigin] = useState('https://vemtap.com');
+    const [deviceCode, setDeviceCode] = useState('');
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -63,17 +70,35 @@ export default function BusinessProfilePage() {
 
     // Config for Dynamic QR
     const qrId = 'biz-profile-main';
+    const publicProfileUrl = business?.id
+        ? `${origin}/b/${business.id}`
+        : `${origin}/${profileSlug}`;
+
+    const syncRedirect = async (url: string) => {
+        setRedirect(qrId, url);
+        try {
+            await fetch('/api/q/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: qrId, url }),
+            });
+        } catch (error) {
+            console.error('Failed to sync redirect mapping:', error);
+        }
+    };
 
     useEffect(() => {
         if (business) {
             const mainBranch = business.branches?.find(b => b.isMainBranch);
+            const selectedBranch = activeBranchId ? business.branches?.find(b => b.id === activeBranchId) : null;
+            const currentBranch = selectedBranch || mainBranch;
 
             setName(business.name || storeName);
-            setLogo(business.logoUrl || logoUrl || '');
+            setLogo(currentBranch?.logoUrl || business.logoUrl || logoUrl || '');
             setBusinessType(business.type || business.category?.toUpperCase() || 'RESTAURANT');
-            setSupportEmail(business.officialEmail || 'hello@vemtap.com');
-            setSupportPhone(mainBranch?.phone || business.phone || business.whatsappNumber || '');
-            setAddress(mainBranch?.address || business.address || '');
+            setSupportEmail(currentBranch?.officialEmail || business.officialEmail || 'hello@vemtap.com');
+            setSupportPhone(currentBranch?.phone || business.phone || business.whatsappNumber || '');
+            setAddress(currentBranch?.address || business.address || '');
 
             setAbout(business.about || '');
             setWelcomeMessage(business.welcomeMessage || '');
@@ -107,17 +132,41 @@ export default function BusinessProfilePage() {
             setShowSocial(business.showSocial ?? true);
             setShowFeedback(business.showFeedback ?? true);
 
+            setCacDocument(business.cacDocument || '');
+            setIdDocument(business.idDocument || '');
+
             if (!profileSlug) {
                 const slug = (business.name || storeName).toLowerCase().replace(/\s+/g, '-');
                 setProfileSlug(slug);
-                setRedirect(qrId, `${origin}/${slug}`);
+                void syncRedirect(publicProfileUrl);
             }
         }
-    }, [business, storeName, logoUrl, origin]);
+    }, [business, storeName, logoUrl, origin, profileSlug, publicProfileUrl]);
+
+    useEffect(() => {
+        const loadDeviceCode = async () => {
+            if (!business) return;
+            const mainBranch = business.branches?.find(b => b.isMainBranch);
+            const selectedBranch = activeBranchId ? business.branches?.find(b => b.id === activeBranchId) : null;
+            const currentBranch = selectedBranch || mainBranch;
+            if (!currentBranch?.id) return;
+
+            try {
+                const devices = await fetchDevices(currentBranch.id);
+                const preferred = devices.find((d) => d.status === 'active') || devices[0];
+                if (preferred?.code) setDeviceCode(preferred.code);
+            } catch (error) {
+                console.error('Failed to load devices for profile link:', error);
+            }
+        };
+        loadDeviceCode();
+    }, [business, activeBranchId]);
 
     const handleSave = async () => {
         if (!business) return;
         const mainBranch = business.branches?.find(b => b.isMainBranch);
+        const selectedBranch = activeBranchId ? business.branches?.find(b => b.id === activeBranchId) : null;
+        const currentBranch = selectedBranch || mainBranch;
 
         const hasChanged = (current: any, original: any) => {
             const normalizedCurrent = current === '' || current === null ? undefined : current;
@@ -141,7 +190,29 @@ export default function BusinessProfilePage() {
                 }
             }
 
-            // 2. Prepare Business Updates
+            // 2. Upload documents to Cloudinary if they're new local images
+            let finalCacDocument = cacDocument;
+            let finalIdDocument = idDocument;
+            
+            if (cacDocument && cacDocument.startsWith('data:image')) {
+                try {
+                    finalCacDocument = await uploadToCloudinary(cacDocument);
+                    setCacDocument(finalCacDocument);
+                } catch (error) {
+                    toast.error('Failed to upload CAC document.');
+                }
+            }
+            
+            if (idDocument && idDocument.startsWith('data:image')) {
+                try {
+                    finalIdDocument = await uploadToCloudinary(idDocument);
+                    setIdDocument(finalIdDocument);
+                } catch (error) {
+                    toast.error('Failed to upload ID document.');
+                }
+            }
+
+            // 3. Prepare Business Updates
             const businessUpdates: any = {};
             if (hasChanged(name, business.name)) businessUpdates.name = name;
             if (hasChanged(businessType, business.type)) businessUpdates.type = businessType;
@@ -156,32 +227,36 @@ export default function BusinessProfilePage() {
             if (hasChanged(customLink, business.customLink)) businessUpdates.customLink = customLink;
             if (hasChanged(linkedinUrl, business.linkedinUrl)) businessUpdates.linkedinUrl = linkedinUrl;
 
-            // 3. Prepare Branch Updates
-            const branchUpdates: any = {};
-            if (mainBranch) {
-                if (hasChanged(finalLogoUrl, mainBranch.logoUrl)) branchUpdates.logoUrl = finalLogoUrl;
-                if (hasChanged(supportEmail, mainBranch.officialEmail)) branchUpdates.officialEmail = supportEmail;
-                if (hasChanged(supportPhone, mainBranch.phone)) branchUpdates.phone = supportPhone;
-                if (hasChanged(supportPhone, mainBranch.whatsappNumber)) branchUpdates.whatsappNumber = supportPhone;
-                if (hasChanged(address, mainBranch.address)) branchUpdates.address = address;
-                if (hasChanged(about, mainBranch.about)) branchUpdates.about = about;
-                if (hasChanged(welcomeMessage, mainBranch.welcomeMessage)) branchUpdates.welcomeMessage = welcomeMessage;
-                if (hasChanged(successMessage, mainBranch.successMessage)) branchUpdates.successMessage = successMessage;
-                if (hasChanged(privacyMessage, mainBranch.privacyMessage)) branchUpdates.privacyMessage = privacyMessage;
-                if (hasChanged(rewardMessage, mainBranch.rewardMessage)) branchUpdates.rewardMessage = rewardMessage;
+            // Document uploads
+            if (hasChanged(finalCacDocument, business.cacDocument)) businessUpdates.cacDocument = finalCacDocument;
+            if (hasChanged(finalIdDocument, business.idDocument)) businessUpdates.idDocument = finalIdDocument;
 
-                const originalHours = mainBranch.businessHours || {};
+            // 4. Prepare Branch Updates
+            const branchUpdates: any = {};
+            if (currentBranch) {
+                if (hasChanged(finalLogoUrl, currentBranch.logoUrl)) branchUpdates.logoUrl = finalLogoUrl;
+                if (hasChanged(supportEmail, currentBranch.officialEmail)) branchUpdates.officialEmail = supportEmail;
+                if (hasChanged(supportPhone, currentBranch.phone)) branchUpdates.phone = supportPhone;
+                if (hasChanged(supportPhone, currentBranch.whatsappNumber)) branchUpdates.whatsappNumber = supportPhone;
+                if (hasChanged(address, currentBranch.address)) branchUpdates.address = address;
+                if (hasChanged(about, currentBranch.about)) branchUpdates.about = about;
+                if (hasChanged(welcomeMessage, currentBranch.welcomeMessage)) branchUpdates.welcomeMessage = welcomeMessage;
+                if (hasChanged(successMessage, currentBranch.successMessage)) branchUpdates.successMessage = successMessage;
+                if (hasChanged(privacyMessage, currentBranch.privacyMessage)) branchUpdates.privacyMessage = privacyMessage;
+                if (hasChanged(rewardMessage, currentBranch.rewardMessage)) branchUpdates.rewardMessage = rewardMessage;
+
+                const originalHours = currentBranch.businessHours || {};
                 if (JSON.stringify(businessHours) !== JSON.stringify(originalHours)) {
                     branchUpdates.businessHours = businessHours;
                 }
 
-                if (hasChanged(rewardEnabled, mainBranch.rewardEnabled)) branchUpdates.rewardEnabled = rewardEnabled;
-                if (hasChanged(rewardVisitThreshold, mainBranch.rewardVisitThreshold)) branchUpdates.rewardVisitThreshold = rewardVisitThreshold;
+                if (hasChanged(rewardEnabled, currentBranch.rewardEnabled)) branchUpdates.rewardEnabled = rewardEnabled;
+                if (hasChanged(rewardVisitThreshold, currentBranch.rewardVisitThreshold)) branchUpdates.rewardVisitThreshold = rewardVisitThreshold;
 
-                if (hasChanged(reviewUrl, mainBranch.reviewUrl)) branchUpdates.reviewUrl = reviewUrl;
-                if (hasChanged(showReview, mainBranch.showReview)) branchUpdates.showReview = showReview;
-                if (hasChanged(showSocial, mainBranch.showSocial)) branchUpdates.showSocial = showSocial;
-                if (hasChanged(showFeedback, mainBranch.showFeedback)) branchUpdates.showFeedback = showFeedback;
+                if (hasChanged(reviewUrl, currentBranch.reviewUrl)) branchUpdates.reviewUrl = reviewUrl;
+                if (hasChanged(showReview, currentBranch.showReview)) branchUpdates.showReview = showReview;
+                if (hasChanged(showSocial, currentBranch.showSocial)) branchUpdates.showSocial = showSocial;
+                if (hasChanged(showFeedback, currentBranch.showFeedback)) branchUpdates.showFeedback = showFeedback;
             }
 
             const hasBusinessChanges = Object.keys(businessUpdates).length > 0;
@@ -196,16 +271,15 @@ export default function BusinessProfilePage() {
             if (hasBusinessChanges) {
                 promises.push(updateMutation.mutateAsync({ id: business.id, updates: businessUpdates }));
             }
-            if (hasBranchChanges && mainBranch) {
-                promises.push(updateBranchMutation.mutateAsync({ id: mainBranch.id, updates: branchUpdates }));
+            if (hasBranchChanges && currentBranch) {
+                promises.push(updateBranchMutation.mutateAsync({ id: currentBranch.id, updates: branchUpdates }));
             }
 
             await Promise.all(promises);
 
             updateCustomSettings({ logoUrl: finalLogoUrl });
             useCustomerFlowStore.setState({ storeName: name });
-            const fullProfileUrl = `${origin}/${profileSlug}`;
-            setRedirect(qrId, fullProfileUrl);
+            await syncRedirect(publicProfileUrl);
 
             toast.success('Profile updated successfully!');
         } catch (error) {
@@ -239,25 +313,48 @@ export default function BusinessProfilePage() {
                 }
             />
 
-            <div className="flex items-center gap-1 overflow-x-auto pb-2 mb-8 no-scrollbar border-b border-gray-100">
-                {[
-                    { id: 'general', label: 'General', icon: 'business' },
-                    { id: 'schedule', label: 'Schedule', icon: 'calendar_today' },
-                    { id: 'messaging', label: 'Messaging', icon: 'forum' },
-                    { id: 'socials', label: 'Socials', icon: 'share' },
-                    { id: 'rewards', label: 'Rewards', icon: 'auto_awesome' },
-                    { id: 'visibility', label: 'Visibility', icon: 'visibility' },
-                    { id: 'qr', label: 'QR Code', icon: 'qr_code_2' },
-                ].map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-secondary hover:bg-gray-50'}`}
+            <div className="relative mb-8">
+                <div className="absolute left-0 top-0 bottom-2 z-10">
+                    <button 
+                        onClick={() => document.getElementById('tabs-container')?.scrollBy({ left: -200, behavior: 'smooth' })}
+                        className="h-full px-2 bg-white border-r border-gray-200 hover:bg-gray-50 flex items-center justify-center"
                     >
-                        <span className="material-icons-round text-lg">{tab.icon}</span>
-                        {tab.label}
+                        <span className="material-icons-round text-gray-400">chevron_left</span>
                     </button>
-                ))}
+                </div>
+                <div 
+                    id="tabs-container"
+                    className="flex items-center gap-1 overflow-x-auto scroll-smooth pb-2 border-b border-gray-100 px-10"
+                    style={{ scrollbarWidth: 'thin', scrollbarColor: '#e5e7eb transparent' }}
+                >
+                    {[
+                        { id: 'general', label: 'General', icon: 'business' },
+                        { id: 'schedule', label: 'Schedule', icon: 'calendar_today' },
+                        { id: 'messaging', label: 'Messaging', icon: 'forum' },
+                        { id: 'socials', label: 'Socials', icon: 'share' },
+                        { id: 'rewards', label: 'Rewards', icon: 'auto_awesome' },
+                        { id: 'visibility', label: 'Visibility', icon: 'visibility' },
+                        { id: 'qr', label: 'QR Code', icon: 'qr_code_2' },
+                        { id: 'documents', label: 'Documents', icon: 'description' },
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-secondary hover:bg-gray-50'}`}
+                        >
+                            <span className="material-icons-round text-lg">{tab.icon}</span>
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+                <div className="absolute right-0 top-0 bottom-2 z-10">
+                    <button 
+                        onClick={() => document.getElementById('tabs-container')?.scrollBy({ left: 200, behavior: 'smooth' })}
+                        className="h-full px-2 bg-white border-l border-gray-200 hover:bg-gray-50 flex items-center justify-center"
+                    >
+                        <span className="material-icons-round text-gray-400">chevron_right</span>
+                    </button>
+                </div>
             </div>
 
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -714,7 +811,7 @@ export default function BusinessProfilePage() {
                                 <p className="text-xs text-text-secondary font-medium">This QR code always redirects to your profile link above. You can change the link anytime without reprinting.</p>
                             </div>
                             <button
-                                onClick={() => window.open(`/${profileSlug}`, '_blank')}
+                                onClick={() => window.open(publicProfileUrl, '_blank')}
                                 className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary/20 transition-colors"
                             >
                                 <span className="material-icons-round text-sm">open_in_new</span>
@@ -741,10 +838,10 @@ export default function BusinessProfilePage() {
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Current Destination</label>
                                     <div
-                                        onClick={() => window.open(`/${profileSlug}`, '_blank')}
+                                        onClick={() => window.open(publicProfileUrl, '_blank')}
                                         className="h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 flex items-center text-sm font-bold text-primary cursor-pointer hover:bg-primary/5 hover:border-primary/30 transition-all"
                                     >
-                                        {`${origin.replace(/^https?:\/\//, '')}/${profileSlug}`}
+                                        {publicProfileUrl.replace(/^https?:\/\//, '')}
                                         <span className="material-icons-round text-sm ml-auto">open_in_new</span>
                                     </div>
                                 </div>
@@ -752,6 +849,124 @@ export default function BusinessProfilePage() {
                         </div>
                     </div>
 
+                )}
+
+                {activeTab === 'documents' && (
+                    <div className="space-y-6">
+                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
+                                <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Business Documents</h3>
+                                <p className="text-xs text-text-secondary font-medium mt-1">Upload your business registration documents for verification</p>
+                            </div>
+                            <div className="p-8 space-y-8">
+                                {/* CAC Document */}
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">CAC Registration / Business License</label>
+                                        <p className="text-[11px] text-gray-400 ml-1 mt-1">Upload your CAC certificate or business registration document</p>
+                                    </div>
+                                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                                        {cacDocument ? (
+                                            <div className="w-full">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="size-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                                            <span className="material-icons-round text-green-600">check_circle</span>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-text-main">Document uploaded</p>
+                                                            <p className="text-[11px] text-text-secondary">Click to replace</p>
+                                                        </div>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => setCacDocument('')}
+                                                        className="text-xs text-red-500 font-bold hover:text-red-600"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                                <img src={cacDocument} alt="CAC Document" className="w-full max-h-48 object-contain rounded-lg" />
+                                            </div>
+                                        ) : (
+                                            <label className="cursor-pointer flex flex-col items-center">
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*,.pdf"
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onload = (ev) => {
+                                                                setCacDocument(ev.target?.result as string);
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }}
+                                                />
+                                                <span className="material-icons-round text-4xl text-gray-300 mb-2">upload_file</span>
+                                                <span className="text-sm font-bold text-text-secondary">Click to upload CAC / Business License</span>
+                                                <span className="text-[11px] text-gray-400 mt-1">PNG, JPG or PDF up to 10MB</span>
+                                            </label>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* ID Document */}
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Government Issued ID</label>
+                                        <p className="text-[11px] text-gray-400 ml-1 mt-1">Upload a valid government-issued ID (National ID, Passport, Driver's License)</p>
+                                    </div>
+                                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                                        {idDocument ? (
+                                            <div className="w-full">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="size-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                                            <span className="material-icons-round text-green-600">check_circle</span>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-text-main">Document uploaded</p>
+                                                            <p className="text-[11px] text-text-secondary">Click to replace</p>
+                                                        </div>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => setIdDocument('')}
+                                                        className="text-xs text-red-500 font-bold hover:text-red-600"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                                <img src={idDocument} alt="ID Document" className="w-full max-h-48 object-contain rounded-lg" />
+                                            </div>
+                                        ) : (
+                                            <label className="cursor-pointer flex flex-col items-center">
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*,.pdf"
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onload = (ev) => {
+                                                                setIdDocument(ev.target?.result as string);
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }}
+                                                />
+                                                <span className="material-icons-round text-4xl text-gray-300 mb-2">badge</span>
+                                                <span className="text-sm font-bold text-text-secondary">Click to upload Government ID</span>
+                                                <span className="text-[11px] text-gray-400 mt-1">PNG, JPG or PDF up to 10MB</span>
+                                            </label>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {activeTab === 'general' && (

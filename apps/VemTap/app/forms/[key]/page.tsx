@@ -7,6 +7,7 @@ import PhoneFrame from '@/components/shared/PhoneFrame';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { CheckCircle2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import Spinner from '@/components/ui/Spinner';
 
 export default function PublicBusinessFormPage() {
     const params = useParams();
@@ -21,19 +22,34 @@ export default function PublicBusinessFormPage() {
     });
     const [submitted, setSubmitted] = useState(false);
 
-    if (!isLoading && !form) {
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+                <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-md w-full text-center space-y-3">
+                    <div className="flex justify-center">
+                        <Spinner size="lg" />
+                    </div>
+                    <p className="text-sm text-text-secondary font-medium">Loading form...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!form) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
                 <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-md w-full text-center">
                     <h1 className="text-xl font-display font-bold text-text-main mb-2">Form Not Available</h1>
                     <p className="text-sm text-text-secondary font-medium">
-                        This form link is invalid or not yet approved by admin.
+                        This form link is invalid, unpublished, or has been disabled. Please request a fresh link from the business.
                     </p>
+                    <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold bg-primary/10 text-primary">
+                        Need help? Ask the business for a new public form link.
+                    </div>
                 </div>
             </div>
         );
     }
-    if (isLoading || !form) return null;
 
     if (submitted) {
         return (

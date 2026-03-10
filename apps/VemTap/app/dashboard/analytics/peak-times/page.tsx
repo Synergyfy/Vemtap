@@ -26,7 +26,23 @@ export default function PeakTimesPage() {
         );
     }
 
-    const maxHourlyValue = Math.max(...data.weeklyData.flatMap(d => d.hours));
+    const toList = <T,>(payload: unknown): T[] => {
+        if (Array.isArray(payload)) return payload as T[];
+        if (payload && typeof payload === 'object') {
+            const obj = payload as { data?: unknown; items?: unknown; results?: unknown };
+            if (Array.isArray(obj.data)) return obj.data as T[];
+            if (Array.isArray(obj.items)) return obj.items as T[];
+            if (Array.isArray(obj.results)) return obj.results as T[];
+        }
+        return [];
+    };
+
+    const hoursLabels = toList<string>(data.hoursLabels);
+    const weeklyData = toList<any>(data.weeklyData).map((d) => ({
+        ...d,
+        hours: Array.isArray(d?.hours) ? d.hours : [],
+    }));
+    const maxHourlyValue = Math.max(1, ...weeklyData.flatMap(d => d.hours || []));
 
     return (
         <div className="p-8">
@@ -41,14 +57,20 @@ export default function PeakTimesPage() {
                         <div className="min-w-[800px]">
                             <div className="grid grid-cols-11 mb-4">
                                 <div className="col-span-1"></div>
-                                {data.hoursLabels.map((h, idx) => (
+                                {hoursLabels.length === 0 && (
+                                    <div className="col-span-10 text-sm text-text-secondary">No hourly labels available yet.</div>
+                                )}
+                                {hoursLabels.map((h, idx) => (
                                     <div key={idx} className="text-[10px] font-black uppercase tracking-widest text-text-secondary text-center px-1">
                                         {h}
                                     </div>
                                 ))}
                             </div>
                             <div className="space-y-4">
-                                {data.weeklyData.map((d, idx) => (
+                                {weeklyData.length === 0 && (
+                                    <div className="text-sm text-text-secondary">No weekly data available yet.</div>
+                                )}
+                                {weeklyData.map((d, idx) => (
                                     <div key={idx} className="grid grid-cols-11 items-center">
                                         <div className="col-span-1 text-[10px] font-black uppercase tracking-widest text-text-main line-clamp-1">
                                             {d.day}
@@ -83,9 +105,14 @@ export default function PeakTimesPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <ChartCard title="Busiest Day Analysis" subtitle="Weekly traffic distribution">
                         <div className="h-64 flex items-end justify-between px-4 pb-4">
-                            {data.weeklyData.map((d, idx) => {
+                            {weeklyData.length === 0 && (
+                                <div className="w-full h-full flex items-center justify-center text-sm text-text-secondary">
+                                    No busiest day data available yet.
+                                </div>
+                            )}
+                            {weeklyData.map((d, idx) => {
                                 const total = d.hours.reduce((a, b) => a + b, 0);
-                                const maxTotal = Math.max(...data.weeklyData.map(w => w.hours.reduce((a, b) => a + b, 0)));
+                                const maxTotal = Math.max(1, ...weeklyData.map(w => w.hours.reduce((a, b) => a + b, 0)));
                                 return (
                                     <div key={idx} className="flex flex-col items-center gap-3 w-12 group relative">
                                         <div

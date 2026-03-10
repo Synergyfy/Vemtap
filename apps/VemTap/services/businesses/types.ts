@@ -39,6 +39,7 @@ export interface Business {
     name: string;
     type?: string;
     category: string;
+    subcategory?: string;
     monthlyVisitors: string;
     goal: string;
     logoUrl?: string;
@@ -76,4 +77,6 @@ export interface Business {
     branches?: Branch[];
     createdAt?: string;
     updatedAt?: string;
+    cacDocument?: string;
+    idDocument?: string;
 }

@@ -60,17 +60,6 @@ export class VisitorFormsController {
     return this.formsService.getFormsForVisitor(branchId);
   }
 
-  @Get('public/:id')
-  @Public()
-  @ApiOperation({ summary: 'Get a public form by ID (no auth required)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Return the public form with fields to answer.',
-  })
-  findPublic(@Param('id') id: string) {
-    return this.formsService.getPublicFormById(id);
-  }
-
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific form with its questions' })
   @ApiQuery({ name: 'branchId', required: true, type: String })
