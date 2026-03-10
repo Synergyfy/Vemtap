@@ -19,6 +19,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { User } from '../users/entities/user.entity';
+import { Public } from '../../common/decorators/public.decorator';
 
 interface RequestWithUser extends Request {
   user: User;
@@ -31,6 +32,7 @@ export class VisitorFormsController {
   constructor(private readonly formsService: FormsService) {}
 
   @Get('branch/:branchId')
+  @Public()
   @ApiOperation({
     summary: 'Get all active forms for a specific branch',
   })
@@ -56,6 +58,17 @@ export class VisitorFormsController {
   })
   findForms(@Param('branchId') branchId: string) {
     return this.formsService.getFormsForVisitor(branchId);
+  }
+
+  @Get('public/:id')
+  @Public()
+  @ApiOperation({ summary: 'Get a public form by ID (no auth required)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return the public form with fields to answer.',
+  })
+  findPublic(@Param('id') id: string) {
+    return this.formsService.getPublicFormById(id);
   }
 
   @Get(':id')
