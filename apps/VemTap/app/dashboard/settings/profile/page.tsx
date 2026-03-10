@@ -41,6 +41,9 @@ export default function BusinessProfilePage() {
     const [businessHours, setBusinessHours] = useState<Record<string, BusinessHours>>({});
 
     const [rewardEnabled, setRewardEnabled] = useState(false);
+
+    const [cacDocument, setCacDocument] = useState('');
+    const [idDocument, setIdDocument] = useState('');
     const [rewardVisitThreshold, setRewardVisitThreshold] = useState(5);
 
     const [facebookUrl, setFacebookUrl] = useState('');
@@ -115,6 +118,9 @@ export default function BusinessProfilePage() {
             setShowSocial(business.showSocial ?? true);
             setShowFeedback(business.showFeedback ?? true);
 
+            setCacDocument(business.cacDocument || '');
+            setIdDocument(business.idDocument || '');
+
             if (!profileSlug) {
                 const slug = (business.name || storeName).toLowerCase().replace(/\s+/g, '-');
                 setProfileSlug(slug);
@@ -149,22 +155,29 @@ export default function BusinessProfilePage() {
                 }
             }
 
-            // Upload verification document if it's new
-            let finalDocUrl = verificationDoc;
-            if (verificationDoc && verificationDoc.startsWith('data:')) {
-                const docToast = toast.loading('Uploading verification document...');
+            // 2. Upload documents to Cloudinary if they're new local images
+            let finalCacDocument = cacDocument;
+            let finalIdDocument = idDocument;
+            
+            if (cacDocument && cacDocument.startsWith('data:image')) {
                 try {
-                    finalDocUrl = await uploadToCloudinary(verificationDoc);
-                    setVerificationDoc(finalDocUrl);
-                    toast.dismiss(docToast);
+                    finalCacDocument = await uploadToCloudinary(cacDocument);
+                    setCacDocument(finalCacDocument);
                 } catch (error) {
-                    toast.error('Failed to upload document.');
-                    toast.dismiss(docToast);
-                    return;
+                    toast.error('Failed to upload CAC document.');
+                }
+            }
+            
+            if (idDocument && idDocument.startsWith('data:image')) {
+                try {
+                    finalIdDocument = await uploadToCloudinary(idDocument);
+                    setIdDocument(finalIdDocument);
+                } catch (error) {
+                    toast.error('Failed to upload ID document.');
                 }
             }
 
-            // 2. Prepare Business Updates
+            // 3. Prepare Business Updates
             const businessUpdates: any = {};
             if (hasChanged(name, business.name)) businessUpdates.name = name;
             if (hasChanged(businessType, business.type)) businessUpdates.type = businessType;
@@ -182,7 +195,11 @@ export default function BusinessProfilePage() {
             if (hasChanged(customLink, business.customLink)) businessUpdates.customLink = customLink;
             if (hasChanged(linkedinUrl, business.linkedinUrl)) businessUpdates.linkedinUrl = linkedinUrl;
 
-            // 3. Prepare Branch Updates
+            // Document uploads
+            if (hasChanged(finalCacDocument, business.cacDocument)) businessUpdates.cacDocument = finalCacDocument;
+            if (hasChanged(finalIdDocument, business.idDocument)) businessUpdates.idDocument = finalIdDocument;
+
+            // 4. Prepare Branch Updates
             const branchUpdates: any = {};
             if (mainBranch) {
                 if (hasChanged(finalLogoUrl, mainBranch.logoUrl)) branchUpdates.logoUrl = finalLogoUrl;
@@ -265,26 +282,48 @@ export default function BusinessProfilePage() {
                 }
             />
 
-            <div className="flex items-center gap-1 overflow-x-auto pb-2 mb-8 no-scrollbar border-b border-gray-100">
-                {[
-                    { id: 'general', label: 'General', icon: 'business' },
-                    { id: 'registration', label: 'Registration', icon: 'verified_user' },
-                    { id: 'schedule', label: 'Schedule', icon: 'calendar_today' },
-                    { id: 'messaging', label: 'Messaging', icon: 'forum' },
-                    { id: 'socials', label: 'Socials', icon: 'share' },
-                    { id: 'rewards', label: 'Rewards', icon: 'auto_awesome' },
-                    { id: 'visibility', label: 'Visibility', icon: 'visibility' },
-                    { id: 'qr', label: 'QR Code', icon: 'qr_code_2' },
-                ].map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-secondary hover:bg-gray-50'}`}
+            <div className="relative mb-8">
+                <div className="absolute left-0 top-0 bottom-2 z-10">
+                    <button 
+                        onClick={() => document.getElementById('tabs-container')?.scrollBy({ left: -200, behavior: 'smooth' })}
+                        className="h-full px-2 bg-white border-r border-gray-200 hover:bg-gray-50 flex items-center justify-center"
                     >
-                        <span className="material-icons-round text-lg">{tab.icon}</span>
-                        {tab.label}
+                        <span className="material-icons-round text-gray-400">chevron_left</span>
                     </button>
-                ))}
+                </div>
+                <div 
+                    id="tabs-container"
+                    className="flex items-center gap-1 overflow-x-auto scroll-smooth pb-2 border-b border-gray-100 px-10"
+                    style={{ scrollbarWidth: 'thin', scrollbarColor: '#e5e7eb transparent' }}
+                >
+                    {[
+                        { id: 'general', label: 'General', icon: 'business' },
+                        { id: 'schedule', label: 'Schedule', icon: 'calendar_today' },
+                        { id: 'messaging', label: 'Messaging', icon: 'forum' },
+                        { id: 'socials', label: 'Socials', icon: 'share' },
+                        { id: 'rewards', label: 'Rewards', icon: 'auto_awesome' },
+                        { id: 'visibility', label: 'Visibility', icon: 'visibility' },
+                        { id: 'qr', label: 'QR Code', icon: 'qr_code_2' },
+                        { id: 'documents', label: 'Documents', icon: 'description' },
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-secondary hover:bg-gray-50'}`}
+                        >
+                            <span className="material-icons-round text-lg">{tab.icon}</span>
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+                <div className="absolute right-0 top-0 bottom-2 z-10">
+                    <button 
+                        onClick={() => document.getElementById('tabs-container')?.scrollBy({ left: 200, behavior: 'smooth' })}
+                        className="h-full px-2 bg-white border-l border-gray-200 hover:bg-gray-50 flex items-center justify-center"
+                    >
+                        <span className="material-icons-round text-gray-400">chevron_right</span>
+                    </button>
+                </div>
             </div>
 
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -899,6 +938,124 @@ export default function BusinessProfilePage() {
                         </div>
                     </div>
 
+                )}
+
+                {activeTab === 'documents' && (
+                    <div className="space-y-6">
+                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
+                                <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Business Documents</h3>
+                                <p className="text-xs text-text-secondary font-medium mt-1">Upload your business registration documents for verification</p>
+                            </div>
+                            <div className="p-8 space-y-8">
+                                {/* CAC Document */}
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">CAC Registration / Business License</label>
+                                        <p className="text-[11px] text-gray-400 ml-1 mt-1">Upload your CAC certificate or business registration document</p>
+                                    </div>
+                                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                                        {cacDocument ? (
+                                            <div className="w-full">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="size-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                                            <span className="material-icons-round text-green-600">check_circle</span>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-text-main">Document uploaded</p>
+                                                            <p className="text-[11px] text-text-secondary">Click to replace</p>
+                                                        </div>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => setCacDocument('')}
+                                                        className="text-xs text-red-500 font-bold hover:text-red-600"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                                <img src={cacDocument} alt="CAC Document" className="w-full max-h-48 object-contain rounded-lg" />
+                                            </div>
+                                        ) : (
+                                            <label className="cursor-pointer flex flex-col items-center">
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*,.pdf"
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onload = (ev) => {
+                                                                setCacDocument(ev.target?.result as string);
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }}
+                                                />
+                                                <span className="material-icons-round text-4xl text-gray-300 mb-2">upload_file</span>
+                                                <span className="text-sm font-bold text-text-secondary">Click to upload CAC / Business License</span>
+                                                <span className="text-[11px] text-gray-400 mt-1">PNG, JPG or PDF up to 10MB</span>
+                                            </label>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* ID Document */}
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Government Issued ID</label>
+                                        <p className="text-[11px] text-gray-400 ml-1 mt-1">Upload a valid government-issued ID (National ID, Passport, Driver's License)</p>
+                                    </div>
+                                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                                        {idDocument ? (
+                                            <div className="w-full">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="size-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                                            <span className="material-icons-round text-green-600">check_circle</span>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-text-main">Document uploaded</p>
+                                                            <p className="text-[11px] text-text-secondary">Click to replace</p>
+                                                        </div>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => setIdDocument('')}
+                                                        className="text-xs text-red-500 font-bold hover:text-red-600"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                                <img src={idDocument} alt="ID Document" className="w-full max-h-48 object-contain rounded-lg" />
+                                            </div>
+                                        ) : (
+                                            <label className="cursor-pointer flex flex-col items-center">
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*,.pdf"
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onload = (ev) => {
+                                                                setIdDocument(ev.target?.result as string);
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }}
+                                                />
+                                                <span className="material-icons-round text-4xl text-gray-300 mb-2">badge</span>
+                                                <span className="text-sm font-bold text-text-secondary">Click to upload Government ID</span>
+                                                <span className="text-[11px] text-gray-400 mt-1">PNG, JPG or PDF up to 10MB</span>
+                                            </label>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {activeTab === 'general' && (

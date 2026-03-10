@@ -80,4 +80,6 @@ export interface Business {
     branches?: Branch[];
     createdAt?: string;
     updatedAt?: string;
+    cacDocument?: string;
+    idDocument?: string;
 }

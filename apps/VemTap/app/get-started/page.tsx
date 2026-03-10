@@ -701,6 +701,7 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                             </motion.div>
                                         )}
 
+{subStep === 5 && !isManager && (
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                                                 <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex flex-col gap-3">
                                                     <p className="text-xs text-blue-800 font-bold">Use the same email and phone number from your account registration?</p>
@@ -757,6 +758,7 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                                     />
                                                 </div>
                                             </motion.div>
+                                        )}
 
 
                                         {subStep === 6 && !isManager && (
@@ -867,7 +869,7 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                                     (subStep === 3 && isManager && !formData.businessId) ||
                                                     (!isManager && subStep === 3 && !formData.branchCount) ||
                                                     (!isManager && subStep === 4 && !formData.category) ||
-                                                    (!isManager && subStep === 5 && (!formData.whatsappNumber || !formData.officialEmail || (formData.isRegistered === 'Yes' && !formData.registrationNumber))) ||
+                                                    (!isManager && subStep === 5 && (!formData.whatsappNumber?.trim() || !formData.officialEmail?.trim() || (formData.isRegistered === 'Yes' && !formData.registrationNumber?.trim()))) ||
                                                     (!isManager && subStep === 6 && !formData.visitors) ||
                                                     (!isManager && subStep === 7 && formData.goals.length === 0) ||
                                                     (!isManager && subStep === 8 && (!formData.businessAddress || !formData.state || !formData.city))
