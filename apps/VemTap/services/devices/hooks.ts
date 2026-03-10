@@ -7,8 +7,7 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 export const useDevices = (branchId?: string) => {
     const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
-    const user = useAuthStore((state) => state.user);
-    const businessId = user?.businessId;
+    const businessId = useAuthStore((state) => state.user?.businessId);
     const resolvedBranchId = branchId || urlBranchId;
 
     return useQuery<Device[], Error>({
@@ -17,7 +16,7 @@ export const useDevices = (branchId?: string) => {
             const searchParams = new URLSearchParams();
             if (resolvedBranchId) {
                 searchParams.append('branchId', resolvedBranchId);
-            } else if (isAllBranches || !resolvedBranchId) {
+            } else if (isAllBranches) {
                 searchParams.append('allBranches', 'true');
             }
             const query = searchParams.toString();
@@ -29,8 +28,7 @@ export const useDevices = (branchId?: string) => {
 
 export const useDeviceStats = (branchId?: string) => {
     const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
-    const user = useAuthStore((state) => state.user);
-    const businessId = user?.businessId;
+    const businessId = useAuthStore((state) => state.user?.businessId);
     const resolvedBranchId = branchId || urlBranchId;
 
     return useQuery<any, Error>({
@@ -39,7 +37,7 @@ export const useDeviceStats = (branchId?: string) => {
             const searchParams = new URLSearchParams();
             if (resolvedBranchId) {
                 searchParams.append('branchId', resolvedBranchId);
-            } else if (isAllBranches || !resolvedBranchId) {
+            } else if (isAllBranches) {
                 searchParams.append('allBranches', 'true');
             }
             const query = searchParams.toString();

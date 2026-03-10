@@ -6,11 +6,13 @@ import { DevicesController } from './devices.controller';
 import { Order } from '../products/entities/order.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { BranchesModule } from '../branches/branches.module';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Device, Order, Branch]),
     forwardRef(() => BranchesModule),
+    forwardRef(() => SubscriptionsModule),
   ],
   controllers: [DevicesController],
   providers: [DevicesService],

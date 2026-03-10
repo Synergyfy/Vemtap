@@ -82,14 +82,6 @@ export class CreatePlanDto {
   loyaltyLimit?: number;
 
   @ApiPropertyOptional({
-    description: 'Tags/Devices limit (null for unlimited)',
-    example: 100,
-  })
-  @IsNumber()
-  @IsOptional()
-  tagsLimit?: number;
-
-  @ApiPropertyOptional({
     description: 'Branches limit (null for unlimited)',
     example: 3,
   })

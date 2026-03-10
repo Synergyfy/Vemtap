@@ -14,6 +14,8 @@ import { BranchesService } from './branches.service';
 import { CreateBranchDto, UpdateBranchDto } from './dto/branch.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { CapabilityGuard } from '../subscriptions/guards/capability.guard';
+import { RequireCapability } from '../subscriptions/decorators/capability.decorator';
 
 @ApiTags('branches')
 @ApiBearerAuth()
@@ -23,6 +25,8 @@ export class BranchesController {
 
   @Post()
   @Roles(UserRole.OWNER)
+  @UseGuards(CapabilityGuard)
+  @RequireCapability('branches')
   @ApiOperation({ summary: 'Create a new branch for the business' })
   create(@Request() req, @Body() createBranchDto: CreateBranchDto) {
     return this.branchesService.create(req.user.id, createBranchDto);

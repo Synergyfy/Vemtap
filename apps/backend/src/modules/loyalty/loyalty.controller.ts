@@ -28,6 +28,8 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
+import { CapabilityGuard } from '../subscriptions/guards/capability.guard';
+import { RequireCapability } from '../subscriptions/decorators/capability.decorator';
 
 @ApiTags('Loyalty & Rewards')
 @ApiBearerAuth()
@@ -232,6 +234,8 @@ export class LoyaltyController {
 
   @Post('rewards/create')
   @Roles(UserRole.MANAGER, UserRole.OWNER, UserRole.ADMIN)
+  @UseGuards(CapabilityGuard)
+  @RequireCapability('loyaltyPrograms')
   @ApiOperation({ summary: 'Create a new reward (Manager/Owner only)' })
   @ApiQuery({ name: 'branchId', required: true })
   async createReward(

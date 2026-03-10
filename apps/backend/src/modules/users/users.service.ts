@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { User, UserRole, UserStatus } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
 import { UpdateStaffDto } from './dto/update-staff.dto';
+import { InviteStaffDto } from './dto/invite-staff.dto';
 import { PasswordResetHistory } from './entities/password-reset-history.entity';
 
 @Injectable()
@@ -18,6 +19,26 @@ export class UsersService {
     @InjectRepository(PasswordResetHistory)
     private passwordResetHistoryRepository: Repository<PasswordResetHistory>,
   ) {}
+
+  async inviteStaff(branchId: string, dto: InviteStaffDto): Promise<User> {
+    const existing = await this.findByEmail(dto.email);
+    if (existing) {
+      throw new BadRequestException('User with this email already exists');
+    }
+
+    const user = this.usersRepository.create({
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      email: dto.email.toLowerCase(),
+      role: dto.role,
+      jobTitle: dto.jobTitle,
+      permissions: dto.permissions,
+      branchId: branchId,
+      status: UserStatus.INVITED,
+    });
+
+    return this.usersRepository.save(user);
+  }
 
   async create(userData: Partial<User>): Promise<User> {
     const user = this.usersRepository.create(userData);

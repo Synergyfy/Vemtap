@@ -38,10 +38,12 @@ const getReadContextParams = ({
     role,
     businessId,
     branchId,
+    allBranches,
 }: {
     role?: string | null;
     businessId?: string | null;
     branchId?: string | null;
+    allBranches?: boolean;
 }) => {
     const params = new URLSearchParams();
     const normalizedRole = normalizeRole(role);
@@ -72,6 +74,19 @@ const getReadContextParams = ({
     return params;
 };
 
+/**
+ * Helper hook to resolve which branchId to use.
+ */
+function useResolvedBranchParams(branchId?: string): { branchId?: string; allBranches?: boolean } {
+    const { activeBranchId: urlBranchId } = useActiveBranch();
+    const resolvedBranchId = branchId || urlBranchId;
+    
+    if (resolvedBranchId === 'all' || !resolvedBranchId) {
+        return { allBranches: true };
+    }
+    return { branchId: resolvedBranchId };
+}
+
 const getWriteBranchId = ({
     role,
     dtoBranchId,
@@ -99,14 +114,13 @@ const getWriteBranchId = ({
 // ─── Analytics ───────────────────────────────────────────────────────────────
 
 export const useMessagingAnalytics = (channel?: Channel) => {
-    const { activeBranchId: urlBranchId } = useActiveBranch();
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams();
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
-    const branchId = (urlBranchId === 'all' || !urlBranchId) ? undefined : urlBranchId;
-    const contextParams = getReadContextParams({ role, businessId, branchId });
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
 
     return useQuery<MessagingAnalytics, Error>({
-        queryKey: ['messaging', 'analytics', businessId, role, branchId, channel, contextParams.toString()],
+        queryKey: ['messaging', 'analytics', businessId, role, resolvedBranchId, allBranches, channel, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
             if (channel) params.append('channel', channel);
@@ -139,14 +153,13 @@ export const useMessagingAnalytics = (channel?: Channel) => {
 // ─── Campaigns / History ──────────────────────────────────────────────────────
 
 export const useMessagingCampaigns = () => {
-    const { activeBranchId: urlBranchId } = useActiveBranch();
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams();
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
-    const branchId = (urlBranchId === 'all' || !urlBranchId) ? undefined : urlBranchId;
-    const contextParams = getReadContextParams({ role, businessId, branchId });
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
 
     return useQuery<Campaign[], Error>({
-        queryKey: ['messaging', 'campaigns', businessId, role, branchId, contextParams.toString()],
+        queryKey: ['messaging', 'campaigns', businessId, role, resolvedBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
             const campaigns = await api.get(`/messaging/campaigns?${params.toString()}`);
@@ -243,14 +256,13 @@ export const useCreateTemplate = () => {
 // ─── Inbox / Threads ─────────────────────────────────────────────────────────
 
 export const useInboxThreads = (channel: Channel) => {
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams();
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
-    const branchId = activeBranchId === 'all' ? undefined : activeBranchId;
-    const contextParams = getReadContextParams({ role, businessId, branchId });
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
 
     return useQuery<InboxThread[], Error>({
-        queryKey: ['messaging', 'inbox', channel, businessId, role, branchId, contextParams.toString()],
+        queryKey: ['messaging', 'inbox', channel, businessId, role, resolvedBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
             const response = await api.get(`/messaging/inbox/${channel}?${params.toString()}`);
@@ -270,14 +282,13 @@ export const useInboxThreads = (channel: Channel) => {
 };
 
 export const useThreadMessages = (threadId: string) => {
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams();
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
-    const branchId = activeBranchId === 'all' ? undefined : activeBranchId;
-    const contextParams = getReadContextParams({ role, businessId, branchId });
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
 
     return useQuery<ThreadMessage[], Error>({
-        queryKey: ['messaging', 'thread', threadId, businessId, role, branchId, contextParams.toString()],
+        queryKey: ['messaging', 'thread', threadId, businessId, role, resolvedBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
             const response = await api.get(`/messaging/inbox/threads/${threadId}?${params.toString()}`);
@@ -307,14 +318,13 @@ export const useReplyToThread = (threadId: string) => {
 // ─── Automations ─────────────────────────────────────────────────────────────
 
 export const useAutomations = (branchId?: string) => {
+    const { branchId: targetBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const targetBranchId = branchId || (activeBranchId === 'all' ? undefined : activeBranchId);
-    const contextParams = getReadContextParams({ role, businessId, branchId: targetBranchId });
+    const contextParams = getReadContextParams({ role, businessId, branchId: targetBranchId, allBranches });
 
     return useQuery<AutomationRule[], Error>({
-        queryKey: ['messaging', 'automations', businessId, role, targetBranchId, contextParams.toString()],
+        queryKey: ['messaging', 'automations', businessId, role, targetBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
             return await api.get(`/automations?${params.toString()}`);
@@ -354,14 +364,13 @@ export const useDeleteAutomation = () => {
 };
 
 export const useAutomationLogs = (branchId?: string, limit = 50, offset = 0) => {
+    const { branchId: targetBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const targetBranchId = branchId || (activeBranchId === 'all' ? undefined : activeBranchId);
-    const contextParams = getReadContextParams({ role, businessId, branchId: targetBranchId });
+    const contextParams = getReadContextParams({ role, businessId, branchId: targetBranchId, allBranches });
 
     return useQuery<{ data: AutomationLog[]; total: number }, Error>({
-        queryKey: ['messaging', 'automation-logs', businessId, role, targetBranchId, limit, offset, contextParams.toString()],
+        queryKey: ['messaging', 'automation-logs', businessId, role, targetBranchId, allBranches, limit, offset, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
             params.append('limit', limit.toString());
@@ -382,14 +391,13 @@ export const useAutomationLogDetails = (sessionId: string) => {
 };
 
 export const useAutomationPerformance = (branchId?: string, startDate?: string, endDate?: string) => {
+    const { branchId: targetBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const targetBranchId = branchId || (activeBranchId === 'all' ? undefined : activeBranchId);
-    const contextParams = getReadContextParams({ role, businessId, branchId: targetBranchId });
+    const contextParams = getReadContextParams({ role, businessId, branchId: targetBranchId, allBranches });
 
     return useQuery<AutomationPerformance, Error>({
-        queryKey: ['messaging', 'automation-performance', businessId, role, targetBranchId, startDate, endDate, contextParams.toString()],
+        queryKey: ['messaging', 'automation-performance', businessId, role, targetBranchId, allBranches, startDate, endDate, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
             if (startDate) params.append('startDate', startDate);
@@ -401,14 +409,13 @@ export const useAutomationPerformance = (branchId?: string, startDate?: string, 
 };
 
 export const useWhatsAppConnectionStatus = (branchId?: string) => {
+    const { branchId: targetBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const targetBranchId = branchId || (activeBranchId === 'all' ? undefined : activeBranchId);
-    const contextParams = getReadContextParams({ role, businessId, branchId: targetBranchId });
+    const contextParams = getReadContextParams({ role, businessId, branchId: targetBranchId, allBranches });
 
     return useQuery<{ status: string; provider: string; updatedAt: string }, Error>({
-        queryKey: ['messaging', 'whatsapp-status', businessId, role, targetBranchId, contextParams.toString()],
+        queryKey: ['messaging', 'whatsapp-status', businessId, role, targetBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
             return await api.get(`/automations/connection-status?${params.toString()}`);

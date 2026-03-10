@@ -134,7 +134,6 @@ export default function DashboardPricingPage() {
         if (plan.emailCredits) derivedFeatures.push(`${plan.emailCredits.toLocaleString()} Email Credits`);
         if (plan.teamMembersLimit) derivedFeatures.push(`${plan.teamMembersLimit} Team Members`);
         if (plan.loyaltyLimit) derivedFeatures.push(`${plan.loyaltyLimit} Loyalty Points`);
-        if (plan.tagsLimit) derivedFeatures.push(`${plan.tagsLimit} Tags`);
         if (plan.branchLimit) derivedFeatures.push(`${plan.branchLimit} Business Locations`);
         if (plan.analyticsLevel && plan.analyticsLevel !== 'none') {
             const level = plan.analyticsLevel.charAt(0).toUpperCase() + plan.analyticsLevel.slice(1);
@@ -227,12 +226,18 @@ export default function DashboardPricingPage() {
                     </div>
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Period</p>
-                        <p className="mt-2 text-lg font-black text-text-main">
-                            {periodStart ? `Start ${new Date(periodStart).toLocaleDateString()}` : 'Start N/A'}
-                        </p>
-                        <p className="mt-1 text-xs font-bold text-slate-500">
-                            {displayPeriodEnd ? `End ${new Date(displayPeriodEnd).toLocaleDateString()}` : 'End N/A'}
-                        </p>
+                        {activePlan?.isFree ? (
+                            <p className="mt-2 text-lg font-black text-green-600">Free Plan</p>
+                        ) : (
+                            <>
+                                <p className="mt-2 text-lg font-black text-text-main">
+                                    {periodStart ? `Start ${new Date(periodStart).toLocaleDateString()}` : 'Start N/A'}
+                                </p>
+                                <p className="mt-1 text-xs font-bold text-slate-500">
+                                    {displayPeriodEnd ? `End ${new Date(displayPeriodEnd).toLocaleDateString()}` : 'End N/A'}
+                                </p>
+                            </>
+                        )}
                     </div>
                 </div>
 

@@ -27,7 +27,6 @@ export default function PlanDetailsPage() {
         const baseFeatures = Array.isArray(plan?.features) ? plan.features.filter(Boolean) : [];
         const limits = [];
         if (plan?.teamMembersLimit) limits.push(`${plan.teamMembersLimit} Team Members`);
-        if (plan?.tagsLimit) limits.push(`${plan.tagsLimit} Tags`);
         if (plan?.branchLimit) limits.push(`${plan.branchLimit} Branches`);
         if (plan?.loyaltyLimit) limits.push(`${plan.loyaltyLimit} Loyalty Points`);
         if (plan?.smsCredits) limits.push(`${plan.smsCredits.toLocaleString()} SMS Credits`);

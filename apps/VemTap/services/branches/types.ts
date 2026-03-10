@@ -4,6 +4,8 @@ export interface Branch {
     id: string;
     name: string;
     address?: string;
+    state?: string;
+    city?: string;
     phone?: string;
     businessId: string;
     isActive: boolean;
@@ -33,6 +35,8 @@ export interface Branch {
 export interface CreateBranchRequest {
     name: string;
     address?: string;
+    state?: string;
+    city?: string;
     phone?: string;
     logoUrl?: string;
     officialEmail?: string;
@@ -42,6 +46,8 @@ export interface CreateBranchRequest {
 export interface UpdateBranchRequest {
     name?: string;
     address?: string;
+    state?: string;
+    city?: string;
     phone?: string;
     logoUrl?: string;
     officialEmail?: string;

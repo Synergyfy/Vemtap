@@ -164,13 +164,17 @@ export default function ManagePlanPage() {
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-bold text-slate-600">{item.label}</span>
                                     <span className="text-sm font-black text-slate-900">
-                                        {item.used.toLocaleString()} / {item.limit.toLocaleString()}
+                                        {item.used.toLocaleString()} / {item.limit === 'unlimited' as any ? 'Unlimited' : (item.limit as number).toLocaleString()}
                                     </span>
                                 </div>
                                 <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
                                     <div
                                         className="h-full bg-primary rounded-full transition-all"
-                                        style={{ width: `${item.limit ? Math.min(100, (item.used / item.limit) * 100) : 0}%` }}
+                                        style={{ 
+                                            width: item.limit === 'unlimited' as any 
+                                                ? '100%' 
+                                                : `${item.limit ? Math.min(100, (item.used / (item.limit as number)) * 100) : 0}%` 
+                                        }}
                                     />
                                 </div>
                             </div>

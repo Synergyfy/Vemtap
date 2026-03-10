@@ -12,7 +12,7 @@ import { fetchAdminPricingPlans, updatePricingPlan, addPricingPlan, deletePricin
 import { PricingPlan } from '@/types/pricing';
 import FormattedNumberInput from '@/components/shared/FormattedNumberInput';
 
-type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice' | 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'tagsLimit' | 'branchLimit'> & {
+type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice' | 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit'> & {
     id?: string;
     monthlyPrice: string;
     trialDurationDays: string;
@@ -21,7 +21,6 @@ type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice
     emailCredits: string;
     teamMembersLimit: string;
     loyaltyLimit: string;
-    tagsLimit: string;
     branchLimit: string;
 };
 
@@ -37,7 +36,6 @@ const defaultNewPlan: EditablePlanForm = {
     emailCredits: '',
     teamMembersLimit: '',
     loyaltyLimit: '',
-    tagsLimit: '',
     branchLimit: '',
     analyticsLevel: 'basic',
     isActive: true,
@@ -58,7 +56,6 @@ const toEditablePlan = (plan: PricingPlan): EditablePlanForm => ({
     emailCredits: Number(plan.emailCredits || 0).toString(),
     teamMembersLimit: Number(plan.teamMembersLimit || 0).toString(),
     loyaltyLimit: Number(plan.loyaltyLimit || 0).toString(),
-    tagsLimit: Number(plan.tagsLimit || 0).toString(),
     branchLimit: Number(plan.branchLimit || 0).toString(),
     analyticsLevel: plan.analyticsLevel || 'basic',
     isActive: plan.isActive ?? true,
@@ -204,7 +201,6 @@ export default function AdminPricingPage() {
         emailCredits: toNumber(plan.emailCredits),
         teamMembersLimit: toNumber(plan.teamMembersLimit),
         loyaltyLimit: toNumber(plan.loyaltyLimit),
-        tagsLimit: toNumber(plan.tagsLimit),
         branchLimit: toNumber(plan.branchLimit),
         analyticsLevel: plan.analyticsLevel || 'basic',
         isActive: plan.isActive ?? true,
@@ -233,7 +229,7 @@ export default function AdminPricingPage() {
     };
 
     const setNumericField = (
-        key: keyof Pick<EditablePlanForm, 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'tagsLimit' | 'branchLimit'>,
+        key: keyof Pick<EditablePlanForm, 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit'>,
         value: string,
     ) => {
         setEditingPlan((prev) => (prev ? { ...prev, [key]: value } : prev));
@@ -398,7 +394,6 @@ export default function AdminPricingPage() {
                                                 <div className="space-y-1 text-text-secondary">
                                                     <p>Team Members: {unlimited(plan.teamMembersLimit)}</p>
                                                     <p>Loyalty: {unlimited(plan.loyaltyLimit)}</p>
-                                                    <p>Tags: {unlimited(plan.tagsLimit)}</p>
                                                     <p>Branches: {unlimited(plan.branchLimit)}</p>
                                                 </div>
                                             </div>
@@ -523,13 +518,7 @@ export default function AdminPricingPage() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
-                                        Tags Limit <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
-                                    </label>
-                                    <FormattedNumberInput value={currentPlan.tagsLimit} onChange={(value) => setNumericField('tagsLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
-                                </div>
+                            <div className="grid grid-cols-1 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
                                         Branch Limit <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
