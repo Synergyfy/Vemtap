@@ -302,7 +302,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             roles: ['owner', 'manager'],
             submenu: [
                 { label: 'Profile', href: '/dashboard/settings/profile' },
-                { label: 'Branches', href: '/dashboard/settings/branches' },
+                { label: 'Business Locations', href: '/dashboard/settings/branches' },
                 {
                     id: 'engagement',
                     label: 'Engagement',
