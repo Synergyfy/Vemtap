@@ -189,7 +189,7 @@ export default function BusinessProfilePage() {
             if (hasChanged(businessType, business.type)) businessUpdates.type = businessType;
             if (hasChanged(isRegistered, business.isRegistered)) businessUpdates.isRegistered = isRegistered;
             if (hasChanged(registrationNumber, business.registrationNumber)) businessUpdates.registrationNumber = registrationNumber;
-            if (hasChanged(finalDocUrl, business.documents?.[0])) businessUpdates.documents = finalDocUrl ? [finalDocUrl] : [];
+            if (hasChanged(finalCacDocument, business.documents?.[0])) businessUpdates.documents = finalCacDocument ? [finalCacDocument] : [];
 
             // Re-evaluating Social Links: User said they were rejected on both.
             // Let's only include them if they are truly changed.

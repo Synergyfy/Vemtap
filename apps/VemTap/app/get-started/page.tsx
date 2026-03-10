@@ -256,7 +256,7 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                     goals: cleanData.goals && cleanData.goals.length > 0 ? cleanData.goals : undefined,
                     whatsappNumber: cleanData.whatsappNumber || undefined,
                     officialEmail: cleanData.officialEmail || cleanData.email,
-                    businessNumber: cleanData.businessNumber || formData.phone,
+                    businessNumber: formData.phone,
                     businessAddress: cleanData.businessAddress || undefined,
                     businessWebsite: cleanData.businessWebsite || undefined,
                     isRegistered: cleanData.isRegistered === 'Yes',
@@ -988,7 +988,7 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                                     
                                                     <div>
                                                         <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Registered</p>
-                                                        <p className="text-xs font-bold text-text-main">{formData.isRegistered} {formData.isRegistered === 'Yes' ? `(${formData.registrationNumber})` : ''}</p>
+                                                        <p className="text-xs font-bold text-text-main">{formData.isRegistered}</p>
                                                     </div>
                                                     <div className="col-span-2">
                                                         <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Location</p>
