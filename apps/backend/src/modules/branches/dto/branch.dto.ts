@@ -214,4 +214,9 @@ export class UpdateBranchDto {
   @IsBoolean()
   @IsOptional()
   showFeedback?: boolean;
+
+  @ApiPropertyOptional({ example: false })
+  @IsBoolean()
+  @IsOptional()
+  isMainBranch?: boolean;
 }

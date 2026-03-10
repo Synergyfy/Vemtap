@@ -83,11 +83,33 @@ export class BranchesService {
       );
     }
 
+    // Find main branch to inherit settings
+    const mainBranch = await this.branchesRepository.findOne({
+      where: { businessId: business.id, isMainBranch: true },
+    });
+
     const branch = this.branchesRepository.create({
       ...createBranchDto,
       businessId: business.id,
       phone: createBranchDto.phone || business.phone,
       officialEmail: createBranchDto.officialEmail || business.officialEmail,
+      // Inherit from main branch
+      businessHours: mainBranch?.businessHours,
+      welcomeMessage: mainBranch?.welcomeMessage,
+      successMessage: mainBranch?.successMessage,
+      privacyMessage: mainBranch?.privacyMessage,
+      rewardMessage: mainBranch?.rewardMessage,
+      about: mainBranch?.about,
+      rewardEnabled: mainBranch?.rewardEnabled ?? false,
+      rewardVisitThreshold: mainBranch?.rewardVisitThreshold ?? 5,
+      linkedinUrl: mainBranch?.linkedinUrl,
+      reviewUrl: mainBranch?.reviewUrl,
+      showReview: mainBranch?.showReview ?? true,
+      showSocial: mainBranch?.showSocial ?? true,
+      showFeedback: mainBranch?.showFeedback ?? true,
+      logoUrl: mainBranch?.logoUrl || business.logoUrl,
+      website: mainBranch?.website || business.website,
+      whatsappNumber: mainBranch?.whatsappNumber || business.whatsappNumber,
     });
     const savedBranch = await this.branchesRepository.save(branch);
 
@@ -155,12 +177,28 @@ export class BranchesService {
     updateBranchDto: UpdateBranchDto,
   ): Promise<Branch> {
     const branch = await this.findOne(ownerId, id);
+
+    if (updateBranchDto.isMainBranch === true && !branch.isMainBranch) {
+      // Unset previous main branch for this business
+      await this.branchesRepository.update(
+        { businessId: branch.businessId, isMainBranch: true },
+        { isMainBranch: false },
+      );
+    } else if (updateBranchDto.isMainBranch === false && branch.isMainBranch) {
+      throw new ForbiddenException(
+        'A business must have at least one main branch',
+      );
+    }
+
     Object.assign(branch, updateBranchDto);
     return this.branchesRepository.save(branch);
   }
 
   async remove(ownerId: string, id: string): Promise<void> {
     const branch = await this.findOne(ownerId, id);
+    if (branch.isMainBranch) {
+      throw new ForbiddenException('The main branch cannot be deleted');
+    }
     await this.branchesRepository.remove(branch);
   }
 }

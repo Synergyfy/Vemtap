@@ -6,6 +6,7 @@ import React from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import ChartCard from '@/components/dashboard/ChartCard';
 import { useFootfallAnalytics } from '@/services/analytics/hooks';
+import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 
 export default function FootfallReportsPage() {
     const { data, isLoading, error } = useFootfallAnalytics();
@@ -29,99 +30,100 @@ export default function FootfallReportsPage() {
     const maxHourlyCount = Math.max(...data.hourlyData.map(d => d.count));
 
     return (
-        <div className="p-8">
-            <PageHeader
-                title="Footfall Analysis"
-                description="Detailed tracking of physical visits and traffic patterns"
-                actions={
-                    <button className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20">
-                        <span className="material-icons-round text-lg">file_download</span>
-                        Download Report
-                    </button>
-                }
-            />
+        <PageLockWrapper feature="footfall" featureName="Advanced Analytics">
+            <div className="p-8">
+                <PageHeader
+                    title="Footfall Analysis"
+                    description="Detailed tracking of physical visits and traffic patterns"
+                    actions={
+                        <button className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20">
+                            <span className="material-icons-round text-lg">file_download</span>
+                            Download Report
+                        </button>
+                    }
+                />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                {data.stats.map((stat, index) => (
-                    <div key={index} className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">{stat.label}</p>
-                        <p className="text-2xl font-black text-text-main">{stat.value}</p>
-                    </div>
-                ))}
-            </div>
-
-            <ChartCard title="Hourly Footfall" subtitle="Today's traffic distributed by hour">
-                <div className="h-64 flex items-end justify-between px-2 pb-2 mt-4">
-                    {data.hourlyData.map((d, i) => (
-                        <div key={i} className="flex flex-col items-center gap-3 w-full group relative">
-                            <div
-                                className="w-4/5 bg-primary/20 rounded-t-sm hover:bg-primary transition-all cursor-pointer"
-                                style={{ height: `${(d.count / maxHourlyCount) * 100}%` }}
-                            >
-                                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
-                                    {d.count} visits
-                                </div>
-                            </div>
-                            <span className="text-[10px] font-bold text-text-secondary uppercase transform -rotate-45">{d.hour}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    {data.stats.map((stat, index) => (
+                        <div key={index} className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">{stat.label}</p>
+                            <p className="text-2xl font-black text-text-main">{stat.value}</p>
                         </div>
                     ))}
                 </div>
-            </ChartCard>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-                <ChartCard title="Traffic by Entrance" subtitle="Comparison of entry points">
-                    <div className="space-y-6">
-                        {data.trafficByEntrance.map((item, i) => {
-                            const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500'];
-                            return (
-                                <div key={i} className="space-y-2">
-                                    <div className="flex justify-between text-xs font-bold">
-                                        <div className="flex items-center gap-2">
-                                            <div className={`size-3 ${colors[i % colors.length]} rounded-full`}></div>
-                                            <span className="text-text-main">{item.name}</span>
+                <ChartCard title="Hourly Footfall" subtitle="Today's traffic distributed by hour">
+                    <div className="h-64 flex items-end justify-between px-2 pb-2 mt-4">
+                        {data.hourlyData.map((d, i) => (
+                            <div key={i} className="flex flex-col items-center gap-3 w-full group relative">
+                                <div
+                                    className="w-4/5 bg-primary/20 rounded-t-sm hover:bg-primary transition-all cursor-pointer"
+                                    style={{ height: `${(d.count / maxHourlyCount) * 100}%` }}
+                                >
+                                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
+                                        {d.count} visits
+                                    </div>
+                                </div>
+                                <span className="text-[10px] font-bold text-text-secondary uppercase transform -rotate-45">{d.hour}</span>
+                            </div>
+                        ))}
+                    </div>
+                </ChartCard>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+                    <ChartCard title="Traffic by Entrance" subtitle="Comparison of entry points">
+                        <div className="space-y-6">
+                            {data.trafficByEntrance.map((item, i) => {
+                                const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500'];
+                                return (
+                                    <div key={i} className="space-y-2">
+                                        <div className="flex justify-between text-xs font-bold">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`size-3 ${colors[i % colors.length]} rounded-full`}></div>
+                                                <span className="text-text-main">{item.name}</span>
+                                            </div>
+                                            <span className="text-text-secondary">{item.count} ({item.percentage})</span>
                                         </div>
-                                        <span className="text-text-secondary">{item.count} ({item.percentage})</span>
+                                        <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                                            <div className={`h-full ${colors[i % colors.length]} rounded-full`} style={{ width: item.percentage }}></div>
+                                        </div>
                                     </div>
-                                    <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                                        <div className={`h-full ${colors[i % colors.length]} rounded-full`} style={{ width: item.percentage }}></div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </ChartCard>
+                                );
+                            })}
+                        </div>
+                    </ChartCard>
 
-                <ChartCard title="Visit Duration" subtitle="Average time spent by customers">
-                    <div className="h-full flex flex-col justify-center gap-8">
-                        <div className="flex items-center justify-between p-6 bg-gray-50 rounded-2xl border border-gray-100">
-                            <div className="flex items-center gap-4">
-                                <div className="size-12 rounded-xl bg-white border border-gray-200 flex items-center justify-center">
-                                    <span className="material-icons-round text-primary">timer</span>
+                    <ChartCard title="Visit Duration" subtitle="Average time spent by customers">
+                        <div className="h-full flex flex-col justify-center gap-8">
+                            <div className="flex items-center justify-between p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                                <div className="flex items-center gap-4">
+                                    <div className="size-12 rounded-xl bg-white border border-gray-200 flex items-center justify-center">
+                                        <span className="material-icons-round text-primary">timer</span>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Average Stay</p>
+                                        <p className="text-2xl font-display font-bold text-text-main">{data.visitDuration.averageStay}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Average Stay</p>
-                                    <p className="text-2xl font-display font-bold text-text-main">{data.visitDuration.averageStay}</p>
+                                <div className="text-right">
+                                    <p className="text-xs font-bold text-green-600">{data.visitDuration.trendText}</p>
+                                    <p className="text-[10px] text-text-secondary uppercase">vs last week</p>
                                 </div>
                             </div>
-                            <div className="text-right">
-                                <p className="text-xs font-bold text-green-600">{data.visitDuration.trendText}</p>
-                                <p className="text-[10px] text-text-secondary uppercase">vs last week</p>
+
+                            <div className="grid grid-cols-3 gap-4">
+                                {data.visitDuration.distribution.map((s, i) => (
+                                    <div key={i} className="p-4 bg-white border border-gray-100 rounded-xl text-center">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">{s.label}</p>
+                                        <p className="font-bold text-text-main text-sm">{s.p}</p>
+                                        <p className="text-[10px] text-text-secondary">{s.time}</p>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-
-                        <div className="grid grid-cols-3 gap-4">
-                            {data.visitDuration.distribution.map((s, i) => (
-                                <div key={i} className="p-4 bg-white border border-gray-100 rounded-xl text-center">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">{s.label}</p>
-                                    <p className="font-bold text-text-main text-sm">{s.p}</p>
-                                    <p className="text-[10px] text-text-secondary">{s.time}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </ChartCard>
+                    </ChartCard>
+                </div>
             </div>
-        </div>
+        </PageLockWrapper>
     );
 }
-

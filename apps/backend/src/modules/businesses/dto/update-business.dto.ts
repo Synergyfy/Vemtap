@@ -51,4 +51,9 @@ export class UpdateBusinessDto {
   @IsOptional()
   @IsString({ each: true })
   documents?: string[];
+
+  @ApiPropertyOptional({ example: 'https://example.com/logo.png' })
+  @IsOptional()
+  @IsString()
+  logoUrl?: string;
 }

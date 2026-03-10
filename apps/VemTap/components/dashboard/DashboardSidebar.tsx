@@ -254,8 +254,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             roles: ['owner', 'manager'],
             submenu: [
                 { label: 'Overview', href: '/dashboard/analytics' },
-                { label: 'Footfall', href: '/dashboard/analytics/footfall' },
-                { label: 'Peak Times', href: '/dashboard/analytics/peak-times' },
+                { label: 'Footfall', href: '/dashboard/analytics/footfall', feature: 'footfall', featureName: 'Advanced Analytics' },
+                { label: 'Peak Times', href: '/dashboard/analytics/peak-times', feature: 'peak-times', featureName: 'Advanced Analytics' },
             ]
         },
         {

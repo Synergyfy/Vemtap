@@ -12,6 +12,8 @@ import { PlansService } from './plans.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { PaymentsModule } from '../payments/payments.module';
 import { TrialRestrictionGuard } from './guards/trial-restriction.guard';
+import { CapabilityGuard } from './guards/capability.guard';
+import { AnalyticsLevelGuard } from './guards/analytics-level.guard';
 import { BranchesModule } from '../branches/branches.module';
 
 import { Branch } from '../branches/entities/branch.entity';
@@ -32,12 +34,20 @@ import { Device } from '../devices/entities/device.entity';
     forwardRef(() => BranchesModule),
   ],
   controllers: [PlansController, SubscriptionsController],
-  providers: [PlansService, SubscriptionsService, TrialRestrictionGuard],
+  providers: [
+    PlansService,
+    SubscriptionsService,
+    TrialRestrictionGuard,
+    CapabilityGuard,
+    AnalyticsLevelGuard,
+  ],
   exports: [
     TypeOrmModule,
     PlansService,
     SubscriptionsService,
     TrialRestrictionGuard,
+    CapabilityGuard,
+    AnalyticsLevelGuard,
   ],
 })
 export class SubscriptionsModule {}
