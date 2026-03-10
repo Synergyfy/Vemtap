@@ -40,6 +40,9 @@ export interface Business {
     type?: string;
     category: string;
     subcategory?: string;
+    categoryId?: string;
+    subcategoryId?: string;
+    otherSubcategoryName?: string;
     monthlyVisitors: string;
     goal: string;
     logoUrl?: string;
@@ -57,6 +60,8 @@ export interface Business {
     emailSettings?: any;
     ownerId: string;
     address?: string;
+    state?: string;
+    city?: string;
     website?: string;
     whatsappNumber?: string;
     phone?: string;
@@ -82,4 +87,6 @@ export interface Business {
     updatedAt?: string;
     cacDocument?: string;
     idDocument?: string;
+    isRegistered?: boolean;
+    registrationNumber?: string;
 }

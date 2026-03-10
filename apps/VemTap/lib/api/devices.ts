@@ -76,10 +76,7 @@ export const fetchDevices = async (branchId?: string, allBranches?: boolean): Pr
     const params = new URLSearchParams();
     if (branchId) {
         params.append('branchId', branchId);
-    } else {
-        // If no branchId is provided, we default to allBranches=true to satisfy backend
-        // requirements for Owners and Admins. For Managers/Staff, the backend 
-        // will ignore this and use their assigned branchId.
+    } else if (allBranches) {
         params.append('allBranches', 'true');
     }
     return await api.get(`/devices?${params.toString()}`);
@@ -89,7 +86,7 @@ export const fetchDeviceStats = async (branchId?: string, allBranches?: boolean)
     const params = new URLSearchParams();
     if (branchId) {
         params.append('branchId', branchId);
-    } else {
+    } else if (allBranches) {
         params.append('allBranches', 'true');
     }
     return await api.get(`/devices/stats?${params.toString()}`);
