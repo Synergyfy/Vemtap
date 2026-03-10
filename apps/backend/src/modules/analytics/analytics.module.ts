@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from './analytics.service';
@@ -12,6 +12,7 @@ import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
 import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
 import { Redemption } from '../campaigns/entities/redemption.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { Branch } from '../branches/entities/branch.entity';
       Redemption,
       Branch,
     ]),
+    forwardRef(() => SubscriptionsModule),
   ],
   controllers: [AnalyticsController],
   providers: [AnalyticsService],

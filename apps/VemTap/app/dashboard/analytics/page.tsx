@@ -55,6 +55,23 @@ export default function AnalyticsDashboardPage() {
         );
     }
 
+    const toList = <T,>(payload: unknown): T[] => {
+        if (Array.isArray(payload)) return payload as T[];
+        if (payload && typeof payload === 'object') {
+            const obj = payload as { data?: unknown; items?: unknown; results?: unknown };
+            if (Array.isArray(obj.data)) return obj.data as T[];
+            if (Array.isArray(obj.items)) return obj.items as T[];
+            if (Array.isArray(obj.results)) return obj.results as T[];
+        }
+        return [];
+    };
+
+    const stats = toList<any>(data.stats);
+    const messagingRoi = toList<any>(data.messagingRoi);
+    const peakTimes = toList<any>(data.peakTimes);
+    const topPerformers = toList<any>(data.topPerformers);
+    const engagementQuality = data.engagementQuality || {};
+
     return (
         <div className="p-4 md:p-8">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-10">
@@ -83,7 +100,12 @@ export default function AnalyticsDashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                {data.stats.map((stat, i) => {
+                {stats.length === 0 && (
+                    <div className="col-span-full bg-white p-6 rounded-lg border border-gray-100 text-sm text-text-secondary">
+                        No summary stats available yet.
+                    </div>
+                )}
+                {stats.map((stat, i) => {
                     const Icon = iconMap[stat.label] || Users;
                     const colors = colorMap[stat.label] || { color: 'text-primary', bg: 'bg-primary/5' };
                     return (
@@ -116,7 +138,12 @@ export default function AnalyticsDashboardPage() {
                     Messaging ROI
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    {data.messagingRoi.map((stat, i) => {
+                    {messagingRoi.length === 0 && (
+                        <div className="col-span-full bg-white p-6 rounded-lg border border-gray-100 text-sm text-text-secondary">
+                            No messaging ROI data available yet.
+                        </div>
+                    )}
+                    {messagingRoi.map((stat, i) => {
                         const roiColors: Record<string, { color: string; bg: string }> = {
                             'Sent': { color: 'text-blue-500', bg: 'bg-blue-50' },
                             'Delivered': { color: 'text-emerald-500', bg: 'bg-emerald-50' },
@@ -144,7 +171,12 @@ export default function AnalyticsDashboardPage() {
                         <p className="text-sm text-text-secondary font-medium mb-12">Identify your busiest hours to optimize staffing</p>
 
                         <div className="flex items-end justify-between gap-4 h-64">
-                            {data.peakTimes.map((t, i) => (
+                            {peakTimes.length === 0 && (
+                                <div className="w-full h-full flex items-center justify-center text-sm text-text-secondary">
+                                    No peak time data available yet.
+                                </div>
+                            )}
+                            {peakTimes.map((t, i) => (
                                 <div key={i} className="flex-1 flex flex-col items-center gap-4 group">
                                     <div className="w-full relative">
                                         <motion.div
@@ -173,7 +205,7 @@ export default function AnalyticsDashboardPage() {
                             <div>
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-xs font-bold text-white/60">Survey Completion</span>
-                                    <span className="text-sm font-black">{data.engagementQuality.surveyCompletion}</span>
+                                    <span className="text-sm font-black">{engagementQuality.surveyCompletion}</span>
                                 </div>
                                 <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                                     <div className="h-full bg-primary w-[78%] rounded-full" />
@@ -182,7 +214,7 @@ export default function AnalyticsDashboardPage() {
                             <div>
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-xs font-bold text-white/60">Review Conversion</span>
-                                    <span className="text-sm font-black">{data.engagementQuality.reviewConversion}</span>
+                                    <span className="text-sm font-black">{engagementQuality.reviewConversion}</span>
                                 </div>
                                 <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                                     <div className="h-full bg-amber-400 w-[12.4%] rounded-full" />
@@ -191,7 +223,7 @@ export default function AnalyticsDashboardPage() {
                             <div>
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-xs font-bold text-white/60">Social Follows</span>
-                                    <span className="text-sm font-black">{data.engagementQuality.socialFollows}</span>
+                                    <span className="text-sm font-black">{engagementQuality.socialFollows}</span>
                                 </div>
                                 <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                                     <div className="h-full bg-blue-400 w-[60%] rounded-full" />
@@ -203,7 +235,12 @@ export default function AnalyticsDashboardPage() {
                     <div className="bg-white p-8 rounded-lg border border-gray-100 shadow-sm">
                         <h4 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary mb-6">Top Performers</h4>
                         <div className="space-y-4">
-                            {data.topPerformers.map((item, i) => {
+                            {topPerformers.length === 0 && (
+                                <div className="text-sm text-text-secondary">
+                                    No top performers yet.
+                                </div>
+                            )}
+                            {topPerformers.map((item, i) => {
                                 const performerIcons: Record<string, React.ElementType> = {
                                     'collection': Share2,
                                     'survey': MessageSquare,

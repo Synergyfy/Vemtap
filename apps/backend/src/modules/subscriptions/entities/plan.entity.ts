@@ -44,9 +44,6 @@ export class Plan extends AbstractBaseEntity {
   @Column({ type: 'int', nullable: true })
   loyaltyLimit: number | null;
 
-  @Column({ type: 'int', nullable: true })
-  tagsLimit: number | null;
-
   @Column({ type: 'int', default: 1 })
   branchLimit: number;
 

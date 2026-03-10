@@ -16,10 +16,12 @@ const getReadContextParams = ({
     role,
     businessId,
     branchId,
+    allBranches,
 }: {
     role?: string | null;
     businessId?: string | null;
     branchId?: string | null;
+    allBranches?: boolean;
 }) => {
     const params = new URLSearchParams();
     const normalizedRole = normalizeRole(role);
@@ -75,22 +77,29 @@ const getWriteBranchId = ({
  * Helper hook to resolve which branchId to use.
  * Source: explicit arg > URL param (from useActiveBranch)
  */
-function useResolvedBranchId(branchId?: string): string | undefined {
-    const { activeBranchId: urlBranchId } = useActiveBranch();
-    const resolved = branchId || urlBranchId;
-    return (resolved === 'all' || !resolved) ? undefined : resolved;
+function useResolvedBranchParams(branchId?: string): { branchId?: string; allBranches?: boolean } {
+    const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
+    const resolvedBranchId = branchId || urlBranchId;
+    
+    if (resolvedBranchId === 'all' || !resolvedBranchId) {
+        return { allBranches: true };
+    }
+    return { branchId: resolvedBranchId };
 }
 
 export const useVisitors = (branchId?: string, query?: Record<string, any>) => {
-    const resolvedBranchId = useResolvedBranchId(branchId);
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
-    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId });
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
 
     return useQuery<PaginatedVisitorResponse, Error>({
-        queryKey: ['visitors', businessId, role, resolvedBranchId, query, contextParams.toString()],
+        queryKey: ['visitors', businessId, role, resolvedBranchId, allBranches, query, contextParams.toString()],
         queryFn: async () => {
             const searchParams = new URLSearchParams(contextParams);
+            if (allBranches) {
+                searchParams.set('allBranches', 'true');
+            }
             if (query?.search) searchParams.append('search', query.search);
             if (query?.status) searchParams.append('status', query.status);
             return await api.get(`/visitors?${searchParams.toString()}`);
@@ -100,15 +109,18 @@ export const useVisitors = (branchId?: string, query?: Record<string, any>) => {
 };
 
 export const useVisitorStats = (branchId?: string) => {
-    const resolvedBranchId = useResolvedBranchId(branchId);
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
-    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId });
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
 
     return useQuery<VisitorStatsResponse, Error>({
-        queryKey: ['visitors', 'stats', businessId, role, resolvedBranchId, contextParams.toString()],
+        queryKey: ['visitors', 'stats', businessId, role, resolvedBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const searchParams = new URLSearchParams(contextParams);
+            if (allBranches) {
+                searchParams.set('allBranches', 'true');
+            }
             return await api.get(`/visitors/stats?${searchParams.toString()}`);
         },
         enabled: !!businessId,
@@ -116,15 +128,18 @@ export const useVisitorStats = (branchId?: string) => {
 };
 
 export const useNewVisitors = (branchId?: string, query?: Record<string, any>) => {
-    const resolvedBranchId = useResolvedBranchId(branchId);
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
-    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId });
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
 
     return useQuery<PaginatedVisitorResponse, Error>({
-        queryKey: ['visitors', 'new', businessId, role, resolvedBranchId, query, contextParams.toString()],
+        queryKey: ['visitors', 'new', businessId, role, resolvedBranchId, allBranches, query, contextParams.toString()],
         queryFn: async () => {
             const searchParams = new URLSearchParams(contextParams);
+            if (allBranches) {
+                searchParams.set('allBranches', 'true');
+            }
             if (query?.search) searchParams.append('search', query.search);
             if (query?.status) searchParams.append('status', query.status);
             return await api.get(`/visitors/new?${searchParams.toString()}`);
@@ -134,15 +149,18 @@ export const useNewVisitors = (branchId?: string, query?: Record<string, any>) =
 };
 
 export const useNewVisitorStats = (branchId?: string) => {
-    const resolvedBranchId = useResolvedBranchId(branchId);
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
-    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId });
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
 
     return useQuery<VisitorStatsResponse, Error>({
-        queryKey: ['visitors', 'new', 'stats', businessId, role, resolvedBranchId, contextParams.toString()],
+        queryKey: ['visitors', 'new', 'stats', businessId, role, resolvedBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const searchParams = new URLSearchParams(contextParams);
+            if (allBranches) {
+                searchParams.set('allBranches', 'true');
+            }
             return await api.get(`/visitors/new/stats?${searchParams.toString()}`);
         },
         enabled: !!businessId,
@@ -150,15 +168,18 @@ export const useNewVisitorStats = (branchId?: string) => {
 };
 
 export const useReturningVisitors = (branchId?: string, query?: Record<string, any>) => {
-    const resolvedBranchId = useResolvedBranchId(branchId);
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
-    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId });
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
 
     return useQuery<PaginatedVisitorResponse, Error>({
-        queryKey: ['visitors', 'returning', businessId, role, resolvedBranchId, query, contextParams.toString()],
+        queryKey: ['visitors', 'returning', businessId, role, resolvedBranchId, allBranches, query, contextParams.toString()],
         queryFn: async () => {
             const searchParams = new URLSearchParams(contextParams);
+            if (allBranches) {
+                searchParams.set('allBranches', 'true');
+            }
             if (query?.search) searchParams.append('search', query.search);
             if (query?.status) searchParams.append('status', query.status);
             return await api.get(`/visitors/returning?${searchParams.toString()}`);
@@ -168,15 +189,18 @@ export const useReturningVisitors = (branchId?: string, query?: Record<string, a
 };
 
 export const useReturningVisitorStats = (branchId?: string) => {
-    const resolvedBranchId = useResolvedBranchId(branchId);
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
-    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId });
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
 
     return useQuery<VisitorStatsResponse, Error>({
-        queryKey: ['visitors', 'returning', 'stats', businessId, role, resolvedBranchId, contextParams.toString()],
+        queryKey: ['visitors', 'returning', 'stats', businessId, role, resolvedBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const searchParams = new URLSearchParams(contextParams);
+            if (allBranches) {
+                searchParams.set('allBranches', 'true');
+            }
             return await api.get(`/visitors/returning/stats?${searchParams.toString()}`);
         },
         enabled: !!businessId,
@@ -184,7 +208,7 @@ export const useReturningVisitorStats = (branchId?: string) => {
 };
 
 export const useVisitor = (id: string, branchId?: string) => {
-    const resolvedBranchId = useResolvedBranchId(branchId);
+    const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
     const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId });

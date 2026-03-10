@@ -17,33 +17,45 @@ import {
     VerifyRedemptionResponse,
 } from './types';
 
-function useResolvedBranchId(branchId?: string): string | undefined {
-    const { activeBranchId: urlBranchId } = useActiveBranch();
-    const resolved = branchId || urlBranchId;
-    return (resolved === 'all' || !resolved) ? undefined : resolved;
+function useResolvedBranchParams(branchId?: string): { branchId?: string; allBranches?: boolean } {
+    const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
+    const resolvedBranchId = branchId || urlBranchId;
+    
+    if (resolvedBranchId === 'all' || !resolvedBranchId) {
+        return { allBranches: true };
+    }
+    return { branchId: resolvedBranchId };
 }
 
 export const useLoyaltyProfiles = (branchId?: string) => {
-    const resolvedBranchId = useResolvedBranchId(branchId);
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
 
     return useQuery<LoyaltyProfile[], Error>({
-        queryKey: ['loyalty', 'profiles', resolvedBranchId],
+        queryKey: ['loyalty', 'profiles', resolvedBranchId, allBranches],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (resolvedBranchId) params.append('branchId', resolvedBranchId);
+            if (resolvedBranchId) {
+                params.append('branchId', resolvedBranchId);
+            } else if (allBranches) {
+                params.append('allBranches', 'true');
+            }
             return await api.get(`/campaigns/loyalty/profiles?${params.toString()}`);
         }
     });
 };
 
 export const useLoyaltyProfile = (userId: string, branchId?: string) => {
-    const resolvedBranchId = useResolvedBranchId(branchId);
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
 
     return useQuery<LoyaltyProfile, Error>({
-        queryKey: ['loyalty', 'profile', userId, resolvedBranchId],
+        queryKey: ['loyalty', 'profile', userId, resolvedBranchId, allBranches],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (resolvedBranchId) params.append('branchId', resolvedBranchId);
+            if (resolvedBranchId) {
+                params.append('branchId', resolvedBranchId);
+            } else if (allBranches) {
+                params.append('allBranches', 'true');
+            }
             return await api.get(`/campaigns/loyalty/profile/${userId}?${params.toString()}`);
         },
         enabled: !!userId,
@@ -51,13 +63,17 @@ export const useLoyaltyProfile = (userId: string, branchId?: string) => {
 };
 
 export const useLoyaltyRules = (branchId?: string) => {
-    const resolvedBranchId = useResolvedBranchId(branchId);
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
 
     return useQuery<LoyaltyRule, Error>({
-        queryKey: ['loyalty', 'rules', resolvedBranchId],
+        queryKey: ['loyalty', 'rules', resolvedBranchId, allBranches],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (resolvedBranchId) params.append('branchId', resolvedBranchId);
+            if (resolvedBranchId) {
+                params.append('branchId', resolvedBranchId);
+            } else if (allBranches) {
+                params.append('allBranches', 'true');
+            }
             return await api.get(`/campaigns/loyalty/rules?${params.toString()}`);
         }
     });
@@ -65,7 +81,7 @@ export const useLoyaltyRules = (branchId?: string) => {
 
 export const useUpdateLoyaltyRules = (branchId?: string) => {
     const queryClient = useQueryClient();
-    const resolvedBranchId = useResolvedBranchId(branchId);
+    const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
 
     return useMutation<LoyaltyRule, Error, UpdateLoyaltyRuleRequest>({
         mutationFn: async (updates) => {
@@ -80,27 +96,35 @@ export const useUpdateLoyaltyRules = (branchId?: string) => {
 };
 
 export const useRewards = (branchId?: string) => {
-    const resolvedBranchId = useResolvedBranchId(branchId);
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
 
     return useQuery<Reward[], Error>({
-        queryKey: ['loyalty', 'rewards', resolvedBranchId],
+        queryKey: ['loyalty', 'rewards', resolvedBranchId, allBranches],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (resolvedBranchId) params.append('branchId', resolvedBranchId);
+            if (resolvedBranchId) {
+                params.append('branchId', resolvedBranchId);
+            } else if (allBranches) {
+                params.append('allBranches', 'true');
+            }
             return await api.get(`/campaigns/loyalty/rewards?${params.toString()}`);
         }
     });
 };
 
 export const useBusinessLoyaltyStats = (branchId?: string) => {
-    const resolvedBranchId = useResolvedBranchId(branchId);
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
 
     return useQuery<any, Error>({
-        queryKey: ['loyalty', 'business-stats', resolvedBranchId, businessId],
+        queryKey: ['loyalty', 'business-stats', resolvedBranchId, allBranches, businessId],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (resolvedBranchId) params.append('branchId', resolvedBranchId);
+            if (resolvedBranchId) {
+                params.append('branchId', resolvedBranchId);
+            } else if (allBranches) {
+                params.append('allBranches', 'true');
+            }
             return await api.get(`/campaigns/loyalty/business-stats?${params.toString()}`);
         },
         enabled: !!businessId,
@@ -109,7 +133,7 @@ export const useBusinessLoyaltyStats = (branchId?: string) => {
 
 export const useCreateReward = (branchId?: string) => {
     const queryClient = useQueryClient();
-    const resolvedBranchId = useResolvedBranchId(branchId);
+    const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
 
     return useMutation<Reward, Error, CreateRewardRequest>({
         mutationFn: async (dto) => {
@@ -125,7 +149,7 @@ export const useCreateReward = (branchId?: string) => {
 
 export const useUpdateReward = (branchId?: string) => {
     const queryClient = useQueryClient();
-    const resolvedBranchId = useResolvedBranchId(branchId);
+    const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
 
     return useMutation<Reward, Error, { id: string; updates: UpdateRewardRequest }>({
         mutationFn: async ({ id, updates }) => {
@@ -163,7 +187,7 @@ export const useRedeemReward = () => {
 
 export const useVerifyRedemption = (branchId?: string) => {
     const queryClient = useQueryClient();
-    const resolvedBranchId = useResolvedBranchId(branchId);
+    const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
 
     return useMutation<VerifyRedemptionResponse, Error, string>({
         mutationFn: async (code) => {

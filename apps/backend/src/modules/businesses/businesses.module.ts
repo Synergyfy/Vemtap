@@ -7,11 +7,13 @@ import { User } from '../users/entities/user.entity';
 import { MailModule } from '../mail/mail.module';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
+import { DevicesModule } from '../devices/devices.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Business, User, Branch, Visit]),
     MailModule,
+    DevicesModule,
   ],
   providers: [BusinessesService],
   controllers: [BusinessesController],

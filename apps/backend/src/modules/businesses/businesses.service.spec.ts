@@ -10,6 +10,7 @@ import { User } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
 import { MailService } from '../mail/mail.service';
+import { DevicesService } from '../devices/devices.service';
 import { NotFoundException } from '@nestjs/common';
 
 describe('BusinessesService', () => {
@@ -19,6 +20,7 @@ describe('BusinessesService', () => {
   const mockBusiness = {
     id: 'biz-1',
     name: 'Original Name',
+    logoUrl: 'old-logo.png',
     ownerId: 'owner-1',
     owner: { id: 'owner-1' },
     branches: [],
@@ -74,6 +76,10 @@ describe('BusinessesService', () => {
     sendWelcomeEmail: jest.fn().mockResolvedValue(true),
   };
 
+  const mockDevicesService = {
+    createAutoDevice: jest.fn().mockResolvedValue({}),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -91,12 +97,20 @@ describe('BusinessesService', () => {
           useValue: mockBranchRepository,
         },
         {
+          provide: getRepositoryToken(Business),
+          useValue: mockRepository,
+        },
+        {
           provide: getRepositoryToken(Visit),
           useValue: mockVisitRepository,
         },
         {
           provide: MailService,
           useValue: mockMailService,
+        },
+        {
+          provide: DevicesService,
+          useValue: mockDevicesService,
         },
       ],
     }).compile();
@@ -110,9 +124,10 @@ describe('BusinessesService', () => {
   });
 
   describe('update', () => {
-    it('should update business name', async () => {
+    it('should update business name and logo', async () => {
       const updateDto = {
         name: 'Updated Name',
+        logoUrl: 'new-logo.png',
       };
 
       const result = await service.update('biz-1', updateDto);
@@ -121,6 +136,7 @@ describe('BusinessesService', () => {
         expect.objectContaining({ where: { id: 'biz-1' } }),
       );
       expect(result.name).toBe(updateDto.name);
+      expect(result.logoUrl).toBe(updateDto.logoUrl);
       expect(repository.save).toHaveBeenCalled();
     });
 

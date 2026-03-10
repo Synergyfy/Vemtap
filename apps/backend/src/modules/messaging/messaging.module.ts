@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -78,12 +78,12 @@ import { AutomationProcessor } from './processors/automation.processor';
     ]),
     HttpModule,
     ContactsModule,
-    BusinessesModule,
+    forwardRef(() => BusinessesModule),
     SettingsModule,
-    SubscriptionsModule,
+    forwardRef(() => SubscriptionsModule),
     PaymentsModule,
     MailModule,
-    BranchesModule,
+    forwardRef(() => BranchesModule),
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {

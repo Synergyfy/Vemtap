@@ -1042,7 +1042,6 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                             const features = plan.teamMembersLimit ? [
                                                 `${plan.teamMembersLimit} Team Members`,
                                                 `${plan.loyaltyLimit} Loyalty Points`,
-                                                `${plan.tagsLimit} Tags`,
                                                 `${plan.branchLimit} Business Locations`,
                                             ] : [];
 

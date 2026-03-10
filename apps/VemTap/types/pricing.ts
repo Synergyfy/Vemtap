@@ -15,7 +15,6 @@ export interface PricingPlan {
     emailCredits: number;
     teamMembersLimit: number;
     loyaltyLimit: number;
-    tagsLimit: number;
     branchLimit: number;
     analyticsLevel: 'basic' | 'advanced' | 'none';
     isActive: boolean;

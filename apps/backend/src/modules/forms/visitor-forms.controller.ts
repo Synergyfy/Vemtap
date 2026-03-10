@@ -29,13 +29,11 @@ interface RequestWithUser extends Request {
 @ApiTags('Visitor Forms')
 @ApiBearerAuth()
 @Controller('visitor-forms')
-@Roles(UserRole.CUSTOMER)
 export class VisitorFormsController {
   constructor(private readonly formsService: FormsService) { }
 
   @Public()
   @Get('branch/:branchId')
-  @Public()
   @ApiOperation({
     summary: 'Get all active forms for a specific branch',
   })
@@ -109,6 +107,7 @@ export class VisitorFormsController {
   }
 
   @Post(':id/responses')
+  @Roles(UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Submit answers for a specific form' })
   @ApiBody({
     type: SubmitFormResponseDto,

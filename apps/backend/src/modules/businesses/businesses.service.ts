@@ -14,6 +14,7 @@ import { ImportCustomersDto } from './dto/import-customers.dto';
 import { MailService } from '../mail/mail.service';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
+import { DevicesService } from '../devices/devices.service';
 
 @Injectable()
 export class BusinessesService {
@@ -27,6 +28,7 @@ export class BusinessesService {
     @InjectRepository(Visit)
     private visitRepository: Repository<Visit>,
     private readonly mailService: MailService,
+    private readonly devicesService: DevicesService,
   ) {}
 
   async create(
@@ -96,6 +98,16 @@ export class BusinessesService {
       await this.usersRepository.update(businessData.ownerId, {
         branchId: savedBranch.id,
       });
+    }
+
+    // Automatically generate a device for the Main Branch
+    try {
+      await this.devicesService.createAutoDevice(savedBranch.id);
+    } catch (error) {
+      console.error(
+        `Failed to auto-generate device for business ${savedBusiness.id} main branch:`,
+        error,
+      );
     }
 
     return savedBusiness;
@@ -335,6 +347,16 @@ export class BusinessesService {
     // Link branchId back to user for proper context
     savedUser.branchId = savedBranch.id;
     await this.usersRepository.save(savedUser);
+
+    // Automatically generate a device for the Main Branch
+    try {
+      await this.devicesService.createAutoDevice(savedBranch.id);
+    } catch (error) {
+      console.error(
+        `Failed to auto-generate device for business ${savedBusiness.id} main branch (admin create):`,
+        error,
+      );
+    }
 
     return savedBusiness;
   }

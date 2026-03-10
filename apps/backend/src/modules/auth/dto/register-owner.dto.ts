@@ -34,13 +34,14 @@ export class RegisterOwnerDto {
   password: string;
 
   // --- Business Details ---
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'Green Terrace Cafe',
     description: 'Name of the business',
   })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  businessName: string;
+  businessName?: string;
 
   @ApiPropertyOptional({
     example: 'https://cdn.example.com/logo.png',
@@ -50,21 +51,23 @@ export class RegisterOwnerDto {
   @IsString()
   businessLogo?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'uuid',
     description: 'Category ID of the business',
   })
+  @IsOptional()
   @IsNotEmpty()
   @IsUUID()
-  categoryId: string;
+  categoryId?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'uuid',
     description: 'Subcategory ID of the business',
   })
+  @IsOptional()
   @IsNotEmpty()
   @IsUUID()
-  subcategoryId: string;
+  subcategoryId?: string;
 
   @ApiPropertyOptional({
     example: 'Art Studio',
@@ -98,21 +101,23 @@ export class RegisterOwnerDto {
   @IsString()
   whatsappNumber?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'hello@greenterrace.com',
     description: 'Official public-facing email',
   })
+  @IsOptional()
   @IsEmail()
   @IsNotEmpty()
-  officialEmail: string;
+  officialEmail?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: '+2348012345678',
     description: 'Primary business phone number',
   })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  businessNumber: string;
+  businessNumber?: string;
 
   @ApiPropertyOptional({
     example: '123 Business Ave, Lagos',

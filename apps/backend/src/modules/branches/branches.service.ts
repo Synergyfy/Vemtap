@@ -11,6 +11,7 @@ import { Branch } from './entities/branch.entity';
 import { CreateBranchDto, UpdateBranchDto } from './dto/branch.dto';
 import { Business } from '../businesses/entities/business.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { DevicesService } from '../devices/devices.service';
 
 import { User } from '../users/entities/user.entity';
 
@@ -23,6 +24,8 @@ export class BranchesService {
     private businessRepository: Repository<Business>,
     @Inject(forwardRef(() => SubscriptionsService))
     private subscriptionsService: SubscriptionsService,
+    @Inject(forwardRef(() => DevicesService))
+    private devicesService: DevicesService,
   ) {}
 
   async checkBranchAccess(
@@ -80,13 +83,48 @@ export class BranchesService {
       );
     }
 
+    // Find main branch to inherit settings
+    const mainBranch = await this.branchesRepository.findOne({
+      where: { businessId: business.id, isMainBranch: true },
+    });
+
     const branch = this.branchesRepository.create({
       ...createBranchDto,
       businessId: business.id,
       phone: createBranchDto.phone || business.phone,
       officialEmail: createBranchDto.officialEmail || business.officialEmail,
+      // Inherit from main branch
+      businessHours: mainBranch?.businessHours,
+      welcomeMessage: mainBranch?.welcomeMessage,
+      successMessage: mainBranch?.successMessage,
+      privacyMessage: mainBranch?.privacyMessage,
+      rewardMessage: mainBranch?.rewardMessage,
+      about: mainBranch?.about,
+      rewardEnabled: mainBranch?.rewardEnabled ?? false,
+      rewardVisitThreshold: mainBranch?.rewardVisitThreshold ?? 5,
+      linkedinUrl: mainBranch?.linkedinUrl,
+      reviewUrl: mainBranch?.reviewUrl,
+      showReview: mainBranch?.showReview ?? true,
+      showSocial: mainBranch?.showSocial ?? true,
+      showFeedback: mainBranch?.showFeedback ?? true,
+      logoUrl: mainBranch?.logoUrl || business.logoUrl,
+      website: mainBranch?.website || business.website,
+      whatsappNumber: mainBranch?.whatsappNumber || business.whatsappNumber,
     });
-    return this.branchesRepository.save(branch);
+    const savedBranch = await this.branchesRepository.save(branch);
+
+    // Automatically generate a device for the new branch
+    try {
+      await this.devicesService.createAutoDevice(savedBranch.id);
+    } catch (error) {
+      console.error(
+        `Failed to automatically create device for branch ${savedBranch.id}:`,
+        error,
+      );
+      // We don't throw here to avoid failing branch creation if device auto-gen fails
+    }
+
+    return savedBranch;
   }
 
   async findAll(ownerId: string): Promise<Branch[]> {
@@ -124,6 +162,10 @@ export class BranchesService {
     return branch;
   }
 
+  async findBusinessByOwner(ownerId: string): Promise<Business | null> {
+    return this.businessRepository.findOne({ where: { ownerId } });
+  }
+
   async getBusinessId(branchId: string): Promise<string> {
     const branch = await this.findById(branchId);
     return branch.businessId;
@@ -135,12 +177,28 @@ export class BranchesService {
     updateBranchDto: UpdateBranchDto,
   ): Promise<Branch> {
     const branch = await this.findOne(ownerId, id);
+
+    if (updateBranchDto.isMainBranch === true && !branch.isMainBranch) {
+      // Unset previous main branch for this business
+      await this.branchesRepository.update(
+        { businessId: branch.businessId, isMainBranch: true },
+        { isMainBranch: false },
+      );
+    } else if (updateBranchDto.isMainBranch === false && branch.isMainBranch) {
+      throw new ForbiddenException(
+        'A business must have at least one main branch',
+      );
+    }
+
     Object.assign(branch, updateBranchDto);
     return this.branchesRepository.save(branch);
   }
 
   async remove(ownerId: string, id: string): Promise<void> {
     const branch = await this.findOne(ownerId, id);
+    if (branch.isMainBranch) {
+      throw new ForbiddenException('The main branch cannot be deleted');
+    }
     await this.branchesRepository.remove(branch);
   }
 }
