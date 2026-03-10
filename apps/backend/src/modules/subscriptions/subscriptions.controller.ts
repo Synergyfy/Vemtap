@@ -34,9 +34,25 @@ export class SubscriptionsController {
   ) {}
 
   private async getBusinessId(req: any): Promise<string> {
+    // 1. Try to get businessId directly from user (populated from JWT or DB)
+    if (req.user?.businessId) {
+      return req.user.businessId;
+    }
+
+    // 2. If it's an Owner, try to find their business
+    if (req.user?.role === UserRole.OWNER) {
+      const business = await this.branchesService.findBusinessByOwner(
+        req.user.id,
+      );
+      if (business) return business.id;
+    }
+
+    // 3. Fallback to branch-based lookup (for Staff/Managers if businessId is missing)
     const branchId = req.user?.branchId;
     if (!branchId) {
-      throw new BadRequestException('User must be associated with a branch');
+      throw new BadRequestException(
+        'User must be associated with a business or branch',
+      );
     }
     const branch = await this.branchesService.findById(branchId);
     if (!branch) {

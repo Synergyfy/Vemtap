@@ -140,6 +140,10 @@ export class BranchesService {
     return branch;
   }
 
+  async findBusinessByOwner(ownerId: string): Promise<Business | null> {
+    return this.businessRepository.findOne({ where: { ownerId } });
+  }
+
   async getBusinessId(branchId: string): Promise<string> {
     const branch = await this.findById(branchId);
     return branch.businessId;
