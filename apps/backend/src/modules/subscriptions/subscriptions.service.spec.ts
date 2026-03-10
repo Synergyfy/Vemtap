@@ -27,7 +27,6 @@ describe('SubscriptionsService', () => {
     trialDurationDays: 0,
     features: ['basic'],
     teamMembersLimit: 5,
-    tagsLimit: 10,
     loyaltyLimit: 2,
     analyticsLevel: 'basic',
   };

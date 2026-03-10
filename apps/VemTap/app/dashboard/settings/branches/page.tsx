@@ -2,7 +2,10 @@
 
 import React, { useState, Suspense } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
-import { Building2, Plus, MapPin, Phone, Mail, MoreVertical, Trash2, Edit2, ExternalLink } from 'lucide-react';
+import { 
+    Building2, Plus, MapPin, Phone, Mail, 
+    MoreVertical, Trash2, Edit2, ExternalLink, Lock 
+} from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 
@@ -11,16 +14,19 @@ import { Branch } from '@/services/branches/types';
 import { Loader2 } from 'lucide-react';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import UsageIndicator from '@/components/dashboard/UsageIndicator';
+import UpgradeModal from '@/components/dashboard/UpgradeModal';
 
 function BranchesContent() {
     const { storeName } = useCustomerFlowStore();
     const { data: branchesData, isLoading } = useBranches();
-    const { capabilities } = useSubscriptionStore();
+    const { capabilities, isLimitReached } = useSubscriptionStore();
     const createBranchMutation = useCreateBranch();
 
     const branches = branchesData || [];
+    const branchLimitReached = isLimitReached('branches');
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
     const [newBranch, setNewBranch] = useState<Partial<Branch>>({
         name: '',
         address: '',
@@ -30,6 +36,12 @@ function BranchesContent() {
     });
 
     const handleCreateBranch = () => {
+        if (branchLimitReached) {
+            setShowUpgradeModal(true);
+            toast.error('Branch limit reached. Please upgrade your plan.');
+            return;
+        }
+
         if (!newBranch.name || !newBranch.address) {
             toast.error('Please fill in required fields');
             return;
@@ -68,16 +80,15 @@ function BranchesContent() {
                 actions={
                     <button
                         onClick={() => {
-                            if (capabilities && capabilities.capabilities.branches.limit !== 'unlimited' &&
-                                capabilities.capabilities.branches.used >= (capabilities.capabilities.branches.limit as number)) {
-                                toast.error('Branch limit reached. Please upgrade your plan.');
-                                return;
+                            if (branchLimitReached) {
+                                setShowUpgradeModal(true);
+                            } else {
+                                setIsCreateModalOpen(true);
                             }
-                            setIsCreateModalOpen(true);
                         }}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={`flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20 ${branchLimitReached ? 'opacity-70' : ''}`}
                     >
-                        <Plus size={18} />
+                        {branchLimitReached ? <Lock size={18} /> : <Plus size={18} />}
                         Add New Branch
                     </button>
                 }
@@ -156,20 +167,21 @@ function BranchesContent() {
                 {/* Empty State / Add Branch Card */}
                 <button
                     onClick={() => {
-                        if (capabilities && capabilities.capabilities.branches.limit !== 'unlimited' &&
-                            capabilities.capabilities.branches.used >= (capabilities.capabilities.branches.limit as number)) {
-                            toast.error('Branch limit reached. Please upgrade your plan.');
-                            return;
+                        if (branchLimitReached) {
+                            setShowUpgradeModal(true);
+                        } else {
+                            setIsCreateModalOpen(true);
                         }
-                        setIsCreateModalOpen(true);
                     }}
                     className="bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-200 p-12 flex flex-col items-center justify-center text-center hover:bg-white hover:border-primary/20 transition-all group lg:min-h-[350px]"
                 >
-                    <div className="size-20 rounded-full bg-white border border-gray-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm">
-                        <Plus size={32} className="text-gray-300 group-hover:text-primary transition-colors" />
+                    <div className="size-20 rounded-full bg-white border border-gray-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm">     
+                        {branchLimitReached ? <Lock size={32} className="text-gray-300" /> : <Plus size={32} className="text-gray-300 group-hover:text-primary transition-colors" />}
                     </div>
                     <h3 className="text-lg font-display font-bold text-text-main mb-2">Expand Your Reach</h3>
-                    <p className="text-sm text-text-secondary max-w-xs mx-auto">Add a new branch to manage its NFC campaigns and visitor data separately.</p>
+                    <p className="text-sm text-text-secondary max-w-xs mx-auto">
+                        {branchLimitReached ? 'You have reached your branch limit. Upgrade to add more locations.' : 'Add a new branch to manage its NFC campaigns and visitor data separately.'}
+                    </p>
                 </button>
             </div>
 
@@ -247,6 +259,12 @@ function BranchesContent() {
                     </div>
                 </div>
             )}
+
+            <UpgradeModal 
+                isOpen={showUpgradeModal} 
+                onClose={() => setShowUpgradeModal(false)} 
+                featureName="Business Locations" 
+            />
         </div>
     );
 }
@@ -258,4 +276,3 @@ export default function BranchesPage() {
         </Suspense>
     );
 }
-

@@ -17,8 +17,7 @@ import { CheckCircle2, Loader2 } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { useCategories } from '@/services/categories/hooks';
 
-export default function GetStarted() {
-    const { registerOwner, requestOwnerOtp, isLoading: isRegistering } = useRegisterOwner();
+export default function GetStarted() {    const { registerOwner, requestOwnerOtp, isLoading: isRegistering } = useRegisterOwner();
     const { registerUser, isLoading: isRegisteringGeneric } = useRegister();
     const { sendOtp, verifyOtp, isLoading: isOtpLoading } = useOtp();
     const router = useRouter();
@@ -33,6 +32,7 @@ export default function GetStarted() {
         queryKey: ['subscription-plans'],
         queryFn: fetchPricingPlans
     });
+
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
@@ -54,7 +54,7 @@ export default function GetStarted() {
         businessAddress: '',
         businessWebsite: '',
         isRegistered: 'No' as 'Yes' | 'No',
-        registrationNumber: '',
+        otherSubcategoryName: '',
         state: '',
         city: '',
         goals: [] as string[],
@@ -66,7 +66,7 @@ export default function GetStarted() {
 
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const { data: categoryData, isLoading: isCategoriesLoading } = useCategories({ limit: 100 });
-    const categoriesData = categoryData?.items || [];
+    const categories = categoryData?.items || [];
 
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -234,23 +234,32 @@ export default function GetStarted() {
                 response = await registerUser(payload);
             } else {
                 // Owner flow: POST /auth/register/owner (creates business)
-                // NO personal info (names, phone) in this payload! retrieved from session.
+                // Resolve Category IDs from backend data
+                const selectedCategory = categories.find((c: any) => c.name === cleanData.category);
+                const selectedSubcategory = selectedCategory?.subcategories?.find((s: any) => s.name === formData.subcategory);
+
+                if (!selectedCategory || (!selectedSubcategory && formData.subcategory !== 'Others')) {
+                    toast.error('Please select a valid category and subcategory.');
+                    setIsLoading(false);
+                    return;
+                }
+
                 const payload = {
                     email: cleanData.email,
                     password: formData.password,
                     businessName: cleanData.businessName,
                     businessLogo: businessLogoUrl || undefined,
-                    categoryId: formData.categoryId || undefined,
-                    subcategoryId: formData.subcategoryId || undefined,
+                    categoryId: selectedCategory.id,
+                    subcategoryId: selectedSubcategory?.id || selectedCategory.subcategories?.find((s: any) => s.name === 'Others')?.id || '',
+                    otherSubcategoryName: formData.subcategory === 'Others' ? (cleanData as any).otherSubcategoryName : undefined,
                     visitors: cleanData.visitors || undefined,
                     goals: cleanData.goals && cleanData.goals.length > 0 ? cleanData.goals : undefined,
                     whatsappNumber: cleanData.whatsappNumber || undefined,
-                    officialEmail: cleanData.officialEmail || undefined,
-                    businessNumber: cleanData.whatsappNumber || undefined,
+                    officialEmail: cleanData.officialEmail || cleanData.email,
+                    businessNumber: formData.phone,
                     businessAddress: cleanData.businessAddress || undefined,
                     businessWebsite: cleanData.businessWebsite || undefined,
                     isRegistered: cleanData.isRegistered === 'Yes',
-                    registrationNumber: cleanData.registrationNumber || undefined,
                     state: cleanData.state || undefined,
                     city: cleanData.city || undefined,
                 };
@@ -653,13 +662,13 @@ export default function GetStarted() {
 <select
                                                             value={formData.categoryId}
                                                             onChange={(e) => {
-                                                                const selected = categoriesData.find((c: any) => c.id === e.target.value);
+                                                                const selected = categories.find((c: any) => c.id === e.target.value);
                                                                 setFormData({ ...formData, categoryId: e.target.value, category: selected?.name || '', subcategory: '', subcategoryId: '' });
                                                             }}
                                                             className="w-full h-14 bg-gray-50 border border-gray-100 rounded-xl px-4 text-sm font-bold text-text-main focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
                                                         >
                                                             <option value="">Select Category</option>
-                                                            {categoriesData.map((c: any) => (
+                                                            {categories.map((c: any) => (
                                                                 <option key={c.id} value={c.id}>{c.name}</option>
                                                             ))}
                                                         </select>
@@ -681,7 +690,7 @@ export default function GetStarted() {
                                                                     <span className="material-icons-round text-blue-500 text-lg">info</span>
                                                                 </div>
 <p className="text-xs text-blue-800 font-medium leading-relaxed italic">
-                                                                    {categoriesData.find((c: any) => c.id === formData.categoryId)?.description}
+                                                                    {categories.find((c: any) => c.id === formData.categoryId)?.description}
                                                                 </p>
                                                             </div>
 
@@ -690,18 +699,31 @@ export default function GetStarted() {
                                                                 <select
                                                                     value={formData.subcategoryId}
                                                                     onChange={(e) => {
-                                                                        const selected = categoriesData.find((c: any) => c.id === formData.categoryId)?.subcategories?.find((s: any) => s.id === e.target.value);
+                                                                        const selected = categories.find((c: any) => c.id === formData.categoryId)?.subcategories?.find((s: any) => s.id === e.target.value);
                                                                         setFormData({ ...formData, subcategoryId: e.target.value, subcategory: selected?.name || '' });
                                                                     }}
                                                                     className="w-full h-14 bg-white border border-gray-100 rounded-xl px-4 text-sm font-bold text-text-main focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
                                                                 >
                                                                     <option value="">Select Subcategory</option>
-                                                                    {categoriesData.find((c: any) => c.id === formData.categoryId)?.subcategories?.map((sub: any) => (
+                                                                    {categories.find((c: any) => c.id === formData.categoryId)?.subcategories?.map((sub: any) => (
                                                                         <option key={sub.id} value={sub.id}>{sub.name}</option>
                                                                     ))}
                                                                 </select>
                                                             </div>
 
+                                                            {formData.subcategory === 'Others' && (
+                                                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                                                                    <SanitizedInput
+                                                                        label="Specify Your Business Type"
+                                                                        value={formData.otherSubcategoryName}
+                                                                        onChange={(v) => setFormData({ ...formData, otherSubcategoryName: v })}
+                                                                        icon="edit"
+                                                                        placeholder="e.g. Art Gallery, Fitness Center"
+                                                                        required
+                                                                        tooltip="Tell us specifically what your business does if it's not listed above."
+                                                                    />
+                                                                </motion.div>
+                                                            )}
                                                         </motion.div>
                                                     )}
                                                 </AnimatePresence>
@@ -876,7 +898,7 @@ export default function GetStarted() {
                                                     (subStep === 3 && isManager && !formData.businessId) ||
                                                     (!isManager && subStep === 3 && !formData.branchCount) ||
                                                     (!isManager && subStep === 4 && !formData.category) ||
-                                                    (!isManager && subStep === 5 && (!formData.whatsappNumber?.trim() || !formData.officialEmail?.trim() || (formData.isRegistered === 'Yes' && !formData.registrationNumber?.trim()))) ||
+                                                    (!isManager && subStep === 5 && (!formData.whatsappNumber?.trim() || !formData.officialEmail?.trim())) ||
                                                     (!isManager && subStep === 6 && !formData.visitors) ||
                                                     (!isManager && subStep === 7 && formData.goals.length === 0) ||
                                                     (!isManager && subStep === 8 && (!formData.businessAddress || !formData.state || !formData.city))
@@ -966,7 +988,7 @@ export default function GetStarted() {
                                                     
                                                     <div>
                                                         <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Registered</p>
-                                                        <p className="text-xs font-bold text-text-main">{formData.isRegistered} {formData.isRegistered === 'Yes' ? `(${formData.registrationNumber})` : ''}</p>
+                                                        <p className="text-xs font-bold text-text-main">{formData.isRegistered}</p>
                                                     </div>
                                                     <div className="col-span-2">
                                                         <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Location</p>
@@ -1020,7 +1042,6 @@ export default function GetStarted() {
                                             const features = plan.teamMembersLimit ? [
                                                 `${plan.teamMembersLimit} Team Members`,
                                                 `${plan.loyaltyLimit} Loyalty Points`,
-                                                `${plan.tagsLimit} Tags`,
                                                 `${plan.branchLimit} Business Locations`,
                                             ] : [];
 

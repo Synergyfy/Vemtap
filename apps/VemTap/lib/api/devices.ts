@@ -96,8 +96,8 @@ export const fetchDeviceDetail = async (id: string): Promise<Device> => {
     return await api.get(`/devices/${id}`);
 };
 
-export const generateDevices = async (): Promise<Device[]> => {
-    return await api.post('/devices/generate', {});
+export const generateDevices = async (branchId?: string): Promise<Device[]> => {
+    return await api.post('/devices/generate', { branchId });
 };
 
 export const updateDeviceNames = async (assets: { id: string; name: string }[]): Promise<Device[]> => {
@@ -108,8 +108,11 @@ export const updateDevice = async (id: string, data: Partial<Device>): Promise<D
     return await api.patch(`/devices/${id}`, data);
 };
 
-export const deleteDevice = async (id: string): Promise<void> => {
-    return await api.delete(`/devices/${id}`);
+export const deleteDevice = async (id: string, branchId?: string): Promise<void> => {
+    const params = new URLSearchParams();
+    if (branchId) params.append('branchId', branchId);
+    const query = params.toString();
+    return await api.delete(`/devices/${id}${query ? `?${query}` : ''}`);
 };
 
 export const createDevice = async (data: any): Promise<Device> => {

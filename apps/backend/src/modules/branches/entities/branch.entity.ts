@@ -15,6 +15,12 @@ export class Branch extends AbstractBaseEntity {
   address: string;
 
   @Column({ nullable: true })
+  state: string;
+
+  @Column({ nullable: true })
+  city: string;
+
+  @Column({ nullable: true })
   phone: string;
 
   @Column({ default: true })

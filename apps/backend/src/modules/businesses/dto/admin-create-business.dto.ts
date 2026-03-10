@@ -93,6 +93,16 @@ export class AdminCreateBusinessDto {
   @IsOptional()
   address?: string;
 
+  @ApiPropertyOptional({ example: 'Lagos' })
+  @IsString()
+  @IsOptional()
+  state?: string;
+
+  @ApiPropertyOptional({ example: 'Ikeja' })
+  @IsString()
+  @IsOptional()
+  city?: string;
+
   @ApiPropertyOptional({ example: 'https://vemtap.com' })
   @IsString()
   @IsOptional()
@@ -107,4 +117,18 @@ export class AdminCreateBusinessDto {
   @IsEmail()
   @IsOptional()
   officialEmail?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  isRegistered?: boolean;
+
+  @ApiPropertyOptional({ example: 'RC1234567' })
+  @IsOptional()
+  @IsString()
+  registrationNumber?: string;
+
+  @ApiPropertyOptional({ example: ['https://example.com/doc.pdf'] })
+  @IsOptional()
+  @IsString({ each: true })
+  documents?: string[];
 }

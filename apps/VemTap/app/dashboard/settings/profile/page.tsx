@@ -45,6 +45,10 @@ export default function BusinessProfilePage() {
     const [supportPhone, setSupportPhone] = useState('');
 
     // 4. Content States
+    const [isRegistered, setIsRegistered] = useState(false);
+    const [registrationNumber, setRegistrationNumber] = useState('');
+    const [verificationDoc, setVerificationDoc] = useState<string | null>(null);
+
     const [about, setAbout] = useState('');
     const [welcomeMessage, setWelcomeMessage] = useState('');
     const [successMessage, setSuccessMessage] = useState('');

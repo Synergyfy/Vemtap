@@ -201,14 +201,25 @@ export class LoyaltyService {
     const device = await this.devicesService.findByCode(code);
     if (!device) throw new NotFoundException('Device not found');
 
+    if (!userId) {
+      // For guest visits, we could record a generic visit in the future
+      // For now, just return success so the frontend flow continues smoothly
+      return {
+        success: true,
+        message: 'Guest visit acknowledged',
+        pointsEarned: 0,
+      };
+    }
+
     return this.earnPoints(device.branchId, { userId, isVisit: true });
   }
-
   async getDeviceByCode(code: string, userId?: string): Promise<any> {
     const device = await this.devicesService.findByCode(code);
     if (!device) throw new NotFoundException('Device not found');
 
-    const branch = await this.branchesService.findById(device.branchId);
+    const branch = await this.branchesService.findById(device.branchId, [
+      'business',
+    ]);
 
     let profile: LoyaltyProfile | null = null;
     if (userId) {
@@ -219,13 +230,21 @@ export class LoyaltyService {
       }
     }
 
+    const isFirstTimeVisit = userId
+      ? !(await this.checkVisit(userId, device.branchId))
+      : true;
+
     return {
-      deviceName: device.name,
-      branchName: branch.name,
+      id: device.id,
+      name: device.name,
+      code: device.code,
       branchId: branch.id,
-      welcomeMessage: branch.welcomeMessage,
-      rewardEnabled: branch.rewardEnabled,
+      branchName: branch.name,
+      branch,
+      business: branch.business,
+      businessId: branch.businessId,
       userProfile: profile,
+      isFirstTimeVisit,
     };
   }
 
@@ -237,15 +256,55 @@ export class LoyaltyService {
       (sum, p) => sum + ((p as any).points || 0),
       0,
     );
-    const visitCount = await this.visitRepository.count({
+    const visits = await this.visitRepository.find({
       where: { customer: { id: userId } },
+      relations: ['branch'],
     });
 
+    const visitTrends: { month: string; visits: number }[] = [];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    // Group visits by month (simple last 6 months logic)
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthLabel = months[d.getMonth()];
+      const count = visits.filter(v => 
+        v.createdAt.getMonth() === d.getMonth() && 
+        v.createdAt.getFullYear() === d.getFullYear()
+      ).length;
+      visitTrends.push({ month: monthLabel, visits: count });
+    }
+
+    // Points by Venue (Group from profiles)
+    const pointsByVenue = profiles.map(p => ({
+      venueName: p.branch?.name || 'Unknown',
+      points: (p as any).points || 0,
+    })).sort((a, b) => b.points - a.points);
+
+    // Top Venues (Group visits by venue)
+    const venueVisitMap = new Map<string, number>();
+    visits.forEach(v => {
+      const name = v.branch?.name || 'Unknown';
+      venueVisitMap.set(name, (venueVisitMap.get(name) || 0) + 1);
+    });
+
+    const topVenues = Array.from(venueVisitMap.entries()).map(([name, count]) => {
+      const profile = profiles.find(p => p.branch?.name === name);
+      return {
+        venueName: name,
+        points: (profile as any)?.points || 0,
+        visits: count
+      };
+    }).sort((a, b) => b.visits - a.visits).slice(0, 5);
+
     return {
-      totalPoints,
-      visitCount,
-      activeMemberships: profiles.length,
-      estimatedSavings: `₦${(totalPoints * 0.5).toLocaleString()}`, // Mock calc
+      totalVisits: visits.length,
+      currentPointsBalance: totalPoints,
+      netSavings: totalPoints * 0.5, // Mock savings calculation
+      visitTrends,
+      pointsByVenue,
+      topVenues,
     };
   }
 
