@@ -329,7 +329,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ? 'bg-gray-100 text-text-main'
             : 'text-text-secondary hover:bg-gray-100 hover:text-text-main';
 
-    const handleItemClick = (e: React.MouseEvent, item: any) => {
+    const handleItemClick = (e: React.MouseEvent, item: any, parentId?: string) => {
         if (item.feature && isFeatureLocked(item.feature)) {
             e.preventDefault();
             e.stopPropagation();
@@ -337,7 +337,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             return false;
         }
         if (item.submenu) {
-            toggleMenu(item.id);
+            if (!item.id) {
+                return true;
+            }
+            toggleMenu(item.id, parentId);
         }
         return true;
     };
@@ -397,7 +400,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                     return subItem.submenu ? (
                                                         <div key={subItem.id || idx} className="mb-1">
                                                             <button
-                                                                onClick={(e) => handleItemClick(e, subItem)}
+                                                                onClick={(e) => handleItemClick(e, subItem, item.id)}
                                                                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isParentActive(subItem.submenu))
                                                                     } ${isSubLocked ? 'opacity-70' : ''}`}
                                                             >
@@ -417,7 +420,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                         return nestedItem.submenu ? (
                                                                             <div key={nestedItem.id || nIdx} className="mb-1">
                                                                                 <button
-                                                                                    onClick={(e) => handleItemClick(e, nestedItem)}
+                                                                                    onClick={(e) => handleItemClick(e, nestedItem, subItem.id)}
                                                                                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isParentActive(nestedItem.submenu))
                                                                                         } ${isNestedLocked ? 'opacity-70' : ''}`}
                                                                                 >
