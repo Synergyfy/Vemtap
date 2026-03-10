@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import DynamicQRCode from '@/components/shared/DynamicQRCode';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { BusinessHours } from '@/services/businesses/types';
 import { Loader2 } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
@@ -15,6 +16,7 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 
 export default function BusinessProfilePage() {
     const { storeName, logoUrl, updateCustomSettings, setRedirect } = useCustomerFlowStore();
+    const { activeBranchId, isAllBranches } = useActiveBranch();
 
     const { data: business, isLoading } = useMyBusiness();
     const updateMutation = useUpdateBusiness();
@@ -74,13 +76,15 @@ export default function BusinessProfilePage() {
     useEffect(() => {
         if (business) {
             const mainBranch = business.branches?.find(b => b.isMainBranch);
+            const selectedBranch = activeBranchId ? business.branches?.find(b => b.id === activeBranchId) : null;
+            const currentBranch = selectedBranch || mainBranch;
 
             setName(business.name || storeName);
-            setLogo(business.logoUrl || logoUrl || '');
+            setLogo(currentBranch?.logoUrl || business.logoUrl || logoUrl || '');
             setBusinessType(business.type || business.category?.toUpperCase() || 'RESTAURANT');
-            setSupportEmail(business.officialEmail || 'hello@vemtap.com');
-            setSupportPhone(mainBranch?.phone || business.phone || business.whatsappNumber || '');
-            setAddress(mainBranch?.address || business.address || '');
+            setSupportEmail(currentBranch?.officialEmail || business.officialEmail || 'hello@vemtap.com');
+            setSupportPhone(currentBranch?.phone || business.phone || business.whatsappNumber || '');
+            setAddress(currentBranch?.address || business.address || '');
 
             setIsRegistered(business.isRegistered || false);
             setRegistrationNumber(business.registrationNumber || '');
@@ -132,6 +136,8 @@ export default function BusinessProfilePage() {
     const handleSave = async () => {
         if (!business) return;
         const mainBranch = business.branches?.find(b => b.isMainBranch);
+        const selectedBranch = activeBranchId ? business.branches?.find(b => b.id === activeBranchId) : null;
+        const currentBranch = selectedBranch || mainBranch;
 
         const hasChanged = (current: any, original: any) => {
             const normalizedCurrent = current === '' || current === null ? undefined : current;
@@ -201,30 +207,30 @@ export default function BusinessProfilePage() {
 
             // 4. Prepare Branch Updates
             const branchUpdates: any = {};
-            if (mainBranch) {
-                if (hasChanged(finalLogoUrl, mainBranch.logoUrl)) branchUpdates.logoUrl = finalLogoUrl;
-                if (hasChanged(supportEmail, mainBranch.officialEmail)) branchUpdates.officialEmail = supportEmail;
-                if (hasChanged(supportPhone, mainBranch.phone)) branchUpdates.phone = supportPhone;
-                if (hasChanged(supportPhone, mainBranch.whatsappNumber)) branchUpdates.whatsappNumber = supportPhone;
-                if (hasChanged(address, mainBranch.address)) branchUpdates.address = address;
-                if (hasChanged(about, mainBranch.about)) branchUpdates.about = about;
-                if (hasChanged(welcomeMessage, mainBranch.welcomeMessage)) branchUpdates.welcomeMessage = welcomeMessage;
-                if (hasChanged(successMessage, mainBranch.successMessage)) branchUpdates.successMessage = successMessage;
-                if (hasChanged(privacyMessage, mainBranch.privacyMessage)) branchUpdates.privacyMessage = privacyMessage;
-                if (hasChanged(rewardMessage, mainBranch.rewardMessage)) branchUpdates.rewardMessage = rewardMessage;
+            if (currentBranch) {
+                if (hasChanged(finalLogoUrl, currentBranch.logoUrl)) branchUpdates.logoUrl = finalLogoUrl;
+                if (hasChanged(supportEmail, currentBranch.officialEmail)) branchUpdates.officialEmail = supportEmail;
+                if (hasChanged(supportPhone, currentBranch.phone)) branchUpdates.phone = supportPhone;
+                if (hasChanged(supportPhone, currentBranch.whatsappNumber)) branchUpdates.whatsappNumber = supportPhone;
+                if (hasChanged(address, currentBranch.address)) branchUpdates.address = address;
+                if (hasChanged(about, currentBranch.about)) branchUpdates.about = about;
+                if (hasChanged(welcomeMessage, currentBranch.welcomeMessage)) branchUpdates.welcomeMessage = welcomeMessage;
+                if (hasChanged(successMessage, currentBranch.successMessage)) branchUpdates.successMessage = successMessage;
+                if (hasChanged(privacyMessage, currentBranch.privacyMessage)) branchUpdates.privacyMessage = privacyMessage;
+                if (hasChanged(rewardMessage, currentBranch.rewardMessage)) branchUpdates.rewardMessage = rewardMessage;
 
-                const originalHours = mainBranch.businessHours || {};
+                const originalHours = currentBranch.businessHours || {};
                 if (JSON.stringify(businessHours) !== JSON.stringify(originalHours)) {
                     branchUpdates.businessHours = businessHours;
                 }
 
-                if (hasChanged(rewardEnabled, mainBranch.rewardEnabled)) branchUpdates.rewardEnabled = rewardEnabled;
-                if (hasChanged(rewardVisitThreshold, mainBranch.rewardVisitThreshold)) branchUpdates.rewardVisitThreshold = rewardVisitThreshold;
+                if (hasChanged(rewardEnabled, currentBranch.rewardEnabled)) branchUpdates.rewardEnabled = rewardEnabled;
+                if (hasChanged(rewardVisitThreshold, currentBranch.rewardVisitThreshold)) branchUpdates.rewardVisitThreshold = rewardVisitThreshold;
 
-                if (hasChanged(reviewUrl, mainBranch.reviewUrl)) branchUpdates.reviewUrl = reviewUrl;
-                if (hasChanged(showReview, mainBranch.showReview)) branchUpdates.showReview = showReview;
-                if (hasChanged(showSocial, mainBranch.showSocial)) branchUpdates.showSocial = showSocial;
-                if (hasChanged(showFeedback, mainBranch.showFeedback)) branchUpdates.showFeedback = showFeedback;
+                if (hasChanged(reviewUrl, currentBranch.reviewUrl)) branchUpdates.reviewUrl = reviewUrl;
+                if (hasChanged(showReview, currentBranch.showReview)) branchUpdates.showReview = showReview;
+                if (hasChanged(showSocial, currentBranch.showSocial)) branchUpdates.showSocial = showSocial;
+                if (hasChanged(showFeedback, currentBranch.showFeedback)) branchUpdates.showFeedback = showFeedback;
             }
 
             const hasBusinessChanges = Object.keys(businessUpdates).length > 0;
@@ -239,8 +245,8 @@ export default function BusinessProfilePage() {
             if (hasBusinessChanges) {
                 promises.push(updateMutation.mutateAsync({ id: business.id, updates: businessUpdates }));
             }
-            if (hasBranchChanges && mainBranch) {
-                promises.push(updateBranchMutation.mutateAsync({ id: mainBranch.id, updates: branchUpdates }));
+            if (hasBranchChanges && currentBranch) {
+                promises.push(updateBranchMutation.mutateAsync({ id: currentBranch.id, updates: branchUpdates }));
             }
 
             await Promise.all(promises);
