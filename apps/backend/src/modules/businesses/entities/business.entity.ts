@@ -96,6 +96,12 @@ export class Business extends AbstractBaseEntity {
   website: string;
 
   @Column({ nullable: true })
+  state: string;
+
+  @Column({ nullable: true })
+  city: string;
+
+  @Column({ nullable: true })
   whatsappNumber: string;
 
   // Relation to the owner

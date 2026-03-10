@@ -34,6 +34,8 @@ export class BusinessesService {
       logoUrl?: string;
       address?: string;
       website?: string;
+      state?: string;
+      city?: string;
       whatsappNumber?: string;
       officialEmail?: string;
     },
@@ -50,6 +52,8 @@ export class BusinessesService {
       logoUrl,
       address,
       website,
+      state,
+      city,
       whatsappNumber,
       officialEmail,
       phone,
@@ -60,6 +64,12 @@ export class BusinessesService {
       ...businessBaseData,
       officialEmail,
       phone,
+      logoUrl,
+      address,
+      website,
+      state,
+      city,
+      whatsappNumber,
     } as Partial<Business>);
     const savedBusiness = await this.businessesRepository.save(business);
 
@@ -70,6 +80,8 @@ export class BusinessesService {
       isMainBranch: true,
       logoUrl,
       address,
+      state,
+      city,
       website,
       whatsappNumber,
       officialEmail: officialEmail,
@@ -293,6 +305,12 @@ export class BusinessesService {
       subcategoryId: dto.subcategoryId,
       otherSubcategoryName: dto.otherSubcategoryName,
       phone: dto.whatsappNumber || dto.officialEmail,
+      logoUrl: dto.logoUrl,
+      address: dto.address,
+      website: dto.website,
+      state: dto.state,
+      city: dto.city,
+      whatsappNumber: dto.whatsappNumber,
     } as Partial<Business>);
 
     const savedBusiness = await this.businessesRepository.save(business);
@@ -304,6 +322,8 @@ export class BusinessesService {
       isMainBranch: true,
       logoUrl: dto.logoUrl,
       address: dto.address,
+      state: dto.state,
+      city: dto.city,
       website: dto.website,
       whatsappNumber: dto.whatsappNumber,
       officialEmail: dto.officialEmail,

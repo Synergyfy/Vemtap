@@ -33,6 +33,37 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
         queryFn: fetchPricingPlans
     });
 
+    const [formData, setFormData] = useState({
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        businessName: '',
+        businessLogo: null as string | null,
+        category: '',
+        categoryId: '',
+        subcategory: '',
+        subcategoryId: '',
+        selectedRole: 'Owner' as 'Owner' | 'Manager',
+        branchCount: '',
+        visitors: '',
+        whatsappNumber: '',
+        phone: '',
+        officialEmail: '',
+        businessAddress: '',
+        businessWebsite: '',
+        isRegistered: 'No' as 'Yes' | 'No',
+        otherSubcategoryName: '',
+        state: '',
+        city: '',
+        goals: [] as string[],
+        serialNumber: '',
+        businessId: '',
+        otp: '',
+        agreeToTerms: false
+    });
+
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const { data: categoryData, isLoading: isCategoriesLoading } = useCategories({ limit: 100 });
     const categories = categoryData?.items || [];
@@ -229,8 +260,6 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                     businessAddress: cleanData.businessAddress || undefined,
                     businessWebsite: cleanData.businessWebsite || undefined,
                     isRegistered: cleanData.isRegistered === 'Yes',
-                    registrationNumber: cleanData.registrationNumber || undefined,
-                    verificationDoc: verificationDocUrl || undefined,
                     state: cleanData.state || undefined,
                     city: cleanData.city || undefined,
                 };
@@ -633,13 +662,13 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
 <select
                                                             value={formData.categoryId}
                                                             onChange={(e) => {
-                                                                const selected = categoriesData.find((c: any) => c.id === e.target.value);
+                                                                const selected = categories.find((c: any) => c.id === e.target.value);
                                                                 setFormData({ ...formData, categoryId: e.target.value, category: selected?.name || '', subcategory: '', subcategoryId: '' });
                                                             }}
                                                             className="w-full h-14 bg-gray-50 border border-gray-100 rounded-xl px-4 text-sm font-bold text-text-main focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
                                                         >
                                                             <option value="">Select Category</option>
-                                                            {categoriesData.map((c: any) => (
+                                                            {categories.map((c: any) => (
                                                                 <option key={c.id} value={c.id}>{c.name}</option>
                                                             ))}
                                                         </select>
@@ -661,7 +690,7 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                                                     <span className="material-icons-round text-blue-500 text-lg">info</span>
                                                                 </div>
 <p className="text-xs text-blue-800 font-medium leading-relaxed italic">
-                                                                    {categoriesData.find((c: any) => c.id === formData.categoryId)?.description}
+                                                                    {categories.find((c: any) => c.id === formData.categoryId)?.description}
                                                                 </p>
                                                             </div>
 
@@ -670,13 +699,13 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                                                 <select
                                                                     value={formData.subcategoryId}
                                                                     onChange={(e) => {
-                                                                        const selected = categoriesData.find((c: any) => c.id === formData.categoryId)?.subcategories?.find((s: any) => s.id === e.target.value);
+                                                                        const selected = categories.find((c: any) => c.id === formData.categoryId)?.subcategories?.find((s: any) => s.id === e.target.value);
                                                                         setFormData({ ...formData, subcategoryId: e.target.value, subcategory: selected?.name || '' });
                                                                     }}
                                                                     className="w-full h-14 bg-white border border-gray-100 rounded-xl px-4 text-sm font-bold text-text-main focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
                                                                 >
                                                                     <option value="">Select Subcategory</option>
-                                                                    {categoriesData.find((c: any) => c.id === formData.categoryId)?.subcategories?.map((sub: any) => (
+                                                                    {categories.find((c: any) => c.id === formData.categoryId)?.subcategories?.map((sub: any) => (
                                                                         <option key={sub.id} value={sub.id}>{sub.name}</option>
                                                                     ))}
                                                                 </select>
@@ -869,7 +898,7 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                                     (subStep === 3 && isManager && !formData.businessId) ||
                                                     (!isManager && subStep === 3 && !formData.branchCount) ||
                                                     (!isManager && subStep === 4 && !formData.category) ||
-                                                    (!isManager && subStep === 5 && (!formData.whatsappNumber?.trim() || !formData.officialEmail?.trim() || (formData.isRegistered === 'Yes' && !formData.registrationNumber?.trim()))) ||
+                                                    (!isManager && subStep === 5 && (!formData.whatsappNumber?.trim() || !formData.officialEmail?.trim())) ||
                                                     (!isManager && subStep === 6 && !formData.visitors) ||
                                                     (!isManager && subStep === 7 && formData.goals.length === 0) ||
                                                     (!isManager && subStep === 8 && (!formData.businessAddress || !formData.state || !formData.city))

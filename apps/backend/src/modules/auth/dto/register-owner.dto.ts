@@ -123,6 +123,22 @@ export class RegisterOwnerDto {
   businessAddress?: string;
 
   @ApiPropertyOptional({
+    example: 'Lagos',
+    description: 'Business state',
+  })
+  @IsOptional()
+  @IsString()
+  state?: string;
+
+  @ApiPropertyOptional({
+    example: 'Ikeja',
+    description: 'Business city',
+  })
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiPropertyOptional({
     example: 'https://greenterrace.com',
     description: 'Business website',
   })
@@ -136,20 +152,4 @@ export class RegisterOwnerDto {
   })
   @IsOptional()
   isRegistered?: boolean;
-
-  @ApiPropertyOptional({
-    example: 'RC1234567',
-    description: 'Business registration number (CAC, etc.)',
-  })
-  @IsOptional()
-  @IsString()
-  registrationNumber?: string;
-
-  @ApiPropertyOptional({
-    example: 'https://cdn.example.com/doc.pdf',
-    description: 'URL of the business registration document',
-  })
-  @IsOptional()
-  @IsString()
-  verificationDoc?: string;
 }

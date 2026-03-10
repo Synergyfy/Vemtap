@@ -28,6 +28,16 @@ export class UpdateBusinessDto {
   @IsString()
   otherSubcategoryName?: string;
 
+  @ApiPropertyOptional({ example: 'Lagos' })
+  @IsString()
+  @IsOptional()
+  state?: string;
+
+  @ApiPropertyOptional({ example: 'Ikeja' })
+  @IsString()
+  @IsOptional()
+  city?: string;
+
   @ApiPropertyOptional({ example: true })
   @IsOptional()
   isRegistered?: boolean;

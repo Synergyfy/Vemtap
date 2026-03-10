@@ -93,6 +93,16 @@ export class AdminCreateBusinessDto {
   @IsOptional()
   address?: string;
 
+  @ApiPropertyOptional({ example: 'Lagos' })
+  @IsString()
+  @IsOptional()
+  state?: string;
+
+  @ApiPropertyOptional({ example: 'Ikeja' })
+  @IsString()
+  @IsOptional()
+  city?: string;
+
   @ApiPropertyOptional({ example: 'https://vemtap.com' })
   @IsString()
   @IsOptional()

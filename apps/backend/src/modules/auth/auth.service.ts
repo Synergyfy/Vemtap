@@ -351,12 +351,12 @@ export class AuthService {
           ownerId: user.id,
           address: dto.businessAddress,
           website: dto.businessWebsite,
+          state: dto.state,
+          city: dto.city,
           whatsappNumber: dto.whatsappNumber,
           officialEmail: dto.officialEmail,
           phone: dto.businessNumber,
           isRegistered: dto.isRegistered,
-          registrationNumber: dto.registrationNumber,
-          documents: dto.verificationDoc ? [dto.verificationDoc] : undefined,
         });
       } else {
         // Update existing business if needed
@@ -370,12 +370,12 @@ export class AuthService {
           logoUrl: dto.businessLogo,
           address: dto.businessAddress,
           website: dto.businessWebsite,
+          state: dto.state,
+          city: dto.city,
           whatsappNumber: dto.whatsappNumber,
           officialEmail: dto.officialEmail,
           phone: dto.businessNumber,
           isRegistered: dto.isRegistered,
-          registrationNumber: dto.registrationNumber,
-          documents: dto.verificationDoc ? [dto.verificationDoc] : undefined,
         } as any);
       }
 
