@@ -33,46 +33,9 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
         queryFn: fetchPricingPlans
     });
 
-    const { data: categories = [] } = useQuery({
-        queryKey: ['categories'],
-        queryFn: fetchCategories
-    });
-    const [formData, setFormData] = useState({
-        firstName: '',
-        lastName: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        businessName: '',
-        businessLogo: null as string | null,
-        category: '',
-        categoryId: '',
-        subcategory: '',
-        subcategoryId: '',
-        selectedRole: 'Owner' as 'Owner' | 'Manager',
-        branchCount: '',
-        visitors: '',
-        whatsappNumber: '',
-        phone: '',
-        officialEmail: '',
-        businessAddress: '',
-        businessWebsite: '',
-        isRegistered: 'No' as 'Yes' | 'No',
-        registrationNumber: '',
-        verificationDoc: null as string | null,
-        otherSubcategoryName: '',
-        state: '',
-        city: '',
-        goals: [] as string[],
-        serialNumber: '',
-        businessId: '',
-        otp: '',
-        agreeToTerms: false
-    });
-
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const { data: categoryData, isLoading: isCategoriesLoading } = useCategories({ limit: 100 });
-    const categoriesData = categoryData?.items || [];
+    const categories = categoryData?.items || [];
 
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
