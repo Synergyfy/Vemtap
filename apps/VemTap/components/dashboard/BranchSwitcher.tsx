@@ -69,14 +69,38 @@ export default function BranchSwitcher() {
         }
     };
 
-    // If no branches exist, don't show the switcher at all
-    if (!isLoading && branches.length === 0) {
-        return null;
+    if (!isLoading && branches.length <= 1) {
+        return (
+            <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 bg-gray-50/50 transition-all duration-200">
+                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                        <Building2 size={18} />
+                    </div>
+                    <div className="text-left hidden sm:block">
+                        <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1">
+                            Location
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-text-main truncate max-w-[120px]">
+                                Main Location
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <Link
+                    href="/dashboard/settings/branches"
+                    className="p-2 text-text-secondary hover:text-primary transition-colors flex items-center gap-2 group"
+                    title="Manage Locations"
+                >
+                    <span className="material-icons-round text-lg">settings</span>
+                </Link>
+            </div>
+        );
     }
 
     const displayName = !activeBranchId
-        ? 'Full Business'
-        : activeBranch?.name || 'Select Branch';
+        ? 'All Locations'
+        : activeBranch?.name || 'Select Location';
 
     return (
         <div className="relative" ref={dropdownRef}>
@@ -90,7 +114,7 @@ export default function BranchSwitcher() {
                     </div>
                     <div className="text-left hidden sm:block">
                         <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1">
-                            Active Branch
+                            Active Location
                         </p>
                         <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-text-main truncate max-w-[120px]">
@@ -106,7 +130,7 @@ export default function BranchSwitcher() {
                 <Link
                     href="/dashboard/settings/branches"
                     className="p-2 text-text-secondary hover:text-primary transition-colors flex items-center gap-2 group"
-                    title="Manage Branches"
+                    title="Manage Locations"
                 >
                     <span className="material-icons-round text-lg">settings</span>
                 </Link>
@@ -124,10 +148,10 @@ export default function BranchSwitcher() {
                             <>
                                 <div className="px-3 py-2 mb-1 flex items-center justify-between">
                                     <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">
-                                        Switch Branch
+                                        Switch Business Location
                                     </p>
                                     <span className="text-[10px] text-text-secondary font-medium">
-                                        {branches.length} branch{branches.length !== 1 ? 'es' : ''}
+                                        {branches.length} Business Location{branches.length !== 1 ? 's' : ''}
                                     </span>
                                 </div>
 
@@ -145,7 +169,7 @@ export default function BranchSwitcher() {
                                         </div>
                                         <div className="text-left flex-1 min-w-0">
                                             <p className={`text-sm font-bold truncate ${!activeBranchId ? 'text-white' : 'text-text-main'}`}>
-                                                All Branches
+                                                All Business Locations
                                             </p>
                                             <p className={`text-[10px] truncate ${!activeBranchId ? 'text-white/80' : 'text-text-secondary'}`}>
                                                 Combined analytics & data
@@ -164,7 +188,7 @@ export default function BranchSwitcher() {
 
                                     {!isLoading && branches.length === 0 && (
                                         <div className="py-4 text-center text-text-secondary text-sm">
-                                            No branches yet. Create one below.
+                                            No business locations yet. Create one below.
                                         </div>
                                     )}
 

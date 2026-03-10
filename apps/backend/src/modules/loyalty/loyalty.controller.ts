@@ -126,11 +126,12 @@ export class LoyaltyController {
     return { hasVisited };
   }
 
+  @Public()
   @Post('tap/:code')
-  @Roles(UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Process a device tap (Record visit/earn points)' })
-  async tap(@Request() req, @Param('code') code: string) {
-    return this.loyaltyService.processTap(req.user.id, code);
+  async tap(@Request() req: any, @Param('code') code: string) {
+    const userId = req.user?.id;
+    return this.loyaltyService.processTap(userId, code);
   }
 
   @Public()

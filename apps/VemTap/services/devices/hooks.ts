@@ -6,15 +6,20 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 export const useDevices = (branchId?: string) => {
-    const { activeBranchId: urlBranchId } = useActiveBranch();
-    const businessId = useAuthStore((state) => state.user?.businessId);
+    const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
+    const user = useAuthStore((state) => state.user);
+    const businessId = user?.businessId;
     const resolvedBranchId = branchId || urlBranchId;
 
     return useQuery<Device[], Error>({
-        queryKey: ['devices', businessId, resolvedBranchId],
+        queryKey: ['devices', businessId, resolvedBranchId, isAllBranches],
         queryFn: async () => {
             const searchParams = new URLSearchParams();
-            if (resolvedBranchId) searchParams.append('branchId', resolvedBranchId);
+            if (resolvedBranchId) {
+                searchParams.append('branchId', resolvedBranchId);
+            } else if (isAllBranches || !resolvedBranchId) {
+                searchParams.append('allBranches', 'true');
+            }
             const query = searchParams.toString();
             return await api.get(`/devices${query ? `?${query}` : ''}`);
         },
@@ -23,15 +28,20 @@ export const useDevices = (branchId?: string) => {
 };
 
 export const useDeviceStats = (branchId?: string) => {
-    const { activeBranchId: urlBranchId } = useActiveBranch();
-    const businessId = useAuthStore((state) => state.user?.businessId);
+    const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
+    const user = useAuthStore((state) => state.user);
+    const businessId = user?.businessId;
     const resolvedBranchId = branchId || urlBranchId;
 
     return useQuery<any, Error>({
-        queryKey: ['devices', 'stats', businessId, resolvedBranchId],
+        queryKey: ['devices', 'stats', businessId, resolvedBranchId, isAllBranches],
         queryFn: async () => {
             const searchParams = new URLSearchParams();
-            if (resolvedBranchId) searchParams.append('branchId', resolvedBranchId);
+            if (resolvedBranchId) {
+                searchParams.append('branchId', resolvedBranchId);
+            } else if (isAllBranches || !resolvedBranchId) {
+                searchParams.append('allBranches', 'true');
+            }
             const query = searchParams.toString();
             return await api.get(`/devices/stats${query ? `?${query}` : ''}`);
         },

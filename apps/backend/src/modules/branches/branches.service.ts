@@ -118,8 +118,8 @@ export class BranchesService {
     return branch;
   }
 
-  async findById(id: string): Promise<Branch> {
-    const branch = await this.branchesRepository.findOne({ where: { id } });
+  async findById(id: string, relations: string[] = []): Promise<Branch> {
+    const branch = await this.branchesRepository.findOne({ where: { id }, relations });
     if (!branch) throw new NotFoundException(`Branch with ID ${id} not found`);
     return branch;
   }

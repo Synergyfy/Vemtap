@@ -123,10 +123,33 @@ export class RegisterOwnerDto {
   businessAddress?: string;
 
   @ApiPropertyOptional({
+    example: 'Lagos',
+    description: 'Business state',
+  })
+  @IsOptional()
+  @IsString()
+  state?: string;
+
+  @ApiPropertyOptional({
+    example: 'Ikeja',
+    description: 'Business city',
+  })
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiPropertyOptional({
     example: 'https://greenterrace.com',
     description: 'Business website',
   })
   @IsOptional()
   @IsUrl()
   businessWebsite?: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Whether the business is officially registered',
+  })
+  @IsOptional()
+  isRegistered?: boolean;
 }
