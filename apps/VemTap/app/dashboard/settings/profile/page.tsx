@@ -30,6 +30,10 @@ export default function BusinessProfilePage() {
     const [supportPhone, setSupportPhone] = useState('');
     const [address, setAddress] = useState('');
 
+    const [isRegistered, setIsRegistered] = useState(false);
+    const [registrationNumber, setRegistrationNumber] = useState('');
+    const [verificationDoc, setVerificationDoc] = useState<string | null>(null);
+
     const [about, setAbout] = useState('');
     const [welcomeMessage, setWelcomeMessage] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
@@ -81,6 +85,10 @@ export default function BusinessProfilePage() {
             setSupportEmail(currentBranch?.officialEmail || business.officialEmail || 'hello@vemtap.com');
             setSupportPhone(currentBranch?.phone || business.phone || business.whatsappNumber || '');
             setAddress(currentBranch?.address || business.address || '');
+
+            setIsRegistered(business.isRegistered || false);
+            setRegistrationNumber(business.registrationNumber || '');
+            setVerificationDoc(business.documents?.[0] || null);
 
             setAbout(business.about || '');
             setWelcomeMessage(business.welcomeMessage || '');
@@ -179,6 +187,9 @@ export default function BusinessProfilePage() {
             const businessUpdates: any = {};
             if (hasChanged(name, business.name)) businessUpdates.name = name;
             if (hasChanged(businessType, business.type)) businessUpdates.type = businessType;
+            if (hasChanged(isRegistered, business.isRegistered)) businessUpdates.isRegistered = isRegistered;
+            if (hasChanged(registrationNumber, business.registrationNumber)) businessUpdates.registrationNumber = registrationNumber;
+            if (hasChanged(finalCacDocument, business.documents?.[0])) businessUpdates.documents = finalCacDocument ? [finalCacDocument] : [];
 
             // Re-evaluating Social Links: User said they were rejected on both.
             // Let's only include them if they are truly changed.
@@ -474,6 +485,126 @@ export default function BusinessProfilePage() {
                             </div>
                         </div>
 
+                    </div>
+                )}
+
+                {activeTab === 'registration' && (
+                    <div className="space-y-8">
+                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
+                                <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Business Registration</h3>
+                                <p className="text-xs text-text-secondary font-medium">Manage your official registration details and documents</p>
+                            </div>
+                            <div className="p-8 space-y-8">
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Is your business registered?</label>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {[
+                                            { id: true, label: 'Yes - Registered', icon: 'verified' },
+                                            { id: false, label: 'No - Not Registered', icon: 'pending' },
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.id.toString()}
+                                                onClick={() => setIsRegistered(opt.id)}
+                                                className={`flex items-center justify-center gap-3 h-14 rounded-xl text-sm font-bold transition-all border ${isRegistered === opt.id ? 'bg-primary/5 border-primary/20 text-primary shadow-sm' : 'bg-gray-50 border-gray-100 text-text-secondary hover:bg-gray-100'}`}
+                                            >
+                                                <span className={`material-icons-round text-lg ${isRegistered === opt.id ? 'text-primary' : 'text-gray-400'}`}>{opt.icon}</span>
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {isRegistered ? (
+                                    <div className="space-y-6 animate-in fade-in slide-in-from-top-2">
+                                        <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
+                                            <span className="material-icons-round text-blue-500 mt-0.5">info</span>
+                                            <p className="text-[11px] text-blue-700 leading-relaxed font-medium">
+                                                Please provide your official registration number (e.g., CAC RC Number) and upload your certificate for verification.
+                                            </p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Registration Number (CAC)</label>
+                                            <input
+                                                type="text"
+                                                value={registrationNumber}
+                                                onChange={(e) => setRegistrationNumber(e.target.value)}
+                                                placeholder="RC-1234567"
+                                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+                                        <span className="material-icons-round text-amber-500 mt-0.5">warning</span>
+                                        <p className="text-[11px] text-amber-700 leading-relaxed font-medium">
+                                            If your business is not registered, please upload a valid government-issued ID (National ID, Passport, or Driver's License) of the business owner for identity verification.
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">
+                                        {isRegistered ? 'Registration Certificate' : 'Identity Document'}
+                                    </label>
+                                    <div className="flex flex-col sm:flex-row items-center gap-6 p-6 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50/30">
+                                        <div className="size-32 rounded-2xl bg-white shadow-sm border border-gray-100 flex items-center justify-center overflow-hidden group relative">
+                                            {verificationDoc ? (
+                                                <>
+                                                    {verificationDoc.includes('pdf') ? (
+                                                        <div className="flex flex-col items-center gap-1 text-red-500">
+                                                            <span className="material-icons-round text-4xl">picture_as_pdf</span>
+                                                            <span className="text-[9px] font-black uppercase">PDF DOC</span>
+                                                        </div>
+                                                    ) : (
+                                                        <img src={verificationDoc} className="w-full h-full object-cover" alt="Verification Document" />
+                                                    )}
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                        <button onClick={() => window.open(verificationDoc, '_blank')} className="p-2 bg-white rounded-lg text-text-main hover:bg-gray-100 transition-colors">
+                                                            <span className="material-icons-round text-sm">visibility</span>
+                                                        </button>
+                                                        <button onClick={() => setVerificationDoc(null)} className="p-2 bg-white rounded-lg text-red-500 hover:bg-red-50 transition-colors">
+                                                            <span className="material-icons-round text-sm">delete</span>
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="flex flex-col items-center gap-2 text-gray-300">
+                                                    <span className="material-icons-round text-4xl">cloud_upload</span>
+                                                    <span className="text-[9px] font-black uppercase">No File</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 space-y-4">
+                                            <input
+                                                type="file"
+                                                id="doc-update"
+                                                className="hidden"
+                                                accept="image/*,.pdf"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => setVerificationDoc(reader.result as string);
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                            <div>
+                                                <button
+                                                    onClick={() => document.getElementById('doc-update')?.click()}
+                                                    className="px-6 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-text-main hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm flex items-center gap-2"
+                                                >
+                                                    <span className="material-icons-round text-lg">file_upload</span>
+                                                    {verificationDoc ? 'Replace Document' : 'Upload Document'}
+                                                </button>
+                                                <p className="text-[10px] text-text-secondary mt-2">Maximum file size: 5MB. Supported formats: JPG, PNG, PDF</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
 
