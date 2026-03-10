@@ -236,6 +236,21 @@ export class FormsService {
     return form;
   }
 
+  async getPublicFormById(id: string): Promise<Form> {
+    const form = await this.formsRepository.findOne({
+      where: {
+        id,
+        isPublished: true,
+        isActive: true,
+        adminDisabled: false,
+      },
+      relations: ['fields'],
+    });
+
+    if (!form) throw new NotFoundException('Form not available');
+    return form;
+  }
+
   async submitResponse(
     formId: string,
     visitorId: string,

@@ -14,8 +14,10 @@ import "./globals.css";
 //     variable: "--font-display",
 // });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://vemtap.io";
+
 export const metadata: Metadata = {
-    metadataBase: new URL("https://vemtap.io"),
+    metadataBase: new URL(siteUrl),
     title: {
         default: "VemTap | NFC Visitor Engagement and Loyalty Platform",
         template: "%s | VemTap"
@@ -27,7 +29,7 @@ export const metadata: Metadata = {
     publisher: "VemTap",
     category: "technology",
     alternates: {
-        canonical: "/",
+        canonical: siteUrl,
     },
     robots: {
         index: true,
@@ -41,7 +43,7 @@ export const metadata: Metadata = {
     openGraph: {
         type: "website",
         locale: "en_US",
-        url: "/",
+        url: siteUrl,
         siteName: "VemTap",
         title: "VemTap | NFC Visitor Engagement and Loyalty Platform",
         description: "Capture, engage, and retain visitors with NFC-powered check-ins, analytics, and loyalty workflows.",

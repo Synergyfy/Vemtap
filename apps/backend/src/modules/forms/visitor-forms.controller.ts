@@ -1,5 +1,4 @@
 import {
-  Controller,
   Get,
   Post,
   Body,
@@ -7,6 +6,7 @@ import {
   Query,
   Request,
   BadRequestException,
+  Controller,
 } from '@nestjs/common';
 import { FormsService } from './forms.service';
 import { SubmitFormResponseDto } from './dto/submit-form-response.dto';
@@ -18,7 +18,9 @@ import {
   ApiQuery,
   ApiBody,
 } from '@nestjs/swagger';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { Public } from 'src/common/decorators/public.decorator';
 
 interface RequestWithUser extends Request {
   user: User;
@@ -27,10 +29,13 @@ interface RequestWithUser extends Request {
 @ApiTags('Visitor Forms')
 @ApiBearerAuth()
 @Controller('visitor-forms')
+@Roles(UserRole.CUSTOMER)
 export class VisitorFormsController {
-  constructor(private readonly formsService: FormsService) {}
+  constructor(private readonly formsService: FormsService) { }
 
+  @Public()
   @Get('branch/:branchId')
+  @Public()
   @ApiOperation({
     summary: 'Get all active forms for a specific branch',
   })
@@ -58,6 +63,7 @@ export class VisitorFormsController {
     return this.formsService.getFormsForVisitor(branchId);
   }
 
+  @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific form with its questions' })
   @ApiQuery({ name: 'branchId', required: true, type: String })
