@@ -25,6 +25,7 @@ function BranchesContent() {
         name: '',
         address: '',
         phone: '',
+        officialEmail: '',
         isActive: true
     });
 
@@ -38,10 +39,11 @@ function BranchesContent() {
             name: newBranch.name!,
             address: newBranch.address,
             phone: newBranch.phone,
+            officialEmail: newBranch.officialEmail,
         }, {
             onSuccess: () => {
                 setIsCreateModalOpen(false);
-                setNewBranch({ name: '', address: '', phone: '', isActive: true });
+                setNewBranch({ name: '', address: '', phone: '', officialEmail: '', isActive: true });
                 toast.success('Branch added successfully');
             },
             onError: () => {
@@ -90,9 +92,9 @@ function BranchesContent() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
-                {branches.map((branch, i) => (
+                {branches.map((branch) => (
                     <div key={branch.id} className="bg-white rounded-3xl border border-gray-200 p-6 hover:shadow-xl transition-all group relative overflow-hidden">
-                        {i === 0 && (
+                        {branch.isMainBranch && (
                             <div className="absolute top-0 right-0 px-4 py-1.5 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-bl-2xl">
                                 Main Location
                             </div>
@@ -127,6 +129,12 @@ function BranchesContent() {
                                     <div className="flex items-center gap-3 text-text-secondary">
                                         <Phone size={16} className="shrink-0" />
                                         <span className="text-xs font-medium">{branch.phone}</span>
+                                    </div>
+                                )}
+                                {branch.officialEmail && (
+                                    <div className="flex items-center gap-3 text-text-secondary">
+                                        <Mail size={16} className="shrink-0" />
+                                        <span className="text-xs font-medium">{branch.officialEmail}</span>
                                     </div>
                                 )}
                             </div>
@@ -176,7 +184,7 @@ function BranchesContent() {
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Branch Name</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Branch Name <span className="text-red-500">*</span></label>
                                     <input
                                         type="text"
                                         value={newBranch.name}
@@ -186,7 +194,7 @@ function BranchesContent() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Full Address</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Full Address <span className="text-red-500">*</span></label>
                                     <input
                                         type="text"
                                         value={newBranch.address}
@@ -194,6 +202,28 @@ function BranchesContent() {
                                         placeholder="Enter complete physical address"
                                         className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                     />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Phone Number</label>
+                                        <input
+                                            type="tel"
+                                            value={newBranch.phone}
+                                            onChange={(e) => setNewBranch({ ...newBranch, phone: e.target.value })}
+                                            placeholder="+234 801 234 5678"
+                                            className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Official Email</label>
+                                        <input
+                                            type="email"
+                                            value={newBranch.officialEmail}
+                                            onChange={(e) => setNewBranch({ ...newBranch, officialEmail: e.target.value })}
+                                            placeholder="branch@business.com"
+                                            className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
