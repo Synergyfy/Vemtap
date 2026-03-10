@@ -8,7 +8,7 @@ import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { BusinessHours } from '@/services/businesses/types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Lock, Info } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { useUpdateBranch, useBranch } from '@/services/branches/hooks';
 import { useCategories, useSubcategories } from '@/services/categories/hooks';
@@ -79,7 +79,7 @@ export default function BusinessProfilePage() {
     const [activeTab, setActiveTab] = useState('general');
     const [origin, setOrigin] = useState('https://vemtap.com');
 
-    // Category Hooks
+    // Dropdown Hooks
     const { data: categoriesData } = useCategories({ limit: 100 });
     const { data: subcategoriesData } = useSubcategories(categoryId, { limit: 100 });
     const categories = categoriesData?.items || [];
@@ -95,7 +95,6 @@ export default function BusinessProfilePage() {
 
     // Synchronization Logic
     useEffect(() => {
-        // If "All Locations" (isAllBranches), use business-level data
         if (isAllBranches && business) {
             setName(business.name || '');
             setLogo(business.logoUrl || '');
@@ -106,11 +105,12 @@ export default function BusinessProfilePage() {
             setState(business.state || '');
             setCity(business.city || '');
             
+            // These are branch-level in DB, but we show them from main branch or business fallback
             setSupportEmail(business.officialEmail || '');
             setSupportPhone(business.phone || business.whatsappNumber || '');
             setAddress(business.address || '');
-
             setAbout(business.about || '');
+
             setWelcomeMessage(business.welcomeMessage || '');
             setSuccessMessage(business.successMessage || '');
             setPrivacyMessage(business.privacyMessage || '');
@@ -152,16 +152,14 @@ export default function BusinessProfilePage() {
                 setProfileSlug(slug);
                 setRedirect(qrId, `${origin}/${slug}`);
             }
-        } 
-        // If specific branch, use branch-level data
-        else if (activeBranchId && branch) {
+        } else if (activeBranchId && branch) {
             setName(branch.name || '');
             setLogo(branch.logoUrl || '');
             setSupportEmail(branch.officialEmail || '');
             setSupportPhone(branch.phone || branch.whatsappNumber || '');
             setAddress(branch.address || '');
-
             setAbout(branch.about || '');
+
             setWelcomeMessage(branch.welcomeMessage || '');
             setSuccessMessage(branch.successMessage || '');
             setPrivacyMessage(branch.privacyMessage || '');
@@ -287,11 +285,18 @@ export default function BusinessProfilePage() {
         );
     }
 
+    const renderLockOverlay = (message: string) => (
+        <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md mt-1 border border-amber-100 w-fit">
+            <Lock size={10} />
+            {message}
+        </div>
+    );
+
     return (
         <div className="p-8 max-w-4xl mx-auto">
             <PageHeader
-                title={isAllBranches ? "Business Profile" : "Location Profile"}
-                description={isAllBranches ? "Global settings for your entire business" : `Settings for ${branch?.name}`}
+                title={isAllBranches ? "Global Business Profile" : "Location Profile"}
+                description={isAllBranches ? "Manage branding and legal information for your entire business" : `Manage details for ${branch?.name}`}
                 actions={
                     <button
                         onClick={handleSave}
@@ -303,21 +308,39 @@ export default function BusinessProfilePage() {
                 }
             />
 
+            {/* Contextual Information Banner */}
+            <div className={`mb-8 p-4 rounded-2xl border flex items-start gap-4 transition-all duration-300 ${isAllBranches ? 'bg-blue-50 border-blue-100' : 'bg-green-50 border-green-100'}`}>
+                <div className={`p-2 rounded-xl ${isAllBranches ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
+                    {isAllBranches ? <Info size={20} /> : <Info size={20} />}
+                </div>
+                <div>
+                    <h4 className={`text-sm font-bold ${isAllBranches ? 'text-blue-900' : 'text-green-900'}`}>
+                        {isAllBranches ? "Global View Mode" : "Specific Location View"}
+                    </h4>
+                    <p className={`text-xs mt-0.5 leading-relaxed ${isAllBranches ? 'text-blue-800' : 'text-green-800'}`}>
+                        {isAllBranches 
+                            ? "You are managing settings for your entire brand. Location-specific details like address and hours are locked. Switch to a specific location in the header to edit them."
+                            : "You are managing this specific location. Changes here will only affect this branch."
+                        }
+                    </p>
+                </div>
+            </div>
+
             {/* Tabs Navigation */}
             <div className="relative mb-8 overflow-hidden">
                 <div className="flex items-center gap-1 overflow-x-auto scroll-smooth pb-2 border-b border-gray-100 no-scrollbar">
                     {[
                         { id: 'general', label: 'General', icon: 'business' },
-                        { id: 'schedule', label: 'Schedule', icon: 'calendar_today', hideOnAll: true },
+                        { id: 'schedule', label: 'Schedule', icon: 'calendar_today' },
                         { id: 'messaging', label: 'Messaging', icon: 'forum' },
                         { id: 'socials', label: 'Socials', icon: 'share' },
                         { id: 'rewards', label: 'Rewards', icon: 'auto_awesome' },
                         { id: 'visibility', label: 'Visibility', icon: 'visibility' },
                         { id: 'qr', label: 'QR Code', icon: 'qr_code_2' },
-                        { id: 'documents', label: 'Documents', icon: 'description', showOnAll: true },
+                        { id: 'documents', label: 'Documents', icon: 'description' },
                     ].filter(tab => {
-                        if (isAllBranches && (tab.id === 'schedule')) return false;
-                        if (!isAllBranches && (tab.id === 'documents')) return false;
+                        if (isAllBranches && tab.id === 'schedule') return false;
+                        if (!isAllBranches && tab.id === 'documents') return false;
                         return true;
                     }).map(tab => (
                         <button
@@ -368,12 +391,17 @@ export default function BusinessProfilePage() {
                                     <div className="flex-1 space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Name</label>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Brand Name</label>
                                                 <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white focus:ring-2 focus:ring-primary/20" />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Business Type</label>
-                                                <select value={businessType} onChange={e => setBusinessType(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none cursor-pointer">
+                                                <select 
+                                                    value={businessType} 
+                                                    onChange={e => setBusinessType(e.target.value)} 
+                                                    disabled={!isAllBranches}
+                                                    className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none cursor-pointer disabled:opacity-60"
+                                                >
                                                     <option value="RESTAURANT">Restaurant & Cafe</option>
                                                     <option value="RETAIL">Retail Store</option>
                                                     <option value="GYM">Fitness & Health</option>
@@ -381,38 +409,31 @@ export default function BusinessProfilePage() {
                                                     <option value="LOGISTICS">Logistics & Service</option>
                                                     <option value="BEAUTY_WELLNESS">Beauty & Wellness</option>
                                                 </select>
+                                                {!isAllBranches && renderLockOverlay("Edit in Global View")}
                                             </div>
                                         </div>
 
                                         {isAllBranches && (
-                                            <>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Category</label>
-                                                        <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none cursor-pointer">
-                                                            <option value="">Select Category</option>
-                                                            {categories.map((c: any) => (
-                                                                <option key={c.id} value={c.id}>{c.name}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Sub-Category</label>
-                                                        <select value={subcategoryId} onChange={e => setSubcategoryId(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none cursor-pointer">
-                                                            <option value="">Select Sub-Category</option>
-                                                            {subcategories.map((s: any) => (
-                                                                <option key={s.id} value={s.id}>{s.name}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Category</label>
+                                                    <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none cursor-pointer">
+                                                        <option value="">Select Category</option>
+                                                        {categories.map((c: any) => (
+                                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                                        ))}
+                                                    </select>
                                                 </div>
-                                                {subcategoryId === 'other' && (
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Custom Sub-Category</label>
-                                                        <input type="text" value={otherSubcategoryName} onChange={e => setOtherSubcategoryName(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold" />
-                                                    </div>
-                                                )}
-                                            </>
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Sub-Category</label>
+                                                    <select value={subcategoryId} onChange={e => setSubcategoryId(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none cursor-pointer">
+                                                        <option value="">Select Sub-Category</option>
+                                                        {subcategories.map((s: any) => (
+                                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -420,45 +441,76 @@ export default function BusinessProfilePage() {
                         </div>
 
                         {/* Location Details */}
-                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
+                        <div className={`bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm transition-opacity duration-300 ${isAllBranches ? 'opacity-70' : 'opacity-100'}`}>
+                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                                 <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Location & Contact</h3>
+                                {isAllBranches && (
+                                    <span className="flex items-center gap-1 text-[10px] font-black uppercase text-amber-600">
+                                        <Lock size={12} /> Read Only
+                                    </span>
+                                )}
                             </div>
                             <div className="p-8 space-y-6">
-                                {isAllBranches && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">State</label>
-                                            <input type="text" value={state} onChange={e => setState(e.target.value)} placeholder="e.g. Lagos" className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">City</label>
-                                            <input type="text" value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Ikeja" className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none" />
-                                        </div>
-                                    </div>
-                                )}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Email</label>
-                                        <input type="email" value={supportEmail} onChange={e => setSupportEmail(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none" />
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">State</label>
+                                        <input type="text" value={state} onChange={e => setState(e.target.value)} placeholder="e.g. Lagos" className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white" />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Phone</label>
-                                        <input type="tel" value={supportPhone} onChange={e => setSupportPhone(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none" />
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">City</label>
+                                        <input type="text" value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Ikeja" className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white" />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Support Email</label>
+                                        <input 
+                                            type="email" 
+                                            value={supportEmail} 
+                                            onChange={e => setSupportEmail(e.target.value)} 
+                                            readOnly={isAllBranches}
+                                            className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white read-only:cursor-not-allowed" 
+                                        />
+                                        {isAllBranches && renderLockOverlay("Switch location to edit contact")}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Support Phone</label>
+                                        <input 
+                                            type="tel" 
+                                            value={supportPhone} 
+                                            onChange={e => setSupportPhone(e.target.value)} 
+                                            readOnly={isAllBranches}
+                                            className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white read-only:cursor-not-allowed" 
+                                        />
+                                        {isAllBranches && renderLockOverlay("Switch location to edit contact")}
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Address</label>
-                                    <textarea value={address} onChange={e => setAddress(e.target.value)} rows={3} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-bold outline-none" />
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Detailed Address</label>
+                                    <textarea 
+                                        value={address} 
+                                        onChange={e => setAddress(e.target.value)} 
+                                        rows={3} 
+                                        readOnly={isAllBranches}
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-bold outline-none focus:bg-white read-only:cursor-not-allowed" 
+                                    />
+                                    {isAllBranches && renderLockOverlay("Switch location to edit address")}
                                 </div>
                             </div>
                         </div>
 
                         {/* About */}
-                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                        <div className={`bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm transition-opacity duration-300 ${isAllBranches ? 'opacity-70' : 'opacity-100'}`}>
                             <div className="p-8">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block mb-2">About the Business</label>
-                                <textarea value={about} onChange={e => setAbout(e.target.value)} rows={4} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-bold outline-none" />
+                                <textarea 
+                                    value={about} 
+                                    onChange={e => setAbout(e.target.value)} 
+                                    rows={4} 
+                                    readOnly={isAllBranches}
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-bold outline-none focus:bg-white read-only:cursor-not-allowed" 
+                                />
+                                {isAllBranches && renderLockOverlay("Switch location to edit description")}
                             </div>
                         </div>
                     </div>

@@ -16,10 +16,12 @@ const getReadContextParams = ({
     role,
     businessId,
     branchId,
+    allBranches,
 }: {
     role?: string | null;
     businessId?: string | null;
     branchId?: string | null;
+    allBranches?: boolean;
 }) => {
     const params = new URLSearchParams();
     const normalizedRole = normalizeRole(role);
