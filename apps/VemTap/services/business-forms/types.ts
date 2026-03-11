@@ -47,7 +47,6 @@ export interface CreateBusinessFormRequest {
   branchId: string;
   businessId?: string;
   businessName?: string;
-  businessLogo?: string;
   templateId?: string;
   templateName?: string;
   templateScope?: 'branch' | 'business' | 'global';

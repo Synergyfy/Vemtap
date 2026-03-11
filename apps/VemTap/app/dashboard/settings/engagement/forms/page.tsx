@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import { ArrowLeft, Eye, LayoutTemplate, Plus, Search, Trash2 } from 'lucide-react';
+import { CheckCircle2, Download, Link2, MoreVertical, Send, Share2, Star, X, ArrowLeft, LayoutTemplate, Plus, Search, Trash2 } from 'lucide-react';
+import { QRCodeCanvas } from 'qrcode.react';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import PhoneFrame from '@/components/shared/PhoneFrame';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
@@ -11,6 +13,7 @@ import Spinner from '@/components/ui/Spinner';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBranches } from '@/services/branches/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
+import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import {
   useBusinessForms,
   useCreateBusinessForm,
@@ -34,6 +37,12 @@ const statusOf = (form: BusinessForm): FormTab => {
   return 'active';
 };
 
+const statusBadgeOf = (form: { isPublished?: boolean; isActive?: boolean }) => {
+  if (!form.isPublished) return { label: 'Draft (Not Published)', tone: 'bg-slate-100 text-slate-700' };
+  if (!form.isActive) return { label: 'Archived (Inactive)', tone: 'bg-amber-100 text-amber-700' };
+  return { label: 'Active (Published)', tone: 'bg-emerald-100 text-emerald-700' };
+};
+
 export default function EngagementFormsBuilderPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -43,7 +52,6 @@ export default function EngagementFormsBuilderPage() {
   const { data: myBusiness } = useMyBusiness();
 
   const { data: branches = [] } = useBranches();
-  const { data: forms = [], isLoading: formsLoading } = useBusinessForms();
   const { data: templates = [], isLoading: templatesLoading } = useFormTemplates();
 
   const createMutation = useCreateBusinessForm();
@@ -53,10 +61,22 @@ export default function EngagementFormsBuilderPage() {
   const businessName = myBusiness?.name || user?.businessName || 'Your Business';
   const businessLogo = myBusiness?.logoUrl || mainBranch?.logoUrl || user?.businessLogo;
   const defaultBranchId = activeBranchId && activeBranchId !== 'all' ? activeBranchId : userBranchId || branches[0]?.id || '';
+  const branchScope = activeBranchId === 'all' ? null : (activeBranchId || userBranchId || null);
+  const { data: forms = [], isLoading: formsLoading } = useBusinessForms({
+    branchId: branchScope || undefined,
+    allBranches: !branchScope,
+  });
+  const getDefaultFormId = useFormPreferencesStore((state) => state.getDefaultFormId);
+  const setDefaultForm = useFormPreferencesStore((state) => state.setDefaultForm);
+  const toggleActiveForm = useFormPreferencesStore((state) => state.toggleActiveForm);
+  const isActiveForm = useFormPreferencesStore((state) => state.isActiveForm);
+  const defaultFormId = getDefaultFormId(branchScope || 'global');
 
   const [viewMode, setViewMode] = useState<ViewMode>('forms');
   const [tab, setTab] = useState<FormTab>('all');
   const [query, setQuery] = useState('');
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [shareForm, setShareForm] = useState<{ id: string; title: string; url: string } | null>(null);
 
   const [builderStep, setBuilderStep] = useState<BuilderStep>(1);
   const [editing, setEditing] = useState<BusinessForm | null>(null);
@@ -74,6 +94,39 @@ export default function EngagementFormsBuilderPage() {
     () => new Map(branches.map((branch) => [branch.id, branch.name])),
     [branches]
   );
+
+  const getFormUrl = (formId: string) =>
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/forms/${formId}`
+      : `/forms/${formId}`;
+
+  const getMessagingUrl = (formId: string) => {
+    const params = new URLSearchParams();
+    params.set('formId', formId);
+    if (branchScope) params.set('branchId', branchScope);
+    return `/dashboard/messaging/compose?${params.toString()}`;
+  };
+
+  const openShare = async (formId: string, title: string) => {
+    const url = getFormUrl(formId);
+    await navigator.clipboard.writeText(url);
+    toast.success('Form link copied');
+    setShareForm({ id: formId, title, url });
+    setOpenMenuId(null);
+  };
+
+  const downloadQrCode = (formId: string, title: string) => {
+    const canvas = document.getElementById(`form-qr-${formId}`) as HTMLCanvasElement | null;
+    if (!canvas) {
+      toast.error('QR not ready yet');
+      return;
+    }
+    const safeName = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const link = document.createElement('a');
+    link.download = `vemtap-form-${safeName || formId}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  };
 
   const resetBuilder = () => {
     setEditing(null);
@@ -150,7 +203,6 @@ export default function EngagementFormsBuilderPage() {
       title: title.trim(),
       description: description.trim() || undefined,
       branchId,
-      businessLogo,
       isActive,
       isPublished: publish,
       fields: fields.map((f, i) => ({
@@ -230,13 +282,118 @@ export default function EngagementFormsBuilderPage() {
             )}
             {!formsLoading && filteredForms.length === 0 && <p className="text-sm text-slate-500">No forms found.</p>}
             {filteredForms.map((f) => (
-              <div key={f.id} className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 sm:p-6 flex flex-col gap-4">
-                <div className="flex items-start justify-between gap-3"><div><h3 className="text-xl font-black text-slate-900">{f.title}</h3><p className="text-sm text-slate-500">{f.description || 'No description'}</p></div><span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700">{statusOf(f)}</span></div>
-                <div className="text-xs text-slate-500 flex justify-between"><span>{f.fields?.length || 0} fields</span><span>{branchNameById.get(f.branchId) || 'Unknown Branch'}</span></div>
-                <div className="mt-auto grid grid-cols-3 gap-2">
-                  <button onClick={() => router.push(`/dashboard/settings/engagement/forms/${f.id}`)} className="h-10 rounded-xl border border-slate-200 text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-1"><Eye size={14} />Preview</button>
-                  <button onClick={() => openEdit(f)} className="h-10 rounded-xl border border-slate-200 text-xs sm:text-sm font-bold">Edit</button>
-                  <button onClick={async () => { try { await deleteMutation.mutateAsync(f.id); toast.success('Form deleted'); } catch (e: any) { toast.error(e?.message || 'Delete failed'); } }} className="h-10 rounded-xl bg-red-50 text-red-700 text-xs sm:text-sm font-bold inline-flex items-center justify-center"><Trash2 size={14} /></button>
+              <div
+                key={f.id}
+                id={`form-card-${f.id}`}
+                className="group relative rounded-3xl bg-white border border-slate-200 shadow-sm p-7 sm:p-8 flex flex-col gap-4 overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1"
+              >
+                <QRCodeCanvas id={`form-qr-${f.id}`} value={getFormUrl(f.id)} size={160} className="hidden" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150" />
+
+                <div className="flex items-start justify-between gap-3">
+                  <div className="bg-primary/10 text-primary p-3 rounded-2xl">
+                    <Share2 size={20} />
+                  </div>
+                  <div className="flex items-center gap-2 relative">
+                    <div className="flex items-center gap-2">
+                      {defaultFormId === f.id && (
+                        <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-primary/10 text-primary">
+                          Default Form
+                        </span>
+                      )}
+                      {isActiveForm(branchScope || 'global', f.id) && (
+                        <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-700">
+                          Active in User Step
+                        </span>
+                      )}
+                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-black ${statusBadgeOf(f).tone}`}>{statusBadgeOf(f).label}</span>
+                    </div>
+                    <button
+                      onClick={() => setOpenMenuId((prev) => prev === f.id ? null : f.id)}
+                      className="h-9 w-9 rounded-xl border border-slate-200 inline-flex items-center justify-center text-slate-500"
+                      aria-label="More form actions"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                    {openMenuId === f.id && (
+                      <div className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-slate-200 bg-white shadow-lg z-20 p-1">
+                        <button onClick={() => openShare(f.id, f.title)} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg hover:bg-gray-50">Copy Share Link and Show QR</button>
+                        <button onClick={() => { router.push(getMessagingUrl(f.id)); setOpenMenuId(null); }} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg hover:bg-gray-50">Share Form in Messaging</button>
+                        <button onClick={() => { router.push(`/dashboard/settings/engagement/forms?edit=${encodeURIComponent(f.id)}`); setOpenMenuId(null); }} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg hover:bg-gray-50">Edit Form</button>
+                        <button onClick={async () => { try { await deleteMutation.mutateAsync({ id: f.id, branchId: f.branchId }); toast.success('Form deleted'); setOpenMenuId(null); } catch (e: any) { toast.error(e?.message || 'Delete failed'); } }} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg text-red-600 hover:bg-red-50">Delete Form</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className={isActiveForm(branchScope || 'global', f.id) ? '' : 'opacity-90'}>
+                  <h3 className="text-xl font-black text-slate-900">{f.title}</h3>
+                  <p className="text-xs text-slate-500 mt-1">{f.description || 'No description yet.'}</p>
+                  <p className="text-[11px] text-slate-400 mt-2">Branch: <span className="font-semibold text-slate-700">{branchNameById.get(f.branchId) || 'Unknown Branch'}</span></p>
+                </div>
+
+                <div className="mt-auto pt-5 border-t border-slate-100">
+                  <div className="flex items-center gap-2 mb-4">
+                    <button
+                      onClick={() => openShare(f.id, f.title)}
+                      className="relative group/tooltip p-2.5 rounded-lg bg-slate-50 text-slate-600 hover:bg-primary/10 hover:text-primary transition-colors"
+                      aria-label="Copy share link and show QR"
+                    >
+                      <Share2 size={18} />
+                      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 group-hover/tooltip:opacity-100 transition-opacity">
+                        Copy Share Link and Show QR
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setDefaultForm(branchScope || 'global', f.id);
+                        toast.success('Default form updated');
+                      }}
+                      className="relative group/tooltip p-2.5 rounded-lg bg-slate-50 text-slate-600 hover:bg-primary/10 hover:text-primary transition-colors"
+                      aria-label={defaultFormId === f.id ? 'This is the default form' : 'Set as default form'}
+                    >
+                      <Star size={18} className={defaultFormId === f.id ? 'text-primary' : 'text-slate-500'} fill={defaultFormId === f.id ? 'currentColor' : 'none'} />
+                      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 group-hover/tooltip:opacity-100 transition-opacity">
+                        {defaultFormId === f.id ? 'Default Form (Current)' : 'Set as Default Form'}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => router.push(getMessagingUrl(f.id))}
+                      className="relative group/tooltip p-2.5 rounded-lg bg-slate-50 text-slate-600 hover:bg-primary/10 hover:text-primary transition-colors"
+                      aria-label="Share form in messaging"
+                    >
+                      <Send size={18} />
+                      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 group-hover/tooltip:opacity-100 transition-opacity">
+                        Share Form in Messaging
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        const currentlyActive = isActiveForm(branchScope || 'global', f.id);
+                        toggleActiveForm(branchScope || 'global', f.id);
+                        toast.success(currentlyActive ? 'Removed from user-step buttons' : 'Added to user-step buttons');
+                      }}
+                      className={`relative group/tooltip p-2.5 rounded-lg transition-colors ${isActiveForm(branchScope || 'global', f.id) ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-50 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'}`}
+                      aria-label={isActiveForm(branchScope || 'global', f.id) ? 'Active in user-step buttons' : 'Toggle active in user-step buttons'}
+                    >
+                      <CheckCircle2 size={18} />
+                      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 group-hover/tooltip:opacity-100 transition-opacity">
+                        {isActiveForm(branchScope || 'global', f.id) ? 'Active in User Step' : 'Toggle Active in User Step'}
+                      </span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-end">
+                    <Link
+                      href={`/dashboard/settings/engagement/forms/${f.id}`}
+                      className="h-10 px-4 rounded-full border border-slate-200 text-xs font-black text-slate-600 inline-flex items-center justify-center hover:border-primary hover:text-primary transition-colors"
+                    >
+                      Preview Form
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}
@@ -386,6 +543,48 @@ export default function EngagementFormsBuilderPage() {
             </div>
           )}
         </section>
+      )}
+
+      {shareForm && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white border border-slate-200 shadow-xl p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-slate-400">Form Share</p>
+                <h3 className="text-xl font-black text-slate-900">{shareForm.title}</h3>
+                <p className="text-xs text-slate-500 mt-1">Link copied. Share or let visitors scan the QR below.</p>
+              </div>
+              <button onClick={() => setShareForm(null)} className="h-9 w-9 rounded-xl border border-slate-200 inline-flex items-center justify-center text-slate-500">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 flex flex-col items-center gap-3">
+              <QRCodeCanvas value={shareForm.url} size={180} />
+              <p className="text-xs font-bold text-slate-700">Scan to open: {shareForm.title}</p>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                onClick={() => downloadQrCode(shareForm.id, shareForm.title)}
+                className="w-full h-11 rounded-xl bg-primary text-white text-sm font-black inline-flex items-center justify-center gap-2"
+              >
+                <Download size={16} />
+                Download QR (named)
+              </button>
+              <button
+                onClick={async () => {
+                  await navigator.clipboard.writeText(shareForm.url);
+                  toast.success('Link copied');
+                }}
+                className="w-full h-11 rounded-xl border border-slate-300 text-sm font-black text-slate-700 inline-flex items-center justify-center gap-2"
+              >
+                <Link2 size={16} />
+                Copy Link Again
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -328,6 +328,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         active
             ? 'bg-gray-100 text-text-main'
             : 'text-text-secondary hover:bg-gray-100 hover:text-text-main';
+    const withBranch = (href?: string) => (href ? getLinkWithBranch(href) : href);
 
     const handleItemClick = (e: React.MouseEvent, item: any, parentId?: string) => {
         if (item.feature && isFeatureLocked(item.feature)) {
@@ -362,7 +363,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             `}>
                 {/* Logo  */}
                 <div className="h-16 flex items-center px-6 border-b border-gray-200">
-                    <Link href="/dashboard" className="flex items-center gap-2">
+                    <Link href={withBranch('/dashboard')!} className="flex items-center gap-2">
                         <Logo />
                     </Link>
                 </div>
@@ -460,7 +461,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                         ) : (
                                                                             <Link
                                                                                 key={nestedItem.href}
-                                                                                href={nestedItem.href}
+                                                                                href={withBranch(nestedItem.href)}
                                                                                 onClick={(e) => {
                                                                                     if (nestedItem.feature && isFeatureLocked(nestedItem.feature)) {
                                                                                         e.preventDefault();
@@ -502,7 +503,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                     </>
                                 ) : (
                                     <Link
-                                        href={item.href!}
+                                        href={withBranch(item.href)!}
                                         onClick={(e) => {
                                             if (item.feature && isFeatureLocked(item.feature)) {
                                                 e.preventDefault();
