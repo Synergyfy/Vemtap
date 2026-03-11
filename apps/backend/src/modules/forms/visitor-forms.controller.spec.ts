@@ -9,7 +9,7 @@ describe('VisitorFormsController', () => {
   // Mock service to avoid database interactions during visitor requests
   const mockFormsService = {
     getFormsForVisitor: jest.fn(),
-    getFormByIdForVisitor: jest.fn(),
+    getFormByUniqueCode: jest.fn(),
     submitResponse: jest.fn(),
   };
 
@@ -46,20 +46,19 @@ describe('VisitorFormsController', () => {
   // Test: Ensure a visitor can retrieve a specific form's questions
   it('should get a specific form to fill out', async () => {
     const form = { id: 'form-1', title: 'Survey', fields: [] };
-    mockFormsService.getFormByIdForVisitor.mockResolvedValue(form);
+    mockFormsService.getFormByUniqueCode.mockResolvedValue(form);
 
-    const result = await controller.findOne('form-1', 'branch-2');
+    const result = await controller.getFormByCode('ABC123XYZ');
 
-    expect(service.getFormByIdForVisitor).toHaveBeenCalledWith(
-      'form-1',
-      'branch-2',
+    expect(service.getFormByUniqueCode).toHaveBeenCalledWith(
+      'ABC123XYZ',
     );
     expect(result).toEqual(form);
   });
 
   // Test: Verify that a valid submission by a visitor correctly delegates to the service using the visitorId
   it('should submit a form response using the user ID from the request token', async () => {
-    const req = { user: { id: 'visitor-123' } };
+    const req = { user: { id: 'visitor-123' } } as any;
     const submitDto = {
       branchId: 'branch-1',
       answers: [{ fieldId: 'fld-1', value: 'Answer 1' }],
@@ -70,12 +69,12 @@ describe('VisitorFormsController', () => {
 
     const result = await controller.submitResponse(
       req,
-      'form-1',
+      'ABC123XYZ',
       submitDto as any,
     );
 
     expect(service.submitResponse).toHaveBeenCalledWith(
-      'form-1',
+      'ABC123XYZ',
       'visitor-123',
       submitDto,
     );

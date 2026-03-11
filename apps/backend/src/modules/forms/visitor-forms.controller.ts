@@ -62,29 +62,11 @@ export class VisitorFormsController {
     return this.formsService.getFormsForVisitor(branchId);
   }
 
-  @Public()
-  @Get('public/:id')
-  @ApiOperation({ summary: 'Get a specific form by ID or Unique Code' })
-  @ApiResponse({
-    status: 200,
-    description: 'Return the form with fields to answer.',
-  })
-  async getPublicForm(@Param('id') id: string, @Query('branchId') branchId?: string) {
-    // Try finding by unique code first
-    try {
-      return await this.formsService.getFormByUniqueCode(id);
-    } catch (e) {
-      // If not found by code, try by ID if branchId is provided
-      if (branchId) {
-        return this.formsService.getFormByIdForVisitor(id, branchId);
-      }
-      throw e;
-    }
-  }
+
 
   @Public()
   @Get('code/:code')
-  @ApiOperation({ summary: 'Get a specific form by its unique 9-digit code' })
+  @ApiOperation({ summary: 'Get a specific form by its unique 9-digit code with its questions' })
   @ApiResponse({
     status: 200,
     description: 'Return the form with fields to answer.',
@@ -93,55 +75,9 @@ export class VisitorFormsController {
     return this.formsService.getFormByUniqueCode(code);
   }
 
-  @Public()
-  @Get(':id')
-  @ApiOperation({ summary: 'Get a specific form with its questions' })
-  @ApiQuery({ name: 'branchId', required: true, type: String })
-  @ApiResponse({
-    status: 200,
-    description: 'Return the form with fields to answer.',
-    schema: {
-      type: 'object',
-      properties: {
-        id: { type: 'string', example: 'uuid-form-1234' },
-        uniqueCode: { type: 'string', example: 'ABC123XYZ' },
-        title: { type: 'string', example: 'Customer Feedback' },
-        description: {
-          type: 'string',
-          example: 'Let us know how your visit went',
-        },
-        fields: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string', example: 'uuid-field-1234' },
-              type: { type: 'string', example: 'radio' },
-              question: {
-                type: 'string',
-                example: 'How would you rate our service?',
-              },
-              options: {
-                type: 'array',
-                items: { type: 'string' },
-                example: ['1', '2', '3', '4', '5'],
-              },
-              isRequired: { type: 'boolean', example: true },
-              order: { type: 'number', example: 2 },
-            },
-          },
-        },
-      },
-    },
-  })
-  findOne(@Param('id') id: string, @Query('branchId') branchId: string) {
-    if (!branchId) throw new BadRequestException('branchId is required');
-    return this.formsService.getFormByIdForVisitor(id, branchId);
-  }
-
-  @Post(':id/responses')
+  @Post(':code/responses')
   @Roles(UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'Submit answers for a specific form' })
+  @ApiOperation({ summary: 'Submit answers for a specific form using its unique code' })
   @ApiBody({
     type: SubmitFormResponseDto,
     examples: {
@@ -169,10 +105,10 @@ export class VisitorFormsController {
   })
   submitResponse(
     @Request() req: RequestWithUser,
-    @Param('id') id: string,
+    @Param('code') code: string,
     @Body() submitResponseDto: SubmitFormResponseDto,
   ) {
     const visitorId = req.user.id;
-    return this.formsService.submitResponse(id, visitorId, submitResponseDto);
+    return this.formsService.submitResponse(code, visitorId, submitResponseDto);
   }
 }
