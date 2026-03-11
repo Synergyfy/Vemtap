@@ -60,9 +60,6 @@ export default function BusinessProfilePage() {
     const [rewardEnabled, setRewardEnabled] = useState(false);
     const [rewardVisitThreshold, setRewardVisitThreshold] = useState(5);
 
-    // 6. Registration & Docs
-    const [isRegistered, setIsRegistered] = useState(false);
-    const [registrationNumber, setRegistrationNumber] = useState('');
     const [cacDocument, setCacDocument] = useState('');
     const [idDocument, setIdDocument] = useState('');
 
