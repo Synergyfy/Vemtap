@@ -1,13 +1,20 @@
-import { Entity, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, OneToMany, JoinColumn, BeforeInsert } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { User } from '../../users/entities/user.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Campaign } from '../../campaigns/entities/campaign.entity';
 import { MessageCampaign } from '../../messaging/entities/message-campaign.entity';
+import { ApiProperty } from '@nestjs/swagger';
+import { generateUniqueCode } from '../../../common/utils/random.util';
 
 @Entity('branches')
 export class Branch extends AbstractBaseEntity {
+  @ApiProperty({ example: 'BR123XYZ', description: 'Unique 9-character alphanumeric code for the branch' })
+  @Column({ unique: true })
+  uniqueCode: string;
+
+  @ApiProperty({ example: 'Main Office' })
   @Column()
   name: string;
 
@@ -100,4 +107,11 @@ export class Branch extends AbstractBaseEntity {
 
   @OneToMany(() => MessageCampaign, (mc) => mc.branch)
   messageCampaigns: MessageCampaign[];
+
+  @BeforeInsert()
+  generateUniqueCode() {
+    if (!this.uniqueCode) {
+      this.uniqueCode = generateUniqueCode(9);
+    }
+  }
 }
