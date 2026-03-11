@@ -6,6 +6,7 @@ export interface BusinessHours {
 
 export interface Branch {
     id: string;
+    uniqueCode?: string;
     name: string;
     address: string;
     phone: string;
@@ -36,6 +37,7 @@ export interface Branch {
 
 export interface Business {
     id: string;
+    uniqueCode?: string;
     name: string;
     type?: string;
     category: string;

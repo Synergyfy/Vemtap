@@ -95,10 +95,14 @@ export default function EngagementFormsBuilderPage() {
     [branches]
   );
 
-  const getFormUrl = (formId: string) =>
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/forms/${formId}`
-      : `/forms/${formId}`;
+  const getPublicFormKey = (formId: string, uniqueCode?: string) => uniqueCode || formId;
+
+  const getFormUrl = (formId: string, uniqueCode?: string) => {
+    const key = getPublicFormKey(formId, uniqueCode);
+    return typeof window !== 'undefined'
+      ? `${window.location.origin}/forms/${key}`
+      : `/forms/${key}`;
+  };
 
   const getMessagingUrl = (formId: string) => {
     const params = new URLSearchParams();
@@ -107,8 +111,8 @@ export default function EngagementFormsBuilderPage() {
     return `/dashboard/messaging/compose?${params.toString()}`;
   };
 
-  const openShare = async (formId: string, title: string) => {
-    const url = getFormUrl(formId);
+  const openShare = async (formId: string, title: string, uniqueCode?: string) => {
+    const url = getFormUrl(formId, uniqueCode);
     await navigator.clipboard.writeText(url);
     toast.success('Form link copied');
     setShareForm({ id: formId, title, url });
@@ -287,7 +291,7 @@ export default function EngagementFormsBuilderPage() {
                 id={`form-card-${f.id}`}
                 className="group relative rounded-3xl bg-white border border-slate-200 shadow-sm p-7 sm:p-8 flex flex-col gap-4 overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1"
               >
-                <QRCodeCanvas id={`form-qr-${f.id}`} value={getFormUrl(f.id)} size={160} className="hidden" />
+                <QRCodeCanvas id={`form-qr-${f.id}`} value={getFormUrl(f.id, f.uniqueCode)} size={160} className="hidden" />
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150" />
 
                 <div className="flex items-start justify-between gap-3">
@@ -317,7 +321,7 @@ export default function EngagementFormsBuilderPage() {
                     </button>
                     {openMenuId === f.id && (
                       <div className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-slate-200 bg-white shadow-lg z-20 p-1">
-                        <button onClick={() => openShare(f.id, f.title)} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg hover:bg-gray-50">Copy Share Link and Show QR</button>
+                        <button onClick={() => openShare(f.id, f.title, f.uniqueCode)} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg hover:bg-gray-50">Copy Share Link and Show QR</button>
                         <button onClick={() => { router.push(getMessagingUrl(f.id)); setOpenMenuId(null); }} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg hover:bg-gray-50">Share Form in Messaging</button>
                         <button onClick={() => { router.push(`/dashboard/settings/engagement/forms?edit=${encodeURIComponent(f.id)}`); setOpenMenuId(null); }} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg hover:bg-gray-50">Edit Form</button>
                         <button onClick={async () => { try { await deleteMutation.mutateAsync({ id: f.id, branchId: f.branchId }); toast.success('Form deleted'); setOpenMenuId(null); } catch (e: any) { toast.error(e?.message || 'Delete failed'); } }} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg text-red-600 hover:bg-red-50">Delete Form</button>
@@ -335,7 +339,7 @@ export default function EngagementFormsBuilderPage() {
                 <div className="mt-auto pt-5 border-t border-slate-100">
                   <div className="flex items-center gap-2 mb-4">
                     <button
-                      onClick={() => openShare(f.id, f.title)}
+                    onClick={() => openShare(f.id, f.title, f.uniqueCode)}
                       className="relative group/tooltip p-2.5 rounded-lg bg-slate-50 text-slate-600 hover:bg-primary/10 hover:text-primary transition-colors"
                       aria-label="Copy share link and show QR"
                     >
