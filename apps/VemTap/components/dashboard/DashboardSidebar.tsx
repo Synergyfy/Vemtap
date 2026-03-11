@@ -48,16 +48,15 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const logout = useAuthStore((state) => state.logout);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const { data: myBusiness, isLoading: isBusinessLoading } = useMyBusiness();
-    const { data: activeSubscription } = useActiveSubscription();
+    const { fetchSubscriptionData, isFeatureLocked, capabilities, activeSubscription } = useSubscriptionStore();
     const { getLinkWithBranch } = useActiveBranch();
-    const { fetchCapabilities, isFeatureLocked, capabilities } = useSubscriptionStore();
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
 
     useEffect(() => {
-        if (isAuthenticated && !capabilities) {
-            fetchCapabilities();
+        if (isAuthenticated) {
+            fetchSubscriptionData();
         }
-    }, [isAuthenticated, capabilities, fetchCapabilities]);
+    }, [isAuthenticated, fetchSubscriptionData]);
 
     const mainBranch = myBusiness?.branches?.find(b => b.isMainBranch);
     const businessLogo = myBusiness?.logoUrl || mainBranch?.logoUrl || defaultLogo;
@@ -95,9 +94,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const showPlanPill = Boolean(activeSubscription)
         && activeSubscription?.status !== 'cancelled'
         && activeSubscription?.status !== 'expired'
-        && activeSubscription?.status !== 'pending'
-        && !isFreePlan;
-    const planPillLabel = activeSubscription?.plan?.name || 'Paid Plan';
+        && activeSubscription?.status !== 'pending';
+    const planPillLabel = activeSubscription?.plan?.name || (isFreePlan ? 'Free Plan' : 'Active Plan');
 
     const readNotificationMutation = useMutation({
         mutationFn: dashboardApi.markNotificationRead,
