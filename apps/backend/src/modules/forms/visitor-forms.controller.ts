@@ -46,6 +46,7 @@ export class VisitorFormsController {
         type: 'object',
         properties: {
           id: { type: 'string', example: 'uuid-form-1234' },
+          uniqueCode: { type: 'string', example: 'ABC123XYZ' },
           title: { type: 'string', example: 'Customer Feedback' },
           description: {
             type: 'string',
@@ -62,6 +63,37 @@ export class VisitorFormsController {
   }
 
   @Public()
+  @Get('public/:id')
+  @ApiOperation({ summary: 'Get a specific form by ID or Unique Code' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return the form with fields to answer.',
+  })
+  async getPublicForm(@Param('id') id: string, @Query('branchId') branchId?: string) {
+    // Try finding by unique code first
+    try {
+      return await this.formsService.getFormByUniqueCode(id);
+    } catch (e) {
+      // If not found by code, try by ID if branchId is provided
+      if (branchId) {
+        return this.formsService.getFormByIdForVisitor(id, branchId);
+      }
+      throw e;
+    }
+  }
+
+  @Public()
+  @Get('code/:code')
+  @ApiOperation({ summary: 'Get a specific form by its unique 9-digit code' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return the form with fields to answer.',
+  })
+  getFormByCode(@Param('code') code: string) {
+    return this.formsService.getFormByUniqueCode(code);
+  }
+
+  @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific form with its questions' })
   @ApiQuery({ name: 'branchId', required: true, type: String })
@@ -72,6 +104,7 @@ export class VisitorFormsController {
       type: 'object',
       properties: {
         id: { type: 'string', example: 'uuid-form-1234' },
+        uniqueCode: { type: 'string', example: 'ABC123XYZ' },
         title: { type: 'string', example: 'Customer Feedback' },
         description: {
           type: 'string',
