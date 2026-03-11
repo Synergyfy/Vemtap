@@ -80,13 +80,11 @@ export interface Business {
     showSocial?: boolean;
     showFeedback?: boolean;
     isRegistered?: boolean;
-    registrationNumber?: string;
     documents?: string[];
     branches?: Branch[];
     createdAt?: string;
     updatedAt?: string;
     cacDocument?: string;
     idDocument?: string;
-    isRegistered?: boolean;
     registrationNumber?: string;
 }
