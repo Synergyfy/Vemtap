@@ -5,7 +5,6 @@ import { BusinessesService } from './modules/businesses/businesses.service';
 import { UserRole } from './modules/users/entities/user.entity';
 import { BranchesService } from './modules/branches/branches.service';
 import * as bcrypt from 'bcrypt';
-import { BusinessType } from './modules/businesses/entities/business.entity';
 
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
@@ -31,7 +30,6 @@ async function bootstrap() {
     // Create Business for Owner (this automatically creates Main Branch and links owner)
     const biz = await businessesService.create({
       name: 'The Azure Bistro',
-      type: BusinessType.RESTAURANT,
       monthlyVisitors: '501-2000',
       ownerId: owner.id,
     });

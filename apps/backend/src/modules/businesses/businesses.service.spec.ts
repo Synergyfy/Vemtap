@@ -4,7 +4,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import {
   Business,
   BusinessStatus,
-  BusinessType,
 } from './entities/business.entity';
 import { User } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
