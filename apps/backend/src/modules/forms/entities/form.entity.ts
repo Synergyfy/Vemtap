@@ -1,11 +1,15 @@
-import { Entity, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, OneToMany, JoinColumn, BeforeInsert } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { FormResponse } from './form-response.entity';
 import { FormField } from './form-field.entity';
+import { generateUniqueCode } from '../../../common/utils/random.util';
 
 @Entity('forms')
 export class Form extends AbstractBaseEntity {
+  @Column({ unique: true })
+  uniqueCode: string;
+
   @Column()
   title: string;
 
@@ -36,4 +40,11 @@ export class Form extends AbstractBaseEntity {
 
   @OneToMany(() => FormResponse, (response) => response.form)
   responses: FormResponse[];
+
+  @BeforeInsert()
+  generateUniqueCode() {
+    if (!this.uniqueCode) {
+      this.uniqueCode = generateUniqueCode(9);
+    }
+  }
 }

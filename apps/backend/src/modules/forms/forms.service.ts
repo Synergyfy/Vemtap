@@ -65,6 +65,16 @@ export class FormsService {
     return form;
   }
 
+  async getFormByUniqueCode(uniqueCode: string): Promise<Form> {
+    const form = await this.formsRepository.findOne({
+      where: { uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
+      relations: ['fields'],
+    });
+
+    if (!form) throw new NotFoundException('Form not found');
+    return form;
+  }
+
   async updateForm(
     branchId: string,
     id: string,
