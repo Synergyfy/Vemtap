@@ -9,6 +9,7 @@ type FormattedNumberInputProps = {
     allowDecimal?: boolean;
     inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
     min?: number;
+    disabled?: boolean;
 };
 
 export default function FormattedNumberInput({
@@ -19,6 +20,7 @@ export default function FormattedNumberInput({
     allowDecimal = false,
     inputMode = 'numeric',
     min,
+    disabled,
 }: FormattedNumberInputProps) {
     const formatted = value === '' ? '' : formatNumber(value, {
         minFractionDigits: 0,
@@ -38,6 +40,7 @@ export default function FormattedNumberInput({
             placeholder={placeholder}
             min={min}
             className={className}
+            disabled={disabled}
         />
     );
 }

@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { LoyaltyController } from './loyalty.controller';
 import { LoyaltyService } from './loyalty.service';
 import { User, UserRole } from '../users/entities/user.entity';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { BranchesService } from '../branches/branches.service';
 
 describe('LoyaltyController', () => {
   let controller: LoyaltyController;
@@ -17,6 +19,14 @@ describe('LoyaltyController', () => {
     createReward: jest.fn(),
     checkBranchAccess: jest.fn(),
     getBusinessLoyaltyStats: jest.fn(),
+  };
+
+  const mockSubscriptionsService = {
+    getCapabilities: jest.fn(),
+  };
+
+  const mockBranchesService = {
+    findOne: jest.fn(),
   };
 
   const mockUser = {
@@ -35,6 +45,14 @@ describe('LoyaltyController', () => {
         {
           provide: LoyaltyService,
           useValue: mockLoyaltyService,
+        },
+        {
+          provide: SubscriptionsService,
+          useValue: mockSubscriptionsService,
+        },
+        {
+          provide: BranchesService,
+          useValue: mockBranchesService,
         },
       ],
     }).compile();

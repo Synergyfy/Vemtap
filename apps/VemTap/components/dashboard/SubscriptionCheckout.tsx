@@ -87,9 +87,10 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                     isTrial: isTrial
                 }, {
                     onSuccess: () => {
-                        setIsProcessing(false);
                         toast.success(isTrial ? `Trial started! You won't be charged for ${plan.trialDurationDays} days.` : `Welcome to the ${plan.name} plan!`);
+                        // Close modal first to prevent it showing during any background refreshes
                         onClose();
+                        setIsProcessing(false);
                     },
                     onError: (error) => {
                         setIsProcessing(false);

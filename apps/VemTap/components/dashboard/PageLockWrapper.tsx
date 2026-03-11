@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import UpgradeModal from './UpgradeModal';
 import { Lock } from 'lucide-react';
@@ -12,6 +13,7 @@ interface PageLockWrapperProps {
 }
 
 export default function PageLockWrapper({ children, feature, featureName }: PageLockWrapperProps) {
+  const pathname = usePathname();
   const { isFeatureLocked, fetchCapabilities, capabilities, isLoading } = useSubscriptionStore();
   const [showModal, setShowModal] = useState(false);
 
@@ -20,6 +22,11 @@ export default function PageLockWrapper({ children, feature, featureName }: Page
       fetchCapabilities();
     }
   }, [capabilities, fetchCapabilities]);
+
+  // Close modal on navigation
+  useEffect(() => {
+    setShowModal(false);
+  }, [pathname]);
 
   const locked = isFeatureLocked(feature);
 

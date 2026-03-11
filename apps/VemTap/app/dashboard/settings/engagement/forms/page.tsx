@@ -4,7 +4,31 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import { CheckCircle2, Download, Link2, MoreVertical, Send, Share2, Star, X, ArrowLeft, LayoutTemplate, Plus, Search, Trash2 } from 'lucide-react';
+import {
+  Calendar,
+  CheckCircle2,
+  Copy,
+  Download,
+  ExternalLink,
+  Eye,
+  FileText,
+  Grid3X3,
+  Info,
+  LayoutList,
+  Link2,
+  MessageSquare,
+  MoreVertical,
+  Pencil,
+  Plus,
+  QrCode,
+  Search,
+  Send,
+  Share2,
+  Trash2,
+  X,
+  ArrowLeft,
+  LayoutTemplate,
+} from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import PhoneFrame from '@/components/shared/PhoneFrame';
@@ -13,7 +37,6 @@ import Spinner from '@/components/ui/Spinner';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBranches } from '@/services/branches/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
-import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import {
   useBusinessForms,
   useCreateBusinessForm,
@@ -21,7 +44,96 @@ import {
   useFormTemplates,
   useUpdateBusinessForm,
 } from '@/services/business-forms/hooks';
+import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
+import { api } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
 import type { ApiFormFieldType, BusinessForm, CreateBusinessFormRequest } from '@/services/business-forms/types';
+
+type FormsViewType = 'grid' | 'list';
+type ShareMethod = 'qr' | 'link' | 'messaging';
+
+interface ShareExplainerState {
+  method: ShareMethod;
+  formId: string;
+  formTitle: string;
+}
+
+function formatDate(dateString?: string): string {
+  if (!dateString) return '—';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '—';
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return '—';
+  }
+}
+
+function formatDateTime(dateString?: string): string {
+  if (!dateString) return '—';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '—';
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return '—';
+  }
+}
+
+function timeAgo(dateString?: string): string {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    const diffDays = Math.floor(diffHrs / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+    return formatDate(dateString);
+  } catch {
+    return '';
+  }
+}
+
+const SHARE_EXPLAINERS: Record<ShareMethod, { title: string; icon: React.ReactNode; description: string; action: string }> = {
+  qr: {
+    title: 'Share via QR Code',
+    icon: <QrCode size={24} />,
+    description:
+      'A QR code will be generated for this form. Print it or display it on a screen so walk-in customers can scan it with their phone camera to open and fill out the form instantly.',
+    action: 'Generate QR Code',
+  },
+  link: {
+    title: 'Share via Link',
+    icon: <Link2 size={24} />,
+    description:
+      'A direct URL link to this form will be copied to your clipboard. You can paste it into any chat, email, social media post, or website to share the form with anyone.',
+    action: 'Copy Link to Clipboard',
+  },
+  messaging: {
+    title: 'Share via Messaging',
+    icon: <MessageSquare size={24} />,
+    description:
+      'You will be taken to the Messaging Compose page with this form pre-attached. From there you can send it directly to contacts via SMS, WhatsApp, or Email.',
+    action: 'Open Messaging',
+  },
+};
 
 type ViewMode = 'forms' | 'path' | 'templates' | 'builder';
 type FormTab = 'all' | 'active' | 'draft' | 'archived';
@@ -38,9 +150,11 @@ const statusOf = (form: BusinessForm): FormTab => {
 };
 
 const statusBadgeOf = (form: { isPublished?: boolean; isActive?: boolean }) => {
-  if (!form.isPublished) return { label: 'Draft (Not Published)', tone: 'bg-slate-100 text-slate-700' };
-  if (!form.isActive) return { label: 'Archived (Inactive)', tone: 'bg-amber-100 text-amber-700' };
-  return { label: 'Active (Published)', tone: 'bg-emerald-100 text-emerald-700' };
+  if (!form.isPublished)
+    return { label: 'Draft', color: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' };
+  if (!form.isActive)
+    return { label: 'Inactive', color: 'bg-amber-50 text-amber-700', dot: 'bg-amber-400' };
+  return { label: 'Active', color: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' };
 };
 
 export default function EngagementFormsBuilderPage() {
@@ -63,20 +177,50 @@ export default function EngagementFormsBuilderPage() {
   const defaultBranchId = activeBranchId && activeBranchId !== 'all' ? activeBranchId : userBranchId || branches[0]?.id || '';
   const branchScope = activeBranchId === 'all' ? null : (activeBranchId || userBranchId || null);
   const { data: forms = [], isLoading: formsLoading } = useBusinessForms({
-    branchId: branchScope || undefined,
+    branchId: branchScope || userBranchId || branches[0]?.id || undefined,
     allBranches: !branchScope,
   });
-  const getDefaultFormId = useFormPreferencesStore((state) => state.getDefaultFormId);
-  const setDefaultForm = useFormPreferencesStore((state) => state.setDefaultForm);
-  const toggleActiveForm = useFormPreferencesStore((state) => state.toggleActiveForm);
-  const isActiveForm = useFormPreferencesStore((state) => state.isActiveForm);
-  const defaultFormId = getDefaultFormId(branchScope || 'global');
+
+  const { data: responsesSummary = [] } = useQuery<
+    Array<{ formId: string; count: number }>,
+    Error
+  >({
+    queryKey: ['business-forms', 'responses-summary', forms.map((f) => f.id).join(',')],
+    queryFn: async () => {
+      const summary = await Promise.all(
+        forms.map(async (form) => {
+          try {
+            const response = await api.get(`/business-forms/${form.id}/responses?branchId=${form.branchId}`);
+            const rows = Array.isArray(response) ? response : Array.isArray(response?.data) ? response.data : [];
+            return { formId: form.id, count: rows.length };
+          } catch {
+            return { formId: form.id, count: 0 };
+          }
+        })
+      );
+      return summary;
+    },
+    enabled: forms.length > 0,
+    staleTime: 60000,
+  });
+
+  const responseCountByFormId = useMemo(() => {
+    const map = new Map<string, number>();
+    responsesSummary.forEach((item) => map.set(item.formId, item.count));
+    return map;
+  }, [responsesSummary]);
+
+  const { setDefaultForm, getDefaultFormId, clearDefaultForm } = useFormPreferencesStore();
 
   const [viewMode, setViewMode] = useState<ViewMode>('forms');
+  const [formsViewType, setFormsViewType] = useState<FormsViewType>('grid');
   const [tab, setTab] = useState<FormTab>('all');
   const [query, setQuery] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [shareForm, setShareForm] = useState<{ id: string; title: string; url: string } | null>(null);
+  const [shareExplainer, setShareExplainer] = useState<ShareExplainerState | null>(null);
+  const [defaultFormExplainer, setDefaultFormExplainer] = useState<{ id: string; title: string; branchId: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string; branchId?: string } | null>(null);
 
   const [builderStep, setBuilderStep] = useState<BuilderStep>(1);
   const [editing, setEditing] = useState<BusinessForm | null>(null);
@@ -107,11 +251,26 @@ export default function EngagementFormsBuilderPage() {
     return `/dashboard/messaging/compose?${params.toString()}`;
   };
 
-  const openShare = async (formId: string, title: string) => {
-    const url = getFormUrl(formId);
-    await navigator.clipboard.writeText(url);
-    toast.success('Form link copied');
-    setShareForm({ id: formId, title, url });
+  const handleShareAction = async (method: ShareMethod, formId: string, formTitle: string) => {
+    setShareExplainer(null);
+    const form = forms.find((f) => f.id === formId);
+    if (!form) return;
+
+    if (method === 'link') {
+      const url = getFormUrl(form.uniqueCode || form.id);
+      await navigator.clipboard.writeText(url);
+      toast.success('Form link copied to clipboard!');
+    } else if (method === 'qr') {
+      const url = getFormUrl(form.uniqueCode || form.id);
+      setShareForm({ id: formId, title: formTitle, url });
+    } else if (method === 'messaging') {
+      router.push(getMessagingUrl(formId));
+    }
+    setOpenMenuId(null);
+  };
+
+  const openShareExplainer = (method: ShareMethod, formId: string, formTitle: string) => {
+    setShareExplainer({ method, formId, formTitle });
     setOpenMenuId(null);
   };
 
@@ -174,7 +333,7 @@ export default function EngagementFormsBuilderPage() {
     openEdit(form);
   }, [forms, searchParams]);
 
-  const useTemplate = (templateId: string) => {
+  const handleUseTemplate = (templateId: string) => {
     const template = templates.find((t) => t.id === templateId);
     if (!template) return;
     resetBuilder();
@@ -264,140 +423,330 @@ export default function EngagementFormsBuilderPage() {
         <section className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">My Forms</h1>
-              <p className="text-slate-500">Create and manage business forms from Engagement.</p>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">My Forms</h1>
+              <p className="text-sm text-gray-500 mt-1">Create and manage business forms from Engagement.</p>
             </div>
-            <button onClick={() => setViewMode('path')} className="h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold inline-flex items-center gap-2"><Plus size={16} /> Create New Form</button>
+            <button
+              onClick={() => setViewMode('path')}
+              className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-primary text-white text-sm font-semibold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all hover:-translate-y-0.5"
+            >
+              <Plus size={18} />
+              Create New Form
+            </button>
           </div>
 
-          <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-3 h-11 max-w-md"><Search size={16} className="text-slate-400" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search forms..." className="w-full bg-transparent outline-none text-sm" /></div>
-          <div className="border-b border-slate-200"><div className="flex gap-6 overflow-x-auto">{(['all', 'active', 'draft', 'archived'] as FormTab[]).map((k) => <button key={k} onClick={() => setTab(k)} className={`pb-3 px-1 text-sm font-bold border-b-2 whitespace-nowrap ${tab === k ? 'border-primary text-primary' : 'border-transparent text-slate-500'}`}>{k === 'all' ? 'All Forms' : k[0].toUpperCase() + k.slice(1)}</button>)}</div></div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-            {formsLoading && (
-              <div className="flex items-center gap-3 text-sm text-slate-500">
-                <Spinner size="md" />
-                Loading forms...
+          {/* How it works - Collapsed helper */}
+          <details className="group rounded-2xl border border-gray-200 bg-white overflow-hidden">
+            <summary className="flex items-center gap-3 px-5 py-4 cursor-pointer select-none hover:bg-gray-50 transition-colors">
+              <div className="size-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <Info size={16} />
               </div>
-            )}
-            {!formsLoading && filteredForms.length === 0 && <p className="text-sm text-slate-500">No forms found.</p>}
-            {filteredForms.map((f) => (
-              <div
-                key={f.id}
-                id={`form-card-${f.id}`}
-                className="group relative rounded-3xl bg-white border border-slate-200 shadow-sm p-7 sm:p-8 flex flex-col gap-4 overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1"
-              >
-                <QRCodeCanvas id={`form-qr-${f.id}`} value={getFormUrl(f.id)} size={160} className="hidden" />
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150" />
-
-                <div className="flex items-start justify-between gap-3">
-                  <div className="bg-primary/10 text-primary p-3 rounded-2xl">
-                    <Share2 size={20} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900">How to use Forms</p>
+                <p className="text-xs text-gray-500">Click to learn about the three ways to share your forms</p>
+              </div>
+              <svg className="size-5 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="px-5 pb-5 pt-1">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="rounded-xl bg-gray-50 p-4 flex gap-3">
+                  <div className="size-9 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center shrink-0"><QrCode size={18} /></div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">QR Code</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Generate a scannable QR code for printouts or in-store displays.</p>
                   </div>
-                  <div className="flex items-center gap-2 relative">
-                    <div className="flex items-center gap-2">
-                      {defaultFormId === f.id && (
-                        <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-primary/10 text-primary">
-                          Default Form
-                        </span>
-                      )}
-                      {isActiveForm(branchScope || 'global', f.id) && (
-                        <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-700">
-                          Active in User Step
-                        </span>
-                      )}
-                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-black ${statusBadgeOf(f).tone}`}>{statusBadgeOf(f).label}</span>
-                    </div>
-                    <button
-                      onClick={() => setOpenMenuId((prev) => prev === f.id ? null : f.id)}
-                      className="h-9 w-9 rounded-xl border border-slate-200 inline-flex items-center justify-center text-slate-500"
-                      aria-label="More form actions"
-                    >
-                      <MoreVertical size={16} />
-                    </button>
-                    {openMenuId === f.id && (
-                      <div className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-slate-200 bg-white shadow-lg z-20 p-1">
-                        <button onClick={() => openShare(f.id, f.title)} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg hover:bg-gray-50">Copy Share Link and Show QR</button>
-                        <button onClick={() => { router.push(getMessagingUrl(f.id)); setOpenMenuId(null); }} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg hover:bg-gray-50">Share Form in Messaging</button>
-                        <button onClick={() => { router.push(`/dashboard/settings/engagement/forms?edit=${encodeURIComponent(f.id)}`); setOpenMenuId(null); }} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg hover:bg-gray-50">Edit Form</button>
-                        <button onClick={async () => { try { await deleteMutation.mutateAsync({ id: f.id, branchId: f.branchId }); toast.success('Form deleted'); setOpenMenuId(null); } catch (e: any) { toast.error(e?.message || 'Delete failed'); } }} className="w-full text-left px-3 py-2 text-xs font-bold rounded-lg text-red-600 hover:bg-red-50">Delete Form</button>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-4 flex gap-3">
+                  <div className="size-9 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0"><Link2 size={18} /></div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Direct Link</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Copy a URL to share via chat, email, or social media.</p>
+                  </div>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-4 flex gap-3">
+                  <div className="size-9 rounded-lg bg-green-100 text-green-600 flex items-center justify-center shrink-0"><MessageSquare size={18} /></div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Messaging</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Send the form directly using built-in SMS or WhatsApp.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 text-xs font-medium text-gray-700">
+              <div className="size-2 rounded-full bg-primary" />
+              Scope: {branchScope ? branchNameById.get(branchScope) : 'All Branches'}
+            </div>
+
+            <div className="flex-1 flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search forms..."
+                  className="w-full h-9 pl-9 pr-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                />
+              </div>
+
+              <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden">
+                <button
+                  onClick={() => setFormsViewType('grid')}
+                  className={`p-2 transition-colors ${formsViewType === 'grid' ? 'bg-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                  aria-label="Grid view"
+                >
+                  <Grid3X3 size={16} />
+                </button>
+                <button
+                  onClick={() => setFormsViewType('list')}
+                  className={`p-2 transition-colors ${formsViewType === 'list' ? 'bg-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                  aria-label="List view"
+                >
+                  <LayoutList size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-b border-gray-200">
+            <div className="flex gap-6 overflow-x-auto">
+              {(['all', 'active', 'draft', 'archived'] as FormTab[]).map((k) => (
+                <button
+                  key={k}
+                  onClick={() => setTab(k)}
+                  className={`pb-3 px-1 text-sm font-bold border-b-2 whitespace-nowrap transition-colors ${tab === k ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                >
+                  {k === 'all' ? 'All Forms' : k[0].toUpperCase() + k.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {formsLoading && (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <Spinner size="md" />
+              <p className="text-sm text-gray-500">Loading your forms...</p>
+            </div>
+          )}
+
+          {!formsLoading && filteredForms.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 gap-4">
+              <div className="size-14 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400"><FileText size={24} /></div>
+              <p className="text-sm text-gray-500">No forms match your current filters.</p>
+            </div>
+          )}
+
+          {/* Grid View */}
+          {!formsLoading && filteredForms.length > 0 && formsViewType === 'grid' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filteredForms.map((f) => {
+                const status = statusBadgeOf(f);
+                const branchLabel = branchNameById.get(f.branchId) || 'Unknown';
+                return (
+                  <div key={f.id} className="group relative bg-white rounded-2xl border border-gray-200 overflow-hidden transition-all hover:shadow-lg">
+                    <QRCodeCanvas id={`form-qr-${f.id}`} value={getFormUrl(f.uniqueCode || f.id)} size={160} className="hidden" />
+                    <div className="h-1 bg-gradient-to-r from-primary to-primary/60" />
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="size-10 rounded-xl bg-primary/8 text-primary flex items-center justify-center shrink-0"><FileText size={20} /></div>
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-semibold text-gray-900 truncate">{f.title}</h3>
+                            <p className="text-xs text-gray-500 truncate">{branchLabel}</p>
+                          </div>
+                        </div>
+                        <div className="relative" data-form-menu>
+                          <button
+                            onClick={() => setOpenMenuId((prev) => prev === f.id ? null : f.id)}
+                            className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"
+                          >
+                            <MoreVertical size={16} />
+                          </button>
+                          {openMenuId === f.id && (
+                            <div className="absolute right-0 top-full mt-1 w-52 rounded-xl border border-gray-200 bg-white shadow-xl z-30 py-1">
+                              <button onClick={() => openShareExplainer('link', f.id, f.title)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Link2 size={14} className="text-gray-400" /> Copy share link</button>
+                              <button onClick={() => openShareExplainer('qr', f.id, f.title)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><QrCode size={14} className="text-gray-400" /> Generate QR code</button>
+                              <button onClick={() => { router.push(getMessagingUrl(f.id)); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Send size={14} className="text-gray-400" /> Messaging</button>
+                              <div className="h-px bg-gray-100 my-1" />
+                              <button onClick={() => openEdit(f)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Pencil size={14} className="text-gray-400" /> Edit form</button>
+                              <button onClick={() => { setDeleteConfirm({ id: f.id, title: f.title, branchId: f.branchId }); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"><Trash2 size={14} /> Delete</button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
+                      {f.description && <p className="text-xs text-gray-500 mt-3 line-clamp-2">{f.description}</p>}
+                      <div className="flex items-center justify-between mt-4">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${status.color}`}
+                        >
+                          <div className={`size-1.5 rounded-full ${status.dot}`} />
+                          {status.label}
+                        </span>
+                        <span className="text-xs text-gray-400" title={formatDateTime(f.createdAt)}>
+                          {f.createdAt ? timeAgo(f.createdAt) : '—'}
+                        </span>
+                      </div>
+
+                      {/* Engagement & Automation */}
+                      <div className="flex items-center gap-4 mt-2 mb-1 px-1">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-primary/80" title="Engagement metrics: number of people who have filled this form">
+                          <CheckCircle2 size={13} />
+                          {responseCountByFormId.get(f.id) || 0} filled
+                        </div>
+                      </div>
+
+                      {/* Default Submission Feature */}
+                      <div className="mt-3 p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 overflow-hidden">
+                            <span className="text-[10px] font-bold text-gray-900 uppercase tracking-tight truncate">Show after basic info</span>
+                            <button
+                              onClick={() => setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId })}
+                              className="shrink-0 size-4 rounded-full bg-gray-300 text-white hover:bg-gray-400 flex items-center justify-center transition-colors"
+                            >
+                              <Info size={10} />
+                            </button>
+                          </div>
+                          <p className="text-[9px] text-gray-500 leading-tight mt-0.5">Automate this form to show after lead capture</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const isCurrentlyDefault = getDefaultFormId(f.branchId) === f.id;
+                            if (isCurrentlyDefault) {
+                              clearDefaultForm(f.branchId);
+                              toast.success('Sequence automation disabled');
+                            } else {
+                              setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
+                            }
+                          }}
+                          className={`shrink-0 h-7 px-3 rounded-lg text-[10px] font-black uppercase transition-all ${getDefaultFormId(f.branchId) === f.id
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
+                            }`}
+                        >
+                          {getDefaultFormId(f.branchId) === f.id ? 'Enabled' : 'Enable'}
+                        </button>
+                      </div>
+
+                      {/* Date metadata */}
+                      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-4 text-xs text-gray-400">
+                        <span className="flex items-center gap-1" title={`Created: ${formatDateTime(f.createdAt)}`}>
+                          <Calendar size={12} />
+                          Created {formatDate(f.createdAt)}
+                        </span>
+                        {f.updatedAt && f.updatedAt !== f.createdAt && (
+                          <span title={`Updated: ${formatDateTime(f.updatedAt)}`}>
+                            · Updated {formatDate(f.updatedAt)}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Quick actions */}
+                      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-1">
+                        <button
+                          onClick={() => openShareExplainer('link', f.id, f.title)}
+                          className="flex-1 h-8 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 inline-flex items-center justify-center gap-1.5 transition-colors"
+                          title="Copy share link"
+                        >
+                          <Link2 size={14} />
+                          Link
+                        </button>
+                        <button
+                          onClick={() => openShareExplainer('qr', f.id, f.title)}
+                          className="flex-1 h-8 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 inline-flex items-center justify-center gap-1.5 transition-colors"
+                          title="Show QR code"
+                        >
+                          <QrCode size={14} />
+                          QR
+                        </button>
+                        <button
+                          onClick={() => openShareExplainer('messaging', f.id, f.title)}
+                          className="flex-1 h-8 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 inline-flex items-center justify-center gap-1.5 transition-colors"
+                          title="Send via messaging"
+                        >
+                          <Send size={14} />
+                          Send
+                        </button>
+                        <Link
+                          href={`/dashboard/settings/engagement/forms/${f.id}`}
+                          className="flex-1 h-8 rounded-lg text-xs font-medium text-primary bg-primary/5 hover:bg-primary/10 inline-flex items-center justify-center gap-1.5 transition-colors"
+                          title="Preview form"
+                        >
+                          <Eye size={14} />
+                          Preview
+                        </Link>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                );
+              })}
+            </div>
+          )}
 
-                <div className={isActiveForm(branchScope || 'global', f.id) ? '' : 'opacity-90'}>
-                  <h3 className="text-xl font-black text-slate-900">{f.title}</h3>
-                  <p className="text-xs text-slate-500 mt-1">{f.description || 'No description yet.'}</p>
-                  <p className="text-[11px] text-slate-400 mt-2">Branch: <span className="font-semibold text-slate-700">{branchNameById.get(f.branchId) || 'Unknown Branch'}</span></p>
-                </div>
-
-                <div className="mt-auto pt-5 border-t border-slate-100">
-                  <div className="flex items-center gap-2 mb-4">
-                    <button
-                      onClick={() => openShare(f.id, f.title)}
-                      className="relative group/tooltip p-2.5 rounded-lg bg-slate-50 text-slate-600 hover:bg-primary/10 hover:text-primary transition-colors"
-                      aria-label="Copy share link and show QR"
-                    >
-                      <Share2 size={18} />
-                      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 group-hover/tooltip:opacity-100 transition-opacity">
-                        Copy Share Link and Show QR
-                      </span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setDefaultForm(branchScope || 'global', f.id);
-                        toast.success('Default form updated');
-                      }}
-                      className="relative group/tooltip p-2.5 rounded-lg bg-slate-50 text-slate-600 hover:bg-primary/10 hover:text-primary transition-colors"
-                      aria-label={defaultFormId === f.id ? 'This is the default form' : 'Set as default form'}
-                    >
-                      <Star size={18} className={defaultFormId === f.id ? 'text-primary' : 'text-slate-500'} fill={defaultFormId === f.id ? 'currentColor' : 'none'} />
-                      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 group-hover/tooltip:opacity-100 transition-opacity">
-                        {defaultFormId === f.id ? 'Default Form (Current)' : 'Set as Default Form'}
-                      </span>
-                    </button>
-
-                    <button
-                      onClick={() => router.push(getMessagingUrl(f.id))}
-                      className="relative group/tooltip p-2.5 rounded-lg bg-slate-50 text-slate-600 hover:bg-primary/10 hover:text-primary transition-colors"
-                      aria-label="Share form in messaging"
-                    >
-                      <Send size={18} />
-                      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 group-hover/tooltip:opacity-100 transition-opacity">
-                        Share Form in Messaging
-                      </span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        const currentlyActive = isActiveForm(branchScope || 'global', f.id);
-                        toggleActiveForm(branchScope || 'global', f.id);
-                        toast.success(currentlyActive ? 'Removed from user-step buttons' : 'Added to user-step buttons');
-                      }}
-                      className={`relative group/tooltip p-2.5 rounded-lg transition-colors ${isActiveForm(branchScope || 'global', f.id) ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-50 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'}`}
-                      aria-label={isActiveForm(branchScope || 'global', f.id) ? 'Active in user-step buttons' : 'Toggle active in user-step buttons'}
-                    >
-                      <CheckCircle2 size={18} />
-                      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 group-hover/tooltip:opacity-100 transition-opacity">
-                        {isActiveForm(branchScope || 'global', f.id) ? 'Active in User Step' : 'Toggle Active in User Step'}
-                      </span>
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-end">
-                    <Link
-                      href={`/dashboard/settings/engagement/forms/${f.id}`}
-                      className="h-10 px-4 rounded-full border border-slate-200 text-xs font-black text-slate-600 inline-flex items-center justify-center hover:border-primary hover:text-primary transition-colors"
-                    >
-                      Preview Form
-                    </Link>
-                  </div>
-                </div>
+          {/* List View */}
+          {!formsLoading && filteredForms.length > 0 && formsViewType === 'list' && (
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+              <div className="hidden sm:grid grid-cols-12 gap-4 px-5 py-3 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <div className="col-span-3">Form</div>
+                <div className="col-span-2">Branch</div>
+                <div className="col-span-1">Status</div>
+                <div className="col-span-2">Engagement</div>
+                <div className="col-span-1">Created</div>
+                <div className="col-span-1">Updated</div>
+                <div className="col-span-2 text-right">Actions</div>
               </div>
-            ))}
-          </div>
+              <div className="divide-y divide-gray-100">
+                {filteredForms.map((f) => (
+                  <div key={f.id} className="grid grid-cols-1 sm:grid-cols-12 gap-4 px-5 py-4 items-center hover:bg-gray-50 transition-colors">
+                    <div className="sm:col-span-3 flex items-center gap-3 min-w-0">
+                      <div className="size-9 rounded-lg bg-primary/8 text-primary flex items-center justify-center shrink-0"><FileText size={18} /></div>
+                      <div className="min-w-0"><p className="text-sm font-semibold text-gray-900 truncate">{f.title}</p></div>
+                    </div>
+                    <div className="sm:col-span-2 text-xs text-gray-600 truncate">{branchNameById.get(f.branchId) || 'Unknown'}</div>
+                    <div className="sm:col-span-1">
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${statusBadgeOf(f).color}`}>
+                        <div className={`size-1.5 rounded-full ${statusBadgeOf(f).dot}`} />
+                        {statusBadgeOf(f).label}
+                      </span>
+                    </div>
+                    <div className="sm:col-span-2 text-xs text-primary/80 font-bold flex items-center gap-1.5">
+                      <CheckCircle2 size={13} />
+                      {responseCountByFormId.get(f.id) || 0} <span className="font-normal text-gray-400">filled</span>
+                    </div>
+                    <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(f.createdAt)}>{formatDate(f.createdAt)}</div>
+                    <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(f.updatedAt)}>{f.updatedAt ? timeAgo(f.updatedAt) : '—'}</div>
+                    <div className="sm:col-span-2 flex justify-end gap-1">
+                      <button
+                        onClick={() => {
+                          const isCurrentlyDefault = getDefaultFormId(f.branchId) === f.id;
+                          if (isCurrentlyDefault) {
+                            clearDefaultForm(f.branchId);
+                            toast.success('Sequence automation disabled');
+                          } else {
+                            setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
+                          }
+                        }}
+                        className={`size-8 rounded-lg flex items-center justify-center transition-colors ${getDefaultFormId(f.branchId) === f.id
+                          ? 'bg-primary/10 text-primary shadow-inner'
+                          : 'text-gray-400 hover:bg-gray-100'
+                          }`}
+                        title={getDefaultFormId(f.branchId) === f.id ? 'Disable Sequence' : 'Enable Sequence'}
+                      >
+                        <CheckCircle2 size={14} />
+                      </button>
+                      <button onClick={() => openShareExplainer('link', f.id, f.title)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Link2 size={14} /></button>
+                      <button onClick={() => openEdit(f)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Pencil size={14} /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -448,7 +797,7 @@ export default function EngagementFormsBuilderPage() {
                 <h3 className="text-lg font-black text-slate-900">{template.name}</h3>
                 <p className="text-sm text-slate-500">{template.description || 'No description'}</p>
                 <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">{template.fields?.length || 0} fields</p>
-                <button onClick={() => useTemplate(template.id)} className="w-full h-10 rounded-xl bg-primary text-white text-sm font-black">Use Template</button>
+                <button onClick={() => handleUseTemplate(template.id)} className="w-full h-10 rounded-xl bg-primary text-white text-sm font-black">Use Template</button>
               </div>
             ))}
           </div>
@@ -545,43 +894,142 @@ export default function EngagementFormsBuilderPage() {
         </section>
       )}
 
+      {/* ─── Share Explainer Modal ─── */}
+      {shareExplainer && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShareExplainer(null)}>
+          <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="size-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                {SHARE_EXPLAINERS[shareExplainer.method].icon}
+              </div>
+              <button onClick={() => setShareExplainer(null)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center"><X size={16} /></button>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">{SHARE_EXPLAINERS[shareExplainer.method].title}</h3>
+              <p className="text-sm text-gray-500 mt-2 leading-relaxed">{SHARE_EXPLAINERS[shareExplainer.method].description}</p>
+            </div>
+            <div className="rounded-xl bg-gray-50 px-4 py-3">
+              <p className="text-xs text-gray-500">Form being shared</p>
+              <p className="text-sm font-semibold text-gray-900 mt-0.5">{shareExplainer.formTitle}</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShareExplainer(null)} className="flex-1 h-10 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={() => handleShareAction(shareExplainer.method, shareExplainer.formId, shareExplainer.formTitle)} className="flex-1 h-10 rounded-xl bg-primary text-white text-sm font-semibold shadow-md shadow-primary/20 hover:shadow-lg transition-all">{SHARE_EXPLAINERS[shareExplainer.method].action}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── QR Code Modal ─── */}
       {shareForm && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white border border-slate-200 shadow-xl p-5 space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShareForm(null)}>
+          <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-widest text-slate-400">Form Share</p>
-                <h3 className="text-xl font-black text-slate-900">{shareForm.title}</h3>
-                <p className="text-xs text-slate-500 mt-1">Link copied. Share or let visitors scan the QR below.</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">QR Code</p>
+                <h3 className="text-lg font-semibold text-gray-900 mt-1">{shareForm.title}</h3>
+                <p className="text-xs text-gray-500 mt-1">Customers can scan this QR code to open the form.</p>
               </div>
-              <button onClick={() => setShareForm(null)} className="h-9 w-9 rounded-xl border border-slate-200 inline-flex items-center justify-center text-slate-500">
-                <X size={16} />
-              </button>
+              <button onClick={() => setShareForm(null)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center"><X size={16} /></button>
             </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 flex flex-col items-center gap-3">
-              <QRCodeCanvas value={shareForm.url} size={180} />
-              <p className="text-xs font-bold text-slate-700">Scan to open: {shareForm.title}</p>
+            <div className="rounded-2xl bg-gray-50 p-6 flex flex-col items-center gap-3">
+              <QRCodeCanvas value={shareForm.url} size={200} level="H" />
+              <p className="text-xs text-gray-500 text-center break-all max-w-[200px]">{shareForm.url}</p>
             </div>
+            <div className="flex gap-3">
+              <button onClick={() => downloadQrCode(shareForm.id, shareForm.title)} className="flex-1 h-10 rounded-xl bg-primary text-white text-sm font-semibold inline-flex items-center justify-center gap-2 shadow-md shadow-primary/20"><Download size={16} /> Download</button>
+              <button onClick={async () => { await navigator.clipboard.writeText(shareForm.url); toast.success('Link copied!'); }} className="flex-1 h-10 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 inline-flex items-center justify-center gap-2 hover:bg-gray-50"><Copy size={16} /> Copy Link</button>
+            </div>
+          </div>
+        </div>
+      )}
 
-            <div className="space-y-2">
-              <button
-                onClick={() => downloadQrCode(shareForm.id, shareForm.title)}
-                className="w-full h-11 rounded-xl bg-primary text-white text-sm font-black inline-flex items-center justify-center gap-2"
-              >
-                <Download size={16} />
-                Download QR (named)
-              </button>
-              <button
-                onClick={async () => {
-                  await navigator.clipboard.writeText(shareForm.url);
-                  toast.success('Link copied');
-                }}
-                className="w-full h-11 rounded-xl border border-slate-300 text-sm font-black text-slate-700 inline-flex items-center justify-center gap-2"
-              >
-                <Link2 size={16} />
-                Copy Link Again
-              </button>
+      {/* ─── Delete Confirmation Modal ─── */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setDeleteConfirm(null)}>
+          <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="size-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center"><Trash2 size={24} /></div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Delete form?</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                <strong>&quot;{deleteConfirm.title}&quot;</strong> will be permanently deleted. This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 h-10 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={() => { deleteMutation.mutate({ id: deleteConfirm.id, branchId: deleteConfirm.branchId }); setDeleteConfirm(null); toast.success('Form deleted'); }} className="flex-1 h-10 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors">Delete Form</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ─── Default Form Explainer Modal ─── */}
+      {defaultFormExplainer && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 transition-all" onClick={() => setDefaultFormExplainer(null)}>
+          <div
+            className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="h-1.5 bg-primary" />
+            <div className="p-6 space-y-6">
+              <div className="flex items-start justify-between">
+                <div className="size-12 rounded-xl bg-primary/8 text-primary flex items-center justify-center">
+                  <LayoutList size={24} />
+                </div>
+                <button
+                  onClick={() => setDefaultFormExplainer(null)}
+                  className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-black text-gray-900 leading-tight">Sequence Automation</h3>
+                <p className="text-sm text-gray-500 mt-2">Display this form after initial customer submission.</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="shrink-0 size-6 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs font-bold">1</div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">Basic Info First</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Customers scan NFC and submit basic details (Name, Phone, etc.).</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="shrink-0 size-6 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs font-bold">2</div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">Then: "{defaultFormExplainer.title}"</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Once they hit submit, this specific form will appear automatically to collect deeper feedback.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 flex gap-3">
+                <Info size={16} className="text-primary shrink-0 mt-0.5" />
+                <div className="text-xs text-primary/80 leading-relaxed">
+                  <strong>When enabled:</strong> This form will display to customers immediately after they complete the default submission. In messaging platforms, it will display within the messaging context.
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDefaultFormExplainer(null)}
+                  className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setDefaultForm(defaultFormExplainer.branchId, defaultFormExplainer.id);
+                    setDefaultFormExplainer(null);
+                    toast.success('Sequence automation enabled!');
+                  }}
+                  className="flex-3 h-11 rounded-xl bg-primary text-white text-sm font-black hover:bg-primary/90 transition-shadow shadow-md shadow-primary/20"
+                >
+                  Enable Automation
+                </button>
+              </div>
             </div>
           </div>
         </div>
