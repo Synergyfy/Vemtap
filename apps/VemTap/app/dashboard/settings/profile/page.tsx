@@ -10,7 +10,8 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { BusinessHours } from '@/services/businesses/types';
 import { Loader2, Lock, Info } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
-import { useUpdateBranch } from '@/services/branches/hooks';
+import { useUpdateBranch,useBranch } from '@/services/branches/hooks';
+import { useCategories,useSubcategories } from '@/services/categories/hooks';
 import { fetchDevices } from '@/lib/api/devices';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
@@ -203,7 +204,7 @@ export default function BusinessProfilePage() {
             setShowSocial(branch.showSocial ?? true);
             setShowFeedback(branch.showFeedback ?? true);
         }
-    }, [business, storeName, logoUrl, origin, profileSlug, publicProfileUrl]);
+    }, [business, storeName, logo, origin, profileSlug, publicProfileUrl]);
 
     useEffect(() => {
         const loadDeviceCode = async () => {
