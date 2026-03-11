@@ -436,24 +436,34 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                                 </button>
                                                                                 {expandedMenus.includes(nestedItem.id) && !isNestedLocked && (
                                                                                     <div className="mt-1 ml-3 space-y-1 border-l border-gray-100">
-                                                                                        {nestedItem.submenu.map((deepItem: any) => (
-                                                                                            <Link
-                                                                                                key={deepItem.href}
-                                                                                                href={getLinkWithBranch(deepItem.href)}
-                                                                                                onClick={(e) => {
-                                                                                                    if (deepItem.feature && isFeatureLocked(deepItem.feature)) {
-                                                                                                        e.preventDefault();
-                                                                                                        setUpgradeModal({ isOpen: true, featureName: deepItem.featureName || deepItem.label });
-                                                                                                    }
-                                                                                                }}
-                                                                                                className={`flex items-center justify-between px-3 py-1 rounded-lg text-[10px] font-medium transition-colors ${isActive(deepItem.href)
-                                                                                                    ? 'text-primary border-l-2 border-primary -ml-px'
-                                                                                                    : 'text-text-secondary hover:text-text-main'
-                                                                                                    }`}
-                                                                                            >
-                                                                                                <span>{deepItem.label}</span>
-                                                                                                {deepItem.feature && isFeatureLocked(deepItem.feature) && <Lock size={10} className="text-text-secondary" />}
-                                                                                            </Link>
+                                                                                        {nestedItem.submenu.map((deepItem: any, dIdx: number) => (
+                                                                                            deepItem.href ? (
+                                                                                                <Link
+                                                                                                    key={deepItem.href}
+                                                                                                    href={getLinkWithBranch(deepItem.href)}
+                                                                                                    onClick={(e) => {
+                                                                                                        if (deepItem.feature && isFeatureLocked(deepItem.feature)) {
+                                                                                                            e.preventDefault();
+                                                                                                            setUpgradeModal({ isOpen: true, featureName: deepItem.featureName || deepItem.label });
+                                                                                                        }
+                                                                                                    }}
+                                                                                                    className={`flex items-center justify-between px-3 py-1 rounded-lg text-[10px] font-medium transition-colors ${isActive(deepItem.href)
+                                                                                                        ? 'text-primary border-l-2 border-primary -ml-px'
+                                                                                                        : 'text-text-secondary hover:text-text-main'
+                                                                                                        }`}
+                                                                                                >
+                                                                                                    <span>{deepItem.label}</span>
+                                                                                                    {deepItem.feature && isFeatureLocked(deepItem.feature) && <Lock size={10} className="text-text-secondary" />}
+                                                                                                </Link>
+                                                                                            ) : (
+                                                                                                <span
+                                                                                                    key={`${deepItem.label}-${dIdx}`}
+                                                                                                    className="flex items-center justify-between px-3 py-1 rounded-lg text-[10px] font-medium text-text-secondary"
+                                                                                                >
+                                                                                                    <span>{deepItem.label}</span>
+                                                                                                    {deepItem.feature && isFeatureLocked(deepItem.feature) && <Lock size={10} className="text-text-secondary" />}
+                                                                                                </span>
+                                                                                            )
                                                                                         ))}
                                                                                     </div>
                                                                                 )}
@@ -490,22 +500,32 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                             )}
                                                         </div>
                                                     ) : (
-                                                        <Link
-                                                            key={subItem.href}
-                                                            href={getLinkWithBranch(subItem.href)}
-                                                            onClick={(e) => {
-                                                                setIsMobileOpen(false);
-                                                                if (subItem.feature && isFeatureLocked(subItem.feature)) {
-                                                                    e.preventDefault();
-                                                                    setUpgradeModal({ isOpen: true, featureName: subItem.featureName || subItem.label });
-                                                                }
-                                                            }}
-                                                            className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(subItem.href))
-                                                                }`}
-                                                        >
-                                                            <span>{subItem.label}</span>
-                                                            {subItem.feature && isFeatureLocked(subItem.feature) && <Lock size={12} className="text-text-secondary" />}
-                                                        </Link>
+                                                        subItem.href ? (
+                                                            <Link
+                                                                key={subItem.href}
+                                                                href={getLinkWithBranch(subItem.href)}
+                                                                onClick={(e) => {
+                                                                    setIsMobileOpen(false);
+                                                                    if (subItem.feature && isFeatureLocked(subItem.feature)) {
+                                                                        e.preventDefault();
+                                                                        setUpgradeModal({ isOpen: true, featureName: subItem.featureName || subItem.label });
+                                                                    }
+                                                                }}
+                                                                className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(subItem.href))
+                                                                    }`}
+                                                            >
+                                                                <span>{subItem.label}</span>
+                                                                {subItem.feature && isFeatureLocked(subItem.feature) && <Lock size={12} className="text-text-secondary" />}
+                                                            </Link>
+                                                        ) : (
+                                                            <span
+                                                                key={`${subItem.label}-${idx}`}
+                                                                className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black text-text-secondary"
+                                                            >
+                                                                <span>{subItem.label}</span>
+                                                                {subItem.feature && isFeatureLocked(subItem.feature) && <Lock size={12} className="text-text-secondary" />}
+                                                            </span>
+                                                        )
                                                     );
                                                 })}
                                             </div>
