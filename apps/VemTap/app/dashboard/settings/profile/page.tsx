@@ -329,6 +329,21 @@ export default function BusinessProfilePage() {
                 }
             />
 
+            {isAllBranches && (
+                <div className="mb-8 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-4 animate-in fade-in slide-in-from-top-2 duration-500">
+                    <div className="size-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                        <span className="material-icons-round text-amber-600">info</span>
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-bold text-amber-900">Viewing All Locations</h4>
+                        <p className="text-xs text-amber-800/80 leading-relaxed mt-1">
+                            You are currently in aggregate mode. You can only edit <strong>General Business Info</strong>, <strong>Socials</strong>, and <strong>Documents</strong> here. 
+                            To edit location-specific settings like Schedule, Messaging, or Rewards, please <strong>select a specific branch</strong> from the header.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <div className="relative mb-8">
                 <div className="absolute left-0 top-0 bottom-2 z-10">
                     <button 
@@ -648,9 +663,12 @@ export default function BusinessProfilePage() {
                 )}
 
                 {activeTab === 'schedule' && (
-                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div className={`bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm transition-all ${isAllBranches ? 'opacity-50 pointer-events-none grayscale-[0.5]' : ''}`}>
                         <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Business Hours</h3>
+                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight flex items-center gap-2">
+                                Business Hours
+                                {isAllBranches && <span className="material-icons-round text-amber-500 text-sm">lock</span>}
+                            </h3>
                             <p className="text-xs text-text-secondary font-medium">Set your operating hours for each day</p>
                         </div>
                         <div className="p-8 space-y-4">
@@ -710,9 +728,12 @@ export default function BusinessProfilePage() {
                 )}
 
                 {activeTab === 'messaging' && (
-                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div className={`bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm transition-all ${isAllBranches ? 'opacity-50 pointer-events-none grayscale-[0.5]' : ''}`}>
                         <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Customer Messages</h3>
+                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight flex items-center gap-2">
+                                Customer Messages
+                                {isAllBranches && <span className="material-icons-round text-amber-500 text-sm">lock</span>}
+                            </h3>
                             <p className="text-xs text-text-secondary font-medium">Customize messages shown to customers during check-in</p>
                         </div>
                         <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -854,9 +875,12 @@ export default function BusinessProfilePage() {
                 )}
 
                 {activeTab === 'visibility' && (
-                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div className={`bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm transition-all ${isAllBranches ? 'opacity-50 pointer-events-none grayscale-[0.5]' : ''}`}>
                         <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Display Settings</h3>
+                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight flex items-center gap-2">
+                                Display Settings
+                                {isAllBranches && <span className="material-icons-round text-amber-500 text-sm">lock</span>}
+                            </h3>
                             <p className="text-xs text-text-secondary font-medium">Control what customers see on your profile</p>
                         </div>
                         <div className="p-8 space-y-4">
@@ -902,9 +926,12 @@ export default function BusinessProfilePage() {
                 )}
 
                 {activeTab === 'rewards' && (
-                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div className={`bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm transition-all ${isAllBranches ? 'opacity-50 pointer-events-none grayscale-[0.5]' : ''}`}>
                         <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Reward Settings</h3>
+                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight flex items-center gap-2">
+                                Reward Settings
+                                {isAllBranches && <span className="material-icons-round text-amber-500 text-sm">lock</span>}
+                            </h3>
                             <p className="text-xs text-text-secondary font-medium">Set up loyalty rewards for your customers</p>
                         </div>
                         <div className="p-8 space-y-6">
