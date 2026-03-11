@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import AuthSidePanel from '@/components/auth/AuthSidePanel';
@@ -13,11 +13,53 @@ import { sanitizeFormData } from '@/lib/utils/sanitize';
 import { useRegisterOwner, useOtp, useRegister } from '@/services/auth/hooks';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPricingPlans } from '@/lib/api/pricing';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2, ChevronDown } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { useCategories } from '@/services/categories/hooks';
 
-export default function GetStarted() {    const { registerOwner, requestOwnerOtp, isLoading: isRegistering } = useRegisterOwner();
+// Comprehensive Nigerian States and Cities Data
+const statesData: Record<string, string[]> = {
+    'Abia': ['Aba', 'Umuahia', 'Ohafia', 'Arochukwu', 'Bende'],
+    'Adamawa': ['Yola', 'Mubi', 'Numan', 'Jimeta', 'Michika'],
+    'Akwa Ibom': ['Uyo', 'Eket', 'Ikot Ekpene', 'Oron', 'Ibeno'],
+    'Anambra': ['Awka', 'Onitsha', 'Nnewi', 'Ekwulobia', 'Aguata'],
+    'Bauchi': ['Bauchi', 'Azare', 'Misau', 'Jama\'are', 'Katagum'],
+    'Bayelsa': ['Yenagoa', 'Brass', 'Ogbia', 'Sagbama', 'Ekeremor'],
+    'Benue': ['Makurdi', 'Gboko', 'Otukpo', 'Katsina-Ala', 'Zaki Biam'],
+    'Borno': ['Maiduguri', 'Biu', 'Bama', 'Gwoza', 'Dikwa'],
+    'Cross River': ['Calabar', 'Akamkpa', 'Ikom', 'Obudu', 'Ogoja'],
+    'Delta': ['Asaba', 'Warri', 'Sapele', 'Agbor', 'Ughelli', 'Ogwashi-Uku'],
+    'Ebonyi': ['Abakaliki', 'Afikpo', 'Onueke', 'Edda', 'Effium'],
+    'Edo': ['Benin City', 'Auchi', 'Uromi', 'Ekpoma', 'Igarra'],
+    'Ekiti': ['Ado-Ekiti', 'Ikere', 'Oye', 'Ikole', 'Emure'],
+    'Enugu': ['Enugu City', 'Nsukka', 'Agbani', 'Awgu', 'Udi'],
+    'FCT - Abuja': ['Garki', 'Wuse', 'Maitama', 'Asokoro', 'Gwarinpa', 'Kubwa', 'Jabi', 'Kuje', 'Lugbe'],
+    'Gombe': ['Bauchi', 'Gombe', 'Kumo', 'Billiri', 'Dukku'],
+    'Imo': ['Owerri', 'Orlu', 'Okigwe', 'Oguta', 'Mbaise'],
+    'Jigawa': ['Dutse', 'Hadejia', 'Gumel', 'Birnin Kudu', 'Kazaure'],
+    'Kaduna': ['Kaduna City', 'Zaria', 'Kafanchan', 'Kagoro', 'Zonkwa'],
+    'Kano': ['Kano City', 'Wudil', 'Gwarzo', 'Bichi', 'Gaya'],
+    'Katsina': ['Katsina', 'Daura', 'Funtua', 'Malumfashi', 'Dutsin-Ma'],
+    'Kebbi': ['Birnin Kebbi', 'Argungu', 'Yauri', 'Zuru', 'Bunza'],
+    'Kogi': ['Lokoja', 'Okene', 'Idah', 'Anyigba', 'Kabba'],
+    'Kwara': ['Ilorin', 'Offa', 'Oro', 'Omu-Aran', 'Lafiagi'],
+    'Lagos': ['Ikeja', 'Lekki', 'Victoria Island', 'Surulere', 'Yaba', 'Ajah', 'Ikorodu', 'Epe', 'Badagry', 'Oshodi'],
+    'Nasarawa': ['Lafia', 'Keffi', 'Akwanga', 'Nasarawa', 'Karu'],
+    'Niger': ['Minna', 'Bida', 'Kontagora', 'Suleja', 'Lapai'],
+    'Ogun': ['Abeokuta', 'Ijebu Ode', 'Sango Ota', 'Ilaro', 'Sagamu'],
+    'Ondo': ['Akure', 'Ondo Town', 'Owo', 'Okitipupa', 'Ikare'],
+    'Osun': ['Osogbo', 'Ife', 'Ilesa', 'Iwo', 'Ede'],
+    'Oyo': ['Ibadan', 'Ogbomosho', 'Oyo Town', 'Iseyin', 'Saki'],
+    'Plateau': ['Jos', 'Bukuru', 'Panyam', 'Shendam', 'Barkin Ladi'],
+    'Rivers': ['Port Harcourt', 'Obio-Akpor', 'Eleme', 'Oyigbo', 'Bonny', 'Degema'],
+    'Sokoto': ['Birnin Sokoto', 'Gwadabawa', 'Bodinga', 'Wurno'],
+    'Taraba': ['Jalingo', 'Wukari', 'Bali', 'Gembu', 'Mutum Biyu'],
+    'Yobe': ['Damaturu', 'Potiskum', 'Gashua', 'Nguru'],
+    'Zamfara': ['Gusau', 'Kaura Namoda', 'Talata Mafara', 'Gummi']
+};
+
+export default function GetStarted() {
+    const { registerOwner, requestOwnerOtp, isLoading: isRegistering } = useRegisterOwner();
     const { registerUser, isLoading: isRegisteringGeneric } = useRegister();
     const { sendOtp, verifyOtp, isLoading: isOtpLoading } = useOtp();
     const router = useRouter();
@@ -72,20 +114,6 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
 
     const goals = ['Capture Leads', 'Automated Rewards', 'Customer Feedback', 'Digital Loyalty'];
 
-    const statesData: Record<string, string[]> = {
-        'Lagos': ['Ikeja', 'Lekki', 'Victoria Island', 'Surulere', 'Yaba', 'Ajah', 'Ikorodu', 'Epe'],
-        'Abuja (FCT)': ['Garki', 'Wuse', 'Maitama', 'Asokoro', 'Gwarinpa', 'Kubwa', 'Jabi'],
-        'Rivers': ['Port Harcourt', 'Obio-Akpor', 'Eleme', 'Oyigbo'],
-        'Oyo': ['Ibadan', 'Ogbomosho', 'Oyo Town', 'Iseyin'],
-        'Kano': ['Kano City', 'Wudil', 'Gwarzo'],
-        'Ogun': ['Abeokuta', 'Ijebu Ode', 'Sango Ota', 'Ilaro'],
-        'Edo': ['Benin City', 'Auchi', 'Ekpoma'],
-        'Delta': ['Warri', 'Asaba', 'Sapele', 'Agbor'],
-        'Enugu': ['Enugu City', 'Nsukka'],
-        'Kaduna': ['Kaduna City', 'Zaria'],
-        'Anambra': ['Awka', 'Onitsha', 'Nnewi']
-    };
-
     const isManager = formData.selectedRole === 'Manager';
     const maxSubStep = isManager ? 3 : 8;
 
@@ -103,7 +131,7 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
     const prevStep = () => {
         if (step === 5) {
             setStep(3);
-            setSubStep(8);
+            setSubStep(maxSubStep);
         } else if (step === 3 && subStep > 1) {
             setSubStep(prev => prev - 1);
         } else {
@@ -206,7 +234,6 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
             let businessLogoUrl = cleanData.businessLogo;
 
             if (!isManager) {
-                // Upload business logo
                 if (cleanData.businessLogo && cleanData.businessLogo.startsWith('data:image')) {
                     const uploadToast = toast.loading('Uploading business logo...');
                     try {
@@ -222,7 +249,6 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
 
 
             if (isManager) {
-                // Manager flow: POST /auth/register with role=Manager and businessId
                 const payload = {
                     firstName: cleanData.firstName,
                     lastName: cleanData.lastName,
@@ -233,24 +259,16 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                 };
                 response = await registerUser(payload);
             } else {
-                // Owner flow: POST /auth/register/owner (creates business)
-                // Resolve Category IDs from backend data
-                const selectedCategory = categories.find((c: any) => c.name === cleanData.category);
-                const selectedSubcategory = selectedCategory?.subcategories?.find((s: any) => s.name === formData.subcategory);
-
-                if (!selectedCategory || (!selectedSubcategory && formData.subcategory !== 'Others')) {
-                    toast.error('Please select a valid category and subcategory.');
-                    setIsLoading(false);
-                    return;
-                }
+                const selectedCategory = categories.find((c: any) => c.id === formData.categoryId);
+                const selectedSubcategory = selectedCategory?.subcategories?.find((s: any) => s.id === formData.subcategoryId);
 
                 const payload = {
                     email: cleanData.email,
                     password: formData.password,
                     businessName: cleanData.businessName,
                     businessLogo: businessLogoUrl || undefined,
-                    categoryId: selectedCategory.id,
-                    subcategoryId: selectedSubcategory?.id || selectedCategory.subcategories?.find((s: any) => s.name === 'Others')?.id || '',
+                    categoryId: formData.categoryId,
+                    subcategoryId: formData.subcategoryId || '',
                     otherSubcategoryName: formData.subcategory === 'Others' ? (cleanData as any).otherSubcategoryName : undefined,
                     visitors: cleanData.visitors || undefined,
                     goals: cleanData.goals && cleanData.goals.length > 0 ? cleanData.goals : undefined,
@@ -290,13 +308,11 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
 
     return (
         <div className="h-screen bg-white flex overflow-hidden font-sans">
-            {/* Left Side: Form */}
             <div className="w-full lg:w-1/2 flex flex-col overflow-y-auto">
                 <div className="p-8 md:p-16 lg:p-24">
                     <Logo className="flex items-center gap-3" />
 
                     <div className="max-w-md w-full mx-auto lg:mx-0">
-                        {/* Progress Bar */}
                         <div className="flex gap-1.5 mb-12">
                             {[1, 2, 3, 5, 6].map(s => {
                                 let progress = 0;
@@ -467,7 +483,7 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                                         const otpArr = formData.otp.split('');
                                                         while (otpArr.length < 4) otpArr.push('');
                                                         otpArr[index] = val;
-                                                        setFormData({ ...formData, otp: otpArr.join('').replace(/\s/g, '') });
+                                                        setFormData({ ...formData, otp: otpArr.join('').replace(/\s+/g, '') });
                                                         if (val && index < 3) {
                                                             document.getElementById(`otp-${index + 1}`)?.focus();
                                                         }
@@ -525,15 +541,16 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                 >
                                     <div>
                                         <h1 className="text-2xl font-display font-bold text-text-main mb-2 leading-tight tracking-tight">
-                                            {subStep === 3 && "Business Locations / Branch"}
+                                            {subStep === 3 && "Business Industry"}
+                                            {subStep === 4 && "Business Locations / Branch"}
                                             {subStep === 7 && "What are your goals?"}
                                             {subStep === 8 && "Vital Business Info"}
                                         </h1>
                                         <p className="text-[13px] text-text-secondary font-medium leading-relaxed">
                                             {subStep === 1 && "Start with the name customers know you by."}
                                             {subStep === 2 && "Upload your logo to personalize your dashboard and customer tags."}
-                                            {subStep === 3 && "How many business locations/branches do you have?"}
-                                            {subStep === 4 && "Select the category that best fits your business."}
+                                            {subStep === 3 && "Select the category that best fits your business."}
+                                            {subStep === 4 && "Enter the total number of locations your business operates from."}
                                             {subStep === 5 && "Important for campaign communications and support."}
                                             {subStep === 6 && "This helps us optimize your experience for your footfall volume."}
                                             {subStep === 7 && "Tell us what you want to achieve with VemTap."}
@@ -634,23 +651,6 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                         )}
 
                                         {subStep === 3 && !isManager && (
-                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">How many business locations/branches do you have?</label>
-                                                <p className="text-[11px] text-gray-500 ml-1 mb-2">Enter the total number of locations your business operates from, including your main location.</p>
-                                                <SanitizedInput
-                                                    label=""
-                                                    type="number"
-                                                    value={formData.branchCount}
-                                                    onChange={(v) => setFormData({ ...formData, branchCount: v })}
-                                                    icon="store"
-                                                    placeholder="e.g. 1"
-                                                    required
-                                                />
-                                            </motion.div>
-                                        )}
-
-
-                                        {subStep === 4 && !isManager && (
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                                                 <div className="space-y-3">
                                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Business Category</label>
@@ -659,27 +659,30 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                                             <Loader2 size={24} className="animate-spin text-primary" />
                                                         </div>
                                                     ) : (
-<select
-                                                            value={formData.categoryId}
-                                                            onChange={(e) => {
-                                                                const selected = categories.find((c: any) => c.id === e.target.value);
-                                                                setFormData({ ...formData, categoryId: e.target.value, category: selected?.name || '', subcategory: '', subcategoryId: '' });
-                                                            }}
-                                                            className="w-full h-14 bg-gray-50 border border-gray-100 rounded-xl px-4 text-sm font-bold text-text-main focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
-                                                        >
-                                                            <option value="">Select Category</option>
-                                                            {categories.map((c: any) => (
-                                                                <option key={c.id} value={c.id}>{c.name}</option>
-                                                            ))}
-                                                        </select>
+                                                        <div className="relative">
+                                                            <select
+                                                                value={formData.categoryId}
+                                                                onChange={(e) => {
+                                                                    const selected = categories.find((c: any) => c.id === e.target.value);
+                                                                    setFormData({ ...formData, categoryId: e.target.value, category: selected?.name || '', subcategory: '', subcategoryId: '' });
+                                                                }}
+                                                                className="w-full h-14 bg-gray-50 border border-gray-100 rounded-xl px-4 text-sm font-bold text-text-main focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
+                                                            >
+                                                                <option value="">Select Category</option>
+                                                                {categories.map((c: any) => (
+                                                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                                                ))}
+                                                            </select>
+                                                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" size={18} />
+                                                        </div>
                                                     )}
                                                 </div>
 
 
                                                 <AnimatePresence mode="wait">
-                                                    {formData.category && (
+                                                    {formData.categoryId && (
                                                         <motion.div
-                                                            key={formData.category}
+                                                            key={formData.categoryId}
                                                             initial={{ opacity: 0, height: 0 }}
                                                             animate={{ opacity: 1, height: 'auto' }}
                                                             exit={{ opacity: 0, height: 0 }}
@@ -689,29 +692,33 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                                                 <div className="shrink-0">
                                                                     <span className="material-icons-round text-blue-500 text-lg">info</span>
                                                                 </div>
-<p className="text-xs text-blue-800 font-medium leading-relaxed italic">
+                                                                <p className="text-xs text-blue-800 font-medium leading-relaxed italic">
                                                                     {categories.find((c: any) => c.id === formData.categoryId)?.description}
                                                                 </p>
                                                             </div>
 
                                                             <div className="space-y-3">
                                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Select Subcategory</label>
-                                                                <select
-                                                                    value={formData.subcategoryId}
-                                                                    onChange={(e) => {
-                                                                        const selected = categories.find((c: any) => c.id === formData.categoryId)?.subcategories?.find((s: any) => s.id === e.target.value);
-                                                                        setFormData({ ...formData, subcategoryId: e.target.value, subcategory: selected?.name || '' });
-                                                                    }}
-                                                                    className="w-full h-14 bg-white border border-gray-100 rounded-xl px-4 text-sm font-bold text-text-main focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
-                                                                >
-                                                                    <option value="">Select Subcategory</option>
-                                                                    {categories.find((c: any) => c.id === formData.categoryId)?.subcategories?.map((sub: any) => (
-                                                                        <option key={sub.id} value={sub.id}>{sub.name}</option>
-                                                                    ))}
-                                                                </select>
+                                                                <div className="relative">
+                                                                    <select
+                                                                        value={formData.subcategoryId}
+                                                                        onChange={(e) => {
+                                                                            const selected = categories.find((c: any) => c.id === formData.categoryId)?.subcategories?.find((s: any) => s.id === e.target.value);
+                                                                            setFormData({ ...formData, subcategoryId: e.target.value, subcategory: selected?.name || '' });
+                                                                        }}
+                                                                        className="w-full h-14 bg-white border border-gray-100 rounded-xl px-4 text-sm font-bold text-text-main focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
+                                                                    >
+                                                                        <option value="">Select Subcategory</option>
+                                                                        {categories.find((c: any) => c.id === formData.categoryId)?.subcategories?.map((sub: any) => (
+                                                                            <option key={sub.id} value={sub.id}>{sub.name}</option>
+                                                                        ))}
+                                                                        <option value="other">Others</option>
+                                                                    </select>
+                                                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" size={18} />
+                                                                </div>
                                                             </div>
 
-                                                            {formData.subcategory === 'Others' && (
+                                                            {formData.subcategoryId === 'other' && (
                                                                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                                                                     <SanitizedInput
                                                                         label="Specify Your Business Type"
@@ -730,7 +737,24 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                             </motion.div>
                                         )}
 
-{subStep === 5 && !isManager && (
+                                        {subStep === 4 && !isManager && (
+                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Number of Business Locations</label>
+                                                <p className="text-[11px] text-gray-500 ml-1 mb-2">Include your main location.</p>
+                                                <SanitizedInput
+                                                    label=""
+                                                    type="number"
+                                                    value={formData.branchCount}
+                                                    onChange={(v) => setFormData({ ...formData, branchCount: v })}
+                                                    icon="store"
+                                                    placeholder="e.g. 1"
+                                                    required
+                                                />
+                                            </motion.div>
+                                        )}
+
+
+                                        {subStep === 5 && !isManager && (
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                                                 <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex flex-col gap-3">
                                                     <p className="text-xs text-blue-800 font-bold">Use the same email and phone number from your account registration?</p>
@@ -850,30 +874,36 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="space-y-1.5">
                                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">State</label>
-                                                        <select
-                                                            value={formData.state}
-                                                            onChange={(e) => setFormData({ ...formData, state: e.target.value, city: '' })}
-                                                            className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 text-xs font-bold text-text-main focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none"
-                                                        >
-                                                            <option value="">Select State</option>
-                                                            {Object.keys(statesData).sort().map(s => (
-                                                                <option key={s} value={s}>{s}</option>
-                                                            ))}
-                                                        </select>
+                                                        <div className="relative">
+                                                            <select
+                                                                value={formData.state}
+                                                                onChange={(e) => setFormData({ ...formData, state: e.target.value, city: '' })}
+                                                                className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 text-xs font-bold text-text-main focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none cursor-pointer"
+                                                            >
+                                                                <option value="">Select State</option>
+                                                                {Object.keys(statesData).sort().map(s => (
+                                                                    <option key={s} value={s}>{s}</option>
+                                                                ))}
+                                                            </select>
+                                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" size={14} />
+                                                        </div>
                                                     </div>
                                                     <div className="space-y-1.5">
                                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">City</label>
-                                                        <select
-                                                            value={formData.city}
-                                                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                                            disabled={!formData.state}
-                                                            className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 text-xs font-bold text-text-main focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none disabled:opacity-50"
-                                                        >
-                                                            <option value="">Select City</option>
-                                                            {formData.state && statesData[formData.state]?.sort().map(c => (
-                                                                <option key={c} value={c}>{c}</option>
-                                                            ))}
-                                                        </select>
+                                                        <div className="relative">
+                                                            <select
+                                                                value={formData.city}
+                                                                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                                                disabled={!formData.state}
+                                                                className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 text-xs font-bold text-text-main focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none disabled:opacity-50 cursor-pointer"
+                                                            >
+                                                                <option value="">Select City</option>
+                                                                {formData.state && statesData[formData.state]?.sort().map(c => (
+                                                                    <option key={c} value={c}>{c}</option>
+                                                                ))}
+                                                            </select>
+                                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" size={14} />
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <SanitizedInput
@@ -896,8 +926,8 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                                 disabled={
                                                     (subStep === 1 && !formData.businessName) ||
                                                     (subStep === 3 && isManager && !formData.businessId) ||
-                                                    (!isManager && subStep === 3 && !formData.branchCount) ||
-                                                    (!isManager && subStep === 4 && !formData.category) ||
+                                                    (!isManager && subStep === 3 && !formData.categoryId) ||
+                                                    (!isManager && subStep === 4 && !formData.branchCount) ||
                                                     (!isManager && subStep === 5 && (!formData.whatsappNumber?.trim() || !formData.officialEmail?.trim())) ||
                                                     (!isManager && subStep === 6 && !formData.visitors) ||
                                                     (!isManager && subStep === 7 && formData.goals.length === 0) ||
@@ -905,7 +935,7 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                                 }
                                                 className="flex-1 h-12 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all text-sm disabled:opacity-50"
                                             >
-                                                {subStep === maxSubStep ? (isManager ? "Review Your Application" : "Review Your Application") : "Next Question"}
+                                                {subStep === maxSubStep ? "Review Your Application" : "Next Question"}
                                             </button>
                                         </div>
                                     </div>
@@ -936,7 +966,9 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                             </div>
                                             <div>
                                                 <h3 className="font-bold text-text-main">{formData.businessName}</h3>
-                                                <p className="text-[10px] font-black text-primary uppercase tracking-wider">{formData.category}</p>
+                                                <p className="text-[10px] font-black text-primary uppercase tracking-wider">
+                                                    {categories.find((c: any) => c.id === formData.categoryId)?.name}
+                                                </p>
                                             </div>
                                         </div>
 
@@ -1069,8 +1101,6 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                                                             if (plan.id === 'free') {
                                                                 toast.success('Joined Free Plan!');
                                                             } else {
-                                                                // For other plans, we'll set it and redirect to dashboard billing
-                                                                // in a real app this would go to Stripe/Paystack
                                                                 toast.success(`Selected ${plan.name}`);
                                                             }
                                                             router.push('/dashboard');
@@ -1101,7 +1131,6 @@ export default function GetStarted() {    const { registerOwner, requestOwnerOtp
                 </div>
             </div>
 
-            {/* Right Side: Mockup Image */}
             <div className="hidden lg:block lg:w-1/2 relative overflow-hidden h-screen">
                 <AuthSidePanel
                     features={
