@@ -23,6 +23,13 @@ export default function BranchSwitcher() {
 
     const activeBranch = branches.find(b => b.id === activeBranchId);
 
+    // Auto-resolve single branch if none selected
+    useEffect(() => {
+        if (!isLoading && branches.length === 1 && !activeBranchId) {
+            setActiveBranch(branches[0].id);
+        }
+    }, [branches, activeBranchId, setActiveBranch, isLoading]);
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
