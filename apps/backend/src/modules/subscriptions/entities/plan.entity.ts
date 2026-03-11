@@ -28,6 +28,9 @@ export class Plan extends AbstractBaseEntity {
   @Column('text', { array: true, default: [] })
   features: string[];
 
+  @Column({ default: false })
+  messagingEnabled: boolean;
+
   @Column({ type: 'int', default: 0 })
   smsCredits: number;
 
@@ -38,14 +41,26 @@ export class Plan extends AbstractBaseEntity {
   whatsappCredits: number;
 
   // Feature Limits (-1 or null will imply unlimited natively but let's just stick to -1 as unlimited or use nullable)
+  @Column({ default: false })
+  teamMembersEnabled: boolean;
+
   @Column({ type: 'int', nullable: true })
   teamMembersLimit: number | null;
 
   @Column({ type: 'int', nullable: true })
   loyaltyLimit: number | null;
 
+  @Column({ default: false })
+  loyaltyEnabled: boolean;
+
+  @Column({ default: false })
+  branchesEnabled: boolean;
+
   @Column({ type: 'int', default: 1 })
   branchLimit: number;
+
+  @Column({ default: false })
+  analyticsEnabled: boolean;
 
   @Column({ default: 'basic' })
   analyticsLevel: string;

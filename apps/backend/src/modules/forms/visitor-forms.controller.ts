@@ -19,8 +19,8 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { User, UserRole } from '../users/entities/user.entity';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { Public } from 'src/common/decorators/public.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 
 interface RequestWithUser extends Request {
   user: User;

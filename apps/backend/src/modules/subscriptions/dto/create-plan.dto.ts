@@ -50,6 +50,11 @@ export class CreatePlanDto {
   @IsOptional()
   trialDurationDays?: number;
 
+  @ApiPropertyOptional({ description: 'Is messaging enabled?', example: false })
+  @IsBoolean()
+  @IsOptional()
+  messagingEnabled?: boolean;
+
   @ApiPropertyOptional({ description: 'SMS credits', example: 100 })
   @IsNumber()
   @IsOptional()
@@ -64,6 +69,14 @@ export class CreatePlanDto {
   @IsNumber()
   @IsOptional()
   emailCredits?: number;
+
+  @ApiPropertyOptional({
+    description: 'Is team members management enabled?',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  teamMembersEnabled?: boolean;
 
   @ApiPropertyOptional({
     description: 'Maximum team members limit (null for unlimited)',
@@ -82,12 +95,30 @@ export class CreatePlanDto {
   loyaltyLimit?: number;
 
   @ApiPropertyOptional({
+    description: 'Is loyalty management enabled?',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  loyaltyEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Is branches enabled?', example: false })
+  @IsBoolean()
+  @IsOptional()
+  branchesEnabled?: boolean;
+
+  @ApiPropertyOptional({
     description: 'Branches limit (null for unlimited)',
     example: 3,
   })
   @IsNumber()
   @IsOptional()
   branchLimit?: number;
+
+  @ApiPropertyOptional({ description: 'Is analytics enabled?', example: false })
+  @IsBoolean()
+  @IsOptional()
+  analyticsEnabled?: boolean;
 
   @ApiPropertyOptional({
     description: 'Level of analytics',
@@ -104,6 +135,7 @@ export class CreatePlanDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
 
   @ApiPropertyOptional({
     description: 'Plan description',
