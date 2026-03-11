@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { 
     Building2, Plus, MapPin, Phone, Mail, 
@@ -18,6 +19,7 @@ import UpgradeModal from '@/components/dashboard/UpgradeModal';
 import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 
 function BranchesContent() {
+    const pathname = usePathname();
     const { storeName } = useCustomerFlowStore();
     const { data: branchesData, isLoading } = useBranches();
     const { capabilities, isLimitReached } = useSubscriptionStore();
@@ -28,6 +30,11 @@ function BranchesContent() {
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+    // Close upgrade modal on navigation
+    useEffect(() => {
+        setShowUpgradeModal(false);
+    }, [pathname]);
     const [newBranch, setNewBranch] = useState<Partial<Branch>>({
         name: '',
         address: '',
