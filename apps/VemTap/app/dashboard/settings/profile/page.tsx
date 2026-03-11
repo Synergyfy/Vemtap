@@ -354,7 +354,7 @@ export default function BusinessProfilePage() {
             {/* Contextual Information Banner */}
             <div className={`mb-8 p-4 rounded-2xl border flex items-start gap-4 transition-all duration-300 ${isAllBranches ? 'bg-blue-50 border-blue-100' : 'bg-green-50 border-green-100'}`}>
                 <div className={`p-2 rounded-xl ${isAllBranches ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
-                    {isAllBranches ? <Info size={20} /> : <Info size={20} />}
+                    <Info size={20} />
                 </div>
                 <div>
                     <h4 className={`text-sm font-bold ${isAllBranches ? 'text-blue-900' : 'text-green-900'}`}>
@@ -408,14 +408,9 @@ export default function BusinessProfilePage() {
                             </div>
                             <div className="p-8 space-y-8">
                                 <div className="flex flex-col md:flex-row gap-10">
-                                    {/* Logo Upload */}
                                     <div className="flex flex-col items-center space-y-4 min-w-[160px]">
                                         <div className="size-32 rounded-3xl bg-gray-50 flex items-center justify-center border-2 border-dashed border-gray-200 overflow-hidden relative group">
-                                            {logo ? (
-                                                <img src={logo} alt="Logo" className="w-full h-full object-contain p-4" />
-                                            ) : (
-                                                <span className="material-icons-round text-4xl text-gray-300">add_a_photo</span>
-                                            )}
+                                            {logo ? <img src={logo} alt="Logo" className="w-full h-full object-contain p-4" /> : <span className="material-icons-round text-4xl text-gray-300">add_a_photo</span>}
                                             <input type="file" id="logo-upload" className="hidden" accept="image/*" onChange={e => {
                                                 const file = e.target.files?.[0];
                                                 if (file) {
@@ -430,7 +425,6 @@ export default function BusinessProfilePage() {
                                         </button>
                                     </div>
 
-                                    {/* Fields */}
                                     <div className="flex-1 space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-2">
@@ -452,32 +446,8 @@ export default function BusinessProfilePage() {
                                                     <option value="LOGISTICS">Logistics & Service</option>
                                                     <option value="BEAUTY_WELLNESS">Beauty & Wellness</option>
                                                 </select>
-                                                {!isAllBranches && renderLockOverlay("Edit in Global View")}
                                             </div>
                                         </div>
-
-                                        {isAllBranches && (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Category</label>
-                                                    <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none cursor-pointer">
-                                                        <option value="">Select Category</option>
-                                                        {categories.map((c: any) => (
-                                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Sub-Category</label>
-                                                    <select value={subcategoryId} onChange={e => setSubcategoryId(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none cursor-pointer">
-                                                        <option value="">Select Sub-Category</option>
-                                                        {subcategories.map((s: any) => (
-                                                            <option key={s.id} value={s.id}>{s.name}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -487,73 +457,23 @@ export default function BusinessProfilePage() {
                         <div className={`bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm transition-opacity duration-300 ${isAllBranches ? 'opacity-70' : 'opacity-100'}`}>
                             <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                                 <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Location & Contact</h3>
-                                {isAllBranches && (
-                                    <span className="flex items-center gap-1 text-[10px] font-black uppercase text-amber-600">
-                                        <Lock size={12} /> Read Only
-                                    </span>
-                                )}
+                                {isAllBranches && <span className="flex items-center gap-1 text-[10px] font-black uppercase text-amber-600"><Lock size={12} /> Read Only</span>}
                             </div>
                             <div className="p-8 space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">State</label>
-                                        <input type="text" value={state} onChange={e => setState(e.target.value)} placeholder="e.g. Lagos" className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white" />
+                                        <input type="text" value={state} onChange={e => setState(e.target.value)} readOnly={isAllBranches} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">City</label>
-                                        <input type="text" value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Ikeja" className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white" />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Support Email</label>
-                                        <input 
-                                            type="email" 
-                                            value={supportEmail} 
-                                            onChange={e => setSupportEmail(e.target.value)} 
-                                            readOnly={isAllBranches}
-                                            className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white read-only:cursor-not-allowed" 
-                                        />
-                                        {isAllBranches && renderLockOverlay("Switch location to edit contact")}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Support Phone</label>
-                                        <input 
-                                            type="tel" 
-                                            value={supportPhone} 
-                                            onChange={e => setSupportPhone(e.target.value)} 
-                                            readOnly={isAllBranches}
-                                            className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white read-only:cursor-not-allowed" 
-                                        />
-                                        {isAllBranches && renderLockOverlay("Switch location to edit contact")}
+                                        <input type="text" value={city} onChange={e => setCity(e.target.value)} readOnly={isAllBranches} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold outline-none" />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Detailed Address</label>
-                                    <textarea 
-                                        value={address} 
-                                        onChange={e => setAddress(e.target.value)} 
-                                        rows={3} 
-                                        readOnly={isAllBranches}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-bold outline-none focus:bg-white read-only:cursor-not-allowed" 
-                                    />
-                                    {isAllBranches && renderLockOverlay("Switch location to edit address")}
+                                    <textarea value={address} onChange={e => setAddress(e.target.value)} rows={3} readOnly={isAllBranches} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-bold outline-none" />
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* About */}
-                        <div className={`bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm transition-opacity duration-300 ${isAllBranches ? 'opacity-70' : 'opacity-100'}`}>
-                            <div className="p-8">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block mb-2">About the Business</label>
-                                <textarea 
-                                    value={about} 
-                                    onChange={e => setAbout(e.target.value)} 
-                                    rows={4} 
-                                    readOnly={isAllBranches}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-bold outline-none focus:bg-white read-only:cursor-not-allowed" 
-                                />
-                                {isAllBranches && renderLockOverlay("Switch location to edit description")}
                             </div>
                         </div>
                     </div>
@@ -604,104 +524,43 @@ export default function BusinessProfilePage() {
                     </div>
                 )}
 
-               {activeTab === 'documents' && isAllBranches && (
-    <div className="space-y-6">
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Business Documents</h3>
-                <p className="text-xs text-text-secondary font-medium mt-1">Upload your business registration documents for verification</p>
-            </div>
-
-            <div className="p-8 space-y-8">
-                {/* Registration Toggle & Public Profile Link */}
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                    <div>
-                        <span className="text-sm font-bold text-text-main">Is Business Registered?</span>
-                        <p className="text-xs text-text-secondary">Toggle if your business has formal registration</p>
-                    </div>
-                    <button
-                        onClick={() => window.open(publicProfileUrl, '_blank')}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary/20 transition-colors"
-                    >
-                        <span className="material-icons-round text-sm">open_in_new</span>
-                        View Public Profile
-                    </button>
-                </div>
-
-                {/* Upload Section */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* CAC Document */}
-                    <div className="space-y-4">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">CAC Document</label>
-                        <div className="h-48 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-gray-50 overflow-hidden relative group">
-                            {cacDocument ? <img src={cacDocument} alt="CAC" className="w-full h-full object-contain p-4" /> : <span className="material-icons-round text-4xl text-gray-300">upload_file</span>}
-                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async e => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                    const r = new FileReader();
-                                    r.onload = ev => setCacDocument(ev.target?.result as string);
-                                    r.readAsDataURL(file);
-                                }
-                            }} />
-                        </div>
-                    </div>
-
-                    {/* Government ID */}
-                    <div className="space-y-4">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Government ID</label>
-                        <div className="h-48 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-gray-50 overflow-hidden relative group">
-                            {idDocument ? <img src={idDocument} alt="ID" className="w-full h-full object-contain p-4" /> : <span className="material-icons-round text-4xl text-gray-300">badge</span>}
-                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async e => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                    const r = new FileReader();
-                                    r.onload = ev => setIdDocument(ev.target?.result as string);
-                                    r.readAsDataURL(file);
-                                }
-                            }} />
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-)}
-
-                {activeTab === 'documents' && (
+                {activeTab === 'documents' && isAllBranches && (
                     <div className="space-y-6">
                         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                             <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
                                 <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Business Documents</h3>
                                 <p className="text-xs text-text-secondary font-medium mt-1">Upload your business registration documents for verification</p>
                             </div>
-                        )}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">CAC Document</label>
-                                <div className="h-48 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-gray-50 overflow-hidden relative group">
-                                    {cacDocument ? <img src={cacDocument} className="w-full h-full object-contain p-4" /> : <span className="material-icons-round text-4xl text-gray-300">upload_file</span>}
-                                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async e => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                            const r = new FileReader();
-                                            r.onload = ev => setCacDocument(ev.target?.result as string);
-                                            r.readAsDataURL(file);
-                                        }
-                                    }} />
-                                </div>
-                            </div>
-                            <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Government ID</label>
-                                <div className="h-48 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-gray-50 overflow-hidden relative group">
-                                    {idDocument ? <img src={idDocument} className="w-full h-full object-contain p-4" /> : <span className="material-icons-round text-4xl text-gray-300">badge</span>}
-                                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async e => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                            const r = new FileReader();
-                                            r.onload = ev => setIdDocument(ev.target?.result as string);
-                                            r.readAsDataURL(file);
-                                        }
-                                    }} />
+                            <div className="p-8 space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">CAC Document</label>
+                                        <div className="h-48 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-gray-50 overflow-hidden relative group">
+                                            {cacDocument ? <img src={cacDocument} alt="CAC" className="w-full h-full object-contain p-4" /> : <span className="material-icons-round text-4xl text-gray-300">upload_file</span>}
+                                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    const r = new FileReader();
+                                                    r.onload = ev => setCacDocument(ev.target?.result as string);
+                                                    r.readAsDataURL(file);
+                                                }
+                                            }} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Government ID</label>
+                                        <div className="h-48 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-gray-50 overflow-hidden relative group">
+                                            {idDocument ? <img src={idDocument} alt="ID" className="w-full h-full object-contain p-4" /> : <span className="material-icons-round text-4xl text-gray-300">badge</span>}
+                                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    const r = new FileReader();
+                                                    r.onload = ev => setIdDocument(ev.target?.result as string);
+                                                    r.readAsDataURL(file);
+                                                }
+                                            }} />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
