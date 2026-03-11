@@ -22,6 +22,7 @@ import {
   PaymentPurpose,
   PaymentStatus,
 } from '../payments/entities/payment.entity';
+import { SubscriptionCapabilities } from './types/capabilities';
 
 @Injectable()
 export class SubscriptionsService {
@@ -300,7 +301,7 @@ export class SubscriptionsService {
       sub.endDate.setFullYear(sub.endDate.getFullYear() + 1);
   }
 
-  async getCapabilities(businessId: string) {
+  async getCapabilities(businessId: string): Promise<SubscriptionCapabilities> {
     const sub = await this.activeSubscription(businessId);
 
     let plan = sub?.plan;
@@ -329,7 +330,7 @@ export class SubscriptionsService {
     const usedTags = await this.deviceRepository.count({
       where: { branchId: In(branchIds) },
     });
-    const usedBranches = branches.length;
+    const usedBranches = branches.filter((b) => !b.isMainBranch).length;
 
     const usedLoyaltyPrograms = 0;
 
@@ -341,35 +342,51 @@ export class SubscriptionsService {
       isTrial: sub?.status === SubscriptionStatus.TRIAL,
       capabilities: {
         teamMembers: {
+          enabled: plan.teamMembersEnabled,
           limit: plan.teamMembersLimit ?? 'unlimited',
           used: usedStaff,
           remaining:
-            plan.teamMembersLimit === null
-              ? 'unlimited'
-              : Math.max(0, plan.teamMembersLimit - usedStaff),
+            !plan.teamMembersEnabled
+              ? 0
+              : plan.teamMembersLimit === null
+                ? 'unlimited'
+                : Math.max(0, plan.teamMembersLimit - usedStaff),
         },
         tags: {
+          enabled: true, // Tags are always enabled for now
           limit: 'unlimited',
           used: usedTags,
           remaining: 'unlimited',
         },
         loyaltyPrograms: {
+          enabled: plan.loyaltyEnabled,
           limit: plan.loyaltyLimit ?? 'unlimited',
           used: usedLoyaltyPrograms,
           remaining:
-            plan.loyaltyLimit === null
-              ? 'unlimited'
-              : Math.max(0, plan.loyaltyLimit - usedLoyaltyPrograms),
+            !plan.loyaltyEnabled
+              ? 0
+              : plan.loyaltyLimit === null
+                ? 'unlimited'
+                : Math.max(0, plan.loyaltyLimit - usedLoyaltyPrograms),
         },
         branches: {
+          enabled: plan.branchesEnabled,
           limit: plan.branchLimit ?? 'unlimited',
           used: usedBranches,
           remaining:
-            plan.branchLimit === null
-              ? 'unlimited'
-              : Math.max(0, plan.branchLimit - usedBranches),
+            !plan.branchesEnabled
+              ? 0
+              : plan.branchLimit === null
+                ? 'unlimited'
+                : Math.max(0, plan.branchLimit - usedBranches),
         },
-        analytics: plan.analyticsLevel,
+        analytics: {
+          enabled: plan.analyticsEnabled,
+          level: plan.analyticsLevel as 'basic' | 'advanced' | 'none',
+        },
+        messaging: {
+          enabled: plan.messagingEnabled,
+        },
         features: plan.features || [],
         credits: {
           sms: plan.smsCredits || 0,

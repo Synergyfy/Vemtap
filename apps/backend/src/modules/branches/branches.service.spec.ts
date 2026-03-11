@@ -26,7 +26,7 @@ describe('BranchesService', () => {
   const mockSubscriptionsService = {
     getCapabilities: jest.fn().mockResolvedValue({
       capabilities: {
-        branches: { limit: 10, used: 1 },
+        branches: { enabled: true, limit: 10, used: 1 },
       },
     }),
   };

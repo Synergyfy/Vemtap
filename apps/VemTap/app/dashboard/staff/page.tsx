@@ -19,6 +19,7 @@ import Modal from '@/components/ui/Modal';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import UsageIndicator from '@/components/dashboard/UsageIndicator';
 import UpgradeModal from '@/components/dashboard/UpgradeModal';
+import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 
 const PERMISSIONS = [
     { id: 'dashboard', label: 'Dashboard', icon: Eye },

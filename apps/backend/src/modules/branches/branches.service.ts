@@ -74,6 +74,13 @@ export class BranchesService {
     const capabilities = await this.subscriptionsService.getCapabilities(
       business.id,
     );
+
+    if (capabilities.capabilities.branches.enabled === false) {
+      throw new ForbiddenException(
+        'The branches feature is not included in your current plan.',
+      );
+    }
+
     const branchLimit = capabilities.capabilities.branches.limit;
     const currentBranches = capabilities.capabilities.branches.used;
 

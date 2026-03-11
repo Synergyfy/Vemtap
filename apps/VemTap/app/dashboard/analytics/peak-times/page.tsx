@@ -47,9 +47,8 @@ export default function PeakTimesPage() {
     const maxHourlyValue = Math.max(1, ...weeklyData.flatMap(d => d.hours || []));
 
     return (
-        <PageLockWrapper feature="peak-times" featureName="Advanced Analytics">
-            <div className="p-8">
-                <PageHeader
+        <div className="p-8">
+            <PageHeader
                     title="Peak Time Analysis"
                     description="Understand when your business is most crowded"
                 />
@@ -160,6 +159,5 @@ export default function PeakTimesPage() {
                     </div>
                 </div>
             </div>
-        </PageLockWrapper>
     );
 }

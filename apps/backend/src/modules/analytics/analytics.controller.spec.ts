@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from './analytics.service';
 import { JwtService } from '@nestjs/jwt';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { BranchesService } from '../branches/branches.service';
 
 describe('AnalyticsController', () => {
   let controller: AnalyticsController;
@@ -25,6 +27,18 @@ describe('AnalyticsController', () => {
           useValue: {
             sign: jest.fn(),
             verify: jest.fn(),
+          },
+        },
+        {
+          provide: SubscriptionsService,
+          useValue: {
+            getCapabilities: jest.fn(),
+          },
+        },
+        {
+          provide: BranchesService,
+          useValue: {
+            findOne: jest.fn(),
           },
         },
       ],
