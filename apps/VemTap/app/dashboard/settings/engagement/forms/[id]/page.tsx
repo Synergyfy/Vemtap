@@ -15,7 +15,11 @@ import { toast } from 'react-hot-toast';
 export default function FormPreviewPage() {
     const params = useParams();
     const formId = String(params?.id || '');
-    const { data: form, isLoading } = useBusinessForm(formId);
+    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const { data: form, isLoading } = useBusinessForm(formId, {
+        branchId: activeBranchId || undefined,
+        allBranches: !activeBranchId,
+    });
     const { data: branches = [] } = useBranches();
     const { data: myBusiness } = useMyBusiness();
     const user = useAuthStore((state) => state.user);

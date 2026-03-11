@@ -26,20 +26,33 @@ const toList = <T,>(payload: unknown): T[] => {
   return [];
 };
 
-export const useBusinessForms = () =>
+type BusinessFormsQuery = {
+  branchId?: string;
+  allBranches?: boolean;
+};
+
+export const useBusinessForms = (params: BusinessFormsQuery = {}) =>
   useQuery<BusinessForm[], Error>({
-    queryKey: ['business-forms'],
+    queryKey: ['business-forms', params.branchId || 'all', params.allBranches ? 'all-branches' : 'scoped'],
     queryFn: async () => {
-      const response = await api.get('/business-forms');
+      const query = new URLSearchParams();
+      if (params.branchId) query.set('branchId', params.branchId);
+      if (params.allBranches) query.set('allBranches', 'true');
+      const suffix = query.toString();
+      const response = await api.get(`/business-forms${suffix ? `?${suffix}` : ''}`);
       return toList<BusinessForm>(response);
     },
   });
 
-export const useBusinessForm = (id?: string) =>
+export const useBusinessForm = (id?: string, params: BusinessFormsQuery = {}) =>
   useQuery<BusinessForm, Error>({
-    queryKey: ['business-forms', id],
+    queryKey: ['business-forms', id, params.branchId || 'all', params.allBranches ? 'all-branches' : 'scoped'],
     queryFn: async () => {
-      return await api.get(`/business-forms/${id}`);
+      const query = new URLSearchParams();
+      if (params.branchId) query.set('branchId', params.branchId);
+      if (params.allBranches) query.set('allBranches', 'true');
+      const suffix = query.toString();
+      return await api.get(`/business-forms/${id}${suffix ? `?${suffix}` : ''}`);
     },
     enabled: !!id,
   });
@@ -86,9 +99,12 @@ export const useUpdateBusinessForm = (id: string) => {
 
 export const useDeleteBusinessForm = () => {
   const queryClient = useQueryClient();
-  return useMutation<void, Error, string>({
-    mutationFn: async (id) => {
-      await api.delete(`/business-forms/${id}`);
+  return useMutation<void, Error, { id: string; branchId?: string }>({
+    mutationFn: async ({ id, branchId }) => {
+      const query = new URLSearchParams();
+      if (branchId) query.set('branchId', branchId);
+      const suffix = query.toString();
+      await api.delete(`/business-forms/${id}${suffix ? `?${suffix}` : ''}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['business-forms'] });
