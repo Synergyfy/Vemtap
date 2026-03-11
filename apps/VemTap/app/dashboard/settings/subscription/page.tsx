@@ -14,6 +14,8 @@ import toast from 'react-hot-toast';
 import { PricingPlan } from '@/types/pricing';
 import { Crown, ShieldCheck, CheckCircle2, Loader2 } from 'lucide-react';
 
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+
 export default function DashboardPricingPage() {
     const router = useRouter();
     const { user } = useAuthStore();
@@ -38,19 +40,28 @@ export default function DashboardPricingPage() {
         return base + visitorCost + tagCost;
     };
 
-    const { data: subscription, isLoading: subLoading, refetch: refetchSub } = useActiveSubscription();
+    const { activeSubscription: subscription, fetchSubscriptionData, isLoading: subLoading } = useSubscriptionStore();
     const subscribeMutation = useSubscribe();
 
     const isLoading = plansLoading || subLoading;
     const freePlan = plans.find((p: PricingPlan) => p.isFree);
-    const activePlanId = subscription?.planId || freePlan?.id || 'free';
-    const activePlan = plans.find((p: PricingPlan) => p.id === activePlanId);
+    
+    // Robust active plan detection
+    const activePlanId = subscription?.planId;
+    const activePlanNameFromSub = subscription?.plan?.name?.toLowerCase();
+    
+    const activePlan = plans.find((p: PricingPlan) => 
+        p.id === activePlanId || 
+        (activePlanNameFromSub && p.name.toLowerCase() === activePlanNameFromSub)
+    ) || freePlan;
+
     const activeBillingPeriod = (subscription as any)?.billingPeriod || 'monthly';
     const isOnTrial = subscription?.status === 'trial' || subscription?.status === 'trialing';
     const trialEndDate = subscription?.trialEndDate || null;
     const periodStart = subscription?.currentPeriodStart || subscription?.startDate || null;
     const periodEnd = subscription?.currentPeriodEnd || subscription?.trialEndDate || subscription?.endDate || null;
     const isOwner = user?.role?.toLowerCase() === 'owner';
+    
     const configuredTrialDays = activePlan?.isFree ? 0 : (activePlan?.trialDurationDays || activePlan?.freeDurationDays || 30);
     const derivedTrialEndFromStart = (isOnTrial && periodStart && configuredTrialDays > 0)
         ? new Date(new Date(periodStart).getTime() + configuredTrialDays * 24 * 60 * 60 * 1000).toISOString()
@@ -60,7 +71,8 @@ export default function DashboardPricingPage() {
     const isTrialWindowActive = effectiveTrialEndDate ? new Date(effectiveTrialEndDate).getTime() > Date.now() : false;
     const showTrialCountdown = Boolean(!activePlan?.isFree) && isTrialWindowActive;
     const showFreeTrialHeader = showTrialCountdown;
-    const activePlanName = activePlan?.name || subscription?.plan?.name || 'Free Plan';
+    
+    const activePlanName = subscription?.plan?.name || activePlan?.name || 'Free Plan';
 
     const handlePlanSelect = async (plan: PricingPlan, useTrial: boolean = false) => {
         if (!isOwner) {
@@ -70,8 +82,11 @@ export default function DashboardPricingPage() {
 
         localStorage.setItem('has_selected_plan', 'true');
         localStorage.setItem('selected_plan_id', plan.id);
-        const isCurrentPaidTrial = isOnTrial && plan.id === activePlanId && !plan.isFree;
-        if (plan.id === activePlanId && plan.id !== 'personal' && !isCurrentPaidTrial) {
+        
+        const isCurrent = plan.id === activePlan?.id || plan.name.toLowerCase() === activePlan?.name.toLowerCase();
+        const isCurrentPaidTrial = isOnTrial && isCurrent && !plan.isFree;
+        
+        if (isCurrent && plan.id !== 'personal' && !isCurrentPaidTrial) {
             toast.error('You are already on this plan');
             return;
         }
@@ -88,7 +103,7 @@ export default function DashboardPricingPage() {
             }, {
                 onSuccess: () => {
                     toast.success(shouldStartTrial ? `Started ${trialDays}-Day Free Trial!` : 'Switched to Free plan!');
-                    refetchSub();
+                    fetchSubscriptionData();
                 },
                 onError: (error) => toast.error(error instanceof Error ? error.message : 'Failed to update plan')
             });
