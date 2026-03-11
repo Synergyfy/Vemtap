@@ -7,7 +7,7 @@ import {
   IsUUID,
   IsEmail,
 } from 'class-validator';
-import { BusinessType, BusinessStatus } from '../entities/business.entity';
+import { BusinessStatus } from '../entities/business.entity';
 
 export class AdminCreateBusinessDto {
   @ApiProperty({
@@ -57,11 +57,6 @@ export class AdminCreateBusinessDto {
   @IsString()
   @IsOptional()
   ownerPhone?: string;
-
-  @ApiPropertyOptional({ enum: BusinessType, example: BusinessType.RETAIL })
-  @IsEnum(BusinessType)
-  @IsOptional()
-  type?: BusinessType;
 
   @ApiPropertyOptional({ enum: BusinessStatus, example: BusinessStatus.ACTIVE })
   @IsEnum(BusinessStatus)

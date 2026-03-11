@@ -128,6 +128,17 @@ export class BusinessesService {
     return business;
   }
 
+  async findByCode(uniqueCode: string): Promise<Business> {
+    const business = await this.businessesRepository.findOne({
+      where: { uniqueCode, status: BusinessStatus.ACTIVE },
+      relations: ['branches', 'category', 'subcategory'],
+    });
+    if (!business) {
+      throw new NotFoundException('Business not found');
+    }
+    return business;
+  }
+
   async update(
     id: string,
     updateBusinessDto: UpdateBusinessDto,
@@ -310,7 +321,6 @@ export class BusinessesService {
     const business = this.businessesRepository.create({
       name: dto.name,
       ownerId: savedUser.id,
-      type: dto.type,
       status: dto.status || BusinessStatus.ACTIVE,
       officialEmail: dto.officialEmail,
       categoryId: dto.categoryId,

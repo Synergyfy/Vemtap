@@ -18,6 +18,7 @@ export interface BusinessFormField {
 
 export interface BusinessForm {
   id: string;
+  uniqueCode: string;
   title: string;
   description?: string;
   isActive: boolean;

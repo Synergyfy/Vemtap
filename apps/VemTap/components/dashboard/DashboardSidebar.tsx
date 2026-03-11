@@ -440,7 +440,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                                             deepItem.href ? (
                                                                                                 <Link
                                                                                                     key={deepItem.href}
-                                                                                                    href={getLinkWithBranch(deepItem.href)}
+                                                                                                    href={getLinkWithBranch(deepItem.href!)}
                                                                                                     onClick={(e) => {
                                                                                                         if (deepItem.feature && isFeatureLocked(deepItem.feature)) {
                                                                                                             e.preventDefault();
@@ -472,7 +472,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                             nestedItem.href ? (
                                                                                 <Link
                                                                                     key={nestedItem.href}
-                                                                                    href={withBranch(nestedItem.href)}
+                                                                                    href={withBranch(nestedItem.href!)}
                                                                                     onClick={(e) => {
                                                                                         if (nestedItem.feature && isFeatureLocked(nestedItem.feature)) {
                                                                                             e.preventDefault();
@@ -503,7 +503,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                         subItem.href ? (
                                                             <Link
                                                                 key={subItem.href}
-                                                                href={getLinkWithBranch(subItem.href)}
+                                                                href={getLinkWithBranch(subItem.href!)}
                                                                 onClick={(e) => {
                                                                     setIsMobileOpen(false);
                                                                     if (subItem.feature && isFeatureLocked(subItem.feature)) {
