@@ -328,6 +328,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         active
             ? 'bg-gray-100 text-text-main'
             : 'text-text-secondary hover:bg-gray-100 hover:text-text-main';
+    const withBranch = (href: string) => getLinkWithBranch(href);
 
     const handleItemClick = (e: React.MouseEvent, item: any, parentId?: string) => {
         if (item.feature && isFeatureLocked(item.feature)) {
@@ -362,7 +363,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             `}>
                 {/* Logo  */}
                 <div className="h-16 flex items-center px-6 border-b border-gray-200">
-                    <Link href="/dashboard" className="flex items-center gap-2">
+                    <Link href={withBranch('/dashboard')} className="flex items-center gap-2">
                         <Logo />
                     </Link>
                 </div>
@@ -435,66 +436,96 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                                 </button>
                                                                                 {expandedMenus.includes(nestedItem.id) && !isNestedLocked && (
                                                                                     <div className="mt-1 ml-3 space-y-1 border-l border-gray-100">
-                                                                                        {nestedItem.submenu.map((deepItem: any) => (
-                                                                                            <Link
-                                                                                                key={deepItem.href}
-                                                                                                href={getLinkWithBranch(deepItem.href)}
-                                                                                                onClick={(e) => {
-                                                                                                    if (deepItem.feature && isFeatureLocked(deepItem.feature)) {
-                                                                                                        e.preventDefault();
-                                                                                                        setUpgradeModal({ isOpen: true, featureName: deepItem.featureName || deepItem.label });
-                                                                                                    }
-                                                                                                }}
-                                                                                                className={`flex items-center justify-between px-3 py-1 rounded-lg text-[10px] font-medium transition-colors ${isActive(deepItem.href)
-                                                                                                    ? 'text-primary border-l-2 border-primary -ml-px'
-                                                                                                    : 'text-text-secondary hover:text-text-main'
-                                                                                                    }`}
-                                                                                            >
-                                                                                                <span>{deepItem.label}</span>
-                                                                                                {deepItem.feature && isFeatureLocked(deepItem.feature) && <Lock size={10} className="text-text-secondary" />}
-                                                                                            </Link>
+                                                                                        {nestedItem.submenu.map((deepItem: any, dIdx: number) => (
+                                                                                            deepItem.href ? (
+                                                                                                <Link
+                                                                                                    key={deepItem.href}
+                                                                                                    href={getLinkWithBranch(deepItem.href!)}
+                                                                                                    onClick={(e) => {
+                                                                                                        if (deepItem.feature && isFeatureLocked(deepItem.feature)) {
+                                                                                                            e.preventDefault();
+                                                                                                            setUpgradeModal({ isOpen: true, featureName: deepItem.featureName || deepItem.label });
+                                                                                                        }
+                                                                                                    }}
+                                                                                                    className={`flex items-center justify-between px-3 py-1 rounded-lg text-[10px] font-medium transition-colors ${isActive(deepItem.href)
+                                                                                                        ? 'text-primary border-l-2 border-primary -ml-px'
+                                                                                                        : 'text-text-secondary hover:text-text-main'
+                                                                                                        }`}
+                                                                                                >
+                                                                                                    <span>{deepItem.label}</span>
+                                                                                                    {deepItem.feature && isFeatureLocked(deepItem.feature) && <Lock size={10} className="text-text-secondary" />}
+                                                                                                </Link>
+                                                                                            ) : (
+                                                                                                <span
+                                                                                                    key={`${deepItem.label}-${dIdx}`}
+                                                                                                    className="flex items-center justify-between px-3 py-1 rounded-lg text-[10px] font-medium text-text-secondary"
+                                                                                                >
+                                                                                                    <span>{deepItem.label}</span>
+                                                                                                    {deepItem.feature && isFeatureLocked(deepItem.feature) && <Lock size={10} className="text-text-secondary" />}
+                                                                                                </span>
+                                                                                            )
                                                                                         ))}
                                                                                     </div>
                                                                                 )}
                                                                             </div>
                                                                         ) : (
-                                                                            <Link
-                                                                                key={nestedItem.href}
-                                                                                href={nestedItem.href}
-                                                                                onClick={(e) => {
-                                                                                    if (nestedItem.feature && isFeatureLocked(nestedItem.feature)) {
-                                                                                        e.preventDefault();
-                                                                                        setUpgradeModal({ isOpen: true, featureName: nestedItem.featureName || nestedItem.label });
-                                                                                    }
-                                                                                }}
-                                                                                className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(nestedItem.href))
-                                                                                    }`}
-                                                                            >
-                                                                                <span>{nestedItem.label}</span>
-                                                                                {nestedItem.feature && isFeatureLocked(nestedItem.feature) && <Lock size={12} className="text-text-secondary" />}
-                                                                            </Link>
+                                                                            nestedItem.href ? (
+                                                                                <Link
+                                                                                    key={nestedItem.href}
+                                                                                    href={withBranch(nestedItem.href!)}
+                                                                                    onClick={(e) => {
+                                                                                        if (nestedItem.feature && isFeatureLocked(nestedItem.feature)) {
+                                                                                            e.preventDefault();
+                                                                                            setUpgradeModal({ isOpen: true, featureName: nestedItem.featureName || nestedItem.label });
+                                                                                        }
+                                                                                    }}
+                                                                                    className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(nestedItem.href))
+                                                                                        }`}
+                                                                                >
+                                                                                    <span>{nestedItem.label}</span>
+                                                                                    {nestedItem.feature && isFeatureLocked(nestedItem.feature) && <Lock size={12} className="text-text-secondary" />}
+                                                                                </Link>
+                                                                            ) : (
+                                                                                <span
+                                                                                    key={`${nestedItem.label}-${nIdx}`}
+                                                                                    className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black text-text-secondary"
+                                                                                >
+                                                                                    <span>{nestedItem.label}</span>
+                                                                                    {nestedItem.feature && isFeatureLocked(nestedItem.feature) && <Lock size={12} className="text-text-secondary" />}
+                                                                                </span>
+                                                                            )
                                                                         );
                                                                     })}
                                                                 </div>
                                                             )}
                                                         </div>
                                                     ) : (
-                                                        <Link
-                                                            key={subItem.href}
-                                                            href={getLinkWithBranch(subItem.href)}
-                                                            onClick={(e) => {
-                                                                setIsMobileOpen(false);
-                                                                if (subItem.feature && isFeatureLocked(subItem.feature)) {
-                                                                    e.preventDefault();
-                                                                    setUpgradeModal({ isOpen: true, featureName: subItem.featureName || subItem.label });
-                                                                }
-                                                            }}
-                                                            className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(subItem.href))
-                                                                }`}
-                                                        >
-                                                            <span>{subItem.label}</span>
-                                                            {subItem.feature && isFeatureLocked(subItem.feature) && <Lock size={12} className="text-text-secondary" />}
-                                                        </Link>
+                                                        subItem.href ? (
+                                                            <Link
+                                                                key={subItem.href}
+                                                                href={getLinkWithBranch(subItem.href!)}
+                                                                onClick={(e) => {
+                                                                    setIsMobileOpen(false);
+                                                                    if (subItem.feature && isFeatureLocked(subItem.feature)) {
+                                                                        e.preventDefault();
+                                                                        setUpgradeModal({ isOpen: true, featureName: subItem.featureName || subItem.label });
+                                                                    }
+                                                                }}
+                                                                className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(subItem.href))
+                                                                    }`}
+                                                            >
+                                                                <span>{subItem.label}</span>
+                                                                {subItem.feature && isFeatureLocked(subItem.feature) && <Lock size={12} className="text-text-secondary" />}
+                                                            </Link>
+                                                        ) : (
+                                                            <span
+                                                                key={`${subItem.label}-${idx}`}
+                                                                className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black text-text-secondary"
+                                                            >
+                                                                <span>{subItem.label}</span>
+                                                                {subItem.feature && isFeatureLocked(subItem.feature) && <Lock size={12} className="text-text-secondary" />}
+                                                            </span>
+                                                        )
                                                     );
                                                 })}
                                             </div>
@@ -502,7 +533,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                     </>
                                 ) : (
                                     <Link
-                                        href={item.href!}
+                                        href={withBranch(item.href!)}
                                         onClick={(e) => {
                                             if (item.feature && isFeatureLocked(item.feature)) {
                                                 e.preventDefault();
