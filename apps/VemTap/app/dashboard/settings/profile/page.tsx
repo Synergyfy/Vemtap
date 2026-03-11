@@ -604,53 +604,68 @@ export default function BusinessProfilePage() {
                     </div>
                 )}
 
-                {activeTab === 'documents' && isAllBranches && (
-                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm p-8 space-y-8">
-                         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                            <div>
-                                <span className="text-sm font-bold text-text-main">Is Business Registered?</span>
-                                <p className="text-xs text-text-secondary">Toggle if your business has formal registration</p>
-                            </div>
-                            <button
-                                onClick={() => window.open(publicProfileUrl, '_blank')}
-                                className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary/20 transition-colors"
-                            >
-                                <span className="material-icons-round text-sm">open_in_new</span>
-                                View Public Profile
-                            </button>
-                        </div>
-                        <div className="p-8 flex flex-col md:flex-row items-center md:items-start gap-8">
-                            <DynamicQRCode
-                                redirectId={qrId}
-                                label="Scan to Visit Profile"
-                                subLabel={origin.replace(/^https?:\/\//, '')}
-                                color="#000000"
-                            />
-                            <div className="space-y-4 flex-1">
-                                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                                    <h4 className="font-bold text-blue-900 text-sm mb-2 flex items-center gap-2">
-                                        <span className="material-icons-round text-base">info</span>
-                                        How it works
-                                    </h4>
-                                    <p className="text-xs text-blue-800 leading-relaxed">
-                                        This QR code points to a permanent redirection service. When scanned, it instantly redirects users to your <strong>Profile URL / Handle</strong> configured above.
-                                    </p>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Current Destination</label>
-                                    <div
-                                        onClick={() => window.open(publicProfileUrl, '_blank')}
-                                        className="h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 flex items-center text-sm font-bold text-primary cursor-pointer hover:bg-primary/5 hover:border-primary/30 transition-all"
-                                    >
-                                        {publicProfileUrl.replace(/^https?:\/\//, '')}
-                                        <span className="material-icons-round text-sm ml-auto">open_in_new</span>
-                                    </div>
-                                </div>
-                            </div>
+               {activeTab === 'documents' && isAllBranches && (
+    <div className="space-y-6">
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
+                <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Business Documents</h3>
+                <p className="text-xs text-text-secondary font-medium mt-1">Upload your business registration documents for verification</p>
+            </div>
+
+            <div className="p-8 space-y-8">
+                {/* Registration Toggle & Public Profile Link */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                    <div>
+                        <span className="text-sm font-bold text-text-main">Is Business Registered?</span>
+                        <p className="text-xs text-text-secondary">Toggle if your business has formal registration</p>
+                    </div>
+                    <button
+                        onClick={() => window.open(publicProfileUrl, '_blank')}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary/20 transition-colors"
+                    >
+                        <span className="material-icons-round text-sm">open_in_new</span>
+                        View Public Profile
+                    </button>
+                </div>
+
+                {/* Upload Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* CAC Document */}
+                    <div className="space-y-4">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">CAC Document</label>
+                        <div className="h-48 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-gray-50 overflow-hidden relative group">
+                            {cacDocument ? <img src={cacDocument} alt="CAC" className="w-full h-full object-contain p-4" /> : <span className="material-icons-round text-4xl text-gray-300">upload_file</span>}
+                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async e => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    const r = new FileReader();
+                                    r.onload = ev => setCacDocument(ev.target?.result as string);
+                                    r.readAsDataURL(file);
+                                }
+                            }} />
                         </div>
                     </div>
 
-                )}
+                    {/* Government ID */}
+                    <div className="space-y-4">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Government ID</label>
+                        <div className="h-48 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-gray-50 overflow-hidden relative group">
+                            {idDocument ? <img src={idDocument} alt="ID" className="w-full h-full object-contain p-4" /> : <span className="material-icons-round text-4xl text-gray-300">badge</span>}
+                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async e => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    const r = new FileReader();
+                                    r.onload = ev => setIdDocument(ev.target?.result as string);
+                                    r.readAsDataURL(file);
+                                }
+                            }} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+)}
 
                 {activeTab === 'documents' && (
                     <div className="space-y-6">
