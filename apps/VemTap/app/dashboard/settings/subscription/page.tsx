@@ -80,9 +80,6 @@ export default function DashboardPricingPage() {
             return;
         }
 
-        localStorage.setItem('has_selected_plan', 'true');
-        localStorage.setItem('selected_plan_id', plan.id);
-        
         const isCurrent = plan.id === activePlan?.id || plan.name.toLowerCase() === activePlan?.name.toLowerCase();
         const isCurrentPaidTrial = isOnTrial && isCurrent && !plan.isFree;
         
