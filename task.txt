@@ -1,0 +1,6 @@
+remove `How many business locations/branches do you have?` in the location/branch as it appears twise
+
+category/subcategory selection section/step should come before business location/branch step
+
+
+in the state/city the filed should have a dropdown arrow so user knows it is a dropdown then use an api or something to make sure states and cities fetches all statses in nigeria and all taxinomized cities for that state, 
