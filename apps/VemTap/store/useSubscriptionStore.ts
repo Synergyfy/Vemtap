@@ -1,12 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { SubscriptionCapabilities } from '@/types/subscriptions';
+import { SubscriptionCapabilities, Subscription } from '@/types/subscriptions';
 import { subscriptionsApi } from '@/lib/api/subscriptions';
 
 interface SubscriptionState {
   capabilities: SubscriptionCapabilities | null;
+  activeSubscription: Subscription | null;
   isLoading: boolean;
   error: string | null;
+  fetchSubscriptionData: () => Promise<void>;
   fetchCapabilities: () => Promise<void>;
   hasFeature: (feature: string) => boolean;
   isFeatureLocked: (feature: string) => boolean;
@@ -17,8 +19,32 @@ export const useSubscriptionStore = create<SubscriptionState>()(
   persist(
     (set, get) => ({
       capabilities: null,
+      activeSubscription: null,
       isLoading: false,
       error: null,
+
+      fetchSubscriptionData: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          // Use Promise.allSettled or handle individual failures so one missing endpoint doesn't break everything
+          const [capsRes, subRes] = await Promise.allSettled([
+            subscriptionsApi.getCapabilities(),
+            subscriptionsApi.getActiveSubscription()
+          ]);
+          
+          const capabilities = capsRes.status === 'fulfilled' ? capsRes.value : get().capabilities;
+          const activeSubscription = subRes.status === 'fulfilled' ? subRes.value : null;
+          
+          set({ 
+            capabilities, 
+            activeSubscription, 
+            isLoading: false,
+            error: capsRes.status === 'rejected' ? (capsRes.reason as Error).message : null 
+          });
+        } catch (err: any) {
+          set({ error: err.message || 'Failed to fetch subscription data', isLoading: false });
+        }
+      },
 
       fetchCapabilities: async () => {
         set({ isLoading: true, error: null });
@@ -48,10 +74,9 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         const caps = get().capabilities;
         if (!caps) return true; // Assume locked if not loaded
 
-        // Mapping of route/feature names to backend features or levels
         const featureMapping: Record<string, string> = {
           'analytics': 'advanced_analytics',
-          'analytics_basic': 'dashboard', // basic dashboard is usually allowed
+          'analytics_basic': 'dashboard', 
           'analytics_advanced': 'advanced_analytics',
           'loyalty': 'loyalty_programs',
           'engagement': 'automated_campaigns',

@@ -50,6 +50,7 @@ import { CreditPlanController } from './controllers/credit-plan.controller';
 
 import { CreditPlanService } from './services/credit-plan.service';
 import { TermiiProvider } from './providers/termii.provider';
+import { AfricaTalkingProvider } from './providers/africastalking.provider';
 import { EmailProvider } from './providers/email.provider';
 import { ProviderRouterService } from './services/provider-router.service';
 import { BatchSendProcessor } from './processors/batch-send.processor';
@@ -136,6 +137,7 @@ import { AutomationProcessor } from './processors/automation.processor';
     AdminFlowEngineService,
     AutomationService,
     TermiiProvider,
+    AfricaTalkingProvider,
     EmailProvider,
     ProviderRouterService,
     BatchSendProcessor,
@@ -165,6 +167,7 @@ import { AutomationProcessor } from './processors/automation.processor';
     AdminFlowEngineService,
     AutomationService,
     TermiiProvider,
+    AfricaTalkingProvider,
     EmailProvider,
     ProviderRouterService,
     MessagingFlowService,

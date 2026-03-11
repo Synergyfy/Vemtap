@@ -32,7 +32,7 @@ export class FormsService {
     @InjectRepository(FormFieldTemplate)
     private readonly formFieldTemplatesRepository: Repository<FormFieldTemplate>,
     private readonly branchesService: BranchesService,
-  ) {}
+  ) { }
 
   async checkBranchAccess(user: User, branchId: string): Promise<boolean> {
     return this.branchesService.checkBranchAccess(user, branchId);
@@ -230,33 +230,19 @@ export class FormsService {
     });
   }
 
-  async getFormByIdForVisitor(id: string, branchId: string): Promise<Form> {
-    const form = await this.formsRepository.findOne({
-      where: {
-        id,
-        branchId,
-        isPublished: true,
-        isActive: true,
-        adminDisabled: false,
-      },
-      relations: ['fields'],
-    });
 
-    if (!form) throw new NotFoundException('Form not available');
-    return form;
-  }
 
 
   async submitResponse(
-    formId: string,
+    uniqueCode: string,
     visitorId: string,
     dto: SubmitFormResponseDto,
   ): Promise<FormResponse> {
-    const form = await this.formsRepository.findOneBy({ id: formId });
+    const form = await this.formsRepository.findOneBy({ uniqueCode, isPublished: true, isActive: true, adminDisabled: false });
     if (!form) throw new NotFoundException('Form not found');
 
     const response = this.formResponsesRepository.create({
-      formId,
+      formId: form.id,
       visitorId,
       branchId: form.branchId,
       businessId: form.businessId ?? undefined,

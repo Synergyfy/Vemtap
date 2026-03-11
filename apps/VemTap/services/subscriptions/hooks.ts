@@ -5,53 +5,42 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { Subscription, SubscriptionCapabilities, SubscribeRequest } from './types';
 
 export const useActiveSubscription = () => {
-    const { activeBranchId, isAllBranches } = useActiveBranch();
     const businessId = useAuthStore((state) => state.user?.businessId);
     
     return useQuery<Subscription, Error>({
-        queryKey: ['subscription', 'active', businessId, activeBranchId, isAllBranches],
+        queryKey: ['subscription', 'active', businessId],
         queryFn: async () => {
-            const params = new URLSearchParams();
-            if (activeBranchId) {
-                params.set('branchId', activeBranchId);
-            } else if (isAllBranches) {
-                params.set('allBranches', 'true');
-            }
-            const query = params.toString();
-            return await api.get(`/subscriptions/active${query ? `?${query}` : ''}`);
+            return await api.get('/subscriptions/active');
         },
         enabled: !!businessId,
     });
 };
 
 export const useCapabilities = () => {
-    const { activeBranchId, isAllBranches } = useActiveBranch();
     const businessId = useAuthStore((state) => state.user?.businessId);
     
     return useQuery<SubscriptionCapabilities, Error>({
-        queryKey: ['subscription', 'capabilities', businessId, activeBranchId, isAllBranches],
+        queryKey: ['subscription', 'capabilities', businessId],
         queryFn: async () => {
-            const params = new URLSearchParams();
-            if (activeBranchId) {
-                params.set('branchId', activeBranchId);
-            } else if (isAllBranches) {
-                params.set('allBranches', 'true');
-            }
-            const query = params.toString();
-            return await api.get(`/subscriptions/capabilities${query ? `?${query}` : ''}`);
+            return await api.get('/subscriptions/capabilities');
         },
         enabled: !!businessId,
     });
 };
 
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+
 export const useSubscribe = () => {
     const queryClient = useQueryClient();
+    const fetchSubscriptionData = useSubscriptionStore((state) => state.fetchSubscriptionData);
 
     return useMutation<Subscription, Error, SubscribeRequest>({
         mutationFn: async (dto) => await api.post('/subscriptions/subscribe', dto),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['subscription', 'active'] });
             queryClient.invalidateQueries({ queryKey: ['subscription', 'capabilities'] });
+            // Force Zustand store to refresh
+            fetchSubscriptionData();
         },
     });
 };
