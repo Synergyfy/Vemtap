@@ -12,8 +12,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
 import { Notification } from '@/lib/store/mockDashboardStore';
 import {
-    Home, Users, Nfc, Send, Gift, BarChart, Users2, Settings,
-    ChevronDown,Lock, LogOut, Bell, Search, HelpCircle, Menu, X, Zap, MessageSquare, Smartphone, ShieldCheck
+    Home, Users, Nfc, Gift, BarChart, Users2, Settings,
+    ChevronDown,Lock, LogOut, Bell,  HelpCircle, Menu, MessageSquare, ShieldCheck
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
@@ -254,8 +254,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             roles: ['owner', 'manager'],
             submenu: [
                 { label: 'Overview', href: '/dashboard/analytics' },
-                { label: 'Footfall', href: '/dashboard/analytics/footfall' },
-                { label: 'Peak Times', href: '/dashboard/analytics/peak-times' },
+                { label: 'Footfall', href: '/dashboard/analytics/footfall', feature: 'footfall', featureName: 'Advanced Analytics' },
+                { label: 'Peak Times', href: '/dashboard/analytics/peak-times', feature: 'peak-times', featureName: 'Advanced Analytics' },
             ]
         },
         {
@@ -604,7 +604,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         >
                             <Bell size={20} />
                             {unreadCount > 0 && (
-                                <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full px-1">
+                                <span className="absolute top-1.5 right-1.5 min-w-4.5 h-4.5 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full px-1">
                                     {unreadCount > 9 ? '9+' : unreadCount}
                                 </span>
                             )}

@@ -4,14 +4,20 @@ import { MailService } from '../../src/modules/mail/mail.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Otp } from '../../src/modules/auth/entities/otp.entity';
 import { createTestApp } from '../utils/create-app';
+import { DataSource } from 'typeorm';
+import { Category } from '../../src/modules/businesses/entities/category.entity';
+import { Subcategory } from '../../src/modules/businesses/entities/subcategory.entity';
 
 describe('Auth & Notifications (e2e)', () => {
   let app: INestApplication;
   let otpRepository: any;
+  let categoryId: string;
+  let subcategoryId: string;
 
   // Mock MailService
   const mockMailService = {
     sendOtp: jest.fn().mockResolvedValue(true),
+    sendWelcomeEmail: jest.fn().mockResolvedValue(true),
   };
 
   beforeAll(async () => {
@@ -20,6 +26,16 @@ describe('Auth & Notifications (e2e)', () => {
     });
 
     otpRepository = app.get(getRepositoryToken(Otp));
+
+    // Seed a category and subcategory for testing
+    const dataSource = app.get(DataSource);
+    const catRepo = dataSource.getRepository(Category);
+    const subRepo = dataSource.getRepository(Subcategory);
+
+    const cat = await catRepo.save(catRepo.create({ name: 'Test Category', description: 'Test' }));
+    const sub = await subRepo.save(subRepo.create({ name: 'Test Subcategory', categoryId: cat.id }));
+    categoryId = cat.id;
+    subcategoryId = sub.id;
   });
 
   afterAll(async () => {
@@ -209,7 +225,8 @@ describe('Auth & Notifications (e2e)', () => {
         email: resumptionEmail,
         password: 'Password123!',
         businessName: 'Resumed Business',
-        category: 'Tech',
+        categoryId: categoryId,
+        subcategoryId: subcategoryId,
         visitors: '100',
         goals: ['Resumption'],
         officialEmail: resumptionEmail,

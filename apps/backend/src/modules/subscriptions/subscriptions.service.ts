@@ -349,12 +349,9 @@ export class SubscriptionsService {
               : Math.max(0, plan.teamMembersLimit - usedStaff),
         },
         tags: {
-          limit: plan.tagsLimit ?? 'unlimited',
+          limit: 'unlimited',
           used: usedTags,
-          remaining:
-            plan.tagsLimit === null
-              ? 'unlimited'
-              : Math.max(0, plan.tagsLimit - usedTags),
+          remaining: 'unlimited',
         },
         loyaltyPrograms: {
           limit: plan.loyaltyLimit ?? 'unlimited',

@@ -10,6 +10,7 @@ interface SubscriptionState {
   fetchCapabilities: () => Promise<void>;
   hasFeature: (feature: string) => boolean;
   isFeatureLocked: (feature: string) => boolean;
+  isLimitReached: (key: 'teamMembers' | 'loyaltyPrograms' | 'branches') => boolean;
 }
 
 export const useSubscriptionStore = create<SubscriptionState>()(
@@ -35,22 +36,33 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         return caps.capabilities.features.includes(feature);
       },
 
-      isFeatureLocked: (feature: string) => {
-        // Analytics and Engagement are now free for all
-        if (feature === 'analytics' || feature === 'engagement') return false;
+      isLimitReached: (key: 'teamMembers' | 'loyaltyPrograms' | 'branches') => {
+        const caps = get().capabilities;
+        if (!caps) return false;
+        const item = caps.capabilities[key];
+        if (!item || item.limit === 'unlimited') return false;
+        return item.used >= (item.limit as number);
+      },
 
+      isFeatureLocked: (feature: string) => {
         const caps = get().capabilities;
         if (!caps) return true; // Assume locked if not loaded
 
-        // Mapping of route/feature names to backend features
+        // Mapping of route/feature names to backend features or levels
         const featureMapping: Record<string, string> = {
           'analytics': 'advanced_analytics',
+          'analytics_basic': 'dashboard', // basic dashboard is usually allowed
+          'analytics_advanced': 'advanced_analytics',
           'loyalty': 'loyalty_programs',
           'engagement': 'automated_campaigns',
           'feedback': 'surveys_and_feedback',
           'inventory': 'inventory_management',
           'messages': 'custom_message_templates',
         };
+
+        if (feature === 'footfall' || feature === 'peak-times') {
+          return caps.capabilities.analytics === 'basic' || caps.capabilities.analytics === 'none';
+        }
 
         const backendFeature = featureMapping[feature] || feature;
         return !caps.capabilities.features.includes(backendFeature);

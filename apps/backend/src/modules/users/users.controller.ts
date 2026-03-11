@@ -24,10 +24,13 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UpdateStaffDto } from './dto/update-staff.dto';
+import { InviteStaffDto } from './dto/invite-staff.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateEngagementDto } from './dto/update-engagement.dto';
 import { AdminCreateAgentDto } from './dto/admin-create-agent.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
+import { CapabilityGuard } from '../subscriptions/guards/capability.guard';
+import { RequireCapability } from '../subscriptions/decorators/capability.decorator';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -71,6 +74,21 @@ export class UsersController {
   }
 
   // --- Team Management ---
+
+  @Post('team/invite')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @UseGuards(CapabilityGuard)
+  @RequireCapability('teamMembers')
+  @ApiOperation({ summary: 'Invite a new team member' })
+  @ApiResponse({ status: 201, type: User })
+  async inviteStaff(
+    @Request() req,
+    @Body() dto: InviteStaffDto,
+    @Query() filter: BranchFilterDto,
+  ) {
+    const branchId = this.getBranchId(req, dto.branchId || filter.branchId);
+    return this.usersService.inviteStaff(branchId, dto);
+  }
 
   @Get('team')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)

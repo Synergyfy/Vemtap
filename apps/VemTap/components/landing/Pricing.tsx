@@ -300,7 +300,7 @@ export default function Pricing() {
                                 </div>
                                 <div className="flex flex-col items-center md:items-end gap-5 shrink-0">
                                     <div className="text-center md:text-right">
-                                        <span className="text-3xl md:text-4xl font-bold block leading-none">Custom /mo</span>
+                                        <span className="text-3xl md:text-4xl font-bold block leading-none">Custom</span>
                                         <span className="text-xs font-bold opacity-60 mt-1 block tracking-wider">Enterprise Pricing</span>
                                     </div>
                                     <div className="flex flex-col gap-3 min-w-[200px]">

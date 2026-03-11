@@ -7,6 +7,7 @@ import { ArrowLeft, Eye, LayoutTemplate, Plus, Search, Trash2 } from 'lucide-rea
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import PhoneFrame from '@/components/shared/PhoneFrame';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
+import Spinner from '@/components/ui/Spinner';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBranches } from '@/services/branches/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
@@ -221,7 +222,12 @@ export default function EngagementFormsBuilderPage() {
           <div className="border-b border-slate-200"><div className="flex gap-6 overflow-x-auto">{(['all', 'active', 'draft', 'archived'] as FormTab[]).map((k) => <button key={k} onClick={() => setTab(k)} className={`pb-3 px-1 text-sm font-bold border-b-2 whitespace-nowrap ${tab === k ? 'border-primary text-primary' : 'border-transparent text-slate-500'}`}>{k === 'all' ? 'All Forms' : k[0].toUpperCase() + k.slice(1)}</button>)}</div></div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-            {formsLoading && <p className="text-sm text-slate-500">Loading forms...</p>}
+            {formsLoading && (
+              <div className="flex items-center gap-3 text-sm text-slate-500">
+                <Spinner size="md" />
+                Loading forms...
+              </div>
+            )}
             {!formsLoading && filteredForms.length === 0 && <p className="text-sm text-slate-500">No forms found.</p>}
             {filteredForms.map((f) => (
               <div key={f.id} className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 sm:p-6 flex flex-col gap-4">
@@ -250,8 +256,8 @@ export default function EngagementFormsBuilderPage() {
               <h3 className="text-xl font-black text-slate-900">Create from Scratch</h3>
               <p className="text-sm text-slate-600 mt-2">Build your own custom form.</p>
             </button>
-            <button onClick={() => setViewMode('templates')} className="text-left rounded-2xl border border-slate-900 bg-slate-900 p-6 text-white shadow-sm">
-              <div className="size-12 rounded-2xl bg-yellow-300 text-slate-900 flex items-center justify-center mb-4"><LayoutTemplate size={22} /></div>
+            <button onClick={() => setViewMode('templates')} className="text-left rounded-2xl border border-primary bg-primary p-6 text-white shadow-sm">
+              <div className="size-12 rounded-2xl bg-white/15 text-white flex items-center justify-center mb-4"><LayoutTemplate size={22} /></div>
               <h3 className="text-xl font-black">Use Admin Template</h3>
               <p className="text-sm text-slate-300 mt-2">Pick from fetched templates.</p>
             </button>
@@ -272,7 +278,12 @@ export default function EngagementFormsBuilderPage() {
             <button onClick={() => setViewMode('path')} className="h-10 px-4 rounded-xl border border-slate-200 text-sm font-bold inline-flex items-center gap-2"><ArrowLeft size={14} /> Back</button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {templatesLoading && <p className="text-sm text-slate-500">Loading templates...</p>}
+            {templatesLoading && (
+              <div className="flex items-center gap-3 text-sm text-slate-500">
+                <Spinner size="md" />
+                Loading templates...
+              </div>
+            )}
             {!templatesLoading && templates.length === 0 && <p className="text-sm text-slate-500">No templates available.</p>}
             {templates.map((template) => (
               <div key={template.id} className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm space-y-3">

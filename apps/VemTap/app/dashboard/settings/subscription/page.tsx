@@ -134,7 +134,6 @@ export default function DashboardPricingPage() {
         if (plan.emailCredits) derivedFeatures.push(`${plan.emailCredits.toLocaleString()} Email Credits`);
         if (plan.teamMembersLimit) derivedFeatures.push(`${plan.teamMembersLimit} Team Members`);
         if (plan.loyaltyLimit) derivedFeatures.push(`${plan.loyaltyLimit} Loyalty Points`);
-        if (plan.tagsLimit) derivedFeatures.push(`${plan.tagsLimit} Tags`);
         if (plan.branchLimit) derivedFeatures.push(`${plan.branchLimit} Business Locations`);
         if (plan.analyticsLevel && plan.analyticsLevel !== 'none') {
             const level = plan.analyticsLevel.charAt(0).toUpperCase() + plan.analyticsLevel.slice(1);

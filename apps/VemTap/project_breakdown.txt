@@ -164,3 +164,18 @@ auto redirect to the title please 2.live preview merge the form
 --use after default submission
 --eg created 5 forms eg. button feedback.
 --the main location is the location that created that account
+
+=======
+
+new task 
+--actions :popup modal where to use 
+--standardize the card across the actives
+-- you can use the form as messaging,qrcode, default form, as card
+--copy link and download qr code
+--explain the  3 steps
+--coustomer first vist as new visitor, 
+--Business Forms
+
+
+
+

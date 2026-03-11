@@ -79,11 +79,12 @@ export interface Business {
     showReview?: boolean;
     showSocial?: boolean;
     showFeedback?: boolean;
+    isRegistered?: boolean;
+    documents?: string[];
     branches?: Branch[];
     createdAt?: string;
     updatedAt?: string;
     cacDocument?: string;
     idDocument?: string;
-    isRegistered?: boolean;
     registrationNumber?: string;
 }

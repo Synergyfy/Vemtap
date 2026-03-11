@@ -107,11 +107,11 @@ export default function CustomerAnalyticsPage() {
                             Visit Trends
                         </h4>
                         <div className="space-y-3">
-                            {data?.visitTrends.length === 0 ? (
+                            {(!data?.visitTrends || data.visitTrends.length === 0) ? (
                                 <p className="text-xs text-text-secondary italic">No visit data found yet.</p>
                             ) : (
-                                data?.visitTrends.map((item) => {
-                                    const maxVisits = Math.max(...data.visitTrends.map(v => v.visits), 1);
+                                data.visitTrends.map((item) => {
+                                    const maxVisits = Math.max(...(data?.visitTrends || []).map(v => v.visits), 1);
                                     return (
                                         <div key={item.month}>
                                             <div className="flex items-center justify-between mb-1">
@@ -138,12 +138,12 @@ export default function CustomerAnalyticsPage() {
                             Points Earned by Venue
                         </h4>
                         <div className="space-y-3">
-                            {data?.pointsByVenue.length === 0 ? (
+                            {(!data?.pointsByVenue || data.pointsByVenue.length === 0) ? (
                                 <p className="text-xs text-text-secondary italic">No venue points data found.</p>
                             ) : (
-                                data?.pointsByVenue.map((item, index) => {
+                                data.pointsByVenue.map((item, index) => {
                                     const colors = ['bg-orange-500', 'bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-emerald-500'];
-                                    const totalPoints = data.pointsByVenue.reduce((sum, p) => sum + p.points, 0) || 1;
+                                    const totalPoints = (data?.pointsByVenue || []).reduce((sum, p) => sum + p.points, 0) || 1;
                                     return (
                                         <div key={item.venueName}>
                                             <div className="flex items-center justify-between mb-1">
@@ -170,10 +170,10 @@ export default function CustomerAnalyticsPage() {
                             Most Visited Venues
                         </h4>
                         <div className="space-y-3">
-                            {data?.topVenues.length === 0 ? (
+                            {(!data?.topVenues || data.topVenues.length === 0) ? (
                                 <p className="text-xs text-text-secondary italic">No venue data available.</p>
                             ) : (
-                                data?.topVenues.map((venue) => {
+                                data.topVenues.map((venue) => {
                                     // Map some icons based on name or just use Coffee as default
                                     const VenueIcon = Coffee;
                                     return (
