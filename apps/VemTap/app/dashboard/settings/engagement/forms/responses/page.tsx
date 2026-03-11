@@ -6,10 +6,21 @@ import { useQuery } from '@tanstack/react-query';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { api } from '@/lib/api';
 import { useBusinessForms } from '@/services/business-forms/hooks';
-import { BarChart3, Eye } from 'lucide-react';
+import { BarChart3, Eye, FileText } from 'lucide-react';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useBranches } from '@/services/branches/hooks';
 
 export default function EngagementFormResponsesPage() {
-    const { data: forms = [], isLoading: formsLoading } = useBusinessForms();
+    const activeBranchId = useAuthStore((s) => s.activeBranchId);
+    const userBranchId = useAuthStore((s) => s.user?.branchId);
+    const { data: branches = [] } = useBranches();
+
+    const branchScope = activeBranchId === 'all' ? null : (activeBranchId || userBranchId || null);
+
+    const { data: forms = [], isLoading: formsLoading } = useBusinessForms({
+        branchId: branchScope || userBranchId || branches[0]?.id || undefined,
+        allBranches: !branchScope,
+    });
 
     const { data: responsesSummary = [], isLoading: summaryLoading } = useQuery<
         Array<{ formId: string; count: number; lastResponseAt?: string }>,
@@ -19,7 +30,7 @@ export default function EngagementFormResponsesPage() {
         queryFn: async () => {
             const summary = await Promise.all(
                 forms.map(async (form) => {
-                    const response = await api.get(`/business-forms/${form.id}/responses`);
+                    const response = await api.get(`/business-forms/${form.id}/responses?branchId=${form.branchId}`);
                     const rows = Array.isArray(response) ? response : Array.isArray(response?.data) ? response.data : [];
                     const sorted = [...rows].sort(
                         (a, b) =>
@@ -113,11 +124,10 @@ export default function EngagementFormResponsesPage() {
                                         </td>
                                         <td className="px-5 py-4 text-xs font-bold text-text-secondary">{form.branchId}</td>
                                         <td className="px-5 py-4">
-                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                                form.isPublished
-                                                    ? 'bg-emerald-100 text-emerald-700'
-                                                    : 'bg-amber-100 text-amber-700'
-                                            }`}>
+                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${form.isPublished
+                                                ? 'bg-emerald-100 text-emerald-700'
+                                                : 'bg-amber-100 text-amber-700'
+                                                }`}>
                                                 {form.isPublished ? 'Published' : 'Draft'}
                                             </span>
                                         </td>
