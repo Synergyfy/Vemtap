@@ -15,9 +15,9 @@ export const useMyBusiness = (enabled = true) => {
 
 export const useUpdateBusiness = () => {
     const queryClient = useQueryClient();
-    return useMutation<Business, Error, { id: string; updates: Partial<Business> }>({
-        mutationFn: async ({ id, updates }) => {
-            return await api.patch(`/businesses/${id}`, updates);
+    return useMutation<Business, Error, { id?: string; updates: any }>({
+        mutationFn: async ({ updates }) => {
+            return await api.patch('/businesses/my-business', updates);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['my-business'] });
