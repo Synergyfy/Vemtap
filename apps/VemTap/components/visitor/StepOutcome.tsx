@@ -46,6 +46,16 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
 
     const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards);
 
+    const socialLinks = [
+        { label: 'Instagram', url: engagementSettings?.instagram },
+        { label: 'X / Twitter', url: engagementSettings?.twitter },
+        { label: 'Facebook', url: engagementSettings?.facebook },
+        { label: 'LinkedIn', url: engagementSettings?.linkedin },
+    ];
+    const hasExplicitSocial = socialLinks.some((link) => Boolean(link.url));
+    const fallbackSocialUrl = !hasExplicitSocial ? engagementSettings?.socialUrl : '';
+    const showSocialCard = !!(engagementSettings?.showSocial && (hasExplicitSocial || fallbackSocialUrl));
+
     const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
         if (type === 'social') {
             setIsSocialModalOpen(true);
@@ -93,6 +103,28 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
                         selectedFormType={selectedFormType}
                         attachedForms={attachedForms}
                     />
+                )}
+
+                {showSocialCard && (
+                    <div className="w-full mt-6 rounded-2xl border border-gray-100 bg-white p-4 text-left">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Social Links</p>
+                        <div className="space-y-2 text-xs text-slate-700">
+                            {socialLinks.map((link) => (
+                                link.url ? (
+                                    <div key={link.label} className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-3 py-2">
+                                        <span className="font-semibold">{link.label}</span>
+                                        <span className="truncate text-slate-500">{link.url}</span>
+                                    </div>
+                                ) : null
+                            ))}
+                            {fallbackSocialUrl && (
+                                <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-3 py-2">
+                                    <span className="font-semibold">Social Link</span>
+                                    <span className="truncate text-slate-500">{fallbackSocialUrl}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 )}
 
                 <div className="w-full space-y-4 mt-8">

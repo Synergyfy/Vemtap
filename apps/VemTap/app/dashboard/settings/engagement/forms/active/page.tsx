@@ -11,6 +11,16 @@ import { useBranches } from '@/services/branches/hooks';
 import { useBusinessForms } from '@/services/business-forms/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
+import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+
+const Toggle = ({ active, onChange }: { active: boolean; onChange: (val: boolean) => void }) => (
+    <button
+        onClick={() => onChange(!active)}
+        className={`${active ? 'bg-primary' : 'bg-gray-200'} relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20`}
+    >
+        <span className={`${active ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm`} />
+    </button>
+);
 
 export default function ActiveFormsPage() {
     const { data: branches = [] } = useBranches();
@@ -24,6 +34,7 @@ export default function ActiveFormsPage() {
     });
 
     const { toggleActiveForm, isActiveForm } = useFormPreferencesStore();
+    const { engagementSettings, updateEngagementSettings } = useCustomerFlowStore();
     const branchKey = branchScope || userBranchId || 'global';
 
     const availableForms = useMemo(
@@ -68,6 +79,26 @@ export default function ActiveFormsPage() {
             ) : (
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
                     <div className="space-y-4">
+                        <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-2">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <p className="text-sm font-semibold text-gray-900">
+                                        Show active forms after default submission
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        When enabled, selected active forms appear as steps after the main data form.
+                                    </p>
+                                </div>
+                                <Toggle
+                                    active={engagementSettings?.showPostSubmitForms !== false}
+                                    onChange={(val) => updateEngagementSettings({ showPostSubmitForms: val })}
+                                />
+                            </div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                Note: This controls the user step sequence.
+                            </p>
+                        </div>
+
                         {availableForms.length === 0 ? (
                             <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-8 text-center text-sm text-gray-500">
                                 No published forms yet. Create and publish a form to activate it here.

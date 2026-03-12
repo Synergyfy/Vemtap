@@ -131,6 +131,7 @@ interface CustomerFlowState {
         showReview: boolean;
         showSocial: boolean;
         showFeedback: boolean;
+        showPostSubmitForms?: boolean;
         reviewUrl: string;
         socialUrl: string; // Maintain for legacy
         instagram?: string;
@@ -225,6 +226,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 showReview: true,
                 showSocial: true,
                 showFeedback: true,
+                showPostSubmitForms: true,
                 reviewUrl: 'https://g.page/review/vemtap',
                 socialUrl: 'https://instagram.com/vemtap',
                 instagram: 'https://instagram.com/vemtap',
@@ -311,6 +313,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                         showFeedback: hasEngagement
                             ? (branch.showFeedback ?? b.showFeedback ?? ownerEngagement.showFeedback ?? true)
                             : (branch.showFeedback ?? b.showFeedback ?? true),
+                        showPostSubmitForms: ownerEngagement.showPostSubmitForms ?? true,
                         reviewUrl: branch.reviewUrl || b.reviewUrl || ownerEngagement.reviewUrl || '',
                         socialUrl: branch.instagramUrl || b.instagramUrl || b.socialUrl || ownerEngagement.socialUrl || '',
                         instagram: branch.instagramUrl || b.instagramUrl || ownerEngagement.instagram || '',
