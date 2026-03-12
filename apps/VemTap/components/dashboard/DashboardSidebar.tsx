@@ -52,6 +52,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const { getLinkWithBranch } = useActiveBranch();
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
 
+    // Close upgrade modal on navigation
+    useEffect(() => {
+        setUpgradeModal({ isOpen: false, featureName: '' });
+    }, [pathname, searchParams]);
+
     useEffect(() => {
         if (isAuthenticated) {
             fetchSubscriptionData();
@@ -329,6 +334,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const withBranch = (href: string) => getLinkWithBranch(href);
 
     const handleItemClick = (e: React.MouseEvent, item: any, parentId?: string) => {
+        // Close modal if open when clicking something else
+        if (upgradeModal.isOpen) {
+            setUpgradeModal({ isOpen: false, featureName: '' });
+        }
+
         if (item.feature && isFeatureLocked(item.feature)) {
             e.preventDefault();
             e.stopPropagation();

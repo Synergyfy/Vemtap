@@ -33,6 +33,10 @@ describe('Subscriptions & Trial System (e2e)', () => {
     const plan = await planRepo.save(
       planRepo.create({
         name: 'Pro Plan',
+        messagingEnabled: true,
+        analyticsEnabled: true,
+        teamMembersEnabled: true,
+        branchesEnabled: true,
         smsCredits: 100,
         whatsappCredits: 100,
         emailCredits: 100,

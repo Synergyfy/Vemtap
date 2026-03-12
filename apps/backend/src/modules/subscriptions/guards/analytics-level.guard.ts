@@ -39,15 +39,15 @@ export class AnalyticsLevelGuard implements CanActivate {
 
     const capabilitiesData =
       await this.subscriptionsService.getCapabilities(businessId);
-    const userLevel = capabilitiesData.capabilities.analytics;
+    const analytics = capabilitiesData.capabilities.analytics;
 
-    if (userLevel === 'none') {
+    if (!analytics.enabled || analytics.level === 'none') {
       throw new ForbiddenException(
         'Analytics features are not included in your current plan.',
       );
     }
 
-    if (requiredLevel === 'advanced' && userLevel === 'basic') {
+    if (requiredLevel === 'advanced' && analytics.level === 'basic') {
       throw new ForbiddenException(
         'This analytics feature requires an Advanced plan.',
       );

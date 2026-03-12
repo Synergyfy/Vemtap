@@ -1,4 +1,5 @@
 export interface CapabilityLimit {
+  enabled: boolean;
   limit: number | 'unlimited';
   used: number;
   remaining: number | 'unlimited';
@@ -13,7 +14,13 @@ export interface SubscriptionCapabilities {
     tags: CapabilityLimit;
     loyaltyPrograms: CapabilityLimit;
     branches: CapabilityLimit;
-    analytics: 'basic' | 'advanced' | 'none';
+    analytics: {
+      enabled: boolean;
+      level: 'basic' | 'advanced' | 'none';
+    };
+    messaging: {
+      enabled: boolean;
+    };
     features: string[];
     credits: {
       sms: number;

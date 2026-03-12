@@ -55,7 +55,13 @@ export class CapabilityGuard implements CanActivate {
       throw new ForbiddenException(`Unknown capability ${requiredCapability}`);
     }
 
-    if (feature.limit !== 'unlimited' && feature.remaining <= 0) {
+    if (feature.enabled === false) {
+      throw new ForbiddenException(
+        `The ${requiredCapability} feature is not included in your current plan.`,
+      );
+    }
+
+    if (feature.limit !== undefined && feature.limit !== 'unlimited' && feature.remaining <= 0) {
       throw new ForbiddenException(
         `You have reached the limit for ${requiredCapability} on your current plan.`,
       );

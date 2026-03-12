@@ -5,7 +5,7 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import { useStaff, useInviteStaff, useUpdateStaff, useRemoveStaff } from '@/services/users/hooks';
 import { StaffMember, UserRole } from '@/services/users/types';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBusinessStore } from '@/store/useBusinessStore';
 import toast from 'react-hot-toast';
@@ -19,6 +19,7 @@ import Modal from '@/components/ui/Modal';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import UsageIndicator from '@/components/dashboard/UsageIndicator';
 import UpgradeModal from '@/components/dashboard/UpgradeModal';
+import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 
 const PERMISSIONS = [
     { id: 'dashboard', label: 'Dashboard', icon: Eye },
@@ -31,6 +32,7 @@ const PERMISSIONS = [
 
 export default function StaffManagementPage() {
     const router = useRouter();
+    const pathname = usePathname();
     const { user, activeBranchId } = useAuthStore();
     const { capabilities, isLimitReached } = useSubscriptionStore();
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -52,6 +54,11 @@ export default function StaffManagementPage() {
     const isLoading = isStaffLoading;
 
     const isOwner = user?.role?.toLowerCase() === 'owner';
+
+    // Close upgrade modal on navigation
+    React.useEffect(() => {
+        setShowUpgradeModal(false);
+    }, [pathname]);
 
     React.useEffect(() => {
         if (!isLoading && user && !['owner', 'manager'].includes((user.role as string)?.toLowerCase())) {
