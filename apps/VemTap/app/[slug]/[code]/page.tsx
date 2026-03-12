@@ -453,12 +453,13 @@ export default function DynamicTapJourneyPage() {
                         storeName={storeName}
                         logoUrl={logoUrl}
                         customWelcomeMessage={customNewUserWelcomeMessage}
-                        customWelcomeTitle={customNewUserWelcomeTitle}
+                        customWelcomeTitle={customWelcomeTitle}
                         customWelcomeTag={customNewUserWelcomeTag}
                         customPrivacyMessage={customPrivacyMessage}
                         initialData={userData || storedIdentity || user}
                         isSyncingReal={isSyncingReal}
                         isDeviceSynced={isDeviceSynced}
+                        isSubmitting={isSubmitting}
                         onBack={() => setStep('SELECT_TYPE')}
                         onSubmit={onFormSubmit}
                     />

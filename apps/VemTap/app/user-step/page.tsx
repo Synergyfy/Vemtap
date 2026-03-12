@@ -103,6 +103,7 @@ function UserStepPageContent() {
     const config = getBusinessConfig();
 
     const [isDownloading, setIsDownloading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSyncingReal, setIsSyncingReal] = useState(false);
     const [isDeviceSynced, setIsDeviceSynced] = useState(false);
 
@@ -169,22 +170,28 @@ function UserStepPageContent() {
     }, [currentStep, setStep, storedIdentity, userData]);
 
     const onFormSubmit = async (data: any) => {
-        localStorage.setItem('google_identity', JSON.stringify(data));
-        setUserData(data);
+        setIsSubmitting(true);
+        try {
+            localStorage.setItem('google_identity', JSON.stringify(data));
+            setUserData(data);
 
-        // Loyalty Integration: Earn points for the visit after identity is provided
-        const businessId = useCustomerFlowStore.getState().businessId;
-        if (businessId) {
-            const { earnPoints } = useLoyaltyStore.getState();
-            earnPoints({
-                userId: data.email || data.phone || data.uniqueId || 'anonymous',
-                businessId: businessId,
-                branchId: branchId || 'head-office',
-                isVisit: true
-            }).catch(err => console.error('Failed to earn points after form submit:', err));
+            // Loyalty Integration: Earn points for the visit after identity is provided
+            const businessId = useCustomerFlowStore.getState().businessId;
+            if (businessId) {
+                const { earnPoints } = useLoyaltyStore.getState();
+                const identity = data;
+                await earnPoints({
+                    userId: identity.email || identity.phone || identity.uniqueId || 'anonymous',
+                    businessId: businessId,
+                    branchId: branchId || 'head-office',
+                    isVisit: true
+                }).catch(err => console.error('Failed to earn points after form submit:', err));
+            }
+
+            setStep('OUTCOME');
+        } finally {
+            setIsSubmitting(false);
         }
-
-        setStep('OUTCOME');
     };
 
     const handleDownloadReward = () => {
@@ -298,12 +305,13 @@ function UserStepPageContent() {
                         storeName={storeName}
                         logoUrl={logoUrl}
                         customWelcomeMessage={customNewUserWelcomeMessage}
-                        customWelcomeTitle={customNewUserWelcomeTitle}
+                        customWelcomeTitle={customWelcomeTitle}
                         customWelcomeTag={customNewUserWelcomeTag}
                         customPrivacyMessage={customPrivacyMessage}
                         initialData={userData || storedIdentity || user}
                         isSyncingReal={isSyncingReal}
                         isDeviceSynced={isDeviceSynced}
+                        isSubmitting={isSubmitting}
                         onBack={() => setStep('SELECT_TYPE')}
                         onSubmit={onFormSubmit}
                     />
