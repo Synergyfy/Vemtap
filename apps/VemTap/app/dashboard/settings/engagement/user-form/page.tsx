@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/dashboard/PageHeader';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import PhoneFrame from '@/components/shared/PhoneFrame';
+import { SocialLinksPreview } from '@/components/shared/SocialLinksPreview';
 import { StepForm } from '@/components/visitor/StepForm';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
@@ -22,7 +23,6 @@ export default function UserFormSettingsPage() {
         welcomeTag: store.customNewUserWelcomeTag || 'Quick Link',
         privacyMessage: store.customPrivacyMessage || 'I agree to have my visits securely tracked and data collected just for feedback and loyalty rewards.',
         submitLabel: store.customNewUserWelcomeButton || 'Submit',
-        logoUrl: store.logoUrl || '',
     });
 
     useEffect(() => {
@@ -34,7 +34,6 @@ export default function UserFormSettingsPage() {
             welcomeTag: business.welcomeTag || prev.welcomeTag,
             privacyMessage: business.privacyMessage || prev.privacyMessage,
             submitLabel: business.welcomeButton || prev.submitLabel,
-            logoUrl: business.logoUrl || prev.logoUrl,
         }));
     }, [business]);
 
@@ -47,7 +46,6 @@ export default function UserFormSettingsPage() {
                 newUserWelcomeTag: settings.welcomeTag,
                 newUserWelcomeButton: settings.submitLabel,
                 privacyMessage: settings.privacyMessage,
-                logoUrl: settings.logoUrl,
             });
 
             if (business) {
@@ -59,7 +57,6 @@ export default function UserFormSettingsPage() {
                         welcomeTag: settings.welcomeTag,
                         welcomeButton: settings.submitLabel,
                         privacyMessage: settings.privacyMessage,
-                        logoUrl: settings.logoUrl,
                     },
                 });
             }
@@ -121,16 +118,6 @@ export default function UserFormSettingsPage() {
                                     className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
                                 />
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Submit Button</label>
-                                <input
-                                    type="text"
-                                    value={settings.submitLabel}
-                                    onChange={(e) => setSettings((prev) => ({ ...prev, submitLabel: e.target.value }))}
-                                    className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
-                                    placeholder="Submit"
-                                />
-                            </div>
                         </div>
 
                         <div className="space-y-1">
@@ -162,15 +149,16 @@ export default function UserFormSettingsPage() {
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Logo URL</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Submit Button</label>
                             <input
-                                type="url"
-                                value={settings.logoUrl}
-                                onChange={(e) => setSettings((prev) => ({ ...prev, logoUrl: e.target.value }))}
+                                type="text"
+                                value={settings.submitLabel}
+                                onChange={(e) => setSettings((prev) => ({ ...prev, submitLabel: e.target.value }))}
                                 className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
-                                placeholder="https://..."
+                                placeholder="Submit"
                             />
                         </div>
+
                     </div>
 
                     <div className="flex justify-end">
@@ -195,16 +183,18 @@ export default function UserFormSettingsPage() {
                             <PhoneFrame title="Live User Form Preview">
                                 <div className="p-6">
                                     <StepForm
-                                        storeName={store.storeName || 'Your Store'}
-                                        logoUrl={settings.logoUrl || store.logoUrl}
+                                        storeName={business?.name || store.storeName || 'Your Store'}
+                                        logoUrl={business?.logoUrl || store.logoUrl}
                                         customWelcomeMessage={settings.welcomeMessage}
                                         customWelcomeTitle={settings.welcomeTitle}
                                         customWelcomeTag={settings.welcomeTag}
                                         customPrivacyMessage={settings.privacyMessage}
                                         submitLabel={settings.submitLabel || 'Submit'}
+                                        headerVariant="inline"
                                         onBack={() => { }}
                                         onSubmit={() => { }}
                                     />
+                                    <SocialLinksPreview settings={store.engagementSettings} />
                                 </div>
                             </PhoneFrame>
                         </div>

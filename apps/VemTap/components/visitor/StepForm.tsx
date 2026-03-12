@@ -25,6 +25,7 @@ interface StepFormProps {
     initialData?: any;
     isSyncingReal?: boolean;
     isDeviceSynced?: boolean;
+    headerVariant?: 'stacked' | 'inline';
     onBack: () => void;
     onSubmit: (data: VisitorFormData) => void;
 }
@@ -40,6 +41,7 @@ export const StepForm: React.FC<StepFormProps> = ({
     initialData,
     isSyncingReal,
     isDeviceSynced,
+    headerVariant,
     onBack,
     onSubmit
 }) => {
@@ -84,7 +86,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                 </div>
             )}
 
-            <VisitorHeader logoUrl={logoUrl} storeName={storeName} />
+            <VisitorHeader logoUrl={logoUrl} storeName={storeName} variant={headerVariant} />
 
             <div className="mb-6">
                 <span className={presets.tag}>{customWelcomeTag || "Quick Link"}</span>
