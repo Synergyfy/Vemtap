@@ -49,25 +49,25 @@ interface ShareExplainerState {
 }
 
 function formatDate(dateString?: string): string {
-  if (!dateString) return '—';
+  if (!dateString) return 'Ã¢â‚¬â€';
   try {
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '—';
+    if (isNaN(date.getTime())) return 'Ã¢â‚¬â€';
     return date.toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
   } catch {
-    return '—';
+    return 'Ã¢â‚¬â€';
   }
 }
 
 function formatDateTime(dateString?: string): string {
-  if (!dateString) return '—';
+  if (!dateString) return 'Ã¢â‚¬â€';
   try {
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '—';
+    if (isNaN(date.getTime())) return 'Ã¢â‚¬â€';
     return date.toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
@@ -76,7 +76,7 @@ function formatDateTime(dateString?: string): string {
       minute: '2-digit',
     });
   } catch {
-    return '—';
+    return 'Ã¢â‚¬â€';
   }
 }
 
@@ -213,15 +213,23 @@ export default function FormsPage() {
     return { label: 'Active', color: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' };
   };
 
-  const getPublicFormKey = (formId: string, uniqueCode?: string) => uniqueCode || formId;
+  const getPublicFormCode = (uniqueCode?: string) => uniqueCode?.trim() || '';
 
-  const getFormUrl = (formId: string, uniqueCode?: string): string => {
-  const key = getPublicFormKey(formId, uniqueCode);
+  const getFormUrl = (uniqueCode?: string): string => {
+    const code = getPublicFormCode(uniqueCode);
+    if (!code) return '';
+    return typeof window !== 'undefined'
+      ? `${window.location.origin}/forms/${code}`
+      : `/forms/${code}`;
+  };
 
-  return typeof window !== 'undefined'
-    ? `${window.location.origin}/forms/${key}`
-    : `/forms/${key}`;
-};
+  const requireFormUrl = (uniqueCode?: string) => {
+    const url = getFormUrl(uniqueCode);
+    if (!url) {
+      toast.error('This form is missing a public code. Please republish the form to generate one.');
+    }
+    return url;
+  };
 
   const getMessagingUrl = (formId: string) => {
     const params = new URLSearchParams();
@@ -236,12 +244,14 @@ export default function FormsPage() {
   if (!form) return;
 
   if (method === 'link') {
-    const url = getFormUrl(form.id, form.uniqueCode);
+    const url = requireFormUrl(form.uniqueCode);
+    if (!url) return;
     await navigator.clipboard.writeText(url);
     toast.success('Form link copied to clipboard!');
   } 
   else if (method === 'qr') {
-    const url = getFormUrl(form.id, form.uniqueCode);
+    const url = requireFormUrl(form.uniqueCode);
+    if (!url) return;
     setShareForm({ id: formId, title: formTitle, url });
   } 
   else if (method === 'messaging') {
@@ -303,6 +313,7 @@ export default function FormsPage() {
     document.addEventListener('click', handler);
     return () => document.removeEventListener('click', handler);
   }, [openMenuId]);
+
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
@@ -473,6 +484,7 @@ export default function FormsPage() {
           {scopedForms.map((form) => {
             const status = statusOf(form);
             const branchLabel = branchNameById.get(form.branchId) || 'Unknown Branch';
+            const formUrl = getFormUrl(form.uniqueCode);
             return (
               <div
                 id={`form-card-${form.id}`}
@@ -480,12 +492,14 @@ export default function FormsPage() {
                 className={`group relative bg-white rounded-2xl border border-gray-200 overflow-hidden transition-all hover:shadow-lg hover:border-gray-300 ${focusFormId === form.id ? 'ring-2 ring-primary/30 border-primary' : ''
                   }`}
               >
-                <QRCodeCanvas
-                  id={`form-qr-${form.id}`}
-                  value={getFormUrl(form.id, form.uniqueCode)}
-                  size={160}
-                  className="hidden"
-                />
+                {formUrl ? (
+                  <QRCodeCanvas
+                    id={`form-qr-${form.id}`}
+                    value={formUrl}
+                    size={160}
+                    className="hidden"
+                  />
+                ) : null}
 
                 {/* Top color bar */}
                 <div className="h-1 bg-gradient-to-r from-primary to-primary/60" />
@@ -597,7 +611,7 @@ export default function FormsPage() {
                         {responseCountByFormId.get(form.id) || 0} filled
                       </div>
                       <span className="text-xs text-gray-400" title={formatDateTime(form.createdAt)}>
-                        {form.createdAt ? timeAgo(form.createdAt) : '—'}
+                        {form.createdAt ? timeAgo(form.createdAt) : 'Ã¢â‚¬â€'}
                       </span>
                     </div>
                   </div>
@@ -643,7 +657,7 @@ export default function FormsPage() {
                     </span>
                     {form.updatedAt && form.updatedAt !== form.createdAt && (
                       <span title={`Updated: ${formatDateTime(form.updatedAt)}`}>
-                        · Updated {formatDate(form.updatedAt)}
+                        Ã‚Â· Updated {formatDate(form.updatedAt)}
                       </span>
                     )}
                   </div>
@@ -708,6 +722,7 @@ export default function FormsPage() {
             {scopedForms.map((form) => {
               const status = statusOf(form);
               const branchLabel = branchNameById.get(form.branchId) || 'Unknown';
+              const formUrl = getFormUrl(form.uniqueCode);
               return (
                 <div
                   id={`form-card-${form.id}`}
@@ -715,12 +730,14 @@ export default function FormsPage() {
                   className={`grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 px-5 py-4 items-center hover:bg-gray-50 transition-colors ${focusFormId === form.id ? 'bg-primary/5' : ''
                     }`}
                 >
-                  <QRCodeCanvas
-                    id={`form-qr-${form.id}`}
-                    value={getFormUrl(form.id, form.uniqueCode)}
-                    size={160}
-                    className="hidden"
-                  />value={getFormUrl(form.id, form.uniqueCode)}
+                  {formUrl ? (
+                    <QRCodeCanvas
+                      id={`form-qr-${form.id}`}
+                      value={formUrl}
+                      size={160}
+                      className="hidden"
+                    />
+                  ) : null}
 
                   {/* Form info */}
                   <div className="sm:col-span-3 flex items-center gap-3 min-w-0">
@@ -766,7 +783,7 @@ export default function FormsPage() {
 
                   {/* Updated */}
                   <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(form.updatedAt)}>
-                    {form.updatedAt ? timeAgo(form.updatedAt) : '—'}
+                    {form.updatedAt ? timeAgo(form.updatedAt) : 'Ã¢â‚¬â€'}
                   </div>
 
                   {/* Actions */}
@@ -873,7 +890,7 @@ export default function FormsPage() {
         </div>
       )}
 
-      {/* ─── Share Explainer Modal ─── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Share Explainer Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {
         shareExplainer && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShareExplainer(null)}>
@@ -928,7 +945,7 @@ export default function FormsPage() {
         )
       }
 
-      {/* ─── QR Code Modal ─── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ QR Code Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {
         shareForm && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShareForm(null)}>
@@ -981,7 +998,7 @@ export default function FormsPage() {
         )
       }
 
-      {/* ─── Delete Confirmation Modal ─── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Delete Confirmation Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {
         deleteConfirm && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setDeleteConfirm(null)}>
@@ -1018,7 +1035,7 @@ export default function FormsPage() {
           </div>
         )
       }
-      {/* ─── Default Form Explainer Modal ─── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Default Form Explainer Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {
         defaultFormExplainer && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 transition-all" onClick={() => setDefaultFormExplainer(null)}>

@@ -69,9 +69,11 @@ export default function BusinessProfilePage() {
     const [rewardVisitThreshold, setRewardVisitThreshold] = useState(5);
 
     const [isRegistered, setIsRegistered] = useState(false);
+    const [cacType, setCacType] = useState('RC');
     const [registrationNumber, setRegistrationNumber] = useState('');
     const [cacDocument, setCacDocument] = useState('');
     const [idDocument, setIdDocument] = useState('');
+    const [isDocsCollapsed, setIsDocsCollapsed] = useState(false);
 
     const [facebookUrl, setFacebookUrl] = useState('');
     const [instagramUrl, setInstagramUrl] = useState('');
@@ -152,6 +154,9 @@ export default function BusinessProfilePage() {
             setIdDocument(business.idDocument || '');
             setIsRegistered(business.isRegistered || false);
             setRegistrationNumber(business.registrationNumber || '');
+            if ((business.registrationNumber || '').startsWith('BN')) setCacType('BN');
+            else if ((business.registrationNumber || '').startsWith('IT')) setCacType('IT');
+            else setCacType('RC');
 
             if (!profileSlug) {
                 const slug = (business.name).toLowerCase().replace(/\s+/g, '-');
@@ -234,6 +239,7 @@ export default function BusinessProfilePage() {
                 if (hasChanged(city, business.city)) businessUpdates.city = city;
                 if (hasChanged(isRegistered, business.isRegistered)) businessUpdates.isRegistered = isRegistered;
                 if (hasChanged(registrationNumber, business.registrationNumber)) businessUpdates.registrationNumber = registrationNumber;
+                if (hasChanged(cacType, business.cacType)) businessUpdates.cacType = cacType;
                 if (hasChanged(finalLogoUrl, business.logoUrl)) businessUpdates.logoUrl = finalLogoUrl;
 
                 const docs = [finalCacDocument, finalIdDocument].filter(Boolean);
@@ -734,41 +740,246 @@ export default function BusinessProfilePage() {
                     </div>
                 )}
 
-                {activeTab === 'documents' && (isAllBranches || branches.length <= 1) && (
-                    <div className="space-y-6">
-                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                                <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Business Documents</h3>
-                            </div>
-                            <div className="p-8 space-y-8">
-                                <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase text-text-secondary ml-1">CAC Registration / Business License</label>
-                                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50/50">
-                                        {cacDocument ? (
-                                            <div className="w-full text-center">
-                                                <img src={cacDocument} alt="CAC" className="mx-auto max-h-48 object-contain rounded-lg mb-4" />
-                                                <button onClick={() => setCacDocument('')} className="text-xs text-red-500 font-bold hover:underline">Remove</button>
+                {activeTab === 'documents' && (isAllBranches || branches.length <= 1) && (() => {
+                    const tasks = [
+                        { label: 'Business Name', completed: !!name, icon: 'business' },
+                        { label: 'Business Logo', completed: !!logo, icon: 'image' },
+                        { label: 'Category & Sub', completed: !!categoryId && (subcategoryId !== 'other' || !!otherSubcategoryName), icon: 'category' },
+                        { label: 'Contact Info', completed: !!supportEmail || !!supportPhone, icon: 'contact_phone' },
+                        { label: 'Location Details', completed: !!state && !!city && !!address, icon: 'map' },
+                        { label: 'Business Reg.', completed: !!registrationNumber, icon: 'fact_check' },
+                        { label: 'CAC Document', completed: !!cacDocument, icon: 'description' },
+                        { label: 'Owner Identity', completed: !!idDocument, icon: 'person_pin' },
+                    ];
+                    const completedCount = tasks.filter(t => t.completed).length;
+                    const totalCount = tasks.length;
+                    const progress = (completedCount / totalCount) * 100;
+
+                    return (
+                        <div className="space-y-6">
+                            {/* Health Check Progress UI */}
+                            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 overflow-hidden relative">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-10">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="text-xl font-display font-bold text-text-main">Health Check Progress</h3>
+                                            {progress === 100 && (
+                                                <span className="material-icons-round text-green-500 text-xl">verified</span>
+                                            )}
+                                        </div>
+                                        <p className="text-sm text-text-secondary font-medium">Verify your business to establish trust and unlock all features.</p>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <div className="text-2xl font-display font-black text-primary">{Math.round(progress)}% <span className="text-text-secondary text-sm font-bold">Health Score</span></div>
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-text-secondary mt-1">{completedCount} of {totalCount} tasks completed</div>
+                                    </div>
+                                </div>
+                                
+                                <div className="mt-8 flex flex-col gap-6">
+                                    <div className="relative pt-1">
+                                        <div className="overflow-hidden h-3 text-xs flex rounded-full bg-gray-100">
+                                            <div 
+                                                style={{ width: `${progress}%` }}
+                                                className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary transition-all duration-1000 ease-in-out relative"
+                                            >
+                                                <div className="absolute inset-0 bg-white/20 animate-[pulse_2s_infinite]"></div>
                                             </div>
-                                        ) : (
-                                            <label className="cursor-pointer flex flex-col items-center">
-                                                <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (file) {
-                                                        const reader = new FileReader();
-                                                        reader.onload = (ev) => setCacDocument(ev.target?.result as string);
-                                                        reader.readAsDataURL(file);
-                                                    }
-                                                }} />
-                                                <span className="material-icons-round text-4xl text-gray-300">upload_file</span>
-                                                <span className="text-sm font-bold text-text-secondary">Click to upload CAC</span>
-                                            </label>
-                                        )}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                        {tasks.map((task, i) => (
+                                            <div key={i} className={`flex flex-col gap-2 p-3 rounded-2xl border transition-all ${
+                                                task.completed 
+                                                ? 'bg-green-50 border-green-100 text-green-700' 
+                                                : 'bg-gray-50/50 border-gray-100 text-text-secondary opacity-60'
+                                            }`}>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="material-icons-round text-lg">{task.icon}</span>
+                                                    {task.completed && <span className="material-icons-round text-xs">check_circle</span>}
+                                                </div>
+                                                <span className="text-[9px] font-black uppercase tracking-tighter truncate">{task.label}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Business Identity Section (Redesigned & Collapsible) */}
+                            <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
+                                <button 
+                                    onClick={() => setIsDocsCollapsed(!isDocsCollapsed)}
+                                    className="w-full px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between group"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="size-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
+                                            <span className="material-icons-round text-2xl">corporate_fare</span>
+                                        </div>
+                                        <div className="text-left">
+                                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Business Identity (CAC)</h3>
+                                            <p className="text-xs text-text-secondary font-medium">Official Corporate Affairs Commission details</p>
+                                        </div>
+                                    </div>
+                                    <div className={`size-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center transition-transform duration-300 ${isDocsCollapsed ? 'rotate-180' : ''}`}>
+                                        <span className="material-icons-round text-gray-400">expand_more</span>
+                                    </div>
+                                </button>
+
+                                {!isDocsCollapsed && (
+                                    <div className="p-8 space-y-8 animate-in slide-in-from-top-4 duration-300">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Registration Type</label>
+                                                    <select
+                                                        value={cacType}
+                                                        onChange={(e) => setCacType(e.target.value)}
+                                                        className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
+                                                        style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%239ca3af\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1.25rem center', backgroundSize: '1.25rem' }}
+                                                    >
+                                                        <option value="RC">Limited Liability Company (RC)</option>
+                                                        <option value="BN">Business Name (BN)</option>
+                                                        <option value="IT">Incorporated Trustees (IT)</option>
+                                                        <option value="LLP">Limited Liability Partnership (LLP)</option>
+                                                    </select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">{cacType} Number</label>
+                                                    <input
+                                                        type="text"
+                                                        value={registrationNumber}
+                                                        onChange={(e) => setRegistrationNumber(e.target.value)}
+                                                        placeholder={`Enter your ${cacType} number`}
+                                                        className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Upload CAC Document / Certificate</label>
+                                                <div className="relative group">
+                                                    {!cacDocument ? (
+                                                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer bg-gray-50 hover:bg-white hover:border-primary/30 transition-all">
+                                                            <div className="flex flex-col items-center justify-center p-6 text-center">
+                                                                <div className="size-10 rounded-full bg-white flex items-center justify-center mb-2 shadow-sm text-gray-400 group-hover:text-primary transition-colors">
+                                                                    <span className="material-icons-round">cloud_upload</span>
+                                                                </div>
+                                                                <p className="text-xs font-bold text-text-main">Click to upload doc</p>
+                                                                <p className="text-[10px] text-text-secondary mt-1 uppercase tracking-tighter">MAX. 10MB</p>
+                                                            </div>
+                                                            <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (file) {
+                                                                    const reader = new FileReader();
+                                                                    reader.onload = (ev) => setCacDocument(ev.target?.result as string);
+                                                                    reader.readAsDataURL(file);
+                                                                }
+                                                            }} />
+                                                        </label>
+                                                    ) : (
+                                                        <div className="flex items-center justify-between bg-green-50 p-5 rounded-2xl border border-green-100">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="size-12 rounded-xl bg-white flex items-center justify-center text-green-600 shadow-sm">
+                                                                    <span className="material-icons-round">description</span>
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-sm font-black text-text-main truncate">CAC Certificate</p>
+                                                                    <p className="text-[10px] text-green-600 font-bold uppercase tracking-widest">Attached</p>
+                                                                </div>
+                                                            </div>
+                                                            <button 
+                                                                onClick={() => setCacDocument('')}
+                                                                className="size-10 rounded-xl bg-white border border-red-100 text-red-500 hover:bg-red-50 transition-all flex items-center justify-center"
+                                                            >
+                                                                <span className="material-icons-round text-lg">delete_outline</span>
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Means of Identity Section (Personal ID) */}
+                            <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
+                                <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="size-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500">
+                                            <span className="material-icons-round text-2xl">badge</span>
+                                        </div>
+                                        <div className="text-left">
+                                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Means of Identity</h3>
+                                            <p className="text-xs text-text-secondary font-medium">Valid government-issued ID for verification</p>
+                                        </div>
+                                    </div>
+                                    <span className="px-3 py-1 bg-amber-100/50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-lg border border-amber-200/50">KYC Requirement</span>
+                                </div>
+
+                                <div className="p-8 space-y-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Identity Type</label>
+                                            <select
+                                                className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
+                                                style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%239ca3af\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1.25rem center', backgroundSize: '1.25rem' }}
+                                            >
+                                                <option>National ID (NIN)</option>
+                                                <option>Drivers License</option>
+                                                <option>International Passport</option>
+                                                <option>Voter's Card</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Upload Identity Card Photo</label>
+                                            <div className="relative group">
+                                                {!idDocument ? (
+                                                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer bg-gray-50 hover:bg-white hover:border-primary/30 transition-all">
+                                                        <div className="flex flex-col items-center justify-center p-6 text-center">
+                                                            <div className="size-10 rounded-full bg-white flex items-center justify-center mb-2 shadow-sm text-gray-400 group-hover:text-primary transition-colors">
+                                                                <span className="material-icons-round">face</span>
+                                                            </div>
+                                                            <p className="text-xs font-bold text-text-main">Click to upload ID</p>
+                                                        </div>
+                                                        <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) {
+                                                                const reader = new FileReader();
+                                                                reader.onload = (ev) => setIdDocument(ev.target?.result as string);
+                                                                reader.readAsDataURL(file);
+                                                            }
+                                                        }} />
+                                                    </label>
+                                                ) : (
+                                                    <div className="flex items-center justify-between bg-green-50 p-5 rounded-2xl border border-green-100">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="size-12 rounded-xl bg-white flex items-center justify-center text-green-600 shadow-sm">
+                                                                <span className="material-icons-round">assignment_ind</span>
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-black text-text-main truncate">Owner ID Document</p>
+                                                                <p className="text-[10px] text-green-600 font-bold uppercase tracking-widest">Attached</p>
+                                                            </div>
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => setIdDocument('')}
+                                                            className="size-10 rounded-xl bg-white border border-red-100 text-red-500 hover:bg-red-50 transition-all flex items-center justify-center"
+                                                        >
+                                                            <span className="material-icons-round text-lg">delete_outline</span>
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
 
                 {activeTab === 'general' && (
                     <div className="pt-4 flex items-center justify-between px-2">

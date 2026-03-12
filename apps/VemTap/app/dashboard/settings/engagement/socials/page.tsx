@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Loader2, Save, Trophy } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Facebook, Instagram, Linkedin, Loader2, Save, Trophy, Twitter } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/dashboard/PageHeader';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
+import PhoneFrame from '@/components/shared/PhoneFrame';
+import { StepOutcome } from '@/components/visitor/StepOutcome';
 
 const Toggle = ({ active, onChange }: { active: boolean; onChange: (val: boolean) => void }) => (
     <button
@@ -20,10 +22,11 @@ const Toggle = ({ active, onChange }: { active: boolean; onChange: (val: boolean
 
 export default function EngagementSocialSettingsPage() {
     const { user, updateUser } = useAuthStore();
-    const { engagementSettings, updateEngagementSettings } = useCustomerFlowStore();
+    const { engagementSettings, updateEngagementSettings, getBusinessConfig, customSuccessMessage, customRewardMessage, hasRewardSetup } = useCustomerFlowStore();
     const [isSaving, setIsSaving] = useState(false);
     const { data: business, isLoading } = useMyBusiness();
     const updateMutation = useUpdateBusiness();
+    const config = getBusinessConfig();
 
     const [localSettings, setLocalSettings] = useState({
         reviewUrl: '',
@@ -55,6 +58,27 @@ export default function EngagementSocialSettingsPage() {
             });
         }
     }, [business, user]);
+
+    const hasAnySocial = Boolean(
+        localSettings.instagram ||
+        localSettings.facebook ||
+        localSettings.twitter ||
+        localSettings.linkedin
+    );
+
+    const showPreviewPlaceholders = localSettings.showSocial && !hasAnySocial;
+
+    const previewEngagement = useMemo(() => ({
+        showReview: localSettings.showReview,
+        showSocial: localSettings.showSocial,
+        showFeedback: localSettings.showFeedback,
+        reviewUrl: localSettings.reviewUrl,
+        socialUrl: localSettings.instagram || localSettings.facebook || localSettings.twitter || localSettings.linkedin || '',
+        instagram: localSettings.instagram || (showPreviewPlaceholders ? 'https://instagram.com/your-handle' : ''),
+        twitter: localSettings.twitter || (showPreviewPlaceholders ? 'https://x.com/your-handle' : ''),
+        facebook: localSettings.facebook || (showPreviewPlaceholders ? 'https://facebook.com/your-page' : ''),
+        linkedin: localSettings.linkedin || (showPreviewPlaceholders ? 'https://linkedin.com/company/your-company' : ''),
+    }), [localSettings, showPreviewPlaceholders]);
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -122,104 +146,178 @@ export default function EngagementSocialSettingsPage() {
             <EngagementTabs
                 tabs={[
                     { label: 'Socials', active: true },
-                    { label: 'Form Creator', href: '/dashboard/settings/engagement/forms' },
-                    { label: 'Form Responses', href: '/dashboard/settings/engagement/forms/responses' },
+                    { label: 'Default Form', href: '/dashboard/settings/engagement/experience/default-form' },
+                    { label: 'Additional Forms', href: '/dashboard/settings/engagement/experience/additional-forms' },
                 ]}
             />
 
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-6">
-                <div className="flex items-start justify-between gap-4">
-                    <div>
-                        <h3 className="font-display font-bold text-text-main">Show social links after default submission</h3>
-                        <p className="text-xs text-text-secondary mt-1">
-                            When enabled, customers see a social links action in the step right after they submit the default form.
-                        </p>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+                <div className="space-y-6">
+                    <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-6">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 className="font-display font-bold text-text-main">Show social links after default submission</h3>
+                                <p className="text-xs text-text-secondary mt-1">
+                                    When enabled, customers see a social links action in the step right after they submit the default form.
+                                </p>
+                            </div>
+                            <Toggle
+                                active={localSettings.showSocial}
+                                onChange={(val) => setLocalSettings((prev) => ({ ...prev, showSocial: val }))}
+                            />
+                        </div>
+
+                        {localSettings.showSocial && (
+                            <div className="space-y-4">
+                                <p className="text-xs text-text-secondary">
+                                    Existing links from your business profile are auto-filled below. If none exist, add them here.
+                                </p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Instagram URL</label>
+                                        <input
+                                            type="url"
+                                            placeholder="https://instagram.com/your-handle"
+                                            value={localSettings.instagram}
+                                            onChange={(e) => setLocalSettings((prev) => ({ ...prev, instagram: e.target.value }))}
+                                            className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">X / Twitter URL</label>
+                                        <input
+                                            type="url"
+                                            placeholder="https://x.com/your-handle"
+                                            value={localSettings.twitter}
+                                            onChange={(e) => setLocalSettings((prev) => ({ ...prev, twitter: e.target.value }))}
+                                            className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Facebook URL</label>
+                                        <input
+                                            type="url"
+                                            placeholder="https://facebook.com/your-page"
+                                            value={localSettings.facebook}
+                                            onChange={(e) => setLocalSettings((prev) => ({ ...prev, facebook: e.target.value }))}
+                                            className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">LinkedIn URL</label>
+                                        <input
+                                            type="url"
+                                            placeholder="https://linkedin.com/company/your-company"
+                                            value={localSettings.linkedin}
+                                            onChange={(e) => setLocalSettings((prev) => ({ ...prev, linkedin: e.target.value }))}
+                                            className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    <Toggle
-                        active={localSettings.showSocial}
-                        onChange={(val) => setLocalSettings((prev) => ({ ...prev, showSocial: val }))}
-                    />
+
+                    <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 className="font-display font-bold text-text-main">Show review request</h3>
+                                <p className="text-xs text-text-secondary mt-1">Enable Google/Trustpilot review prompt in post-submission flow.</p>
+                            </div>
+                            <Toggle
+                                active={localSettings.showReview}
+                                onChange={(val) => setLocalSettings((prev) => ({ ...prev, showReview: val }))}
+                            />
+                        </div>
+                        <input
+                            type="url"
+                            placeholder="https://g.page/review/your-business"
+                            value={localSettings.reviewUrl}
+                            onChange={(e) => setLocalSettings((prev) => ({ ...prev, reviewUrl: e.target.value }))}
+                            className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                        />
+
+                        <div className="flex items-start justify-between gap-4 border-t border-gray-100 pt-4">
+                            <div>
+                                <h3 className="font-display font-bold text-text-main">Show quick feedback</h3>
+                                <p className="text-xs text-text-secondary mt-1">Allow a quick feedback option in the same post-submission journey.</p>
+                            </div>
+                            <Toggle
+                                active={localSettings.showFeedback}
+                                onChange={(val) => setLocalSettings((prev) => ({ ...prev, showFeedback: val }))}
+                            />
+                        </div>
+                    </div>
                 </div>
 
-                {localSettings.showSocial && (
-                    <div className="space-y-4">
-                        <p className="text-xs text-text-secondary">
-                            Existing links from your business profile are auto-filled below. If none exist, add them here.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Instagram URL</label>
-                            <input
-                                type="url"
-                                placeholder="https://instagram.com/your-handle"
-                                value={localSettings.instagram}
-                                onChange={(e) => setLocalSettings((prev) => ({ ...prev, instagram: e.target.value }))}
-                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
-                            />
+                <div className="sticky top-6 space-y-3">
+                    <details open className="rounded-2xl border border-gray-100 bg-white">
+                        <summary className="cursor-pointer list-none px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-500 flex items-center justify-between">
+                            Preview
+                            <span className="text-[10px] font-semibold text-gray-400">Social Links</span>
+                        </summary>
+                        <div className="px-4 pb-4 space-y-3">
+                            {localSettings.showSocial ? (
+                                <>
+                                    <PhoneFrame title="Live Social Preview">
+                                        <div className="p-6">
+                                            <StepOutcome
+                                                config={config}
+                                                customSuccessMessage={customSuccessMessage}
+                                                customRewardMessage={customRewardMessage}
+                                                hasRewardSetup={hasRewardSetup}
+                                                isDownloading={false}
+                                                onDownload={() => { }}
+                                                onFinish={() => { }}
+                                                onRestart={() => { }}
+                                                engagementSettings={previewEngagement}
+                                                selectedFormTitle="Feedback Form"
+                                                selectedFormType="Form"
+                                            />
+                                        </div>
+                                    </PhoneFrame>
+                                    <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Social Links Card</p>
+                                        <div className="space-y-2 text-xs text-gray-700">
+                                            {previewEngagement.instagram && (
+                                                <div className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 border border-gray-100">
+                                                    <Instagram size={16} className="text-pink-600" />
+                                                    <span className="truncate">{previewEngagement.instagram}</span>
+                                                </div>
+                                            )}
+                                            {previewEngagement.twitter && (
+                                                <div className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 border border-gray-100">
+                                                    <Twitter size={16} className="text-slate-900" />
+                                                    <span className="truncate">{previewEngagement.twitter}</span>
+                                                </div>
+                                            )}
+                                            {previewEngagement.facebook && (
+                                                <div className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 border border-gray-100">
+                                                    <Facebook size={16} className="text-blue-600" />
+                                                    <span className="truncate">{previewEngagement.facebook}</span>
+                                                </div>
+                                            )}
+                                            {previewEngagement.linkedin && (
+                                                <div className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 border border-gray-100">
+                                                    <Linkedin size={16} className="text-blue-700" />
+                                                    <span className="truncate">{previewEngagement.linkedin}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {showPreviewPlaceholders && (
+                                        <p className="text-xs text-gray-500 text-center">
+                                            Showing example social links until you add your own.
+                                        </p>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-8 text-center text-sm text-gray-500">
+                                    Enable social links to see the user-step preview.
+                                </div>
+                            )}
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">X / Twitter URL</label>
-                            <input
-                                type="url"
-                                placeholder="https://x.com/your-handle"
-                                value={localSettings.twitter}
-                                onChange={(e) => setLocalSettings((prev) => ({ ...prev, twitter: e.target.value }))}
-                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Facebook URL</label>
-                            <input
-                                type="url"
-                                placeholder="https://facebook.com/your-page"
-                                value={localSettings.facebook}
-                                onChange={(e) => setLocalSettings((prev) => ({ ...prev, facebook: e.target.value }))}
-                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">LinkedIn URL</label>
-                            <input
-                                type="url"
-                                placeholder="https://linkedin.com/company/your-company"
-                                value={localSettings.linkedin}
-                                onChange={(e) => setLocalSettings((prev) => ({ ...prev, linkedin: e.target.value }))}
-                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
-                            />
-                        </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
-                <div className="flex items-start justify-between gap-4">
-                    <div>
-                        <h3 className="font-display font-bold text-text-main">Show review request</h3>
-                        <p className="text-xs text-text-secondary mt-1">Enable Google/Trustpilot review prompt in post-submission flow.</p>
-                    </div>
-                    <Toggle
-                        active={localSettings.showReview}
-                        onChange={(val) => setLocalSettings((prev) => ({ ...prev, showReview: val }))}
-                    />
-                </div>
-                <input
-                    type="url"
-                    placeholder="https://g.page/review/your-business"
-                    value={localSettings.reviewUrl}
-                    onChange={(e) => setLocalSettings((prev) => ({ ...prev, reviewUrl: e.target.value }))}
-                    className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
-                />
-
-                <div className="flex items-start justify-between gap-4 border-t border-gray-100 pt-4">
-                    <div>
-                        <h3 className="font-display font-bold text-text-main">Show quick feedback</h3>
-                        <p className="text-xs text-text-secondary mt-1">Allow a quick feedback option in the same post-submission journey.</p>
-                    </div>
-                    <Toggle
-                        active={localSettings.showFeedback}
-                        onChange={(val) => setLocalSettings((prev) => ({ ...prev, showFeedback: val }))}
-                    />
+                    </details>
                 </div>
             </div>
 

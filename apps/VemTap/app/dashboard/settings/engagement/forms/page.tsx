@@ -18,6 +18,7 @@ import {
   Link2,
   MessageSquare,
   MoreVertical,
+  BarChart3,
   Pencil,
   Plus,
   QrCode,
@@ -30,7 +31,6 @@ import {
   LayoutTemplate,
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
-import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import PhoneFrame from '@/components/shared/PhoneFrame';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import Spinner from '@/components/ui/Spinner';
@@ -210,13 +210,22 @@ export default function EngagementFormsBuilderPage() {
     [branches]
   );
 
-  const getPublicFormKey = (formId: string, uniqueCode?: string) => uniqueCode || formId;
+  const getPublicFormCode = (uniqueCode?: string) => uniqueCode?.trim() || '';
 
-  const getFormUrl = (formId: string, uniqueCode?: string) => {
-    const key = getPublicFormKey(formId, uniqueCode);
+  const getFormUrl = (uniqueCode?: string) => {
+    const code = getPublicFormCode(uniqueCode);
+    if (!code) return '';
     return typeof window !== 'undefined'
-      ? `${window.location.origin}/forms/${key}`
-      : `/forms/${key}`;
+      ? `${window.location.origin}/forms/${code}`
+      : `/forms/${code}`;
+  };
+
+  const requireFormUrl = (uniqueCode?: string) => {
+    const url = getFormUrl(uniqueCode);
+    if (!url) {
+      toast.error('This form is missing a public code. Please republish the form to generate one.');
+    }
+    return url;
   };
 
   const getMessagingUrl = (formId: string) => {
@@ -232,11 +241,13 @@ export default function EngagementFormsBuilderPage() {
     if (!form) return;
 
     if (method === 'link') {
-      const url = getFormUrl(form.uniqueCode || form.id);
+      const url = requireFormUrl(form.uniqueCode);
+      if (!url) return;
       await navigator.clipboard.writeText(url);
       toast.success('Form link copied to clipboard!');
     } else if (method === 'qr') {
-      const url = getFormUrl(form.uniqueCode || form.id);
+      const url = requireFormUrl(form.uniqueCode);
+      if (!url) return;
       setShareForm({ id: formId, title: formTitle, url });
     } else if (method === 'messaging') {
       router.push(getMessagingUrl(formId));
@@ -401,13 +412,7 @@ export default function EngagementFormsBuilderPage() {
   return (
     <>
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
-      <EngagementTabs
-        tabs={[
-          { label: 'Socials', href: '/dashboard/settings/engagement/socials' },
-          { label: 'Form Creator', active: true },
-          { label: 'Responses', href: '/dashboard/settings/engagement/forms/responses' },
-        ]}
-      />
+      {/* Navigation handled in sidebar under Engagement */}
 
       {viewMode === 'forms' && (
         <section className="space-y-6">
@@ -537,9 +542,12 @@ export default function EngagementFormsBuilderPage() {
               {filteredForms.map((f) => {
                 const status = statusBadgeOf(f);
                 const branchLabel = branchNameById.get(f.branchId) || 'Unknown';
+                const formUrl = getFormUrl(f.uniqueCode);
                 return (
                   <div key={f.id} className="group relative bg-white rounded-2xl border border-gray-200 overflow-hidden transition-all hover:shadow-lg">
-                    <QRCodeCanvas id={`form-qr-${f.id}`} value={getFormUrl(f.uniqueCode || f.id)} size={160} className="hidden" />
+                    {formUrl ? (
+                      <QRCodeCanvas id={`form-qr-${f.id}`} value={formUrl} size={160} className="hidden" />
+                    ) : null}
                     <div className="h-1 bg-gradient-to-r from-primary to-primary/60" />
                     <div className="p-5">
                       <div className="flex items-start justify-between gap-3">
@@ -562,6 +570,10 @@ export default function EngagementFormsBuilderPage() {
                               <button onClick={() => openShareExplainer('link', f.id, f.title)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Link2 size={14} className="text-gray-400" /> Copy share link</button>
                               <button onClick={() => openShareExplainer('qr', f.id, f.title)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><QrCode size={14} className="text-gray-400" /> Generate QR code</button>
                               <button onClick={() => { router.push(getMessagingUrl(f.id)); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Send size={14} className="text-gray-400" /> Messaging</button>
+                              <Link href={`/dashboard/settings/engagement/forms/responses/${f.id}`} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                                <BarChart3 size={14} className="text-gray-400" />
+                                View responses
+                              </Link>
                               <div className="h-px bg-gray-100 my-1" />
                               <button onClick={() => openEdit(f)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Pencil size={14} className="text-gray-400" /> Edit form</button>
                               <button onClick={() => { setDeleteConfirm({ id: f.id, title: f.title, branchId: f.branchId }); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"><Trash2 size={14} /> Delete</button>
@@ -649,6 +661,14 @@ export default function EngagementFormsBuilderPage() {
                           <Link2 size={14} />
                           Link
                         </button>
+                        <Link
+                          href={`/dashboard/settings/engagement/forms/responses/${f.id}`}
+                          className="flex-1 h-8 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 inline-flex items-center justify-center gap-1.5 transition-colors"
+                          title="View responses"
+                        >
+                          <BarChart3 size={14} />
+                          Responses
+                        </Link>
                         <button
                           onClick={() => openShareExplainer('qr', f.id, f.title)}
                           className="flex-1 h-8 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 inline-flex items-center justify-center gap-1.5 transition-colors"
@@ -713,29 +733,33 @@ export default function EngagementFormsBuilderPage() {
                     </div>
                     <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(f.createdAt)}>{formatDate(f.createdAt)}</div>
                     <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(f.updatedAt)}>{f.updatedAt ? timeAgo(f.updatedAt) : '—'}</div>
-                    <div className="sm:col-span-2 flex justify-end items-center gap-3">
-                      <div className="flex flex-col items-end">
-                        <span className={`text-[10px] font-black uppercase tracking-tighter ${f.showAfterLeadCapture ? 'text-emerald-600' : 'text-gray-400'}`}>
-                          {f.showAfterLeadCapture ? 'Enabled' : 'Disabled'}
-                        </span>
-                        <button
-                          disabled={updateMutation.isPending}
-                          onClick={() => {
-                            if (f.showAfterLeadCapture) {
-                              toggleShowAfterLeadCapture(f);
-                            } else {
-                              setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
-                            }
-                          }}
-                          className={`text-[9px] font-bold underline transition-colors ${f.showAfterLeadCapture ? 'text-amber-600 hover:text-amber-700' : 'text-primary hover:text-primary/80'} disabled:opacity-50`}
-                        >
-                          {updateMutation.isPending ? '...' : (f.showAfterLeadCapture ? 'Disable' : 'Enable')}
-                        </button>
-                      </div>
-                      <div className="flex gap-1">
-                        <button onClick={() => openShareExplainer('link', f.id, f.title)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Link2 size={14} /></button>
-                        <button onClick={() => openEdit(f)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Pencil size={14} /></button>
-                      </div>
+                    <div className="sm:col-span-2 flex justify-end items-center gap-1">
+                      <button
+                        disabled={updateMutation.isPending}
+                        onClick={() => {
+                          if (f.showAfterLeadCapture) {
+                            toggleShowAfterLeadCapture(f);
+                          } else {
+                            setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
+                          }
+                        }}
+                        className={`size-8 rounded-lg flex items-center justify-center transition-colors ${f.showAfterLeadCapture
+                          ? 'bg-primary/10 text-primary shadow-inner'
+                          : 'text-gray-400 hover:bg-gray-100'
+                          }`}
+                        title={f.showAfterLeadCapture ? 'Disable Sequence' : 'Enable Sequence'}
+                      >
+                        {updateMutation.isPending ? <Spinner size="sm" /> : <CheckCircle2 size={14} />}
+                      </button>
+                      <Link
+                        href={`/dashboard/settings/engagement/forms/responses/${f.id}`}
+                        className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"
+                        title="View responses"
+                      >
+                        <BarChart3 size={14} />
+                      </Link>
+                      <button onClick={() => openShareExplainer('link', f.id, f.title)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors" title="Copy share link"><Link2 size={14} /></button>
+                      <button onClick={() => openEdit(f)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors" title="Edit form"><Pencil size={14} /></button>
                     </div>
                   </div>
                 ))}

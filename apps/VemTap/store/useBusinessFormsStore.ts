@@ -245,7 +245,12 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
         set({ isSubmitting: true, error: null });
         try {
           const { api } = await import('@/lib/api');
-          const response = await api.post(`/visitor-forms/${input.formId}/responses`, input.answers);
+          let response;
+          try {
+            response = await api.post(`/visitor-forms/code/${input.formId}/responses`, input.answers);
+          } catch {
+            response = await api.post(`/visitor-forms/${input.formId}/responses`, input.answers);
+          }
           const submission: FormSubmission = {
             id: response.id,
             formId: input.formId,

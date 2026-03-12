@@ -16,11 +16,22 @@ interface SocialMediaModalProps {
 }
 
 export const SocialMediaModal: React.FC<SocialMediaModalProps> = ({ isOpen, onClose, socialLinks }) => {
+    const normalizeSocialUrl = (value: string | undefined, prefix: string) => {
+        if (!value) return undefined;
+        const trimmed = value.trim();
+        if (!trimmed) return undefined;
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        if (trimmed.startsWith('www.')) return `https://${trimmed}`;
+        if (trimmed.startsWith('@')) return `${prefix}${trimmed.slice(1)}`;
+        if (!trimmed.includes('.') && !trimmed.includes('/')) return `${prefix}${trimmed}`;
+        return `https://${trimmed}`;
+    };
+
     const socials = [
-        { name: 'Instagram', icon: Instagram, color: 'text-pink-600', bg: 'bg-pink-50', url: socialLinks?.instagram },
-        { name: 'X / Twitter', icon: Twitter, color: 'text-slate-900', bg: 'bg-slate-50', url: socialLinks?.twitter },
-        { name: 'Facebook', icon: Facebook, color: 'text-blue-600', bg: 'bg-blue-50', url: socialLinks?.facebook },
-        { name: 'LinkedIn', icon: Linkedin, color: 'text-blue-700', bg: 'bg-blue-50', url: socialLinks?.linkedin },
+        { name: 'Instagram', icon: Instagram, color: 'text-pink-600', bg: 'bg-pink-50', url: normalizeSocialUrl(socialLinks?.instagram, 'https://instagram.com/') },
+        { name: 'X / Twitter', icon: Twitter, color: 'text-slate-900', bg: 'bg-slate-50', url: normalizeSocialUrl(socialLinks?.twitter, 'https://x.com/') },
+        { name: 'Facebook', icon: Facebook, color: 'text-blue-600', bg: 'bg-blue-50', url: normalizeSocialUrl(socialLinks?.facebook, 'https://facebook.com/') },
+        { name: 'LinkedIn', icon: Linkedin, color: 'text-blue-700', bg: 'bg-blue-50', url: normalizeSocialUrl(socialLinks?.linkedin, 'https://linkedin.com/in/') },
     ].filter(s => s.url && s.url !== '');
 
     return (
