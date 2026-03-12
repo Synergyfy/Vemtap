@@ -39,16 +39,13 @@ function UserStepPageContent() {
     const preferredFormIdParam = searchParams.get('formId') || searchParams.get('form');
     const [selectedBusinessFormId, setSelectedBusinessFormId] = useState<string | null>(null);
     
-    // Fetch forms for this device/branch
-    const { data: deviceForms = [], isLoading: formsLoading, refetch: refetchDeviceForms } = useFormsByDevice(deviceCode || '');
+    // Fetch forms ONLY when user reaches the outcome/success stage
+    const shouldFetchForms = currentStep === 'OUTCOME' || currentStep === 'FINAL_SUCCESS';
+    const { data: deviceForms = [], isLoading: formsLoading } = useFormsByDevice(
+        shouldFetchForms ? deviceCode : ''
+    );
     const { data: businessForms = [] } = useBusinessForms();
 
-    useEffect(() => {
-        if (deviceCode) {
-            refetchDeviceForms();
-        }
-    }, [deviceCode, refetchDeviceForms]);
-    
     const submitBusinessFormResponse = useSubmitBusinessFormResponse(selectedBusinessFormId || '');
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const userBranchId = useAuthStore((state) => state.user?.branchId);
