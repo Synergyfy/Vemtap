@@ -181,35 +181,6 @@ export default function EngagementFormsBuilderPage() {
     allBranches: !branchScope,
   });
 
-  const { data: responsesSummary = [] } = useQuery<
-    Array<{ formId: string; count: number }>,
-    Error
-  >({
-    queryKey: ['business-forms', 'responses-summary', forms.map((f) => f.id).join(',')],
-    queryFn: async () => {
-      const summary = await Promise.all(
-        forms.map(async (form) => {
-          try {
-            const response = await api.get(`/business-forms/${form.id}/responses?branchId=${form.branchId}`);
-            const rows = Array.isArray(response) ? response : Array.isArray(response?.data) ? response.data : [];
-            return { formId: form.id, count: rows.length };
-          } catch {
-            return { formId: form.id, count: 0 };
-          }
-        })
-      );
-      return summary;
-    },
-    enabled: forms.length > 0,
-    staleTime: 60000,
-  });
-
-  const responseCountByFormId = useMemo(() => {
-    const map = new Map<string, number>();
-    responsesSummary.forEach((item) => map.set(item.formId, item.count));
-    return map;
-  }, [responsesSummary]);
-
   const { setDefaultForm, getDefaultFormId, clearDefaultForm } = useFormPreferencesStore();
 
   const [viewMode, setViewMode] = useState<ViewMode>('forms');
@@ -615,7 +586,7 @@ export default function EngagementFormsBuilderPage() {
                       <div className="flex items-center gap-4 mt-2 mb-1 px-1">
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-primary/80" title="Engagement metrics: number of people who have filled this form">
                           <CheckCircle2 size={13} />
-                          {responseCountByFormId.get(f.id) || 0} filled
+                          {f.responseCount || 0} filled
                         </div>
                       </div>
 
@@ -634,6 +605,7 @@ export default function EngagementFormsBuilderPage() {
                           <p className="text-[9px] text-gray-500 leading-tight mt-0.5">Automate this form to show after lead capture</p>
                         </div>
                         <button
+                          disabled={updateMutation.isPending}
                           onClick={() => {
                             if (f.showAfterLeadCapture) {
                               toggleShowAfterLeadCapture(f);
@@ -641,12 +613,12 @@ export default function EngagementFormsBuilderPage() {
                               setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
                             }
                           }}
-                          className={`shrink-0 h-7 px-3 rounded-lg text-[10px] font-black uppercase transition-all ${f.showAfterLeadCapture
+                          className={`shrink-0 h-7 px-3 rounded-lg text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${f.showAfterLeadCapture
                             ? 'bg-primary text-white shadow-sm'
                             : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
-                            }`}
+                            } disabled:opacity-70`}
                         >
-                          {f.showAfterLeadCapture ? 'Enabled' : 'Enable'}
+                          {updateMutation.isPending ? <Spinner size="xs" /> : (f.showAfterLeadCapture ? 'Disable' : 'Enable')}
                         </button>
                       </div>
 
@@ -733,12 +705,13 @@ export default function EngagementFormsBuilderPage() {
                     </div>
                     <div className="sm:col-span-2 text-xs text-primary/80 font-bold flex items-center gap-1.5">
                       <CheckCircle2 size={13} />
-                      {responseCountByFormId.get(f.id) || 0} <span className="font-normal text-gray-400">filled</span>
+                      {f.responseCount || 0} <span className="font-normal text-gray-400">filled</span>
                     </div>
                     <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(f.createdAt)}>{formatDate(f.createdAt)}</div>
                     <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(f.updatedAt)}>{f.updatedAt ? timeAgo(f.updatedAt) : '—'}</div>
                     <div className="sm:col-span-2 flex justify-end gap-1">
                       <button
+                        disabled={updateMutation.isPending}
                         onClick={() => {
                           if (f.showAfterLeadCapture) {
                             toggleShowAfterLeadCapture(f);
@@ -749,10 +722,10 @@ export default function EngagementFormsBuilderPage() {
                         className={`size-8 rounded-lg flex items-center justify-center transition-colors ${f.showAfterLeadCapture
                           ? 'bg-primary/10 text-primary shadow-inner'
                           : 'text-gray-400 hover:bg-gray-100'
-                          }`}
+                          } disabled:opacity-50`}
                         title={f.showAfterLeadCapture ? 'Disable Sequence' : 'Enable Sequence'}
                       >
-                        <CheckCircle2 size={14} />
+                        {updateMutation.isPending ? <Spinner size="xs" /> : <CheckCircle2 size={14} />}
                       </button>
                       <button onClick={() => openShareExplainer('link', f.id, f.title)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Link2 size={14} /></button>
                       <button onClick={() => openEdit(f)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Pencil size={14} /></button>

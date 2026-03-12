@@ -24,6 +24,7 @@ export interface BusinessForm {
   isActive: boolean;
   isPublished: boolean;
   showAfterLeadCapture?: boolean;
+  responseCount?: number;
   businessId: string;
   branchId: string;
   businessName?: string;

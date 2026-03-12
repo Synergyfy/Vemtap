@@ -267,6 +267,9 @@ export class FormsService {
 
     const savedResponse = await this.formResponsesRepository.save(response);
 
+    // Increment response count on the form
+    await this.formsRepository.increment({ id: form.id }, 'responseCount', 1);
+
     if (dto.answers && Array.isArray(dto.answers)) {
       const answers = dto.answers.map((ans) =>
         this.formAnswersRepository.create({
