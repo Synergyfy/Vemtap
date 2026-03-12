@@ -184,6 +184,35 @@ export default function EngagementFormsBuilderPage() {
     allBranches: !branchScope,
   });
 
+  const { data: responsesSummary = [] } = useQuery<
+    Array<{ formId: string; count: number }>,
+    Error
+  >({
+    queryKey: ['business-forms', 'responses-summary', forms.map((f) => f.id).join(',')],
+    queryFn: async () => {
+      const summary = await Promise.all(
+        forms.map(async (form) => {
+          try {
+            const response = await api.get(`/business-forms/${form.id}/responses?branchId=${form.branchId}`);
+            const rows = Array.isArray(response) ? response : Array.isArray(response?.data) ? response.data : [];
+            return { formId: form.id, count: rows.length };
+          } catch {
+            return { formId: form.id, count: 0 };
+          }
+        })
+      );
+      return summary;
+    },
+    enabled: forms.length > 0,
+    staleTime: 60000,
+  });
+
+  const responseCountByFormId = useMemo(() => {
+    const map = new Map<string, number>();
+    responsesSummary.forEach((item) => map.set(item.formId, item.count));
+    return map;
+  }, [responsesSummary]);
+
   const { setDefaultForm, getDefaultFormId, clearDefaultForm } = useFormPreferencesStore();
 
   const [viewMode, setViewMode] = useState<ViewMode>('forms');
@@ -744,11 +773,7 @@ export default function EngagementFormsBuilderPage() {
                     </div>
                     <div className="sm:col-span-2 text-xs text-primary/80 font-bold flex items-center gap-1.5">
                       <CheckCircle2 size={13} />
-<<<<<<< HEAD
-                      {f.responseCount || 0} <span className="font-normal text-gray-400">filled</span>
-=======
                       {responseCountByFormId.get(f.id) || 0} <span className="font-normal text-gray-400">responses</span>
->>>>>>> ac86d5b0f9ffafe50843549a0054eaf5223c4b88
                     </div>
                     <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(f.createdAt)}>{formatDate(f.createdAt)}</div>
                     <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(f.updatedAt)}>{f.updatedAt ? timeAgo(f.updatedAt) : '—'}</div>

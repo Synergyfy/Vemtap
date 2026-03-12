@@ -120,12 +120,16 @@ export const useDeleteBusinessForm = () => {
   });
 };
 
-export const useBusinessFormResponses = (id?: string, branchId?: string) =>
+export const useBusinessFormResponses = (id?: string, params: BusinessFormsQuery = {}) =>
   useQuery<BusinessFormResponseItem[], Error>({
-    queryKey: ['business-forms', id, 'responses', branchId || 'any'],
+    queryKey: ['business-forms', id, 'responses', params.branchId || 'any', params.allBranches ? 'all' : 'scoped'],
     queryFn: async () => {
       try {
-        const response = await api.get(`/business-forms/${id}/responses${branchId ? `?branchId=${branchId}` : ''}`);
+        const query = new URLSearchParams();
+        if (params.branchId) query.set('branchId', params.branchId);
+        if (params.allBranches) query.set('allBranches', 'true');
+        const suffix = query.toString();
+        const response = await api.get(`/business-forms/${id}/responses${suffix ? `?${suffix}` : ''}`);
         return toList<BusinessFormResponseItem>(response);
       } catch (err) {
         // Fallback to visitor-forms responses if business-forms fails
