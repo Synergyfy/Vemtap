@@ -40,8 +40,14 @@ function UserStepPageContent() {
     const [selectedBusinessFormId, setSelectedBusinessFormId] = useState<string | null>(null);
     
     // Fetch forms for this device/branch
-    const { data: deviceForms = [], isLoading: formsLoading } = useFormsByDevice(deviceCode || '');
+    const { data: deviceForms = [], isLoading: formsLoading, refetch: refetchDeviceForms } = useFormsByDevice(deviceCode || '');
     const { data: businessForms = [] } = useBusinessForms();
+
+    useEffect(() => {
+        if (deviceCode) {
+            refetchDeviceForms();
+        }
+    }, [deviceCode, refetchDeviceForms]);
     
     const submitBusinessFormResponse = useSubmitBusinessFormResponse(selectedBusinessFormId || '');
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
@@ -186,6 +192,9 @@ function UserStepPageContent() {
                     branchId: branchId || 'head-office',
                     isVisit: true
                 }).catch(err => console.error('Failed to earn points after form submit:', err));
+
+                // Refresh forms for the identified user/branch
+                refetchDeviceForms();
             }
 
             setStep('OUTCOME');

@@ -55,8 +55,14 @@ export default function DynamicTapJourneyPage() {
     const [selectedBusinessFormId, setSelectedBusinessFormId] = useState<string | null>(null);
 
     // Fetch forms for this device/branch
-    const { data: deviceForms = [], isLoading: formsLoading } = useFormsByDevice(deviceCode || '');
+    const { data: deviceForms = [], isLoading: formsLoading, refetch: refetchDeviceForms } = useFormsByDevice(deviceCode || '');
     const { data: businessForms = [] } = useBusinessForms();
+
+    useEffect(() => {
+        if (deviceCode) {
+            refetchDeviceForms();
+        }
+    }, [deviceCode, refetchDeviceForms]);
 
     const submitBusinessFormResponse = useSubmitBusinessFormResponse(selectedBusinessFormId || '');
     const getDefaultFormId = useFormPreferencesStore((state) => state.getDefaultFormId);
@@ -285,6 +291,9 @@ export default function DynamicTapJourneyPage() {
                 fetchLoyaltyProfile(identifier, branchId || 'head-office');
 
                 console.log('Loyalty tap processed:', response);
+                
+                // Ensure forms are fetched/refetched after visit is recognized
+                refetchDeviceForms();
             }
         } catch (err) {
             console.error('Failed to record loyalty tap:', err);
