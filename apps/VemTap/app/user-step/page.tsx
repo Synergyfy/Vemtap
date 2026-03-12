@@ -176,12 +176,12 @@ function UserStepPageContent() {
 
     const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
         if (type === 'review') {
-            window.open(engagementSettings.reviewUrl, '_blank');
+            window.open(engagementSettings?.reviewUrl, '_blank');
         } else if (type === 'social') {
             // Handled by the component's internal modal
         } else if (type === 'feedback') {
             if (formId) {
-                const attached = approvedFormsForBusiness.find((form) => form.id === formId);
+                const attached = deviceForms.find((form) => form.id === formId);
                 if (attached) {
                     setSelectedBusinessFormId(attached.id);
                     setStep('SURVEY');
@@ -189,16 +189,11 @@ function UserStepPageContent() {
                 }
             }
 
-            const explicitlyRequested = preferredFormIdParam
-                ? approvedFormsForBusiness.find((form) => form.id === preferredFormIdParam)
-                : null;
-
-            if (explicitlyRequested) {
-                setSelectedBusinessFormId(explicitlyRequested.id);
-            } else {
-                setSelectedBusinessFormId(preferredBusinessForm?.id || null);
+            // Fallback to first available form if no specific ID provided
+            if (deviceForms.length > 0) {
+                setSelectedBusinessFormId(deviceForms[0].id);
+                setStep('SURVEY');
             }
-            setStep('SURVEY');
         } else if (type === 'rewards') {
             // Logic for rewards - maybe a toast or a new step?
             toast.success('Reward points added to your account!');

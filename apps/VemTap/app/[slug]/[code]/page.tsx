@@ -341,10 +341,10 @@ export default function DynamicTapJourneyPage() {
 
     const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
         if (type === 'review') {
-            window.open(engagementSettings.reviewUrl, '_blank');
+            window.open(engagementSettings?.reviewUrl, '_blank');
         } else if (type === 'feedback') {
             if (formId) {
-                const attached = [...approvedFormsForBusiness, ...deviceForms].find((form) => form.id === formId);
+                const attached = deviceForms.find((form) => form.id === formId);
                 if (attached) {
                     setSelectedBusinessFormId(attached.id);
                     setStep('SURVEY');
@@ -352,8 +352,11 @@ export default function DynamicTapJourneyPage() {
                 }
             }
 
-            setSelectedBusinessFormId(preferredBusinessForm?.id || null);
-            setStep('SURVEY');
+            // Fallback to first available form if no specific ID provided
+            if (deviceForms.length > 0) {
+                setSelectedBusinessFormId(deviceForms[0].id);
+                setStep('SURVEY');
+            }
         } else if (type === 'rewards') {
             toast.success('Reward points added to your account!');
         }
