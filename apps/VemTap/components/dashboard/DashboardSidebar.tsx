@@ -243,6 +243,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             submenu: [
                 { label: 'Overview', href: '/dashboard/loyalty' },
                 { label: 'Rewards', href: '/dashboard/loyalty/rewards' },
+                { label: 'Redeem Reward', href: '/dashboard/loyalty/redeem' },
                 { label: 'Settings', href: '/dashboard/loyalty/settings' },
                 { label: 'Customers', href: '/dashboard/loyalty/customers' },
                 { label: 'Verify', href: '/dashboard/loyalty/verify' },
