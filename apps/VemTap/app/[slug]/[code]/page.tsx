@@ -55,58 +55,17 @@ export default function DynamicTapJourneyPage() {
     const [selectedBusinessFormId, setSelectedBusinessFormId] = useState<string | null>(null);
 
     // Fetch forms ONLY when user reaches the outcome/success stage
+    // Relying strictly on /api/v1/visitor-forms/device/{code}
     const shouldFetchForms = currentStep === 'OUTCOME' || currentStep === 'FINAL_SUCCESS';
     const { data: deviceForms = [], isLoading: formsLoading } = useFormsByDevice(
         shouldFetchForms ? deviceCode : ''
     );
-    const { data: businessForms = [] } = useBusinessForms();
 
     const submitBusinessFormResponse = useSubmitBusinessFormResponse(selectedBusinessFormId || '');
-    const getDefaultFormId = useFormPreferencesStore((state) => state.getDefaultFormId);
-    const getActiveFormIds = useFormPreferencesStore((state) => state.getActiveFormIds);
-    const formBranchScope = branchId || 'global';
-    const defaultFormId = getDefaultFormId(formBranchScope);
-    const locallyActiveFormIds = getActiveFormIds(formBranchScope);
-
-    const approvedFormsForBusiness = useMemo(
-        () =>
-            businessForms.filter(
-                (f) =>
-                    f.isPublished &&
-                    f.isActive &&
-                    (!businessId || f.businessId === businessId) &&
-                    (!branchId || f.branchId === branchId)
-            ),
-        [branchId, businessForms, businessId]
-    );
 
     const selectedBusinessForm = useMemo(
-        () => [...approvedFormsForBusiness, ...deviceForms].find((f) => f.id === selectedBusinessFormId) || null,
-        [approvedFormsForBusiness, deviceForms, selectedBusinessFormId]
-    );
-
-    const preferredBusinessForm = useMemo(() => {
-        // Check if any device form is marked as default/preferred (backend driven)
-        const deviceDefault = deviceForms.find(f => f.showAfterLeadCapture);
-
-        const branchDefault = defaultFormId
-            ? approvedFormsForBusiness.find((form) => form.id === defaultFormId)
-            : undefined;
-
-        return deviceDefault || branchDefault || approvedFormsForBusiness[0] || null;
-    }, [approvedFormsForBusiness, defaultFormId, deviceForms]);
-
-    const attachedBusinessForms = useMemo(
-        () => {
-            // Combine device-specific forms with locally active ones
-            const deviceSpecific = deviceForms.filter(f => f.id !== preferredBusinessForm?.id);
-            const others = approvedFormsForBusiness.filter(f => locallyActiveFormIds.includes(f.id) && f.id !== preferredBusinessForm?.id);
-
-            // Remove duplicates by ID
-            const combined = [...deviceSpecific, ...others];
-            return Array.from(new Map(combined.map(item => [item.id, item])).values());
-        },
-        [deviceForms, preferredBusinessForm?.id, approvedFormsForBusiness, locallyActiveFormIds]
+        () => deviceForms.find((f) => f.id === selectedBusinessFormId) || null,
+        [deviceForms, selectedBusinessFormId]
     );
 
     const isCustomer = isAuthenticated && user?.role?.toLowerCase() === 'customer';
@@ -521,9 +480,7 @@ export default function DynamicTapJourneyPage() {
                         onRestart={resetFlow}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}
-                        selectedFormTitle={preferredBusinessForm?.title || null}
-                        selectedFormType="Form"
-                        attachedForms={attachedBusinessForms.map((form) => ({
+                        attachedForms={deviceForms.map((form) => ({
                             id: form.id,
                             title: form.title,
                             description: form.description,
@@ -566,7 +523,7 @@ export default function DynamicTapJourneyPage() {
                         }}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}
-                        attachedForms={attachedBusinessForms.map((form) => ({
+                        attachedForms={deviceForms.map((form) => ({
                             id: form.id,
                             title: form.title,
                             description: form.description,

@@ -44,61 +44,12 @@ function UserStepPageContent() {
     const { data: deviceForms = [], isLoading: formsLoading } = useFormsByDevice(
         shouldFetchForms ? deviceCode : ''
     );
-    const { data: businessForms = [] } = useBusinessForms();
-
+    
     const submitBusinessFormResponse = useSubmitBusinessFormResponse(selectedBusinessFormId || '');
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const userBranchId = useAuthStore((state) => state.user?.branchId);
-    const getDefaultFormId = useFormPreferencesStore((state) => state.getDefaultFormId);
-    const getActiveFormIds = useFormPreferencesStore((state) => state.getActiveFormIds);
-    const formBranchScope = branchId || activeBranchId || userBranchId || null;
-    const defaultFormId = getDefaultFormId(formBranchScope || 'global');
-    const locallyActiveFormIds = getActiveFormIds(formBranchScope || 'global');
-
-    // Filtered forms based on current context
-    const approvedFormsForBusiness = useMemo(
-        () =>
-            businessForms.filter(
-                (f) =>
-                    f.isPublished &&
-                    f.isActive &&
-                    (!businessId || f.businessId === businessId) &&
-                    (!branchId || f.branchId === branchId)
-            ),
-        [branchId, businessForms, businessId]
-    );
 
     const selectedBusinessForm = useMemo(
-        () => [...approvedFormsForBusiness, ...deviceForms].find((f) => f.id === selectedBusinessFormId) || null,
-        [approvedFormsForBusiness, deviceForms, selectedBusinessFormId]
-    );
-
-    const preferredBusinessForm = useMemo(() => {
-        const explicit = preferredFormIdParam
-            ? [...approvedFormsForBusiness, ...deviceForms].find((form) => form.id === preferredFormIdParam)
-            : undefined;
-        
-        // Check if any device form is marked as default/preferred (backend driven)
-        const deviceDefault = deviceForms.find(f => f.showAfterLeadCapture);
-
-        const branchDefault = defaultFormId
-            ? approvedFormsForBusiness.find((form) => form.id === defaultFormId)
-            : undefined;
-
-        return explicit || deviceDefault || branchDefault || approvedFormsForBusiness[0] || null;
-    }, [approvedFormsForBusiness, preferredFormIdParam, defaultFormId, deviceForms]);
-
-    const attachedBusinessForms = useMemo(
-        () => {
-            // Combine device-specific forms with locally active ones
-            const deviceSpecific = deviceForms.filter(f => f.id !== preferredBusinessForm?.id);
-            const others = approvedFormsForBusiness.filter(f => locallyActiveFormIds.includes(f.id) && f.id !== preferredBusinessForm?.id);
-            
-            // Remove duplicates by ID
-            const combined = [...deviceSpecific, ...others];
-            return Array.from(new Map(combined.map(item => [item.id, item])).values());
-        },
-        [deviceForms, preferredBusinessForm?.id, approvedFormsForBusiness, locallyActiveFormIds]
+        () => deviceForms.find((f) => f.id === selectedBusinessFormId) || null,
+        [deviceForms, selectedBusinessFormId]
     );
 
     const { user } = useAuthStore();
@@ -189,9 +140,6 @@ function UserStepPageContent() {
                     branchId: branchId || 'head-office',
                     isVisit: true
                 }).catch(err => console.error('Failed to earn points after form submit:', err));
-
-                // Refresh forms for the identified user/branch
-                refetchDeviceForms();
             }
 
             setStep('OUTCOME');
@@ -371,9 +319,7 @@ function UserStepPageContent() {
                         onRestart={resetFlow}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}
-                        selectedFormTitle={preferredBusinessForm?.title || null}
-                        selectedFormType="Form"
-                        attachedForms={attachedBusinessForms.map((form) => ({
+                        attachedForms={deviceForms.map((form) => ({
                             id: form.id,
                             title: form.title,
                             description: form.description,
@@ -414,7 +360,7 @@ function UserStepPageContent() {
                         onFinish={resetFlow}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}
-                        attachedForms={attachedBusinessForms.map((form) => ({
+                        attachedForms={deviceForms.map((form) => ({
                             id: form.id,
                             title: form.title,
                             description: form.description,
