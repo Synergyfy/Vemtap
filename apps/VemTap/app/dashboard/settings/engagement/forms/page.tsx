@@ -32,9 +32,11 @@ import {
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import PhoneFrame from '@/components/shared/PhoneFrame';
+import { SocialLinksPreview } from '@/components/shared/SocialLinksPreview';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import Spinner from '@/components/ui/Spinner';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useBranches } from '@/services/branches/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import {
@@ -164,6 +166,7 @@ export default function EngagementFormsBuilderPage() {
   const activeBranchId = useAuthStore((s) => s.activeBranchId);
   const userBranchId = useAuthStore((s) => s.user?.branchId);
   const { data: myBusiness } = useMyBusiness();
+  const engagementSettings = useCustomerFlowStore((state) => state.engagementSettings);
 
   const { data: branches = [] } = useBranches();
   const { data: templates = [], isLoading: templatesLoading } = useFormTemplates();
@@ -233,6 +236,12 @@ export default function EngagementFormsBuilderPage() {
     params.set('formId', formId);
     if (branchScope) params.set('branchId', branchScope);
     return `/dashboard/messaging/compose?${params.toString()}`;
+  };
+
+  const getResponsesUrl = (form: BusinessForm) => {
+    const params = new URLSearchParams();
+    if (form.branchId) params.set('branchId', form.branchId);
+    return `/dashboard/settings/engagement/forms/responses/${form.id}${params.toString() ? `?${params.toString()}` : ''}`;
   };
 
   const handleShareAction = async (method: ShareMethod, formId: string, formTitle: string) => {
@@ -570,7 +579,7 @@ export default function EngagementFormsBuilderPage() {
                               <button onClick={() => openShareExplainer('link', f.id, f.title)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Link2 size={14} className="text-gray-400" /> Copy share link</button>
                               <button onClick={() => openShareExplainer('qr', f.id, f.title)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><QrCode size={14} className="text-gray-400" /> Generate QR code</button>
                               <button onClick={() => { router.push(getMessagingUrl(f.id)); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Send size={14} className="text-gray-400" /> Messaging</button>
-                              <Link href={`/dashboard/settings/engagement/forms/responses/${f.id}`} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                              <Link href={getResponsesUrl(f)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
                                 <BarChart3 size={14} className="text-gray-400" />
                                 View responses
                               </Link>
@@ -589,16 +598,26 @@ export default function EngagementFormsBuilderPage() {
                           <div className={`size-1.5 rounded-full ${status.dot}`} />
                           {status.label}
                         </span>
-                        <span className="text-xs text-gray-400" title={formatDateTime(f.createdAt)}>
-                          {f.createdAt ? timeAgo(f.createdAt) : '—'}
-                        </span>
+                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                          <span className="inline-flex items-center gap-1 text-primary/80 font-semibold">
+                            <CheckCircle2 size={12} />
+                            {responseCountByFormId.get(f.id) || 0} responses
+                          </span>
+                          <span title={formatDateTime(f.createdAt)}>
+                            {f.createdAt ? timeAgo(f.createdAt) : '—'}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Engagement & Automation */}
                       <div className="flex items-center gap-4 mt-2 mb-1 px-1">
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-primary/80" title="Engagement metrics: number of people who have filled this form">
                           <CheckCircle2 size={13} />
+<<<<<<< HEAD
                           {f.responseCount || 0} filled
+=======
+                          {responseCountByFormId.get(f.id) || 0} responses
+>>>>>>> ac86d5b0f9ffafe50843549a0054eaf5223c4b88
                         </div>
                       </div>
 
@@ -662,8 +681,8 @@ export default function EngagementFormsBuilderPage() {
                           Link
                         </button>
                         <Link
-                          href={`/dashboard/settings/engagement/forms/responses/${f.id}`}
-                          className="flex-1 h-8 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 inline-flex items-center justify-center gap-1.5 transition-colors"
+                          href={getResponsesUrl(f)}
+                          className="flex-1 h-8 rounded-lg text-xs font-bold text-white bg-primary hover:bg-primary/90 inline-flex items-center justify-center gap-1.5 transition-colors"
                           title="View responses"
                         >
                           <BarChart3 size={14} />
@@ -729,7 +748,11 @@ export default function EngagementFormsBuilderPage() {
                     </div>
                     <div className="sm:col-span-2 text-xs text-primary/80 font-bold flex items-center gap-1.5">
                       <CheckCircle2 size={13} />
+<<<<<<< HEAD
                       {f.responseCount || 0} <span className="font-normal text-gray-400">filled</span>
+=======
+                      {responseCountByFormId.get(f.id) || 0} <span className="font-normal text-gray-400">responses</span>
+>>>>>>> ac86d5b0f9ffafe50843549a0054eaf5223c4b88
                     </div>
                     <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(f.createdAt)}>{formatDate(f.createdAt)}</div>
                     <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(f.updatedAt)}>{f.updatedAt ? timeAgo(f.updatedAt) : '—'}</div>
@@ -752,14 +775,27 @@ export default function EngagementFormsBuilderPage() {
                         {updateMutation.isPending ? <Spinner size="sm" /> : <CheckCircle2 size={14} />}
                       </button>
                       <Link
-                        href={`/dashboard/settings/engagement/forms/responses/${f.id}`}
-                        className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"
+                        href={getResponsesUrl(f)}
+                        className="h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest bg-primary text-white hover:bg-primary/90 inline-flex items-center gap-1.5"
                         title="View responses"
                       >
                         <BarChart3 size={14} />
+                        Responses ({responseCountByFormId.get(f.id) || 0})
                       </Link>
+<<<<<<< HEAD
                       <button onClick={() => openShareExplainer('link', f.id, f.title)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors" title="Copy share link"><Link2 size={14} /></button>
                       <button onClick={() => openEdit(f)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors" title="Edit form"><Pencil size={14} /></button>
+=======
+                      <button onClick={() => openShareExplainer('link', f.id, f.title)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Link2 size={14} /></button>
+                      <button onClick={() => openEdit(f)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Pencil size={14} /></button>
+                      <button
+                        onClick={() => setDeleteConfirm({ id: f.id, title: f.title, branchId: f.branchId })}
+                        className="size-8 rounded-lg text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors"
+                        title="Delete form"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+>>>>>>> ac86d5b0f9ffafe50843549a0054eaf5223c4b88
                     </div>
                   </div>
                 ))}
@@ -883,6 +919,7 @@ export default function EngagementFormsBuilderPage() {
                           onComplete={() => toast.success('Preview submission captured')}
                           onSkip={() => toast('Preview skipped')}
                         />
+                        <SocialLinksPreview settings={engagementSettings} />
                       </div>
                     </PhoneFrame>
                   </div>
