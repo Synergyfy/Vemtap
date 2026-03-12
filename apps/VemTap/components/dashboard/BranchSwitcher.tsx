@@ -109,6 +109,11 @@ export default function BranchSwitcher() {
         ? 'All Locations'
         : activeBranch?.name || 'Select Location';
 
+    const handleSelectBranch = (branchId: string | null) => {
+        setActiveBranch(branchId);
+        setIsOpen(false);
+    };
+
     return (
         <div className="relative" ref={dropdownRef}>
             <div className="flex items-center gap-2">
@@ -165,7 +170,7 @@ export default function BranchSwitcher() {
                                 <div className="space-y-1 max-h-64 overflow-y-auto">
                                     {/* All Branches Option */}
                                     <button
-                                        onClick={() => { setActiveBranch(null); setIsOpen(false); }}
+                                        onClick={() => handleSelectBranch(null)}
                                         className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${!activeBranchId
                                             ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
                                             : 'hover:bg-gray-50 text-text-main font-bold'
@@ -176,34 +181,21 @@ export default function BranchSwitcher() {
                                         </div>
                                         <div className="text-left flex-1 min-w-0">
                                             <p className={`text-sm font-bold truncate ${!activeBranchId ? 'text-white' : 'text-text-main'}`}>
-                                                All Business Locations
+                                                All Locations
                                             </p>
                                             <p className={`text-[10px] truncate ${!activeBranchId ? 'text-white/80' : 'text-text-secondary'}`}>
-                                                Combined analytics & data
+                                                View aggregate data
                                             </p>
                                         </div>
-                                        {!activeBranchId && (
-                                            <Check size={16} className="text-white shrink-0" />
-                                        )}
+                                        {!activeBranchId && <Check size={16} className="text-white" />}
                                     </button>
 
-                                    {isLoading && (
-                                        <div className="py-4 text-center text-text-secondary text-sm flex items-center justify-center gap-2">
-                                            <Loader2 size={16} className="animate-spin" /> Loading branches...
-                                        </div>
-                                    )}
-
-                                    {!isLoading && branches.length === 0 && (
-                                        <div className="py-4 text-center text-text-secondary text-sm">
-                                            No business locations yet. Create one below.
-                                        </div>
-                                    )}
-
+                                    {/* Individual Branches */}
                                     {branches.map((branch) => (
                                         <div
                                             key={branch.id}
-                                            onClick={() => { setActiveBranch(branch.id); setIsOpen(false); }}
-                                            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group/item ${activeBranchId === branch.id
+                                            onClick={() => handleSelectBranch(branch.id)}
+                                            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group/item cursor-pointer ${activeBranchId === branch.id
                                                 ? 'bg-primary text-white shadow-lg shadow-primary/20'
                                                 : 'hover:bg-gray-50 text-text-main'
                                                 }`}
