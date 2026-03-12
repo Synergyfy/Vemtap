@@ -5,7 +5,7 @@ import { AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useBusinessForms, useSubmitBusinessFormResponse } from '@/services/business-forms/hooks';
+import { useBusinessForms, useSubmitBusinessFormResponse, useFormsByDevice } from '@/services/business-forms/hooks';
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import { jwtDecode } from 'jwt-decode';
 import { toast } from 'react-hot-toast';
@@ -23,6 +23,7 @@ import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { StepFinalSuccess } from '@/components/visitor/StepFinalSuccess';
 import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { EarnPointsModal } from '@/components/loyalty/EarnPointsModal';
+import Spinner from '@/components/ui/Spinner';
 
 function UserStepPageContent() {
     const {
@@ -32,12 +33,16 @@ function UserStepPageContent() {
         setBusinessType, userData, branchId, logoUrl, visitCount, rewardVisitThreshold,
         redemptionStatus, requestRedemption,
         engagementSettings, surveyQuestions,
-        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, businessId
+        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, businessId, deviceCode
     } = useCustomerFlowStore();
     const searchParams = useSearchParams();
     const preferredFormIdParam = searchParams.get('formId') || searchParams.get('form');
     const [selectedBusinessFormId, setSelectedBusinessFormId] = useState<string | null>(null);
+    
+    // Fetch forms for this device/branch
+    const { data: deviceForms = [], isLoading: formsLoading } = useFormsByDevice(deviceCode || '');
     const { data: businessForms = [] } = useBusinessForms();
+    
     const submitBusinessFormResponse = useSubmitBusinessFormResponse(selectedBusinessFormId || '');
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const userBranchId = useAuthStore((state) => state.user?.branchId);
@@ -46,6 +51,8 @@ function UserStepPageContent() {
     const formBranchScope = branchId || activeBranchId || userBranchId || null;
     const defaultFormId = getDefaultFormId(formBranchScope || 'global');
     const locallyActiveFormIds = getActiveFormIds(formBranchScope || 'global');
+
+    // Filtered forms based on current context
     const approvedFormsForBusiness = useMemo(
         () =>
             businessForms.filter(
@@ -57,31 +64,38 @@ function UserStepPageContent() {
             ),
         [branchId, businessForms, businessId]
     );
+
     const selectedBusinessForm = useMemo(
-        () => approvedFormsForBusiness.find((f) => f.id === selectedBusinessFormId) || null,
-        [approvedFormsForBusiness, selectedBusinessFormId]
+        () => [...approvedFormsForBusiness, ...deviceForms].find((f) => f.id === selectedBusinessFormId) || null,
+        [approvedFormsForBusiness, deviceForms, selectedBusinessFormId]
     );
+
     const preferredBusinessForm = useMemo(() => {
         const explicit = preferredFormIdParam
-            ? approvedFormsForBusiness.find((form) => form.id === preferredFormIdParam)
+            ? [...approvedFormsForBusiness, ...deviceForms].find((form) => form.id === preferredFormIdParam)
             : undefined;
+        
+        // Check if any device form is marked as default/preferred (backend driven)
+        const deviceDefault = deviceForms.find(f => f.showAfterLeadCapture);
+
         const branchDefault = defaultFormId
             ? approvedFormsForBusiness.find((form) => form.id === defaultFormId)
             : undefined;
-        return explicit || branchDefault || approvedFormsForBusiness[0] || null;
-    }, [approvedFormsForBusiness, preferredFormIdParam, defaultFormId]);
-    const attachedFormIds = useMemo(
-        () => {
-            const serverIds = Array.isArray(engagementSettings?.postSubmitFormIds)
-                ? engagementSettings.postSubmitFormIds
-                : [];
-            return Array.from(new Set([...serverIds, ...locallyActiveFormIds]));
-        },
-        [engagementSettings?.postSubmitFormIds, locallyActiveFormIds]
-    );
+
+        return explicit || deviceDefault || branchDefault || approvedFormsForBusiness[0] || null;
+    }, [approvedFormsForBusiness, preferredFormIdParam, defaultFormId, deviceForms]);
+
     const attachedBusinessForms = useMemo(
-        () => approvedFormsForBusiness.filter((form) => attachedFormIds.includes(form.id) && form.id !== preferredBusinessForm?.id),
-        [approvedFormsForBusiness, attachedFormIds, preferredBusinessForm?.id]
+        () => {
+            // Combine device-specific forms with locally active ones
+            const deviceSpecific = deviceForms.filter(f => f.id !== preferredBusinessForm?.id);
+            const others = approvedFormsForBusiness.filter(f => locallyActiveFormIds.includes(f.id) && f.id !== preferredBusinessForm?.id);
+            
+            // Remove duplicates by ID
+            const combined = [...deviceSpecific, ...others];
+            return Array.from(new Map(combined.map(item => [item.id, item])).values());
+        },
+        [deviceForms, preferredBusinessForm?.id, approvedFormsForBusiness, locallyActiveFormIds]
     );
 
     const { user } = useAuthStore();
@@ -337,6 +351,7 @@ function UserStepPageContent() {
                         customRewardMessage={customRewardMessage}
                         hasRewardSetup={hasRewardSetup}
                         isDownloading={isDownloading}
+                        isFormsLoading={formsLoading}
                         onDownload={handleDownloadReward}
                         onFinish={() => setStep('FINAL_SUCCESS')}
                         onRestart={resetFlow}
@@ -381,6 +396,7 @@ function UserStepPageContent() {
                         customSuccessTitle={useCustomerFlowStore.getState().customSuccessTitle}
                         finalSuccessMessage={useCustomerFlowStore.getState().customSuccessMessage || config.finalSuccessMessage}
                         customSuccessButton={useCustomerFlowStore.getState().customSuccessButton}
+                        isFormsLoading={formsLoading}
                         onFinish={resetFlow}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}

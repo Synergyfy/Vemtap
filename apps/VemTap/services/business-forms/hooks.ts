@@ -157,6 +157,15 @@ export const useFormTemplates = () =>
     },
   });
 
+export const useFormsByDevice = (deviceCode: string) =>
+  useQuery<BusinessForm[], Error>({
+    queryKey: ['forms-by-device', deviceCode],
+    queryFn: async () => {
+      return await api.get(`/visitor-forms/device/${deviceCode}`);
+    },
+    enabled: !!deviceCode,
+  });
+
 export const useCreateFormTemplate = () => {
   const queryClient = useQueryClient();
   return useMutation<FormTemplate, Error, CreateFormTemplateRequest>({

@@ -93,3 +93,22 @@ export const useDeleteDevice = () => {
         },
     });
 };
+
+export const useDeviceTapContext = (code: string) => {
+    return useQuery<any, Error>({
+        queryKey: ['device-tap-context', code],
+        queryFn: async () => {
+            return await api.get(`/tap/context/${code}`);
+        },
+        enabled: !!code,
+        retry: 1,
+    });
+};
+
+export const useRecordDeviceVisit = (code: string) => {
+    return useMutation<any, Error, { visitorId?: string; name?: string; email?: string; phone?: string }>({
+        mutationFn: async (payload) => {
+            return await api.post(`/tap/record/${code}`, payload);
+        },
+    });
+};

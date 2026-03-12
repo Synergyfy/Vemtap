@@ -14,6 +14,7 @@ interface StepFinalSuccessProps {
     engagementSettings?: any;
     socialLinks?: any;
     attachedForms?: Array<{ id: string; title: string; description?: string }>;
+    isFormsLoading?: boolean;
 }
 
 export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
@@ -25,6 +26,7 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
     onEngagement,
     engagementSettings,
     attachedForms,
+    isFormsLoading = false,
 }) => {
     const [isSocialModalOpen, setIsSocialModalOpen] = React.useState(false);
 
@@ -33,7 +35,7 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
     const hasFeedback = !!engagementSettings?.showFeedback;
     const hasRewards = !!engagementSettings?.showRewards;
 
-    const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards);
+    const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards || attachedForms?.length);
 
     const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
         if (type === 'social') {
@@ -64,7 +66,7 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
                             <div className="size-12 bg-amber-500 text-white rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20 group-hover:scale-110 transition-transform">
                                 <span className="material-symbols-outlined !text-2xl">star</span>
                             </div>
-                            <div className="text-left">
+                            <div classNametext-left">
                                 <h4 className="text-sm font-black text-slate-900 leading-tight">Rate us on Google</h4>
                                 <p className="text-[10px] font-bold text-amber-600 mt-0.5">TAP TO LEAVE A 5-STAR REVIEW</p>
                             </div>
@@ -81,6 +83,7 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
                         onAction={handleEngagement}
                         settings={engagementSettings}
                         attachedForms={attachedForms}
+                        isLoading={isFormsLoading}
                     />
                 </div>
             )}

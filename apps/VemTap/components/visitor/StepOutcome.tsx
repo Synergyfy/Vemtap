@@ -10,6 +10,7 @@ interface StepOutcomeProps {
     customRewardMessage?: string | null;
     hasRewardSetup: boolean;
     isDownloading: boolean;
+    isFormsLoading?: boolean;
     onDownload: () => void;
     onFinish: () => void;
     onRestart: () => void;
@@ -27,6 +28,7 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
     customRewardMessage,
     hasRewardSetup,
     isDownloading,
+    isFormsLoading = false,
     onDownload,
     onFinish,
     onRestart,
@@ -44,7 +46,7 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
     const hasFeedback = !!engagementSettings?.showFeedback;
     const hasRewards = !!engagementSettings?.showRewards;
 
-    const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards);
+    const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards || attachedForms?.length);
 
     const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
         if (type === 'social') {
@@ -92,6 +94,7 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
                         selectedFormTitle={selectedFormTitle}
                         selectedFormType={selectedFormType}
                         attachedForms={attachedForms}
+                        isLoading={isFormsLoading}
                     />
                 )}
 
