@@ -92,4 +92,5 @@ export interface Business {
     cacDocument?: string;
     idDocument?: string;
     registrationNumber?: string;
+    cacType?: string;
 }

@@ -8,7 +8,7 @@ import { RedemptionCard } from '@/components/loyalty/RedemptionCard';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Reward, Redemption } from '@/types/loyalty';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Gift, History, LayoutGrid, Info } from 'lucide-react';
+import { Star, Gift, History, LayoutGrid, Info, QrCode, Keyboard, ArrowRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import {
@@ -21,7 +21,8 @@ import {
 export default function LoyaltyPage() {
     const { user } = useAuthStore();
     const [activeTab, setActiveTab] = useState<'rewards' | 'history'>('rewards');
-    const [selectedRedemption, setSelectedRedemption] = useState<{ redemption: Redemption, reward: Reward } | null>(null);
+    const [pendingReward, setPendingReward] = useState<Reward | null>(null);
+    const [selectedRedemption, setSelectedRedemption] = useState<{ redemption: Redemption, reward: Reward, method: 'qr' | 'code' } | null>(null);
     const businessId = user?.businessId;
     const { data: profileResponse, isLoading: isProfileLoading } = useCustomerLoyaltyProfile(businessId);
     const { data: rewardsResponse = [] } = useCustomerLoyaltyRewards(businessId);
@@ -32,16 +33,21 @@ export default function LoyaltyPage() {
     const recentTransactions = Array.isArray(historyResponse) ? historyResponse : (historyResponse?.data || []);
     const isLoading = isProfileLoading;
 
-    const handleRedeem = async (reward: Reward) => {
-        if (!profile) {
-            notify.error('Loyalty profile not found');
+    const handleInitiateRedeem = (reward: Reward) => {
+        setPendingReward(reward);
+    };
+
+    const handleConfirmRedeem = async (method: 'qr' | 'code') => {
+        if (!profile || !pendingReward) {
+            notify.error('Loyalty profile or reward not found');
             return;
         }
 
-        const result = await redeemMutation.mutateAsync({ rewardId: reward.id, businessId });
+        const result = await redeemMutation.mutateAsync({ rewardId: pendingReward.id, businessId });
         if (result.success && result.redemption) {
-            setSelectedRedemption({ redemption: result.redemption, reward });
-            notify.success(`Redeemed ${reward.name} successfully!`);
+            setSelectedRedemption({ redemption: result.redemption, reward: pendingReward, method });
+            notify.success(`Redeemed ${pendingReward.name} successfully!`);
+            setPendingReward(null);
         } else {
             notify.error(result.error || 'Failed to redeem reward');
         }
@@ -128,7 +134,7 @@ export default function LoyaltyPage() {
                             <RewardsStore
                                 rewards={availableRewards}
                                 userPoints={profile?.currentPointsBalance || 0}
-                                onRedeem={handleRedeem}
+                                onRedeem={handleInitiateRedeem}
                             />
                         </motion.div>
                     ) : (
@@ -151,6 +157,67 @@ export default function LoyaltyPage() {
                 </AnimatePresence>
             </div>
 
+            {/* Redemption Selection Modal */}
+            <AnimatePresence>
+                {pendingReward && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => setPendingReward(null)}
+                        />
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-lg w-full relative z-10"
+                        >
+                            <button
+                                onClick={() => setPendingReward(null)}
+                                className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full transition-colors z-20"
+                            >
+                                <X className="w-5 h-5 text-slate-500" />
+                            </button>
+                            
+                            <div className="p-8 text-center bg-slate-50 border-b border-slate-100">
+                                <h3 className="text-2xl font-display font-black text-slate-900 mb-2">How to Redeem?</h3>
+                                <p className="text-sm text-slate-500">Choose how you'd like to present your <strong className="text-slate-900">{pendingReward.name}</strong> voucher to the merchant.</p>
+                            </div>
+
+                            <div className="p-8 space-y-4">
+                                <button 
+                                    onClick={() => handleConfirmRedeem('qr')}
+                                    disabled={redeemMutation.isPending}
+                                    className="w-full bg-white p-6 rounded-2xl border-2 border-slate-100 hover:border-primary/40 hover:shadow-lg transition-all group text-left flex items-start gap-5 disabled:opacity-50"
+                                >
+                                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0 group-hover:scale-110 transition-transform">
+                                        <QrCode size={24} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="text-lg font-black text-slate-900 mb-1">Display a QR Code</h4>
+                                        <p className="text-xs text-slate-500 leading-relaxed">Fastest option. Show a digital QR Code on your screen for the cashier to scan instantly.</p>
+                                    </div>
+                                    <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-primary transition-colors self-center" />
+                                </button>
+
+                                <button 
+                                    onClick={() => handleConfirmRedeem('code')}
+                                    disabled={redeemMutation.isPending}
+                                    className="w-full bg-white p-6 rounded-2xl border-2 border-slate-100 hover:border-indigo-500/40 hover:shadow-lg transition-all group text-left flex items-start gap-5 disabled:opacity-50"
+                                >
+                                    <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500 shrink-0 group-hover:scale-110 transition-transform">
+                                        <Keyboard size={24} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="text-lg font-black text-slate-900 mb-1">Generate 9-Digit Code</h4>
+                                        <p className="text-xs text-slate-500 leading-relaxed">Don't want to scan? Generate a unique short-code to read aloud or show to the cashier.</p>
+                                    </div>
+                                    <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-indigo-500 transition-colors self-center" />
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             {/* Redemption Success Modal */}
             <AnimatePresence>
                 {selectedRedemption && (
@@ -158,6 +225,7 @@ export default function LoyaltyPage() {
                         <RedemptionCard
                             redemption={selectedRedemption.redemption}
                             reward={selectedRedemption.reward}
+                            method={selectedRedemption.method}
                             onClose={() => setSelectedRedemption(null)}
                         />
                     </div>

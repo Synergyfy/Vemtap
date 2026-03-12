@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Loader2, Save } from 'lucide-react';
+import { Info, Loader2, Save } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/dashboard/PageHeader';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
@@ -84,17 +84,27 @@ export default function UserFormSettingsPage() {
     return (
         <div className="p-8 space-y-6">
             <PageHeader
-                title="User Step Form"
+                title="Default Form"
                 description="Control the main form visitors fill before any post-submit actions."
             />
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 flex items-start gap-3">
+                <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Info size={18} />
+                </div>
+                <div>
+                    <p className="text-sm font-bold text-gray-900">What is the Default Form?</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                        This is the first form every customer sees. It collects basic details before any Additional Forms or Social actions.
+                        Keep it short and clear to improve completion rates.
+                    </p>
+                </div>
+            </div>
 
             <EngagementTabs
                 tabs={[
-                    { label: 'Socials', href: '/dashboard/settings/engagement/socials' },
-                    { label: 'User Form', active: true },
-                    { label: 'Form Creator', href: '/dashboard/settings/engagement/forms' },
-                    { label: 'Active Forms', href: '/dashboard/settings/engagement/forms/active' },
-                    { label: 'Form Responses', href: '/dashboard/settings/engagement/forms/responses' },
+                    { label: 'Socials', href: '/dashboard/settings/engagement/experience/socials' },
+                    { label: 'Default Form', active: true },
+                    { label: 'Additional Forms', href: '/dashboard/settings/engagement/experience/additional-forms' },
                 ]}
             />
 

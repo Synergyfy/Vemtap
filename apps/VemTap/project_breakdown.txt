@@ -13,6 +13,9 @@ password
 
 ==================================
 new task
+submit button should be under
+logo bussiness logo 
+-------
 
 add bussiness category and sub categories eg.retail:provision
 

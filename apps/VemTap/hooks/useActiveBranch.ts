@@ -26,9 +26,13 @@ export function useActiveBranch() {
         if (urlBranchId && urlBranchId !== storeBranchId) {
             setStoreBranch(urlBranchId);
         }
+        // When URL has no branchId but store has one, reset the store
+        if (!urlBranchId && storeBranchId) {
+            setStoreBranch(null);
+        }
     }, [urlBranchId, storeBranchId, setStoreBranch]);
 
-    // 3. Method to update branch (updates URL)
+    // 3. Method to update branch (updates URL and store)
     const setActiveBranch = useCallback((id: string | null) => {
         const params = new URLSearchParams(searchParams.toString());
         
@@ -44,14 +48,17 @@ export function useActiveBranch() {
         const query = params.toString();
         const newUrl = `${pathname}${query ? `?${query}` : ''}`;
         router.replace(newUrl);
-    }, [pathname, router, searchParams]);
+        
+        // Always update the store to ensure consistency
+        setStoreBranch(cleanId);
+    }, [pathname, router, searchParams, setStoreBranch]);
 
-    // If the store has a branch but the URL does not, backfill the URL so it persists across pages.
+    // If the URL has a branch but the store doesn't, backfill the store
     useEffect(() => {
-        if (!urlBranchId && storeBranchId) {
-            setActiveBranch(storeBranchId);
+        if (urlBranchId && !storeBranchId) {
+            setStoreBranch(urlBranchId);
         }
-    }, [setActiveBranch, storeBranchId, urlBranchId]);
+    }, [urlBranchId, storeBranchId, setStoreBranch]);
 
     return {
         // Source of truth is the sanitized URL ID
