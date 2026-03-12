@@ -56,12 +56,12 @@ export default function DynamicTapJourneyPage() {
 
     // Fetch forms ONLY when user reaches the outcome/success stage
     // Relying strictly on /api/v1/visitor-forms/device/{code}
-    const shouldFetchForms = currentStep === 'OUTCOME' || currentStep === 'FINAL_SUCCESS';
+    const shouldFetchForms = currentStep === 'OUTCOME' || currentStep === 'FINAL_SUCCESS' || currentStep === 'SURVEY';
     const { data: deviceForms = [], isLoading: formsLoading } = useFormsByDevice(
-        shouldFetchForms ? deviceCode : ''
+        shouldFetchForms ? (deviceCode || '') : ''
     );
 
-    const submitBusinessFormResponse = useSubmitBusinessFormResponse(selectedBusinessFormId || '');
+    const submitBusinessFormResponse = useSubmitBusinessFormResponse();
 
     const selectedBusinessForm = useMemo(
         () => deviceForms.find((f) => f.id === selectedBusinessFormId) || null,
@@ -366,10 +366,14 @@ export default function DynamicTapJourneyPage() {
         if (selectedBusinessForm && businessId) {
             try {
                 await submitBusinessFormResponse.mutateAsync({
-                    answers: Object.entries(answers).map(([fieldId, value]) => ({
-                        fieldId,
-                        value,
-                    })),
+                    id: selectedBusinessForm.uniqueCode || selectedBusinessForm.id,
+                    payload: {
+                        answers: Object.entries(answers).map(([fieldId, value]) => ({
+                            fieldId,
+                            // Ensure value is a string for backend compatibility
+                            value: Array.isArray(value) ? value.join(', ') : String(value || ''),
+                        })),
+                    },
                 });
             } catch (error) {
                 console.warn('Form response submission failed:', error);

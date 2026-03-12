@@ -28,7 +28,7 @@ import Spinner from '@/components/ui/Spinner';
 function UserStepPageContent() {
     const {
         currentStep, setStep, storeName, setUserData, resetFlow,
-        getBusinessConfig, customWelcomeMessage, customSuccessMessage,
+        getBusinessConfig, customWelcomeMessage, customWelcomeTitle, customSuccessMessage,
         customPrivacyMessage, customRewardMessage, hasRewardSetup,
         setBusinessType, userData, branchId, logoUrl, visitCount, rewardVisitThreshold,
         redemptionStatus, requestRedemption,
@@ -40,12 +40,12 @@ function UserStepPageContent() {
     const [selectedBusinessFormId, setSelectedBusinessFormId] = useState<string | null>(null);
     
     // Fetch forms ONLY when user reaches the outcome/success stage
-    const shouldFetchForms = currentStep === 'OUTCOME' || currentStep === 'FINAL_SUCCESS';
+    const shouldFetchForms = currentStep === 'OUTCOME' || currentStep === 'FINAL_SUCCESS' || currentStep === 'SURVEY';
     const { data: deviceForms = [], isLoading: formsLoading } = useFormsByDevice(
-        shouldFetchForms ? deviceCode : ''
+        shouldFetchForms ? (deviceCode || '') : ''
     );
     
-    const submitBusinessFormResponse = useSubmitBusinessFormResponse(selectedBusinessFormId || '');
+    const submitBusinessFormResponse = useSubmitBusinessFormResponse();
 
     const selectedBusinessForm = useMemo(
         () => deviceForms.find((f) => f.id === selectedBusinessFormId) || null,
@@ -204,10 +204,14 @@ function UserStepPageContent() {
   if (selectedBusinessForm && businessId) {
     try {
       await submitBusinessFormResponse.mutateAsync({
-        answers: Object.entries(answers).map(([fieldId, value]) => ({
-          fieldId,
-          value,
-        })),
+        id: selectedBusinessForm.uniqueCode || selectedBusinessForm.id,
+        payload: {
+            answers: Object.entries(answers).map(([fieldId, value]) => ({
+                fieldId,
+                // Ensure value is a string for backend compatibility
+                value: Array.isArray(value) ? value.join(', ') : String(value || ''),
+            })),
+        },
       });
     } catch (error) {
       console.warn('Form response submission failed:', error);

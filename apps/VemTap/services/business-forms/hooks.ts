@@ -136,13 +136,13 @@ export const useBusinessFormResponses = (id?: string, branchId?: string) =>
     enabled: !!id,
   });
 
-export const useSubmitBusinessFormResponse = (id: string) => {
+export const useSubmitBusinessFormResponse = () => {
   const queryClient = useQueryClient();
-  return useMutation<BusinessFormResponseItem, Error, SubmitBusinessFormResponseRequest>({
-    mutationFn: async (payload) => {
+  return useMutation<BusinessFormResponseItem, Error, { id: string; payload: SubmitBusinessFormResponseRequest }>({
+    mutationFn: async ({ id, payload }) => {
       return await api.post(`/visitor-forms/${id}/responses`, payload);
     },
-    onSuccess: () => {
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['business-forms', id, 'responses'] });
     },
   });
