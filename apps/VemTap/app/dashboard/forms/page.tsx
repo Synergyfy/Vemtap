@@ -215,12 +215,13 @@ export default function FormsPage() {
 
   const getPublicFormKey = (formId: string, uniqueCode?: string) => uniqueCode || formId;
 
-  const getFormUrl = (formId: string, uniqueCode?: string) => {
-    const key = getPublicFormKey(formId, uniqueCode);
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/forms/${key}`
-      : `/forms/${key}`;
-  };
+  const getFormUrl = (formId: string, uniqueCode?: string): string => {
+  const key = getPublicFormKey(formId, uniqueCode);
+
+  return typeof window !== 'undefined'
+    ? `${window.location.origin}/forms/${key}`
+    : `/forms/${key}`;
+};
 
   const getMessagingUrl = (formId: string) => {
     const params = new URLSearchParams();
@@ -230,22 +231,25 @@ export default function FormsPage() {
   };
 
   const handleShareAction = async (method: ShareMethod, formId: string, formTitle: string) => {
-    setShareExplainer(null);
-    const form = scopedForms.find((f) => f.id === formId);
-    if (!form) return;
+  setShareExplainer(null);
+  const form = scopedForms.find((f) => f.id === formId);
+  if (!form) return;
 
-    if (method === 'link') {
-      const url = getFormUrl(form);
-      await navigator.clipboard.writeText(url);
-      toast.success('Form link copied to clipboard!');
-    } else if (method === 'qr') {
-      const url = getFormUrl(form);
-      setShareForm({ id: formId, title: formTitle, url });
-    } else if (method === 'messaging') {
-      router.push(getMessagingUrl(formId));
-    }
-    setOpenMenuId(null);
-  };
+  if (method === 'link') {
+    const url = getFormUrl(form.id, form.uniqueCode);
+    await navigator.clipboard.writeText(url);
+    toast.success('Form link copied to clipboard!');
+  } 
+  else if (method === 'qr') {
+    const url = getFormUrl(form.id, form.uniqueCode);
+    setShareForm({ id: formId, title: formTitle, url });
+  } 
+  else if (method === 'messaging') {
+    router.push(getMessagingUrl(formId));
+  }
+
+  setOpenMenuId(null);
+};
 
   const openShareExplainer = (method: ShareMethod, formId: string, formTitle: string) => {
     setShareExplainer({ method, formId, formTitle });
@@ -478,7 +482,7 @@ export default function FormsPage() {
               >
                 <QRCodeCanvas
                   id={`form-qr-${form.id}`}
-                  value={getFormUrl(form)}
+                  value={getFormUrl(form.id, form.uniqueCode)}
                   size={160}
                   className="hidden"
                 />
@@ -713,10 +717,10 @@ export default function FormsPage() {
                 >
                   <QRCodeCanvas
                     id={`form-qr-${form.id}`}
-                    value={getFormUrl(form)}
+                    value={getFormUrl(form.id, form.uniqueCode)}
                     size={160}
                     className="hidden"
-                  />
+                  />value={getFormUrl(form.id, form.uniqueCode)}
 
                   {/* Form info */}
                   <div className="sm:col-span-3 flex items-center gap-3 min-w-0">

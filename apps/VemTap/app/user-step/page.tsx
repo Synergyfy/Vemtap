@@ -230,31 +230,31 @@ function UserStepPageContent() {
         }
     };
 
-    const handleSurveyComplete = async (answers: Record<string, any>) => {
-        if (selectedBusinessForm && businessId) {
-            const identity = userData || storedIdentity || user;
-            try {
-                await submitBusinessFormResponse.mutateAsync({
-                    customerName: identity?.name || 'Guest',
-                    customerEmail: identity?.email || undefined,
-                    customerPhone: identity?.phone || undefined,
-                    answers,
-                });
-            } catch (error) {
-                // Keep journey smooth even if response endpoint is unavailable.
-                console.warn('Form response submission failed:', error);
-            }
-        }
+   const handleSurveyComplete = async (answers: Record<string, any>) => {
+  if (selectedBusinessForm && businessId) {
+    try {
+      await submitBusinessFormResponse.mutateAsync({
+        answers: Object.entries(answers).map(([fieldId, value]) => ({
+          fieldId,
+          value,
+        })),
+      });
+    } catch (error) {
+      console.warn('Form response submission failed:', error);
+    }
+  }
 
-        console.log('Survey completed:', answers);
-        toast.success('Thank you for your feedback!');
-        if (selectedBusinessForm?.redirectUrl && typeof window !== 'undefined') {
-            window.location.assign(selectedBusinessForm.redirectUrl);
-            return;
-        }
-        setSelectedBusinessFormId(null);
-        setStep('FINAL_SUCCESS');
-    };
+  console.log('Survey completed:', answers);
+  toast.success('Thank you for your feedback!');
+
+  if (selectedBusinessForm?.redirectUrl && typeof window !== 'undefined') {
+    window.location.assign(selectedBusinessForm.redirectUrl);
+    return;
+  }
+
+  setSelectedBusinessFormId(null);
+  setStep('FINAL_SUCCESS');
+};
 
     return (
         <VisitorLayout
