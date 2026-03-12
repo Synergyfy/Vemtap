@@ -63,7 +63,7 @@ export const usePublicBusinessForm = (id?: string) =>
     queryKey: ['public-business-form', id],
     queryFn: async () => {
       try {
-        return await api.get(`/visitor-forms/public/code/${id}`);
+        return await api.get(`/visitor-forms/code/${id}`);
       } catch {
         return await api.get(`/visitor-forms/public/${id}`);
       }

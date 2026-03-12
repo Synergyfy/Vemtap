@@ -18,6 +18,7 @@ import {
   Link2,
   MessageSquare,
   MoreVertical,
+  BarChart3,
   Pencil,
   Plus,
   QrCode,
@@ -30,7 +31,6 @@ import {
   LayoutTemplate,
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
-import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import PhoneFrame from '@/components/shared/PhoneFrame';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import Spinner from '@/components/ui/Spinner';
@@ -427,15 +427,7 @@ export default function EngagementFormsBuilderPage() {
   return (
     <>
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
-      <EngagementTabs
-        tabs={[
-          { label: 'Socials', href: '/dashboard/settings/engagement/socials' },
-          { label: 'User Form', href: '/dashboard/settings/engagement/user-form' },
-          { label: 'Form Creator', active: true },
-          { label: 'Active Forms', href: '/dashboard/settings/engagement/forms/active' },
-          { label: 'Responses', href: '/dashboard/settings/engagement/forms/responses' },
-        ]}
-      />
+      {/* Navigation handled in sidebar under Engagement */}
 
       {viewMode === 'forms' && (
         <section className="space-y-6">
@@ -593,6 +585,10 @@ export default function EngagementFormsBuilderPage() {
                               <button onClick={() => openShareExplainer('link', f.id, f.title)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Link2 size={14} className="text-gray-400" /> Copy share link</button>
                               <button onClick={() => openShareExplainer('qr', f.id, f.title)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><QrCode size={14} className="text-gray-400" /> Generate QR code</button>
                               <button onClick={() => { router.push(getMessagingUrl(f.id)); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Send size={14} className="text-gray-400" /> Messaging</button>
+                              <Link href={`/dashboard/settings/engagement/forms/responses/${f.id}`} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                                <BarChart3 size={14} className="text-gray-400" />
+                                View responses
+                              </Link>
                               <div className="h-px bg-gray-100 my-1" />
                               <button onClick={() => openEdit(f)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Pencil size={14} className="text-gray-400" /> Edit form</button>
                               <button onClick={() => { setDeleteConfirm({ id: f.id, title: f.title, branchId: f.branchId }); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"><Trash2 size={14} /> Delete</button>
@@ -677,6 +673,14 @@ export default function EngagementFormsBuilderPage() {
                           <Link2 size={14} />
                           Link
                         </button>
+                        <Link
+                          href={`/dashboard/settings/engagement/forms/responses/${f.id}`}
+                          className="flex-1 h-8 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 inline-flex items-center justify-center gap-1.5 transition-colors"
+                          title="View responses"
+                        >
+                          <BarChart3 size={14} />
+                          Responses
+                        </Link>
                         <button
                           onClick={() => openShareExplainer('qr', f.id, f.title)}
                           className="flex-1 h-8 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 inline-flex items-center justify-center gap-1.5 transition-colors"
@@ -760,6 +764,13 @@ export default function EngagementFormsBuilderPage() {
                       >
                         <CheckCircle2 size={14} />
                       </button>
+                      <Link
+                        href={`/dashboard/settings/engagement/forms/responses/${f.id}`}
+                        className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"
+                        title="View responses"
+                      >
+                        <BarChart3 size={14} />
+                      </Link>
                       <button onClick={() => openShareExplainer('link', f.id, f.title)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Link2 size={14} /></button>
                       <button onClick={() => openEdit(f)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Pencil size={14} /></button>
                     </div>

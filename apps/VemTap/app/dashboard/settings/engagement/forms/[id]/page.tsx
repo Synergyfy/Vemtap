@@ -53,7 +53,7 @@ export default function FormPreviewPage() {
             : `/forms/${form.uniqueCode}`;
     };
     const formUrl = getFormUrl();
-    const hasFormUrl = Boolean(formUrl && form.uniqueCode);
+    const hasFormUrl = Boolean(formUrl && form?.uniqueCode);
 
     if (isLoading) {
         return (
