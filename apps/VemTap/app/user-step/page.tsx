@@ -32,7 +32,7 @@ function UserStepPageContent() {
         setBusinessType, userData, branchId, logoUrl, visitCount, rewardVisitThreshold,
         redemptionStatus, requestRedemption,
         engagementSettings, surveyQuestions,
-        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, businessId
+        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton, businessId
     } = useCustomerFlowStore();
     const searchParams = useSearchParams();
     const preferredFormIdParam = searchParams.get('formId') || searchParams.get('form');
@@ -72,12 +72,13 @@ function UserStepPageContent() {
     }, [approvedFormsForBusiness, preferredFormIdParam, defaultFormId]);
     const attachedFormIds = useMemo(
         () => {
+            if (engagementSettings?.showPostSubmitForms === false) return [];
             const serverIds = Array.isArray(engagementSettings?.postSubmitFormIds)
                 ? engagementSettings.postSubmitFormIds
                 : [];
             return Array.from(new Set([...serverIds, ...locallyActiveFormIds]));
         },
-        [engagementSettings?.postSubmitFormIds, locallyActiveFormIds]
+        [engagementSettings?.postSubmitFormIds, engagementSettings?.showPostSubmitForms, locallyActiveFormIds]
     );
     const attachedBusinessForms = useMemo(
         () => approvedFormsForBusiness.filter((form) => attachedFormIds.includes(form.id) && form.id !== preferredBusinessForm?.id),
@@ -287,6 +288,7 @@ function UserStepPageContent() {
                         customWelcomeTitle={customNewUserWelcomeTitle}
                         customWelcomeTag={customNewUserWelcomeTag}
                         customPrivacyMessage={customPrivacyMessage}
+                        submitLabel={customNewUserWelcomeButton || 'Submit'}
                         initialData={userData || storedIdentity || user}
                         isSyncingReal={isSyncingReal}
                         isDeviceSynced={isDeviceSynced}
