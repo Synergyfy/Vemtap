@@ -10,7 +10,7 @@ import {
 import { toast } from 'react-hot-toast';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 
-import { useBranches, useCreateBranch, useDeleteBranch } from '@/services/branches/hooks';
+import { useBranches, useCreateBranch, useDeleteBranch, useUpdateBranch } from '@/services/branches/hooks';
 import { Branch } from '@/services/branches/types';
 import { Loader2 } from 'lucide-react';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
@@ -24,14 +24,17 @@ function BranchesContent() {
     const { data: branchesData, isLoading } = useBranches();
     const { capabilities, isLimitReached } = useSubscriptionStore();
     const createBranchMutation = useCreateBranch();
+    const updateBranchMutation = useUpdateBranch();
     const deleteBranchMutation = useDeleteBranch();
 
     const branches = branchesData || [];
     const branchLimitReached = isLimitReached('branches');
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
+    const [branchToEdit, setBranchToEdit] = useState<Branch | null>(null);
     const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null);
     const [otp, setOtp] = useState('');
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -73,6 +76,37 @@ function BranchesContent() {
             },
             onError: () => {
                 toast.error('Failed to create branch');
+            }
+        });
+    };
+
+    const handleEditClick = (branch: Branch) => {
+        setBranchToEdit(branch);
+        setIsEditModalOpen(true);
+    };
+
+    const handleUpdateBranch = () => {
+        if (!branchToEdit?.name || !branchToEdit?.address) {
+            toast.error('Please fill in required fields');
+            return;
+        }
+
+        updateBranchMutation.mutate({
+            id: branchToEdit.id,
+            updates: {
+                name: branchToEdit.name,
+                address: branchToEdit.address,
+                phone: branchToEdit.phone,
+                officialEmail: branchToEdit.officialEmail,
+            }
+        }, {
+            onSuccess: () => {
+                setIsEditModalOpen(false);
+                setBranchToEdit(null);
+                toast.success('Branch updated successfully');
+            },
+            onError: () => {
+                toast.error('Failed to update branch');
             }
         });
     };
@@ -202,7 +236,10 @@ function BranchesContent() {
                             </div>
 
                         <div className="grid grid-cols-2 gap-3 mt-8 pt-4">
-                            <button className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-100 text-[11px] font-bold text-text-secondary hover:bg-gray-50 transition-all">
+                            <button 
+                                onClick={() => handleEditClick(branch)}
+                                className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-100 text-[11px] font-bold text-text-secondary hover:bg-gray-50 transition-all"
+                            >
                                 <Edit2 size={14} />
                                 Edit Details
                             </button>
@@ -307,6 +344,81 @@ function BranchesContent() {
                             >
                                 {createBranchMutation.isPending ? <Loader2 size={20} className="animate-spin" /> : <Plus size={20} />}
                                 Add Branch
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Branch Modal */}
+            {isEditModalOpen && branchToEdit && (
+                <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm" onClick={() => setIsEditModalOpen(false)} />
+                    <div className="relative bg-white rounded-[2.5rem] w-full max-w-xl p-10 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <h3 className="text-3xl font-display font-bold text-text-main mb-2">Edit Branch</h3>
+                        <p className="text-text-secondary text-base mb-10 font-medium">Update details for {branchToEdit.name}.</p>
+
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Branch Name <span className="text-red-500">*</span></label>
+                                    <input
+                                        type="text"
+                                        value={branchToEdit.name}
+                                        onChange={(e) => setBranchToEdit({ ...branchToEdit, name: e.target.value })}
+                                        placeholder="e.g. Lekki Heights Showroom"
+                                        className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Full Address <span className="text-red-500">*</span></label>
+                                    <input
+                                        type="text"
+                                        value={branchToEdit.address}
+                                        onChange={(e) => setBranchToEdit({ ...branchToEdit, address: e.target.value })}
+                                        placeholder="Enter complete physical address"
+                                        className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Phone Number</label>
+                                        <input
+                                            type="tel"
+                                            value={branchToEdit.phone || ''}
+                                            onChange={(e) => setBranchToEdit({ ...branchToEdit, phone: e.target.value })}
+                                            placeholder="+234 801 234 5678"
+                                            className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Official Email</label>
+                                        <input
+                                            type="email"
+                                            value={branchToEdit.officialEmail || ''}
+                                            onChange={(e) => setBranchToEdit({ ...branchToEdit, officialEmail: e.target.value })}
+                                            placeholder="branch@business.com"
+                                            className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 pt-8">
+                            <button
+                                onClick={() => setIsEditModalOpen(false)}
+                                className="h-14 bg-gray-100 text-text-main font-bold rounded-2xl hover:bg-gray-200 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleUpdateBranch}
+                                disabled={updateBranchMutation.isPending}
+                                className="h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {updateBranchMutation.isPending ? <Loader2 size={20} className="animate-spin" /> : <Edit2 size={20} />}
+                                Save Changes
                             </button>
                         </div>
                     </div>
