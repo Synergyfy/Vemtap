@@ -209,11 +209,12 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
     const countLabel = audience === 'all' ? `${totalVisitors.toLocaleString()} Contacts` : 'Segmented Contacts';
     const eligibleForms = businessForms.filter((form) => form.isPublished && form.isActive);
     const selectedForm = eligibleForms.find((form) => form.id === selectedFormId) || null;
+    const selectedFormCode = selectedForm?.uniqueCode?.trim() || '';
     const selectedFormLink =
-        selectedFormId && typeof window !== 'undefined'
-            ? `${window.location.origin}/forms/${selectedFormId}`
-            : selectedFormId
-                ? `/forms/${selectedFormId}`
+        selectedFormCode && typeof window !== 'undefined'
+            ? `${window.location.origin}/forms/${selectedFormCode}`
+            : selectedFormCode
+                ? `/forms/${selectedFormCode}`
                 : '';
     const contentWithFormLink =
         selectedFormLink && customContent.trim()
@@ -223,6 +224,10 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
     const handleSend = async () => {
         if (!customContent.trim() && !selectedTemplate) {
             toast.error('Please add content or select a template');
+            return;
+        }
+        if (selectedFormId && !selectedFormCode) {
+            toast.error('This form is missing a public code. Please republish the form to generate one.');
             return;
         }
 
