@@ -6,11 +6,12 @@ import {
     Tag, Plus, Trash2, Edit3, Save, X,
     Zap, Shield, Globe, Crown, ChevronUp, ChevronDown, Loader2
 } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { fetchAdminPricingPlans, updatePricingPlan, addPricingPlan, deletePricingPlan } from '@/lib/api/pricing';
 import { PricingPlan } from '@/types/pricing';
 import FormattedNumberInput from '@/components/shared/FormattedNumberInput';
+import { useAdminPricingPlans, useAddPricingPlan, useUpdatePricingPlan, useDeletePricingPlan } from '@/services/pricing/hooks';
+import ConfirmationModal from '@/components/shared/ConfirmationModal';
 
 type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice' | 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit'> & {
     id?: string;
@@ -57,15 +58,15 @@ const toEditablePlan = (plan: PricingPlan): EditablePlanForm => ({
     isFree: !!plan.isFree,
     trialDurationDays: Number(plan.trialDurationDays || 0).toString(),
     messagingEnabled: !!plan.messagingEnabled,
-    smsCredits: Number(plan.smsCredits || 0).toString(),
-    whatsappCredits: Number(plan.whatsappCredits || 0).toString(),
-    emailCredits: Number(plan.emailCredits || 0).toString(),
+    smsCredits: (plan.smsCredits ?? 0).toString(),
+    whatsappCredits: (plan.whatsappCredits ?? 0).toString(),
+    emailCredits: (plan.emailCredits ?? 0).toString(),
     teamMembersEnabled: !!plan.teamMembersEnabled,
-    teamMembersLimit: Number(plan.teamMembersLimit || 0).toString(),
+    teamMembersLimit: (plan.teamMembersLimit ?? 0).toString(),
     loyaltyEnabled: !!plan.loyaltyEnabled,
-    loyaltyLimit: Number(plan.loyaltyLimit || 0).toString(),
+    loyaltyLimit: (plan.loyaltyLimit ?? 0).toString(),
     branchesEnabled: !!plan.branchesEnabled,
-    branchLimit: Number(plan.branchLimit || 0).toString(),
+    branchLimit: (plan.branchLimit ?? 1).toString(),
     analyticsEnabled: !!plan.analyticsEnabled,
     analyticsLevel: plan.analyticsLevel || 'basic',
     isActive: plan.isActive ?? true,
@@ -74,26 +75,41 @@ const toEditablePlan = (plan: PricingPlan): EditablePlanForm => ({
 });
 
 export default function AdminPricingPage() {
-    const queryClient = useQueryClient();
     const [editingPlan, setEditingPlan] = useState<EditablePlanForm | null>(null);
     const [originalPlan, setOriginalPlan] = useState<PricingPlan | null>(null);
     const [isAddingNew, setIsAddingNew] = useState(false);
     const [featureInput, setFeatureInput] = useState('');
+    const [planToDelete, setPlanToDelete] = useState<string | null>(null);
 
-    const { data: plans = [], isLoading: plansLoading } = useQuery({
-        queryKey: ['subscription-plans'],
-        queryFn: fetchAdminPricingPlans,
-    });
+    const { data: plans = [], isLoading: plansLoading } = useAdminPricingPlans();
 
     const [orderedPlans, setOrderedPlans] = useState<PricingPlan[]>([]);
     const [originalOrderIds, setOriginalOrderIds] = useState<string[]>([]);
 
+    // Sync orderedPlans with fetched plans
     useEffect(() => {
-        if (plans.length > 0 && originalOrderIds.length === 0) {
-            setOrderedPlans(plans);
-            setOriginalOrderIds(plans.map(p => p.id));
+        if (plans.length > 0) {
+            const currentIds = orderedPlans.map(p => p.id);
+            const newIds = plans.map(p => p.id);
+            const isOrderDirty = JSON.stringify(currentIds) !== JSON.stringify(originalOrderIds);
+            const hasStructureChanged = JSON.stringify([...currentIds].sort()) !== JSON.stringify([...newIds].sort());
+
+            // If the set of plans changed (add/delete) or if we aren't in a dirty order state, sync
+            if (hasStructureChanged || !isOrderDirty || originalOrderIds.length === 0) {
+                setOrderedPlans(plans);
+                setOriginalOrderIds(newIds);
+            } else {
+                // If order is dirty but we refetched (e.g. an edit), 
+                // we should at least update the content of the plans while keeping the dirty order
+                setOrderedPlans(prev => {
+                    return prev.map(p => {
+                        const updated = plans.find(up => up.id === p.id);
+                        return updated ? updated : p;
+                    });
+                });
+            }
         }
-    }, [plans, originalOrderIds]);
+    }, [plans]);
 
     const orderChanged = JSON.stringify(orderedPlans.map(p => p.id)) !== JSON.stringify(originalOrderIds);
 
@@ -122,46 +138,23 @@ export default function AdminPricingPage() {
         });
     };
 
-    const updateMutation = useMutation({
-        mutationFn: (plan: PricingPlan) => updatePricingPlan(plan as PricingPlan & { id: string }),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
-            setOriginalOrderIds([]); // Trigger re-sync of orderedPlans
-            setEditingPlan(null);
-            setOriginalPlan(null);
-            setIsAddingNew(false);
-            setFeatureInput('');
-            notify.success('Pricing plan updated successfully');
-        },
-    });
+    const resetForm = () => {
+        setOriginalOrderIds([]); // Trigger re-sync of orderedPlans
+        setEditingPlan(null);
+        setOriginalPlan(null);
+        setIsAddingNew(false);
+        setFeatureInput('');
+    };
 
-    const addMutation = useMutation({
-        mutationFn: (plan: Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice'>) => addPricingPlan(plan),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
-            setOriginalOrderIds([]); // Trigger re-sync of orderedPlans
-            setEditingPlan(null);
-            setOriginalPlan(null);
-            setIsAddingNew(false);
-            setFeatureInput('');
-            notify.success('New plan added successfully');
-        },
-    });
-
-    const deleteMutation = useMutation({
-        mutationFn: deletePricingPlan,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
-            setOriginalOrderIds([]); // Trigger re-sync of orderedPlans
-            notify.success('Plan deleted successfully');
-        },
-    });
+    const updateMutation = useUpdatePricingPlan();
+    const addMutation = useAddPricingPlan();
+    const deleteMutation = useDeletePricingPlan();
 
     const isSaving = updateMutation.isPending || addMutation.isPending;
 
-    // For feature limits: null/undefined/0 = Unlimited, a number = that limit
+    // For feature limits: -1 = Unlimited, a number = that limit
     const unlimited = (val: any) => {
-        if (val === null || val === undefined || val === '' || val === 'null' || val === 0 || val === '0') return 'Unlimited';
+        if (val === -1 || val === '-1') return 'Unlimited';
         return val;
     };
 
@@ -195,8 +188,14 @@ export default function AdminPricingPage() {
     const currentPlan = editingPlan;
 
     const handleDelete = (id: string) => {
-        if (confirm('Are you sure you want to delete this plan?')) {
-            deleteMutation.mutate(id);
+        setPlanToDelete(id);
+    };
+
+    const confirmDelete = () => {
+        if (planToDelete) {
+            deleteMutation.mutate(planToDelete, {
+                onSettled: () => setPlanToDelete(null)
+            });
         }
     };
 
@@ -232,7 +231,7 @@ export default function AdminPricingPage() {
         isPopular: !!plan.isPopular,
     });
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!currentPlan) return;
         if (!currentPlan.name.trim()) {
             notify.error('Plan name is required');
@@ -247,33 +246,41 @@ export default function AdminPricingPage() {
 
         if (isAddingNew) {
             const { id, quarterlyPrice, yearlyPrice, ...createPayload } = payload;
-            addMutation.mutate(createPayload);
+            addMutation.mutate(createPayload, {
+                onSuccess: resetForm
+            });
             return;
         }
 
-        // Only send changed fields for updates
+        // SMART DELTA DETECTION
         if (originalPlan) {
             const deltas: any = { id: originalPlan.id };
             let hasChanges = false;
 
-            Object.keys(payload).forEach((key) => {
-                const k = key as keyof PricingPlan;
-                if (k === 'id') return;
+            const editableFields: (keyof PricingPlan)[] = [
+                'name', 'monthlyPrice', 'features', 'currency', 'isFree',
+                'trialDurationDays', 'messagingEnabled', 'smsCredits',
+                'whatsappCredits', 'emailCredits', 'teamMembersEnabled',
+                'teamMembersLimit', 'loyaltyEnabled', 'loyaltyLimit',
+                'branchesEnabled', 'branchLimit', 'analyticsEnabled',
+                'analyticsLevel', 'isActive', 'description', 'isPopular'
+            ];
 
-                const val = payload[k];
-                const origVal = originalPlan[k];
+            editableFields.forEach((k) => {
+                const newVal = payload[k];
+                const oldVal = originalPlan[k];
 
-                // Deep comparison for features array
-                if (k === 'features') {
-                    if (JSON.stringify(val) !== JSON.stringify(origVal)) {
-                        deltas[k] = val;
-                        hasChanges = true;
-                    }
-                    return;
+                let changed = false;
+                if (Array.isArray(newVal)) {
+                    if (JSON.stringify(newVal) !== JSON.stringify(oldVal)) changed = true;
+                } else if (typeof newVal === 'number' || typeof oldVal === 'number') {
+                    if (Number(newVal) !== Number(oldVal)) changed = true;
+                } else {
+                    if (newVal !== oldVal) changed = true;
                 }
 
-                if (val !== origVal) {
-                    deltas[k] = val;
+                if (changed) {
+                    deltas[k] = newVal;
                     hasChanges = true;
                 }
             });
@@ -284,7 +291,9 @@ export default function AdminPricingPage() {
                 return;
             }
 
-            updateMutation.mutate(deltas);
+            updateMutation.mutate(deltas, {
+                onSuccess: resetForm
+            });
         }
     };
 
@@ -555,7 +564,17 @@ export default function AdminPricingPage() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <div 
-                                                onClick={() => setEditingPlan(prev => prev ? { ...prev, messagingEnabled: !prev.messagingEnabled } : prev)}
+                                                onClick={() => setEditingPlan(prev => {
+                                                    if (!prev) return prev;
+                                                    const nextEnabled = !prev.messagingEnabled;
+                                                    return {
+                                                        ...prev,
+                                                        messagingEnabled: nextEnabled,
+                                                        smsCredits: nextEnabled ? prev.smsCredits : '0',
+                                                        whatsappCredits: nextEnabled ? prev.whatsappCredits : '0',
+                                                        emailCredits: nextEnabled ? prev.emailCredits : '0'
+                                                    };
+                                                })}
                                                 className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors duration-200 ${currentPlan.messagingEnabled ? 'bg-primary' : 'bg-gray-300'}`}
                                             >
                                                 <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.messagingEnabled ? 'translate-x-6' : ''}`} />
@@ -572,13 +591,18 @@ export default function AdminPricingPage() {
                                         >
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block ml-1">SMS Credits</label>
-                                                <FormattedNumberInput 
-                                                    disabled={currentPlan.smsCredits === '-1'}
-                                                    value={currentPlan.smsCredits === '-1' ? '∞' : currentPlan.smsCredits} 
-                                                    onChange={(value) => setNumericField('smsCredits', value)} 
-                                                    className={`w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-opacity ${currentPlan.smsCredits === '-1' ? 'opacity-50' : 'opacity-100'}`} 
-                                                    placeholder="0" 
-                                                />
+                                                {currentPlan.smsCredits === '-1' ? (
+                                                    <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
+                                                        Unlimited
+                                                    </div>
+                                                ) : (
+                                                    <FormattedNumberInput 
+                                                        value={currentPlan.smsCredits} 
+                                                        onChange={(value) => setNumericField('smsCredits', value)} 
+                                                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                        placeholder="0" 
+                                                    />
+                                                )}
                                                 <div className="flex justify-end pr-1">
                                                     <label className="flex items-center gap-1 cursor-pointer">
                                                         <input 
@@ -593,13 +617,18 @@ export default function AdminPricingPage() {
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block ml-1">WhatsApp</label>
-                                                <FormattedNumberInput 
-                                                    disabled={currentPlan.whatsappCredits === '-1'}
-                                                    value={currentPlan.whatsappCredits === '-1' ? '∞' : currentPlan.whatsappCredits} 
-                                                    onChange={(value) => setNumericField('whatsappCredits', value)} 
-                                                    className={`w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-opacity ${currentPlan.whatsappCredits === '-1' ? 'opacity-50' : 'opacity-100'}`} 
-                                                    placeholder="0" 
-                                                />
+                                                {currentPlan.whatsappCredits === '-1' ? (
+                                                    <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
+                                                        Unlimited
+                                                    </div>
+                                                ) : (
+                                                    <FormattedNumberInput 
+                                                        value={currentPlan.whatsappCredits} 
+                                                        onChange={(value) => setNumericField('whatsappCredits', value)} 
+                                                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                        placeholder="0" 
+                                                    />
+                                                )}
                                                 <div className="flex justify-end pr-1">
                                                     <label className="flex items-center gap-1 cursor-pointer">
                                                         <input 
@@ -614,13 +643,18 @@ export default function AdminPricingPage() {
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block ml-1">Email</label>
-                                                <FormattedNumberInput 
-                                                    disabled={currentPlan.emailCredits === '-1'}
-                                                    value={currentPlan.emailCredits === '-1' ? '∞' : currentPlan.emailCredits} 
-                                                    onChange={(value) => setNumericField('emailCredits', value)} 
-                                                    className={`w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-opacity ${currentPlan.emailCredits === '-1' ? 'opacity-50' : 'opacity-100'}`} 
-                                                    placeholder="0" 
-                                                />
+                                                {currentPlan.emailCredits === '-1' ? (
+                                                    <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
+                                                        Unlimited
+                                                    </div>
+                                                ) : (
+                                                    <FormattedNumberInput 
+                                                        value={currentPlan.emailCredits} 
+                                                        onChange={(value) => setNumericField('emailCredits', value)} 
+                                                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                        placeholder="0" 
+                                                    />
+                                                )}
                                                 <div className="flex justify-end pr-1">
                                                     <label className="flex items-center gap-1 cursor-pointer">
                                                         <input 
@@ -641,7 +675,15 @@ export default function AdminPricingPage() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <div 
-                                                onClick={() => setEditingPlan(prev => prev ? { ...prev, teamMembersEnabled: !prev.teamMembersEnabled } : prev)}
+                                                onClick={() => setEditingPlan(prev => {
+                                                    if (!prev) return prev;
+                                                    const nextEnabled = !prev.teamMembersEnabled;
+                                                    return {
+                                                        ...prev,
+                                                        teamMembersEnabled: nextEnabled,
+                                                        teamMembersLimit: nextEnabled ? (prev.teamMembersLimit || '1') : '0'
+                                                    };
+                                                })}
                                                 className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors duration-200 ${currentPlan.teamMembersEnabled ? 'bg-primary' : 'bg-gray-300'}`}
                                             >
                                                 <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.teamMembersEnabled ? 'translate-x-6' : ''}`} />
@@ -662,20 +704,25 @@ export default function AdminPricingPage() {
                                                     <label className="flex items-center gap-1 cursor-pointer">
                                                         <input 
                                                             type="checkbox" 
-                                                            checked={currentPlan.teamMembersLimit === '0'} 
-                                                            onChange={(e) => setNumericField('teamMembersLimit', e.target.checked ? '0' : '1')}
+                                                            checked={currentPlan.teamMembersLimit === '-1'} 
+                                                            onChange={(e) => setNumericField('teamMembersLimit', e.target.checked ? '-1' : '1')}
                                                             className="w-3 h-3 rounded border-gray-300 text-primary focus:ring-primary"
                                                         />
                                                         <span className="text-[9px] font-bold text-text-secondary uppercase tracking-tighter">Unlimited</span>
                                                     </label>
                                                 </div>
-                                                <FormattedNumberInput 
-                                                    disabled={currentPlan.teamMembersLimit === '0'}
-                                                    value={currentPlan.teamMembersLimit === '0' ? '∞' : currentPlan.teamMembersLimit} 
-                                                    onChange={(value) => setNumericField('teamMembersLimit', value)} 
-                                                    className={`w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-opacity ${currentPlan.teamMembersLimit === '0' ? 'opacity-50' : 'opacity-100'}`} 
-                                                    placeholder="0" 
-                                                />
+                                                {currentPlan.teamMembersLimit === '-1' ? (
+                                                    <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
+                                                        Unlimited
+                                                    </div>
+                                                ) : (
+                                                    <FormattedNumberInput 
+                                                        value={currentPlan.teamMembersLimit} 
+                                                        onChange={(value) => setNumericField('teamMembersLimit', value)} 
+                                                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                        placeholder="0" 
+                                                    />
+                                                )}
                                             </div>
                                         </motion.div>
                                     )}
@@ -685,7 +732,15 @@ export default function AdminPricingPage() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <div 
-                                                onClick={() => setEditingPlan(prev => prev ? { ...prev, loyaltyEnabled: !prev.loyaltyEnabled } : prev)}
+                                                onClick={() => setEditingPlan(prev => {
+                                                    if (!prev) return prev;
+                                                    const nextEnabled = !prev.loyaltyEnabled;
+                                                    return {
+                                                        ...prev,
+                                                        loyaltyEnabled: nextEnabled,
+                                                        loyaltyLimit: nextEnabled ? (prev.loyaltyLimit || '1') : '0'
+                                                    };
+                                                })}
                                                 className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors duration-200 ${currentPlan.loyaltyEnabled ? 'bg-primary' : 'bg-gray-300'}`}
                                             >
                                                 <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.loyaltyEnabled ? 'translate-x-6' : ''}`} />
@@ -706,20 +761,25 @@ export default function AdminPricingPage() {
                                                     <label className="flex items-center gap-1 cursor-pointer">
                                                         <input 
                                                             type="checkbox" 
-                                                            checked={currentPlan.loyaltyLimit === '0'} 
-                                                            onChange={(e) => setNumericField('loyaltyLimit', e.target.checked ? '0' : '1')}
+                                                            checked={currentPlan.loyaltyLimit === '-1'} 
+                                                            onChange={(e) => setNumericField('loyaltyLimit', e.target.checked ? '-1' : '1')}
                                                             className="w-3 h-3 rounded border-gray-300 text-primary focus:ring-primary"
                                                         />
                                                         <span className="text-[9px] font-bold text-text-secondary uppercase tracking-tighter">Unlimited</span>
                                                     </label>
                                                 </div>
-                                                <FormattedNumberInput 
-                                                    disabled={currentPlan.loyaltyLimit === '0'}
-                                                    value={currentPlan.loyaltyLimit === '0' ? '∞' : currentPlan.loyaltyLimit} 
-                                                    onChange={(value) => setNumericField('loyaltyLimit', value)} 
-                                                    className={`w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-opacity ${currentPlan.loyaltyLimit === '0' ? 'opacity-50' : 'opacity-100'}`} 
-                                                    placeholder="0" 
-                                                />
+                                                {currentPlan.loyaltyLimit === '-1' ? (
+                                                    <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
+                                                        Unlimited
+                                                    </div>
+                                                ) : (
+                                                    <FormattedNumberInput 
+                                                        value={currentPlan.loyaltyLimit} 
+                                                        onChange={(value) => setNumericField('loyaltyLimit', value)} 
+                                                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                        placeholder="0" 
+                                                    />
+                                                )}
                                             </div>
                                         </motion.div>
                                     )}
@@ -729,7 +789,15 @@ export default function AdminPricingPage() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <div 
-                                                onClick={() => setEditingPlan(prev => prev ? { ...prev, branchesEnabled: !prev.branchesEnabled } : prev)}
+                                                onClick={() => setEditingPlan(prev => {
+                                                    if (!prev) return prev;
+                                                    const nextEnabled = !prev.branchesEnabled;
+                                                    return {
+                                                        ...prev,
+                                                        branchesEnabled: nextEnabled,
+                                                        branchLimit: nextEnabled ? (prev.branchLimit || '1') : '0'
+                                                    };
+                                                })}
                                                 className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors duration-200 ${currentPlan.branchesEnabled ? 'bg-primary' : 'bg-gray-300'}`}
                                             >
                                                 <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.branchesEnabled ? 'translate-x-6' : ''}`} />
@@ -750,20 +818,25 @@ export default function AdminPricingPage() {
                                                     <label className="flex items-center gap-1 cursor-pointer">
                                                         <input 
                                                             type="checkbox" 
-                                                            checked={currentPlan.branchLimit === '0'} 
-                                                            onChange={(e) => setNumericField('branchLimit', e.target.checked ? '0' : '1')}
+                                                            checked={currentPlan.branchLimit === '-1'} 
+                                                            onChange={(e) => setNumericField('branchLimit', e.target.checked ? '-1' : '1')}
                                                             className="w-3 h-3 rounded border-gray-300 text-primary focus:ring-primary"
                                                         />
                                                         <span className="text-[9px] font-bold text-text-secondary uppercase tracking-tighter">Unlimited</span>
                                                     </label>
                                                 </div>
-                                                <FormattedNumberInput 
-                                                    disabled={currentPlan.branchLimit === '0'}
-                                                    value={currentPlan.branchLimit === '0' ? '∞' : currentPlan.branchLimit} 
-                                                    onChange={(value) => setNumericField('branchLimit', value)} 
-                                                    className={`w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-opacity ${currentPlan.branchLimit === '0' ? 'opacity-50' : 'opacity-100'}`} 
-                                                    placeholder="0" 
-                                                />
+                                                {currentPlan.branchLimit === '-1' ? (
+                                                    <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
+                                                        Unlimited
+                                                    </div>
+                                                ) : (
+                                                    <FormattedNumberInput 
+                                                        value={currentPlan.branchLimit} 
+                                                        onChange={(value) => setNumericField('branchLimit', value)} 
+                                                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                        placeholder="0" 
+                                                    />
+                                                )}
                                             </div>
                                         </motion.div>
                                     )}
@@ -941,6 +1014,16 @@ export default function AdminPricingPage() {
                     </div>
                 </div>
             )}
+
+            <ConfirmationModal
+                isOpen={planToDelete !== null}
+                onClose={() => setPlanToDelete(null)}
+                onConfirm={confirmDelete}
+                title="Delete Plan"
+                message="Are you sure you want to delete this pricing plan? This action cannot be undone, although existing subscriptions will remain valid."
+                confirmText="Delete Plan"
+                isLoading={deleteMutation.isPending}
+            />
         </>
     );
 }

@@ -51,6 +51,6 @@ export class PlansService {
 
   async remove(id: string): Promise<void> {
     const plan = await this.findOne(id);
-    await this.planRepository.remove(plan);
+    await this.planRepository.softRemove(plan);
   }
 }

@@ -67,7 +67,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         if (!caps) return false;
         const item = caps.capabilities[key];
         if (!item || !item.enabled) return true; // Treat as limit reached if disabled
-        if (item.limit === 'unlimited') return false;
+        if (item.limit === 'unlimited' || item.limit === -1) return false;
         return item.used >= (item.limit as number);
       },
 
