@@ -622,7 +622,7 @@ export default function EngagementFormsBuilderPage() {
                             : 'bg-primary text-white shadow-sm hover:bg-primary/90'
                             } disabled:opacity-70`}
                         >
-                          {updateMutation.isPending ? <Spinner size="xs" /> : (f.showAfterLeadCapture ? 'Disable' : 'Enable')}
+                          {updateMutation.isPending ? <Spinner size="sm" /> : (f.showAfterLeadCapture ? 'Disable' : 'Enable')}
                         </button>
                       </div>
 
