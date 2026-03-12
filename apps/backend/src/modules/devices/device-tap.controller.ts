@@ -52,7 +52,6 @@ export class DeviceTapController {
             id: deviceWithRelations.branch.business.id,
             name: deviceWithRelations.branch.business.name,
             logoUrl: deviceWithRelations.branch.business.logoUrl,
-            type: deviceWithRelations.branch.business.type,
         }
     };
   }

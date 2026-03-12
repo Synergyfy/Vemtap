@@ -66,7 +66,7 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
                             <div className="size-12 bg-amber-500 text-white rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20 group-hover:scale-110 transition-transform">
                                 <span className="material-symbols-outlined !text-2xl">star</span>
                             </div>
-                            <div classNametext-left">
+                            <div className="text-left">
                                 <h4 className="text-sm font-black text-slate-900 leading-tight">Rate us on Google</h4>
                                 <p className="text-[10px] font-bold text-amber-600 mt-0.5">TAP TO LEAVE A 5-STAR REVIEW</p>
                             </div>
