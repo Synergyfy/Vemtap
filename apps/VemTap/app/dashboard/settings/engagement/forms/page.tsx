@@ -613,11 +613,7 @@ export default function EngagementFormsBuilderPage() {
                       <div className="flex items-center gap-4 mt-2 mb-1 px-1">
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-primary/80" title="Engagement metrics: number of people who have filled this form">
                           <CheckCircle2 size={13} />
-<<<<<<< HEAD
-                          {f.responseCount || 0} filled
-=======
                           {responseCountByFormId.get(f.id) || 0} responses
->>>>>>> ac86d5b0f9ffafe50843549a0054eaf5223c4b88
                         </div>
                       </div>
 
@@ -782,10 +778,6 @@ export default function EngagementFormsBuilderPage() {
                         <BarChart3 size={14} />
                         Responses ({responseCountByFormId.get(f.id) || 0})
                       </Link>
-<<<<<<< HEAD
-                      <button onClick={() => openShareExplainer('link', f.id, f.title)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors" title="Copy share link"><Link2 size={14} /></button>
-                      <button onClick={() => openEdit(f)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors" title="Edit form"><Pencil size={14} /></button>
-=======
                       <button onClick={() => openShareExplainer('link', f.id, f.title)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Link2 size={14} /></button>
                       <button onClick={() => openEdit(f)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Pencil size={14} /></button>
                       <button
@@ -795,7 +787,6 @@ export default function EngagementFormsBuilderPage() {
                       >
                         <Trash2 size={14} />
                       </button>
->>>>>>> ac86d5b0f9ffafe50843549a0054eaf5223c4b88
                     </div>
                   </div>
                 ))}
