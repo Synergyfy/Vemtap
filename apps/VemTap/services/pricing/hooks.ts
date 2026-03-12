@@ -3,6 +3,9 @@ import { fetchAdminPricingPlans, fetchPricingPlans, addPricingPlan, updatePricin
 import { PricingPlan } from '@/types/pricing';
 import { notify } from '@/lib/notify';
 
+
+// pricing hooks
+
 export const useAdminPricingPlans = () => {
     return useQuery<PricingPlan[], Error>({
         queryKey: ['admin-pricing-plans'],
