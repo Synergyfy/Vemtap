@@ -75,9 +75,15 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             ref: `SUB-${resolvedBusinessId || 'anon'}-${Date.now()}`,
             onClose: () => {
                 setIsProcessing(false);
+                onClose(); // Ensure modal closes when paystack window is closed
                 toast.error('Payment window closed');
             },
             callback: (response: any) => {
+                // Close modal immediately after payment success to prevent double clicks
+                // even before the mutation finishes if necessary, or at least ensure it closes on success
+                onClose();
+                setIsProcessing(false);
+
                 // Payment successful
                 subscribeMutation.mutate({
                     businessId: resolvedBusinessId,
@@ -88,12 +94,8 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                 }, {
                     onSuccess: () => {
                         toast.success(isTrial ? `Trial started! You won't be charged for ${plan.trialDurationDays} days.` : `Welcome to the ${plan.name} plan!`);
-                        // Close modal first to prevent it showing during any background refreshes
-                        onClose();
-                        setIsProcessing(false);
                     },
                     onError: (error) => {
-                        setIsProcessing(false);
                         toast.error(error instanceof Error ? error.message : 'Payment verified but subscription sync failed. Please contact support.');
                     }
                 });
