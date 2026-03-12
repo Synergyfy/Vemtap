@@ -75,6 +75,17 @@ export class VisitorFormsController {
     return this.formsService.getFormByUniqueCode(code);
   }
 
+  @Public()
+  @Get('device/:code')
+  @ApiOperation({ summary: 'Get all forms to show after lead capture for a device' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return forms with fields.',
+  })
+  getFormsByDeviceCode(@Param('code') code: string) {
+    return this.formsService.getFormsByDeviceCode(code);
+  }
+
   @Post(':code/responses')
   @Roles(UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Submit answers for a specific form using its unique code' })
