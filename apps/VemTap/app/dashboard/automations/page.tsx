@@ -18,6 +18,7 @@ import {
     AutomationRule
 } from '@/services/messaging/types';
 import AutomationConfigModal from '@/components/messaging/AutomationConfigModal';
+import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 
 const AUTOMATION_TEMPLATES = [
     {
@@ -58,7 +59,7 @@ export default function AutomationsPage() {
 
     return (
         <div className="p-8">
-                <div className="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
                     <PageHeader
                         title="Automation Settings"
                         description="Activate and configure smart automations to grow your business automatically."

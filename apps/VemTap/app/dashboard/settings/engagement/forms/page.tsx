@@ -239,10 +239,14 @@ export default function EngagementFormsBuilderPage() {
     [branches]
   );
 
-  const getFormUrl = (formId: string) =>
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/forms/${formId}`
-      : `/forms/${formId}`;
+  const getPublicFormKey = (formId: string, uniqueCode?: string) => uniqueCode || formId;
+
+  const getFormUrl = (formId: string, uniqueCode?: string) => {
+    const key = getPublicFormKey(formId, uniqueCode);
+    return typeof window !== 'undefined'
+      ? `${window.location.origin}/forms/${key}`
+      : `/forms/${key}`;
+  };
 
   const getMessagingUrl = (formId: string) => {
     const params = new URLSearchParams();
@@ -410,11 +414,14 @@ export default function EngagementFormsBuilderPage() {
   );
 
   return (
+    <>
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
       <EngagementTabs
         tabs={[
           { label: 'Socials', href: '/dashboard/settings/engagement/socials' },
+          { label: 'User Form', href: '/dashboard/settings/engagement/user-form' },
           { label: 'Form Creator', active: true },
+          { label: 'Active Forms', href: '/dashboard/settings/engagement/forms/active' },
           { label: 'Responses', href: '/dashboard/settings/engagement/forms/responses' },
         ]}
       />
@@ -1035,5 +1042,6 @@ export default function EngagementFormsBuilderPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

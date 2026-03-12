@@ -46,6 +46,7 @@ export default function BusinessProfilePage() {
     const [name, setName] = useState('');
     const [logo, setLogo] = useState('');
     const [profileSlug, setProfileSlug] = useState('');
+    const [publicProfileUrl, setPublicProfileUrl] = useState('');
     const [categoryId, setCategoryId] = useState('');
     const [subcategoryId, setSubcategoryId] = useState('');
     const [otherSubcategoryName, setOtherSubcategoryName] = useState('');
@@ -191,6 +192,14 @@ export default function BusinessProfilePage() {
             setShowReview(branch.showReview ?? true);
             setShowSocial(branch.showSocial ?? true);
             setShowFeedback(branch.showFeedback ?? true);
+
+            if (branch.uniqueCode) {
+                const nextPublicUrl = `${origin}/b/${branch.uniqueCode}`;
+                setPublicProfileUrl(nextPublicUrl);
+                setRedirect(qrId, nextPublicUrl);
+            } else {
+                setPublicProfileUrl('');
+            }
         }
     }, [business, branch, isAllBranches, activeBranchId, origin, branches.length]);
 
@@ -691,7 +700,36 @@ export default function BusinessProfilePage() {
                             <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Dynamic Business QR</h3>
                         </div>
                         <div className="p-8 flex flex-col md:flex-row items-center md:items-start gap-8">
-                            <DynamicQRCode redirectId={qrId} label="Scan to Visit Profile" subLabel={origin.replace(/^https?:\/\//, '')} color="#000000" />
+                            <DynamicQRCode
+                                redirectId={qrId}
+                                label="Scan to Visit Profile"
+                                subLabel={origin.replace(/^https?:\/\//, '')}
+                                color="#000000"
+                            />
+                            <div className="w-full max-w-sm">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">Public Profile Link</p>
+                                {publicProfileUrl ? (
+                                    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+                                        <div className="text-xs font-bold text-text-main break-all">{publicProfileUrl}</div>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(publicProfileUrl);
+                                                toast.success('Public link copied');
+                                            }}
+                                            className="w-full h-10 rounded-xl bg-white border border-gray-200 text-xs font-black text-text-secondary hover:text-primary hover:border-primary transition-colors"
+                                        >
+                                            Copy Public Link
+                                        </button>
+                                        <p className="text-[10px] text-text-secondary">
+                                            This link opens the public business profile for the selected branch.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-xs text-amber-800 font-bold">
+                                        Unique code not available for this branch yet.
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}

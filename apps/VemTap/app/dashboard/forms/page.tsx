@@ -49,25 +49,25 @@ interface ShareExplainerState {
 }
 
 function formatDate(dateString?: string): string {
-  if (!dateString) return '—';
+  if (!dateString) return 'Ã¢â‚¬â€';
   try {
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '—';
+    if (isNaN(date.getTime())) return 'Ã¢â‚¬â€';
     return date.toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
   } catch {
-    return '—';
+    return 'Ã¢â‚¬â€';
   }
 }
 
 function formatDateTime(dateString?: string): string {
-  if (!dateString) return '—';
+  if (!dateString) return 'Ã¢â‚¬â€';
   try {
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '—';
+    if (isNaN(date.getTime())) return 'Ã¢â‚¬â€';
     return date.toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
@@ -76,7 +76,7 @@ function formatDateTime(dateString?: string): string {
       minute: '2-digit',
     });
   } catch {
-    return '—';
+    return 'Ã¢â‚¬â€';
   }
 }
 
@@ -213,10 +213,15 @@ export default function FormsPage() {
     return { label: 'Active', color: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' };
   };
 
-  const getFormUrl = (form: { id: string; uniqueCode?: string }) =>
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/forms/${form.uniqueCode || form.id}`
-      : `/forms/${form.uniqueCode || form.id}`;
+  const getPublicFormKey = (formId: string, uniqueCode?: string) => uniqueCode || formId;
+
+  const getFormUrl = (formId: string, uniqueCode?: string): string => {
+  const key = getPublicFormKey(formId, uniqueCode);
+
+  return typeof window !== 'undefined'
+    ? `${window.location.origin}/forms/${key}`
+    : `/forms/${key}`;
+};
 
   const getMessagingUrl = (formId: string) => {
     const params = new URLSearchParams();
@@ -226,22 +231,25 @@ export default function FormsPage() {
   };
 
   const handleShareAction = async (method: ShareMethod, formId: string, formTitle: string) => {
-    setShareExplainer(null);
-    const form = scopedForms.find((f) => f.id === formId);
-    if (!form) return;
+  setShareExplainer(null);
+  const form = scopedForms.find((f) => f.id === formId);
+  if (!form) return;
 
-    if (method === 'link') {
-      const url = getFormUrl(form);
-      await navigator.clipboard.writeText(url);
-      toast.success('Form link copied to clipboard!');
-    } else if (method === 'qr') {
-      const url = getFormUrl(form);
-      setShareForm({ id: formId, title: formTitle, url });
-    } else if (method === 'messaging') {
-      router.push(getMessagingUrl(formId));
-    }
-    setOpenMenuId(null);
-  };
+  if (method === 'link') {
+    const url = getFormUrl(form.id, form.uniqueCode);
+    await navigator.clipboard.writeText(url);
+    toast.success('Form link copied to clipboard!');
+  } 
+  else if (method === 'qr') {
+    const url = getFormUrl(form.id, form.uniqueCode);
+    setShareForm({ id: formId, title: formTitle, url });
+  } 
+  else if (method === 'messaging') {
+    router.push(getMessagingUrl(formId));
+  }
+
+  setOpenMenuId(null);
+};
 
   const openShareExplainer = (method: ShareMethod, formId: string, formTitle: string) => {
     setShareExplainer({ method, formId, formTitle });
@@ -295,6 +303,7 @@ export default function FormsPage() {
     document.addEventListener('click', handler);
     return () => document.removeEventListener('click', handler);
   }, [openMenuId]);
+
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
@@ -474,7 +483,7 @@ export default function FormsPage() {
               >
                 <QRCodeCanvas
                   id={`form-qr-${form.id}`}
-                  value={getFormUrl(form)}
+                  value={getFormUrl(form.id, form.uniqueCode)}
                   size={160}
                   className="hidden"
                 />
@@ -589,7 +598,7 @@ export default function FormsPage() {
                         {responseCountByFormId.get(form.id) || 0} filled
                       </div>
                       <span className="text-xs text-gray-400" title={formatDateTime(form.createdAt)}>
-                        {form.createdAt ? timeAgo(form.createdAt) : '—'}
+                        {form.createdAt ? timeAgo(form.createdAt) : 'Ã¢â‚¬â€'}
                       </span>
                     </div>
                   </div>
@@ -635,7 +644,7 @@ export default function FormsPage() {
                     </span>
                     {form.updatedAt && form.updatedAt !== form.createdAt && (
                       <span title={`Updated: ${formatDateTime(form.updatedAt)}`}>
-                        · Updated {formatDate(form.updatedAt)}
+                        Ã‚Â· Updated {formatDate(form.updatedAt)}
                       </span>
                     )}
                   </div>
@@ -709,10 +718,10 @@ export default function FormsPage() {
                 >
                   <QRCodeCanvas
                     id={`form-qr-${form.id}`}
-                    value={getFormUrl(form)}
+                    value={getFormUrl(form.id, form.uniqueCode)}
                     size={160}
                     className="hidden"
-                  />
+                  />value={getFormUrl(form.id, form.uniqueCode)}
 
                   {/* Form info */}
                   <div className="sm:col-span-3 flex items-center gap-3 min-w-0">
@@ -758,7 +767,7 @@ export default function FormsPage() {
 
                   {/* Updated */}
                   <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(form.updatedAt)}>
-                    {form.updatedAt ? timeAgo(form.updatedAt) : '—'}
+                    {form.updatedAt ? timeAgo(form.updatedAt) : 'Ã¢â‚¬â€'}
                   </div>
 
                   {/* Actions */}
@@ -865,7 +874,7 @@ export default function FormsPage() {
         </div>
       )}
 
-      {/* ─── Share Explainer Modal ─── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Share Explainer Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {
         shareExplainer && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShareExplainer(null)}>
@@ -920,7 +929,7 @@ export default function FormsPage() {
         )
       }
 
-      {/* ─── QR Code Modal ─── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ QR Code Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {
         shareForm && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShareForm(null)}>
@@ -973,7 +982,7 @@ export default function FormsPage() {
         )
       }
 
-      {/* ─── Delete Confirmation Modal ─── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Delete Confirmation Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {
         deleteConfirm && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setDeleteConfirm(null)}>
@@ -1010,7 +1019,7 @@ export default function FormsPage() {
           </div>
         )
       }
-      {/* ─── Default Form Explainer Modal ─── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Default Form Explainer Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {
         defaultFormExplainer && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 transition-all" onClick={() => setDefaultFormExplainer(null)}>

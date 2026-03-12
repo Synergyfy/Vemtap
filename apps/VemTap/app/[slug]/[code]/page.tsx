@@ -38,7 +38,7 @@ export default function DynamicTapJourneyPage() {
         setBusinessType, userData, branchId, logoUrl, visitCount, rewardVisitThreshold,
         redemptionStatus, lastRedemptionId, requestRedemption, setRedemptionStatus, resetVisitCountAfterRedemption,
         engagementSettings, surveyQuestions,
-        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag,
+        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton,
         businessId, initializeFromBusiness, recordVisit, isFirstTimeVisit
     } = useCustomerFlowStore();
 
@@ -365,6 +365,7 @@ export default function DynamicTapJourneyPage() {
                         customWelcomeTitle={customNewUserWelcomeTitle}
                         customWelcomeTag={customNewUserWelcomeTag}
                         customPrivacyMessage={customPrivacyMessage}
+                        submitLabel={customNewUserWelcomeButton || 'Submit'}
                         initialData={userData || storedIdentity || user}
                         isSyncingReal={isSyncingReal}
                         isDeviceSynced={isDeviceSynced}

@@ -45,9 +45,8 @@ export default function FootfallReportsPage() {
     const maxHourlyCount = Math.max(1, ...hourlyData.map(d => d.count || 0));
 
     return (
-        <PageLockWrapper feature="footfall" featureName="Advanced Analytics">
-            <div className="p-8">
-                <PageHeader
+        <div className="p-8">
+            <PageHeader
                     title="Footfall Analysis"
                     description="Detailed tracking of physical visits and traffic patterns"
                     actions={
@@ -161,6 +160,5 @@ export default function FootfallReportsPage() {
                     </ChartCard>
                 </div>
             </div>
-        </PageLockWrapper>
     );
 }

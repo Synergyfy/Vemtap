@@ -6,6 +6,7 @@ import type {
   CreateBusinessFormRequest,
   CreateFormTemplateRequest,
   FormTemplate,
+  SubmitBusinessFormResponseRequest,
   UpdateBusinessFormRequest,
 } from './types';
 
@@ -134,11 +135,7 @@ export const useBusinessFormResponses = (id?: string, branchId?: string) =>
 
 export const useSubmitBusinessFormResponse = (id: string) => {
   const queryClient = useQueryClient();
-  return useMutation<
-    BusinessFormResponseItem,
-    Error,
-    Pick<BusinessFormResponseItem, 'customerName' | 'customerEmail' | 'customerPhone' | 'answers'>
-  >({
+  return useMutation<BusinessFormResponseItem, Error, SubmitBusinessFormResponseRequest>({
     mutationFn: async (payload) => {
       return await api.post(`/visitor-forms/${id}/responses`, payload);
     },

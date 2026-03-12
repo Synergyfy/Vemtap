@@ -66,7 +66,8 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         const caps = get().capabilities;
         if (!caps) return false;
         const item = caps.capabilities[key];
-        if (!item || item.limit === 'unlimited') return false;
+        if (!item || !item.enabled) return true; // Treat as limit reached if disabled
+        if (item.limit === 'unlimited' || item.limit === -1) return false;
         return item.used >= (item.limit as number);
       },
 
@@ -75,21 +76,47 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         if (!caps) return true; // Assume locked if not loaded
 
         const featureMapping: Record<string, string> = {
-          'analytics': 'advanced_analytics',
-          'analytics_basic': 'dashboard', 
-          'analytics_advanced': 'advanced_analytics',
+          'analytics': 'analytics',
+          'analytics_basic': 'analytics', 
+          'analytics_advanced': 'analytics',
+          'visitors': 'analytics',
           'loyalty': 'loyalty_programs',
           'engagement': 'automated_campaigns',
           'feedback': 'surveys_and_feedback',
           'inventory': 'inventory_management',
-          'messages': 'custom_message_templates',
+          'messages': 'messaging',
+          'branches': 'branches',
+          'teamMembers': 'teamMembers',
+          'staff': 'teamMembers',
+          'messaging': 'messaging',
         };
 
-        if (feature === 'footfall' || feature === 'peak-times') {
-          return caps.capabilities.analytics === 'basic' || caps.capabilities.analytics === 'none';
+        const backendFeature = featureMapping[feature] || feature;
+
+        // Check if the feature is one of the specific ones in our new structure
+        if (backendFeature === 'analytics') {
+          if (feature === 'footfall' || feature === 'peak-times') {
+            return !caps.capabilities.analytics.enabled || caps.capabilities.analytics.level === 'none';
+          }
+          return !caps.capabilities.analytics.enabled;
         }
 
-        const backendFeature = featureMapping[feature] || feature;
+        if (backendFeature === 'messaging') {
+          return !caps.capabilities.messaging.enabled;
+        }
+
+        if (backendFeature === 'loyalty' || backendFeature === 'loyalty_programs') {
+          return !caps.capabilities.loyaltyPrograms.enabled;
+        }
+
+        if (backendFeature === 'branches') {
+          return !caps.capabilities.branches.enabled;
+        }
+
+        if (backendFeature === 'teamMembers') {
+          return !caps.capabilities.teamMembers.enabled;
+        }
+
         return !caps.capabilities.features.includes(backendFeature);
       }
     }),

@@ -56,6 +56,7 @@ describe('LoyaltyService', () => {
 
   const mockVisitRepository = {
     count: jest.fn(),
+    find: jest.fn().mockResolvedValue([]),
     createQueryBuilder: jest.fn(() => ({
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
@@ -157,12 +158,15 @@ describe('LoyaltyService', () => {
         },
       ]);
 
-      mockVisitRepository.count.mockResolvedValue(15);
+      mockVisitRepository.find.mockResolvedValue(new Array(15).fill({
+        createdAt: new Date(),
+        branch: { name: 'Branch 1' }
+      }));
 
       const result = await service.getAnalytics(userId);
 
-      expect(result.visitCount).toBe(15);
-      expect(result.totalPoints).toBe(500);
+      expect(result.totalVisits).toBe(15);
+      expect(result.currentPointsBalance).toBe(500);
     });
   });
 

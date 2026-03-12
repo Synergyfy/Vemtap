@@ -8,6 +8,45 @@ import {
     ChevronRight, LayoutDashboard, Loader2, Star, Clock, Youtube, Link as LinkIcon
 } from 'lucide-react';
 import { fetchDeviceByCode, Device } from '@/lib/api/devices';
+import { api } from '@/lib/api';
+
+type PublicBranchResponse = {
+    id: string;
+    uniqueCode: string;
+    name: string;
+    address?: string;
+    phone?: string;
+    isActive: boolean;
+    isMainBranch: boolean;
+    businessId: string;
+    business?: {
+        id: string;
+        uniqueCode?: string;
+        name?: string;
+        logoUrl?: string;
+        category?: string;
+        type?: string;
+        about?: string;
+        website?: string;
+        whatsappNumber?: string;
+        officialEmail?: string;
+        welcomeMessage?: string;
+        rewardMessage?: string;
+        businessHours?: Record<string, { open: string; close: string; closed: boolean }>;
+        rewardEnabled?: boolean;
+        rewardVisitThreshold?: number;
+        showSocial?: boolean;
+        instagramUrl?: string;
+        facebookUrl?: string;
+        xUrl?: string;
+        linkedinUrl?: string;
+        tiktokUrl?: string;
+        youtubeUrl?: string;
+        customLink?: string;
+        showReview?: boolean;
+        reviewUrl?: string;
+    };
+};
 
 export default function BusinessPublicByIdPage() {
     const params = useParams();
@@ -17,6 +56,7 @@ export default function BusinessPublicByIdPage() {
     const deviceCode = searchParams.get('code');
 
     const [businessData, setBusinessData] = useState<Device | null>(null);
+    const [publicBranch, setPublicBranch] = useState<PublicBranchResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     const mockBusinesses: Record<string, any> = {
@@ -64,13 +104,16 @@ export default function BusinessPublicByIdPage() {
 
     useEffect(() => {
         const loadBusiness = async () => {
-            if (!deviceCode) {
-                setIsLoading(false);
-                return;
-            }
             try {
-                const data = await fetchDeviceByCode(deviceCode);
-                setBusinessData(data);
+                if (deviceCode) {
+                    const data = await fetchDeviceByCode(deviceCode);
+                    setBusinessData(data);
+                    return;
+                }
+                if (businessId) {
+                    const data = await api.get(`/public/branches/code/${businessId}`);
+                    setPublicBranch(data as PublicBranchResponse);
+                }
             } catch (err) {
                 console.error('Failed to load business data:', err);
             } finally {
@@ -78,7 +121,7 @@ export default function BusinessPublicByIdPage() {
             }
         };
         loadBusiness();
-    }, [deviceCode]);
+    }, [deviceCode, businessId]);
 
     if (isLoading) {
         return (
@@ -88,7 +131,7 @@ export default function BusinessPublicByIdPage() {
         );
     }
 
-    const resolvedBusiness = businessData?.business || mockBusinesses[businessId] || null;
+    const resolvedBusiness = businessData?.business || publicBranch?.business || mockBusinesses[businessId] || null;
     const resolvedOwner = businessData?.owner || null;
 
     if (!resolvedBusiness || !businessId) {
@@ -107,7 +150,13 @@ export default function BusinessPublicByIdPage() {
         );
     }
 
-    const business = resolvedBusiness;
+    const business = resolvedBusiness
+        ? {
+            ...resolvedBusiness,
+            address: resolvedBusiness.address || publicBranch?.address,
+            whatsappNumber: resolvedBusiness.whatsappNumber || publicBranch?.phone,
+        }
+        : resolvedBusiness;
     const owner = resolvedOwner;
     const businessName = business.name || 'VemTap Business';
     const logoUrl = business.logoUrl;
@@ -122,10 +171,10 @@ export default function BusinessPublicByIdPage() {
 
     return (
         <div className="min-h-screen bg-[#fafbfc] font-sans selection:bg-primary/10">
-            <div className="h-[40vh] bg-linear-to-b from-slate-50 to-[#fafbfc] relative overflow-hidden flex items-center justify-center">
+            <div className="h-[40vh] bg-linear-to-b from-primary/10 to-[#fafbfc] relative overflow-hidden flex items-center justify-center">
                 <div className="absolute top-0 left-0 w-full h-full">
-                    <div className="absolute top-[-10%] left-[-5%] size-96 bg-primary/5 rounded-full blur-3xl animate-pulse" />
-                    <div className="absolute bottom-[-10%] right-[-5%] size-96 bg-indigo-500/5 rounded-full blur-3xl" />
+                    <div className="absolute top-[-10%] left-[-5%] size-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
+                    <div className="absolute bottom-[-10%] right-[-5%] size-96 bg-primary/10 rounded-full blur-3xl" />
                 </div>
 
                 <div className="absolute top-8 left-8 right-8 flex justify-between items-center z-10 font-bold uppercase tracking-widest text-[10px]">
@@ -135,8 +184,8 @@ export default function BusinessPublicByIdPage() {
                     >
                         <ChevronRight size={14} className="rotate-180" /> Back
                     </button>
-                    <div className="text-slate-900 tracking-[0.3em] font-black">
-                        Business Profile
+                    <div className="px-4 py-1.5 rounded-full bg-primary/10 text-primary tracking-[0.3em] font-black">
+                        {businessName}
                     </div>
                     <button className="text-slate-400 hover:text-primary transition-colors">
                         <Share2 size={16} />
@@ -359,7 +408,7 @@ export default function BusinessPublicByIdPage() {
                                 <div className="mt-4">
                                     <button
                                         onClick={() => window.open(business.reviewUrl, '_blank')}
-                                        className="w-full h-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center gap-2 hover:bg-orange-100 transition-colors text-xs font-black uppercase tracking-widest"
+                                        className="w-full h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors text-xs font-black uppercase tracking-widest"
                                     >
                                         <Star size={16} fill="currentColor" />
                                         Google Review
@@ -385,21 +434,6 @@ export default function BusinessPublicByIdPage() {
                 </div>
 
                 <div className="mt-12 text-center flex flex-col items-center">
-                    <button
-                        onClick={() => router.push('/customer/dashboard')}
-                        className="group relative px-12 h-20 bg-slate-900 text-white rounded-[2rem] overflow-hidden shadow-2xl shadow-slate-900/40 hover:scale-105 transition-all duration-500"
-                    >
-                        <div className="absolute inset-0 bg-linear-to-r from-primary/20 to-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="relative flex items-center gap-4">
-                            <div className="flex flex-col items-start">
-                                <span className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">Ready to engage?</span>
-                                <span className="text-lg font-black tracking-tight">Open Customer Dashboard</span>
-                            </div>
-                            <div className="size-10 rounded-2xl bg-white/10 flex items-center justify-center group-hover:rotate-12 transition-transform">
-                                <LayoutDashboard size={20} />
-                            </div>
-                        </div>
-                    </button>
 
                     <div className="mt-12 flex items-center gap-4 grayscale opacity-30 hover:grayscale-0 hover:opacity-100 transition-all duration-700 cursor-default">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Powered by</span>

@@ -11,22 +11,34 @@ import {
 } from '@/services/business-forms/hooks';
 import type { BusinessFormResponseItem } from '@/services/business-forms/types';
 
-const resolveContact = (response: BusinessFormResponseItem) => {
-    const email =
-        response.customerEmail ||
-        response.respondent?.email ||
-        (typeof response.email === 'string' ? response.email : undefined);
-    const phone =
-        response.customerPhone ||
-        response.respondent?.phone ||
-        (typeof response.phone === 'string' ? response.phone : undefined);
-    const name =
-        response.customerName ||
-        response.respondent?.name ||
-        (typeof response.name === 'string' ? response.name : undefined) ||
-        'Anonymous';
+type ContactInfo = {
+  name: string;
+  email?: string;
+  phone?: string;
+};
 
-    return { email, phone, name };
+const resolveContact = (response: BusinessFormResponseItem): ContactInfo => {
+  const email =
+    response.customerEmail ||
+    response.respondent?.email ||
+    (typeof response.email === 'string' ? response.email : undefined);
+
+  const phone =
+    response.customerPhone ||
+    response.respondent?.phone ||
+    (typeof response.phone === 'string' ? response.phone : undefined);
+
+  const name =
+    response.customerName ||
+    response.respondent?.name ||
+    (typeof response.name === 'string' ? response.name : undefined) ||
+    'Anonymous';
+
+  return {
+    email: typeof email === 'string' ? email : undefined,
+    phone: typeof phone === 'string' ? phone : undefined,
+    name: typeof name === 'string' ? name : 'Anonymous',
+  };
 };
 
 const resolveAnswer = (response: BusinessFormResponseItem, fieldId: string, question?: string) => {

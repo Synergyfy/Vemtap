@@ -21,6 +21,7 @@ interface StepFormProps {
     customWelcomeTitle?: string | null;
     customWelcomeTag?: string | null;
     customPrivacyMessage?: string | null;
+    submitLabel?: string | null;
     initialData?: any;
     isSyncingReal?: boolean;
     isDeviceSynced?: boolean;
@@ -35,6 +36,7 @@ export const StepForm: React.FC<StepFormProps> = ({
     customWelcomeTitle,
     customWelcomeTag,
     customPrivacyMessage,
+    submitLabel,
     initialData,
     isSyncingReal,
     isDeviceSynced,
@@ -182,7 +184,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                 </div>
 
                 <button type="submit" disabled={!hasConsented || !isValid} className={presets.button}>
-                    <span>Submit & Get Reward</span>
+                    <span>{submitLabel || 'Submit'}</span>
                     <span className="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">arrow_forward</span>
                 </button>
             </form>

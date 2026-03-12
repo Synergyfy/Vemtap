@@ -32,7 +32,7 @@ function UserStepPageContent() {
         setBusinessType, userData, branchId, logoUrl, visitCount, rewardVisitThreshold,
         redemptionStatus, requestRedemption,
         engagementSettings, surveyQuestions,
-        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, businessId
+        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton, businessId
     } = useCustomerFlowStore();
     const searchParams = useSearchParams();
     const preferredFormIdParam = searchParams.get('formId') || searchParams.get('form');
@@ -72,12 +72,13 @@ function UserStepPageContent() {
     }, [approvedFormsForBusiness, preferredFormIdParam, defaultFormId]);
     const attachedFormIds = useMemo(
         () => {
+            if (engagementSettings?.showPostSubmitForms === false) return [];
             const serverIds = Array.isArray(engagementSettings?.postSubmitFormIds)
                 ? engagementSettings.postSubmitFormIds
                 : [];
             return Array.from(new Set([...serverIds, ...locallyActiveFormIds]));
         },
-        [engagementSettings?.postSubmitFormIds, locallyActiveFormIds]
+        [engagementSettings?.postSubmitFormIds, engagementSettings?.showPostSubmitForms, locallyActiveFormIds]
     );
     const attachedBusinessForms = useMemo(
         () => approvedFormsForBusiness.filter((form) => attachedFormIds.includes(form.id) && form.id !== preferredBusinessForm?.id),
@@ -230,31 +231,31 @@ function UserStepPageContent() {
         }
     };
 
-    const handleSurveyComplete = async (answers: Record<string, any>) => {
-        if (selectedBusinessForm && businessId) {
-            const identity = userData || storedIdentity || user;
-            try {
-                await submitBusinessFormResponse.mutateAsync({
-                    customerName: identity?.name || 'Guest',
-                    customerEmail: identity?.email || undefined,
-                    customerPhone: identity?.phone || undefined,
-                    answers,
-                });
-            } catch (error) {
-                // Keep journey smooth even if response endpoint is unavailable.
-                console.warn('Form response submission failed:', error);
-            }
-        }
+   const handleSurveyComplete = async (answers: Record<string, any>) => {
+  if (selectedBusinessForm && businessId) {
+    try {
+      await submitBusinessFormResponse.mutateAsync({
+        answers: Object.entries(answers).map(([fieldId, value]) => ({
+          fieldId,
+          value,
+        })),
+      });
+    } catch (error) {
+      console.warn('Form response submission failed:', error);
+    }
+  }
 
-        console.log('Survey completed:', answers);
-        toast.success('Thank you for your feedback!');
-        if (selectedBusinessForm?.redirectUrl && typeof window !== 'undefined') {
-            window.location.assign(selectedBusinessForm.redirectUrl);
-            return;
-        }
-        setSelectedBusinessFormId(null);
-        setStep('FINAL_SUCCESS');
-    };
+  console.log('Survey completed:', answers);
+  toast.success('Thank you for your feedback!');
+
+  if (selectedBusinessForm?.redirectUrl && typeof window !== 'undefined') {
+    window.location.assign(selectedBusinessForm.redirectUrl);
+    return;
+  }
+
+  setSelectedBusinessFormId(null);
+  setStep('FINAL_SUCCESS');
+};
 
     return (
         <VisitorLayout
@@ -287,6 +288,7 @@ function UserStepPageContent() {
                         customWelcomeTitle={customNewUserWelcomeTitle}
                         customWelcomeTag={customNewUserWelcomeTag}
                         customPrivacyMessage={customPrivacyMessage}
+                        submitLabel={customNewUserWelcomeButton || 'Submit'}
                         initialData={userData || storedIdentity || user}
                         isSyncingReal={isSyncingReal}
                         isDeviceSynced={isDeviceSynced}

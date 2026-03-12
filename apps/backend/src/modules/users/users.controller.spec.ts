@@ -3,6 +3,8 @@ import { BadRequestException } from '@nestjs/common';
 import { UsersController } from './users.controller';
 import { UserRole } from './entities/user.entity';
 import { UsersService } from './users.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { BranchesService } from '../branches/branches.service';
 
 describe('UsersController', () => {
   let controller: UsersController;
@@ -26,6 +28,14 @@ describe('UsersController', () => {
     adminResetPasswordLink: jest.fn(),
   };
 
+  const mockSubscriptionsService = {
+    getCapabilities: jest.fn(),
+  };
+
+  const mockBranchesService = {
+    findOne: jest.fn(),
+  };
+
   const mockUser = {
     id: 'user-1',
     email: 'test@example.com',
@@ -37,7 +47,11 @@ describe('UsersController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UsersController],
-      providers: [{ provide: UsersService, useValue: mockUsersService }],
+      providers: [
+        { provide: UsersService, useValue: mockUsersService },
+        { provide: SubscriptionsService, useValue: mockSubscriptionsService },
+        { provide: BranchesService, useValue: mockBranchesService },
+      ],
     }).compile();
 
     controller = module.get<UsersController>(UsersController);
