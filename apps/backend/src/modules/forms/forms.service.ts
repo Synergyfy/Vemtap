@@ -68,11 +68,17 @@ export class FormsService {
   }
 
   async getFormByUniqueCode(uniqueCode: string): Promise<Form> {
+    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(uniqueCode);
+    const where: FindOptionsWhere<Form>[] = [
+      { uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
+    ];
+
+    if (isUuid) {
+      where.push({ id: uniqueCode, isPublished: true, isActive: true, adminDisabled: false });
+    }
+
     const form = await this.formsRepository.findOne({
-      where: [
-        { uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
-        { id: uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
-      ],
+      where,
       relations: ['fields'],
     });
 
@@ -258,12 +264,16 @@ export class FormsService {
     visitorId: string,
     dto: SubmitFormResponseDto,
   ): Promise<FormResponse> {
-    const form = await this.formsRepository.findOne({
-      where: [
-        { uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
-        { id: uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
-      ],
-    });
+    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(uniqueCode);
+    const where: FindOptionsWhere<Form>[] = [
+      { uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
+    ];
+
+    if (isUuid) {
+      where.push({ id: uniqueCode, isPublished: true, isActive: true, adminDisabled: false });
+    }
+
+    const form = await this.formsRepository.findOne({ where });
     if (!form) throw new NotFoundException('Form not found');
 
     const response = this.formResponsesRepository.create({
