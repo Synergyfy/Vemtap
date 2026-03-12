@@ -62,7 +62,11 @@ export const usePublicBusinessForm = (id?: string) =>
   useQuery<BusinessForm, Error>({
     queryKey: ['public-business-form', id],
     queryFn: async () => {
-      return await api.get(`/visitor-forms/public/${id}`);
+      try {
+        return await api.get(`/visitor-forms/public/code/${id}`);
+      } catch {
+        return await api.get(`/visitor-forms/public/${id}`);
+      }
     },
     enabled: !!id,
   });
@@ -122,12 +126,21 @@ export const useBusinessFormResponses = (id?: string, branchId?: string) =>
         return toList<BusinessFormResponseItem>(response);
       } catch (err) {
         // Fallback to visitor-forms responses if business-forms fails
-        const response = await api.get(`/visitor-forms/${id}`);
-        const candidate =
-          response && typeof response === 'object'
-            ? (response as { responses?: unknown }).responses
-            : undefined;
-        return toList<BusinessFormResponseItem>(candidate);
+        try {
+          const response = await api.get(`/visitor-forms/code/${id}`);
+          const candidate =
+            response && typeof response === 'object'
+              ? (response as { responses?: unknown }).responses
+              : undefined;
+          return toList<BusinessFormResponseItem>(candidate);
+        } catch {
+          const response = await api.get(`/visitor-forms/${id}`);
+          const candidate =
+            response && typeof response === 'object'
+              ? (response as { responses?: unknown }).responses
+              : undefined;
+          return toList<BusinessFormResponseItem>(candidate);
+        }
       }
     },
     enabled: !!id,
@@ -137,7 +150,11 @@ export const useSubmitBusinessFormResponse = (id: string) => {
   const queryClient = useQueryClient();
   return useMutation<BusinessFormResponseItem, Error, SubmitBusinessFormResponseRequest>({
     mutationFn: async (payload) => {
-      return await api.post(`/visitor-forms/${id}/responses`, payload);
+      try {
+        return await api.post(`/visitor-forms/code/${id}/responses`, payload);
+      } catch {
+        return await api.post(`/visitor-forms/${id}/responses`, payload);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['business-forms', id, 'responses'] });

@@ -47,11 +47,13 @@ export default function FormPreviewPage() {
     const [lastPreviewSubmission, setLastPreviewSubmission] = useState<Record<string, any> | null>(null);
 
     const getFormUrl = () => {
-        if (!form) return '';
+        if (!form?.uniqueCode) return '';
         return typeof window !== 'undefined'
-            ? `${window.location.origin}/forms/${form.uniqueCode || form.id}`
-            : `/forms/${form.uniqueCode || form.id}`;
+            ? `${window.location.origin}/forms/${form.uniqueCode}`
+            : `/forms/${form.uniqueCode}`;
     };
+    const formUrl = getFormUrl();
+    const hasFormUrl = Boolean(formUrl && form.uniqueCode);
 
     if (isLoading) {
         return (
@@ -158,24 +160,37 @@ export default function FormPreviewPage() {
                         {/* Share link */}
                         <div className="rounded-xl bg-gray-50 p-3 flex items-center gap-2">
                             <Link2 size={14} className="text-gray-400 shrink-0" />
-                            <p className="text-xs text-gray-600 truncate flex-1 font-mono">{getFormUrl()}</p>
+                            <p className="text-xs text-gray-600 truncate flex-1 font-mono">
+                                {hasFormUrl ? formUrl : 'Public link unavailable'}
+                            </p>
                             <button
                                 onClick={async () => {
-                                    await navigator.clipboard.writeText(getFormUrl());
+                                    if (!hasFormUrl) {
+                                        toast.error('This form is missing a public code. Please republish the form.');
+                                        return;
+                                    }
+                                    await navigator.clipboard.writeText(formUrl);
                                     toast.success('Link copied!');
                                 }}
-                                className="size-7 rounded-md bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 shrink-0 transition-colors"
+                                disabled={!hasFormUrl}
+                                className={`size-7 rounded-md bg-white border border-gray-200 flex items-center justify-center shrink-0 transition-colors ${hasFormUrl ? 'text-gray-500 hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed'}`}
                             >
                                 <Copy size={12} />
                             </button>
-                            <a
-                                href={getFormUrl()}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="size-7 rounded-md bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 shrink-0 transition-colors"
-                            >
-                                <ExternalLink size={12} />
-                            </a>
+                            {hasFormUrl ? (
+                                <a
+                                    href={formUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="size-7 rounded-md bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 shrink-0 transition-colors"
+                                >
+                                    <ExternalLink size={12} />
+                                </a>
+                            ) : (
+                                <span className="size-7 rounded-md bg-white border border-gray-200 flex items-center justify-center text-gray-300 shrink-0">
+                                    <ExternalLink size={12} />
+                                </span>
+                            )}
                         </div>
 
                         {/* Form ID */}

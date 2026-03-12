@@ -239,13 +239,22 @@ export default function EngagementFormsBuilderPage() {
     [branches]
   );
 
-  const getPublicFormKey = (formId: string, uniqueCode?: string) => uniqueCode || formId;
+  const getPublicFormCode = (uniqueCode?: string) => uniqueCode?.trim() || '';
 
-  const getFormUrl = (formId: string, uniqueCode?: string) => {
-    const key = getPublicFormKey(formId, uniqueCode);
+  const getFormUrl = (uniqueCode?: string) => {
+    const code = getPublicFormCode(uniqueCode);
+    if (!code) return '';
     return typeof window !== 'undefined'
-      ? `${window.location.origin}/forms/${key}`
-      : `/forms/${key}`;
+      ? `${window.location.origin}/forms/${code}`
+      : `/forms/${code}`;
+  };
+
+  const requireFormUrl = (uniqueCode?: string) => {
+    const url = getFormUrl(uniqueCode);
+    if (!url) {
+      toast.error('This form is missing a public code. Please republish the form to generate one.');
+    }
+    return url;
   };
 
   const getMessagingUrl = (formId: string) => {
@@ -261,11 +270,13 @@ export default function EngagementFormsBuilderPage() {
     if (!form) return;
 
     if (method === 'link') {
-      const url = getFormUrl(form.uniqueCode || form.id);
+      const url = requireFormUrl(form.uniqueCode);
+      if (!url) return;
       await navigator.clipboard.writeText(url);
       toast.success('Form link copied to clipboard!');
     } else if (method === 'qr') {
-      const url = getFormUrl(form.uniqueCode || form.id);
+      const url = requireFormUrl(form.uniqueCode);
+      if (!url) return;
       setShareForm({ id: formId, title: formTitle, url });
     } else if (method === 'messaging') {
       router.push(getMessagingUrl(formId));
@@ -554,9 +565,12 @@ export default function EngagementFormsBuilderPage() {
               {filteredForms.map((f) => {
                 const status = statusBadgeOf(f);
                 const branchLabel = branchNameById.get(f.branchId) || 'Unknown';
+                const formUrl = getFormUrl(f.uniqueCode);
                 return (
                   <div key={f.id} className="group relative bg-white rounded-2xl border border-gray-200 overflow-hidden transition-all hover:shadow-lg">
-                    <QRCodeCanvas id={`form-qr-${f.id}`} value={getFormUrl(f.uniqueCode || f.id)} size={160} className="hidden" />
+                    {formUrl ? (
+                      <QRCodeCanvas id={`form-qr-${f.id}`} value={formUrl} size={160} className="hidden" />
+                    ) : null}
                     <div className="h-1 bg-gradient-to-r from-primary to-primary/60" />
                     <div className="p-5">
                       <div className="flex items-start justify-between gap-3">
