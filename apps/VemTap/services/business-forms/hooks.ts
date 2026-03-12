@@ -85,15 +85,18 @@ export const useCreateBusinessForm = () => {
   });
 };
 
-export const useUpdateBusinessForm = (id: string) => {
+export const useUpdateBusinessForm = (id?: string) => {
   const queryClient = useQueryClient();
-  return useMutation<BusinessForm, Error, UpdateBusinessFormRequest>({
-    mutationFn: async (payload) => {
-      return await api.patch(`/business-forms/${id}`, payload);
+  return useMutation<BusinessForm, Error, { id?: string; payload: UpdateBusinessFormRequest }>({
+    mutationFn: async ({ id: mutationId, payload }) => {
+      const targetId = mutationId || id;
+      if (!targetId) throw new Error('No form ID provided');
+      return await api.patch(`/business-forms/${targetId}`, payload);
     },
-    onSuccess: () => {
+    onSuccess: (_, { id: mutationId }) => {
+      const targetId = mutationId || id;
       queryClient.invalidateQueries({ queryKey: ['business-forms'] });
-      queryClient.invalidateQueries({ queryKey: ['business-forms', id] });
+      if (targetId) queryClient.invalidateQueries({ queryKey: ['business-forms', targetId] });
     },
   });
 };

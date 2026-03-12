@@ -230,7 +230,7 @@ export default function EngagementFormsBuilderPage() {
   const [isActive, setIsActive] = useState(true);
   const [fields, setFields] = useState<FieldDraft[]>([makeField(1)]);
   const [fieldCount, setFieldCount] = useState(1);
-  const updateMutation = useUpdateBusinessForm(editing?.id || '');
+  const updateMutation = useUpdateBusinessForm();
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
   const selectedBranchName = branches.find((b) => b.id === branchId)?.name || branchId || 'Main Branch';
@@ -368,6 +368,7 @@ export default function EngagementFormsBuilderPage() {
       branchId,
       isActive,
       isPublished: publish,
+      showAfterLeadCapture: editing?.showAfterLeadCapture,
       fields: fields.map((f, i) => ({
         type: f.type,
         question: f.question.trim(),
@@ -380,7 +381,7 @@ export default function EngagementFormsBuilderPage() {
     try {
       let savedForm: BusinessForm | null = null;
       if (editing) {
-        savedForm = await updateMutation.mutateAsync(payload);
+        savedForm = await updateMutation.mutateAsync({ id: editing.id, payload });
         toast.success(publish ? 'Form updated and published' : 'Form updated as draft');
       } else {
         savedForm = await createMutation.mutateAsync(payload);
@@ -390,6 +391,19 @@ export default function EngagementFormsBuilderPage() {
       router.push(savedForm?.id ? `/dashboard/forms?focus=${encodeURIComponent(savedForm.id)}` : '/dashboard/forms');
     } catch (e: any) {
       toast.error(e?.message || 'Failed to save form');
+    }
+  };
+
+  const toggleShowAfterLeadCapture = async (form: BusinessForm) => {
+    const isCurrentlyEnabled = !!form.showAfterLeadCapture;
+    try {
+      await updateMutation.mutateAsync({
+        id: form.id,
+        payload: { showAfterLeadCapture: !isCurrentlyEnabled, branchId: form.branchId }
+      });
+      toast.success(!isCurrentlyEnabled ? 'Sequence automation enabled!' : 'Sequence automation disabled');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to update automation');
     }
   };
 
@@ -621,20 +635,18 @@ export default function EngagementFormsBuilderPage() {
                         </div>
                         <button
                           onClick={() => {
-                            const isCurrentlyDefault = getDefaultFormId(f.branchId) === f.id;
-                            if (isCurrentlyDefault) {
-                              clearDefaultForm(f.branchId);
-                              toast.success('Sequence automation disabled');
+                            if (f.showAfterLeadCapture) {
+                              toggleShowAfterLeadCapture(f);
                             } else {
                               setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
                             }
                           }}
-                          className={`shrink-0 h-7 px-3 rounded-lg text-[10px] font-black uppercase transition-all ${getDefaultFormId(f.branchId) === f.id
+                          className={`shrink-0 h-7 px-3 rounded-lg text-[10px] font-black uppercase transition-all ${f.showAfterLeadCapture
                             ? 'bg-primary text-white shadow-sm'
                             : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
                             }`}
                         >
-                          {getDefaultFormId(f.branchId) === f.id ? 'Enabled' : 'Enable'}
+                          {f.showAfterLeadCapture ? 'Enabled' : 'Enable'}
                         </button>
                       </div>
 
@@ -728,19 +740,17 @@ export default function EngagementFormsBuilderPage() {
                     <div className="sm:col-span-2 flex justify-end gap-1">
                       <button
                         onClick={() => {
-                          const isCurrentlyDefault = getDefaultFormId(f.branchId) === f.id;
-                          if (isCurrentlyDefault) {
-                            clearDefaultForm(f.branchId);
-                            toast.success('Sequence automation disabled');
+                          if (f.showAfterLeadCapture) {
+                            toggleShowAfterLeadCapture(f);
                           } else {
                             setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
                           }
                         }}
-                        className={`size-8 rounded-lg flex items-center justify-center transition-colors ${getDefaultFormId(f.branchId) === f.id
+                        className={`size-8 rounded-lg flex items-center justify-center transition-colors ${f.showAfterLeadCapture
                           ? 'bg-primary/10 text-primary shadow-inner'
                           : 'text-gray-400 hover:bg-gray-100'
                           }`}
-                        title={getDefaultFormId(f.branchId) === f.id ? 'Disable Sequence' : 'Enable Sequence'}
+                        title={f.showAfterLeadCapture ? 'Disable Sequence' : 'Enable Sequence'}
                       >
                         <CheckCircle2 size={14} />
                       </button>
@@ -1025,10 +1035,17 @@ export default function EngagementFormsBuilderPage() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
-                    setDefaultForm(defaultFormExplainer.branchId, defaultFormExplainer.id);
-                    setDefaultFormExplainer(null);
-                    toast.success('Sequence automation enabled!');
+                  onClick={async () => {
+                    try {
+                      await updateMutation.mutateAsync({
+                        id: defaultFormExplainer.id,
+                        payload: { showAfterLeadCapture: true, branchId: defaultFormExplainer.branchId }
+                      });
+                      setDefaultFormExplainer(null);
+                      toast.success('Sequence automation enabled!');
+                    } catch (e: any) {
+                      toast.error(e?.message || 'Failed to enable automation');
+                    }
                   }}
                   className="flex-3 h-11 rounded-xl bg-primary text-white text-sm font-black hover:bg-primary/90 transition-shadow shadow-md shadow-primary/20"
                 >
