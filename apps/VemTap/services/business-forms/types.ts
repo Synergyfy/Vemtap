@@ -97,9 +97,6 @@ export interface BusinessFormResponseItem {
   formId?: string;
   createdAt?: string;
   updatedAt?: string;
-  customerName?: string;
-  customerEmail?: string;
-  customerPhone?: string;
   respondent?: {
     name?: string;
     email?: string;
@@ -108,3 +105,12 @@ export interface BusinessFormResponseItem {
   answers?: Record<string, unknown> | Array<{ fieldId?: string; question?: string; value?: unknown }>;
   [key: string]: unknown;
 }
+
+export type BusinessFormSubmitAnswer = {
+  fieldId: string;
+  value: unknown;
+};
+
+export type SubmitBusinessFormResponseRequest = {
+  answers: BusinessFormSubmitAnswer[];
+};
