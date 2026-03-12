@@ -2,13 +2,15 @@
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Mail, MessageCircle, Star, X } from 'lucide-react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import {
     useBusinessForm,
     useBusinessFormResponses,
 } from '@/services/business-forms/hooks';
+import { useMyBusiness } from '@/services/businesses/hooks';
+import { useAuthStore } from '@/store/useAuthStore';
 import type { BusinessFormResponseItem } from '@/services/business-forms/types';
 
 type ContactInfo = {
@@ -78,9 +80,17 @@ const resolveRating = (response: BusinessFormResponseItem, fieldIds: string[]) =
 export default function SingleFormResponsesPage() {
     const params = useParams<{ formId: string }>();
     const formId = params?.formId;
+    const searchParams = useSearchParams();
+    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const userBranchId = useAuthStore((state) => state.user?.branchId);
+    const user = useAuthStore((state) => state.user);
+    const branchIdParam = searchParams?.get('branchId') || undefined;
+    const allBranches = activeBranchId === 'all';
+    const branchId = branchIdParam || (!allBranches ? (activeBranchId || userBranchId || undefined) : undefined);
+    const { data: myBusiness } = useMyBusiness();
 
-    const { data: form, isLoading: formLoading } = useBusinessForm(formId);
-    const { data: responses = [], isLoading: responsesLoading } = useBusinessFormResponses(formId);
+    const { data: form, isLoading: formLoading } = useBusinessForm(formId, { branchId, allBranches });
+    const { data: responses = [], isLoading: responsesLoading } = useBusinessFormResponses(formId, { branchId, allBranches });
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -134,7 +144,7 @@ export default function SingleFormResponsesPage() {
                     Back
                 </Link>
                 <span className="px-4 h-10 rounded-xl bg-primary text-white text-sm font-black flex items-center">
-                    BUSINESS FORM
+                    {myBusiness?.name || user?.businessName || form.businessName || 'Business'}
                 </span>
             </div>
 
@@ -150,17 +160,18 @@ export default function SingleFormResponsesPage() {
                                 <th className="px-5 py-3 font-black">Contact</th>
                                 <th className="px-5 py-3 font-black">Rating</th>
                                 <th className="px-5 py-3 font-black">Submitted</th>
+                                <th className="px-5 py-3 font-black text-right">User</th>
                             </tr>
                         </thead>
                         <tbody>
                             {responsesLoading && (
                                 <tr>
-                                    <td colSpan={4} className="px-5 py-6 text-sm text-text-secondary">Loading responses...</td>
+                                    <td colSpan={5} className="px-5 py-6 text-sm text-text-secondary">Loading responses...</td>
                                 </tr>
                             )}
                             {!responsesLoading && sortedResponses.length === 0 && (
                                 <tr>
-                                    <td colSpan={4} className="px-5 py-6 text-sm text-text-secondary">No responses yet.</td>
+                                    <td colSpan={5} className="px-5 py-6 text-sm text-text-secondary">No responses yet.</td>
                                 </tr>
                             )}
                             {sortedResponses.map((item) => {
@@ -199,6 +210,18 @@ export default function SingleFormResponsesPage() {
                                             )}
                                         </td>
                                         <td className="px-5 py-4 text-xs text-text-secondary">{item.createdAt ? new Date(item.createdAt).toLocaleString() : 'Unknown'}</td>
+                                        <td className="px-5 py-4 text-right">
+                                            <button
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    setSelectedId(item.id);
+                                                    setIsSidebarOpen(true);
+                                                }}
+                                                className="h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest bg-primary text-white hover:bg-primary/90 inline-flex items-center justify-center"
+                                            >
+                                                User
+                                            </button>
+                                        </td>
                                     </tr>
                                 );
                             })}

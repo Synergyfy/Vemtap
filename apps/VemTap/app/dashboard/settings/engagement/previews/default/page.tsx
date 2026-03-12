@@ -6,6 +6,7 @@ import { Loader2, Save } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/dashboard/PageHeader';
 import PhoneFrame from '@/components/shared/PhoneFrame';
+import { SocialLinksPreview } from '@/components/shared/SocialLinksPreview';
 import { StepForm } from '@/components/visitor/StepForm';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
@@ -163,16 +164,18 @@ export default function DefaultFormPreviewPage() {
                             <PhoneFrame title="Default Form Preview">
                                 <div className="p-6">
                                     <StepForm
-                                        storeName={store.storeName || 'Your Store'}
+                                        storeName={business?.name || store.storeName || 'Your Store'}
                                         logoUrl={previewSettings.logoUrl}
                                         customWelcomeMessage={previewSettings.welcomeMessage}
                                         customWelcomeTitle={previewSettings.welcomeTitle}
                                         customWelcomeTag={previewSettings.welcomeTag}
                                         customPrivacyMessage={previewSettings.privacyMessage}
                                         submitLabel={previewSettings.submitLabel}
+                                        headerVariant="inline"
                                         onBack={() => { }}
                                         onSubmit={() => { }}
                                     />
+                                    <SocialLinksPreview settings={store.engagementSettings} />
                                 </div>
                             </PhoneFrame>
                         </div>

@@ -2,13 +2,15 @@
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { CheckCircle2, ChevronDown, ChevronUp, Eye, GripVertical, Info, Loader2, Pencil, X } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronUp, Eye, GripVertical, Info, Loader2, Pencil, Share2, X } from 'lucide-react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import PhoneFrame from '@/components/shared/PhoneFrame';
+import { SocialLinksPreview } from '@/components/shared/SocialLinksPreview';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { useBranches } from '@/services/branches/hooks';
 import { useBusinessForms } from '@/services/business-forms/hooks';
+import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
@@ -26,14 +28,18 @@ export default function ActiveFormsPage() {
     const { data: branches = [] } = useBranches();
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const userBranchId = useAuthStore((state) => state.user?.branchId);
+    const user = useAuthStore((state) => state.user);
     const branchScope = activeBranchId === 'all' ? null : (activeBranchId || userBranchId || null);
+    const { data: myBusiness } = useMyBusiness();
+    const mainBranch = myBusiness?.branches?.find((b) => b.isMainBranch);
 
     const { data: forms = [], isLoading } = useBusinessForms({
         branchId: branchScope || userBranchId || branches[0]?.id || undefined,
         allBranches: !branchScope,
     });
 
-    const { toggleActiveForm, isActiveForm, getActiveFormIds, moveActiveForm, setActiveFormIds } = useFormPreferencesStore();
+    const { toggleActiveForm, moveActiveForm, setActiveFormIds } = useFormPreferencesStore();
+    const activeFormIdsByBranch = useFormPreferencesStore((state) => state.activeFormIdsByBranch);
     const { engagementSettings, updateEngagementSettings } = useCustomerFlowStore();
     const branchKey = branchScope || userBranchId || 'global';
 
@@ -46,10 +52,7 @@ export default function ActiveFormsPage() {
     const [draggedFormId, setDraggedFormId] = useState<string | null>(null);
     const [helpModal, setHelpModal] = useState<{ title: string; description: string } | null>(null);
 
-    const activeFormIds = useMemo(
-        () => getActiveFormIds(branchKey),
-        [branchKey, getActiveFormIds]
-    );
+    const activeFormIds = activeFormIdsByBranch[branchKey] || [];
 
     const activeForms = useMemo(() => {
         const formById = new Map(availableForms.map((form) => [form.id, form]));
@@ -63,8 +66,8 @@ export default function ActiveFormsPage() {
         null;
 
     const inactiveForms = useMemo(
-        () => availableForms.filter((form) => !isActiveForm(branchKey, form.id)),
-        [availableForms, branchKey, isActiveForm]
+        () => availableForms.filter((form) => !activeFormIds.includes(form.id)),
+        [availableForms, activeFormIds]
     );
 
     const reorderActiveForms = (sourceId: string, targetId: string) => {
@@ -154,12 +157,25 @@ export default function ActiveFormsPage() {
                                             </button>
                                         )}
                                     </div>
+                                    {engagementSettings?.showSocial && (
+                                        <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                                            <div className="size-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                                                <Share2 size={14} />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-semibold text-emerald-700">Social Links Step</p>
+                                                <p className="text-xs text-emerald-600 truncate">Shown immediately after the Default Form.</p>
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Enabled</span>
+                                        </div>
+                                    )}
+
                                     {activeForms.length === 0 ? (
                                         <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-xs text-gray-500 text-center">
                                             No additional forms selected yet. Activate a form below to add it to the sequence.
                                         </div>
                                     ) : (
-                                        <div className="space-y-3">
+                                        <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
                                             {activeForms.map((form, index) => (
                                                 <div
                                                     key={form.id}
@@ -180,7 +196,8 @@ export default function ActiveFormsPage() {
                                                         reorderActiveForms(sourceId, form.id);
                                                         setDraggedFormId(null);
                                                     }}
-                                                    className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-shadow ${draggedFormId === form.id ? 'border-primary/40 shadow-md' : 'border-gray-100 bg-white'}`}
+                                                    onClick={() => setPreviewFormId(form.id)}
+                                                    className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-shadow cursor-pointer ${draggedFormId === form.id ? 'border-primary/40 shadow-md' : 'border-gray-100 bg-white'} ${previewFormId === form.id ? 'ring-2 ring-primary/20' : ''}`}
                                                 >
                                                     <div className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-black shrink-0">
                                                         {index + 1}
@@ -252,7 +269,8 @@ export default function ActiveFormsPage() {
                                             All published forms are already active in the sequence.
                                         </div>
                                     ) : (
-                                        inactiveForms.map((form) => (
+                                        <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+                                        {inactiveForms.map((form) => (
                                             <div
                                                 key={form.id}
                                                 className="rounded-2xl border p-4 bg-white flex items-center justify-between gap-4 border-gray-100"
@@ -318,7 +336,8 @@ export default function ActiveFormsPage() {
                                                     </Link>
                                                 </div>
                                             </div>
-                                        ))
+                                        ))}
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -336,10 +355,15 @@ export default function ActiveFormsPage() {
                                     <PhoneFrame title="Active Form Preview">
                                         <div className="p-6">
                                             <StepBusinessForm
-                                                form={selectedForm}
+                                                form={{
+                                                    ...selectedForm,
+                                                    businessName: myBusiness?.name || user?.businessName || selectedForm.businessName,
+                                                    businessLogo: myBusiness?.logoUrl || mainBranch?.logoUrl || user?.businessLogo || selectedForm.businessLogo,
+                                                }}
                                                 onComplete={() => { }}
                                                 onSkip={() => { }}
                                             />
+                                            <SocialLinksPreview settings={engagementSettings} />
                                         </div>
                                     </PhoneFrame>
                                 ) : (
