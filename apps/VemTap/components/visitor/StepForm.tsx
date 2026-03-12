@@ -24,6 +24,7 @@ interface StepFormProps {
     customWelcomeTag?: string | null;
     customPrivacyMessage?: string | null;
     submitLabel?: string | null;
+    headerVariant?: 'default' | 'inline' | string;
     initialData?: any;
     isSyncingReal?: boolean;
     isDeviceSynced?: boolean;
