@@ -143,10 +143,11 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                                     <button
                                         key={option}
                                         onClick={() => updateAnswer(field.key, option)}
-                                        className={`w-full p-3 rounded-xl border text-left text-sm font-bold transition-all ${answers[field.key] === option
-                                            ? 'border-primary bg-primary/5 text-primary'
-                                            : 'border-gray-100 bg-gray-50 text-slate-700 hover:border-primary/30'
-                                            }`}
+                                        className={`w-full p-3 rounded-xl border text-left text-sm font-bold transition-all ${
+                                            answers[field.key] === option
+                                                ? 'border-primary bg-primary/5 text-primary'
+                                                : 'border-gray-100 bg-gray-50 text-slate-700 hover:border-primary/30'
+                                        }`}
                                     >
                                         {option}
                                     </button>
@@ -169,10 +170,11 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                                                     : [...selectedOptions, option];
                                                 updateAnswer(field.key, next);
                                             }}
-                                            className={`w-full p-3 rounded-xl border text-left text-sm font-bold transition-all ${isChecked
-                                                ? 'border-primary bg-primary/5 text-primary'
-                                                : 'border-gray-100 bg-gray-50 text-slate-700 hover:border-primary/30'
-                                                }`}
+                                            className={`w-full p-3 rounded-xl border text-left text-sm font-bold transition-all ${
+                                                isChecked
+                                                    ? 'border-primary bg-primary/5 text-primary'
+                                                    : 'border-gray-100 bg-gray-50 text-slate-700 hover:border-primary/30'
+                                            }`}
                                         >
                                             {option}
                                         </button>
