@@ -2,6 +2,7 @@ import { BusinessHours } from '../businesses/types';
 
 export interface Branch {
     id: string;
+    uniqueCode?: string;
     name: string;
     address?: string;
     state?: string;

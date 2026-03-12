@@ -36,29 +36,35 @@ const normalizePlan = (raw: any): PricingPlan => ({
     isPopular: Boolean(raw?.isPopular),
 });
 
-const toPlanPayload = (plan: CreatePricingPlanInput) => ({
-    name: plan.name,
-    monthlyPrice: toNumber(plan.monthlyPrice),
-    features: Array.isArray(plan.features) ? plan.features : [],
-    currency: plan.currency || 'NGN',
-    isFree: Boolean(plan.isFree),
-    trialDurationDays: toNumber(plan.trialDurationDays, 0),
-    smsCredits: toNumber(plan.smsCredits),
-    whatsappCredits: toNumber(plan.whatsappCredits),
-    emailCredits: toNumber(plan.emailCredits),
-    messagingEnabled: Boolean(plan.messagingEnabled),
-    teamMembersEnabled: Boolean(plan.teamMembersEnabled),
-    teamMembersLimit: toNumber(plan.teamMembersLimit),
-    loyaltyEnabled: Boolean(plan.loyaltyEnabled),
-    loyaltyLimit: toNumber(plan.loyaltyLimit),
-    branchesEnabled: Boolean(plan.branchesEnabled),
-    branchLimit: toNumber(plan.branchLimit),
-    analyticsEnabled: Boolean(plan.analyticsEnabled),
-    analyticsLevel: plan.analyticsLevel || 'basic',
-    isActive: plan.isActive ?? true,
-    description: plan.description || '',
-    isPopular: Boolean(plan.isPopular),
-});
+const toPlanPayload = (plan: Partial<PricingPlan>) => {
+    const payload: any = {};
+    
+    // Explicitly handle fields if they exist in the input object
+    const fields: (keyof PricingPlan)[] = [
+        'name', 'monthlyPrice', 'features', 'currency', 'isFree',
+        'trialDurationDays', 'smsCredits', 'whatsappCredits', 'emailCredits',
+        'messagingEnabled', 'teamMembersEnabled', 'teamMembersLimit',
+        'loyaltyEnabled', 'loyaltyLimit', 'branchesEnabled', 'branchLimit',
+        'analyticsEnabled', 'analyticsLevel', 'isActive', 'description', 'isPopular'
+    ];
+
+    fields.forEach(field => {
+        if (Object.prototype.hasOwnProperty.call(plan, field)) {
+            const val = plan[field];
+            if (field === 'features' && Array.isArray(val)) {
+                payload[field] = val;
+            } else if (typeof val === 'boolean') {
+                payload[field] = val;
+            } else if (field === 'analyticsLevel' || field === 'name' || field === 'currency' || field === 'description') {
+                payload[field] = val;
+            } else {
+                payload[field] = toNumber(val);
+            }
+        }
+    });
+
+    return payload;
+};
 
 export const fetchPricingPlans = async (): Promise<PricingPlan[]> => {
     const response = await api.get('/plans?onlyActive=true');
@@ -75,9 +81,9 @@ export const addPricingPlan = async (plan: CreatePricingPlanInput): Promise<Pric
     return normalizePlan(response);
 };
 
-export const updatePricingPlan = async (plan: UpdatePricingPlanInput): Promise<PricingPlan> => {
-    const { id, ...payload } = plan;
-    const response = await api.patch(`/plans/admin/${id}`, toPlanPayload(payload));
+export const updatePricingPlan = async (plan: Partial<PricingPlan> & { id: string }): Promise<PricingPlan> => {
+    const { id, ...data } = plan;
+    const response = await api.patch(`/plans/admin/${id}`, toPlanPayload(data));
     return normalizePlan(response);
 };
 

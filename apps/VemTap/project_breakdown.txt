@@ -9,6 +9,7 @@ bussiness login
 frankemesinwa@gmail.com
 password
 
+===================
 
 ==================================
 new task
@@ -177,5 +178,9 @@ new task
 --Business Forms
 
 --branchid uses the logo of the branch
+--default form settings:submit form button based on what we haveenable social :show default forms shoul show
+--i can't see the preview  please
+--linking it to branch such that whatever devices scanned would shown 
+--live preview of every bussiness first form
 
-
+--allow the socials to
