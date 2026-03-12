@@ -109,6 +109,7 @@ export default function DynamicTapJourneyPage() {
     const isCustomer = isAuthenticated && user?.role?.toLowerCase() === 'customer';
 
     const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
     const [isSyncingReal, setIsSyncingReal] = useState(false);
     const [isDeviceSynced, setIsDeviceSynced] = useState(false);
@@ -291,6 +292,7 @@ export default function DynamicTapJourneyPage() {
     };
 
     const onFormSubmit = async (data: any) => {
+        setIsSubmitting(true);
         try {
             if (!isCustomer) {
                 // Split name into firstName/lastName for backend DTO
@@ -338,6 +340,8 @@ export default function DynamicTapJourneyPage() {
         } catch (err: any) {
             console.error('Registration/Login failed:', err);
             toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
