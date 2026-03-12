@@ -602,7 +602,11 @@ export default function EngagementFormsBuilderPage() {
                               <Info size={10} />
                             </button>
                           </div>
-                          <p className="text-[9px] text-gray-500 leading-tight mt-0.5">Automate this form to show after lead capture</p>
+                          <p className="text-[9px] mt-0.5">
+                            Status: <span className={`font-bold ${f.showAfterLeadCapture ? 'text-emerald-600' : 'text-gray-400'}`}>
+                              {f.showAfterLeadCapture ? 'Enabled' : 'Disabled'}
+                            </span>
+                          </p>
                         </div>
                         <button
                           disabled={updateMutation.isPending}
@@ -614,8 +618,8 @@ export default function EngagementFormsBuilderPage() {
                             }
                           }}
                           className={`shrink-0 h-7 px-3 rounded-lg text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${f.showAfterLeadCapture
-                            ? 'bg-primary text-white shadow-sm'
-                            : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
+                            ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-100'
+                            : 'bg-primary text-white shadow-sm hover:bg-primary/90'
                             } disabled:opacity-70`}
                         >
                           {updateMutation.isPending ? <Spinner size="xs" /> : (f.showAfterLeadCapture ? 'Disable' : 'Enable')}
@@ -709,26 +713,29 @@ export default function EngagementFormsBuilderPage() {
                     </div>
                     <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(f.createdAt)}>{formatDate(f.createdAt)}</div>
                     <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(f.updatedAt)}>{f.updatedAt ? timeAgo(f.updatedAt) : '—'}</div>
-                    <div className="sm:col-span-2 flex justify-end gap-1">
-                      <button
-                        disabled={updateMutation.isPending}
-                        onClick={() => {
-                          if (f.showAfterLeadCapture) {
-                            toggleShowAfterLeadCapture(f);
-                          } else {
-                            setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
-                          }
-                        }}
-                        className={`size-8 rounded-lg flex items-center justify-center transition-colors ${f.showAfterLeadCapture
-                          ? 'bg-primary/10 text-primary shadow-inner'
-                          : 'text-gray-400 hover:bg-gray-100'
-                          } disabled:opacity-50`}
-                        title={f.showAfterLeadCapture ? 'Disable Sequence' : 'Enable Sequence'}
-                      >
-                        {updateMutation.isPending ? <Spinner size="xs" /> : <CheckCircle2 size={14} />}
-                      </button>
-                      <button onClick={() => openShareExplainer('link', f.id, f.title)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Link2 size={14} /></button>
-                      <button onClick={() => openEdit(f)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Pencil size={14} /></button>
+                    <div className="sm:col-span-2 flex justify-end items-center gap-3">
+                      <div className="flex flex-col items-end">
+                        <span className={`text-[10px] font-black uppercase tracking-tighter ${f.showAfterLeadCapture ? 'text-emerald-600' : 'text-gray-400'}`}>
+                          {f.showAfterLeadCapture ? 'Enabled' : 'Disabled'}
+                        </span>
+                        <button
+                          disabled={updateMutation.isPending}
+                          onClick={() => {
+                            if (f.showAfterLeadCapture) {
+                              toggleShowAfterLeadCapture(f);
+                            } else {
+                              setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
+                            }
+                          }}
+                          className={`text-[9px] font-bold underline transition-colors ${f.showAfterLeadCapture ? 'text-amber-600 hover:text-amber-700' : 'text-primary hover:text-primary/80'} disabled:opacity-50`}
+                        >
+                          {updateMutation.isPending ? '...' : (f.showAfterLeadCapture ? 'Disable' : 'Enable')}
+                        </button>
+                      </div>
+                      <div className="flex gap-1">
+                        <button onClick={() => openShareExplainer('link', f.id, f.title)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Link2 size={14} /></button>
+                        <button onClick={() => openEdit(f)} className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center transition-colors"><Pencil size={14} /></button>
+                      </div>
                     </div>
                   </div>
                 ))}
