@@ -49,25 +49,25 @@ interface ShareExplainerState {
 }
 
 function formatDate(dateString?: string): string {
-  if (!dateString) return '—';
+  if (!dateString) return 'Ã¢â‚¬â€';
   try {
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '—';
+    if (isNaN(date.getTime())) return 'Ã¢â‚¬â€';
     return date.toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
   } catch {
-    return '—';
+    return 'Ã¢â‚¬â€';
   }
 }
 
 function formatDateTime(dateString?: string): string {
-  if (!dateString) return '—';
+  if (!dateString) return 'Ã¢â‚¬â€';
   try {
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '—';
+    if (isNaN(date.getTime())) return 'Ã¢â‚¬â€';
     return date.toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
@@ -76,7 +76,7 @@ function formatDateTime(dateString?: string): string {
       minute: '2-digit',
     });
   } catch {
-    return '—';
+    return 'Ã¢â‚¬â€';
   }
 }
 
@@ -303,6 +303,7 @@ export default function FormsPage() {
     document.addEventListener('click', handler);
     return () => document.removeEventListener('click', handler);
   }, [openMenuId]);
+
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
@@ -597,7 +598,7 @@ export default function FormsPage() {
                         {responseCountByFormId.get(form.id) || 0} filled
                       </div>
                       <span className="text-xs text-gray-400" title={formatDateTime(form.createdAt)}>
-                        {form.createdAt ? timeAgo(form.createdAt) : '—'}
+                        {form.createdAt ? timeAgo(form.createdAt) : 'Ã¢â‚¬â€'}
                       </span>
                     </div>
                   </div>
@@ -643,7 +644,7 @@ export default function FormsPage() {
                     </span>
                     {form.updatedAt && form.updatedAt !== form.createdAt && (
                       <span title={`Updated: ${formatDateTime(form.updatedAt)}`}>
-                        · Updated {formatDate(form.updatedAt)}
+                        Ã‚Â· Updated {formatDate(form.updatedAt)}
                       </span>
                     )}
                   </div>
@@ -766,7 +767,7 @@ export default function FormsPage() {
 
                   {/* Updated */}
                   <div className="sm:col-span-1 text-xs text-gray-500" title={formatDateTime(form.updatedAt)}>
-                    {form.updatedAt ? timeAgo(form.updatedAt) : '—'}
+                    {form.updatedAt ? timeAgo(form.updatedAt) : 'Ã¢â‚¬â€'}
                   </div>
 
                   {/* Actions */}
@@ -873,7 +874,7 @@ export default function FormsPage() {
         </div>
       )}
 
-      {/* ─── Share Explainer Modal ─── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Share Explainer Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {
         shareExplainer && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShareExplainer(null)}>
@@ -928,7 +929,7 @@ export default function FormsPage() {
         )
       }
 
-      {/* ─── QR Code Modal ─── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ QR Code Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {
         shareForm && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShareForm(null)}>
@@ -981,7 +982,7 @@ export default function FormsPage() {
         )
       }
 
-      {/* ─── Delete Confirmation Modal ─── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Delete Confirmation Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {
         deleteConfirm && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setDeleteConfirm(null)}>
@@ -1018,7 +1019,7 @@ export default function FormsPage() {
           </div>
         )
       }
-      {/* ─── Default Form Explainer Modal ─── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Default Form Explainer Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {
         defaultFormExplainer && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 transition-all" onClick={() => setDefaultFormExplainer(null)}>

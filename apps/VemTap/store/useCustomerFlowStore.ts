@@ -115,6 +115,7 @@ interface CustomerFlowState {
     customNewUserWelcomeMessage: string | null;
     customNewUserWelcomeTitle: string | null;
     customNewUserWelcomeTag: string | null;
+    customNewUserWelcomeButton: string | null;
     customSuccessMessage: string | null;
     customSuccessTitle: string | null;
     customSuccessButton: string | null;
@@ -164,6 +165,7 @@ interface CustomerFlowState {
         newUserWelcomeMessage?: string;
         newUserWelcomeTitle?: string;
         newUserWelcomeTag?: string;
+        newUserWelcomeButton?: string;
         successMessage?: string;
         successTitle?: string;
         successButton?: string;
@@ -208,6 +210,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             customNewUserWelcomeMessage: null,
             customNewUserWelcomeTitle: null,
             customNewUserWelcomeTag: null,
+            customNewUserWelcomeButton: null,
             customSuccessMessage: null,
             customSuccessTitle: null,
             customSuccessButton: null,
@@ -287,6 +290,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                     customNewUserWelcomeMessage: branch.welcomeMessage || b.welcomeMessage,
                     customNewUserWelcomeTitle: branch.welcomeTitle || b.welcomeTitle,
                     customNewUserWelcomeTag: branch.welcomeTag || b.welcomeTag,
+                    customNewUserWelcomeButton: branch.welcomeButton || b.welcomeButton,
                     customSuccessMessage: branch.successMessage || b.successMessage,
                     customSuccessTitle: branch.successTitle || b.successTitle,
                     customSuccessButton: branch.successButton || b.successButton,
@@ -328,6 +332,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 customNewUserWelcomeMessage: settings.newUserWelcomeMessage ?? state.customNewUserWelcomeMessage,
                 customNewUserWelcomeTitle: settings.newUserWelcomeTitle ?? state.customNewUserWelcomeTitle,
                 customNewUserWelcomeTag: settings.newUserWelcomeTag ?? state.customNewUserWelcomeTag,
+                customNewUserWelcomeButton: settings.newUserWelcomeButton ?? state.customNewUserWelcomeButton,
                 customSuccessMessage: settings.successMessage ?? state.customSuccessMessage,
                 customSuccessTitle: settings.successTitle ?? state.customSuccessTitle,
                 customSuccessButton: settings.successButton ?? state.customSuccessButton,

@@ -50,6 +50,9 @@ export interface Business {
     logoUrl?: string;
     welcomeMessage?: string;
     welcomeSubMessage?: string;
+    welcomeTitle?: string;
+    welcomeTag?: string;
+    welcomeButton?: string;
     whatsappMessage?: string;
     successMessage?: string;
     privacyMessage?: string;
