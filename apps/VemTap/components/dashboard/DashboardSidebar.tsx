@@ -31,6 +31,7 @@ interface SidebarProps {
 interface MenuItem {
     id?: string;
     label: string;
+    description?: string;
     icon?: any;
     href?: string;
     roles?: string[];
@@ -304,9 +305,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                     id: 'engagement',
                     label: 'Engagement',
                     submenu: [
-                        { label: 'Socials', href: '/dashboard/settings/engagement/socials' },
-                        { label: 'Form Creator', href: '/dashboard/settings/engagement/forms' },
-                        { label: 'Form Responses', href: '/dashboard/settings/engagement/forms/responses' },
+                        { label: 'User Experience', href: '/dashboard/settings/engagement/experience', description: 'Default form, socials, and additional forms.' },
+                        { label: 'Form Creator', href: '/dashboard/settings/engagement/forms', description: 'Build and publish custom forms.' },
                     ]
                 },
                 { label: 'Notifications', href: '/dashboard/settings/notifications' },
@@ -491,7 +491,12 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                                     className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(nestedItem.href))
                                                                                         }`}
                                                                                 >
-                                                                                    <span>{nestedItem.label}</span>
+                                                                                    <span className="flex flex-col text-left">
+                                                                                        <span>{nestedItem.label}</span>
+                                                                                        {nestedItem.description && (
+                                                                                            <span className="text-[10px] font-medium text-text-secondary mt-0.5">{nestedItem.description}</span>
+                                                                                        )}
+                                                                                    </span>
                                                                                     {nestedItem.feature && isFeatureLocked(nestedItem.feature) && <Lock size={12} className="text-text-secondary" />}
                                                                                 </Link>
                                                                             ) : (
@@ -523,7 +528,12 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                 className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(subItem.href))
                                                                     }`}
                                                             >
-                                                                <span>{subItem.label}</span>
+                                                                <span className="flex flex-col text-left">
+                                                                    <span>{subItem.label}</span>
+                                                                    {subItem.description && (
+                                                                        <span className="text-[10px] font-medium text-text-secondary mt-0.5">{subItem.description}</span>
+                                                                    )}
+                                                                </span>
                                                                 {subItem.feature && isFeatureLocked(subItem.feature) && <Lock size={12} className="text-text-secondary" />}
                                                             </Link>
                                                         ) : (
