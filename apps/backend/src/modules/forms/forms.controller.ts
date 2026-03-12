@@ -230,6 +230,7 @@ export class FormsController {
         value: {
           title: 'Updated Feedback Form',
           isActive: false,
+          showAfterLeadCapture: true,
         },
       },
     },

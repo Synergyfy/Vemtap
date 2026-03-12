@@ -32,6 +32,14 @@ export class Form extends AbstractBaseEntity {
   @Column({ default: false })
   adminDisabled: boolean;
 
+  @ApiProperty({ example: false, description: 'Show form after lead capture' })
+  @Column({ default: false })
+  showAfterLeadCapture: boolean;
+
+  @ApiProperty({ example: 0, description: 'Total number of responses received' })
+  @Column({ default: 0 })
+  responseCount: number;
+
   @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'branchId' })
   branch: Branch;

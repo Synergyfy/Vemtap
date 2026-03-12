@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { VisitorsService } from './visitors.service';
 import { VisitorsController } from './visitors.controller';
@@ -20,7 +20,7 @@ import { BranchesModule } from '../branches/branches.module';
     MessagingModule,
     ContactsModule,
     MailModule,
-    DevicesModule,
+    forwardRef(() => DevicesModule),
     BranchesModule,
   ],
   controllers: [VisitorsController],
