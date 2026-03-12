@@ -4,16 +4,19 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/dashboard/PageHeader';
 import PhoneFrame from '@/components/shared/PhoneFrame';
+import { SocialLinksPreview } from '@/components/shared/SocialLinksPreview';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import Spinner from '@/components/ui/Spinner';
 import { useBusinessForms } from '@/services/business-forms/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useBranches } from '@/services/branches/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 
 export default function SelectedFormPreviewPage() {
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const userBranchId = useAuthStore((state) => state.user?.branchId);
+    const engagementSettings = useCustomerFlowStore((state) => state.engagementSettings);
     const { data: branches = [] } = useBranches();
     const { data: myBusiness } = useMyBusiness();
     const user = useAuthStore((state) => state.user);
@@ -158,6 +161,7 @@ export default function SelectedFormPreviewPage() {
                                                 onComplete={() => { }}
                                                 onSkip={() => { }}
                                             />
+                                            <SocialLinksPreview settings={engagementSettings} />
                                         ) : (
                                             <div className="text-sm text-gray-500 p-6 text-center">
                                                 Select a form to preview.

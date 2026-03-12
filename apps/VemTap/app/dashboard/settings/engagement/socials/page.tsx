@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Facebook, Instagram, Linkedin, Loader2, Save, Trophy, Twitter } from 'lucide-react';
+import { Loader2, Save, Trophy } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/dashboard/PageHeader';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
@@ -9,7 +9,8 @@ import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
 import PhoneFrame from '@/components/shared/PhoneFrame';
-import { StepOutcome } from '@/components/visitor/StepOutcome';
+import { StepForm } from '@/components/visitor/StepForm';
+import { SocialLinksPreview } from '@/components/shared/SocialLinksPreview';
 
 const Toggle = ({ active, onChange }: { active: boolean; onChange: (val: boolean) => void }) => (
     <button
@@ -22,7 +23,7 @@ const Toggle = ({ active, onChange }: { active: boolean; onChange: (val: boolean
 
 export default function EngagementSocialSettingsPage() {
     const { user, updateUser } = useAuthStore();
-    const { engagementSettings, updateEngagementSettings, getBusinessConfig, customSuccessMessage, customRewardMessage, hasRewardSetup } = useCustomerFlowStore();
+    const { engagementSettings, updateEngagementSettings, getBusinessConfig } = useCustomerFlowStore();
     const [isSaving, setIsSaving] = useState(false);
     const { data: business, isLoading } = useMyBusiness();
     const updateMutation = useUpdateBusiness();
@@ -257,54 +258,31 @@ export default function EngagementSocialSettingsPage() {
                             <span className="text-[10px] font-semibold text-gray-400">Social Links</span>
                         </summary>
                         <div className="px-4 pb-4 space-y-3">
+                            <div className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Sequence</p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                    Default Form â†’ Social Links â†’ Additional Forms
+                                </p>
+                            </div>
                             {localSettings.showSocial ? (
                                 <>
                                     <PhoneFrame title="Live Social Preview">
                                         <div className="p-6">
-                                            <StepOutcome
-                                                config={config}
-                                                customSuccessMessage={customSuccessMessage}
-                                                customRewardMessage={customRewardMessage}
-                                                hasRewardSetup={hasRewardSetup}
-                                                isDownloading={false}
-                                                onDownload={() => { }}
-                                                onFinish={() => { }}
-                                                onRestart={() => { }}
-                                                engagementSettings={previewEngagement}
-                                                selectedFormTitle="Feedback Form"
-                                                selectedFormType="Form"
+                                            <StepForm
+                                                storeName={business?.name || user?.businessName || 'Your Business'}
+                                                logoUrl={business?.logoUrl || user?.businessLogo || ''}
+                                                customWelcomeMessage={config.description}
+                                                customWelcomeTitle={config.storeName}
+                                                customWelcomeTag="Default Form"
+                                                customPrivacyMessage="Customer data stays protected and is only used for engagement."
+                                                submitLabel="Submit"
+                                                headerVariant="inline"
+                                                onBack={() => { }}
+                                                onSubmit={() => { }}
                                             />
+                                            <SocialLinksPreview settings={previewEngagement} />
                                         </div>
                                     </PhoneFrame>
-                                    <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Social Links Card</p>
-                                        <div className="space-y-2 text-xs text-gray-700">
-                                            {previewEngagement.instagram && (
-                                                <div className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 border border-gray-100">
-                                                    <Instagram size={16} className="text-pink-600" />
-                                                    <span className="truncate">{previewEngagement.instagram}</span>
-                                                </div>
-                                            )}
-                                            {previewEngagement.twitter && (
-                                                <div className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 border border-gray-100">
-                                                    <Twitter size={16} className="text-slate-900" />
-                                                    <span className="truncate">{previewEngagement.twitter}</span>
-                                                </div>
-                                            )}
-                                            {previewEngagement.facebook && (
-                                                <div className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 border border-gray-100">
-                                                    <Facebook size={16} className="text-blue-600" />
-                                                    <span className="truncate">{previewEngagement.facebook}</span>
-                                                </div>
-                                            )}
-                                            {previewEngagement.linkedin && (
-                                                <div className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 border border-gray-100">
-                                                    <Linkedin size={16} className="text-blue-700" />
-                                                    <span className="truncate">{previewEngagement.linkedin}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
                                     {showPreviewPlaceholders && (
                                         <p className="text-xs text-gray-500 text-center">
                                             Showing example social links until you add your own.

@@ -28,6 +28,7 @@ export default function NewUserPreview() {
                         customWelcomeTag={customNewUserWelcomeTag}
                         customPrivacyMessage={customPrivacyMessage}
                         submitLabel={customNewUserWelcomeButton || 'Submit'}
+                        headerVariant="inline"
                         onBack={() => alert('Back clicked')}
                         onSubmit={(data) => alert('Form submitted: ' + JSON.stringify(data))}
                     />
