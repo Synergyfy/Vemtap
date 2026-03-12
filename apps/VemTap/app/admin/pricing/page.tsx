@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PricingPlan } from '@/types/pricing';
 import FormattedNumberInput from '@/components/shared/FormattedNumberInput';
 import { useAdminPricingPlans, useAddPricingPlan, useUpdatePricingPlan, useDeletePricingPlan } from '@/services/pricing/hooks';
+import ConfirmationModal from '@/components/shared/ConfirmationModal';
 
 type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice' | 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit'> & {
     id?: string;
@@ -78,6 +79,7 @@ export default function AdminPricingPage() {
     const [originalPlan, setOriginalPlan] = useState<PricingPlan | null>(null);
     const [isAddingNew, setIsAddingNew] = useState(false);
     const [featureInput, setFeatureInput] = useState('');
+    const [planToDelete, setPlanToDelete] = useState<string | null>(null);
 
     const { data: plans = [], isLoading: plansLoading } = useAdminPricingPlans();
 
@@ -186,8 +188,14 @@ export default function AdminPricingPage() {
     const currentPlan = editingPlan;
 
     const handleDelete = (id: string) => {
-        if (confirm('Are you sure you want to delete this plan?')) {
-            deleteMutation.mutate(id);
+        setPlanToDelete(id);
+    };
+
+    const confirmDelete = () => {
+        if (planToDelete) {
+            deleteMutation.mutate(planToDelete, {
+                onSettled: () => setPlanToDelete(null)
+            });
         }
     };
 
@@ -1006,6 +1014,16 @@ export default function AdminPricingPage() {
                     </div>
                 </div>
             )}
+
+            <ConfirmationModal
+                isOpen={planToDelete !== null}
+                onClose={() => setPlanToDelete(null)}
+                onConfirm={confirmDelete}
+                title="Delete Plan"
+                message="Are you sure you want to delete this pricing plan? This action cannot be undone, although existing subscriptions will remain valid."
+                confirmText="Delete Plan"
+                isLoading={deleteMutation.isPending}
+            />
         </>
     );
 }
