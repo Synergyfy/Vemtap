@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { fetchPricingPlans } from '@/lib/api/pricing';
+import { usePricingPlans } from '@/services/pricing/hooks';
 import { useActiveSubscription, useSubscribe } from '@/services/subscriptions/hooks';
 import SubscriptionCheckout from '@/components/dashboard/SubscriptionCheckout';
 import TrialCountdown from '@/components/dashboard/TrialCountdown';
@@ -23,10 +23,7 @@ export default function DashboardPricingPage() {
     const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
     const [isTrialSelection, setIsTrialSelection] = useState(false);
 
-    const { data: plans = [], isLoading: plansLoading } = useQuery({
-        queryKey: ['subscription-plans'],
-        queryFn: fetchPricingPlans
-    });
+    const { data: plans = [], isLoading: plansLoading } = usePricingPlans();
 
     const [personalConfig, setPersonalConfig] = useState({
         visitors: 1000,
@@ -141,12 +138,31 @@ export default function DashboardPricingPage() {
     const normalizeFeatures = (plan: any) => {
         const baseFeatures = Array.isArray(plan.features) ? plan.features.filter(Boolean) : [];
         const derivedFeatures = [];
-        if (plan.smsCredits) derivedFeatures.push(`${plan.smsCredits.toLocaleString()} SMS Credits`);
-        if (plan.whatsappCredits) derivedFeatures.push(`${plan.whatsappCredits.toLocaleString()} WhatsApp Credits`);
-        if (plan.emailCredits) derivedFeatures.push(`${plan.emailCredits.toLocaleString()} Email Credits`);
-        if (plan.teamMembersLimit) derivedFeatures.push(`${plan.teamMembersLimit} Team Members`);
-        if (plan.loyaltyLimit) derivedFeatures.push(`${plan.loyaltyLimit} Loyalty Points`);
-        if (plan.branchLimit) derivedFeatures.push(`${plan.branchLimit} Business Locations`);
+        
+        const formatLimit = (value: number | undefined, label: string) => {
+            if (value === undefined || value === null) return null;
+            if (value === -1) return `Unlimited ${label}`;
+            return `${value.toLocaleString()} ${label}`;
+        };
+
+        const sms = formatLimit(plan.smsCredits, 'SMS Credits');
+        if (sms) derivedFeatures.push(sms);
+
+        const whatsapp = formatLimit(plan.whatsappCredits, 'WhatsApp Credits');
+        if (whatsapp) derivedFeatures.push(whatsapp);
+
+        const email = formatLimit(plan.emailCredits, 'Email Credits');
+        if (email) derivedFeatures.push(email);
+
+        const team = formatLimit(plan.teamMembersLimit, 'Team Members');
+        if (team) derivedFeatures.push(team);
+
+        const loyalty = formatLimit(plan.loyaltyLimit, 'Loyalty Points');
+        if (loyalty) derivedFeatures.push(loyalty);
+
+        const branch = formatLimit(plan.branchLimit, 'Business Locations');
+        if (branch) derivedFeatures.push(branch);
+
         if (plan.analyticsLevel && plan.analyticsLevel !== 'none') {
             const level = plan.analyticsLevel.charAt(0).toUpperCase() + plan.analyticsLevel.slice(1);
             derivedFeatures.push(`${level} Analytics`);

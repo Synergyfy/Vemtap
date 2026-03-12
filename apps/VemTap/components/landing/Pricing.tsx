@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPricingPlans } from '@/lib/api/pricing';
+import { usePricingPlans } from '@/services/pricing/hooks';
 import { useAuthStore, AuthState } from '../../store/useAuthStore';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
@@ -18,10 +19,7 @@ export default function Pricing() {
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const { data: plans = [], isLoading } = useQuery({
-        queryKey: ['subscription-plans'],
-        queryFn: fetchPricingPlans
-    });
+    const { data: plans = [], isLoading } = usePricingPlans();
 
     const handleSubscription = async (plan: any, useTrial: boolean = false) => {
         const params = new URLSearchParams({
