@@ -15,7 +15,7 @@ export default function PublicBusinessFormPage() {
     const router = useRouter();
     const formKey = String(params?.key || '');
     const { data: form, isLoading } = usePublicBusinessForm(formKey);
-    const submitFormResponse = useSubmitBusinessFormResponse(form?.id || '');
+    const submitFormResponse = useSubmitBusinessFormResponse(formKey);
     const user = useAuthStore((state) => state.user);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const isCustomerAccount = isAuthenticated && user?.role?.toLowerCase() === 'customer';

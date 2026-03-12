@@ -62,7 +62,7 @@ export const usePublicBusinessForm = (id?: string) =>
   useQuery<BusinessForm, Error>({
     queryKey: ['public-business-form', id],
     queryFn: async () => {
-      return await api.get(`/visitor-forms/public/${id}`);
+      return await api.get(`/visitor-forms/code/${id}`);
     },
     enabled: !!id,
   });
@@ -125,7 +125,7 @@ export const useBusinessFormResponses = (id?: string, branchId?: string) =>
         return toList<BusinessFormResponseItem>(response);
       } catch (err) {
         // Fallback to visitor-forms responses if business-forms fails
-        const response = await api.get(`/visitor-forms/${id}`);
+        const response = await api.get(`/visitor-forms/code/${id}`);
         const candidate =
           response && typeof response === 'object'
             ? (response as { responses?: unknown }).responses

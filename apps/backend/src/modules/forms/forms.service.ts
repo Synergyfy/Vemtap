@@ -69,7 +69,10 @@ export class FormsService {
 
   async getFormByUniqueCode(uniqueCode: string): Promise<Form> {
     const form = await this.formsRepository.findOne({
-      where: { uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
+      where: [
+        { uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
+        { id: uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
+      ],
       relations: ['fields'],
     });
 
@@ -255,7 +258,12 @@ export class FormsService {
     visitorId: string,
     dto: SubmitFormResponseDto,
   ): Promise<FormResponse> {
-    const form = await this.formsRepository.findOneBy({ uniqueCode, isPublished: true, isActive: true, adminDisabled: false });
+    const form = await this.formsRepository.findOne({
+      where: [
+        { uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
+        { id: uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
+      ],
+    });
     if (!form) throw new NotFoundException('Form not found');
 
     const response = this.formResponsesRepository.create({
