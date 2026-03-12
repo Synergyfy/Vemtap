@@ -6,8 +6,6 @@ import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 
 export default function MessagingPage() {
     return (
-        <PageLockWrapper feature="messages" featureName="Messaging Center">
-            <MessagingOverview />
-        </PageLockWrapper>
+        <MessagingOverview />
     );
 }
