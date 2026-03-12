@@ -152,6 +152,7 @@ export default function SelectedFormPreviewPage() {
                                 <PhoneFrame title="Selected Form Preview">
                                     <div className="px-5 pb-8 pt-2">
                                         {selectedForm ? (
+                                            <>
                                             <StepBusinessForm
                                                 form={{
                                                     ...selectedForm,
@@ -162,6 +163,7 @@ export default function SelectedFormPreviewPage() {
                                                 onSkip={() => { }}
                                             />
                                             <SocialLinksPreview settings={engagementSettings} />
+                                            </>
                                         ) : (
                                             <div className="text-sm text-gray-500 p-6 text-center">
                                                 Select a form to preview.
