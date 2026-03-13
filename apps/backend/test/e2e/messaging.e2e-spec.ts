@@ -23,6 +23,7 @@ import {
   BillingPeriod,
 } from '../../src/modules/subscriptions/entities/subscription.entity';
 import { TermiiProvider } from '../../src/modules/messaging/providers/termii.provider';
+import { BestBulkSmsProvider } from '../../src/modules/messaging/providers/bestbulksms.provider';
 import * as bcrypt from 'bcrypt';
 
 describe('Messaging (e2e)', () => {
@@ -44,6 +45,13 @@ describe('Messaging (e2e)', () => {
       builder.overrideProvider(TermiiProvider).useValue({
         sendMessage: jest.fn().mockResolvedValue({
           messageId: 'test-msg-id',
+          status: 'sent',
+        }),
+        estimateCost: jest.fn().mockReturnValue(0.05),
+      });
+      builder.overrideProvider(BestBulkSmsProvider).useValue({
+        sendMessage: jest.fn().mockResolvedValue({
+          messageId: 'test-sms-id',
           status: 'sent',
         }),
         estimateCost: jest.fn().mockReturnValue(0.05),

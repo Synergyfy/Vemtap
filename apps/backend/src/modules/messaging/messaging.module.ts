@@ -52,6 +52,7 @@ import { CreditPlanService } from './services/credit-plan.service';
 import { TermiiProvider } from './providers/termii.provider';
 import { AfricaTalkingProvider } from './providers/africastalking.provider';
 import { EmailProvider } from './providers/email.provider';
+import { BestBulkSmsProvider } from './providers/bestbulksms.provider';
 import { ProviderRouterService } from './services/provider-router.service';
 import { BatchSendProcessor } from './processors/batch-send.processor';
 import { FlowDelayProcessor } from './processors/flow-delay.processor';
@@ -138,6 +139,7 @@ import { AutomationProcessor } from './processors/automation.processor';
     AutomationService,
     TermiiProvider,
     AfricaTalkingProvider,
+    BestBulkSmsProvider,
     EmailProvider,
     ProviderRouterService,
     BatchSendProcessor,
@@ -168,6 +170,7 @@ import { AutomationProcessor } from './processors/automation.processor';
     AutomationService,
     TermiiProvider,
     AfricaTalkingProvider,
+    BestBulkSmsProvider,
     EmailProvider,
     ProviderRouterService,
     MessagingFlowService,

@@ -7,6 +7,7 @@ import {
 } from '../interfaces/messaging-provider.interface';
 import { TermiiProvider } from '../providers/termii.provider';
 import { AfricaTalkingProvider } from '../providers/africastalking.provider';
+import { BestBulkSmsProvider } from '../providers/bestbulksms.provider';
 import { EmailProvider } from '../providers/email.provider';
 
 @Injectable()
@@ -14,13 +15,14 @@ export class ProviderRouterService {
   constructor(
     private readonly termiiProvider: TermiiProvider,
     private readonly africaTalkingProvider: AfricaTalkingProvider,
+    private readonly bestBulkSmsProvider: BestBulkSmsProvider,
     private readonly emailProvider: EmailProvider,
   ) {}
 
   public getProvider(channel: Channel): MessagingProvider {
     switch (channel) {
       case Channel.SMS:
-        return this.africaTalkingProvider;
+        return this.bestBulkSmsProvider;
       case Channel.WHATSAPP: // Route WhatsApp to Termii
         return this.termiiProvider;
       case Channel.EMAIL:
