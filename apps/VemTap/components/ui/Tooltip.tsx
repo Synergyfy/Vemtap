@@ -28,7 +28,7 @@ export default function Tooltip({ content, children, side = 'top' }: TooltipProp
         >
             {children}
             {isVisible && (
-                <div className={`absolute z-50 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded-md whitespace-nowrap shadow-lg pointer-events-none transition-opacity duration-200 ${positionClasses[side]}`}>
+                <div className={`absolute z-[99999] px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded-md whitespace-nowrap shadow-xl pointer-events-none transition-opacity duration-200 ${positionClasses[side]}`}>
                     {content}
                     {/* Arrow */}
                     <div className={`absolute w-2 h-2 bg-gray-900 transform rotate-45 

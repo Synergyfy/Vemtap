@@ -22,6 +22,7 @@ export default function RewardManagementPage() {
             value: reward.value || 0,
             validityDays: reward.validityDays || 30,
             usageLimitPerUser: reward.usageLimitPerUser || 1,
+            totalAvailable: reward.totalAvailable || 0,
         };
         await createMutation.mutateAsync(dto);
     };
@@ -34,6 +35,7 @@ export default function RewardManagementPage() {
             value: updates.value,
             validityDays: updates.validityDays,
             usageLimitPerUser: updates.usageLimitPerUser,
+            totalAvailable: updates.totalAvailable,
             isActive: updates.isActive,
         };
         await updateMutation.mutateAsync({ id, updates: dto });

@@ -37,6 +37,7 @@ export interface CreateRewardRequest {
     value: number;
     validityDays: number;
     usageLimitPerUser: number;
+    totalAvailable?: number;
     branchId?: string;
 }
 
@@ -47,6 +48,7 @@ export interface UpdateRewardRequest {
     value?: number;
     validityDays?: number;
     usageLimitPerUser?: number;
+    totalAvailable?: number;
     isActive?: boolean;
     branchId?: string;
 }
