@@ -30,6 +30,16 @@ import {
   DeliveryReport,
 } from '../interfaces/messaging-provider.interface';
 
+export interface SendMessageResult {
+  message: string;
+  count: number;
+  messageIds: string[];
+  campaignId?: string;
+  totalCost?: number;
+  totalUnits?: number;
+  status?: string;
+}
+
 @Injectable()
 export class MessagingEngineService {
   private readonly logger = new Logger(MessagingEngineService.name);
@@ -63,7 +73,7 @@ export class MessagingEngineService {
     return this.branchesService.checkBranchAccess(user, branchId);
   }
 
-  public async sendMessage(dto: SendMessageDto): Promise<any> {
+  public async sendMessage(dto: SendMessageDto): Promise<SendMessageResult> {
     const {
       branchId,
       businessId,
@@ -108,7 +118,11 @@ export class MessagingEngineService {
     const validContactIds = validContacts.map((c) => c.id);
 
     if (validContactIds.length === 0) {
-      return { message: 'No valid contacts to send to (all opted out)' };
+      return { 
+        message: 'No valid contacts to send to (all opted out)',
+        count: 0,
+        messageIds: []
+      };
     }
 
     // 4. Resolve Content (if template)
@@ -119,8 +133,8 @@ export class MessagingEngineService {
     }
 
     // 5. Determine "From" number/id
-    let from = '';
-    if (channel === Channel.WHATSAPP) {
+    let from = dto.from || '';
+    if (channel === Channel.WHATSAPP && !from) {
       from =
         branch.whatsappNumber || (branch.business as any)?.whatsappNumber || '';
       if (!from) {
@@ -154,11 +168,20 @@ export class MessagingEngineService {
         content: finalContent,
         from,
       });
-      return { message: 'Batch campaign queued', status: 'QUEUED', campaignId };
+      return { 
+        message: 'Batch campaign queued', 
+        status: 'QUEUED', 
+        campaignId,
+        count: validContactIds.length,
+        messageIds: []
+      };
     }
 
     // 8. Send Individual Messages
     const messageIds: string[] = [];
+    let totalCost = 0;
+    let totalUnits = 0;
+
     for (const contactId of validContactIds) {
       const result = await this.sendIndividualMessage(
         branch,
@@ -169,6 +192,8 @@ export class MessagingEngineService {
         campaignId,
       );
       messageIds.push(result.id);
+      totalCost += Number(result.cost || 0);
+      totalUnits += Number(result.units || 0);
     }
 
     return {
@@ -176,6 +201,8 @@ export class MessagingEngineService {
       count: validContactIds.length,
       messageIds,
       campaignId,
+      totalCost,
+      totalUnits,
     };
   }
 
@@ -219,13 +246,15 @@ export class MessagingEngineService {
         metadata: { messageId: savedMessage.id },
       });
 
-      savedMessage.status = MessageStatus.SENT;
-      savedMessage.providerMessageId =
-        (providerResult as any).providerId || (providerResult as any).id;
+      savedMessage.status = this.mapProviderStatus(providerResult.status);
+      savedMessage.providerMessageId = providerResult.messageId || '';
+      savedMessage.cost = providerResult.cost;
+      savedMessage.units = providerResult.units;
+      savedMessage.reference = providerResult.reference;
       await this.messageRepo.save(savedMessage);
 
       await this.logMessage(savedMessage);
-    } catch (err) {
+    } catch (err: any) {
       this.logger.error(
         `Failed to send message ${savedMessage.id}: ${err.message}`,
       );
@@ -234,6 +263,15 @@ export class MessagingEngineService {
     }
 
     return savedMessage;
+  }
+
+  private mapProviderStatus(status: string): MessageStatus {
+    switch (status) {
+      case 'queued': return MessageStatus.PENDING;
+      case 'sent': return MessageStatus.SENT;
+      case 'failed': return MessageStatus.FAILED;
+      default: return MessageStatus.SENT;
+    }
   }
 
   private async logMessage(msg: Message) {

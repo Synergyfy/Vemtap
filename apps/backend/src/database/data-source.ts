@@ -3,12 +3,11 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 import { join } from 'path';
 import * as dotenv from 'dotenv';
 
-// Use process.cwd() for robust environment variable loading across local and dist/
 const envFile = process.env.NODE_ENV === 'test' ? '.env.test' : '.env';
-dotenv.config({ path: join(process.cwd(), envFile) });
+dotenv.config({ path: join(process.cwd(), envFile), override: true });
 
 export const dataSourceOptions: DataSourceOptions = {
-  type: 'postgres',
+  type: (process.env.DB_TYPE as any) || 'postgres',
   host: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT || '5432', 10),
   username: process.env.DB_USERNAME,
@@ -17,7 +16,7 @@ export const dataSourceOptions: DataSourceOptions = {
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
   entities: [join(__dirname, '../**/*.entity{.ts,.js}')],
   migrations: [join(__dirname, 'migrations/*{.ts,.js}')],
-  synchronize: false,
+  synchronize: process.env.NODE_ENV === 'test',
   migrationsRun: false,
 };
 

@@ -62,7 +62,13 @@ export class Message extends AbstractBaseEntity {
   providerMessageId: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  cost: number;
+  cost?: number;
+
+  @Column({ type: 'int', nullable: true })
+  units?: number;
+
+  @Column({ nullable: true })
+  reference?: string;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   timestamp: Date;
