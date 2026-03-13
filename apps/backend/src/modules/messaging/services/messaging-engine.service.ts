@@ -59,6 +59,7 @@ export class MessagingEngineService {
     @InjectRepository(LoyaltyProfile)
     private readonly loyaltyRepo: Repository<LoyaltyProfile>,
     @InjectQueue('messaging-batch-send') private readonly batchQueue: Queue,
+    @InjectQueue('messaging-individual-send') private readonly individualQueue: Queue,
     private readonly complianceService: ComplianceService,
     private readonly creditService: CreditService,
     private readonly templateService: TemplateService,
@@ -209,32 +210,24 @@ export class MessagingEngineService {
       };
     }
 
-    // 8. Send Individual Messages
-    const messageIds: string[] = [];
-    let totalCost = 0;
-    let totalUnits = 0;
-
+    // 8. Queue Individual Messages for Background Processing
     for (const contactId of validContactIds) {
-      const result = await this.sendIndividualMessage(
-        branch,
+      await this.individualQueue.add('send-individual', {
+        branchId,
         contactId,
-        finalContent,
+        content: finalContent,
         channel,
         from,
         campaignId,
-      );
-      messageIds.push(result.id);
-      totalCost += Number(result.cost || 0);
-      totalUnits += Number(result.units || 0);
+      });
     }
 
     return {
-      message: 'Messages processed',
+      message: 'Messages queued for background processing',
+      status: 'QUEUED',
       count: validContactIds.length,
-      messageIds,
+      messageIds: [],
       campaignId,
-      totalCost,
-      totalUnits,
     };
   }
 
@@ -311,20 +304,33 @@ export class MessagingEngineService {
 
     let resolved = content;
 
-    // 1. {Name}
-    const name = contact.name || 'Customer';
-    resolved = resolved.replace(/{Name}/g, name);
+    // --- Contact Placeholders ---
+    const fullName = contact.name || 'Customer';
+    const nameParts = fullName.split(' ');
+    const firstName = nameParts[0] || 'Customer';
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
 
-    // 2. {BusinessName}
+    resolved = resolved.replace(/{Name}/g, fullName);
+    resolved = resolved.replace(/{FirstName}/g, firstName);
+    resolved = resolved.replace(/{LastName}/g, lastName || '');
+    resolved = resolved.replace(/{Email}/g, contact.email || '');
+    resolved = resolved.replace(/{Phone}/g, contact.phone || '');
+
+    // --- Business/Branch Placeholders ---
     const bizName = branch.business?.name || branch.name || 'Our Business';
     resolved = resolved.replace(/{BusinessName}/g, bizName);
+    resolved = resolved.replace(/{BranchName}/g, branch.name || '');
+    resolved = resolved.replace(/{BranchAddress}/g, branch.address || '');
+    resolved = resolved.replace(/{BranchCity}/g, branch.city || '');
+    resolved = resolved.replace(/{BranchPhone}/g, branch.phone || '');
+    resolved = resolved.replace(/{Website}/g, branch.website || '');
+    resolved = resolved.replace(/{ReviewLink}/g, branch.reviewUrl || '');
+    resolved = resolved.replace(/{Link}/g, branch.website || branch.reviewUrl || '');
 
-    // 3. {Points}
+    // --- Loyalty Placeholders ---
     try {
-      // Find loyalty profile for this contact (if exists)
-      // Since contact phone/email might link to a User
       const profile = await this.loyaltyRepo.findOne({
-        where: { branchId: branch.id, userId: contact.id }, // Best effort match
+        where: { branchId: branch.id, userId: contact.id },
       });
       const points = profile?.currentPointsBalance || 0;
       resolved = resolved.replace(/{Points}/g, points.toString());
@@ -374,6 +380,7 @@ export class MessagingEngineService {
     content: string,
     channel: Channel,
     from: string,
+    campaignId?: string,
   ) {
     const branch = await this.branchRepo.findOneBy({ id: branchId });
     if (!branch) return;
@@ -383,6 +390,7 @@ export class MessagingEngineService {
       content,
       channel,
       from,
+      campaignId,
     );
   }
 

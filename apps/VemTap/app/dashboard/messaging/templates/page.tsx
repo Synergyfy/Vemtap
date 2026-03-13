@@ -189,13 +189,30 @@ export default function TemplatesPage() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Content</label>
+                                        <div className="flex items-center justify-between ml-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Content</label>
+                                            <div className="flex gap-1">
+                                                {['{FirstName}', '{LastName}', '{BusinessName}', '{Points}', '{Link}'].map(v => (
+                                                    <button
+                                                        key={v}
+                                                        type="button"
+                                                        onClick={() => setEditingTemplate(prev => ({ ...prev, content: (prev?.content || '') + v }))}
+                                                        className="text-[9px] font-bold text-primary hover:underline bg-primary/5 px-1.5 py-0.5 rounded"
+                                                    >
+                                                        + {v.replace(/{|}/g, '')}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
                                         <textarea
                                             value={editingTemplate?.content || ''}
                                             onChange={(e) => setEditingTemplate((prev) => ({ ...prev, content: e.target.value }))}
-                                            placeholder="Write your message... use {Name} for variables"
+                                            placeholder="Write your message... use {FirstName}, {BusinessName}, {Points}, etc. for variables"
                                             className="w-full h-32 p-4 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-medium outline-none resize-none"
                                         />
+                                        <p className="text-[9px] text-slate-400 mt-1 italic ml-1">
+                                            Available variables: Name, FirstName, LastName, Email, Phone, BusinessName, BranchName, Points, Link, Website, ReviewLink
+                                        </p>
                                     </div>
                                 </div>
 
