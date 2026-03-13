@@ -83,7 +83,7 @@ export default function FormPreviewPage() {
                         <p className="text-sm text-gray-500">This form doesn&apos;t exist or you don&apos;t have access to it.</p>
                     </div>
                 </div>
-                <Link href="/dashboard/forms" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
+                <Link href="/dashboard/settings/engagement/forms" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
                     ← Back to Forms
                 </Link>
             </div>

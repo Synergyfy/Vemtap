@@ -71,6 +71,41 @@ export const usePublicBusinessForm = (id?: string) =>
     enabled: !!id,
   });
 
+/** Fetch public business info (name, logo, branches) by businessId */
+export interface PublicBusinessInfo {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  branches?: Array<{ id: string; name: string; logoUrl?: string }>;
+}
+
+export const usePublicBusinessInfo = (businessId?: string) =>
+  useQuery<PublicBusinessInfo | null, Error>({
+    queryKey: ['public-business-info', businessId],
+    queryFn: async (): Promise<PublicBusinessInfo | null> => {
+      if (!businessId) return null;
+      // Try public endpoint first, then fallback
+      const endpoints = [
+        `/businesses/${businessId}/public`,
+        `/businesses/${businessId}`,
+      ];
+      for (const endpoint of endpoints) {
+        try {
+          const data = await api.get(endpoint);
+          if (data && typeof data === 'object' && (data as any).name) {
+            return data as PublicBusinessInfo;
+          }
+        } catch {
+          // try next endpoint
+        }
+      }
+      return null;
+    },
+    enabled: !!businessId,
+    staleTime: 1000 * 60 * 10, // cache for 10 minutes
+    retry: false,
+  });
+
 export const useCreateBusinessForm = () => {
   const queryClient = useQueryClient();
   return useMutation<BusinessForm, Error, CreateBusinessFormRequest>({

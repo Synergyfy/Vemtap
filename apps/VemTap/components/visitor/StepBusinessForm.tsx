@@ -32,9 +32,11 @@ interface StepBusinessFormProps {
     form: PreviewForm;
     onComplete: (answers: Record<string, any>) => void;
     onSkip: () => void;
+    /** When true, hides the internal branding header, title, and description (used when the parent page renders its own header) */
+    hideHeader?: boolean;
 }
 
-export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComplete, onSkip }) => {
+export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComplete, onSkip, hideHeader = false }) => {
     const [answers, setAnswers] = useState<Record<string, any>>({});
 
     const normalizedFields = useMemo(
@@ -69,41 +71,45 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className={presets.card}
+            className={hideHeader ? '' : presets.card}
         >
-            <div className="flex items-center justify-between mb-6">
-                <span className={presets.tag}>BUSINESS FORM</span>
-                <button
-                    onClick={onSkip}
-                    className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors"
-                >
-                    Skip
-                </button>
-            </div>
-
-            <div className="mb-4 rounded-2xl border border-[#0b7f74] bg-[#075E54] text-white p-2.5 flex items-center justify-between gap-2 overflow-hidden">
-                <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-                    <div className="size-8 rounded-full bg-white border border-white/30 overflow-hidden flex items-center justify-center shrink-0">
-                        {form.businessLogo ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={form.businessLogo} alt={form.businessName || form.title} className="w-full h-full object-cover" />
-                        ) : (
-                            <span className="text-sm font-black text-slate-900">{(form.businessName || form.title).charAt(0)}</span>
-                        )}
+            {!hideHeader && (
+                <>
+                    <div className="flex items-center justify-between mb-6">
+                        <span className={presets.tag}>BUSINESS FORM</span>
+                        <button
+                            onClick={onSkip}
+                            className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors"
+                        >
+                            Skip
+                        </button>
                     </div>
-                    <div className="min-w-0 overflow-hidden">
-                        <p className="text-[8px] font-bold uppercase tracking-wider text-emerald-200">Business</p>
-                        <p className="text-xs font-bold text-white truncate">{form.businessName || 'Business'}</p>
-                    </div>
-                </div>
-                <div className="text-right shrink-0 max-w-[40%]">
-                    <p className="text-[8px] font-bold uppercase tracking-wider text-emerald-200">Branch</p>
-                    <p className="text-[11px] font-semibold text-white truncate">{form.branchName || 'Main Branch'}</p>
-                </div>
-            </div>
 
-            <h2 className="text-xl font-black text-slate-900 tracking-tight mb-4 leading-tight">{form.title}</h2>
-            {form.description ? <p className="text-sm text-slate-500 mb-4">{form.description}</p> : null}
+                    <div className="mb-4 rounded-2xl border border-[#0b7f74] bg-[#075E54] text-white p-2.5 flex items-center justify-between gap-2 overflow-hidden">
+                        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                            <div className="size-8 rounded-full bg-white border border-white/30 overflow-hidden flex items-center justify-center shrink-0">
+                                {form.businessLogo ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={form.businessLogo} alt={form.businessName || form.title} className="w-full h-full object-cover" />
+                                ) : (
+                                    <span className="text-sm font-black text-slate-900">{(form.businessName || form.title).charAt(0)}</span>
+                                )}
+                            </div>
+                            <div className="min-w-0 overflow-hidden">
+                                <p className="text-[8px] font-bold uppercase tracking-wider text-emerald-200">Business</p>
+                                <p className="text-xs font-bold text-white truncate">{form.businessName || 'Business'}</p>
+                            </div>
+                        </div>
+                        <div className="text-right shrink-0 max-w-[40%]">
+                            <p className="text-[8px] font-bold uppercase tracking-wider text-emerald-200">Branch</p>
+                            <p className="text-[11px] font-semibold text-white truncate">{form.branchName || 'Main Branch'}</p>
+                        </div>
+                    </div>
+
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight mb-4 leading-tight">{form.title}</h2>
+                    {form.description ? <p className="text-sm text-slate-500 mb-4">{form.description}</p> : null}
+                </>
+            )}
             {form.instructions ? (
                 <div className="mb-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
                     {form.instructions}
