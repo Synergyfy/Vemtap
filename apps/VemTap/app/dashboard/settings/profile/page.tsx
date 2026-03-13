@@ -5,6 +5,7 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import { toast } from 'react-hot-toast';
 import DynamicQRCode from '@/components/shared/DynamicQRCode';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { BusinessHours } from '@/services/businesses/types';
@@ -31,6 +32,7 @@ const statesData: Record<string, string[]> = {
 
 export default function BusinessProfilePage() {
     const { storeName, logoUrl, updateCustomSettings, setRedirect } = useCustomerFlowStore();
+    const user = useAuthStore((state) => state.user);
     const { activeBranchId, isAllBranches: rawIsAllBranches } = useActiveBranch();
 
     const { data: business, isLoading: businessLoading } = useMyBusiness();
@@ -210,8 +212,11 @@ export default function BusinessProfilePage() {
             } else {
                 setPublicProfileUrl('');
             }
+        } else if (user) {
+            setName(user.businessName || '');
+            setLogo(user.businessLogo || '');
         }
-    }, [business, branch, isAllBranches, activeBranchId, origin, branches.length]);
+    }, [business, branch, isAllBranches, activeBranchId, origin, branches.length, user]);
 
     const handleSave = async () => {
         const hasChanged = (current: any, original: any) => {

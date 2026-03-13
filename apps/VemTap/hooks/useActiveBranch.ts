@@ -32,7 +32,7 @@ export function useActiveBranch() {
         }
     }, [urlBranchId, storeBranchId, setStoreBranch]);
 
-    // 3. Method to update branch (updates URL and store)
+    // 3. Method to update branch (updates URL; store sync happens via effect)
     const setActiveBranch = useCallback((id: string | null) => {
         const params = new URLSearchParams(searchParams.toString());
         
@@ -48,17 +48,7 @@ export function useActiveBranch() {
         const query = params.toString();
         const newUrl = `${pathname}${query ? `?${query}` : ''}`;
         router.replace(newUrl);
-        
-        // Always update the store to ensure consistency
-        setStoreBranch(cleanId);
     }, [pathname, router, searchParams, setStoreBranch]);
-
-    // If the URL has a branch but the store doesn't, backfill the store
-    useEffect(() => {
-        if (urlBranchId && !storeBranchId) {
-            setStoreBranch(urlBranchId);
-        }
-    }, [urlBranchId, storeBranchId, setStoreBranch]);
 
     return {
         // Source of truth is the sanitized URL ID
