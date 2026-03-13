@@ -17,6 +17,7 @@ import { MessageLog } from '../entities/message-log.entity';
 import { ConversationThread } from '../entities/conversation-thread.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
+import { LoyaltyProfile } from '../../campaigns/entities/loyalty-profile.entity';
 import { Channel } from '../enums/channel.enum';
 
 describe('MessagingEngineService', () => {
@@ -24,6 +25,7 @@ describe('MessagingEngineService', () => {
   let branchRepoMock: any;
   let contactRepoMock: any;
   let messageRepoMock: any;
+  let loyaltyRepoMock: any;
 
   const mockQueue = {
     add: jest.fn(),
@@ -61,12 +63,21 @@ describe('MessagingEngineService', () => {
     contactRepoMock = {
       find: jest.fn(),
       findOneBy: jest.fn(),
+      createQueryBuilder: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      }),
     };
     messageRepoMock = {
       create: jest.fn().mockImplementation((d) => d),
       save: jest
         .fn()
         .mockImplementation((e) => Promise.resolve({ id: '1', ...e })),
+    };
+    loyaltyRepoMock = {
+      findOne: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -81,6 +92,7 @@ describe('MessagingEngineService', () => {
         },
         { provide: getRepositoryToken(Business), useValue: messageRepoMock },
         { provide: getRepositoryToken(Branch), useValue: branchRepoMock },
+        { provide: getRepositoryToken(LoyaltyProfile), useValue: loyaltyRepoMock },
         { provide: getQueueToken('messaging-batch-send'), useValue: mockQueue },
         {
           provide: ComplianceService,
@@ -126,9 +138,13 @@ describe('MessagingEngineService', () => {
         businessId: 'biz1',
       });
       contactRepoMock.find.mockResolvedValueOnce([{ id: 'c1' }, { id: 'c2' }]);
+      
+      // We need to support calls from sendIndividualMessage AND resolvePlaceholders
       contactRepoMock.findOneBy
-        .mockResolvedValueOnce({ id: 'c1', phone: '123' })
-        .mockResolvedValueOnce({ id: 'c2', phone: '456' });
+        .mockResolvedValueOnce({ id: 'c1', phone: '123', name: 'User 1' }) // Individual 1
+        .mockResolvedValueOnce({ id: 'c1', phone: '123', name: 'User 1' }) // Placeholder 1
+        .mockResolvedValueOnce({ id: 'c2', phone: '456', name: 'User 2' }) // Individual 2
+        .mockResolvedValueOnce({ id: 'c2', phone: '456', name: 'User 2' }); // Placeholder 2
 
       const result = await service.sendMessage({
         branchId: 'br1',
@@ -147,6 +163,30 @@ describe('MessagingEngineService', () => {
       expect(result.messageIds).toHaveLength(2);
     });
 
+    it('should resolve placeholders correctly', async () => {
+      branchRepoMock.findOne.mockResolvedValueOnce({
+        id: 'br1',
+        name: 'VemTap Branch',
+        businessId: 'biz1',
+        business: { name: 'VemTap Global' }
+      });
+      contactRepoMock.find.mockResolvedValueOnce([{ id: 'c1' }]);
+      contactRepoMock.findOneBy.mockResolvedValue({ id: 'c1', phone: '123', name: 'Tobi' });
+      loyaltyRepoMock.findOne.mockResolvedValueOnce({ currentPointsBalance: 500 });
+
+      await service.sendMessage({
+        branchId: 'br1',
+        contactIds: ['c1'],
+        channel: Channel.SMS,
+        content: 'Hello {Name}, welcome to {BusinessName}. You have {Points} points.',
+      });
+
+      // Check the first call to create which should have the resolved content
+      expect(messageRepoMock.create).toHaveBeenNthCalledWith(1, expect.objectContaining({
+        content: 'Hello Tobi, welcome to VemTap Global. You have 500 points.'
+      }));
+    });
+
     it('should throw BadRequestException if no contacts provided', async () => {
       branchRepoMock.findOne.mockResolvedValueOnce({
         id: 'br1',
@@ -159,7 +199,8 @@ describe('MessagingEngineService', () => {
           channel: Channel.SMS,
           content: 'test',
         }),
-      ).rejects.toThrow('No contacts provided');
+      ).rejects.toThrow('No contacts found for selected audience');
     });
   });
 });
+

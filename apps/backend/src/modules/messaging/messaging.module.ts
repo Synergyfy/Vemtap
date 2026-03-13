@@ -20,6 +20,7 @@ import { AutomationRule } from './entities/automation-rule.entity';
 import { AutomationLog } from './entities/automation-log.entity';
 import { CreditPlan } from './entities/credit-plan.entity';
 import { BusinessCredit } from './entities/business-credit.entity';
+import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
 
 import { ContactsModule } from '../contacts/contacts.module';
 import { BusinessesModule } from '../businesses/businesses.module';
@@ -77,6 +78,7 @@ import { AutomationProcessor } from './processors/automation.processor';
       AutomationLog,
       CreditPlan,
       BusinessCredit,
+      LoyaltyProfile,
     ]),
     HttpModule,
     ContactsModule,

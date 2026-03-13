@@ -242,13 +242,15 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
 
         setIsSending(true);
         try {
-            await sendMessage.mutateAsync({
+            const response = await sendMessage.mutateAsync({
                 channel: channelApiMap[channel],
                 audienceType,
                 templateId: selectedTemplate || undefined,
                 content: selectedTemplate ? contentWithFormLink || undefined : contentWithFormLink,
             });
-            toast.success('Message launched successfully!');
+
+            const costInfo = response.totalCost ? ` (Cost: ${response.totalCost} units)` : '';
+            toast.success(`Message launched successfully!${costInfo}`);
             router.push('/dashboard/messaging');
         } catch (error: any) {
             toast.error(error.message || 'Failed to send message');

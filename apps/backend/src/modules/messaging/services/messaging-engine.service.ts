@@ -25,6 +25,7 @@ import { BranchesService } from '../../branches/branches.service';
 import { Branch } from '../../branches/entities/branch.entity';
 import { User } from '../../users/entities/user.entity';
 import { AudienceType } from '../entities/message-campaign.entity';
+import { LoyaltyProfile } from '../../campaigns/entities/loyalty-profile.entity';
 import {
   InboundMessage,
   DeliveryReport,
@@ -55,6 +56,8 @@ export class MessagingEngineService {
     private readonly threadRepo: Repository<ConversationThread>,
     @InjectRepository(Branch)
     private readonly branchRepo: Repository<Branch>,
+    @InjectRepository(LoyaltyProfile)
+    private readonly loyaltyRepo: Repository<LoyaltyProfile>,
     @InjectQueue('messaging-batch-send') private readonly batchQueue: Queue,
     private readonly complianceService: ComplianceService,
     private readonly creditService: CreditService,
@@ -90,6 +93,8 @@ export class MessagingEngineService {
     });
     if (!branch) throw new NotFoundException('Branch not found');
 
+    const effectiveBusinessId = businessId || branch.businessId;
+
     // 1. Resolve Contacts
     let targetContactIds: string[] = contactIds || [];
 
@@ -99,10 +104,33 @@ export class MessagingEngineService {
         select: ['id'],
       });
       targetContactIds = allContacts.map((c) => c.id);
+    } else if (audienceType === AudienceType.RECENT) {
+      // Last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const recentContacts = await this.contactRepo
+        .createQueryBuilder('contact')
+        .where('contact.branchId = :branchId', { branchId })
+        .andWhere('contact.optOut = :optOut', { optOut: false })
+        .andWhere('contact.updatedAt >= :thirtyDaysAgo', { thirtyDaysAgo })
+        .select(['contact.id'])
+        .getMany();
+      targetContactIds = recentContacts.map((c) => c.id);
+    } else if (audienceType === AudienceType.TAGGED) {
+      // Any contacts with tags
+      const taggedContacts = await this.contactRepo
+        .createQueryBuilder('contact')
+        .where('contact.branchId = :branchId', { branchId })
+        .andWhere('contact.optOut = :optOut', { optOut: false })
+        .andWhere('contact.tags IS NOT NULL')
+        .select(['contact.id'])
+        .getMany();
+      targetContactIds = taggedContacts.map((c) => c.id);
     }
 
     if (targetContactIds.length === 0) {
-      throw new BadRequestException('No contacts provided');
+      throw new BadRequestException('No contacts found for selected audience');
     }
 
     // 2. Validate Credits
@@ -134,6 +162,10 @@ export class MessagingEngineService {
 
     // 5. Determine "From" number/id
     let from = dto.from || '';
+    if (channel === Channel.SMS && !from) {
+      from = 'VEMTAP'; // Use default sender ID for all businesses for now
+    }
+    
     if (channel === Channel.WHATSAPP && !from) {
       from =
         branch.whatsappNumber || (branch.business as any)?.whatsappNumber || '';
@@ -217,12 +249,14 @@ export class MessagingEngineService {
     const contact = await this.contactRepo.findOneBy({ id: contactId });
     if (!contact) throw new NotFoundException('Contact not found');
 
+    const resolvedContent = await this.resolvePlaceholders(content, contactId, branch);
+
     const message = this.messageRepo.create({
       branchId: branch.id,
       businessId: branch.businessId,
       contactId,
       campaignId,
-      content,
+      content: resolvedContent,
       channel,
       direction: MessageDirection.OUTBOUND,
       status: MessageStatus.PENDING,
@@ -263,6 +297,42 @@ export class MessagingEngineService {
     }
 
     return savedMessage;
+  }
+
+  private async resolvePlaceholders(
+    content: string,
+    contactId: string,
+    branch: Branch,
+  ): Promise<string> {
+    if (!content) return '';
+
+    const contact = await this.contactRepo.findOneBy({ id: contactId });
+    if (!contact) return content;
+
+    let resolved = content;
+
+    // 1. {Name}
+    const name = contact.name || 'Customer';
+    resolved = resolved.replace(/{Name}/g, name);
+
+    // 2. {BusinessName}
+    const bizName = branch.business?.name || branch.name || 'Our Business';
+    resolved = resolved.replace(/{BusinessName}/g, bizName);
+
+    // 3. {Points}
+    try {
+      // Find loyalty profile for this contact (if exists)
+      // Since contact phone/email might link to a User
+      const profile = await this.loyaltyRepo.findOne({
+        where: { branchId: branch.id, userId: contact.id }, // Best effort match
+      });
+      const points = profile?.currentPointsBalance || 0;
+      resolved = resolved.replace(/{Points}/g, points.toString());
+    } catch (e) {
+      resolved = resolved.replace(/{Points}/g, '0');
+    }
+
+    return resolved;
   }
 
   private mapProviderStatus(status: string): MessageStatus {
