@@ -199,9 +199,6 @@ function BranchesContent() {
                                 <div className="size-14 rounded-2xl bg-gray-50 flex items-center justify-center text-text-secondary group-hover:bg-primary/5 group-hover:text-primary transition-colors">
                                     <Building2 size={24} />
                                 </div>
-                                <button className="p-2 text-gray-400 hover:text-text-main transition-colors">
-                                    <MoreVertical size={20} />
-                                </button>
                             </div>
 
                             <div className="space-y-4">
