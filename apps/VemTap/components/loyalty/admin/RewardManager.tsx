@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Edit2, Gift, Ticket, Tag, Clock, Save, X, Eye, ImageIcon, Upload, Image as ImageIcon2, HelpCircle, Wallet, Package, Percent, ChevronDown, CheckCircle2, AlertCircle, Star, Search } from 'lucide-react';
+import { Plus, Trash2, Edit2, Gift, Ticket, Tag, Clock, Save, X, Eye, ImageIcon, Upload, Image as ImageIcon2, HelpCircle, Wallet, Package, Percent, ChevronDown, CheckCircle2, AlertCircle, Star, Search, Users, Calendar } from 'lucide-react';
 import { Reward, RewardType } from '@/types/loyalty';
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
@@ -50,6 +50,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
     const [isTypeOpen, setIsTypeOpen] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [viewingRewardForCustomers, setViewingRewardForCustomers] = useState<Reward | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [formData, setFormData] = useState<Partial<Reward>>({
@@ -252,7 +253,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
 
                                     {/* Mock Analytics Footer */}
                                     <div className="mt-auto pt-4 border-t border-slate-100">
-                                        <div className="grid grid-cols-2 gap-3">
+                                        <div className="grid grid-cols-2 gap-3 mb-4">
                                             <Tooltip content="Total number of times this reward has been successfully claimed by customers.">
                                                 <div className="text-center p-3 bg-purple-50 rounded-xl border border-purple-100/50">
                                                     <span className="text-xl font-black text-purple-600">{mockRedemptions.toLocaleString()}</span>
@@ -266,6 +267,14 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                 </div>
                                             </Tooltip>
                                         </div>
+
+                                        <button
+                                            onClick={() => setViewingRewardForCustomers(reward)}
+                                            className="w-full flex items-center justify-center gap-2 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl transition-all font-bold text-xs uppercase tracking-widest group/btn"
+                                        >
+                                            <Users className="w-4 h-4 text-slate-400 group-hover/btn:text-primary transition-colors" />
+                                            View Customers
+                                        </button>
                                     </div>
                                 </div>
                             </motion.div>
@@ -465,7 +474,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                         type="number"
                                                         value={formData.pointCost}
                                                         onChange={(e) => setFormData({ ...formData, pointCost: parseInt(e.target.value) || 0 })}
-                                                        className="bg-transparent border-none outline-none font-display font-semibold text-3xl text-primary w-full"
+                                                        className="bg-white/50 border-b-2 border-primary/10 focus:border-primary focus:bg-white px-2 py-1 outline-none transition-all font-display font-semibold text-3xl text-primary w-full rounded-t-lg"
                                                         placeholder="0"
                                                     />
                                                     <span className="text-xs font-bold text-primary/50 uppercase whitespace-nowrap">Pts to Redeem</span>
@@ -494,7 +503,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                         type="number"
                                                         value={formData.value}
                                                         onChange={(e) => setFormData({ ...formData, value: parseInt(e.target.value) || 0 })}
-                                                        className="bg-transparent border-none outline-none font-display font-semibold text-3xl text-slate-900 w-full"
+                                                        className="bg-white/50 border-b-2 border-slate-200 focus:border-primary focus:bg-white px-2 py-1 outline-none transition-all font-display font-semibold text-3xl text-slate-900 w-full rounded-t-lg"
                                                         placeholder="0"
                                                     />
                                                 </div>
@@ -514,7 +523,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                         type="number"
                                                         value={formData.totalAvailable || ''}
                                                         onChange={(e) => setFormData({ ...formData, totalAvailable: parseInt(e.target.value) || 0 })}
-                                                        className="bg-transparent border-none outline-none font-display font-semibold text-3xl text-slate-900 w-full"
+                                                        className="bg-white/50 border-b-2 border-slate-200 focus:border-primary focus:bg-white px-2 py-1 outline-none transition-all font-display font-semibold text-3xl text-slate-900 w-full rounded-t-lg"
                                                         placeholder="0 (Unlimited)"
                                                     />
                                                 </div>
@@ -535,7 +544,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                         type="number"
                                                         value={formData.validityDays}
                                                         onChange={(e) => setFormData({ ...formData, validityDays: parseInt(e.target.value) || 0 })}
-                                                        className="bg-transparent border-none outline-none font-display font-semibold text-3xl text-slate-900 w-full"
+                                                        className="bg-white/50 border-b-2 border-slate-200 focus:border-primary focus:bg-white px-2 py-1 outline-none transition-all font-display font-semibold text-3xl text-slate-900 w-full rounded-t-lg"
                                                     />
                                                 </div>
                                                 <p className="text-[10px] font-medium text-slate-400 mt-2 italic">Must use within {formData.validityDays || 0} days.</p>
@@ -647,6 +656,96 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                         {editingId ? 'Update Reward' : 'Confirm & Launch'}
                                     </button>
                                 </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+            {/* Redemptions Modal - Mocked */}
+            <AnimatePresence>
+                {viewingRewardForCustomers && (
+                    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 md:p-8">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setViewingRewardForCustomers(null)}
+                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-white w-full max-w-3xl text-slate-900 relative shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]"
+                        >
+                            {/* Modal Header */}
+                            <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
+                                <div className="flex items-center gap-5">
+                                    <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-200 ring-4 ring-primary/5 shrink-0">
+                                        <Users className="w-7 h-7 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-display font-bold text-slate-900">Reward Redemptions</h3>
+                                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                                            Tracking customers for: <span className="text-primary font-bold uppercase">{viewingRewardForCustomers.name}</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setViewingRewardForCustomers(null)}
+                                    className="p-3 hover:bg-white hover:shadow-sm rounded-2xl transition-all border border-transparent hover:border-slate-200"
+                                >
+                                    <X size={20} className="text-slate-400" />
+                                </button>
+                            </div>
+
+                            {/* Modal Content - Mock List */}
+                            <div className="flex-grow overflow-y-auto p-8 scrollbar-hide">
+                                <div className="space-y-6">
+                                    {/* Mock Redemption List */}
+                                    {[
+                                        { name: "Chidi Okafor", email: "chidi.o@gmail.com", date: "2 mins ago", points: viewingRewardForCustomers.pointCost, status: "Verified" },
+                                        { name: "Fatima Yusuf", email: "f.yusuf@yahoo.com", date: "1 hour ago", points: viewingRewardForCustomers.pointCost, status: "Verified" },
+                                        { name: "Bolaji Adeyemi", email: "adeyemi.b@icloud.com", date: "Yesterday, 4:30 PM", points: viewingRewardForCustomers.pointCost, status: "Verified" },
+                                        { name: "Ngozi Obi", email: "ngozi@ngozi.com", date: "March 11, 2024", points: viewingRewardForCustomers.pointCost, status: "Verified" },
+                                        { name: "Emeka John", email: "emeka.j@gmail.com", date: "March 10, 2024", points: viewingRewardForCustomers.pointCost, status: "Verified" },
+                                    ].map((redemption, i) => (
+                                        <div key={i} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-primary/10 hover:shadow-sm transition-all group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 group-hover:bg-primary/5 group-hover:text-primary transition-colors uppercase">
+                                                    {redemption.name.split(' ').map(n => n[0]).join('')}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-slate-900">{redemption.name}</p>
+                                                    <p className="text-xs text-slate-400 font-medium">{redemption.email}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="flex items-center gap-2 justify-end">
+                                                    <Calendar size={12} className="text-slate-300" />
+                                                    <span className="text-xs font-bold text-slate-500">{redemption.date}</span>
+                                                </div>
+                                                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mt-1">
+                                                    -{redemption.points} Pts
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    <div className="py-4 text-center">
+                                        <p className="text-xs text-slate-400 font-medium italic">Showing the 5 most recent redemptions</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="p-8 bg-slate-50 border-t border-slate-100 shrink-0">
+                                <button
+                                    onClick={() => setViewingRewardForCustomers(null)}
+                                    className="w-full py-4 bg-white border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-slate-50 transition-all"
+                                >
+                                    Close Overview
+                                </button>
                             </div>
                         </motion.div>
                     </div>

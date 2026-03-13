@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProviderRouterService } from './provider-router.service';
 import { TermiiProvider } from '../providers/termii.provider';
 import { AfricaTalkingProvider } from '../providers/africastalking.provider';
+import { BestBulkSmsProvider } from '../providers/bestbulksms.provider';
 import { EmailProvider } from '../providers/email.provider';
 import { Channel } from '../enums/channel.enum';
 
@@ -9,6 +10,7 @@ describe('ProviderRouterService', () => {
   let service: ProviderRouterService;
   let termiiProvider: TermiiProvider;
   let africaTalkingProvider: AfricaTalkingProvider;
+  let bestBulkSmsProvider: BestBulkSmsProvider;
   let emailProvider: EmailProvider;
 
   beforeEach(async () => {
@@ -24,6 +26,10 @@ describe('ProviderRouterService', () => {
           useValue: { sendMessage: jest.fn(), estimateCost: jest.fn() },
         },
         {
+          provide: BestBulkSmsProvider,
+          useValue: { sendMessage: jest.fn(), estimateCost: jest.fn() },
+        },
+        {
           provide: EmailProvider,
           useValue: { sendMessage: jest.fn(), estimateCost: jest.fn() },
         },
@@ -33,6 +39,7 @@ describe('ProviderRouterService', () => {
     service = module.get<ProviderRouterService>(ProviderRouterService);
     termiiProvider = module.get<TermiiProvider>(TermiiProvider);
     africaTalkingProvider = module.get<AfricaTalkingProvider>(AfricaTalkingProvider);
+    bestBulkSmsProvider = module.get<BestBulkSmsProvider>(BestBulkSmsProvider);
     emailProvider = module.get<EmailProvider>(EmailProvider);
   });
 
@@ -40,9 +47,9 @@ describe('ProviderRouterService', () => {
     expect(service).toBeDefined();
   });
 
-  it('should return AfricaTalkingProvider for SMS channel', () => {
+  it('should return BestBulkSmsProvider for SMS channel', () => {
     const provider = service.getProvider(Channel.SMS);
-    expect(provider).toBe(africaTalkingProvider);
+    expect(provider).toBe(bestBulkSmsProvider);
   });
 
   it('should return TermiiProvider for WHATSAPP channel', () => {
