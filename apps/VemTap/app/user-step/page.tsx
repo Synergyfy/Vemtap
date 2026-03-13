@@ -5,7 +5,7 @@ import { AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useBusinessForms, useSubmitBusinessFormResponse } from '@/services/business-forms/hooks';
+import { useBusinessForms, useSubmitBusinessFormResponse, useFormsByDevice } from '@/services/business-forms/hooks';
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import { jwtDecode } from 'jwt-decode';
 import { toast } from 'react-hot-toast';
@@ -23,22 +23,30 @@ import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { StepFinalSuccess } from '@/components/visitor/StepFinalSuccess';
 import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { EarnPointsModal } from '@/components/loyalty/EarnPointsModal';
+import Spinner from '@/components/ui/Spinner';
 
 function UserStepPageContent() {
     const {
         currentStep, setStep, storeName, setUserData, resetFlow,
-        getBusinessConfig, customWelcomeMessage, customSuccessMessage,
+        getBusinessConfig, customWelcomeMessage, customWelcomeTitle, customSuccessMessage,
         customPrivacyMessage, customRewardMessage, hasRewardSetup,
         setBusinessType, userData, branchId, logoUrl, visitCount, rewardVisitThreshold,
         redemptionStatus, requestRedemption,
         engagementSettings, surveyQuestions,
-        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton, businessId
+        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton, businessId, deviceCode
     } = useCustomerFlowStore();
     const searchParams = useSearchParams();
     const preferredFormIdParam = searchParams.get('formId') || searchParams.get('form');
     const [selectedBusinessFormId, setSelectedBusinessFormId] = useState<string | null>(null);
-    const { data: businessForms = [] } = useBusinessForms();
-    const submitBusinessFormResponse = useSubmitBusinessFormResponse(selectedBusinessFormId || '');
+    
+    // Fetch forms ONLY when user reaches the outcome/success stage
+    const shouldFetchForms = currentStep === 'OUTCOME' || currentStep === 'FINAL_SUCCESS' || currentStep === 'SURVEY';
+    const { data: deviceForms = [], isLoading: formsLoading } = useFormsByDevice(
+        shouldFetchForms ? (deviceCode || '') : ''
+    );
+    
+    const submitBusinessFormResponse = useSubmitBusinessFormResponse();
+
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const userBranchId = useAuthStore((state) => state.user?.branchId);
     const getDefaultFormId = useFormPreferencesStore((state) => state.getDefaultFormId);
@@ -46,21 +54,15 @@ function UserStepPageContent() {
     const formBranchScope = branchId || activeBranchId || userBranchId || null;
     const defaultFormId = getDefaultFormId(formBranchScope || 'global');
     const locallyActiveFormIds = getActiveFormIds(formBranchScope || 'global');
-    const approvedFormsForBusiness = useMemo(
-        () =>
-            businessForms.filter(
-                (f) =>
-                    f.isPublished &&
-                    f.isActive &&
-                    (!businessId || f.businessId === businessId) &&
-                    (!branchId || f.branchId === branchId)
-            ),
-        [branchId, businessForms, businessId]
-    );
+
+    // Filtered forms for the business (fallback/additional logic)
+    const approvedFormsForBusiness = useMemo(() => deviceForms, [deviceForms]);
+
     const selectedBusinessForm = useMemo(
         () => approvedFormsForBusiness.find((f) => f.id === selectedBusinessFormId) || null,
         [approvedFormsForBusiness, selectedBusinessFormId]
     );
+
     const preferredBusinessForm = useMemo(() => {
         const explicit = preferredFormIdParam
             ? approvedFormsForBusiness.find((form) => form.id === preferredFormIdParam)
@@ -70,6 +72,7 @@ function UserStepPageContent() {
             : undefined;
         return explicit || branchDefault || approvedFormsForBusiness[0] || null;
     }, [approvedFormsForBusiness, preferredFormIdParam, defaultFormId]);
+
     const attachedFormIds = useMemo(
         () => {
             if (engagementSettings?.showPostSubmitForms === false) return [];
@@ -80,6 +83,7 @@ function UserStepPageContent() {
         },
         [engagementSettings?.postSubmitFormIds, engagementSettings?.showPostSubmitForms, locallyActiveFormIds]
     );
+
     const attachedBusinessForms = useMemo(
         () => approvedFormsForBusiness.filter((form) => attachedFormIds.includes(form.id) && form.id !== preferredBusinessForm?.id),
         [approvedFormsForBusiness, attachedFormIds, preferredBusinessForm?.id]
@@ -90,6 +94,7 @@ function UserStepPageContent() {
     const config = getBusinessConfig();
 
     const [isDownloading, setIsDownloading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSyncingReal, setIsSyncingReal] = useState(false);
     const [isDeviceSynced, setIsDeviceSynced] = useState(false);
 
@@ -156,22 +161,28 @@ function UserStepPageContent() {
     }, [currentStep, setStep, storedIdentity, userData]);
 
     const onFormSubmit = async (data: any) => {
-        localStorage.setItem('google_identity', JSON.stringify(data));
-        setUserData(data);
+        setIsSubmitting(true);
+        try {
+            localStorage.setItem('google_identity', JSON.stringify(data));
+            setUserData(data);
 
-        // Loyalty Integration: Earn points for the visit after identity is provided
-        const businessId = useCustomerFlowStore.getState().businessId;
-        if (businessId) {
-            const { earnPoints } = useLoyaltyStore.getState();
-            earnPoints({
-                userId: data.email || data.phone || data.uniqueId || 'anonymous',
-                businessId: businessId,
-                branchId: branchId || 'head-office',
-                isVisit: true
-            }).catch(err => console.error('Failed to earn points after form submit:', err));
+            // Loyalty Integration: Earn points for the visit after identity is provided
+            const businessId = useCustomerFlowStore.getState().businessId;
+            if (businessId) {
+                const { earnPoints } = useLoyaltyStore.getState();
+                const identity = data;
+                await earnPoints({
+                    userId: identity.email || identity.phone || identity.uniqueId || 'anonymous',
+                    businessId: businessId,
+                    branchId: branchId || 'head-office',
+                    isVisit: true
+                }).catch(err => console.error('Failed to earn points after form submit:', err));
+            }
+
+            setStep('OUTCOME');
+        } finally {
+            setIsSubmitting(false);
         }
-
-        setStep('OUTCOME');
     };
 
     const handleDownloadReward = () => {
@@ -202,7 +213,7 @@ function UserStepPageContent() {
 
     const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
         if (type === 'review') {
-            window.open(engagementSettings.reviewUrl, '_blank');
+            window.open(engagementSettings?.reviewUrl, '_blank');
         } else if (type === 'social') {
             // Handled by the component's internal modal
         } else if (type === 'feedback') {
@@ -215,6 +226,7 @@ function UserStepPageContent() {
                 }
             }
 
+            // Fallback logic from dev
             const explicitlyRequested = preferredFormIdParam
                 ? approvedFormsForBusiness.find((form) => form.id === preferredFormIdParam)
                 : null;
@@ -235,10 +247,14 @@ function UserStepPageContent() {
   if (selectedBusinessForm && businessId) {
     try {
       await submitBusinessFormResponse.mutateAsync({
-        answers: Object.entries(answers).map(([fieldId, value]) => ({
-          fieldId,
-          value,
-        })),
+        id: selectedBusinessForm.uniqueCode || selectedBusinessForm.id,
+        payload: {
+            answers: Object.entries(answers).map(([fieldId, value]) => ({
+                fieldId,
+                // Ensure value is a string for backend compatibility
+                value: Array.isArray(value) ? value.join(', ') : String(value || ''),
+            })),
+        },
       });
     } catch (error) {
       console.warn('Form response submission failed:', error);
@@ -292,6 +308,7 @@ function UserStepPageContent() {
                         initialData={userData || storedIdentity || user}
                         isSyncingReal={isSyncingReal}
                         isDeviceSynced={isDeviceSynced}
+                        isSubmitting={isSubmitting}
                         onBack={() => setStep('SELECT_TYPE')}
                         onSubmit={onFormSubmit}
                     />
@@ -339,6 +356,7 @@ function UserStepPageContent() {
                         customRewardMessage={customRewardMessage}
                         hasRewardSetup={hasRewardSetup}
                         isDownloading={isDownloading}
+                        isFormsLoading={formsLoading}
                         onDownload={handleDownloadReward}
                         onFinish={() => setStep('FINAL_SUCCESS')}
                         onRestart={resetFlow}
@@ -383,6 +401,7 @@ function UserStepPageContent() {
                         customSuccessTitle={useCustomerFlowStore.getState().customSuccessTitle}
                         finalSuccessMessage={useCustomerFlowStore.getState().customSuccessMessage || config.finalSuccessMessage}
                         customSuccessButton={useCustomerFlowStore.getState().customSuccessButton}
+                        isFormsLoading={formsLoading}
                         onFinish={resetFlow}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}

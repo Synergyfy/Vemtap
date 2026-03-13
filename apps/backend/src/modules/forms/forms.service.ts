@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, FindOptionsWhere } from 'typeorm';
 import { Form } from './entities/form.entity';
@@ -14,6 +14,7 @@ import { CreateFormTemplateDto } from './dto/create-form-template.dto';
 import { UpdateFormTemplateDto } from './dto/update-form-template.dto';
 import { FormTemplateQueryDto } from './dto/form-template-query.dto';
 import { BranchesService } from '../branches/branches.service';
+import { DevicesService } from '../devices/devices.service';
 import { User } from '../users/entities/user.entity';
 
 @Injectable()
@@ -32,6 +33,7 @@ export class FormsService {
     @InjectRepository(FormFieldTemplate)
     private readonly formFieldTemplatesRepository: Repository<FormFieldTemplate>,
     private readonly branchesService: BranchesService,
+    private readonly devicesService: DevicesService,
   ) { }
 
   async checkBranchAccess(user: User, branchId: string): Promise<boolean> {
@@ -66,8 +68,17 @@ export class FormsService {
   }
 
   async getFormByUniqueCode(uniqueCode: string): Promise<Form> {
+    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(uniqueCode);
+    const where: FindOptionsWhere<Form>[] = [
+      { uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
+    ];
+
+    if (isUuid) {
+      where.push({ id: uniqueCode, isPublished: true, isActive: true, adminDisabled: false });
+    }
+
     const form = await this.formsRepository.findOne({
-      where: { uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
+      where,
       relations: ['fields'],
     });
 
@@ -230,15 +241,39 @@ export class FormsService {
     });
   }
 
+  async getFormsByDeviceCode(deviceCode: string): Promise<Form[]> {
+    const device = await this.devicesService.findByCode(deviceCode);
+    if (!device) throw new NotFoundException('Device not found');
+    if (!device.branchId) throw new BadRequestException('Device is not linked to any branch');
 
-
+    return this.formsRepository.find({
+      where: {
+        branchId: device.branchId,
+        isPublished: true,
+        isActive: true,
+        adminDisabled: false,
+        showAfterLeadCapture: true,
+      },
+      relations: ['fields'],
+      order: { createdAt: 'DESC' },
+    });
+  }
 
   async submitResponse(
     uniqueCode: string,
     visitorId: string,
     dto: SubmitFormResponseDto,
   ): Promise<FormResponse> {
-    const form = await this.formsRepository.findOneBy({ uniqueCode, isPublished: true, isActive: true, adminDisabled: false });
+    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(uniqueCode);
+    const where: FindOptionsWhere<Form>[] = [
+      { uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
+    ];
+
+    if (isUuid) {
+      where.push({ id: uniqueCode, isPublished: true, isActive: true, adminDisabled: false });
+    }
+
+    const form = await this.formsRepository.findOne({ where });
     if (!form) throw new NotFoundException('Form not found');
 
     const response = this.formResponsesRepository.create({
@@ -249,6 +284,9 @@ export class FormsService {
     });
 
     const savedResponse = await this.formResponsesRepository.save(response);
+
+    // Increment response count on the form
+    await this.formsRepository.increment({ id: form.id }, 'responseCount', 1);
 
     if (dto.answers && Array.isArray(dto.answers)) {
       const answers = dto.answers.map((ans) =>

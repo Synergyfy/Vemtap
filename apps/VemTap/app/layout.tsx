@@ -69,6 +69,7 @@ export const metadata: Metadata = {
 };
 
 import QueryProvider from "./providers/QueryProvider";
+import AuthProvider from "@/components/providers/AuthProvider";
 import CookieBanner from "@/components/shared/CookieBanner";
 import ToastProvider from "@/components/providers/ToastProvider";
 import SupportChatbot from "@/components/shared/SupportChatbot";
@@ -102,11 +103,13 @@ export default function RootLayout({
                 style={{ fontFamily: "var(--font-body)" }}
                 suppressHydrationWarning
             >                <QueryProvider>
-                    <ToastProvider />
-                    {children}
-                    <CookieBanner />
-                    <SupportChatbot />
-                    <InstallPWA />
+                    <AuthProvider>
+                        <ToastProvider />
+                        {children}
+                        <CookieBanner />
+                        <SupportChatbot />
+                        <InstallPWA />
+                    </AuthProvider>
                 </QueryProvider>
             </body>
         </html>

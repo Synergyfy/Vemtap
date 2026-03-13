@@ -6,6 +6,8 @@ import * as z from 'zod';
 import { presets } from './presets';
 import { VisitorHeader } from './VisitorHeader';
 
+import Spinner from '@/components/ui/Spinner';
+
 const visitorSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     phone: z.string().optional().or(z.literal('')),
@@ -22,10 +24,11 @@ interface StepFormProps {
     customWelcomeTag?: string | null;
     customPrivacyMessage?: string | null;
     submitLabel?: string | null;
+    headerVariant?: 'default' | 'inline' | string;
     initialData?: any;
     isSyncingReal?: boolean;
     isDeviceSynced?: boolean;
-    headerVariant?: 'stacked' | 'inline';
+    isSubmitting?: boolean;
     onBack: () => void;
     onSubmit: (data: VisitorFormData) => void;
 }
@@ -41,7 +44,7 @@ export const StepForm: React.FC<StepFormProps> = ({
     initialData,
     isSyncingReal,
     isDeviceSynced,
-    headerVariant,
+    isSubmitting = false,
     onBack,
     onSubmit
 }) => {
@@ -65,7 +68,8 @@ export const StepForm: React.FC<StepFormProps> = ({
         <motion.div key="form" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={presets.card}>
             <button
                 onClick={onBack}
-                className="absolute top-8 right-8 size-8 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors group"
+                disabled={isSubmitting}
+                className="absolute top-8 right-8 size-8 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors group disabled:opacity-50"
             >
                 <span className="material-symbols-outlined text-gray-400 text-[18px] group-hover:text-primary transition-colors">close</span>
             </button>
@@ -86,7 +90,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                 </div>
             )}
 
-            <VisitorHeader logoUrl={logoUrl} storeName={storeName} variant={headerVariant} />
+            <VisitorHeader logoUrl={logoUrl} storeName={storeName} />
 
             <div className="mb-6">
                 <span className={presets.tag}>{customWelcomeTag || "Quick Link"}</span>
@@ -125,6 +129,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                             type="text"
                             {...register('name')}
                             autoComplete="name"
+                            disabled={isSubmitting}
                             placeholder="Enter your name"
                             className={`${presets.input} ${errors.name ? 'border-red-500 ring-2 ring-red-500/10' : ''}`}
                         />
@@ -143,6 +148,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                             type="tel"
                             {...register('phone')}
                             autoComplete="tel"
+                            disabled={isSubmitting}
                             placeholder="Phone number"
                             className={`${presets.input} ${errors.phone ? 'border-red-500 ring-2 ring-red-500/10' : ''}`}
                         />
@@ -161,6 +167,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                             type="email"
                             {...register('email')}
                             autoComplete="email"
+                            disabled={isSubmitting}
                             placeholder="Optional email"
                             className={`${presets.input} ${errors.email ? 'border-red-500 ring-2 ring-red-500/10' : ''}`}
                         />
@@ -169,11 +176,12 @@ export const StepForm: React.FC<StepFormProps> = ({
                 </div>
 
                 <div className="pt-6 pb-2">
-                    <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50/50 cursor-pointer group hover:bg-white hover:border-primary/20 transition-all text-left">
+                    <label className={`flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50/50 cursor-pointer group hover:bg-white hover:border-primary/20 transition-all text-left ${isSubmitting ? 'pointer-events-none opacity-50' : ''}`}>
                         <input
                             type="checkbox"
                             checked={hasConsented}
                             onChange={(e) => setHasConsented(e.target.checked)}
+                            disabled={isSubmitting}
                             className="size-4 accent-primary mt-1"
                         />
                         <div>
@@ -185,9 +193,13 @@ export const StepForm: React.FC<StepFormProps> = ({
                     </label>
                 </div>
 
-                <button type="submit" disabled={!hasConsented || !isValid} className={presets.button}>
-                    <span>{submitLabel || 'Submit'}</span>
-                    <span className="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                <button type="submit" disabled={!hasConsented || !isValid || isSubmitting} className={presets.button}>
+                    {isSubmitting ? <Spinner size="sm" /> : (
+                        <>
+                            <span>{submitLabel || 'Submit & Get Reward'}</span>
+                            <span className="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                        </>
+                    )}
                 </button>
             </form>
         </motion.div>

@@ -23,6 +23,8 @@ export interface BusinessForm {
   description?: string;
   isActive: boolean;
   isPublished: boolean;
+  showAfterLeadCapture?: boolean;
+  responseCount?: number;
   businessId: string;
   branchId: string;
   businessName?: string;
@@ -45,6 +47,7 @@ export interface CreateBusinessFormRequest {
   description?: string;
   isActive: boolean;
   isPublished: boolean;
+  showAfterLeadCapture?: boolean;
   branchId: string;
   businessId?: string;
   businessName?: string;
