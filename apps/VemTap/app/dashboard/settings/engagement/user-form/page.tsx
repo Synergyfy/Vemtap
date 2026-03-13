@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Info, Loader2, Save } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/dashboard/PageHeader';
@@ -8,6 +8,8 @@ import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import PhoneFrame from '@/components/shared/PhoneFrame';
 import { SocialLinksPreview } from '@/components/shared/SocialLinksPreview';
 import { StepForm } from '@/components/visitor/StepForm';
+import { StepOutcome } from '@/components/visitor/StepOutcome';
+import { StepWelcomeBack } from '@/components/visitor/StepWelcomeBack';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
 
@@ -16,6 +18,19 @@ export default function UserFormSettingsPage() {
     const { data: business, isLoading } = useMyBusiness();
     const updateMutation = useUpdateBusiness();
     const [isSaving, setIsSaving] = useState(false);
+    const [previewTab, setPreviewTab] = useState<'form' | 'thank_you' | 'returning'>('form');
+
+    const config = useMemo(() => store.getBusinessConfig(), [store]);
+    const previewUser = useMemo(
+        () => ({
+            firstName: 'Jamie',
+            lastName: 'Lee',
+            name: 'Jamie Lee',
+            email: 'jamie@example.com',
+            phone: '+1 555-010-2400',
+        }),
+        []
+    );
 
     const [settings, setSettings] = useState({
         welcomeTitle: store.customNewUserWelcomeTitle || 'Connect with us',
@@ -180,21 +195,82 @@ export default function UserFormSettingsPage() {
                             <span className="text-[10px] font-semibold text-gray-400">Data Form</span>
                         </summary>
                         <div className="px-4 pb-4">
+                            <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-3 mb-3">
+                                {[
+                                    { key: 'form', label: 'Welcome Form' },
+                                    { key: 'thank_you', label: 'Thank You' },
+                                    { key: 'returning', label: 'Returning User' },
+                                ].map((tab) => (
+                                    <button
+                                        key={tab.key}
+                                        onClick={() => setPreviewTab(tab.key as typeof previewTab)}
+                                        className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+                                            previewTab === tab.key
+                                                ? 'bg-primary text-white'
+                                                : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
                             <PhoneFrame title="Live User Form Preview">
                                 <div className="p-6">
-                                    <StepForm
-                                        storeName={business?.name || store.storeName || 'Your Store'}
-                                        logoUrl={business?.logoUrl || store.logoUrl}
-                                        customWelcomeMessage={settings.welcomeMessage}
-                                        customWelcomeTitle={settings.welcomeTitle}
-                                        customWelcomeTag={settings.welcomeTag}
-                                        customPrivacyMessage={settings.privacyMessage}
-                                        submitLabel={settings.submitLabel || 'Submit'}
-                                        headerVariant="inline"
-                                        onBack={() => { }}
-                                        onSubmit={() => { }}
-                                    />
-                                    <SocialLinksPreview settings={store.engagementSettings} />
+                                    {previewTab === 'form' && (
+                                        <>
+                                            <StepForm
+                                                storeName={business?.name || store.storeName || 'Your Store'}
+                                                logoUrl={business?.logoUrl || store.logoUrl}
+                                                customWelcomeMessage={settings.welcomeMessage}
+                                                customWelcomeTitle={settings.welcomeTitle}
+                                                customWelcomeTag={settings.welcomeTag}
+                                                customPrivacyMessage={settings.privacyMessage}
+                                                submitLabel={settings.submitLabel || 'Submit'}
+                                                headerVariant="inline"
+                                                onBack={() => { }}
+                                                onSubmit={() => { }}
+                                            />
+                                            <SocialLinksPreview settings={store.engagementSettings} />
+                                        </>
+                                    )}
+
+                                    {previewTab === 'thank_you' && (
+                                        <StepOutcome
+                                            config={config}
+                                            customSuccessMessage={store.customSuccessMessage}
+                                            customRewardMessage={store.customRewardMessage}
+                                            hasRewardSetup={store.hasRewardSetup}
+                                            isDownloading={false}
+                                            onDownload={() => { }}
+                                            onFinish={() => setPreviewTab('returning')}
+                                            onRestart={() => setPreviewTab('form')}
+                                            engagementSettings={store.engagementSettings}
+                                            selectedFormTitle="Default Form"
+                                            selectedFormType="Form"
+                                        />
+                                    )}
+
+                                    {previewTab === 'returning' && (
+                                        <StepWelcomeBack
+                                            storeName={business?.name || store.storeName || 'Your Store'}
+                                            logoUrl={business?.logoUrl || store.logoUrl}
+                                            customWelcomeMessage={store.customWelcomeMessage}
+                                            customWelcomeTitle={store.customWelcomeTitle}
+                                            customWelcomeTag={store.customWelcomeTag}
+                                            customWelcomeButton={store.customWelcomeButton}
+                                            customPrivacyMessage={store.customPrivacyMessage}
+                                            userData={previewUser}
+                                            visitCount={Math.max(1, store.rewardVisitThreshold - 1)}
+                                            rewardVisitThreshold={store.rewardVisitThreshold}
+                                            hasRewardSetup={store.hasRewardSetup}
+                                            redemptionStatus="none"
+                                            showConsent
+                                            isCustomer
+                                            onRedeem={() => { }}
+                                            onContinue={() => setPreviewTab('form')}
+                                            onClear={() => setPreviewTab('form')}
+                                        />
+                                    )}
                                 </div>
                             </PhoneFrame>
                         </div>
