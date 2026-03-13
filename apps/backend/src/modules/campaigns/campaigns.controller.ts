@@ -313,7 +313,41 @@ export class CampaignsController {
     description: 'List of rewards',
     type: [Reward],
   })
+  @ApiQuery({ name: 'branchId', required: false })
+  @ApiQuery({ name: 'allBranches', required: false, type: Boolean })
   async getRewards(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
+    const user = req.user;
+
+    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
+      if (query.allBranches || !query.branchId) {
+        if (user.role === UserRole.OWNER) {
+          return this.campaignsService.getRewards(undefined, user.businessId);
+        }
+        const businessId = user.businessId || (req.query as any).businessId;
+        if (businessId) {
+          return this.campaignsService.getRewards(undefined, businessId);
+        }
+        if (!query.branchId) {
+          throw new BadRequestException(
+            'Either branchId or businessId context must be available',
+          );
+        }
+      }
+
+      if (query.branchId) {
+        if (user.role === UserRole.OWNER) {
+          const hasAccess = await this.campaignsService.checkBranchAccess(
+            user,
+            query.branchId,
+          );
+          if (!hasAccess)
+            throw new BadRequestException('Access denied to this branch');
+        }
+        return this.campaignsService.getRewards(query.branchId);
+      }
+    }
+
+    // Default for Manager/Staff or if branchId provided for Admin/Owner handled above
     const branchId = await this.getBranchId(req, query.branchId);
     return this.campaignsService.getRewards(branchId);
   }

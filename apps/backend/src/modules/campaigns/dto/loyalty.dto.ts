@@ -1,4 +1,5 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   IsString,
   IsNumber,
@@ -222,4 +223,14 @@ export class BranchQueryDto {
   @IsString()
   @IsOptional()
   branchId?: string;
+
+  @ApiProperty({
+    description: 'Fetch for all branches (Owner only)',
+    example: true,
+    required: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  allBranches?: boolean;
 }

@@ -271,8 +271,16 @@ export class CampaignsService {
     return this.rewardRepository.save(reward);
   }
 
-  async getRewards(branchId: string): Promise<Reward[]> {
-    return this.rewardRepository.find({ where: { branchId, isActive: true } });
+  async getRewards(branchId?: string, businessId?: string): Promise<Reward[]> {
+    if (branchId) {
+      return this.rewardRepository.find({ where: { branchId, isActive: true } });
+    }
+    if (businessId) {
+      return this.rewardRepository.find({
+        where: { businessId, isActive: true },
+      });
+    }
+    return [];
   }
 
   async earnPoints(branchId: string, dto: PointEarnRequestDto): Promise<any> {
