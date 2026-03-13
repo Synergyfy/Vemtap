@@ -305,8 +305,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                     id: 'engagement',
                     label: 'Engagement',
                     submenu: [
-                        { label: 'User Experience', href: '/dashboard/settings/engagement/experience', description: 'Default form, socials, and additional forms.' },
-                        { label: 'Form Creator', href: '/dashboard/settings/engagement/forms', description: 'Build and publish custom forms.' },
+                        { label: 'User Experience', href: '/dashboard/settings/engagement/experience' },
+                        { label: 'Form Creator', href: '/dashboard/settings/engagement/forms' },
                     ]
                 },
                 { label: 'Notifications', href: '/dashboard/settings/notifications' },

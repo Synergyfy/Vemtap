@@ -28,7 +28,7 @@ export function useActiveBranch() {
         }
     }, [urlBranchId, storeBranchId, setStoreBranch]);
 
-    // 3. Method to update branch (updates URL and store)
+    // 3. Method to update branch (updates URL; store sync happens via effect)
     const setActiveBranch = useCallback((id: string | null) => {
         const params = new URLSearchParams(searchParams.toString());
         
@@ -46,9 +46,6 @@ export function useActiveBranch() {
         
         // Use router.replace to update the URL without adding to history
         router.replace(newUrl);
-        
-        // Always update the store to ensure consistency
-        setStoreBranch(cleanId);
     }, [pathname, router, searchParams, setStoreBranch]);
 
     return {
