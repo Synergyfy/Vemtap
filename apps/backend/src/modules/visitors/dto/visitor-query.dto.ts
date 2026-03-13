@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsEnum, IsInt, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsOptional, IsString, IsEnum, IsInt, Min, IsBoolean } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 
 export enum VisitorStatus {
   NEW = 'new',
@@ -46,4 +46,14 @@ export class VisitorQueryDto {
   @IsOptional()
   @IsString()
   branchId?: string;
+
+  @ApiProperty({
+    description: 'Fetch for all branches (Owner only)',
+    example: true,
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true' || value === true)
+  allBranches?: boolean;
 }

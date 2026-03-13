@@ -182,8 +182,14 @@ export class LoyaltyController {
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
   @ApiOperation({ summary: 'Get loyalty transaction history' })
   @ApiQuery({ name: 'branchId', required: false })
+  @ApiQuery({ name: 'allBranches', required: false, type: Boolean })
   async getHistory(@Request() req, @Query() filter?: BranchFilterDto) {
-    return this.loyaltyService.getHistory(req.user.id, filter?.branchId);
+    const context = await this.getResolvedContext(req, filter || {});
+    return this.loyaltyService.getHistory(
+      req.user.id,
+      context.branchId,
+      context.businessId,
+    );
   }
 
   @Get('my-history')
