@@ -130,7 +130,7 @@ export class CampaignsController {
         if (user.role === UserRole.OWNER) {
           return this.campaignsService.findAll(undefined, status, user.businessId);
         }
-        const businessId = user.businessId || (req.query as any).businessId;
+        const businessId = user.businessId || query?.businessId;
         if (businessId) {
           return this.campaignsService.findAll(undefined, status, businessId);
         }
@@ -155,7 +155,7 @@ export class CampaignsController {
         if (user.role === UserRole.OWNER) {
           return this.campaignsService.getStats(undefined, user.businessId);
         }
-        const businessId = user.businessId || (req.query as any).businessId;
+        const businessId = user.businessId || query?.businessId;
         if (businessId) {
           return this.campaignsService.getStats(undefined, businessId);
         }
@@ -191,7 +191,7 @@ export class CampaignsController {
             user.businessId,
           );
         }
-        const businessId = user.businessId || (req.query as any).businessId;
+        const businessId = user.businessId || query?.businessId;
         if (businessId) {
           return this.campaignsService.findAll(
             undefined,
@@ -227,7 +227,7 @@ export class CampaignsController {
         if (user.role === UserRole.OWNER) {
           return this.campaignsService.getTemplates(undefined, user.businessId);
         }
-        const businessId = user.businessId || (req.query as any).businessId;
+        const businessId = user.businessId || query?.businessId;
         if (businessId) {
           return this.campaignsService.getTemplates(undefined, businessId);
         }
@@ -394,7 +394,7 @@ export class CampaignsController {
         if (user.role === UserRole.OWNER) {
           return this.campaignsService.getRewards(undefined, user.businessId);
         }
-        const businessId = user.businessId || (req.query as any).businessId;
+        const businessId = user.businessId || query?.businessId;
         if (businessId) {
           return this.campaignsService.getRewards(undefined, businessId);
         }

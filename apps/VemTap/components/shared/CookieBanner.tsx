@@ -23,7 +23,7 @@ export default function CookieBanner() {
 
     useEffect(() => {
         const consent = localStorage.getItem('vemtap-cookie-consent');
-        if (!consent) {
+        if (consent === null) {
             setIsVisible(true);
         }
     }, []);
@@ -62,9 +62,9 @@ export default function CookieBanner() {
                         exit={{ y: 100, opacity: 0 }}
                         className="w-full max-w-4xl bg-white rounded-2xl shadow-[0_30px_100px_rgba(0,0,0,0.15)] border border-gray-100 overflow-hidden relative"
                     >
-                        {/* Close Button */}
+                        {/* Close Button - Now saves essential consent to prevent reappearing */}
                         <button
-                            onClick={() => setIsVisible(false)}
+                            onClick={handleAcceptEssential}
                             className="absolute top-6 right-6 text-gray-300 hover:text-gray-900 transition-colors"
                         >
                             <span className="material-icons-round">close</span>
