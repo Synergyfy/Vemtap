@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Building2 } from 'lucide-react';
+import { presets } from './presets';
 
 type PreviewField = {
     id?: string;
@@ -24,6 +26,8 @@ type PreviewForm = {
     branchName?: string;
     redirectLabel?: string;
     redirectUrl?: string;
+    successTitle?: string;
+    successMessage?: string;
     fields: PreviewField[];
 };
 
@@ -31,10 +35,14 @@ interface StepBusinessFormProps {
     form: PreviewForm;
     onComplete: (answers: Record<string, any>) => void;
     onSkip: () => void;
+    /** When true, hides the internal branding header, title, and description (used when the parent page renders its own header) */
+    hideHeader?: boolean;
+    brandColor?: string;
 }
 
-export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComplete, onSkip }) => {
+export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComplete, onSkip, hideHeader = false, brandColor = '#2563eb' }) => {
     const [answers, setAnswers] = useState<Record<string, any>>({});
+    const [isSubmitted, setIsSubmitted] = useState(false);
 
     const normalizedFields = useMemo(
         () =>
@@ -68,37 +76,67 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="w-full max-w-[420px] bg-white rounded-tl-[3.5rem] rounded-br-[3.5rem] p-8 pb-10 shadow-xl shadow-primary/10 border border-primary/10 relative overflow-hidden"
+            className={hideHeader ? '' : presets.card}
         >
-            <div className="flex items-center justify-between mb-6">
-                <span className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">BUSINESS FORM</span>
-                <button
-                    onClick={onSkip}
-                    className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors"
-                >
-                    Skip
-                </button>
-            </div>
-
-            <div className="mb-6 flex items-center justify-center">
-                <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-primary/5 border border-primary/10">
-                    <div className="size-9 rounded-full bg-white border border-primary/20 overflow-hidden flex items-center justify-center">
-                        {form.businessLogo ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={form.businessLogo} alt={form.businessName || form.title} className="w-full h-full object-cover" />
-                        ) : (
-                            <span className="text-sm font-black text-primary">{(form.businessName || form.title).charAt(0)}</span>
-                        )}
+            {isSubmitted ? (
+                <div className="py-12 flex flex-col items-center text-center">
+                    <div className="size-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                        <span className="material-symbols-outlined text-4xl">check_circle</span>
                     </div>
-                    <div className="min-w-0">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-primary/70">Business</p>
-                        <p className="text-sm font-bold text-slate-900 truncate">{form.businessName || 'Business'}</p>
-                    </div>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight">{form.successTitle || "Form Submitted"}</h2>
+                    <p className="text-sm text-slate-500 mt-4 mb-8 leading-relaxed max-w-[240px] mx-auto">
+                        {form.successMessage || "Thank you for sharing your experience with us."}
+                    </p>
+                    <button
+                        onClick={onSkip}
+                        className={presets.button}
+                        style={{ backgroundColor: brandColor, boxShadow: `0 10px 20px -5px ${brandColor}44` }}
+                    >
+                        Close
+                    </button>
                 </div>
-            </div>
+            ) : (
+                <>
+                    {!hideHeader && (
+                <>
+                    <div className="flex items-center justify-between mb-6">
+                        <span className={presets.tag} style={{ color: brandColor }}>BUSINESS FORM</span>
+                        <button
+                            onClick={onSkip}
+                            className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors"
+                        >
+                            Skip
+                        </button>
+                    </div>
 
-            <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-2 text-center">{form.title}</h2>
-            {form.description ? <p className="text-sm text-slate-500 mb-6 text-center">{form.description}</p> : null}
+                    <div 
+                        className="mb-4 rounded-2xl border text-white p-2.5 flex items-center justify-between gap-2 overflow-hidden"
+                        style={{ backgroundColor: brandColor, borderColor: `${brandColor}dd` }}
+                    >
+                        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                            <div className="size-8 rounded-full bg-white border border-white/30 overflow-hidden flex items-center justify-center shrink-0">
+                                {form.businessLogo ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={form.businessLogo} alt={form.businessName || form.title} className="w-full h-full object-cover" />
+                                ) : (
+                                    <Building2 className="size-4 text-slate-900" />
+                                )}
+                            </div>
+                            <div className="min-w-0 overflow-hidden">
+                                <p className="text-[8px] font-bold uppercase tracking-wider text-white/60">Business</p>
+                                <p className="text-xs font-bold text-white truncate">{form.businessName || 'Business'}</p>
+                            </div>
+                        </div>
+                        <div className="text-right shrink-0 max-w-[40%]">
+                            <p className="text-[8px] font-bold uppercase tracking-wider text-white/60">Branch</p>
+                            <p className="text-[11px] font-semibold text-white truncate">{form.branchName || 'Main Branch'}</p>
+                        </div>
+                    </div>
+
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight mb-4 leading-tight">{form.title}</h2>
+                    {form.description ? <p className="text-sm text-slate-500 mb-4">{form.description}</p> : null}
+                </>
+            )}
             {form.instructions ? (
                 <div className="mb-6 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
                     {form.instructions}
@@ -118,9 +156,43 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                                 type={field.type === 'text' ? 'text' : field.type}
                                 value={answers[field.key] || ''}
                                 onChange={(e) => updateAnswer(field.key, e.target.value)}
-                                className="w-full bg-primary/5 border-0 focus:ring-2 focus:ring-primary rounded-xl py-3.5 px-4 text-slate-900 placeholder:text-slate-400 transition-all"
+                                className="w-full h-12 p-3 rounded-xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-4 focus:ring-primary/10 outline-none text-sm font-medium transition-all"
                                 placeholder={`Enter ${field.label.toLowerCase()}`}
                             />
+                        )}
+
+                        {field.type === 'date-no-year' && (
+                            <div className="flex gap-2">
+                                <select
+                                    value={(answers[field.key] || '').split('-')[0] || ''}
+                                    onChange={(e) => {
+                                        const day = (answers[field.key] || '').split('-')[1] || '';
+                                        updateAnswer(field.key, e.target.value ? `${e.target.value}-${day}` : '');
+                                    }}
+                                    className="flex-1 h-12 px-3 rounded-xl border border-gray-100 bg-gray-50 text-sm font-medium outline-none focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer"
+                                >
+                                    <option value="">Month</option>
+                                    {[
+                                        'January', 'February', 'March', 'April', 'May', 'June',
+                                        'July', 'August', 'September', 'October', 'November', 'December'
+                                    ].map((m, i) => (
+                                        <option key={m} value={String(i + 1).padStart(2, '0')}>{m}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    value={(answers[field.key] || '').split('-')[1] || ''}
+                                    onChange={(e) => {
+                                        const month = (answers[field.key] || '').split('-')[0] || '';
+                                        updateAnswer(field.key, month ? `${month}-${e.target.value}` : '');
+                                    }}
+                                    className="flex-1 h-12 px-3 rounded-xl border border-gray-100 bg-gray-50 text-sm font-medium outline-none focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer"
+                                >
+                                    <option value="">Day</option>
+                                    {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                                        <option key={d} value={String(d).padStart(2, '0')}>{d}</option>
+                                    ))}
+                                </select>
+                            </div>
                         )}
 
                         {field.type === 'textarea' && (
@@ -140,9 +212,10 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                                         onClick={() => updateAnswer(field.key, option)}
                                         className={`w-full p-4 rounded-xl border-0 text-left text-sm font-semibold transition-all ${
                                             answers[field.key] === option
-                                                ? 'bg-primary/10 text-primary'
-                                                : 'bg-primary/5 text-slate-700 hover:bg-primary/10'
+                                                ? 'bg-white shadow-sm'
+                                                : 'border-gray-100 bg-gray-50 text-slate-700 hover:border-gray-200'
                                         }`}
+                                        style={answers[field.key] === option ? { borderColor: brandColor, color: brandColor } : {}}
                                     >
                                         {option}
                                     </button>
@@ -167,9 +240,10 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                                             }}
                                             className={`w-full p-4 rounded-xl border-0 text-left text-sm font-semibold transition-all ${
                                                 isChecked
-                                                    ? 'bg-primary/10 text-primary'
-                                                    : 'bg-primary/5 text-slate-700 hover:bg-primary/10'
+                                                    ? 'bg-white shadow-sm'
+                                                    : 'border-gray-100 bg-gray-50 text-slate-700 hover:border-gray-200'
                                             }`}
+                                            style={isChecked ? { borderColor: brandColor, color: brandColor } : {}}
                                         >
                                             {option}
                                         </button>
@@ -182,9 +256,13 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
             </div>
 
             <button
-                onClick={() => onComplete(answers)}
+                onClick={() => {
+                    setIsSubmitted(true);
+                    onComplete(answers);
+                }}
                 disabled={requiredMissing}
-                className="mt-8 w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-full shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`${presets.button} mt-8 disabled:opacity-50 disabled:cursor-not-allowed`}
+                style={!requiredMissing ? { backgroundColor: brandColor, boxShadow: `0 10px 20px -5px ${brandColor}44` } : {}}
             >
                 Submit Form
             </button>
@@ -194,6 +272,8 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                     After submit, customers continue to {form.redirectLabel || form.redirectUrl}.
                 </p>
             ) : null}
+                </>
+            )}
         </motion.div>
     );
 };

@@ -15,6 +15,7 @@ import { MailService } from '../mail/mail.service';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
 import { DevicesService } from '../devices/devices.service';
+import { Reward } from '../campaigns/entities/reward.entity';
 
 @Injectable()
 export class BusinessesService {
@@ -27,6 +28,8 @@ export class BusinessesService {
     private branchRepository: Repository<Branch>,
     @InjectRepository(Visit)
     private visitRepository: Repository<Visit>,
+    @InjectRepository(Reward)
+    private rewardRepository: Repository<Reward>,
     private readonly mailService: MailService,
     private readonly devicesService: DevicesService,
   ) {}
@@ -128,15 +131,63 @@ export class BusinessesService {
     return business;
   }
 
-  async findByCode(uniqueCode: string): Promise<Business> {
+  async findByCode(uniqueCode: string): Promise<any> {
     const business = await this.businessesRepository.findOne({
       where: { uniqueCode, status: BusinessStatus.ACTIVE },
-      relations: ['branches', 'category', 'subcategory'],
+      relations: ['branches', 'category', 'subcategory', 'owner'],
     });
     if (!business) {
       throw new NotFoundException('Business not found');
     }
-    return business;
+
+    const { owner, ...businessData } = business;
+
+    // Filter owner sensitive data
+    let safeOwner: any = null;
+    if (owner) {
+      safeOwner = {
+        id: owner.id,
+        firstName: owner.firstName,
+        lastName: owner.lastName,
+        email: owner.email,
+        phone: owner.phone,
+        role: owner.role,
+        jobTitle: owner.jobTitle,
+        status: owner.status,
+      };
+    }
+
+    // Fetch active rewards across all branches and business level
+    let activeRewards: Reward[] = [];
+    if (businessData.branches && businessData.branches.length > 0) {
+      const branchIds = businessData.branches.map((b) => b.id);
+      
+      const [branchRewards, businessRewards] = await Promise.all([
+        this.rewardRepository.find({
+          where: { branchId: In(branchIds), isActive: true },
+        }),
+        this.rewardRepository.find({
+          where: { businessId: business.id, isActive: true },
+        })
+      ]);
+      
+      activeRewards = [...branchRewards, ...businessRewards];
+      
+      // Remove duplicates if any happen to overlap
+      const uniqueMap = new Map();
+      activeRewards.forEach(r => uniqueMap.set(r.id, r));
+      activeRewards = Array.from(uniqueMap.values());
+    } else {
+      activeRewards = await this.rewardRepository.find({
+        where: { businessId: business.id, isActive: true },
+      });
+    }
+
+    return {
+      ...businessData,
+      owner: safeOwner,
+      rewards: activeRewards,
+    };
   }
 
   async update(

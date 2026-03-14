@@ -242,13 +242,15 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
 
         setIsSending(true);
         try {
-            await sendMessage.mutateAsync({
+            const response = await sendMessage.mutateAsync({
                 channel: channelApiMap[channel],
                 audienceType,
                 templateId: selectedTemplate || undefined,
                 content: selectedTemplate ? contentWithFormLink || undefined : contentWithFormLink,
             });
-            toast.success('Message launched successfully!');
+
+            const costInfo = response.totalCost ? ` (Cost: ${response.totalCost} units)` : '';
+            toast.success(`Message launched successfully!${costInfo}`);
             router.push('/dashboard/messaging');
         } catch (error: any) {
             toast.error(error.message || 'Failed to send message');
@@ -414,15 +416,24 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                                 value={customContent}
                                 onChange={(e) => setCustomContent(e.target.value)}
                             />
-                            <div className="absolute bottom-4 left-4 flex gap-2 flex-wrap">
-                                {['{Name}', '{BusinessName}', '{Points}'].map(variable => (
+                            <div className="absolute bottom-4 left-4 flex gap-2 flex-wrap max-w-[80%]">
+                                {[
+                                    { label: 'Name', value: '{Name}' },
+                                    { label: 'First Name', value: '{FirstName}' },
+                                    { label: 'Last Name', value: '{LastName}' },
+                                    { label: 'Business', value: '{BusinessName}' },
+                                    { label: 'Points', value: '{Points}' },
+                                    { label: 'Email', value: '{Email}' },
+                                    { label: 'Phone', value: '{Phone}' },
+                                    { label: 'Link', value: '{Link}' },
+                                ].map(variable => (
                                     <button
-                                        key={variable}
+                                        key={variable.value}
                                         type="button"
-                                        onClick={() => setCustomContent(prev => prev + variable)}
-                                        className="px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-black hover:bg-primary-hover transition-all shadow-md active:scale-95"
+                                        onClick={() => setCustomContent(prev => prev + variable.value)}
+                                        className="px-2 py-1 bg-white border border-gray-200 text-gray-700 rounded-lg text-[10px] font-bold hover:bg-gray-50 hover:border-primary/30 transition-all shadow-sm active:scale-95"
                                     >
-                                        + {variable.replace(/{|}/g, '')}
+                                        + {variable.label}
                                     </button>
                                 ))}
                             </div>
