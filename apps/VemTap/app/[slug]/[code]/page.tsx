@@ -84,7 +84,7 @@ export default function DynamicTapJourneyPage() {
     useEffect(() => {
         if (isAuthenticated && access_token) {
             try {
-                const decoded: any = jwtDecode(access_token);
+                const decoded = jwtDecode<{ exp: number }>(access_token);
                 const currentTime = Date.now() / 1000;
                 if (decoded.exp < currentTime) {
                     console.warn('[TAP JOURNEY] Session expired, logging out...');
@@ -223,7 +223,7 @@ export default function DynamicTapJourneyPage() {
     const handleCredentialResponse = (response: any) => {
         try {
             setIsSyncingReal(true);
-            const decoded: any = jwtDecode(response.credential);
+            const decoded = jwtDecode<{ name: string; email: string }>(response.credential);
 
             const identity = {
                 name: decoded.name,

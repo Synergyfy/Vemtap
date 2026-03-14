@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import type { BusinessForm } from '@/services/business-forms/types';
 
 const Toggle = ({ active, onChange }: { active: boolean; onChange: (val: boolean) => void }) => (
     <button

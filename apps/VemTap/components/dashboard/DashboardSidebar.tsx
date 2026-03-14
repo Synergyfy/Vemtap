@@ -14,7 +14,7 @@ import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Nfc, Gift, BarChart, Users2, Settings,
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
-    LucideIcon
+    MessageCircle, LucideIcon
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
@@ -39,6 +39,7 @@ interface MenuItem {
     feature?: string;
     featureName?: string;
     submenu?: MenuItem[];
+    external?: boolean;
     onClick?: () => void;
 }
 
@@ -181,58 +182,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ]
         },
         {
-            id: 'messaging-center',
-            label: 'Messaging Center',
-            icon: MessageSquare,
-            roles: ['owner', 'manager'],
-            feature: 'messages',
-            featureName: 'Messaging Center',
-            submenu: [
-                { label: 'Overview', href: '/dashboard/messaging' },
-                {
-                    id: 'whatsapp',
-                    label: 'WhatsApp Channel',
-                    submenu: [
-                        { label: 'Overview', href: '/dashboard/messaging/whatsapp' },
-                        { label: 'Send Message', href: '/dashboard/messaging/whatsapp/send' },
-                        { label: 'Templates', href: '/dashboard/messaging/whatsapp/templates' },
-                        { label: 'Top up', href: '/dashboard/messaging/whatsapp/topup' },
-                        { label: 'Settings', href: '/dashboard/messaging/whatsapp/settings' },
-                        {
-                            id: 'whatsapp-automations',
-                            label: 'Automation',
-                            submenu: [
-                                { label: 'Overview', href: '/dashboard/automations' },
-                                { label: 'Active Automations', href: '/dashboard/automations/active' },
-                                { label: 'Automation Logs', href: '/dashboard/automations/logs' },
-                                { label: 'Performance Overview', href: '/dashboard/automations/performance' },
-                            ]
-                        }
-                    ]
-                },
-                {
-                    id: 'sms',
-                    label: 'SMS Channel',
-                    submenu: [
-                        { label: 'Overview', href: '/dashboard/messaging/sms' },
-                        { label: 'Send Message', href: '/dashboard/messaging/sms/send' },
-                        { label: 'Templates', href: '/dashboard/messaging/sms/templates' },
-                        { label: 'Top up', href: '/dashboard/messaging/sms/topup' },
-                        { label: 'Settings', href: '/dashboard/messaging/sms/settings' },
-                    ]
-                },
-                {
-                    id: 'email',
-                    label: 'Email Channel',
-                    submenu: [
-                        { label: 'Overview', href: '/dashboard/messaging/email' },
-                        { label: 'Send Message', href: '/dashboard/messaging/email/send' },
-                        { label: 'Templates', href: '/dashboard/messaging/email/templates' },
-                        { label: 'Settings', href: '/dashboard/messaging/email/settings' },
-                    ]
-                },
-                { label: 'Message History', href: '/dashboard/messaging/history' },
-            ].map(item => ({ ...item, onClick: () => setIsMobileOpen(false) }))
+            id: 'live-chat',
+            label: 'Live Messaging',
+            icon: MessageCircle,
+            href: '/dashboard/messaging/chat',
+            roles: ['owner', 'manager', 'staff'],
         },
         {
             id: 'loyalty',
@@ -301,6 +255,16 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             submenu: [
                 { label: 'Profile', href: '/dashboard/settings/profile' },
                 { label: 'Business Locations', href: '/dashboard/settings/branches' },
+                {
+                    id: 'messaging-hub',
+                    label: 'Messaging Channels',
+                    submenu: [
+                        { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp' },
+                        { label: 'SMS', href: '/dashboard/messaging/sms' },
+                        { label: 'Email', href: '/dashboard/messaging/email' },
+                        { label: 'History', href: '/dashboard/messaging/history' },
+                    ]
+                },
                 {
                     id: 'engagement',
                     label: 'Engagement',
@@ -552,7 +516,9 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                     </>
                                 ) : (
                                     <Link
-                                        href={withBranch(item.href!)}
+                                        href={item.external ? item.href! : withBranch(item.href!)}
+                                        target={item.external ? '_blank' : undefined}
+                                        rel={item.external ? 'noopener noreferrer' : undefined}
                                         onClick={(e) => {
                                             if (item.feature && isFeatureLocked(item.feature)) {
                                                 e.preventDefault();
