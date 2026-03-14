@@ -81,23 +81,27 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
                         />
                     );
                 })
-            ) : hasSelectedForm ? (
-                <EngagementTile
-                    icon="assignment"
-                    label={selectedFormTitle || 'Open Form'}
-                    description={`Fill ${selectedFormType || 'selected'} form`}
-                    color="bg-amber-50 text-amber-600"
-                    onClick={() => onAction('feedback')}
-                />
-            ) : settings.showReview && hasReview && (
-                <EngagementTile
-                    icon="star"
-                    label="Leave a Review"
-                    description="Share your experience on Google"
-                    color="bg-amber-50 text-amber-500"
-                    onClick={() => onAction('review')}
-                />
-            )}
+            ) : (
+                <>
+                    {hasSelectedForm ? (
+                        <EngagementTile
+                            icon="assignment"
+                            label={selectedFormTitle || 'Open Form'}
+                            description={`Fill ${selectedFormType || 'selected'} form`}
+                            color="bg-amber-50 text-amber-600"
+                            onClick={() => onAction('feedback')}
+                        />
+                    ) : (
+                        <>
+                            {settings.showReview && hasReview && (
+                                <EngagementTile
+                                    icon="star"
+                                    label="Leave a Review"
+                                    description="Share your experience on Google"
+                                    color="bg-amber-50 text-amber-500"
+                                    onClick={() => onAction('review')}
+                                />
+                            )}
 
                             {settings.showSocial && hasSocial && (
                                 <EngagementTile
