@@ -49,6 +49,16 @@ export interface AutomatedReplyConfig {
     faqKeywords: Array<{ keywords: string[]; response: string; enabled: boolean }>;
 }
 
+export interface ChatCategory {
+    id: string;
+    name: string;
+    routeTo: string;
+    urgency: 'Low' | 'Medium' | 'High';
+    teamAccess: string[];
+    icon: string;
+    slug: string;
+}
+
 export interface ChatTemplate {
     id: string;
     name: string;
@@ -67,17 +77,21 @@ interface ChatState {
     searchQuery: string;
     automatedReplies: AutomatedReplyConfig;
     templates: ChatTemplate[];
+    categories: ChatCategory[];
 
     // Actions
     setActiveConversation: (id: string) => void;
     setSearchQuery: (query: string) => void;
-    sendMessage: (conversationId: string, content: string, type?: ChatMessageType, direction?: 'inbound' | 'outbound') => void;
+    sendMessage: (conversationId: string, content: string, type?: ChatMessageType, direction?: 'inbound' | 'outbound', metadata?: Partial<ChatMessage>) => void;
     markAsRead: (conversationId: string) => void;
     setTyping: (conversationId: string, isTyping: boolean) => void;
     updateAutomatedReplies: (updates: Partial<AutomatedReplyConfig>) => void;
     updateTemplate: (id: string, updates: Partial<ChatTemplate>) => void;
     addTemplate: (template: ChatTemplate) => void;
     deleteTemplate: (id: string) => void;
+    updateCategory: (id: string, updates: Partial<ChatCategory>) => void;
+    addCategory: (category: ChatCategory) => void;
+    deleteCategory: (id: string) => void;
 }
 
 // ─── Mock Data ───────────────────────────────────────────────────────────────
@@ -154,6 +168,12 @@ const mockTemplates: ChatTemplate[] = [
     { id: 'tmpl5', name: 'Appointment Reminder', content: 'Reminder: Your appointment on {{Date}} is scheduled for {{Time}}. See you there!', category: 'Booking', placeholders: ['Date', 'Time'], enabled: true, lastEditedAt: now - 7 * 24 * hour },
 ];
 
+const mockCategories: ChatCategory[] = [
+    { id: 'cat1', name: 'Technical Support', slug: 'tech-support', routeTo: 'Engineering Queue', urgency: 'High', teamAccess: ['User 1', 'User 2', 'User 3'], icon: 'support_agent' },
+    { id: 'cat2', name: 'Billing & Payments', slug: 'billing-issues', routeTo: 'Finance Queue', urgency: 'Medium', teamAccess: ['User 4', 'User 5'], icon: 'payments' },
+    { id: 'cat3', name: 'Sales Inquiries', slug: 'sales-inquiry', routeTo: 'Sales General', urgency: 'Low', teamAccess: ['User 6'], icon: 'sell' },
+];
+
 // ─── Auto-reply messages (customer simulation) ──────────────────────────────
 
 const autoReplyMessages = [
@@ -177,6 +197,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     searchQuery: '',
     automatedReplies: mockAutomatedReplies,
     templates: mockTemplates,
+    categories: mockCategories,
 
     setActiveConversation: (id) => {
         set({ activeConversationId: id });
@@ -186,7 +207,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
     setSearchQuery: (query) => set({ searchQuery: query }),
 
-    sendMessage: (conversationId, content, type = 'text', direction = 'outbound') => {
+    sendMessage: (conversationId, content, type = 'text', direction = 'outbound', metadata = {}) => {
         const msgId = `msg_${++messageCounter}`;
         const newMsg: ChatMessage = {
             id: msgId,
@@ -196,13 +217,14 @@ export const useChatStore = create<ChatState>()((set, get) => ({
             content,
             timestamp: Date.now(),
             status: 'sent',
+            ...metadata
         };
 
         set((state) => {
             const convMsgs = [...(state.messages[conversationId] || []), newMsg];
             const updatedConvs = state.conversations.map((c) =>
                 c.id === conversationId
-                    ? { ...c, lastMessage: content, lastMessageTime: Date.now() }
+                    ? { ...c, lastMessage: type === 'text' ? content : `Sent a ${type}`, lastMessageTime: Date.now() }
                     : c
             );
 
@@ -314,5 +336,21 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
     deleteTemplate: (id) => {
         set((state) => ({ templates: state.templates.filter((t) => t.id !== id) }));
+    },
+
+    updateCategory: (id, updates) => {
+        set((state) => ({
+            categories: state.categories.map((c) =>
+                c.id === id ? { ...c, ...updates } : c
+            ),
+        }));
+    },
+
+    addCategory: (category) => {
+        set((state) => ({ categories: [...state.categories, category] }));
+    },
+
+    deleteCategory: (id) => {
+        set((state) => ({ categories: state.categories.filter((c) => c.id !== id) }));
     },
 }));

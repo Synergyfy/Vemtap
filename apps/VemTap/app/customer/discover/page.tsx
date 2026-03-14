@@ -11,6 +11,7 @@ import {
     ArrowLeft
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useChatStore } from '@/store/chatStore';
 
 const businesses = [
     { 
@@ -121,7 +122,17 @@ export default function BusinessDiscoveryPage() {
 
                         <div className="p-4 bg-slate-50/50 border-t border-slate-50">
                             <button 
-                                onClick={() => router.push(`/support-chat/${biz.id}`)}
+                                onClick={() => {
+                                    const { setIsOpen, setIsVisible, addMessage, history } = useChatStore.getState();
+                                    if (history.length <= 1) { // Only initial greeting
+                                        addMessage({
+                                            role: 'assistant',
+                                            content: `Hi! 👋 You're interested in ${biz.name}? I can help you with that. What would you like to know?`
+                                        });
+                                    }
+                                    setIsVisible(true);
+                                    setIsOpen(true);
+                                }}
                                 className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-black text-slate-700 group-hover:bg-vemtap group-hover:text-white group-hover:border-vemtap transition-all shadow-sm"
                             >
                                 <MessageCircle size={18} />
