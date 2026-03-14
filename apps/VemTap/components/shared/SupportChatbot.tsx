@@ -19,8 +19,7 @@ interface SupportChatbotProps {
 
 export default function SupportChatbot({ onRequestConsultation }: SupportChatbotProps) {
     const pathname = usePathname();
-    const { history, addMessage, clearHistory } = useChatStore();
-    const [isOpen, setIsOpen] = useState(false);
+    const { history, addMessage, clearHistory, isOpen, setIsOpen, isVisible, setIsVisible } = useChatStore();
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -176,31 +175,46 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
         <div className="font-sans">
             {/* Floating Chat Button */}
             <AnimatePresence>
-                {!isOpen && (
-                    <motion.button
+                {!isOpen && isVisible && (
+                    <motion.div
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        onClick={() => setIsOpen(true)}
-                        className="fixed bottom-24 lg:bottom-6 right-6 z-50 group"
-                        aria-label="Open support chat"
+                        className="fixed bottom-24 lg:bottom-6 right-6 z-50 group flex flex-col items-end gap-2"
                     >
-                        <div className="relative">
-                            <div className="absolute inset-0 rounded-full bg-blue-400 opacity-75 animate-pulse blur-md"></div>
-                            <div className="relative w-16 h-16 rounded-full bg-linear-to-br from-blue-600 to-blue-500 shadow-2xl flex items-center justify-center transform transition-all duration-300 group-hover:scale-110 group-active:scale-95">
-                                <MessageCircle className="text-white" size={28} />
-                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center border-2 border-white">
-                                    <span className="text-white text-xs font-bold">1</span>
+                        {/* Remove Button (Small X above the bubble) */}
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsVisible(false);
+                            }}
+                            className="bg-white/90 hover:bg-white text-gray-500 p-1 rounded-full shadow-md border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Remove Support Chat"
+                        >
+                            <X size={14} />
+                        </button>
+
+                        <button
+                            onClick={() => setIsOpen(true)}
+                            aria-label="Open support chat"
+                        >
+                            <div className="relative">
+                                <div className="absolute inset-0 rounded-full bg-blue-400 opacity-75 animate-pulse blur-md"></div>
+                                <div className="relative w-16 h-16 rounded-full bg-linear-to-br from-blue-600 to-blue-500 shadow-2xl flex items-center justify-center transform transition-all duration-300 group-hover:scale-110 group-active:scale-95">
+                                    <MessageCircle className="text-white" size={28} />
+                                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center border-2 border-white">
+                                        <span className="text-white text-xs font-bold">1</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </motion.button>
+                        </button>
+                    </motion.div>
                 )}
             </AnimatePresence>
 
             {/* Chat Window */}
             <AnimatePresence>
-                {isOpen && (
+                {isOpen && isVisible && (
                     <motion.div
                         initial={{ opacity: 0, y: 50, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
