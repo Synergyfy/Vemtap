@@ -111,7 +111,8 @@ export class CampaignsController {
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get all campaigns' })
   @ApiQuery({ name: 'status', enum: CampaignStatus, required: false })
-  @ApiQuery({ name: 'branchId', required: true })
+  @ApiQuery({ name: 'branchId', required: false })
+  @ApiQuery({ name: 'allBranches', required: false, type: Boolean })
   @ApiResponse({
     status: 200,
     description: 'List of campaigns',
@@ -122,6 +123,20 @@ export class CampaignsController {
     @Query('status') status?: CampaignStatus,
     @Query() query?: BranchQueryDto,
   ) {
+    const user = req.user;
+
+    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
+      if (query?.allBranches || !query?.branchId) {
+        if (user.role === UserRole.OWNER) {
+          return this.campaignsService.findAll(undefined, status, user.businessId);
+        }
+        const businessId = user.businessId || query?.businessId;
+        if (businessId) {
+          return this.campaignsService.findAll(undefined, status, businessId);
+        }
+      }
+    }
+
     const branchId = await this.getBranchId(req, query?.branchId);
     return this.campaignsService.findAll(branchId, status);
   }
@@ -129,8 +144,24 @@ export class CampaignsController {
   @Get('stats')
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get campaign dashboard statistics' })
+  @ApiQuery({ name: 'branchId', required: false })
+  @ApiQuery({ name: 'allBranches', required: false, type: Boolean })
   @ApiResponse({ status: 200, description: 'Dashboard statistics cards' })
   async getStats(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
+    const user = req.user;
+
+    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
+      if (query.allBranches || !query.branchId) {
+        if (user.role === UserRole.OWNER) {
+          return this.campaignsService.getStats(undefined, user.businessId);
+        }
+        const businessId = user.businessId || query?.businessId;
+        if (businessId) {
+          return this.campaignsService.getStats(undefined, businessId);
+        }
+      }
+    }
+
     const branchId = await this.getBranchId(req, query.branchId);
     return this.campaignsService.getStats(branchId);
   }
@@ -138,6 +169,8 @@ export class CampaignsController {
   @Get('scheduled')
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get scheduled campaigns' })
+  @ApiQuery({ name: 'branchId', required: false })
+  @ApiQuery({ name: 'allBranches', required: false, type: Boolean })
   @ApiResponse({
     status: 200,
     description: 'List of scheduled campaigns',
@@ -147,6 +180,28 @@ export class CampaignsController {
     @Req() req: { user: User },
     @Query() query: BranchQueryDto,
   ) {
+    const user = req.user;
+
+    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
+      if (query.allBranches || !query.branchId) {
+        if (user.role === UserRole.OWNER) {
+          return this.campaignsService.findAll(
+            undefined,
+            CampaignStatus.SCHEDULED,
+            user.businessId,
+          );
+        }
+        const businessId = user.businessId || query?.businessId;
+        if (businessId) {
+          return this.campaignsService.findAll(
+            undefined,
+            CampaignStatus.SCHEDULED,
+            businessId,
+          );
+        }
+      }
+    }
+
     const branchId = await this.getBranchId(req, query.branchId);
     return this.campaignsService.findAll(branchId, CampaignStatus.SCHEDULED);
   }
@@ -154,6 +209,8 @@ export class CampaignsController {
   @Get('templates')
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get campaign templates' })
+  @ApiQuery({ name: 'branchId', required: false })
+  @ApiQuery({ name: 'allBranches', required: false, type: Boolean })
   @ApiResponse({
     status: 200,
     description: 'List of campaign templates',
@@ -163,6 +220,20 @@ export class CampaignsController {
     @Req() req: { user: User },
     @Query() query: BranchQueryDto,
   ) {
+    const user = req.user;
+
+    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
+      if (query.allBranches || !query.branchId) {
+        if (user.role === UserRole.OWNER) {
+          return this.campaignsService.getTemplates(undefined, user.businessId);
+        }
+        const businessId = user.businessId || query?.businessId;
+        if (businessId) {
+          return this.campaignsService.getTemplates(undefined, businessId);
+        }
+      }
+    }
+
     const branchId = await this.getBranchId(req, query.branchId);
     return this.campaignsService.getTemplates(branchId);
   }
@@ -313,7 +384,41 @@ export class CampaignsController {
     description: 'List of rewards',
     type: [Reward],
   })
+  @ApiQuery({ name: 'branchId', required: false })
+  @ApiQuery({ name: 'allBranches', required: false, type: Boolean })
   async getRewards(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
+    const user = req.user;
+
+    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
+      if (query.allBranches || !query.branchId) {
+        if (user.role === UserRole.OWNER) {
+          return this.campaignsService.getRewards(undefined, user.businessId);
+        }
+        const businessId = user.businessId || query?.businessId;
+        if (businessId) {
+          return this.campaignsService.getRewards(undefined, businessId);
+        }
+        if (!query.branchId) {
+          throw new BadRequestException(
+            'Either branchId or businessId context must be available',
+          );
+        }
+      }
+
+      if (query.branchId) {
+        if (user.role === UserRole.OWNER) {
+          const hasAccess = await this.campaignsService.checkBranchAccess(
+            user,
+            query.branchId,
+          );
+          if (!hasAccess)
+            throw new BadRequestException('Access denied to this branch');
+        }
+        return this.campaignsService.getRewards(query.branchId);
+      }
+    }
+
+    // Default for Manager/Staff or if branchId provided for Admin/Owner handled above
     const branchId = await this.getBranchId(req, query.branchId);
     return this.campaignsService.getRewards(branchId);
   }

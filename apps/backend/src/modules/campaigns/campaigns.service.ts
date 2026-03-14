@@ -73,10 +73,14 @@ export class CampaignsService {
   }
 
   async findAll(
-    branchId: string,
+    branchId?: string,
     status?: CampaignStatus,
+    businessId?: string,
   ): Promise<Campaign[]> {
-    const where: any = { branchId };
+    const where: any = {};
+    if (branchId) where.branchId = branchId;
+    else if (businessId) where.businessId = businessId;
+
     if (status) {
       where.status = status;
     }
@@ -109,8 +113,8 @@ export class CampaignsService {
     await this.campaignRepository.softDelete(campaign.id);
   }
 
-  async getStats(branchId: string) {
-    const campaigns = await this.findAll(branchId);
+  async getStats(branchId?: string, businessId?: string) {
+    const campaigns = await this.findAll(branchId, undefined, businessId);
 
     const totalSent = campaigns.reduce(
       (acc, c) => acc + (c as any).sent || 0,
@@ -176,9 +180,19 @@ export class CampaignsService {
     return this.templateRepository.save(template);
   }
 
-  async getTemplates(branchId?: string | null): Promise<CampaignTemplate[]> {
+  async getTemplates(
+    branchId?: string | null,
+    businessId?: string,
+  ): Promise<CampaignTemplate[]> {
+    const where: any = [{ branchId: IsNull() }];
+    if (branchId) {
+      where.push({ branchId });
+    } else if (businessId) {
+      where.push({ businessId });
+    }
+
     return this.templateRepository.find({
-      where: [{ branchId: IsNull() }, ...(branchId ? [{ branchId }] : [])],
+      where,
       order: { createdAt: 'ASC' },
     });
   }
@@ -207,19 +221,37 @@ export class CampaignsService {
     return profile;
   }
 
-  async getLoyaltyProfiles(branchId: string): Promise<LoyaltyProfile[]> {
-    return this.profileRepository.find({ where: { branchId } });
+  async getLoyaltyProfiles(
+    branchId?: string,
+    businessId?: string,
+  ): Promise<LoyaltyProfile[]> {
+    const where: any = {};
+    if (branchId) where.branchId = branchId;
+    else if (businessId) where.businessId = businessId;
+
+    return this.profileRepository.find({ where });
   }
 
-  async getLoyaltyRule(branchId: string): Promise<LoyaltyRule> {
-    let rule = await this.ruleRepository.findOne({ where: { branchId } });
+  async getLoyaltyRule(
+    branchId?: string,
+    businessId?: string,
+  ): Promise<LoyaltyRule> {
+    const where: any = {};
+    if (branchId) where.branchId = branchId;
+    else if (businessId) where.businessId = businessId;
+
+    let rule = await this.ruleRepository.findOne({ where });
     if (!rule) {
-      const branch = await this.branchesService.findById(branchId);
-      rule = this.ruleRepository.create({
-        branchId,
-        businessId: branch.businessId,
-      } as any) as unknown as LoyaltyRule;
-      await this.ruleRepository.save(rule);
+      if (branchId) {
+        const branch = await this.branchesService.findById(branchId);
+        rule = this.ruleRepository.create({
+          branchId,
+          businessId: branch.businessId,
+        } as any) as unknown as LoyaltyRule;
+        await this.ruleRepository.save(rule);
+      } else {
+        throw new NotFoundException('Loyalty rule not found');
+      }
     }
     return rule;
   }
@@ -271,8 +303,16 @@ export class CampaignsService {
     return this.rewardRepository.save(reward);
   }
 
-  async getRewards(branchId: string): Promise<Reward[]> {
-    return this.rewardRepository.find({ where: { branchId, isActive: true } });
+  async getRewards(branchId?: string, businessId?: string): Promise<Reward[]> {
+    if (branchId) {
+      return this.rewardRepository.find({ where: { branchId, isActive: true } });
+    }
+    if (businessId) {
+      return this.rewardRepository.find({
+        where: { businessId, isActive: true },
+      });
+    }
+    return [];
   }
 
   async earnPoints(branchId: string, dto: PointEarnRequestDto): Promise<any> {

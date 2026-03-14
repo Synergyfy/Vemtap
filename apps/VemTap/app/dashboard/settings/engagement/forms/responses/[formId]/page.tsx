@@ -138,14 +138,30 @@ export default function SingleFormResponsesPage() {
                 description={`Viewing ${sortedResponses.length} responses for this form.`}
             />
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
                 <Link href="/dashboard/settings/engagement/forms/responses" className="px-4 h-10 rounded-xl bg-white border border-gray-200 text-sm font-bold text-text-secondary flex items-center gap-2">
                     <ArrowLeft size={14} />
                     Back
                 </Link>
-                <span className="px-4 h-10 rounded-xl bg-primary text-white text-sm font-black flex items-center">
-                    {myBusiness?.name || user?.businessName || form.businessName || 'Business'}
-                </span>
+                <div className="flex items-center gap-2 px-3 h-10 rounded-full bg-white border border-gray-200 shadow-sm">
+                    <div className="size-7 rounded-full bg-primary/10 overflow-hidden border border-primary/20 flex items-center justify-center">
+                        {(form.businessLogo || myBusiness?.logoUrl) ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                                src={form.businessLogo || myBusiness?.logoUrl}
+                                alt={form.businessName || myBusiness?.name || user?.businessName || 'Business'}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <span className="text-[10px] font-black text-primary">
+                                {(form.businessName || myBusiness?.name || user?.businessName || 'B').charAt(0)}
+                            </span>
+                        )}
+                    </div>
+                    <span className="text-xs font-black text-text-main">
+                        {myBusiness?.name || user?.businessName || form.businessName || 'Business'}
+                    </span>
+                </div>
             </div>
 
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
