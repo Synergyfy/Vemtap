@@ -21,7 +21,6 @@ import { StepOutcome } from '@/components/visitor/StepOutcome';
 import { StepSurvey } from '@/components/visitor/StepSurvey';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { StepFinalSuccess } from '@/components/visitor/StepFinalSuccess';
-import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { EarnPointsModal } from '@/components/loyalty/EarnPointsModal';
 import { loyaltyApi } from '@/lib/api/loyalty';
@@ -85,7 +84,7 @@ export default function DynamicTapJourneyPage() {
     useEffect(() => {
         if (isAuthenticated && access_token) {
             try {
-                const decoded: any = jwtDecode(access_token);
+                const decoded = jwtDecode<{ exp: number }>(access_token);
                 const currentTime = Date.now() / 1000;
                 if (decoded.exp < currentTime) {
                     console.warn('[TAP JOURNEY] Session expired, logging out...');
@@ -224,7 +223,7 @@ export default function DynamicTapJourneyPage() {
     const handleCredentialResponse = (response: any) => {
         try {
             setIsSyncingReal(true);
-            const decoded: any = jwtDecode(response.credential);
+            const decoded = jwtDecode<{ name: string; email: string }>(response.credential);
 
             const identity = {
                 name: decoded.name,
@@ -530,7 +529,6 @@ export default function DynamicTapJourneyPage() {
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
                         }}
-                        attachedForms={attachedForms}
                         completedFormIds={completedFormIds}
                         customSuccessTitle={customSuccessTitle}
                         customSuccessDescription={customSuccessMessage}
