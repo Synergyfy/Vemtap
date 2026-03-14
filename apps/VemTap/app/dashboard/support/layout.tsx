@@ -1,0 +1,23 @@
+'use client';
+
+import React from 'react';
+import SupportSidebar from '@/components/support/SupportSidebar';
+
+export default function SupportLayout({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="flex h-full bg-[#f8fafb] overflow-hidden">
+            <SupportSidebar />
+            
+            {/* Main Content Area */}
+            <main className="flex-1 overflow-y-auto">
+                <div className="min-h-full">
+                    {children}
+                </div>
+            </main>
+        </div>
+    );
+}

@@ -745,21 +745,18 @@ export default function GetStarted() {
                                             </motion.div>
                                         )}
 
-                                        {subStep === 4 && !isManager && (
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Number of Business Locations</label>
-                                                <p className="text-[11px] text-gray-500 ml-1 mb-2">Include your main location.</p>
                                                 <SanitizedInput
-                                                    label=""
+                                                    label="Number of Business Locations"
                                                     type="number"
                                                     value={formData.branchCount}
                                                     onChange={(v) => setFormData({ ...formData, branchCount: v })}
                                                     icon="store"
                                                     placeholder="e.g. 1"
                                                     required
+                                                    tooltip="Include your main location and all branches."
                                                 />
                                             </motion.div>
-                                        )}
 
 
                                         {subStep === 5 && !isManager && (
