@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Building2 } from 'lucide-react';
 import { presets } from './presets';
 
 type PreviewField = {
@@ -25,6 +26,8 @@ type PreviewForm = {
     branchName?: string;
     redirectLabel?: string;
     redirectUrl?: string;
+    successTitle?: string;
+    successMessage?: string;
     fields: PreviewField[];
 };
 
@@ -34,10 +37,12 @@ interface StepBusinessFormProps {
     onSkip: () => void;
     /** When true, hides the internal branding header, title, and description (used when the parent page renders its own header) */
     hideHeader?: boolean;
+    brandColor?: string;
 }
 
-export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComplete, onSkip, hideHeader = false }) => {
+export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComplete, onSkip, hideHeader = false, brandColor = '#2563eb' }) => {
     const [answers, setAnswers] = useState<Record<string, any>>({});
+    const [isSubmitted, setIsSubmitted] = useState(false);
 
     const normalizedFields = useMemo(
         () =>
@@ -73,10 +78,29 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
             exit={{ opacity: 0, x: -20 }}
             className={hideHeader ? '' : presets.card}
         >
-            {!hideHeader && (
+            {isSubmitted ? (
+                <div className="py-12 flex flex-col items-center text-center">
+                    <div className="size-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                        <span className="material-symbols-outlined text-4xl">check_circle</span>
+                    </div>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight">{form.successTitle || "Form Submitted"}</h2>
+                    <p className="text-sm text-slate-500 mt-4 mb-8 leading-relaxed max-w-[240px] mx-auto">
+                        {form.successMessage || "Thank you for sharing your experience with us."}
+                    </p>
+                    <button
+                        onClick={onSkip}
+                        className={presets.button}
+                        style={{ backgroundColor: brandColor, boxShadow: `0 10px 20px -5px ${brandColor}44` }}
+                    >
+                        Close
+                    </button>
+                </div>
+            ) : (
+                <>
+                    {!hideHeader && (
                 <>
                     <div className="flex items-center justify-between mb-6">
-                        <span className={presets.tag}>BUSINESS FORM</span>
+                        <span className={presets.tag} style={{ color: brandColor }}>BUSINESS FORM</span>
                         <button
                             onClick={onSkip}
                             className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors"
@@ -85,23 +109,26 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                         </button>
                     </div>
 
-                    <div className="mb-4 rounded-2xl border border-[#0b7f74] bg-[#075E54] text-white p-2.5 flex items-center justify-between gap-2 overflow-hidden">
+                    <div 
+                        className="mb-4 rounded-2xl border text-white p-2.5 flex items-center justify-between gap-2 overflow-hidden"
+                        style={{ backgroundColor: brandColor, borderColor: `${brandColor}dd` }}
+                    >
                         <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                             <div className="size-8 rounded-full bg-white border border-white/30 overflow-hidden flex items-center justify-center shrink-0">
                                 {form.businessLogo ? (
                                     // eslint-disable-next-line @next/next/no-img-element
                                     <img src={form.businessLogo} alt={form.businessName || form.title} className="w-full h-full object-cover" />
                                 ) : (
-                                    <span className="text-sm font-black text-slate-900">{(form.businessName || form.title).charAt(0)}</span>
+                                    <Building2 className="size-4 text-slate-900" />
                                 )}
                             </div>
                             <div className="min-w-0 overflow-hidden">
-                                <p className="text-[8px] font-bold uppercase tracking-wider text-emerald-200">Business</p>
+                                <p className="text-[8px] font-bold uppercase tracking-wider text-white/60">Business</p>
                                 <p className="text-xs font-bold text-white truncate">{form.businessName || 'Business'}</p>
                             </div>
                         </div>
                         <div className="text-right shrink-0 max-w-[40%]">
-                            <p className="text-[8px] font-bold uppercase tracking-wider text-emerald-200">Branch</p>
+                            <p className="text-[8px] font-bold uppercase tracking-wider text-white/60">Branch</p>
                             <p className="text-[11px] font-semibold text-white truncate">{form.branchName || 'Main Branch'}</p>
                         </div>
                     </div>
@@ -129,9 +156,43 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                                 type={field.type === 'text' ? 'text' : field.type}
                                 value={answers[field.key] || ''}
                                 onChange={(e) => updateAnswer(field.key, e.target.value)}
-                                className="w-full h-12 p-3 rounded-xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-4 focus:ring-primary/10 outline-none text-sm font-medium"
+                                className="w-full h-12 p-3 rounded-xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-4 focus:ring-primary/10 outline-none text-sm font-medium transition-all"
                                 placeholder={`Enter ${field.label.toLowerCase()}`}
                             />
+                        )}
+
+                        {field.type === 'date-no-year' && (
+                            <div className="flex gap-2">
+                                <select
+                                    value={(answers[field.key] || '').split('-')[0] || ''}
+                                    onChange={(e) => {
+                                        const day = (answers[field.key] || '').split('-')[1] || '';
+                                        updateAnswer(field.key, e.target.value ? `${e.target.value}-${day}` : '');
+                                    }}
+                                    className="flex-1 h-12 px-3 rounded-xl border border-gray-100 bg-gray-50 text-sm font-medium outline-none focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer"
+                                >
+                                    <option value="">Month</option>
+                                    {[
+                                        'January', 'February', 'March', 'April', 'May', 'June',
+                                        'July', 'August', 'September', 'October', 'November', 'December'
+                                    ].map((m, i) => (
+                                        <option key={m} value={String(i + 1).padStart(2, '0')}>{m}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    value={(answers[field.key] || '').split('-')[1] || ''}
+                                    onChange={(e) => {
+                                        const month = (answers[field.key] || '').split('-')[0] || '';
+                                        updateAnswer(field.key, month ? `${month}-${e.target.value}` : '');
+                                    }}
+                                    className="flex-1 h-12 px-3 rounded-xl border border-gray-100 bg-gray-50 text-sm font-medium outline-none focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer"
+                                >
+                                    <option value="">Day</option>
+                                    {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                                        <option key={d} value={String(d).padStart(2, '0')}>{d}</option>
+                                    ))}
+                                </select>
+                            </div>
                         )}
 
                         {field.type === 'textarea' && (
@@ -151,9 +212,10 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                                         onClick={() => updateAnswer(field.key, option)}
                                         className={`w-full p-3 rounded-xl border text-left text-sm font-bold transition-all ${
                                             answers[field.key] === option
-                                                ? 'border-primary bg-primary/5 text-primary'
-                                                : 'border-gray-100 bg-gray-50 text-slate-700 hover:border-primary/30'
+                                                ? 'bg-white shadow-sm'
+                                                : 'border-gray-100 bg-gray-50 text-slate-700 hover:border-gray-200'
                                         }`}
+                                        style={answers[field.key] === option ? { borderColor: brandColor, color: brandColor } : {}}
                                     >
                                         {option}
                                     </button>
@@ -178,9 +240,10 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                                             }}
                                             className={`w-full p-3 rounded-xl border text-left text-sm font-bold transition-all ${
                                                 isChecked
-                                                    ? 'border-primary bg-primary/5 text-primary'
-                                                    : 'border-gray-100 bg-gray-50 text-slate-700 hover:border-primary/30'
+                                                    ? 'bg-white shadow-sm'
+                                                    : 'border-gray-100 bg-gray-50 text-slate-700 hover:border-gray-200'
                                             }`}
+                                            style={isChecked ? { borderColor: brandColor, color: brandColor } : {}}
                                         >
                                             {option}
                                         </button>
@@ -193,9 +256,13 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
             </div>
 
             <button
-                onClick={() => onComplete(answers)}
+                onClick={() => {
+                    setIsSubmitted(true);
+                    onComplete(answers);
+                }}
                 disabled={requiredMissing}
                 className={`${presets.button} mt-8 disabled:opacity-50 disabled:cursor-not-allowed`}
+                style={!requiredMissing ? { backgroundColor: brandColor, boxShadow: `0 10px 20px -5px ${brandColor}44` } : {}}
             >
                 Submit Form
             </button>
@@ -205,6 +272,8 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                     After submit, customers continue to {form.redirectLabel || form.redirectUrl}.
                 </p>
             ) : null}
+                </>
+            )}
         </motion.div>
     );
 };

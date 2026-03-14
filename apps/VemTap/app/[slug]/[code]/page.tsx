@@ -20,6 +20,7 @@ import { StepWelcomeBack } from '@/components/visitor/StepWelcomeBack';
 import { StepOutcome } from '@/components/visitor/StepOutcome';
 import { StepSurvey } from '@/components/visitor/StepSurvey';
 import { StepFinalSuccess } from '@/components/visitor/StepFinalSuccess';
+import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { EarnPointsModal } from '@/components/loyalty/EarnPointsModal';
 import { loyaltyApi } from '@/lib/api/loyalty';
@@ -39,7 +40,8 @@ export default function DynamicTapJourneyPage() {
         redemptionStatus, lastRedemptionId, requestRedemption, setRedemptionStatus, resetVisitCountAfterRedemption,
         engagementSettings, surveyQuestions,
         customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton,
-        businessId, initializeFromBusiness, recordVisit, isFirstTimeVisit
+        businessId, initializeFromBusiness, recordVisit, isFirstTimeVisit,
+        customSuccessTitle, activeForm, setActiveForm
     } = useCustomerFlowStore();
 
     const addRedemptionRequest = useMockDashboardStore(state => state.addRedemptionRequest);
@@ -56,6 +58,8 @@ export default function DynamicTapJourneyPage() {
     const [isSyncingReal, setIsSyncingReal] = useState(false);
     const [isDeviceSynced, setIsDeviceSynced] = useState(false);
     const [hasVisitedBefore, setHasVisitedBefore] = useState(false);
+    const [attachedForms, setAttachedForms] = useState<any[]>([]);
+    const [completedFormIds, setCompletedFormIds] = useState<string[]>([]);
 
     // 0. Early Token Expiration Check
     useEffect(() => {
@@ -136,6 +140,37 @@ export default function DynamicTapJourneyPage() {
 
         initJourney();
     }, [deviceCode, businessId, initializeFromBusiness, recordVisit, router, setStep]);
+
+    // Fetch attached forms if needed
+    useEffect(() => {
+        const fetchAttachedForms = async () => {
+            const formIds = engagementSettings?.postSubmitFormIds;
+            if (engagementSettings?.showPostSubmitForms && Array.isArray(formIds) && formIds.length > 0) {
+                try {
+                    const fetched = await Promise.all(
+                        formIds.map(async (id) => {
+                            try {
+                                const response = await api.get(`/business-forms/${id}`);
+                                return response;
+                            } catch (err) {
+                                console.error(`Failed to fetch form ${id}:`, err);
+                                return null;
+                            }
+                        })
+                    );
+                    setAttachedForms(fetched.filter(Boolean));
+                } catch (err) {
+                    console.error('Failed to fetch attached forms:', err);
+                }
+            } else {
+                setAttachedForms([]);
+            }
+        };
+
+        if (businessId) {
+            fetchAttachedForms();
+        }
+    }, [engagementSettings, businessId]);
 
     // Live Sync for Staff Approvals
     useEffect(() => {
@@ -318,9 +353,21 @@ export default function DynamicTapJourneyPage() {
 
     const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
         if (type === 'review') {
-            window.open(engagementSettings.reviewUrl, '_blank');
+            window.open(engagementSettings.googleReviewUrl || engagementSettings.reviewUrl, '_blank');
+        } else if (type === 'social') {
+            // Social modal is handled inside StepOutcome
         } else if (type === 'feedback') {
-            setStep('SURVEY');
+            if (formId) {
+                const targetForm = attachedForms.find(f => f.id === formId);
+                if (targetForm) {
+                    setActiveForm(targetForm);
+                    setStep('BUSINESS_FORM');
+                } else {
+                    toast.error('Form not found');
+                }
+            } else {
+                setStep('SURVEY');
+            }
         } else if (type === 'rewards') {
             toast.success('Reward points added to your account!');
         }
@@ -428,6 +475,29 @@ export default function DynamicTapJourneyPage() {
                         engagementSettings={engagementSettings}
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
+                        }}
+                        attachedForms={attachedForms}
+                        completedFormIds={completedFormIds}
+                        customSuccessTitle={customSuccessTitle}
+                        customSuccessDescription={customSuccessMessage}
+                    />
+                )}
+
+                {currentStep === 'BUSINESS_FORM' && activeForm && (
+                    <StepBusinessForm
+                        form={activeForm}
+                        onSkip={() => setStep('OUTCOME')}
+                        onComplete={(answers: any) => {
+                            console.log('Additional Form submitted:', answers);
+                            const formId = activeForm.id;
+                            if (formId && !completedFormIds.includes(formId)) {
+                                const newCompleted = [...completedFormIds, formId];
+                                setCompletedFormIds(newCompleted);
+                                
+                                // If all attached forms are now completed, we can potentially auto-finish later
+                                // But the user wants a "Close" button first.
+                                // In onSkip (Close), we can check if all are done.
+                            }
                         }}
                     />
                 )}

@@ -13,6 +13,7 @@ export type CustomerStep =
     | 'FORM'
     | 'OUTCOME'
     | 'SURVEY'
+    | 'BUSINESS_FORM'
     | 'FINAL_SUCCESS';
 
 export type BusinessType = 'RESTAURANT' | 'RETAIL' | 'GYM' | 'EVENT';
@@ -116,6 +117,11 @@ interface CustomerFlowState {
     customNewUserWelcomeTitle: string | null;
     customNewUserWelcomeTag: string | null;
     customNewUserWelcomeButton: string | null;
+    attachedForms: any[];
+    activeForm: any | null;
+    setActiveForm: (form: any | null) => void;
+
+    // Actions
     customSuccessMessage: string | null;
     customSuccessTitle: string | null;
     customSuccessButton: string | null;
@@ -133,12 +139,14 @@ interface CustomerFlowState {
         showFeedback: boolean;
         showPostSubmitForms?: boolean;
         reviewUrl: string;
+        googleReviewUrl?: string;
         socialUrl: string; // Maintain for legacy
         instagram?: string;
         twitter?: string;
         facebook?: string;
         linkedin?: string;
         postSubmitFormIds?: string[];
+        brandColor?: string;
     };
     surveyQuestions: Array<{
         id: string;
@@ -192,7 +200,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             currentStep: 'SELECT_TYPE',
             serialNumber: 'LT-8829-X',
             storeName: 'VemTap Venue',
-            businessType: 'RESTAURANT',
+            businessType: 'RETAIL',
             visitCount: 1,
             rewardVisitThreshold: 5,
             hasRewardSetup: true,
@@ -212,6 +220,9 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             customNewUserWelcomeTitle: null,
             customNewUserWelcomeTag: null,
             customNewUserWelcomeButton: null,
+            attachedForms: [],
+            activeForm: null,
+
             customSuccessMessage: null,
             customSuccessTitle: null,
             customSuccessButton: null,
@@ -228,19 +239,26 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 showFeedback: true,
                 showPostSubmitForms: true,
                 reviewUrl: 'https://g.page/review/vemtap',
+                googleReviewUrl: '',
                 socialUrl: 'https://instagram.com/vemtap',
                 instagram: 'https://instagram.com/vemtap',
                 twitter: '',
                 facebook: '',
                 linkedin: '',
                 postSubmitFormIds: [],
+                brandColor: '#2563eb',
             },
             surveyQuestions: [
                 { id: 'q3', text: 'Any other feedback?', type: 'text' }
             ],
             redirects: {},
 
-            setStep: (step) => set({ currentStep: step }),
+            setActiveForm: (form) => set({ activeForm: form }),
+
+            setStep: (step) => set((state) => ({
+            currentStep: step,
+            activeForm: step === 'BUSINESS_FORM' ? state.activeForm : null
+        })),
             setUserData: (data) => {
                 const uniqueId = data.uniqueId || `LT-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
                 set({ userData: { ...data, uniqueId }, visitCount: 1 });

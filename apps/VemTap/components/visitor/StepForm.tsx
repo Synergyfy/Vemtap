@@ -188,6 +188,12 @@ export const StepForm: React.FC<StepFormProps> = ({
                     <span className="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">arrow_forward</span>
                 </button>
             </form>
+
+            <div className="mt-10 border-t border-slate-50 pt-4 flex items-center justify-center">
+                <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                    Powered by <span className="text-primary font-black">VemTap</span>
+                </p>
+            </div>
         </motion.div>
     );
 };

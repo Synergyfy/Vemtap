@@ -26,10 +26,6 @@ export function useActiveBranch() {
         if (urlBranchId && urlBranchId !== storeBranchId) {
             setStoreBranch(urlBranchId);
         }
-        // When URL has no branchId but store has one, reset the store
-        if (!urlBranchId && storeBranchId) {
-            setStoreBranch(null);
-        }
     }, [urlBranchId, storeBranchId, setStoreBranch]);
 
     // 3. Method to update branch (updates URL and store)
@@ -52,13 +48,6 @@ export function useActiveBranch() {
         // Always update the store to ensure consistency
         setStoreBranch(cleanId);
     }, [pathname, router, searchParams, setStoreBranch]);
-
-    // If the URL has a branch but the store doesn't, backfill the store
-    useEffect(() => {
-        if (urlBranchId && !storeBranchId) {
-            setStoreBranch(urlBranchId);
-        }
-    }, [urlBranchId, storeBranchId, setStoreBranch]);
 
     return {
         // Source of truth is the sanitized URL ID

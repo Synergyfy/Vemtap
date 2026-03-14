@@ -76,7 +76,7 @@ export interface PublicBusinessInfo {
   id: string;
   name: string;
   logoUrl?: string;
-  branches?: Array<{ id: string; name: string; logoUrl?: string }>;
+  branches?: Array<{ id: string; name: string; logoUrl?: string; address?: string }>;
 }
 
 export const usePublicBusinessInfo = (businessId?: string) =>
@@ -102,7 +102,41 @@ export const usePublicBusinessInfo = (businessId?: string) =>
       return null;
     },
     enabled: !!businessId,
-    staleTime: 1000 * 60 * 10, // cache for 10 minutes
+    staleTime: 1000 * 60 * 10,
+    retry: false,
+  });
+
+/** Fetch public branch info by branchId */
+export interface PublicBranchInfo {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  address?: string;
+}
+
+export const usePublicBranchInfo = (branchId?: string) =>
+  useQuery<PublicBranchInfo | null, Error>({
+    queryKey: ['public-branch-info', branchId],
+    queryFn: async (): Promise<PublicBranchInfo | null> => {
+      if (!branchId) return null;
+      const endpoints = [
+        `/branches/${branchId}/public`,
+        `/branches/${branchId}`,
+      ];
+      for (const endpoint of endpoints) {
+        try {
+          const data = await api.get(endpoint);
+          if (data && typeof data === 'object' && (data as any).name) {
+            return data as PublicBranchInfo;
+          }
+        } catch {
+          // try next
+        }
+      }
+      return null;
+    },
+    enabled: !!branchId,
+    staleTime: 1000 * 60 * 10,
     retry: false,
   });
 

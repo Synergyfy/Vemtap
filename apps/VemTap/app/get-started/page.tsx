@@ -103,6 +103,10 @@ export default function GetStarted() {
         serialNumber: '',
         businessId: '',
         otp: '',
+        instagramUrl: '',
+        linkedinUrl: '',
+        reviewUrl: '',
+        trustpilotUrl: '',
         agreeToTerms: false
     });
 
@@ -115,7 +119,7 @@ export default function GetStarted() {
     const goals = ['Capture Leads', 'Automated Rewards', 'Customer Feedback', 'Digital Loyalty'];
 
     const isManager = formData.selectedRole === 'Manager';
-    const maxSubStep = isManager ? 3 : 8;
+    const maxSubStep = isManager ? 3 : 9;
 
     const nextStep = () => {
         if (step === 3 && subStep < maxSubStep) {
@@ -280,6 +284,10 @@ export default function GetStarted() {
                     isRegistered: cleanData.isRegistered === 'Yes',
                     state: cleanData.state || undefined,
                     city: cleanData.city || undefined,
+                    instagramUrl: cleanData.instagramUrl || undefined,
+                    linkedinUrl: cleanData.linkedinUrl || undefined,
+                    reviewUrl: cleanData.reviewUrl || undefined,
+                    trustpilotUrl: cleanData.trustpilotUrl || undefined,
                 };
 
                 response = await registerOwner(payload as any);
@@ -318,7 +326,7 @@ export default function GetStarted() {
                                 let progress = 0;
                                 if (step > s) progress = 100;
                                 else if (step === s) {
-                                    if (step === 3) progress = (subStep / 8) * 100;
+                                    if (step === 3) progress = (subStep / 9) * 100;
                                     else progress = 100;
                                 }
                                 return (
@@ -919,6 +927,59 @@ export default function GetStarted() {
                                             </motion.div>
                                         )}
 
+                                        {subStep === 9 && !isManager && (
+                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                                                <div>
+                                                    <h3 className="text-lg font-bold text-text-main mb-1">Social Media & Reviews</h3>
+                                                    <p className="text-[11px] text-text-secondary">Provide your social links to help customers engage with your brand after filling the form.</p>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <SanitizedInput
+                                                        label="Instagram URL"
+                                                        value={formData.instagramUrl}
+                                                        onChange={(v) => setFormData({ ...formData, instagramUrl: v })}
+                                                        icon="link"
+                                                        placeholder="https://instagram.com/yourbrand"
+                                                        optional
+                                                    />
+                                                    <SanitizedInput
+                                                        label="LinkedIn URL"
+                                                        value={formData.linkedinUrl}
+                                                        onChange={(v) => setFormData({ ...formData, linkedinUrl: v })}
+                                                        icon="link"
+                                                        placeholder="https://linkedin.com/company/yourbrand"
+                                                        optional
+                                                    />
+                                                    <SanitizedInput
+                                                        label="Google Review URL"
+                                                        value={formData.reviewUrl}
+                                                        onChange={(v) => setFormData({ ...formData, reviewUrl: v })}
+                                                        icon="star"
+                                                        placeholder="https://g.page/r/..."
+                                                        optional
+                                                    />
+                                                    <SanitizedInput
+                                                        label="Trustpilot URL"
+                                                        value={formData.trustpilotUrl}
+                                                        onChange={(v) => setFormData({ ...formData, trustpilotUrl: v })}
+                                                        icon="star_border"
+                                                        placeholder="https://trustpilot.com/review/..."
+                                                        optional
+                                                    />
+                                                </div>
+
+                                                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex gap-3">
+                                                    <div className="shrink-0">
+                                                        <span className="material-icons-round text-amber-500 text-lg">info</span>
+                                                    </div>
+                                                    <p className="text-[10px] text-amber-800 font-medium leading-relaxed">
+                                                        Don't have these yet? No worries! You can always add them later in your Profile settings.
+                                                    </p>
+                                                </div>
+                                            </motion.div>
+                                        )}
+
                                         <div className="flex gap-4 pt-4">
                                             <button onClick={prevStep} className="h-12 px-8 border border-gray-100 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm">Back</button>
                                             <button
@@ -1021,6 +1082,16 @@ export default function GetStarted() {
                                                     <div>
                                                         <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Registered</p>
                                                         <p className="text-xs font-bold text-text-main">{formData.isRegistered}</p>
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Social Links</p>
+                                                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                                            {formData.instagramUrl && <span className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[9px] font-bold text-text-main">Instagram</span>}
+                                                            {formData.linkedinUrl && <span className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[9px] font-bold text-text-main">LinkedIn</span>}
+                                                            {formData.reviewUrl && <span className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[9px] font-bold text-text-main">Google</span>}
+                                                            {formData.trustpilotUrl && <span className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[9px] font-bold text-text-main">Trustpilot</span>}
+                                                            {!formData.instagramUrl && !formData.linkedinUrl && !formData.reviewUrl && !formData.trustpilotUrl && <span className="text-[10px] text-gray-400 font-medium italic">None provided</span>}
+                                                        </div>
                                                     </div>
                                                     <div className="col-span-2">
                                                         <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Location</p>

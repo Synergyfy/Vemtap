@@ -28,7 +28,9 @@ import {
   Trash2,
   X,
   ArrowLeft,
+  Building2,
   LayoutTemplate,
+  Save,
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import PhoneFrame from '@/components/shared/PhoneFrame';
@@ -47,6 +49,7 @@ import {
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import { api } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
+import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import type { ApiFormFieldType, BusinessForm, CreateBusinessFormRequest } from '@/services/business-forms/types';
 
 type FormsViewType = 'grid' | 'list';
@@ -140,7 +143,7 @@ type FormTab = 'all' | 'active' | 'draft' | 'archived';
 type BuilderStep = 1 | 2 | 3;
 type FieldDraft = { id: string; question: string; type: ApiFormFieldType; required: boolean; options: string };
 
-const fieldTypes: ApiFormFieldType[] = ['text', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date'];
+const fieldTypes: ApiFormFieldType[] = ['text', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'date-no-year'];
 const makeField = (n: number): FieldDraft => ({ id: `f-${n}`, question: '', type: 'text', required: false, options: '' });
 
 const statusOf = (form: BusinessForm): FormTab => {
@@ -211,6 +214,8 @@ export default function EngagementFormsBuilderPage() {
   }, [responsesSummary]);
 
   const { setDefaultForm, getDefaultFormId, clearDefaultForm } = useFormPreferencesStore();
+  const { engagementSettings } = useCustomerFlowStore();
+  const brandColor = engagementSettings?.brandColor || '#2563eb';
 
   const [viewMode, setViewMode] = useState<ViewMode>('forms');
   const [formsViewType, setFormsViewType] = useState<FormsViewType>('grid');
@@ -220,6 +225,7 @@ export default function EngagementFormsBuilderPage() {
   const [shareForm, setShareForm] = useState<{ id: string; title: string; url: string } | null>(null);
   const [shareExplainer, setShareExplainer] = useState<ShareExplainerState | null>(null);
   const [defaultFormExplainer, setDefaultFormExplainer] = useState<{ id: string; title: string; branchId: string } | null>(null);
+  const [disableConfirm, setDisableConfirm] = useState<{ id: string; title: string; branchId: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string; branchId?: string } | null>(null);
 
   const [builderStep, setBuilderStep] = useState<BuilderStep>(1);
@@ -230,6 +236,8 @@ export default function EngagementFormsBuilderPage() {
   const [isActive, setIsActive] = useState(true);
   const [fields, setFields] = useState<FieldDraft[]>([makeField(1)]);
   const [fieldCount, setFieldCount] = useState(1);
+  const [successTitle, setSuccessTitle] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const updateMutation = useUpdateBusinessForm(editing?.id || '');
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
@@ -311,6 +319,8 @@ export default function EngagementFormsBuilderPage() {
     setIsActive(true);
     setFields([makeField(1)]);
     setFieldCount(1);
+    setSuccessTitle('');
+    setSuccessMessage('');
   };
 
   const filteredForms = useMemo(() => {
@@ -337,6 +347,8 @@ export default function EngagementFormsBuilderPage() {
       options: (f.options || []).join(', '),
     })) || [makeField(1)]);
     setFieldCount(Math.max(form.fields?.length || 1, 1));
+    setSuccessTitle(form.successTitle || '');
+    setSuccessMessage(form.successMessage || '');
     setViewMode('builder');
   };
 
@@ -362,6 +374,8 @@ export default function EngagementFormsBuilderPage() {
       options: (f.options || []).join(', '),
     })) || [makeField(1)]);
     setFieldCount(Math.max(template.fields?.length || 1, 1));
+    setSuccessTitle(template.successTitle || '');
+    setSuccessMessage(template.successMessage || '');
     setBuilderStep(2);
     setViewMode('builder');
   };
@@ -386,6 +400,8 @@ export default function EngagementFormsBuilderPage() {
         isRequired: f.required,
         order: i + 1,
       })),
+      successTitle: successTitle.trim() || undefined,
+      successMessage: successMessage.trim() || undefined,
     };
 
     try {
@@ -635,8 +651,7 @@ export default function EngagementFormsBuilderPage() {
                           onClick={() => {
                             const isCurrentlyDefault = getDefaultFormId(f.branchId) === f.id;
                             if (isCurrentlyDefault) {
-                              clearDefaultForm(f.branchId);
-                              toast.success('Sequence automation disabled');
+                              setDisableConfirm({ id: f.id, title: f.title, branchId: f.branchId });
                             } else {
                               setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
                             }
@@ -750,8 +765,7 @@ export default function EngagementFormsBuilderPage() {
                         onClick={() => {
                           const isCurrentlyDefault = getDefaultFormId(f.branchId) === f.id;
                           if (isCurrentlyDefault) {
-                            clearDefaultForm(f.branchId);
-                            toast.success('Sequence automation disabled');
+                            setDisableConfirm({ id: f.id, title: f.title, branchId: f.branchId });
                           } else {
                             setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
                           }
@@ -846,59 +860,339 @@ export default function EngagementFormsBuilderPage() {
             <button onClick={() => { resetBuilder(); setViewMode('forms'); }} className="h-10 px-4 rounded-xl border border-slate-200 text-sm font-bold inline-flex items-center gap-2"><ArrowLeft size={14} /> My Forms</button>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            {([1, 2, 3] as BuilderStep[]).map((step) => (
-              <button
-                key={step}
-                onClick={() => {
-                  if (step === 2 && (!title.trim() || !branchId)) return;
-                  if (step === 3 && invalidFields) return;
-                  setBuilderStep(step);
-                }}
-                className={`h-11 rounded-xl text-xs sm:text-sm font-black ${builderStep === step ? 'bg-primary text-white' : 'bg-white border border-slate-200 text-slate-700'}`}
-              >
-                {step === 1 ? 'First Step' : step === 2 ? 'Second Step + Preview' : 'Publish'}
-              </button>
+          {/* ─── Compact Step Indicators ─── */}
+          <div className="flex items-center justify-center gap-4 max-w-xs mx-auto mb-2">
+            {[1, 2, 3].map((step) => (
+              <React.Fragment key={step}>
+                <button
+                  onClick={() => {
+                    if (step === 2 && (!title.trim() || !branchId)) return;
+                    if (step === 3 && invalidFields) return;
+                    setBuilderStep(step as BuilderStep);
+                  }}
+                  className={`size-10 rounded-full flex items-center justify-center text-sm font-black transition-all ${
+                    builderStep === step
+                      ? 'bg-primary text-white shadow-lg shadow-primary/25 ring-4 ring-primary/10 scale-110'
+                      : builderStep > step
+                        ? 'bg-emerald-500 text-white shadow-md shadow-emerald-100'
+                        : 'bg-white border border-slate-200 text-slate-400 hover:border-slate-300'
+                  }`}
+                  title={step === 1 ? 'Details' : step === 2 ? 'Fields' : 'Publish'}
+                >
+                  {builderStep > step ? <CheckCircle2 size={18} /> : step}
+                </button>
+                {step < 3 && (
+                  <div className={`h-1 w-12 rounded-full transition-colors ${builderStep > step ? 'bg-emerald-200' : 'bg-slate-100'}`} />
+                )}
+              </React.Fragment>
             ))}
           </div>
 
-          {builderStep === 1 && (
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
-              <div><label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Title</label><input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 w-full h-11 rounded-xl border border-slate-200 px-3 text-sm" placeholder="Customer Feedback Form" /></div>
-              <div><label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</label><textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full min-h-20 rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Short summary shown on the form" /></div>
-              <div><label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Branch</label><select value={branchId} onChange={(e) => setBranchId(e.target.value)} className="mt-1 w-full h-11 rounded-xl border border-slate-200 px-3 text-sm"><option value="">Select branch</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
-              <div className="flex items-center gap-2 text-sm"><input id="isActive" type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} /><label htmlFor="isActive" className="font-semibold text-slate-700">Keep this form active after save</label></div>
-              <div className="flex justify-end">
-                <button onClick={() => { if (!title.trim()) return toast.error('Title is required'); if (!branchId) return toast.error('Branch is required'); setBuilderStep(2); }} className="h-11 px-5 rounded-xl bg-primary text-white text-sm font-black">Continue to Second Step</button>
-              </div>
-            </div>
-          )}
+          {(builderStep === 1 || builderStep === 2) && (
+            <div className="flex flex-col xl:flex-row gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {/* Left Column: Form Configuration */}
+              <div className="w-full xl:flex-1 space-y-6">
+                {builderStep === 1 ? (
+                  <div className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8 space-y-6 shadow-sm">
+                    <div className="border-b border-slate-50 pb-4">
+                      <h3 className="text-xl font-black text-slate-900">Step 1: Basic Details</h3>
+                      <p className="text-sm text-slate-500 mt-1">Set the foundation of your form.</p>
+                    </div>
 
-          {builderStep === 2 && (
-            <div className="flex flex-col xl:flex-row gap-6 items-start">
-              <div className="w-full xl:flex-1 bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
-                <div className="flex items-center justify-between"><h3 className="text-lg font-black text-slate-900">Form Fields + Live Preview</h3><button onClick={() => { const n = fieldCount + 1; setFieldCount(n); setFields((p) => [...p, makeField(n)]); }} className="h-9 px-3 rounded-xl bg-primary text-white text-xs font-black">Add Field</button></div>
-                {fields.map((f) => <div key={f.id} className="rounded-xl border border-slate-200 p-3 space-y-2"><select value={f.type} onChange={(e) => setFields((p) => p.map((x) => x.id === f.id ? { ...x, type: e.target.value as ApiFormFieldType } : x))} className="w-full h-10 rounded-lg border border-slate-200 px-3 text-sm">{fieldTypes.map((t) => <option key={t} value={t}>{t}</option>)}</select><input value={f.question} onChange={(e) => setFields((p) => p.map((x) => x.id === f.id ? { ...x, question: e.target.value } : x))} className="w-full h-10 rounded-lg border border-slate-200 px-3 text-sm" placeholder="Question" />{(f.type === 'select' || f.type === 'radio' || f.type === 'checkbox') && <input value={f.options} onChange={(e) => setFields((p) => p.map((x) => x.id === f.id ? { ...x, options: e.target.value } : x))} className="w-full h-10 rounded-lg border border-slate-200 px-3 text-sm" placeholder="Options (comma separated)" />}<div className="flex justify-between"><label className="text-xs text-slate-600 flex gap-2 items-center"><input type="checkbox" checked={f.required} onChange={(e) => setFields((p) => p.map((x) => x.id === f.id ? { ...x, required: e.target.checked } : x))} />Required</label>{fields.length > 1 && <button onClick={() => setFields((p) => p.filter((x) => x.id !== f.id))} className="text-red-600"><Trash2 size={14} /></button>}</div></div>)}
-                <div className="flex flex-wrap justify-between gap-3">
-                  <button onClick={() => setBuilderStep(1)} className="h-11 px-5 rounded-xl border border-slate-200 text-sm font-black">Back to First Step</button>
-                  <button onClick={() => { if (invalidFields) return toast.error('Each field needs a question'); setBuilderStep(3); }} className="h-11 px-5 rounded-xl bg-primary text-white text-sm font-black">Continue to Publish</button>
-                </div>
-              </div>
-
-              <div className="w-full xl:w-[380px] xl:sticky xl:top-6">
-                <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-4">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Messaging-Style Phone Preview</p>
-                  <div className="flex justify-center">
-                    <PhoneFrame title="Live Form Preview">
-                      <div className="px-5 pb-8 pt-2">
-                        <StepBusinessForm
-                          form={previewForm}
-                          onComplete={() => toast.success('Preview submission captured')}
-                          onSkip={() => toast('Preview skipped')}
+                    <div className="space-y-5">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-1">Form Title</label>
+                        <input
+                          value={title}
+                          onChange={(e) => setTitle(e.target.value)}
+                          className="w-full h-12 rounded-2xl border border-slate-200 bg-slate-50/50 px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all active:scale-[0.99]"
+                          placeholder="e.g. Customer Satisfaction Survey"
                         />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-1">Description (Optional)</label>
+                        <textarea
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          className="w-full min-h-[100px] rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                          placeholder="Tell users what this form is for..."
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-1">Assign to Branch</label>
+                        <select
+                          value={branchId}
+                          onChange={(e) => setBranchId(e.target.value)}
+                          className="w-full h-12 rounded-2xl border border-slate-200 bg-slate-50/50 px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer"
+                        >
+                          <option value="">Select a branch</option>
+                          {branches.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 bg-slate-50/30">
+                        <div className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 bg-gray-200">
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            id="isActive"
+                            checked={isActive}
+                            onChange={(e) => setIsActive(e.target.checked)}
+                          />
+                          <span
+                            className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isActive ? 'translate-x-5' : 'translate-x-0'}`}
+                          />
+                        </div>
+                        <label htmlFor="isActive" className="text-sm font-semibold text-slate-700 cursor-pointer">
+                          Keep this form active after saving
+                        </label>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-100">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="size-8 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center">
+                            <Save size={16} />
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-bold text-gray-900">After Submission Content</h3>
+                            <p className="text-[10px] text-gray-500">What visitors see after filling this form.</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-1">Success Title</label>
+                            <input
+                              value={successTitle}
+                              onChange={(e) => setSuccessTitle(e.target.value)}
+                              className="w-full h-11 rounded-2xl border border-slate-200 bg-slate-50/50 px-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                              placeholder="e.g. Form Submitted Successfully"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-1">Success Description</label>
+                            <textarea
+                              value={successMessage}
+                              onChange={(e) => setSuccessMessage(e.target.value)}
+                              className="w-full min-h-[80px] rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                              placeholder="e.g. Thank you for your feedback!"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-4">
+                      <button
+                        onClick={() => {
+                          if (!title.trim()) return toast.error('Title is required');
+                          if (!branchId) return toast.error('Branch is required');
+                          setBuilderStep(2);
+                        }}
+                        className="w-full h-12 rounded-2xl bg-primary text-white text-sm font-black shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 transition-all active:scale-[0.98]"
+                      >
+                        Continue to Questions
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8 space-y-6 shadow-sm">
+                    <div className="border-b border-slate-50 pb-4 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xl font-black text-slate-900">Step 2: Questions</h3>
+                        <p className="text-sm text-slate-500 mt-1">Add fields to collect information.</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const n = fieldCount + 1;
+                          setFieldCount(n);
+                          setFields((p) => [...p, makeField(n)]);
+                        }}
+                        className="h-10 px-4 rounded-xl bg-primary text-white text-xs font-black shadow-md shadow-primary/10 hover:shadow-lg transition-all"
+                      >
+                        Add New Field
+                      </button>
+                    </div>
+
+                    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                      {fields.map((f) => (
+                        <div key={f.id} className="group relative rounded-2xl border border-slate-200 bg-slate-50/20 p-4 space-y-3 transition-colors hover:border-slate-300">
+                          <div className="flex gap-2">
+                            <select
+                              value={f.type}
+                              onChange={(e) => setFields((p) => p.map((x) => (x.id === f.id ? { ...x, type: e.target.value as ApiFormFieldType } : x)))}
+                              className="flex-1 h-10 rounded-xl border border-slate-200 px-3 text-xs font-bold focus:ring-primary/20 focus:border-primary bg-white cursor-pointer"
+                            >
+                              <optgroup label="Standard Fields">
+                                <option value="text">TEXT INPUT</option>
+                                <option value="textarea">LONG TEXT (TEXTAREA)</option>
+                                <option value="number">NUMBER ONLY</option>
+                                <option value="select">DROPDOWN (SELECT)</option>
+                                <option value="radio">SINGLE CHOICE (RADIO)</option>
+                                <option value="checkbox">MULTIPLE CHOICE (CHECKBOX)</option>
+                              </optgroup>
+                              <optgroup label="Date Fields">
+                                <option value="date">FULL DATE (MONTH, DAY, YEAR)</option>
+                                <option value="date-no-year">PARTIAL DATE (MONTH, DAY ONLY)</option>
+                              </optgroup>
+                            </select>
+                            {fields.length > 1 && (
+                              <button
+                                onClick={() => setFields((p) => p.filter((x) => x.id !== f.id))}
+                                className="size-10 rounded-xl border border-red-100 text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                          <input
+                            value={f.question}
+                            onChange={(e) => setFields((p) => p.map((x) => (x.id === f.id ? { ...x, question: e.target.value } : x)))}
+                            className="w-full h-11 rounded-xl border border-slate-200 px-4 text-sm font-medium focus:ring-primary/20 focus:border-primary"
+                            placeholder="Type your question here..."
+                          />
+                          {(f.type === 'select' || f.type === 'radio' || f.type === 'checkbox') && (
+                            <input
+                              value={f.options}
+                              onChange={(e) => setFields((p) => p.map((x) => (x.id === f.id ? { ...x, options: e.target.value } : x)))}
+                              className="w-full h-10 rounded-xl border border-slate-200 px-4 text-xs font-medium bg-white"
+                              placeholder="Options (e.g. Yes, No, Maybe)"
+                            />
+                          )}
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-bold text-slate-500 flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={f.required}
+                                onChange={(e) => setFields((p) => p.map((x) => (x.id === f.id ? { ...x, required: e.target.checked } : x)))}
+                                className="size-4 rounded border-slate-300 text-primary focus:ring-primary/20"
+                              />
+                              Required
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 pt-4">
+                      <button
+                        onClick={() => setBuilderStep(1)}
+                        className="flex-1 h-12 rounded-2xl border border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 transition-colors"
+                      >
+                        Back to Details
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (invalidFields) return toast.error('Each field needs a question');
+                          setBuilderStep(3);
+                        }}
+                        className="flex-[1.5] h-12 rounded-2xl bg-primary text-white text-sm font-black shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
+                      >
+                        Continue to Summary
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column: Persistent Live Preview */}
+              <div className="w-full xl:w-[380px] xl:sticky xl:top-6">
+                <div className="bg-white rounded-3xl border border-slate-200 p-5 space-y-4 shadow-sm">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Live Phone Preview</p>
+                  </div>
+                  <div className="flex justify-center scale-[0.95] origin-top">
+                    <PhoneFrame title="Real-time Preview">
+                      <div className="min-h-full bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 py-6 px-3 space-y-3">
+                        {/* ─── Container 1: Header — Business branding + Form title + Description ─── */}
+                        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                          {/* Top accent bar */}
+                          <div 
+                            className="h-1" 
+                            style={{ backgroundColor: brandColor }}
+                          />
+
+                          <div className="px-4 pt-3 pb-4">
+                            {/* Business logo + name + branch — single line, minimal */}
+                            <div className="flex items-center gap-1.5 mb-2.5">
+                              {businessLogo ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={businessLogo}
+                                  alt={businessName}
+                                  className="size-5 rounded-full object-cover border border-gray-200 shrink-0"
+                                />
+                              ) : (
+                                <div 
+                                  className="size-5 rounded-full flex items-center justify-center shrink-0"
+                                  style={{ backgroundColor: `${brandColor}15` }}
+                                >
+                                  <Building2 size={10} style={{ color: brandColor }} />
+                                </div>
+                              )}
+                              <span className="text-[10px] font-semibold text-slate-500 truncate">
+                                {businessName}
+                                {selectedBranchName ? (
+                                  <span className="text-slate-300 mx-1">·</span>
+                                ) : null}
+                                {selectedBranchName && selectedBranchName !== 'Main Branch' && (
+                                  <span className="text-slate-400 font-medium">{selectedBranchName}</span>
+                                )}
+                              </span>
+                            </div>
+
+                            {/* Form title — focal point */}
+                            <h1 className="text-base font-display font-black text-slate-900 tracking-tight leading-tight">
+                              {previewForm.title || 'Untitled Form'}
+                            </h1>
+
+                            {/* Form description */}
+                            {previewForm.description && (
+                              <p className="mt-1 text-[11px] text-slate-500 font-medium leading-relaxed">
+                                {previewForm.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* ─── Container 2: Form questions ─── */}
+                        <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm min-h-[100px] flex flex-col items-center justify-center text-center">
+                          {builderStep === 1 && !fields.some(f => f.question) ? (
+                            <div className="space-y-2 py-4">
+                              <LayoutTemplate className="size-8 text-slate-200 mx-auto" />
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-normal">
+                                Fill in details to see<br />form layout
+                              </p>
+                            </div>
+                          ) : (
+                            <StepBusinessForm
+                              form={previewForm}
+                              hideHeader
+                              brandColor={brandColor}
+                              onComplete={() => toast.success('Preview submission captured')}
+                              onSkip={() => {}}
+                            />
+                          )}
+                        </div>
+
+                        {/* Powered-by footer */}
+                        <p className="text-center text-[8px] font-medium text-slate-400">
+                          Powered by <span className="font-bold" style={{ color: brandColor }}>VemTap</span>
+                        </p>
                       </div>
                     </PhoneFrame>
                   </div>
+                  <p className="text-[9px] text-slate-400 text-center px-4 leading-relaxed">
+                    This is how your form appears on mobile devices. Details update live as you type.
+                  </p>
                 </div>
               </div>
             </div>
@@ -1060,6 +1354,63 @@ export default function EngagementFormsBuilderPage() {
                   className="flex-3 h-11 rounded-xl bg-primary text-white text-sm font-black hover:bg-primary/90 transition-shadow shadow-md shadow-primary/20"
                 >
                   Enable Automation
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ─── Disable Confirmation Modal ─── */}
+      {disableConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 transition-all" onClick={() => setDisableConfirm(null)}>
+          <div
+            className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="h-1.5 bg-amber-500" />
+            <div className="p-6 space-y-6">
+              <div className="flex items-start justify-between">
+                <div className="size-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <Info size={24} />
+                </div>
+                <button
+                  onClick={() => setDisableConfirm(null)}
+                  className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-black text-gray-900 leading-tight">Disable sequence?</h3>
+                <p className="text-sm text-gray-500 mt-2">
+                  <strong>&quot;{disableConfirm.title}&quot;</strong> will no longer be shown automatically after the initial contact form.
+                </p>
+              </div>
+
+              <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex gap-3">
+                <Info size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-700/80 leading-relaxed">
+                  Accidental tapping can happen on mobile. This confirmation ensures you intentionally want to stop this form from appearing in the post-submission flow.
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDisableConfirm(null)}
+                  className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    clearDefaultForm(disableConfirm.branchId);
+                    setDisableConfirm(null);
+                    toast.success('Sequence automation disabled');
+                  }}
+                  className="flex-3 h-11 rounded-xl bg-gray-900 text-white text-sm font-black hover:bg-gray-800 transition-shadow shadow-md shadow-gray-200"
+                >
+                  Disable Automation
                 </button>
               </div>
             </div>

@@ -22,7 +22,8 @@ export default function UserFormSettingsPage() {
         welcomeTag: store.customNewUserWelcomeTag || 'Quick Link',
         privacyMessage: store.customPrivacyMessage || 'I agree to have my visits securely tracked and data collected just for feedback and loyalty rewards.',
         submitLabel: store.customNewUserWelcomeButton || 'Submit',
-        logoUrl: store.logoUrl || '',
+        successTitle: store.customSuccessTitle || 'Visit recorded successfully!',
+        successMessage: store.customSuccessMessage || 'Thank you for visiting our store',
     });
 
     useEffect(() => {
@@ -34,7 +35,8 @@ export default function UserFormSettingsPage() {
             welcomeTag: business.welcomeTag || prev.welcomeTag,
             privacyMessage: business.privacyMessage || prev.privacyMessage,
             submitLabel: business.welcomeButton || prev.submitLabel,
-            logoUrl: business.logoUrl || prev.logoUrl,
+            successTitle: business.successTitle || prev.successTitle,
+            successMessage: business.successMessage || prev.successMessage,
         }));
     }, [business]);
 
@@ -47,7 +49,8 @@ export default function UserFormSettingsPage() {
                 newUserWelcomeTag: settings.welcomeTag,
                 newUserWelcomeButton: settings.submitLabel,
                 privacyMessage: settings.privacyMessage,
-                logoUrl: settings.logoUrl,
+                successTitle: settings.successTitle,
+                successMessage: settings.successMessage,
             });
 
             if (business) {
@@ -59,7 +62,8 @@ export default function UserFormSettingsPage() {
                         welcomeTag: settings.welcomeTag,
                         welcomeButton: settings.submitLabel,
                         privacyMessage: settings.privacyMessage,
-                        logoUrl: settings.logoUrl,
+                        successTitle: settings.successTitle,
+                        successMessage: settings.successMessage,
                     },
                 });
             }
@@ -84,7 +88,7 @@ export default function UserFormSettingsPage() {
     return (
         <div className="p-8 space-y-6">
             <PageHeader
-                title="Default Form"
+                title="User experience"
                 description="Control the main form visitors fill before any post-submit actions."
             />
             <div className="bg-white rounded-2xl border border-gray-100 p-5 flex items-start gap-3">
@@ -92,17 +96,15 @@ export default function UserFormSettingsPage() {
                     <Info size={18} />
                 </div>
                 <div>
-                    <p className="text-sm font-bold text-gray-900">What is the Default Form?</p>
+                    <p className="text-sm font-bold text-gray-900">What is the Primary User Experience?</p>
                     <p className="text-xs text-gray-500 mt-1">
-                        This is the first form every customer sees. It collects basic details before any Additional Forms or Social actions.
-                        Keep it short and clear to improve completion rates.
+                        Configure the initial interaction every visitor has with your business. The default form identifies the customer before they move to social links or additional custom forms.
                     </p>
                 </div>
             </div>
 
             <EngagementTabs
                 tabs={[
-                    { label: 'Socials', href: '/dashboard/settings/engagement/experience/socials' },
                     { label: 'Default Form', active: true },
                     { label: 'Additional Forms', href: '/dashboard/settings/engagement/experience/additional-forms' },
                 ]}
@@ -152,23 +154,76 @@ export default function UserFormSettingsPage() {
                             />
                         </div>
 
+                        <div className="space-y-4 pt-2 pb-2">
+                            <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Default Form Fields</label>
+                                <div className="group relative">
+                                    <Info size={14} className="text-gray-400 cursor-help" />
+                                    <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 font-medium">
+                                        These core fields are required for business intelligence and loyalty tracking.
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 gap-2">
+                                {['Full Name', 'Phone Number', 'Email Address'].map((field) => (
+                                    <div key={field} className="h-11 rounded-xl bg-gray-50 border border-gray-100 px-3 flex items-center justify-between opacity-60">
+                                        <span className="text-xs font-bold text-gray-500">{field}</span>
+                                        <div className="flex items-center gap-1.5 grayscale">
+                                            <div className="size-1.5 rounded-full bg-gray-400"></div>
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Locked</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Privacy Message</label>
+                            <div className="flex items-center justify-between mb-1">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Privacy Message</label>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="size-1.5 rounded-full bg-amber-400"></div>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-amber-500">Read Only</span>
+                                </div>
+                            </div>
                             <textarea
                                 value={settings.privacyMessage}
-                                onChange={(e) => setSettings((prev) => ({ ...prev, privacyMessage: e.target.value }))}
-                                className="w-full min-h-[120px] rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                                readOnly
+                                className="w-full min-h-[100px] rounded-xl bg-gray-50 border border-gray-100 px-3 py-2 text-sm text-gray-500 cursor-not-allowed resize-none"
+                            />
+                            <p className="text-[9px] text-gray-400 font-medium italic">Standard GDPR compliance text managed by VemTap.</p>
+                        </div>
+
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="size-8 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center">
+                                <Save size={16} />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-gray-900">After Submission Content</h3>
+                                <p className="text-[10px] text-gray-500">What visitors see after filling the default form.</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Success Title</label>
+                            <input
+                                type="text"
+                                value={settings.successTitle}
+                                onChange={(e) => setSettings((prev) => ({ ...prev, successTitle: e.target.value }))}
+                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                                placeholder="e.g., Visit Recorded"
                             />
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Logo URL</label>
-                            <input
-                                type="url"
-                                value={settings.logoUrl}
-                                onChange={(e) => setSettings((prev) => ({ ...prev, logoUrl: e.target.value }))}
-                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
-                                placeholder="https://..."
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Success Description</label>
+                            <textarea
+                                value={settings.successMessage}
+                                onChange={(e) => setSettings((prev) => ({ ...prev, successMessage: e.target.value }))}
+                                className="w-full min-h-[80px] rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                                placeholder="e.g., Thank you for visiting our store"
                             />
                         </div>
                     </div>
@@ -196,7 +251,7 @@ export default function UserFormSettingsPage() {
                                 <div className="p-6">
                                     <StepForm
                                         storeName={store.storeName || 'Your Store'}
-                                        logoUrl={settings.logoUrl || store.logoUrl}
+                                        logoUrl={store.logoUrl}
                                         customWelcomeMessage={settings.welcomeMessage}
                                         customWelcomeTitle={settings.welcomeTitle}
                                         customWelcomeTag={settings.welcomeTag}

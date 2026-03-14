@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { usePublicBusinessForm, usePublicBusinessInfo, useSubmitBusinessFormResponse } from '@/services/business-forms/hooks';
+import { usePublicBusinessForm, usePublicBusinessInfo, usePublicBranchInfo, useSubmitBusinessFormResponse } from '@/services/business-forms/hooks';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { CheckCircle2, Building2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -17,6 +17,7 @@ export default function PublicBusinessFormPage() {
     const { data: form, isLoading } = usePublicBusinessForm(formKey);
     const submitFormResponse = useSubmitBusinessFormResponse(form?.uniqueCode || form?.id || formKey);
     const { data: businessInfo } = usePublicBusinessInfo(form?.businessId);
+    const { data: branchInfo } = usePublicBranchInfo(form?.branchId);
     const user = useAuthStore((state) => state.user);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const isCustomerAccount = isAuthenticated && user?.role?.toLowerCase() === 'customer';
@@ -38,10 +39,16 @@ export default function PublicBusinessFormPage() {
     const resolvedBusinessName = businessInfo?.name || form?.businessName || '';
     const resolvedBusinessLogo = businessInfo?.logoUrl || form?.businessLogo || '';
     const resolvedBranchName = useMemo(() => {
-        if (!form?.branchId || !businessInfo?.branches) return '';
-        const branch = businessInfo.branches.find((b) => b.id === form.branchId);
-        return branch?.name || '';
-    }, [form?.branchId, businessInfo?.branches]);
+        // 1. Check direct branch fetch
+        if (branchInfo?.name) return branchInfo.name;
+        // 2. Check business info branches list
+        if (form?.branchId && businessInfo?.branches) {
+            const branch = businessInfo.branches.find((b) => b.id === form.branchId);
+            if (branch?.name) return branch.name;
+        }
+        // 3. Fallback to form data if provided (though form data usually doesn't have it)
+        return (form as any)?.branchName || '';
+    }, [form?.branchId, businessInfo?.branches, branchInfo?.name, form]);
 
     const buildAnswerPayload = (answersMap: Record<string, any>) => {
         return (form?.fields || [])

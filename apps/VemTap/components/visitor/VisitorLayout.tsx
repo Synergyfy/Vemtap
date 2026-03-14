@@ -25,14 +25,7 @@ export const VisitorLayout: React.FC<VisitorLayoutProps> = ({ children, onReset,
                 }}
             />
 
-            <nav className="fixed top-0 left-0 right-0 z-60 px-10 py-8 flex items-center justify-between pointer-events-none">
-                <Link href="/" className="flex items-center gap-2 group pointer-events-auto active:scale-95 transition-all">
-                    <div className="size-8 rounded-full bg-primary flex items-center justify-center overflow-hidden shadow-lg shadow-primary/20 group-hover:rotate-12 transition-transform">
-                        <img src="/VEMTAP_PNG.png" alt="VemTap" className="w-5 h-5 object-contain" />
-                    </div>
-                    <span className="font-display font-black text-xl tracking-tighter text-slate-900">VemTap</span>
-                </Link>
-
+            <nav className="fixed top-0 left-0 right-0 z-60 px-10 py-8 flex items-center justify-end pointer-events-none">
                 <div className="flex items-center gap-4 pointer-events-auto">
                     <button onClick={onReset} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-primary transition-colors">
                         Restart
@@ -53,10 +46,17 @@ export const VisitorLayout: React.FC<VisitorLayoutProps> = ({ children, onReset,
                 {children}
             </main>
 
-            <footer className="mt-12 flex flex-col items-center gap-3 opacity-20 pointer-events-none grayscale saturate-0">
-                <div className="flex items-center gap-2">
+            <footer className="mt-12 flex flex-col items-center gap-4">
+                <div className="flex items-center gap-2 opacity-10 grayscale saturate-0 pointer-events-none">
                     <span className="material-symbols-outlined text-sm">verified</span>
                     <span className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-900">Transaction Verified</span>
+                </div>
+                
+                <div className="flex items-center gap-2 opacity-40">
+                    <div className="size-5 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+                        <img src="/VEMTAP_PNG.png" alt="VemTap" className="w-3 h-3 object-contain opacity-50" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Powered by VemTap</span>
                 </div>
             </footer>
 

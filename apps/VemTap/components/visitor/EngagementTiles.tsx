@@ -32,6 +32,7 @@ interface EngagementTilesProps {
     selectedFormTitle?: string | null;
     selectedFormType?: string | null;
     attachedForms?: Array<{ id: string; title: string; description?: string }>;
+    completedFormIds?: string[];
     settings?: {
         showReview?: boolean;
         showSocial?: boolean;
@@ -51,6 +52,7 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
     selectedFormTitle,
     selectedFormType,
     attachedForms = [],
+    completedFormIds = [],
     settings = {}
 }) => {
     const hasSocial = !!(settings.instagram || settings.twitter || settings.facebook || settings.linkedin || settings.socialUrl);
@@ -64,16 +66,19 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
             </h3>
 
             {attachedForms.length > 0 ? (
-                attachedForms.map((form) => (
-                    <EngagementTile
-                        key={form.id}
-                        icon="assignment"
-                        label={form.title || 'Open Form'}
-                        description={form.description || 'Fill this form'}
-                        color="bg-amber-50 text-amber-600"
-                        onClick={() => onAction('feedback', form.id)}
-                    />
-                ))
+                attachedForms.map((form) => {
+                    const isCompleted = completedFormIds.includes(form.id);
+                    return (
+                        <EngagementTile
+                            key={form.id}
+                            icon={isCompleted ? "check_circle" : "assignment"}
+                            label={isCompleted ? `${form.title} (Redeemed)` : (form.title || 'Open Form')}
+                            description={isCompleted ? "Thank you for filling this form!" : (form.description || 'Fill this form')}
+                            color={isCompleted ? "bg-emerald-50 text-emerald-500" : "bg-amber-50 text-amber-600"}
+                            onClick={() => !isCompleted && onAction('feedback', form.id)}
+                        />
+                    );
+                })
             ) : hasSelectedForm ? (
                 <EngagementTile
                     icon="assignment"
