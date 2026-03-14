@@ -5,6 +5,7 @@ import { useChatStore, ChatConversation } from '@/lib/store/useChatStore';
 import { Search, Plus, MoreVertical } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
+import Link from 'next/link';
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
@@ -81,12 +82,20 @@ export default function ChatSidebar() {
                 </div>
                 {!isCustomer && (
                     <div className="flex gap-2 text-slate-400">
-                        <button className="p-1.5 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors">
+                        <Link 
+                            href="/dashboard/messaging/chat/settings?tab=templates"
+                            className="p-1.5 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors"
+                            title="Message Templates"
+                        >
                             <Plus size={18} />
-                        </button>
-                        <button className="p-1.5 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors">
+                        </Link>
+                        <Link 
+                            href="/dashboard/messaging/chat/settings"
+                            className="p-1.5 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors"
+                            title="Chat Settings"
+                        >
                             <MoreVertical size={18} />
-                        </button>
+                        </Link>
                     </div>
                 )}
             </header>

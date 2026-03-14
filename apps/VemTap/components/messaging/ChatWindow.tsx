@@ -2,9 +2,10 @@
 
 import React, { useRef, useEffect } from 'react';
 import { useChatStore, ChatMessage } from '@/lib/store/useChatStore';
-import { Search, Phone, MoreVertical, FileText, Check, CheckCheck } from 'lucide-react';
+import { Search, Phone, MoreVertical, FileText, Check, CheckCheck, Maximize2, Minimize2 } from 'lucide-react';
 import ChatInput from './ChatInput';
 import { useAuthStore } from '@/store/useAuthStore';
+import Link from 'next/link';
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
@@ -46,6 +47,7 @@ export default function ChatWindow() {
     const conversations = useChatStore(s => s.conversations);
     const messages = useChatStore(s => s.messages);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [isFullScreen, setIsFullScreen] = React.useState(false);
     const user = useAuthStore(s => s.user);
     const isCustomer = user?.role === 'customer';
 
@@ -78,7 +80,7 @@ export default function ChatWindow() {
     let lastDate = '';
 
     return (
-        <div className="flex-1 flex flex-col h-full bg-white">
+        <div className={`flex-1 flex flex-col h-full bg-white transition-all duration-300 ${isFullScreen ? 'fixed inset-0 z-[100] m-0 rounded-none' : ''}`}>
             {/* Header */}
             <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 z-10 bg-white shrink-0">
                 <div className="flex items-center gap-3">
@@ -108,18 +110,51 @@ export default function ChatWindow() {
                     </div>
                 </div>
                 <div className="flex items-center gap-3 text-slate-400">
+                    <button 
+                        onClick={() => setIsFullScreen(!isFullScreen)}
+                        className="p-2 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+                        title={isFullScreen ? 'Close Full Screen' : 'Full Screen'}
+                    >
+                        {isFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                    </button>
                     <button className="p-2 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
                         <Search size={18} />
                     </button>
                     {!isCustomer && (
-                        <>
-                            <button className="p-2 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
-                                <Phone size={18} />
+                        <div className="relative group">
+                            <button className="p-2 text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-all flex items-center gap-2 font-bold text-xs ring-1 ring-primary/20 shadow-sm shadow-primary/5">
+                                <span className="material-symbols-outlined text-[20px]">settings</span>
+                                <span>Settings</span>
                             </button>
-                            <button className="p-2 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
-                                <MoreVertical size={18} />
-                            </button>
-                        </>
+                            
+                            {/* Dropdown Menu */}
+                            <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all transform scale-95 group-hover:scale-100 origin-top-right z-50">
+                                <div className="px-4 py-2 border-b border-slate-50 mb-1">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Configuration</p>
+                                </div>
+                                <Link 
+                                    href="/dashboard/messaging/chat/settings?tab=automation"
+                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">smart_toy</span>
+                                    <span>Automated Replies</span>
+                                </Link>
+                                <Link 
+                                    href="/dashboard/messaging/chat/settings?tab=templates"
+                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">description</span>
+                                    <span>Message Templates</span>
+                                </Link>
+                                <Link 
+                                    href="/dashboard/messaging/chat/settings?tab=categories"
+                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">category</span>
+                                    <span>Ticket Categories</span>
+                                </Link>
+                            </div>
+                        </div>
                     )}
                 </div>
             </header>
