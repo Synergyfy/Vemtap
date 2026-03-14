@@ -244,10 +244,31 @@ export class MessagingEngineService {
 
     const resolvedContent = await this.resolvePlaceholders(content, contactId, branch);
 
+    // Find or create conversation thread
+    let thread = await this.threadRepo.findOne({
+      where: {
+        branchId: branch.id,
+        contactId,
+        channel,
+      },
+    });
+
+    if (!thread) {
+      thread = this.threadRepo.create({
+        branchId: branch.id,
+        businessId: branch.businessId,
+        contactId,
+        channel,
+        status: 'OPEN' as any,
+      } as any) as unknown as ConversationThread;
+      await this.threadRepo.save(thread);
+    }
+
     const message = this.messageRepo.create({
       branchId: branch.id,
       businessId: branch.businessId,
       contactId,
+      threadId: thread.id,
       campaignId,
       content: resolvedContent,
       channel,
@@ -408,10 +429,19 @@ export class MessagingEngineService {
   }
 
   async sendReply(thread: ConversationThread, content: string) {
-    const branch = await this.branchRepo.findOneBy({ id: thread.branchId });
+    const branch = await this.branchRepo.findOne({
+      where: { id: thread.branchId },
+      relations: ['business'],
+    });
     if (!branch) throw new NotFoundException('Branch not found');
 
-    const from = branch.whatsappNumber || '';
+    let from = '';
+    if (thread.channel === Channel.IN_HOUSE) {
+      from = branch.business?.name || branch.name || 'Business';
+    } else {
+      from = branch.whatsappNumber || '';
+    }
+
     const msg = await this.sendIndividualMessage(
       branch,
       thread.contactId,

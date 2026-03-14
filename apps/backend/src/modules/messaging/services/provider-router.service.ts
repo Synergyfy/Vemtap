@@ -9,6 +9,7 @@ import { TermiiProvider } from '../providers/termii.provider';
 import { AfricaTalkingProvider } from '../providers/africastalking.provider';
 import { BestBulkSmsProvider } from '../providers/bestbulksms.provider';
 import { EmailProvider } from '../providers/email.provider';
+import { InHouseProvider } from '../providers/inhouse.provider';
 
 @Injectable()
 export class ProviderRouterService {
@@ -17,6 +18,7 @@ export class ProviderRouterService {
     private readonly africaTalkingProvider: AfricaTalkingProvider,
     private readonly bestBulkSmsProvider: BestBulkSmsProvider,
     private readonly emailProvider: EmailProvider,
+    private readonly inHouseProvider: InHouseProvider,
   ) {}
 
   public getProvider(channel: Channel): MessagingProvider {
@@ -27,6 +29,8 @@ export class ProviderRouterService {
         return this.termiiProvider;
       case Channel.EMAIL:
         return this.emailProvider;
+      case Channel.IN_HOUSE:
+        return this.inHouseProvider;
       default:
         throw new Error(`No provider found for channel ${channel}`);
     }

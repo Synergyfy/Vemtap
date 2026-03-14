@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
 import { Business } from '../businesses/entities/business.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { Contact } from '../contacts/entities/contact.entity';
 
 import { MessageTemplate } from './entities/message-template.entity';
 import { MessageCampaign } from './entities/message-campaign.entity';
@@ -43,6 +44,7 @@ import { AutomationService } from './services/automation.service';
 import { MessagingFlowService } from './services/messaging-flow.service';
 
 import { MessagingController } from './controllers/messaging.controller';
+import { CustomerMessagingController } from './controllers/customer-messaging.controller';
 import { FlowController } from './controllers/flow.controller';
 import { AdminFlowEngineController } from './controllers/admin-flow-engine.controller';
 import { TermiiWebhookController } from './controllers/termii.controller';
@@ -54,6 +56,7 @@ import { TermiiProvider } from './providers/termii.provider';
 import { AfricaTalkingProvider } from './providers/africastalking.provider';
 import { EmailProvider } from './providers/email.provider';
 import { BestBulkSmsProvider } from './providers/bestbulksms.provider';
+import { InHouseProvider } from './providers/inhouse.provider';
 import { ProviderRouterService } from './services/provider-router.service';
 import { BatchSendProcessor } from './processors/batch-send.processor';
 import { IndividualSendProcessor } from './processors/individual-send.processor';
@@ -75,6 +78,7 @@ import { AutomationProcessor } from './processors/automation.processor';
       FlowLog,
       Business,
       Branch,
+      Contact,
       AutomationRule,
       AutomationLog,
       CreditPlan,
@@ -147,6 +151,7 @@ import { AutomationProcessor } from './processors/automation.processor';
     AfricaTalkingProvider,
     BestBulkSmsProvider,
     EmailProvider,
+    InHouseProvider,
     ProviderRouterService,
     BatchSendProcessor,
     IndividualSendProcessor,
@@ -157,6 +162,7 @@ import { AutomationProcessor } from './processors/automation.processor';
   ],
   controllers: [
     MessagingController,
+    CustomerMessagingController,
     FlowController,
     AdminFlowEngineController,
     TermiiWebhookController,
@@ -179,6 +185,7 @@ import { AutomationProcessor } from './processors/automation.processor';
     AfricaTalkingProvider,
     BestBulkSmsProvider,
     EmailProvider,
+    InHouseProvider,
     ProviderRouterService,
     MessagingFlowService,
   ],
