@@ -13,7 +13,8 @@ import { dashboardApi } from '@/lib/api/dashboard';
 import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Nfc, Gift, BarChart, Users2, Settings,
-    ChevronDown,Lock, LogOut, Bell,  HelpCircle, Menu, MessageSquare, MessageCircle, ShieldCheck
+    ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
+    MessageCircle, LucideIcon
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
@@ -32,7 +33,7 @@ interface MenuItem {
     id?: string;
     label: string;
     description?: string;
-    icon?: any;
+    icon?: LucideIcon;
     href?: string;
     roles?: string[];
     feature?: string;
@@ -51,7 +52,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const { data: myBusiness, isLoading: isBusinessLoading } = useMyBusiness();
     const { fetchSubscriptionData, isFeatureLocked, capabilities, activeSubscription } = useSubscriptionStore();
-    const { getLinkWithBranch } = useActiveBranch();
+    const { activeBranchId, getLinkWithBranch } = useActiveBranch();
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
 
     // Close upgrade modal on navigation
@@ -85,7 +86,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const queryClient = useQueryClient();
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
 
     const { data } = useQuery({
         queryKey: ['dashboard', activeBranchId],
@@ -720,7 +720,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                     <div className="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden py-2 animate-in fade-in slide-in-from-top-2 duration-200">
                                         <div className="px-4 py-3 border-b border-gray-50 mb-1 bg-gray-50/50">
                                             <p className="text-sm font-bold text-text-main truncate">{user?.name || 'User'}</p>
-                                            <p className="text-[11px] text-text-secondary truncate">{user?.email || (user as any)?.email}</p>
+                                            <p className="text-[11px] text-text-secondary truncate">{user?.email}</p>
                                         </div>
                                         <div className="px-2">
                                             <Link

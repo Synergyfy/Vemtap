@@ -17,9 +17,12 @@ interface StepOutcomeProps {
     onEngagement?: (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => void;
     engagementSettings?: any;
     socialLinks?: any;
+    attachedForms?: Array<{ id: string; title: string; description?: string }>;
+    completedFormIds?: string[];
+    customSuccessTitle?: string | null;
+    customSuccessDescription?: string | null;
     selectedFormTitle?: string | null;
     selectedFormType?: string | null;
-    attachedForms?: Array<{ id: string; title: string; description?: string }>;
 }
 
 export const StepOutcome: React.FC<StepOutcomeProps> = ({
@@ -35,13 +38,14 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
     onEngagement,
     engagementSettings,
     socialLinks,
-    selectedFormTitle,
-    selectedFormType,
-    attachedForms
+    attachedForms,
+    completedFormIds = [],
+    customSuccessTitle,
+    customSuccessDescription
 }) => {
     const [isSocialModalOpen, setIsSocialModalOpen] = React.useState(false);
 
-    const hasSocial = !!(engagementSettings?.instagram || engagementSettings?.linkedin || engagementSettings?.twitter || engagementSettings?.facebook || engagementSettings?.socialUrl);
+    const hasSocial = !!(engagementSettings?.instagram || engagementSettings?.linkedin || engagementSettings?.twitter || engagementSettings?.facebook || engagementSettings?.socialUrl || engagementSettings?.reviewUrl || engagementSettings?.trustpilotUrl);
     const hasReview = !!engagementSettings?.reviewUrl;
     const hasFeedback = !!engagementSettings?.showFeedback;
     const hasRewards = !!engagementSettings?.showRewards;
@@ -53,6 +57,8 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
         { label: 'X / Twitter', url: engagementSettings?.twitter },
         { label: 'Facebook', url: engagementSettings?.facebook },
         { label: 'LinkedIn', url: engagementSettings?.linkedin },
+        { label: 'Google Review', url: engagementSettings?.reviewUrl },
+        { label: 'Trustpilot', url: engagementSettings?.trustpilotUrl },
     ];
     const hasExplicitSocial = socialItems.some((link) => Boolean(link.url));
     const fallbackSocialUrl = !hasExplicitSocial ? engagementSettings?.socialUrl : '';
@@ -64,14 +70,26 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
         }
         onEngagement?.(type, formId);
     };
+
+    const allFormsCompleted = attachedForms && attachedForms.length > 0 && attachedForms.every(f => completedFormIds.includes(f.id));
+
     return (
         <motion.div key="outcome" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={presets.card}>
             <div className="flex flex-col items-center text-center">
-                <div className="size-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-inner">
-                    <span className="material-symbols-outlined text-4xl">check_circle</span>
-                </div>
-                <h1 className={presets.title}>{customSuccessMessage || "Visit recorded successfully!"}</h1>
-                <p className={`${presets.body} mt-4 mb-4`}>{config.outcomeDesc}</p>
+                {(attachedForms && attachedForms.length > 0) ? (
+                    <div className="mb-6">
+                        <h1 className="text-xl font-black text-slate-900 leading-tight">Post-Submission</h1>
+                        <p className="text-xs text-slate-500 mt-2">Finish these quick forms to complete your visit.</p>
+                    </div>
+                ) : (
+                    <>
+                        <div className="size-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                            <span className="material-symbols-outlined text-4xl">check_circle</span>
+                        </div>
+                        <h1 className={presets.title}>{customSuccessTitle || "Visit Recorded"}</h1>
+                        <p className={`${presets.body} mt-4 mb-4`}>{customSuccessDescription || customSuccessMessage || "Thank you for visiting our store"}</p>
+                    </>
+                )}
 
                 {hasRewardSetup && (
                     <motion.div
@@ -101,10 +119,8 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
                     <EngagementTiles
                         onAction={handleEngagement}
                         settings={engagementSettings}
-                        selectedFormTitle={selectedFormTitle}
-                        selectedFormType={selectedFormType}
                         attachedForms={attachedForms}
-                        isLoading={isFormsLoading}
+                        completedFormIds={completedFormIds}
                     />
                 )}
 
@@ -131,7 +147,10 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
                 )}
 
                 <div className="w-full space-y-4 mt-8">
-                    {!hasRewardSetup && (
+                    {allFormsCompleted && (
+                        <button onClick={onFinish} className={presets.button}>Complete Visit</button>
+                    )}
+                    {!hasRewardSetup && !allFormsCompleted && (
                         <button onClick={onFinish} className={presets.button}>Finish</button>
                     )}
                     <button onClick={onRestart} className="text-[10px] font-black text-gray-300 uppercase tracking-widest hover:text-red-400 transition-colors">Return to Start</button>

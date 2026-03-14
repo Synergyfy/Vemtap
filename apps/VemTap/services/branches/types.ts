@@ -24,7 +24,9 @@ export interface Branch {
     rewardEnabled: boolean;
     rewardVisitThreshold: number;
     linkedinUrl?: string;
+    instagramUrl?: string;
     reviewUrl?: string;
+    trustpilotUrl?: string;
     showReview: boolean;
     showSocial: boolean;
     showFeedback: boolean;
@@ -69,6 +71,7 @@ export interface UpdateBranchRequest {
     customLink?: string;
     linkedinUrl?: string;
     reviewUrl?: string;
+    trustpilotUrl?: string;
     showReview?: boolean;
     showSocial?: boolean;
     showFeedback?: boolean;

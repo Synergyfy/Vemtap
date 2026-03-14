@@ -71,6 +71,75 @@ export const usePublicBusinessForm = (id?: string) =>
     enabled: !!id,
   });
 
+/** Fetch public business info (name, logo, branches) by businessId */
+export interface PublicBusinessInfo {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  branches?: Array<{ id: string; name: string; logoUrl?: string; address?: string }>;
+}
+
+export const usePublicBusinessInfo = (businessId?: string) =>
+  useQuery<PublicBusinessInfo | null, Error>({
+    queryKey: ['public-business-info', businessId],
+    queryFn: async (): Promise<PublicBusinessInfo | null> => {
+      if (!businessId) return null;
+      // Try public endpoint first, then fallback
+      const endpoints = [
+        `/businesses/${businessId}/public`,
+        `/businesses/${businessId}`,
+      ];
+      for (const endpoint of endpoints) {
+        try {
+          const data = await api.get(endpoint);
+          if (data && typeof data === 'object' && (data as any).name) {
+            return data as PublicBusinessInfo;
+          }
+        } catch {
+          // try next endpoint
+        }
+      }
+      return null;
+    },
+    enabled: !!businessId,
+    staleTime: 1000 * 60 * 10,
+    retry: false,
+  });
+
+/** Fetch public branch info by branchId */
+export interface PublicBranchInfo {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  address?: string;
+}
+
+export const usePublicBranchInfo = (branchId?: string) =>
+  useQuery<PublicBranchInfo | null, Error>({
+    queryKey: ['public-branch-info', branchId],
+    queryFn: async (): Promise<PublicBranchInfo | null> => {
+      if (!branchId) return null;
+      const endpoints = [
+        `/branches/${branchId}/public`,
+        `/branches/${branchId}`,
+      ];
+      for (const endpoint of endpoints) {
+        try {
+          const data = await api.get(endpoint);
+          if (data && typeof data === 'object' && (data as any).name) {
+            return data as PublicBranchInfo;
+          }
+        } catch {
+          // try next
+        }
+      }
+      return null;
+    },
+    enabled: !!branchId,
+    staleTime: 1000 * 60 * 10,
+    retry: false,
+  });
+
 export const useCreateBusinessForm = () => {
   const queryClient = useQueryClient();
   return useMutation<BusinessForm, Error, CreateBusinessFormRequest>({

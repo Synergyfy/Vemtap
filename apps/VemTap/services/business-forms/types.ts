@@ -5,7 +5,8 @@ export type ApiFormFieldType =
   | 'select'
   | 'radio'
   | 'checkbox'
-  | 'date';
+  | 'date'
+  | 'date-no-year';
 
 export interface BusinessFormField {
   id?: string;
@@ -28,6 +29,7 @@ export interface BusinessForm {
   businessId: string;
   branchId: string;
   businessName?: string;
+  branchName?: string;
   businessLogo?: string;
   templateId?: string;
   templateName?: string;
@@ -36,6 +38,8 @@ export interface BusinessForm {
   linkedTargets?: string[];
   redirectUrl?: string;
   redirectLabel?: string;
+  successTitle?: string;
+  successMessage?: string;
   instructions?: string;
   fields: BusinessFormField[];
   createdAt?: string;
@@ -58,6 +62,8 @@ export interface CreateBusinessFormRequest {
   linkedTargets?: string[];
   redirectUrl?: string;
   redirectLabel?: string;
+  successTitle?: string;
+  successMessage?: string;
   instructions?: string;
   fields: Omit<BusinessFormField, 'id'>[];
 }
@@ -75,6 +81,8 @@ export interface FormTemplate {
   fields: Omit<BusinessFormField, 'id'>[];
   redirectUrl?: string;
   redirectLabel?: string;
+  successTitle?: string;
+  successMessage?: string;
   linkedTargets?: string[];
   usageModes?: Array<'link' | 'qr' | 'messaging'>;
   instructions?: string;
@@ -90,6 +98,8 @@ export interface CreateFormTemplateRequest {
   fields: Omit<BusinessFormField, 'id'>[];
   redirectUrl?: string;
   redirectLabel?: string;
+  successTitle?: string;
+  successMessage?: string;
   linkedTargets?: string[];
   usageModes?: Array<'link' | 'qr' | 'messaging'>;
   instructions?: string;

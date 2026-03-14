@@ -17,6 +17,18 @@ export type UserRole = 'owner' | 'manager' | 'staff' | 'admin' | 'customer' | nu
 export type SubscriptionPlan = 'free' | 'pro' | 'enterprise' | string;
 export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'trialing' | string;
 
+export interface UserEngagement {
+  reviewUrl?: string;
+  instagram?: string;
+  twitter?: string;
+  facebook?: string;
+  linkedin?: string;
+  showReview?: boolean;
+  showSocial?: boolean;
+  showFeedback?: boolean;
+  [key: string]: unknown;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -41,7 +53,7 @@ export interface User {
   lastLogin?: string;
   joined?: string;
   createdAt?: string;
-  engagement?: Record<string, any>;
+  engagement?: UserEngagement;
 }
 
 export interface AuthState {
@@ -67,14 +79,14 @@ export const useAuthStore = create<AuthState>()(
       activeBranchId: null,
 
       login: (userData, access_token) => {
-        console.log('[AUTH] ðŸ” login() called', { email: userData?.email, role: userData?.role });       
+        console.log('[AUTH] login() called', { email: userData?.email, role: userData?.role });       
         set({ user: userData, access_token, isAuthenticated: true, activeBranchId: get().activeBranchId || null });
         setAuthCookie(access_token);
-        console.log('[AUTH] âœ… Login complete, isAuthenticated:', true);
+        console.log('[AUTH] Login complete, isAuthenticated:', true);
       },
 
       signup: (userData, access_token) => {
-        console.log('[AUTH] ðŸ“ signup() called', { email: userData?.email });
+        console.log('[AUTH] signup() called', { email: userData?.email });
         set({ user: userData, access_token, isAuthenticated: true, activeBranchId: get().activeBranchId || null });
         setAuthCookie(access_token);
       },
@@ -110,13 +122,14 @@ export const useAuthStore = create<AuthState>()(
             set({ user: { ...user, ...updatedUser } });
           }
           return { success: true };
-        } catch (error: any) {
+        } catch (error: unknown) {
           // Fallback to optimistic update if API not ready
           const { user } = get();
           if (user) {
             set({ user: { ...user, ...data } });
           }
-          return { success: false, error: error.message || 'Update failed' };
+          const errorMessage = error instanceof Error ? error.message : 'Update failed';
+          return { success: false, error: errorMessage };
         }
       },
 
@@ -129,7 +142,7 @@ export const useAuthStore = create<AuthState>()(
           // You can add API call here later
           set({ user: { ...user, planId, subscriptionStatus: 'active' } });
           return { success: true };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return { success: false, error: 'Failed to subscribe' };
         }
       }

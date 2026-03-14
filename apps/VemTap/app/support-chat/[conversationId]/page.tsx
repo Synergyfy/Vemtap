@@ -177,6 +177,13 @@ export default function StandaloneChatPage() {
                     >
                         <Search size={22} />
                     </button>
+
+                    <button 
+                        className="p-2.5 hover:bg-slate-50 rounded-xl transition-all"
+                        onClick={() => window.alert('Calling feature coming soon!')}
+                    >
+                        <Phone size={22} />
+                    </button>
                     
                     {!isCustomer && (
                         <>

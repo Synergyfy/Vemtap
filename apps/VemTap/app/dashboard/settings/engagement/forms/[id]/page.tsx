@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, CheckCircle2, Copy, ExternalLink, FileText, Link2 } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, CheckCircle2, Copy, ExternalLink, FileText, Link2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/dashboard/PageHeader';
 import PhoneFrame from '@/components/shared/PhoneFrame';
@@ -12,6 +12,7 @@ import { useBusinessForm } from '@/services/business-forms/hooks';
 import { useBranches } from '@/services/branches/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 
 function formatDateTime(dateString?: string): string {
     if (!dateString) return '—';
@@ -42,6 +43,8 @@ export default function FormPreviewPage() {
     const { data: branches = [] } = useBranches();
     const { data: myBusiness } = useMyBusiness();
     const user = useAuthStore((state) => state.user);
+    const { engagementSettings } = useCustomerFlowStore();
+    const brandColor = engagementSettings?.brandColor || '#2563eb';
     const mainBranch = myBusiness?.branches?.find((b) => b.isMainBranch);
     const branchName = branches.find((b) => b.id === form?.branchId)?.name || 'Unknown Branch';
     const [lastPreviewSubmission, setLastPreviewSubmission] = useState<Record<string, any> | null>(null);
@@ -83,7 +86,7 @@ export default function FormPreviewPage() {
                         <p className="text-sm text-gray-500">This form doesn&apos;t exist or you don&apos;t have access to it.</p>
                     </div>
                 </div>
-                <Link href="/dashboard/forms" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
+                <Link href="/dashboard/settings/engagement/forms" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
                     ← Back to Forms
                 </Link>
             </div>
@@ -217,19 +220,80 @@ export default function FormPreviewPage() {
                 {/* Phone Preview */}
                 <div className="flex justify-center">
                     <PhoneFrame title="Live Phone Preview">
-                        <div className="px-4 pb-8 pt-2">
-                            <StepBusinessForm
-                                form={{
-                                    ...form,
-                                    businessName: myBusiness?.name || user?.businessName || form.businessName,
-                                    businessLogo: myBusiness?.logoUrl || mainBranch?.logoUrl || user?.businessLogo || form.businessLogo,
-                                }}
-                                onComplete={(answers) => {
-                                    setLastPreviewSubmission(answers);
-                                    toast.success('Preview submission captured');
-                                }}
-                                onSkip={() => toast('Preview skipped')}
-                            />
+                        <div className="min-h-full bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 py-6 px-3 space-y-3">
+                            {/* ─── Container 1: Header — Business branding + Form title + Description ─── */}
+                            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                                {/* Top accent bar */}
+                                <div 
+                                    className="h-1" 
+                                    style={{ backgroundColor: brandColor }}
+                                />
+
+                                <div className="px-4 pt-3 pb-4">
+                                    {/* Business logo + name + branch — single line, minimal */}
+                                    <div className="flex items-center gap-1.5 mb-2.5">
+                                        {(myBusiness?.logoUrl || mainBranch?.logoUrl || user?.businessLogo || form.businessLogo) ? (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img
+                                                src={myBusiness?.logoUrl || mainBranch?.logoUrl || user?.businessLogo || form.businessLogo}
+                                                alt={myBusiness?.name || 'Business'}
+                                                className="size-5 rounded-full object-cover border border-gray-200 shrink-0"
+                                            />
+                                        ) : (
+                                            <div 
+                                                className="size-5 rounded-full flex items-center justify-center shrink-0"
+                                                style={{ backgroundColor: `${brandColor}15` }}
+                                            >
+                                                <Building2 size={10} style={{ color: brandColor }} />
+                                            </div>
+                                        )}
+                                        <span className="text-[10px] font-semibold text-slate-500 truncate">
+                                            {myBusiness?.name || user?.businessName || form.businessName || 'Business'}
+                                            {branchName ? (
+                                                <span className="text-slate-300 mx-1">·</span>
+                                            ) : null}
+                                            {branchName && (
+                                                <span className="text-slate-400 font-medium">{branchName}</span>
+                                            )}
+                                        </span>
+                                    </div>
+
+                                    {/* Form title — focal point */}
+                                    <h1 className="text-base font-display font-black text-slate-900 tracking-tight leading-tight">
+                                        {form.title || 'Untitled Form'}
+                                    </h1>
+
+                                    {/* Form description */}
+                                    {form.description && (
+                                        <p className="mt-1 text-[11px] text-slate-500 font-medium leading-relaxed">
+                                            {form.description}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* ─── Container 2: Form questions ─── */}
+                            <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+                                <StepBusinessForm
+                                    form={{
+                                        ...form,
+                                        businessName: myBusiness?.name || user?.businessName || form.businessName,
+                                        businessLogo: myBusiness?.logoUrl || mainBranch?.logoUrl || user?.businessLogo || form.businessLogo,
+                                    }}
+                                    hideHeader
+                                    brandColor={brandColor}
+                                    onComplete={(answers) => {
+                                        setLastPreviewSubmission(answers);
+                                        toast.success('Preview submission captured');
+                                    }}
+                                    onSkip={() => toast('Preview skipped')}
+                                />
+                            </div>
+
+                            {/* Powered-by footer */}
+                            <p className="text-center text-[8px] font-medium text-slate-400">
+                                Powered by <span className="font-bold" style={{ color: brandColor }}>VemTap</span>
+                            </p>
                         </div>
                     </PhoneFrame>
                 </div>
