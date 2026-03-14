@@ -24,13 +24,13 @@ import { VisitorSignupDto } from './dto/visitor-signup.dto';
 import { CreateVisitorRewardDto } from './dto/create-visitor-reward.dto';
 import { DeviceTapDto } from './dto/device-tap.dto';
 import { VisitorQueryDto } from './dto/visitor-query.dto';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { Permissions } from 'src/common/decorators/permissions.decorator';
-import { Public } from 'src/common/decorators/public.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Permissions } from '../../common/decorators/permissions.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { PermissionsGuard } from 'src/common/guards/permissions.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import {
   VisitorResponseDto,

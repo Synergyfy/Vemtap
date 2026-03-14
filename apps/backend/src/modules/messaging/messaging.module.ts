@@ -20,6 +20,7 @@ import { AutomationRule } from './entities/automation-rule.entity';
 import { AutomationLog } from './entities/automation-log.entity';
 import { CreditPlan } from './entities/credit-plan.entity';
 import { BusinessCredit } from './entities/business-credit.entity';
+import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
 
 import { ContactsModule } from '../contacts/contacts.module';
 import { BusinessesModule } from '../businesses/businesses.module';
@@ -55,6 +56,7 @@ import { EmailProvider } from './providers/email.provider';
 import { BestBulkSmsProvider } from './providers/bestbulksms.provider';
 import { ProviderRouterService } from './services/provider-router.service';
 import { BatchSendProcessor } from './processors/batch-send.processor';
+import { IndividualSendProcessor } from './processors/individual-send.processor';
 import { FlowDelayProcessor } from './processors/flow-delay.processor';
 import { AutomationProcessor } from './processors/automation.processor';
 
@@ -77,6 +79,7 @@ import { AutomationProcessor } from './processors/automation.processor';
       AutomationLog,
       CreditPlan,
       BusinessCredit,
+      LoyaltyProfile,
     ]),
     HttpModule,
     ContactsModule,
@@ -119,6 +122,9 @@ import { AutomationProcessor } from './processors/automation.processor';
         name: 'messaging-batch-send',
       },
       {
+        name: 'messaging-individual-send',
+      },
+      {
         name: 'messaging-flow-delay',
       },
       {
@@ -143,6 +149,7 @@ import { AutomationProcessor } from './processors/automation.processor';
     EmailProvider,
     ProviderRouterService,
     BatchSendProcessor,
+    IndividualSendProcessor,
     FlowDelayProcessor,
     AutomationProcessor,
     CreditPlanService,

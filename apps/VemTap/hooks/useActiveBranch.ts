@@ -26,10 +26,6 @@ export function useActiveBranch() {
         if (urlBranchId && urlBranchId !== storeBranchId) {
             setStoreBranch(urlBranchId);
         }
-        // When URL has no branchId but store has one, reset the store
-        if (!urlBranchId && storeBranchId) {
-            setStoreBranch(null);
-        }
     }, [urlBranchId, storeBranchId, setStoreBranch]);
 
     // 3. Method to update branch (updates URL; store sync happens via effect)
@@ -47,6 +43,8 @@ export function useActiveBranch() {
         
         const query = params.toString();
         const newUrl = `${pathname}${query ? `?${query}` : ''}`;
+        
+        // Use router.replace to update the URL without adding to history
         router.replace(newUrl);
     }, [pathname, router, searchParams, setStoreBranch]);
 

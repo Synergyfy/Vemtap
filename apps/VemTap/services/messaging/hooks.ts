@@ -190,10 +190,6 @@ export const useSendMessage = () => {
     const role = useAuthStore((state) => state.user?.role);
     return useMutation<any, Error, SendMessageRequest>({
         mutationFn: async (dto) => {
-            if (!businessId) {
-                throw new Error('Missing businessId in user session');
-            }
-
             const normalizedActiveBranchId =
                 !urlBranchId || urlBranchId === 'all' ? undefined : urlBranchId;
             const resolvedBranchId = getWriteBranchId({
@@ -205,7 +201,7 @@ export const useSendMessage = () => {
 
             return await api.post('/messaging/send', {
                 ...dto,
-                businessId,
+                businessId: businessId || undefined,
                 branchId: resolvedBranchId || undefined,
                 audienceType: dto.audienceType,
             });

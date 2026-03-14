@@ -12,6 +12,9 @@ export interface SendMessagePayload {
 export interface ProviderResponse {
   messageId: string | null;
   status: 'queued' | 'sent' | 'failed';
+  cost?: number;
+  units?: number;
+  reference?: string;
   rawResponse?: any;
 }
 
