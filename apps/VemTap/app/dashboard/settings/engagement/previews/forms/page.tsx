@@ -4,16 +4,65 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/dashboard/PageHeader';
 import PhoneFrame from '@/components/shared/PhoneFrame';
+import { SocialLinksPreview } from '@/components/shared/SocialLinksPreview';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
+import { StepForm } from '@/components/visitor/StepForm';
+import { StepOutcome } from '@/components/visitor/StepOutcome';
+import { StepFinalSuccess } from '@/components/visitor/StepFinalSuccess';
+import { StepWelcomeBack } from '@/components/visitor/StepWelcomeBack';
 import Spinner from '@/components/ui/Spinner';
 import { useBusinessForms } from '@/services/business-forms/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useBranches } from '@/services/branches/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 
 export default function SelectedFormPreviewPage() {
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const userBranchId = useAuthStore((state) => state.user?.branchId);
+    const {
+        engagementSettings,
+        getBusinessConfig,
+        customSuccessMessage,
+        customRewardMessage,
+        customSuccessTitle,
+        customSuccessTag,
+        customSuccessButton,
+        customWelcomeMessage,
+        customWelcomeTitle,
+        customWelcomeTag,
+        customWelcomeButton,
+        customPrivacyMessage,
+        customNewUserWelcomeMessage,
+        customNewUserWelcomeTitle,
+        customNewUserWelcomeTag,
+        customNewUserWelcomeButton,
+        hasRewardSetup,
+        rewardVisitThreshold,
+        storeName,
+        logoUrl,
+    } = useCustomerFlowStore((state) => ({
+        engagementSettings: state.engagementSettings,
+        getBusinessConfig: state.getBusinessConfig,
+        customSuccessMessage: state.customSuccessMessage,
+        customRewardMessage: state.customRewardMessage,
+        customSuccessTitle: state.customSuccessTitle,
+        customSuccessTag: state.customSuccessTag,
+        customSuccessButton: state.customSuccessButton,
+        customWelcomeMessage: state.customWelcomeMessage,
+        customWelcomeTitle: state.customWelcomeTitle,
+        customWelcomeTag: state.customWelcomeTag,
+        customWelcomeButton: state.customWelcomeButton,
+        customPrivacyMessage: state.customPrivacyMessage,
+        customNewUserWelcomeMessage: state.customNewUserWelcomeMessage,
+        customNewUserWelcomeTitle: state.customNewUserWelcomeTitle,
+        customNewUserWelcomeTag: state.customNewUserWelcomeTag,
+        customNewUserWelcomeButton: state.customNewUserWelcomeButton,
+        hasRewardSetup: state.hasRewardSetup,
+        rewardVisitThreshold: state.rewardVisitThreshold,
+        storeName: state.storeName,
+        logoUrl: state.logoUrl,
+    }));
     const { data: branches = [] } = useBranches();
     const { data: myBusiness } = useMyBusiness();
     const user = useAuthStore((state) => state.user);
@@ -26,6 +75,14 @@ export default function SelectedFormPreviewPage() {
     });
 
     const [selectedFormId, setSelectedFormId] = useState<string>('');
+    const [activePreviewTab, setActivePreviewTab] = useState<'form' | 'new_user' | 'thank_you' | 'final_step' | 'welcome_back' | 'preview'>('form');
+    const [flowPreviewStep, setFlowPreviewStep] = useState<'form' | 'thank_you' | 'final_step' | 'welcome_back'>('form');
+
+    useEffect(() => {
+        if (activePreviewTab === 'preview') {
+            setFlowPreviewStep('form');
+        }
+    }, [activePreviewTab]);
 
     useEffect(() => {
         if (!selectedFormId && forms.length > 0) {
@@ -43,6 +100,20 @@ export default function SelectedFormPreviewPage() {
         if (typeof window === 'undefined') return `/forms/${selectedForm.uniqueCode}`;
         return `${window.location.origin}/forms/${selectedForm.uniqueCode}`;
     }, [selectedForm?.uniqueCode]);
+
+    const config = useMemo(() => getBusinessConfig(), [getBusinessConfig]);
+    const previewStoreName = myBusiness?.name || user?.businessName || storeName || 'Your Store';
+    const previewLogoUrl = myBusiness?.logoUrl || mainBranch?.logoUrl || user?.businessLogo || logoUrl || '';
+    const previewUser = useMemo(
+        () => ({
+            firstName: 'Jamie',
+            lastName: 'Lee',
+            name: 'Jamie Lee',
+            email: 'jamie@example.com',
+            phone: '+1 555-010-2400',
+        }),
+        []
+    );
 
     return (
         <div className="p-8 space-y-6">
@@ -146,18 +217,176 @@ export default function SelectedFormPreviewPage() {
                                 <span className="text-[10px] font-semibold text-gray-400">Selected Form</span>
                             </summary>
                             <div className="px-4 pb-4">
+                                <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-3 mb-3">
+                                    {[
+                                        { key: 'form', label: 'Business Form' },
+                                        { key: 'new_user', label: 'New User' },
+                                        { key: 'thank_you', label: 'Thank You Page' },
+                                        { key: 'final_step', label: 'Thank You Message' },
+                                        { key: 'welcome_back', label: 'Welcome Back' },
+                                        { key: 'preview', label: 'Preview' },
+                                    ].map((tab) => (
+                                        <button
+                                            key={tab.key}
+                                            onClick={() => setActivePreviewTab(tab.key as typeof activePreviewTab)}
+                                            className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+                                                activePreviewTab === tab.key
+                                                    ? 'bg-primary text-white'
+                                                    : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
                                 <PhoneFrame title="Selected Form Preview">
                                     <div className="px-5 pb-8 pt-2">
                                         {selectedForm ? (
-                                            <StepBusinessForm
-                                                form={{
-                                                    ...selectedForm,
-                                                    businessName: myBusiness?.name || user?.businessName || selectedForm.businessName,
-                                                    businessLogo: myBusiness?.logoUrl || mainBranch?.logoUrl || user?.businessLogo || selectedForm.businessLogo,
-                                                }}
-                                                onComplete={() => { }}
-                                                onSkip={() => { }}
-                                            />
+                                            <>
+                                                {activePreviewTab === 'form' && (
+                                                    <>
+                                                        <StepBusinessForm
+                                                            form={{
+                                                                ...selectedForm,
+                                                                businessName: previewStoreName || selectedForm.businessName,
+                                                                businessLogo: previewLogoUrl || selectedForm.businessLogo,
+                                                            }}
+                                                            onComplete={() => setActivePreviewTab('thank_you')}
+                                                            onSkip={() => { }}
+                                                        />
+                                                        <SocialLinksPreview settings={engagementSettings} />
+                                                    </>
+                                                )}
+
+                                                {activePreviewTab === 'new_user' && (
+                                                    <StepForm
+                                                        storeName={previewStoreName}
+                                                        logoUrl={previewLogoUrl}
+                                                        customWelcomeMessage={customNewUserWelcomeMessage}
+                                                        customWelcomeTitle={customNewUserWelcomeTitle}
+                                                        customWelcomeTag={customNewUserWelcomeTag}
+                                                        customPrivacyMessage={customPrivacyMessage}
+                                                        submitLabel={customNewUserWelcomeButton || 'Submit'}
+                                                        initialData={previewUser}
+                                                        onBack={() => setActivePreviewTab('form')}
+                                                        onSubmit={() => setActivePreviewTab('thank_you')}
+                                                    />
+                                                )}
+
+                                                {activePreviewTab === 'thank_you' && (
+                                                    <StepOutcome
+                                                        config={config}
+                                                        customSuccessMessage={customSuccessMessage}
+                                                        customRewardMessage={customRewardMessage}
+                                                        hasRewardSetup={hasRewardSetup}
+                                                        isDownloading={false}
+                                                        onDownload={() => { }}
+                                                        onFinish={() => setActivePreviewTab('final_step')}
+                                                        onRestart={() => setActivePreviewTab('form')}
+                                                        engagementSettings={engagementSettings}
+                                                        selectedFormTitle={selectedForm.title || 'Selected Form'}
+                                                        selectedFormType="Form"
+                                                    />
+                                                )}
+
+                                                {activePreviewTab === 'final_step' && (
+                                                    <StepFinalSuccess
+                                                        customSuccessTag={customSuccessTag}
+                                                        customSuccessTitle={customSuccessTitle}
+                                                        finalSuccessMessage={customSuccessMessage}
+                                                        customSuccessButton={customSuccessButton}
+                                                        onFinish={() => setActivePreviewTab('welcome_back')}
+                                                        engagementSettings={engagementSettings}
+                                                    />
+                                                )}
+
+                                                {activePreviewTab === 'welcome_back' && (
+                                                    <StepWelcomeBack
+                                                        storeName={previewStoreName}
+                                                        logoUrl={previewLogoUrl}
+                                                        customWelcomeMessage={customWelcomeMessage}
+                                                        customWelcomeTitle={customWelcomeTitle}
+                                                        customWelcomeTag={customWelcomeTag}
+                                                        customWelcomeButton={customWelcomeButton}
+                                                        customPrivacyMessage={customPrivacyMessage}
+                                                        userData={previewUser}
+                                                        visitCount={Math.max(1, rewardVisitThreshold - 1)}
+                                                        rewardVisitThreshold={rewardVisitThreshold}
+                                                        hasRewardSetup={hasRewardSetup}
+                                                        redemptionStatus="none"
+                                                        showConsent
+                                                        isCustomer
+                                                        onRedeem={() => { }}
+                                                        onContinue={() => { }}
+                                                        onClear={() => { }}
+                                                    />
+                                                )}
+
+                                                {activePreviewTab === 'preview' && (
+                                                    <>
+                                                        {flowPreviewStep === 'form' && (
+                                                            <StepBusinessForm
+                                                                form={{
+                                                                    ...selectedForm,
+                                                                    businessName: previewStoreName || selectedForm.businessName,
+                                                                    businessLogo: previewLogoUrl || selectedForm.businessLogo,
+                                                                }}
+                                                                onComplete={() => setFlowPreviewStep('thank_you')}
+                                                                onSkip={() => setFlowPreviewStep('thank_you')}
+                                                            />
+                                                        )}
+
+                                                        {flowPreviewStep === 'thank_you' && (
+                                                            <StepOutcome
+                                                                config={config}
+                                                                customSuccessMessage={customSuccessMessage}
+                                                                customRewardMessage={customRewardMessage}
+                                                                hasRewardSetup={hasRewardSetup}
+                                                                isDownloading={false}
+                                                                onDownload={() => { }}
+                                                                onFinish={() => setFlowPreviewStep('final_step')}
+                                                                onRestart={() => setFlowPreviewStep('form')}
+                                                                engagementSettings={engagementSettings}
+                                                                selectedFormTitle={selectedForm.title || 'Selected Form'}
+                                                                selectedFormType="Form"
+                                                            />
+                                                        )}
+
+                                                        {flowPreviewStep === 'final_step' && (
+                                                            <StepFinalSuccess
+                                                                customSuccessTag={customSuccessTag}
+                                                                customSuccessTitle={customSuccessTitle}
+                                                                finalSuccessMessage={customSuccessMessage}
+                                                                customSuccessButton={customSuccessButton}
+                                                                onFinish={() => setFlowPreviewStep('welcome_back')}
+                                                                engagementSettings={engagementSettings}
+                                                            />
+                                                        )}
+
+                                                        {flowPreviewStep === 'welcome_back' && (
+                                                            <StepWelcomeBack
+                                                                storeName={previewStoreName}
+                                                                logoUrl={previewLogoUrl}
+                                                                customWelcomeMessage={customWelcomeMessage}
+                                                                customWelcomeTitle={customWelcomeTitle}
+                                                                customWelcomeTag={customWelcomeTag}
+                                                                customWelcomeButton={customWelcomeButton}
+                                                                customPrivacyMessage={customPrivacyMessage}
+                                                                userData={previewUser}
+                                                                visitCount={Math.max(1, rewardVisitThreshold - 1)}
+                                                                rewardVisitThreshold={rewardVisitThreshold}
+                                                                hasRewardSetup={hasRewardSetup}
+                                                                redemptionStatus="none"
+                                                                showConsent
+                                                                isCustomer
+                                                                onRedeem={() => { }}
+                                                                onContinue={() => setFlowPreviewStep('form')}
+                                                                onClear={() => setFlowPreviewStep('form')}
+                                                            />
+                                                        )}
+                                                    </>
+                                                )}
+                                            </>
                                         ) : (
                                             <div className="text-sm text-gray-500 p-6 text-center">
                                                 Select a form to preview.

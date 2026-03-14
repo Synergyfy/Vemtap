@@ -138,7 +138,7 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                 </>
             )}
             {form.instructions ? (
-                <div className="mb-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
+                <div className="mb-6 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
                     {form.instructions}
                 </div>
             ) : null}
@@ -146,7 +146,7 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
             <div className="space-y-5 text-left">
                 {normalizedFields.map((field) => (
                     <div key={field.key} className="space-y-2">
-                        <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                        <label className="text-sm font-semibold text-slate-700">
                             {field.label}
                             {field.isRequired || field.required ? ' *' : ''}
                         </label>
@@ -199,7 +199,7 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                             <textarea
                                 value={answers[field.key] || ''}
                                 onChange={(e) => updateAnswer(field.key, e.target.value)}
-                                className="w-full min-h-24 p-3 rounded-xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-4 focus:ring-primary/10 outline-none text-sm font-medium"
+                                className="w-full min-h-24 bg-primary/5 border-0 focus:ring-2 focus:ring-primary rounded-xl py-3.5 px-4 text-slate-900 placeholder:text-slate-400 transition-all resize-none"
                                 placeholder={`Enter ${field.label.toLowerCase()}`}
                             />
                         )}
@@ -210,7 +210,7 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                                     <button
                                         key={option}
                                         onClick={() => updateAnswer(field.key, option)}
-                                        className={`w-full p-3 rounded-xl border text-left text-sm font-bold transition-all ${
+                                        className={`w-full p-4 rounded-xl border-0 text-left text-sm font-semibold transition-all ${
                                             answers[field.key] === option
                                                 ? 'bg-white shadow-sm'
                                                 : 'border-gray-100 bg-gray-50 text-slate-700 hover:border-gray-200'
@@ -238,7 +238,7 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                                                     : [...selectedOptions, option];
                                                 updateAnswer(field.key, next);
                                             }}
-                                            className={`w-full p-3 rounded-xl border text-left text-sm font-bold transition-all ${
+                                            className={`w-full p-4 rounded-xl border-0 text-left text-sm font-semibold transition-all ${
                                                 isChecked
                                                     ? 'bg-white shadow-sm'
                                                     : 'border-gray-100 bg-gray-50 text-slate-700 hover:border-gray-200'

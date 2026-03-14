@@ -55,10 +55,12 @@ export default function PublicBusinessFormPage() {
             .map((field, index) => {
                 const fieldId = field.id;
                 if (!fieldId) return null;
-                const value = answersMap[fieldId] ?? answersMap[`field-${index}`];
+                const rawValue = answersMap[fieldId] ?? answersMap[`field-${index}`];
+                // Ensure value is a string for backend compatibility
+                const value = Array.isArray(rawValue) ? rawValue.join(', ') : String(rawValue ?? '');
                 return { fieldId, value };
             })
-            .filter((entry): entry is { fieldId: string; value: unknown } => !!entry && !!entry.fieldId);
+            .filter((entry): entry is { fieldId: string; value: string } => !!entry && !!entry.fieldId);
     };
 
     if (isLoading) {
@@ -202,7 +204,10 @@ export default function PublicBusinessFormPage() {
                                     toast.error('This form is missing field identifiers. Please contact the business.');
                                     return;
                                 }
-                                await submitFormResponse.mutateAsync({ answers: payload });
+                                await submitFormResponse.mutateAsync({ 
+                                    id: form.uniqueCode || form.id, 
+                                    payload: { answers: payload } 
+                                });
                                 setLastAnswers(answers);
                             } catch {
                                 toast.error('Failed to submit form');
@@ -313,7 +318,10 @@ export default function PublicBusinessFormPage() {
                                             toast.error('This form is missing field identifiers. Please contact the business.');
                                             return;
                                         }
-                                        await submitFormResponse.mutateAsync({ answers: payload });
+                                        await submitFormResponse.mutateAsync({ 
+                                            id: form.uniqueCode || form.id, 
+                                            payload: { answers: payload } 
+                                        });
 
                                         if (signupEmail.trim()) {
                                             await api.post('/auth/password-reset/request', { email: signupEmail.trim() });

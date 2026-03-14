@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
+import Spinner from '@/components/ui/Spinner';
+
 interface EngagementTileProps {
     icon: string;
     label: string;
@@ -97,34 +99,38 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
                 />
             )}
 
-            {settings.showSocial && hasSocial && (
-                <EngagementTile
-                    icon="share"
-                    label="Show Social Links"
-                    description="Open social links after default submission"
-                    color="bg-blue-50 text-blue-500"
-                    onClick={() => onAction('social')}
-                />
-            )}
+                            {settings.showSocial && hasSocial && (
+                                <EngagementTile
+                                    icon="share"
+                                    label="Show Social Links"
+                                    description="Open social links after default submission"
+                                    color="bg-blue-50 text-blue-500"
+                                    onClick={() => onAction('social')}
+                                />
+                            )}
 
-            {settings.showFeedback && (
-                <EngagementTile
-                    icon="chat_bubble"
-                    label="Quick Feedback"
-                    description="Help us improve our service"
-                    color="bg-purple-50 text-purple-500"
-                    onClick={() => onAction('feedback')}
-                />
-            )}
+                            {settings.showFeedback && (
+                                <EngagementTile
+                                    icon="chat_bubble"
+                                    label="Quick Feedback"
+                                    description="Help us improve our service"
+                                    color="bg-purple-50 text-purple-500"
+                                    onClick={() => onAction('feedback')}
+                                />
+                            )}
 
-            {settings.showRewards && (
-                <EngagementTile
-                    icon="redeem"
-                    label="Claim Rewards"
-                    description="Unlock exclusive benefits"
-                    color="bg-emerald-50 text-emerald-500"
-                    onClick={() => onAction('rewards')}
-                />
+                            {settings.showRewards && (
+                                <EngagementTile
+                                    icon="redeem"
+                                    label="Claim Rewards"
+                                    description="Unlock exclusive benefits"
+                                    color="bg-emerald-50 text-emerald-500"
+                                    onClick={() => onAction('rewards')}
+                                />
+                            )}
+                        </>
+                    )}
+                </>
             )}
         </div>
     );

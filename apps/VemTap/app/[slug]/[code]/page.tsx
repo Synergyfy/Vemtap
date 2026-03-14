@@ -19,12 +19,15 @@ import { StepForm } from '@/components/visitor/StepForm';
 import { StepWelcomeBack } from '@/components/visitor/StepWelcomeBack';
 import { StepOutcome } from '@/components/visitor/StepOutcome';
 import { StepSurvey } from '@/components/visitor/StepSurvey';
+import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { StepFinalSuccess } from '@/components/visitor/StepFinalSuccess';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { EarnPointsModal } from '@/components/loyalty/EarnPointsModal';
 import { loyaltyApi } from '@/lib/api/loyalty';
 import { api } from '@/lib/api';
+import { useBusinessForms, useSubmitBusinessFormResponse, useFormsByDevice } from '@/services/business-forms/hooks';
+import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 
 export default function DynamicTapJourneyPage() {
     const params = useParams();
@@ -51,9 +54,26 @@ export default function DynamicTapJourneyPage() {
     const { lastEarnedResponse, setLastEarnedResponse } = useLoyaltyStore();
     const config = getBusinessConfig();
 
+    const [selectedBusinessFormId, setSelectedBusinessFormId] = useState<string | null>(null);
+
+    // Fetch forms ONLY when user reaches the outcome/success stage
+    // Relying strictly on /api/v1/visitor-forms/device/{code}
+    const shouldFetchForms = currentStep === 'OUTCOME' || currentStep === 'FINAL_SUCCESS' || currentStep === 'SURVEY';
+    const { data: deviceForms = [], isLoading: formsLoading } = useFormsByDevice(
+        shouldFetchForms ? (deviceCode || '') : ''
+    );
+
+    const submitBusinessFormResponse = useSubmitBusinessFormResponse();
+
+    const selectedBusinessForm = useMemo(
+        () => deviceForms.find((f) => f.id === selectedBusinessFormId) || null,
+        [deviceForms, selectedBusinessFormId]
+    );
+
     const isCustomer = isAuthenticated && user?.role?.toLowerCase() === 'customer';
 
     const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
     const [isSyncingReal, setIsSyncingReal] = useState(false);
     const [isDeviceSynced, setIsDeviceSynced] = useState(false);
@@ -269,6 +289,7 @@ export default function DynamicTapJourneyPage() {
     };
 
     const onFormSubmit = async (data: any) => {
+        setIsSubmitting(true);
         try {
             if (!isCustomer) {
                 // Split name into firstName/lastName for backend DTO
@@ -316,6 +337,8 @@ export default function DynamicTapJourneyPage() {
         } catch (err: any) {
             console.error('Registration/Login failed:', err);
             toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -373,9 +396,33 @@ export default function DynamicTapJourneyPage() {
         }
     };
 
-    const handleSurveyComplete = (answers: Record<string, any>) => {
+    const handleSurveyComplete = async (answers: Record<string, any>) => {
+        if (selectedBusinessForm && businessId) {
+            try {
+                await submitBusinessFormResponse.mutateAsync({
+                    id: selectedBusinessForm.uniqueCode || selectedBusinessForm.id,
+                    payload: {
+                        answers: Object.entries(answers).map(([fieldId, value]) => ({
+                            fieldId,
+                            // Ensure value is a string for backend compatibility
+                            value: Array.isArray(value) ? value.join(', ') : String(value || ''),
+                        })),
+                    },
+                });
+            } catch (error) {
+                console.warn('Form response submission failed:', error);
+            }
+        }
+
         console.log('Survey completed:', answers);
         toast.success('Thank you for your feedback!');
+
+        if (selectedBusinessForm?.redirectUrl && typeof window !== 'undefined') {
+            window.location.assign(selectedBusinessForm.redirectUrl);
+            return;
+        }
+
+        setSelectedBusinessFormId(null);
         setStep('FINAL_SUCCESS');
     };
 
@@ -409,13 +456,14 @@ export default function DynamicTapJourneyPage() {
                         storeName={storeName}
                         logoUrl={logoUrl}
                         customWelcomeMessage={customNewUserWelcomeMessage}
-                        customWelcomeTitle={customNewUserWelcomeTitle}
+                        customWelcomeTitle={customWelcomeTitle}
                         customWelcomeTag={customNewUserWelcomeTag}
                         customPrivacyMessage={customPrivacyMessage}
                         submitLabel={customNewUserWelcomeButton || 'Submit'}
                         initialData={userData || storedIdentity || user}
                         isSyncingReal={isSyncingReal}
                         isDeviceSynced={isDeviceSynced}
+                        isSubmitting={isSubmitting}
                         onBack={() => setStep('SELECT_TYPE')}
                         onSubmit={onFormSubmit}
                     />
@@ -468,11 +516,17 @@ export default function DynamicTapJourneyPage() {
                         customRewardMessage={customRewardMessage}
                         hasRewardSetup={hasRewardSetup}
                         isDownloading={isDownloading}
+                        isFormsLoading={formsLoading}
                         onDownload={handleDownloadReward}
                         onFinish={() => setStep('FINAL_SUCCESS')}
                         onRestart={resetFlow}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}
+                        attachedForms={deviceForms.map((form) => ({
+                            id: form.id,
+                            title: form.title,
+                            description: form.description,
+                        }))}
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
                         }}
@@ -503,11 +557,22 @@ export default function DynamicTapJourneyPage() {
                 )}
 
                 {currentStep === 'SURVEY' && (
-                    <StepSurvey
-                        questions={surveyQuestions}
-                        onComplete={handleSurveyComplete}
-                        onSkip={() => setStep('FINAL_SUCCESS')}
-                    />
+                    selectedBusinessForm ? (
+                        <StepBusinessForm
+                            form={selectedBusinessForm}
+                            onComplete={handleSurveyComplete}
+                            onSkip={() => {
+                                setSelectedBusinessFormId(null);
+                                setStep('FINAL_SUCCESS');
+                            }}
+                        />
+                    ) : (
+                        <StepSurvey
+                            questions={surveyQuestions}
+                            onComplete={handleSurveyComplete}
+                            onSkip={() => setStep('FINAL_SUCCESS')}
+                        />
+                    )
                 )}
 
                 {currentStep === 'FINAL_SUCCESS' && (
@@ -516,12 +581,18 @@ export default function DynamicTapJourneyPage() {
                         customSuccessTitle={useCustomerFlowStore.getState().customSuccessTitle}
                         finalSuccessMessage={useCustomerFlowStore.getState().customSuccessMessage || config.finalSuccessMessage}
                         customSuccessButton={useCustomerFlowStore.getState().customSuccessButton}
+                        isFormsLoading={formsLoading}
                         onFinish={() => {
                             resetFlow();
                             router.push(`/${businessSlug}?code=${deviceCode}`);
                         }}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}
+                        attachedForms={deviceForms.map((form) => ({
+                            id: form.id,
+                            title: form.title,
+                            description: form.description,
+                        }))}
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
                         }}

@@ -158,15 +158,18 @@ export const useCreateBusinessForm = () => {
   });
 };
 
-export const useUpdateBusinessForm = (id: string) => {
+export const useUpdateBusinessForm = (id?: string) => {
   const queryClient = useQueryClient();
-  return useMutation<BusinessForm, Error, UpdateBusinessFormRequest>({
-    mutationFn: async (payload) => {
-      return await api.patch(`/business-forms/${id}`, payload);
+  return useMutation<BusinessForm, Error, { id?: string; payload: UpdateBusinessFormRequest }>({
+    mutationFn: async ({ id: mutationId, payload }) => {
+      const targetId = mutationId || id;
+      if (!targetId) throw new Error('No form ID provided');
+      return await api.patch(`/business-forms/${targetId}`, payload);
     },
-    onSuccess: () => {
+    onSuccess: (_, { id: mutationId }) => {
+      const targetId = mutationId || id;
       queryClient.invalidateQueries({ queryKey: ['business-forms'] });
-      queryClient.invalidateQueries({ queryKey: ['business-forms', id] });
+      if (targetId) queryClient.invalidateQueries({ queryKey: ['business-forms', targetId] });
     },
   });
 };
@@ -186,12 +189,16 @@ export const useDeleteBusinessForm = () => {
   });
 };
 
-export const useBusinessFormResponses = (id?: string, branchId?: string) =>
+export const useBusinessFormResponses = (id?: string, params: BusinessFormsQuery = {}) =>
   useQuery<BusinessFormResponseItem[], Error>({
-    queryKey: ['business-forms', id, 'responses', branchId || 'any'],
+    queryKey: ['business-forms', id, 'responses', params.branchId || 'any', params.allBranches ? 'all' : 'scoped'],
     queryFn: async () => {
       try {
-        const response = await api.get(`/business-forms/${id}/responses${branchId ? `?branchId=${branchId}` : ''}`);
+        const query = new URLSearchParams();
+        if (params.branchId) query.set('branchId', params.branchId);
+        if (params.allBranches) query.set('allBranches', 'true');
+        const suffix = query.toString();
+        const response = await api.get(`/business-forms/${id}/responses${suffix ? `?${suffix}` : ''}`);
         return toList<BusinessFormResponseItem>(response);
       } catch (err) {
         // Fallback to visitor-forms responses if business-forms fails
@@ -215,17 +222,17 @@ export const useBusinessFormResponses = (id?: string, branchId?: string) =>
     enabled: !!id,
   });
 
-export const useSubmitBusinessFormResponse = (id: string) => {
+export const useSubmitBusinessFormResponse = () => {
   const queryClient = useQueryClient();
-  return useMutation<BusinessFormResponseItem, Error, SubmitBusinessFormResponseRequest>({
-    mutationFn: async (payload) => {
+  return useMutation<BusinessFormResponseItem, Error, { id: string; payload: SubmitBusinessFormResponseRequest }>({
+    mutationFn: async ({ id, payload }) => {
       try {
         return await api.post(`/visitor-forms/code/${id}/responses`, payload);
       } catch {
         return await api.post(`/visitor-forms/${id}/responses`, payload);
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['business-forms', id, 'responses'] });
     },
   });
@@ -240,6 +247,15 @@ export const useFormTemplates = () =>
     },
   });
 
+export const useFormsByDevice = (deviceCode: string) =>
+  useQuery<BusinessForm[], Error>({
+    queryKey: ['forms-by-device', deviceCode],
+    queryFn: async () => {
+      return await api.get(`/visitor-forms/device/${deviceCode}`);
+    },
+    enabled: !!deviceCode,
+  });
+
 export const useCreateFormTemplate = () => {
   const queryClient = useQueryClient();
   return useMutation<FormTemplate, Error, CreateFormTemplateRequest>({
@@ -251,4 +267,3 @@ export const useCreateFormTemplate = () => {
     },
   });
 };
-

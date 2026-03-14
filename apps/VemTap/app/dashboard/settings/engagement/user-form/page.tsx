@@ -1,12 +1,15 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Info, Loader2, Save } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/dashboard/PageHeader';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import PhoneFrame from '@/components/shared/PhoneFrame';
+import { SocialLinksPreview } from '@/components/shared/SocialLinksPreview';
 import { StepForm } from '@/components/visitor/StepForm';
+import { StepOutcome } from '@/components/visitor/StepOutcome';
+import { StepWelcomeBack } from '@/components/visitor/StepWelcomeBack';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
 
@@ -15,6 +18,19 @@ export default function UserFormSettingsPage() {
     const { data: business, isLoading } = useMyBusiness();
     const updateMutation = useUpdateBusiness();
     const [isSaving, setIsSaving] = useState(false);
+    const [previewTab, setPreviewTab] = useState<'form' | 'thank_you' | 'returning'>('form');
+
+    const config = useMemo(() => store.getBusinessConfig(), [store]);
+    const previewUser = useMemo(
+        () => ({
+            firstName: 'Jamie',
+            lastName: 'Lee',
+            name: 'Jamie Lee',
+            email: 'jamie@example.com',
+            phone: '+1 555-010-2400',
+        }),
+        []
+    );
 
     const [settings, setSettings] = useState({
         welcomeTitle: store.customNewUserWelcomeTitle || 'Connect with us',
@@ -123,16 +139,6 @@ export default function UserFormSettingsPage() {
                                     className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
                                 />
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Submit Button</label>
-                                <input
-                                    type="text"
-                                    value={settings.submitLabel}
-                                    onChange={(e) => setSettings((prev) => ({ ...prev, submitLabel: e.target.value }))}
-                                    className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
-                                    placeholder="Submit"
-                                />
-                            </div>
                         </div>
 
                         <div className="space-y-1">
@@ -226,6 +232,7 @@ export default function UserFormSettingsPage() {
                                 placeholder="e.g., Thank you for visiting our store"
                             />
                         </div>
+
                     </div>
 
                     <div className="flex justify-end">
@@ -247,6 +254,25 @@ export default function UserFormSettingsPage() {
                             <span className="text-[10px] font-semibold text-gray-400">Data Form</span>
                         </summary>
                         <div className="px-4 pb-4">
+                            <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-3 mb-3">
+                                {[
+                                    { key: 'form', label: 'Welcome Form' },
+                                    { key: 'thank_you', label: 'Thank You' },
+                                    { key: 'returning', label: 'Returning User' },
+                                ].map((tab) => (
+                                    <button
+                                        key={tab.key}
+                                        onClick={() => setPreviewTab(tab.key as typeof previewTab)}
+                                        className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+                                            previewTab === tab.key
+                                                ? 'bg-primary text-white'
+                                                : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
                             <PhoneFrame title="Live User Form Preview">
                                 <div className="p-6">
                                     <StepForm

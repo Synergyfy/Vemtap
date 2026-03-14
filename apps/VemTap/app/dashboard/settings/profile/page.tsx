@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { toast } from 'react-hot-toast';
 import DynamicQRCode from '@/components/shared/DynamicQRCode';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { BusinessHours } from '@/services/businesses/types';
@@ -31,6 +32,7 @@ const statesData: Record<string, string[]> = {
 
 export default function BusinessProfilePage() {
     const { storeName, logoUrl, updateCustomSettings, setRedirect } = useCustomerFlowStore();
+    const user = useAuthStore((state) => state.user);
     const { activeBranchId, isAllBranches: rawIsAllBranches } = useActiveBranch();
 
     const { data: business, isLoading: businessLoading } = useMyBusiness();
@@ -45,7 +47,6 @@ export default function BusinessProfilePage() {
 
     const [name, setName] = useState('');
     const [logo, setLogo] = useState('');
-    const [profileSlug, setProfileSlug] = useState('');
     const [publicProfileUrl, setPublicProfileUrl] = useState('');
     const [categoryId, setCategoryId] = useState('');
     const [subcategoryId, setSubcategoryId] = useState('');
@@ -103,7 +104,7 @@ export default function BusinessProfilePage() {
         }
     }, []);
 
-    const qrId = 'biz-profile-main';
+    const qrId = (isAllBranches ? business?.uniqueCode : branch?.uniqueCode) || business?.uniqueCode || '';
 
     useEffect(() => {
         if (isAllBranches && business) {
@@ -160,10 +161,14 @@ export default function BusinessProfilePage() {
             else if ((business.registrationNumber || '').startsWith('IT')) setCacType('IT');
             else setCacType('RC');
 
-            if (!profileSlug) {
-                const slug = (business.name).toLowerCase().replace(/\s+/g, '-');
-                setProfileSlug(slug);
-                setRedirect(qrId, `${origin}/${slug}`);
+            if (business.uniqueCode) {
+                const nextPublicUrl = `${origin}/b/${business.uniqueCode}`;
+                setPublicProfileUrl(nextPublicUrl);
+                if (qrId) {
+                    setRedirect(qrId, nextPublicUrl);
+                }
+            } else {
+                setPublicProfileUrl('');
             }
         } else if (branch) {
             setName(branch.name || '');
@@ -204,12 +209,17 @@ export default function BusinessProfilePage() {
             if (branch.uniqueCode) {
                 const nextPublicUrl = `${origin}/b/${branch.uniqueCode}`;
                 setPublicProfileUrl(nextPublicUrl);
-                setRedirect(qrId, nextPublicUrl);
+                if (qrId) {
+                    setRedirect(qrId, nextPublicUrl);
+                }
             } else {
                 setPublicProfileUrl('');
             }
+        } else if (user) {
+            setName(user.businessName || '');
+            setLogo(user.businessLogo || '');
         }
-    }, [business, branch, isAllBranches, activeBranchId, origin, branches.length]);
+    }, [business, branch, isAllBranches, activeBranchId, origin, branches.length, user]);
 
     const handleSave = async () => {
         const hasChanged = (current: any, original: any) => {
@@ -771,12 +781,18 @@ export default function BusinessProfilePage() {
                             <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Dynamic Business QR</h3>
                         </div>
                         <div className="p-8 flex flex-col md:flex-row items-center md:items-start gap-8">
-                            <DynamicQRCode
-                                redirectId={qrId}
-                                label="Scan to Visit Profile"
-                                subLabel={origin.replace(/^https?:\/\//, '')}
-                                color="#000000"
-                            />
+                            {qrId ? (
+                                <DynamicQRCode
+                                    redirectId={qrId}
+                                    label="Scan to Visit Profile"
+                                    subLabel={origin.replace(/^https?:\/\//, '')}
+                                    color="#000000"
+                                />
+                            ) : (
+                                <div className="rounded-2xl border border-amber-100 bg-amber-50 p-6 text-xs text-amber-800 font-bold max-w-sm">
+                                    Unique code not available for this business yet.
+                                </div>
+                            )}
                             <div className="w-full max-w-sm">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">Public Profile Link</p>
                                 {publicProfileUrl ? (

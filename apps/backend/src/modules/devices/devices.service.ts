@@ -110,6 +110,13 @@ export class DevicesService {
     return this.devicesRepository.findOneBy({ code });
   }
 
+  async findByCodeWithRelations(code: string): Promise<Device | null> {
+    return this.devicesRepository.findOne({
+      where: { code },
+      relations: ['branch', 'branch.business'],
+    });
+  }
+
   async update(
     id: string,
     branchId: string,

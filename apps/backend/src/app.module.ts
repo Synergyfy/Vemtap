@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
 import { AppController } from './app.controller';
@@ -40,19 +40,31 @@ import { dataSourceOptions } from './database/data-source';
           ? join(process.cwd(), '.env.test')
           : join(process.cwd(), '.env'),
     }),
-    TypeOrmModule.forRoot({
-      ...dataSourceOptions,
-      // Only sync/drop schema if strictly in test environment AND DB name indicates test
-      // AND we are NOT in a deployment/production-like environment
-      synchronize:
-        process.env.NODE_ENV === 'test' &&
-        process.env.DB_NAME?.includes('test') &&
-        process.env.DEPLOYMENT !== 'true',
-      dropSchema:
-        process.env.NODE_ENV === 'test' &&
-        process.env.DB_NAME?.includes('test') &&
-        process.env.DEPLOYMENT !== 'true',
-      autoLoadEntities: true,
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const dbType = (configService.get<string>('DB_TYPE') || 'postgres') as any;
+        const dbName = configService.get<string>('DB_NAME');
+        
+        return {
+          type: dbType,
+          host: configService.get<string>('DB_HOST'),
+          port: configService.get<number>('DB_PORT', 5432),
+          username: configService.get<string>('DB_USERNAME'),
+          password: configService.get<string>('DB_PASSWORD'),
+          database: dbName,
+          ssl: configService.get<string>('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
+          autoLoadEntities: true,
+          synchronize:
+            process.env.NODE_ENV === 'test' ||
+            (dbName?.includes('test') && process.env.DEPLOYMENT !== 'true'),
+          dropSchema:
+            process.env.NODE_ENV === 'test' &&
+            dbName?.includes('test') &&
+            process.env.DEPLOYMENT !== 'true',
+        };
+      },
     }),
     AuthModule,
     UsersModule,

@@ -17,6 +17,7 @@ import { MessageLog } from '../entities/message-log.entity';
 import { ConversationThread } from '../entities/conversation-thread.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
+import { LoyaltyProfile } from '../../campaigns/entities/loyalty-profile.entity';
 import { Channel } from '../enums/channel.enum';
 
 describe('MessagingEngineService', () => {
@@ -24,8 +25,13 @@ describe('MessagingEngineService', () => {
   let branchRepoMock: any;
   let contactRepoMock: any;
   let messageRepoMock: any;
+  let loyaltyRepoMock: any;
 
   const mockQueue = {
+    add: jest.fn(),
+  };
+
+  const mockIndividualQueue = {
     add: jest.fn(),
   };
 
@@ -61,12 +67,22 @@ describe('MessagingEngineService', () => {
     contactRepoMock = {
       find: jest.fn(),
       findOneBy: jest.fn(),
+      createQueryBuilder: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      }),
     };
     messageRepoMock = {
       create: jest.fn().mockImplementation((d) => d),
       save: jest
         .fn()
         .mockImplementation((e) => Promise.resolve({ id: '1', ...e })),
+      update: jest.fn(),
+    };
+    loyaltyRepoMock = {
+      findOne: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -81,7 +97,9 @@ describe('MessagingEngineService', () => {
         },
         { provide: getRepositoryToken(Business), useValue: messageRepoMock },
         { provide: getRepositoryToken(Branch), useValue: branchRepoMock },
+        { provide: getRepositoryToken(LoyaltyProfile), useValue: loyaltyRepoMock },
         { provide: getQueueToken('messaging-batch-send'), useValue: mockQueue },
+        { provide: getQueueToken('messaging-individual-send'), useValue: mockIndividualQueue },
         {
           provide: ComplianceService,
           useValue: {
@@ -120,16 +138,13 @@ describe('MessagingEngineService', () => {
       ).rejects.toThrow('Branch not found');
     });
 
-    it('should enqueue a batch job when targeting multiple contacts', async () => {
+    it('should enqueue individual jobs when targeting multiple contacts (<= 50)', async () => {
       branchRepoMock.findOne.mockResolvedValueOnce({
         id: 'br1',
         businessId: 'biz1',
       });
       contactRepoMock.find.mockResolvedValueOnce([{ id: 'c1' }, { id: 'c2' }]);
-      contactRepoMock.findOneBy
-        .mockResolvedValueOnce({ id: 'c1', phone: '123' })
-        .mockResolvedValueOnce({ id: 'c2', phone: '456' });
-
+      
       const result = await service.sendMessage({
         branchId: 'br1',
         contactIds: ['c1', 'c2'],
@@ -142,9 +157,10 @@ describe('MessagingEngineService', () => {
           branchId: 'br1',
         }),
       );
-      // It sends individually if <= 50 contacts
-      expect(messageRepoMock.save).toHaveBeenCalled();
-      expect(result.messageIds).toHaveLength(2);
+      
+      expect(mockIndividualQueue.add).toHaveBeenCalledTimes(2);
+      expect(result.status).toBe('QUEUED');
+      expect(result.count).toBe(2);
     });
 
     it('should throw BadRequestException if no contacts provided', async () => {
@@ -159,7 +175,42 @@ describe('MessagingEngineService', () => {
           channel: Channel.SMS,
           content: 'test',
         }),
-      ).rejects.toThrow('No contacts provided');
+      ).rejects.toThrow('No contacts found for selected audience');
+    });
+  });
+
+  describe('processSingleSend', () => {
+    it('should resolve placeholders and send message', async () => {
+      branchRepoMock.findOneBy.mockResolvedValueOnce({
+        id: 'br1',
+        name: 'VemTap Branch',
+        businessId: 'biz1',
+        business: { name: 'VemTap Global' },
+        website: 'https://vemtap.com',
+        reviewUrl: 'https://google.com/review',
+      });
+      contactRepoMock.findOneBy.mockResolvedValue({
+        id: 'c1',
+        phone: '123',
+        email: 'tobi@example.com',
+        name: 'Tobi Adeyemi',
+      });
+      loyaltyRepoMock.findOne.mockResolvedValueOnce({ currentPointsBalance: 500 });
+
+      await service.processSingleSend(
+        'br1',
+        'c1',
+        'Hello {FirstName} {LastName}, welcome to {BusinessName}. Your email is {Email}. Link: {Link}. Points: {Points}',
+        Channel.SMS,
+        'VEMTAP',
+      );
+
+      // Check the first call to create which should have the resolved content
+      expect(messageRepoMock.create).toHaveBeenCalledWith(expect.objectContaining({
+        content: 'Hello Tobi Adeyemi, welcome to VemTap Global. Your email is tobi@example.com. Link: https://vemtap.com. Points: 500'
+      }));
+      expect(mockProviderRouter.sendMessage).toHaveBeenCalled();
     });
   });
 });
+

@@ -77,12 +77,27 @@ describe('LoyaltyController', () => {
     );
   });
 
-  it('should get rewards', async () => {
+  it('should get rewards for a branch', async () => {
     const result = [];
     mockLoyaltyService.getRewards.mockResolvedValue(result);
     expect(await controller.getRewards({ branchId: 'branch-1' }, mockReq)).toBe(
       result,
     );
+    expect(mockLoyaltyService.getRewards).toHaveBeenCalledWith('branch-1', undefined);
+  });
+
+  it('should get all rewards for OWNER if branchId is not provided', async () => {
+    const result = [];
+    mockLoyaltyService.getRewards.mockResolvedValue(result);
+    // OWNER should be able to fetch all rewards without branchId
+    expect(await controller.getRewards({ allBranches: true }, mockReq)).toBe(
+      result,
+    );
+    expect(mockLoyaltyService.getRewards).toHaveBeenCalledWith(undefined, 'biz-1');
+
+    // Default to allBranches if neither is provided for OWNER
+    expect(await controller.getRewards({}, mockReq)).toBe(result);
+    expect(mockLoyaltyService.getRewards).toHaveBeenCalledWith(undefined, 'biz-1');
   });
 
   it('should redeem reward', async () => {

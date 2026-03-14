@@ -78,13 +78,20 @@ export class LoyaltyController {
     const user = req.user;
 
     if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
-      if (filter.allBranches) {
+      if (filter.allBranches || !filter.branchId) {
         if (user.role === UserRole.OWNER) {
           return { businessId: user.businessId };
         }
-        return {
-          businessId: user.businessId || (req.query.businessId as string),
-        };
+        const businessId = user.businessId || (req.query.businessId as string);
+        if (businessId) {
+          return { businessId };
+        }
+        // If still no businessId and they didn't provide branchId, then throw
+        if (!filter.branchId) {
+          throw new BadRequestException(
+            'Either branchId or businessId context must be available',
+          );
+        }
       }
 
       if (filter.branchId) {
@@ -98,10 +105,6 @@ export class LoyaltyController {
         }
         return { branchId: filter.branchId };
       }
-
-      throw new BadRequestException(
-        'Either branchId or allBranches must be provided for Owners and Admins',
-      );
     }
 
     return { branchId: user.branchId };
@@ -179,8 +182,14 @@ export class LoyaltyController {
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
   @ApiOperation({ summary: 'Get loyalty transaction history' })
   @ApiQuery({ name: 'branchId', required: false })
+  @ApiQuery({ name: 'allBranches', required: false, type: Boolean })
   async getHistory(@Request() req, @Query() filter?: BranchFilterDto) {
-    return this.loyaltyService.getHistory(req.user.id, filter?.branchId);
+    const context = await this.getResolvedContext(req, filter || {});
+    return this.loyaltyService.getHistory(
+      req.user.id,
+      context.branchId,
+      context.businessId,
+    );
   }
 
   @Get('my-history')
@@ -195,7 +204,8 @@ export class LoyaltyController {
   @Get('rewards')
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
   @ApiOperation({ summary: 'Get available rewards for a branch' })
-  @ApiQuery({ name: 'branchId', required: true })
+  @ApiQuery({ name: 'branchId', required: false })
+  @ApiQuery({ name: 'allBranches', required: false, type: Boolean })
   async getRewards(@Query() filter: BranchFilterDto, @Request() req) {
     const context = await this.getResolvedContext(req, filter);
     return this.loyaltyService.getRewards(context.branchId, context.businessId);

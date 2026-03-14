@@ -70,9 +70,71 @@ export class VisitorFormsController {
   @ApiResponse({
     status: 200,
     description: 'Return the form with fields to answer.',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', example: 'uuid-form-1234' },
+        uniqueCode: { type: 'string', example: 'ABC123XYZ' },
+        title: { type: 'string', example: 'Customer Feedback' },
+        description: { type: 'string', example: 'Let us know how your visit went' },
+        fields: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', example: 'uuid-field-1234' },
+              type: { type: 'string', example: 'radio' },
+              question: { type: 'string', example: 'How would you rate our service?' },
+              options: { type: 'array', items: { type: 'string' }, example: ['1', '2', '3', '4', '5'] },
+              isRequired: { type: 'boolean', example: true },
+              order: { type: 'number', example: 1 }
+            }
+          }
+        }
+      }
+    }
   })
   getFormByCode(@Param('code') code: string) {
     return this.formsService.getFormByUniqueCode(code);
+  }
+
+  @Public()
+  @Get('device/:code')
+  @ApiOperation({ 
+    summary: 'Get all forms to show after lead capture for a device',
+    description: 'Retrieves active, published forms for the branch linked to the device that have showAfterLeadCapture enabled.'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Return forms with fields.',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', example: 'uuid-form-1234' },
+          uniqueCode: { type: 'string', example: 'ABC123XYZ' },
+          title: { type: 'string', example: 'Post-Visit Survey' },
+          description: { type: 'string', example: 'Please help us improve' },
+          fields: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', example: 'uuid-field-1234' },
+                type: { type: 'string', example: 'text' },
+                question: { type: 'string', example: 'Any additional comments?' },
+                isRequired: { type: 'boolean', example: false },
+                order: { type: 'number', example: 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  })
+  getFormsByDeviceCode(@Param('code') code: string) {
+    return this.formsService.getFormsByDeviceCode(code);
   }
 
   @Post(':code/responses')
