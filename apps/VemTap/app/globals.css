@@ -83,6 +83,26 @@
         scrollbar-width: none;
     }
 
+    .bubble-left {
+        border-radius: 0 1rem 1rem 1rem;
+    }
+
+    .bubble-right {
+        border-radius: 1rem 0 1rem 1rem;
+    }
+
+    .chat-bg {
+        background-color: #f8fafc;
+        background-image: radial-gradient(#e2e8f0 0.5px, transparent 0.5px);
+        background-size: 20px 20px;
+    }
+
+    .glass-sidebar {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+
     .custom-scrollbar::-webkit-scrollbar {
         width: 4px;
     }

@@ -9,7 +9,7 @@ import { dashboardApi } from '@/lib/api/dashboard';
 import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     LayoutGrid, History, Gift, User, Nfc, Bell,
-    LogOut, Menu, Star, BarChart3, LifeBuoy, X
+    LogOut, Menu, Star, BarChart3, LifeBuoy, X, MessageSquare, Search
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 
@@ -88,6 +88,19 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
             href: '/customer/loyalty',
         },
         {
+            id: 'discover',
+            label: 'Discover Businesses',
+            icon: Search,
+            href: '/customer/discover',
+        },
+        {
+            id: 'messages',
+            label: 'Messages',
+            icon: MessageSquare,
+            href: '/support-chat/default',
+            external: true,
+        },
+        {
             id: 'support',
             label: 'Support & Help',
             icon: LifeBuoy,
@@ -138,6 +151,8 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                                     key={item.id}
                                     href={item.href}
                                     onClick={() => setIsMobileMenuOpen(false)}
+                                    target={item.external ? '_blank' : undefined}
+                                    rel={item.external ? 'noopener noreferrer' : undefined}
                                     className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all ${isActive(item.href)
                                         ? 'bg-primary text-white shadow-lg shadow-primary/20'
                                         : 'text-text-secondary hover:bg-gray-50 hover:text-text-main'
