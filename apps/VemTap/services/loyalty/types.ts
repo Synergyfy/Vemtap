@@ -39,6 +39,7 @@ export interface CreateRewardRequest {
     usageLimitPerUser: number;
     totalAvailable?: number;
     branchId?: string;
+    imageUrl?: string;
 }
 
 export interface UpdateRewardRequest {
@@ -51,6 +52,7 @@ export interface UpdateRewardRequest {
     totalAvailable?: number;
     isActive?: boolean;
     branchId?: string;
+    imageUrl?: string;
 }
 
 export interface UpdateLoyaltyRuleRequest {

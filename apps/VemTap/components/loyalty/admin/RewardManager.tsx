@@ -174,13 +174,13 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                 layout
                                 key={reward.id}
                                 className={cn(
-                                    "group relative flex flex-col hover:shadow-2xl transition-all duration-300 rounded-3xl border bg-gradient-to-br from-white to-primary/5",
+                                    "group relative flex flex-col hover:shadow-2xl transition-all duration-300 rounded-2xl border bg-gradient-to-br from-white to-primary/5",
                                     reward.isActive ? "border-primary/20 hover:border-primary/40" : "border-slate-200 bg-slate-50 opacity-80"
                                 )}
                             >
                                 {/* Top accent bar */}
                                 <div className={cn(
-                                    "absolute top-0 left-0 right-0 h-1.5 rounded-t-3xl",
+                                    "absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl",
                                     reward.isActive ? "bg-gradient-to-r from-primary via-primary-hover to-primary" : "bg-slate-300"
                                 )} />
                                 
@@ -302,7 +302,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white w-full max-w-2xl text-slate-900 relative shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]"
+                            className="bg-white w-full max-w-2xl text-slate-900 relative shadow-2xl rounded-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]"
                         >
                             <div className="p-8 overflow-y-auto scrollbar-hide">
                                 <button
@@ -587,7 +587,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
 
                                         <div
                                             className={cn(
-                                                "relative h-48 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden",
+                                                "relative h-48 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden",
                                                 formData.imageUrl ? "border-solid border-slate-200 bg-white" : "border-slate-200 bg-slate-50 hover:bg-white hover:border-primary/40"
                                             )}
                                         >
@@ -676,7 +676,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white w-full max-w-3xl text-slate-900 relative shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]"
+                            className="bg-white w-full max-w-3xl text-slate-900 relative shadow-2xl rounded-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]"
                         >
                             {/* Modal Header */}
                             <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
