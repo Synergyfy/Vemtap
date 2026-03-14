@@ -21,7 +21,6 @@ import { StepOutcome } from '@/components/visitor/StepOutcome';
 import { StepSurvey } from '@/components/visitor/StepSurvey';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { StepFinalSuccess } from '@/components/visitor/StepFinalSuccess';
-import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { EarnPointsModal } from '@/components/loyalty/EarnPointsModal';
 import { loyaltyApi } from '@/lib/api/loyalty';
@@ -530,7 +529,6 @@ export default function DynamicTapJourneyPage() {
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
                         }}
-                        attachedForms={attachedForms}
                         completedFormIds={completedFormIds}
                         customSuccessTitle={customSuccessTitle}
                         customSuccessDescription={customSuccessMessage}

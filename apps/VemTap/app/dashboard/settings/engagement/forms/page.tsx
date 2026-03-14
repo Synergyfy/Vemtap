@@ -51,7 +51,6 @@ import {
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import { api } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
-import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import type { ApiFormFieldType, BusinessForm, CreateBusinessFormRequest } from '@/services/business-forms/types';
 
 type FormsViewType = 'grid' | 'list';
@@ -217,7 +216,6 @@ export default function EngagementFormsBuilderPage() {
   }, [responsesSummary]);
 
   const { setDefaultForm, getDefaultFormId, clearDefaultForm } = useFormPreferencesStore();
-  const { engagementSettings } = useCustomerFlowStore();
   const brandColor = engagementSettings?.brandColor || '#2563eb';
 
   const [viewMode, setViewMode] = useState<ViewMode>('forms');

@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Building2, CheckCircle2, ChevronDown, ChevronUp, Eye, GripVertical, Info, Loader2, Palette, Pencil, X } from 'lucide-react';
+import { Building2, CheckCircle2, ChevronDown, ChevronUp, Eye, GripVertical, Info, Loader2, Palette, Pencil, Share2, X } from 'lucide-react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import PhoneFrame from '@/components/shared/PhoneFrame';
@@ -14,7 +14,6 @@ import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
-import { useMyBusiness } from '@/services/businesses/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 const Toggle = ({ active, onChange }: { active: boolean; onChange: (val: boolean) => void }) => (
@@ -40,7 +39,7 @@ export default function ActiveFormsPage() {
         allBranches: !branchScope,
     });
 
-    const { toggleActiveForm, moveActiveForm, setActiveFormIds } = useFormPreferencesStore();
+    const { toggleActiveForm, moveActiveForm, setActiveFormIds, getActiveFormIds } = useFormPreferencesStore();
     const activeFormIdsByBranch = useFormPreferencesStore((state) => state.activeFormIdsByBranch);
     const { engagementSettings, updateEngagementSettings } = useCustomerFlowStore();
     const branchKey = branchScope || userBranchId || 'global';
@@ -70,7 +69,7 @@ export default function ActiveFormsPage() {
 
     const activeForms = useMemo(() => {
         const formById = new Map(availableForms.map((form) => [form.id, form]));
-        return activeFormIds.map((id) => formById.get(id)).filter((form): form is NonNullable<typeof form> => !!form);
+        return activeFormIds.map((id: string) => formById.get(id)).filter((form: any): form is NonNullable<typeof form> => !!form);
     }, [activeFormIds, availableForms]);
 
     const selectedForm =
@@ -232,7 +231,7 @@ export default function ActiveFormsPage() {
                                         </div>
                                     ) : (
                                         <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
-                                            {activeForms.map((form, index) => (
+                                            {activeForms.map((form: any, index: number) => (
                                                 <div
                                                     key={form.id}
                                                     draggable
