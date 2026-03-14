@@ -34,7 +34,7 @@ interface EngagementTilesProps {
     selectedFormTitle?: string | null;
     selectedFormType?: string | null;
     attachedForms?: Array<{ id: string; title: string; description?: string }>;
-    isLoading?: boolean;
+    completedFormIds?: string[];
     settings?: {
         showReview?: boolean;
         showSocial?: boolean;
@@ -54,7 +54,7 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
     selectedFormTitle,
     selectedFormType,
     attachedForms = [],
-    isLoading = false,
+    completedFormIds = [],
     settings = {}
 }) => {
     const hasSocial = !!(settings.instagram || settings.twitter || settings.facebook || settings.linkedin || settings.socialUrl);
@@ -67,45 +67,37 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
                 Boost Your Experience
             </h3>
 
-            {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-8 gap-3 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-                    <Spinner size="sm" />
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Loading options...</p>
-                </div>
-            ) : (
-                <>
-                    {attachedForms.map((form) => (
+            {attachedForms.length > 0 ? (
+                attachedForms.map((form) => {
+                    const isCompleted = completedFormIds.includes(form.id);
+                    return (
                         <EngagementTile
                             key={form.id}
-                            icon="assignment"
-                            label={form.title || 'Open Form'}
-                            description={form.description || 'Fill this form'}
-                            color="bg-amber-50 text-amber-600"
-                            onClick={() => onAction('feedback', form.id)}
+                            icon={isCompleted ? "check_circle" : "assignment"}
+                            label={isCompleted ? `${form.title} (Redeemed)` : (form.title || 'Open Form')}
+                            description={isCompleted ? "Thank you for filling this form!" : (form.description || 'Fill this form')}
+                            color={isCompleted ? "bg-emerald-50 text-emerald-500" : "bg-amber-50 text-amber-600"}
+                            onClick={() => !isCompleted && onAction('feedback', form.id)}
                         />
-                    ))}
-
-                    {hasSelectedForm && !attachedForms.some(f => f.title === selectedFormTitle) && (
-                        <EngagementTile
-                            icon="assignment"
-                            label={selectedFormTitle || 'Open Form'}
-                            description={`Fill ${selectedFormType || 'selected'} form`}
-                            color="bg-amber-50 text-amber-600"
-                            onClick={() => onAction('feedback')}
-                        />
-                    )}
-
-                    {attachedForms.length === 0 && !hasSelectedForm && (
-                        <>
-                            {settings.showReview && hasReview && (
-                                <EngagementTile
-                                    icon="star"
-                                    label="Leave a Review"
-                                    description="Share your experience on Google"
-                                    color="bg-amber-50 text-amber-500"
-                                    onClick={() => onAction('review')}
-                                />
-                            )}
+                    );
+                })
+            ) : hasSelectedForm ? (
+                <EngagementTile
+                    icon="assignment"
+                    label={selectedFormTitle || 'Open Form'}
+                    description={`Fill ${selectedFormType || 'selected'} form`}
+                    color="bg-amber-50 text-amber-600"
+                    onClick={() => onAction('feedback')}
+                />
+            ) : settings.showReview && hasReview && (
+                <EngagementTile
+                    icon="star"
+                    label="Leave a Review"
+                    description="Share your experience on Google"
+                    color="bg-amber-50 text-amber-500"
+                    onClick={() => onAction('review')}
+                />
+            )}
 
                             {settings.showSocial && hasSocial && (
                                 <EngagementTile

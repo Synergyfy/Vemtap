@@ -17,6 +17,7 @@ export interface Branch {
     whatsappNumber?: string;
     officialEmail?: string;
     welcomeMessage?: string;
+    successTitle?: string;
     successMessage?: string;
     privacyMessage?: string;
     rewardMessage?: string;
@@ -26,6 +27,7 @@ export interface Branch {
     rewardVisitThreshold: number;
     linkedinUrl?: string;
     reviewUrl?: string;
+    trustpilotUrl?: string;
     showReview: boolean;
     showSocial: boolean;
     showFeedback: boolean;
@@ -54,6 +56,7 @@ export interface Business {
     welcomeTag?: string;
     welcomeButton?: string;
     whatsappMessage?: string;
+    successTitle?: string;
     successMessage?: string;
     privacyMessage?: string;
     rewardMessage?: string;
@@ -81,6 +84,7 @@ export interface Business {
     status: 'pending' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
     linkedinUrl?: string;
     reviewUrl?: string;
+    trustpilotUrl?: string;
     showReview?: boolean;
     showSocial?: boolean;
     showFeedback?: boolean;

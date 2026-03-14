@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Instagram, Twitter, Facebook, Linkedin } from 'lucide-react';
+import { X, Instagram, Twitter, Facebook, Linkedin, Star } from 'lucide-react';
 
 interface SocialMediaModalProps {
     isOpen: boolean;
@@ -12,6 +12,8 @@ interface SocialMediaModalProps {
         twitter?: string;
         facebook?: string;
         linkedin?: string;
+        reviewUrl?: string;
+        trustpilotUrl?: string;
     };
 }
 
@@ -32,6 +34,8 @@ export const SocialMediaModal: React.FC<SocialMediaModalProps> = ({ isOpen, onCl
         { name: 'X / Twitter', icon: Twitter, color: 'text-slate-900', bg: 'bg-slate-50', url: normalizeSocialUrl(socialLinks?.twitter, 'https://x.com/') },
         { name: 'Facebook', icon: Facebook, color: 'text-blue-600', bg: 'bg-blue-50', url: normalizeSocialUrl(socialLinks?.facebook, 'https://facebook.com/') },
         { name: 'LinkedIn', icon: Linkedin, color: 'text-blue-700', bg: 'bg-blue-50', url: normalizeSocialUrl(socialLinks?.linkedin, 'https://linkedin.com/in/') },
+        { name: 'Google Review', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50', url: normalizeSocialUrl(socialLinks?.reviewUrl, '') },
+        { name: 'Trustpilot', icon: Star, color: 'text-emerald-600', bg: 'bg-emerald-50', url: normalizeSocialUrl(socialLinks?.trustpilotUrl, '') },
     ].filter(s => s.url && s.url !== '');
 
     return (
