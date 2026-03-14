@@ -70,7 +70,7 @@ export default function ActiveFormsPage() {
 
     const activeForms = useMemo(() => {
         const formById = new Map(availableForms.map((form) => [form.id, form]));
-        return activeFormIds.map((id: string) => formById.get(id)).filter((form): form is NonNullable<typeof form> => !!form);
+        return activeFormIds.map((id: string) => formById.get(id)).filter((form: any): form is NonNullable<typeof form> => !!form);
     }, [activeFormIds, availableForms]);
 
     const selectedForm =
@@ -232,7 +232,7 @@ export default function ActiveFormsPage() {
                                         </div>
                                     ) : (
                                         <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
-                                            {activeForms.map((form: BusinessForm, index: number) => (
+                                            {activeForms.map((form: any, index: number) => (
                                                 <div
                                                     key={form.id}
                                                     draggable
