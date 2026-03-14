@@ -123,14 +123,18 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
                                 />
                             )}
 
-            {settings.showRewards && (
-                <EngagementTile
-                    icon="redeem"
-                    label="Claim Rewards"
-                    description="Unlock exclusive benefits"
-                    color="bg-emerald-50 text-emerald-500"
-                    onClick={() => onAction('rewards')}
-                />
+                            {settings.showRewards && (
+                                <EngagementTile
+                                    icon="redeem"
+                                    label="Claim Rewards"
+                                    description="Unlock exclusive benefits"
+                                    color="bg-emerald-50 text-emerald-500"
+                                    onClick={() => onAction('rewards')}
+                                />
+                            )}
+                        </>
+                    )}
+                </>
             )}
         </div>
     );
