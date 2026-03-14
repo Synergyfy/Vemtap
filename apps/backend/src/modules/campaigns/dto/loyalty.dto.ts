@@ -233,4 +233,13 @@ export class BranchQueryDto {
   @IsOptional()
   @Transform(({ value }) => value === 'true' || value === true)
   allBranches?: boolean;
+
+  @ApiProperty({
+    description: 'Business ID (Admin only)',
+    example: 'bus_001',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  businessId?: string;
 }

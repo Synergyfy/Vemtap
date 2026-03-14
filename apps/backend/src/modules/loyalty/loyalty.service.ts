@@ -171,20 +171,23 @@ export class LoyaltyService {
     return this.campaignsService.earnPoints(branchId, dto);
   }
 
-  async getHistory(userId: string, branchId?: string): Promise<any[]> {
-    const where: any = { loyaltyProfile: { userId } };
-    if (branchId) {
-      where.loyaltyProfile.branchId = branchId;
-    }
+  async getHistory(
+    userId: string,
+    branchId?: string,
+    businessId?: string,
+  ): Promise<any[]> {
+    const profileWhere: any = { userId };
+    if (branchId) profileWhere.branchId = branchId;
+    else if (businessId) profileWhere.businessId = businessId;
 
     const transactions = await this.transactionRepository.find({
-      where,
+      where: { loyaltyProfile: profileWhere },
       relations: ['loyaltyProfile', 'loyaltyProfile.branch'],
       order: { createdAt: 'DESC' } as any,
     });
 
     const redemptions = await this.redemptionRepository.find({
-      where,
+      where: { loyaltyProfile: profileWhere },
       relations: ['loyaltyProfile', 'loyaltyProfile.branch', 'reward'],
       order: { createdAt: 'DESC' } as any,
     });
