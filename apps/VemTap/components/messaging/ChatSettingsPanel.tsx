@@ -7,7 +7,7 @@ import {
     Moon, BookOpen, Plus, Trash2, 
     Bolt, Handshake, 
     SearchCheck, ArrowLeft, X, Save, AlertTriangle, FileText,
-    UserCircle, Building2, Link as LinkIcon, Star, Coins
+    UserCircle, Building2, Link as LinkIcon, Star, Coins, Calendar
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -55,8 +55,10 @@ export default function ChatSettingsPanel() {
     const { data: templates = [], isLoading: templatesLoading } = useChatTemplates(branchId || undefined);
     const { data: categories = [], isLoading: categoriesLoading } = useChatCategories(branchId || undefined);
 
-    // Mutations
-    const updateAuto = useUpdateChatAutomation(branchId || undefined);
+    // Mutations - Split for individual loading states
+    const updateWelcome = useUpdateChatAutomation(branchId || undefined);
+    const updateOffHours = useUpdateChatAutomation(branchId || undefined);
+    
     const addFaq = useAddFaqKeyword(branchId || undefined);
     const updateFaq = useUpdateFaqKeyword(branchId || undefined);
     const deleteFaq = useDeleteFaqKeyword(branchId || undefined);
@@ -97,6 +99,8 @@ export default function ChatSettingsPanel() {
 
     const modalTextareaRef = useRef<HTMLTextAreaElement>(null);
     const editorTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const welcomeTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const offHoursTextareaRef = useRef<HTMLTextAreaElement>(null);
 
     const setTab = (tab: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -118,6 +122,7 @@ export default function ChatSettingsPanel() {
             }
             data.welcomeEnabled = localAuto.welcomeEnabled;
             data.welcomeMessage = localAuto.welcomeMessage;
+            updateWelcome.mutate(data, { onSuccess: () => toast.success('Welcome settings saved') });
         } else {
             if (localAuto.offHoursEnabled && !localAuto.offHoursMessage?.trim()) {
                 toast.error('Off-hours message content is required when enabled');
@@ -126,15 +131,17 @@ export default function ChatSettingsPanel() {
             data.offHoursEnabled = localAuto.offHoursEnabled;
             data.offHoursMessage = localAuto.offHoursMessage;
             data.offHoursSchedule = localAuto.offHoursSchedule;
+            updateOffHours.mutate(data, { onSuccess: () => toast.success('Off-hours settings saved') });
         }
-
-        updateAuto.mutate(data, {
-            onSuccess: () => toast.success('Settings saved successfully')
-        });
     };
 
-    const insertPlaceholder = (tag: string, isModal: boolean) => {
-        const ref = isModal ? modalTextareaRef : editorTextareaRef;
+    const insertPlaceholder = (tag: string, type: 'modal' | 'editor' | 'welcome' | 'offhours') => {
+        let ref;
+        if (type === 'modal') ref = modalTextareaRef;
+        else if (type === 'editor') ref = editorTextareaRef;
+        else if (type === 'welcome') ref = welcomeTextareaRef;
+        else ref = offHoursTextareaRef;
+
         if (!ref.current) return;
 
         const start = ref.current.selectionStart;
@@ -144,8 +151,12 @@ export default function ChatSettingsPanel() {
         const after = text.substring(end, text.length);
         const newValue = before + tag + after;
 
-        if (isModal) {
+        if (type === 'modal') {
             setNewTemplateData(prev => ({ ...prev, content: newValue }));
+        } else if (type === 'welcome') {
+            setLocalAuto((prev: any) => ({ ...prev, welcomeMessage: newValue }));
+        } else if (type === 'offhours') {
+            setLocalAuto((prev: any) => ({ ...prev, offHoursMessage: newValue }));
         } else if (editingTemplateId) {
             ref.current.value = newValue;
             updateTmpl.mutate({ id: editingTemplateId, data: { content: newValue } });
@@ -160,12 +171,8 @@ export default function ChatSettingsPanel() {
     };
 
     const handleCreateTemplate = () => {
-        if (!newTemplateData.name.trim()) {
-            toast.error('Template name is required');
-            return;
-        }
-        if (!newTemplateData.content.trim()) {
-            toast.error('Template content is required');
+        if (!newTemplateData.name.trim() || !newTemplateData.content.trim()) {
+            toast.error('Name and Content are required');
             return;
         }
         createTmpl.mutate({
@@ -239,7 +246,7 @@ export default function ChatSettingsPanel() {
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col relative">
-            {/* Template Creation Modal */}
+            {/* Modals - Template Creation */}
             {isTemplateModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -281,7 +288,7 @@ export default function ChatSettingsPanel() {
                                     {PLACEHOLDERS.map(p => (
                                         <button 
                                             key={p.tag}
-                                            onClick={() => insertPlaceholder(p.tag, true)}
+                                            onClick={() => insertPlaceholder(p.tag, 'modal')}
                                             className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:border-primary hover:text-primary transition-all shadow-sm"
                                         >
                                             {p.icon}
@@ -515,21 +522,39 @@ export default function ChatSettingsPanel() {
                                     />
                                 </div>
                                 <div className="p-6 bg-slate-50/50">
-                                    <label className="block mb-2 text-sm font-medium text-slate-700">Response Text</label>
-                                    <textarea 
-                                        value={localAuto.welcomeMessage || ''}
-                                        onChange={e => setLocalAuto((prev: any) => ({ ...prev, welcomeMessage: e.target.value }))}
-                                        className="block w-full px-4 py-3 text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-primary focus:border-primary outline-none transition-all disabled:opacity-50"
-                                        placeholder="Hi there! Thanks for reaching out..."
-                                        rows={3} 
-                                    />
+                                    <div className="mb-4">
+                                        <div className="flex justify-between items-center mb-1.5">
+                                            <label className="block text-sm font-medium text-slate-700">Response Text</label>
+                                            <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">Smart Tags</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1.5 mb-3">
+                                            {PLACEHOLDERS.map(p => (
+                                                <button 
+                                                    key={p.tag}
+                                                    onClick={() => insertPlaceholder(p.tag, 'welcome')}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:border-primary hover:text-primary transition-all shadow-sm"
+                                                >
+                                                    {p.icon}
+                                                    {p.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <textarea 
+                                            ref={welcomeTextareaRef}
+                                            value={localAuto.welcomeMessage || ''}
+                                            onChange={e => setLocalAuto((prev: any) => ({ ...prev, welcomeMessage: e.target.value }))}
+                                            className="block w-full px-4 py-3 text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-primary focus:border-primary outline-none transition-all disabled:opacity-50"
+                                            placeholder="Hi there! Thanks for reaching out..."
+                                            rows={3} 
+                                        />
+                                    </div>
                                     <div className="mt-4 flex justify-end">
                                         <button 
                                             onClick={() => handleSaveAuto('welcome')}
-                                            disabled={updateAuto.isPending}
+                                            disabled={updateWelcome.isPending}
                                             className="inline-flex items-center gap-2 px-6 py-2 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary-dark shadow-md shadow-primary/10 transition-all disabled:opacity-50"
                                         >
-                                            {updateAuto.isPending ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
+                                            {updateWelcome.isPending ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
                                             Save Changes
                                         </button>
                                     </div>
@@ -567,22 +592,55 @@ export default function ChatSettingsPanel() {
                                                 <option>Custom Schedule</option>
                                             </select>
                                         </div>
+                                        {localAuto.offHoursSchedule === 'Custom Schedule' && (
+                                            <div className="animate-in slide-in-from-left-2 duration-200">
+                                                <label className="block mb-2 text-sm font-medium text-slate-700 flex items-center gap-2">
+                                                    <Calendar size={14} /> Specify Schedule
+                                                </label>
+                                                <input 
+                                                    type="text"
+                                                    value={localAuto.offHoursCustomSchedule || ''}
+                                                    onChange={e => setLocalAuto((prev: any) => ({ ...prev, offHoursCustomSchedule: e.target.value }))}
+                                                    placeholder="e.g. Mon-Fri, 9pm-8am"
+                                                    className="block w-full px-4 py-2 text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-primary focus:border-primary outline-none transition-all"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
-                                    <label className="block mb-2 text-sm font-medium text-slate-700">Away Message</label>
-                                    <textarea 
-                                        value={localAuto.offHoursMessage || ''}
-                                        onChange={e => setLocalAuto((prev: any) => ({ ...prev, offHoursMessage: e.target.value }))}
-                                        className="block w-full px-4 py-3 text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-primary focus:border-primary outline-none transition-all disabled:opacity-50"
-                                        placeholder="We're currently closed but will get back to you soon."
-                                        rows={3} 
-                                    />
+                                    
+                                    <div className="mb-4">
+                                        <div className="flex justify-between items-center mb-1.5">
+                                            <label className="block text-sm font-medium text-slate-700">Away Message</label>
+                                            <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">Smart Tags</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1.5 mb-3">
+                                            {PLACEHOLDERS.map(p => (
+                                                <button 
+                                                    key={p.tag}
+                                                    onClick={() => insertPlaceholder(p.tag, 'offhours')}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:border-primary hover:text-primary transition-all shadow-sm"
+                                                >
+                                                    {p.icon}
+                                                    {p.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <textarea 
+                                            ref={offHoursTextareaRef}
+                                            value={localAuto.offHoursMessage || ''}
+                                            onChange={e => setLocalAuto((prev: any) => ({ ...prev, offHoursMessage: e.target.value }))}
+                                            className="block w-full px-4 py-3 text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-primary focus:border-primary outline-none transition-all disabled:opacity-50"
+                                            placeholder="We're currently closed but will get back to you soon."
+                                            rows={3} 
+                                        />
+                                    </div>
                                     <div className="mt-4 flex justify-end">
                                         <button 
                                             onClick={() => handleSaveAuto('offhours')}
-                                            disabled={updateAuto.isPending}
+                                            disabled={updateOffHours.isPending}
                                             className="inline-flex items-center gap-2 px-6 py-2 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary-dark shadow-md shadow-primary/10 transition-all disabled:opacity-50"
                                         >
-                                            {updateAuto.isPending ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
+                                            {updateOffHours.isPending ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
                                             Save Changes
                                         </button>
                                     </div>
@@ -737,7 +795,7 @@ export default function ChatSettingsPanel() {
                                                 {PLACEHOLDERS.map(p => (
                                                     <button 
                                                         key={p.tag}
-                                                        onClick={() => insertPlaceholder(p.tag, false)}
+                                                        onClick={() => insertPlaceholder(p.tag, 'editor')}
                                                         className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:border-primary hover:text-primary transition-all shadow-sm"
                                                     >
                                                         {p.icon}
