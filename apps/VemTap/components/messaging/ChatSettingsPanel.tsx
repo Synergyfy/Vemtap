@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { 
     Moon, BookOpen, Plus, Trash2, 
     Bolt, Handshake, 
-    SearchCheck, ArrowLeft, X, Save, AlertTriangle
+    SearchCheck, ArrowLeft, X, Save, AlertTriangle, FileText
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -27,6 +27,8 @@ import {
     useDeleteChatCategory
 } from '@/hooks/useMessaging';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+
+const TEMPLATE_CATEGORIES = ['MARKETING', 'UTILITY', 'AUTHENTICATION'];
 
 export default function ChatSettingsPanel() {
     const searchParams = useSearchParams();
@@ -65,8 +67,13 @@ export default function ChatSettingsPanel() {
     // Local UI State
     const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    
     const [categoryToDelete, setCategoryToDelete] = useState<any | null>(null);
+    const [templateToDelete, setTemplateToDelete] = useState<any | null>(null);
+    
     const [newCategoryData, setNewCategoryData] = useState({ name: '', routeTo: '', urgency: 'Medium' });
+    const [newTemplateData, setNewTemplateData] = useState({ name: '', category: 'MARKETING', content: '' });
 
     const setTab = (tab: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -83,21 +90,32 @@ export default function ChatSettingsPanel() {
         toast.success(`Setting updated`);
     };
 
-    const handleNewTemplate = () => {
-        if (!branchId) {
-            toast.error('Please select a branch first');
+    const handleCreateTemplate = () => {
+        if (!newTemplateData.name.trim() || !newTemplateData.content.trim()) {
+            toast.error('Name and Content are required');
             return;
         }
         createTmpl.mutate({
-            name: 'New Template',
-            content: 'Hi {FirstName}, ...',
-            category: 'General',
+            ...newTemplateData,
             channel: 'IN_HOUSE',
             branchId,
         }, {
             onSuccess: (data: any) => {
+                setIsTemplateModalOpen(false);
+                setNewTemplateData({ name: '', category: 'MARKETING', content: '' });
                 setEditingTemplateId(data.id);
                 toast.success('Template created');
+            }
+        });
+    };
+
+    const handleDeleteTemplate = () => {
+        if (!templateToDelete) return;
+        deleteTmpl.mutate(templateToDelete.id, {
+            onSuccess: () => {
+                if (editingTemplateId === templateToDelete.id) setEditingTemplateId(null);
+                setTemplateToDelete(null);
+                toast.success('Template deleted');
             }
         });
     };
@@ -148,7 +166,101 @@ export default function ChatSettingsPanel() {
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col relative">
-            {/* Modals */}
+            {/* Template Creation Modal */}
+            {isTemplateModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-slate-900">Create Message Template</h3>
+                            <button onClick={() => setIsTemplateModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Template Name</label>
+                                <input 
+                                    type="text"
+                                    value={newTemplateData.name}
+                                    onChange={e => setNewTemplateData(prev => ({ ...prev, name: e.target.value }))}
+                                    placeholder="e.g. Welcome Message"
+                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>
+                                <select 
+                                    value={newTemplateData.category}
+                                    onChange={e => setNewTemplateData(prev => ({ ...prev, category: e.target.value }))}
+                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                >
+                                    {TEMPLATE_CATEGORIES.map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Content</label>
+                                <textarea 
+                                    value={newTemplateData.content}
+                                    onChange={e => setNewTemplateData(prev => ({ ...prev, content: e.target.value }))}
+                                    placeholder="Hi {FirstName}, how can we help you?"
+                                    rows={4}
+                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none"
+                                />
+                                <p className="mt-1.5 text-[10px] text-slate-400">Available placeholders: {'{FirstName}, {Name}, {Points}, {BusinessName}'}</p>
+                            </div>
+                        </div>
+                        <div className="p-6 bg-slate-50 flex gap-3">
+                            <button 
+                                onClick={() => setIsTemplateModalOpen(false)}
+                                className="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleCreateTemplate}
+                                disabled={createTmpl.isPending}
+                                className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary-dark shadow-lg shadow-primary/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {createTmpl.isPending ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FileText size={18} />}
+                                Create Template
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Template Delete Confirmation */}
+            {templateToDelete && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 text-center p-8">
+                        <div className="size-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <AlertTriangle size={32} />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">Delete Template?</h3>
+                        <p className="text-slate-500 mb-8 text-sm">Are you sure you want to delete <b>{templateToDelete.name}</b>? This action cannot be undone.</p>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setTemplateToDelete(null)}
+                                className="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all"
+                            >
+                                No, Keep it
+                            </button>
+                            <button 
+                                onClick={handleDeleteTemplate}
+                                disabled={deleteTmpl.isPending}
+                                className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-red-500 rounded-xl hover:bg-red-600 shadow-lg shadow-red-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {deleteTmpl.isPending ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Trash2 size={18} />}
+                                Yes, Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Category Creation Modal */}
             {isCategoryModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -212,6 +324,7 @@ export default function ChatSettingsPanel() {
                 </div>
             )}
 
+            {/* Category Delete Confirmation */}
             {categoryToDelete && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 text-center p-8">
@@ -437,12 +550,10 @@ export default function ChatSettingsPanel() {
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-bold">My Templates</h2>
                                 <button 
-                                    onClick={handleNewTemplate}
-                                    disabled={createTmpl.isPending}
-                                    className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
+                                    onClick={() => setIsTemplateModalOpen(true)}
+                                    className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors shadow-lg shadow-primary/20"
                                 >
-                                    {createTmpl.isPending ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus size={16} />} 
-                                    Create New
+                                    <Plus size={16} /> Create New
                                 </button>
                             </div>
                             <div className="space-y-3">
@@ -453,27 +564,31 @@ export default function ChatSettingsPanel() {
                                         className={`p-4 bg-white border-2 rounded-xl shadow-sm cursor-pointer group transition-all ${editingTemplateId === tmpl.id ? 'border-primary' : 'border-transparent hover:border-primary/30'}`}
                                     >
                                         <div className="flex justify-between items-start mb-1">
-                                            <span className={`text-xs font-semibold uppercase tracking-wider ${editingTemplateId === tmpl.id ? 'text-primary' : 'text-slate-400'}`}>
+                                            <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${editingTemplateId === tmpl.id ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'}`}>
                                                 {tmpl.category}
                                             </span>
                                             <button 
-                                                onClick={(e) => { e.stopPropagation(); deleteTmpl.mutate(tmpl.id); }}
-                                                disabled={deleteTmpl.isPending}
+                                                onClick={(e) => { e.stopPropagation(); setTemplateToDelete(tmpl); }}
                                                 className="text-slate-400 hover:text-red-500 transition-colors"
                                             >
-                                                {deleteTmpl.isPending ? <div className="size-4 border-2 border-slate-200 border-t-red-500 rounded-full animate-spin" /> : <Trash2 size={16} />}
+                                                <Trash2 size={16} />
                                             </button>
                                         </div>
-                                        <h3 className="font-bold text-slate-900">{tmpl.name}</h3>
-                                        <p className="text-sm text-slate-500 line-clamp-1 mb-3">{tmpl.content}</p>
+                                        <h3 className="font-bold text-slate-900 mt-2">{tmpl.name}</h3>
+                                        <p className="text-xs text-slate-500 line-clamp-1 mb-1">{tmpl.content}</p>
                                     </div>
                                 ))}
+                                {(templates as any[]).length === 0 && (
+                                    <div className="p-8 text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">
+                                        No templates found
+                                    </div>
+                                )}
                             </div>
                         </div>
 
                         <div className="col-span-12 lg:col-span-8">
                             {editingTemplateId ? (
-                                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden animate-in fade-in duration-300">
                                     <div className="p-6 space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
@@ -486,13 +601,29 @@ export default function ChatSettingsPanel() {
                                                     className="w-full bg-slate-50 border-slate-200 rounded-lg focus:ring-primary focus:border-primary outline-none disabled:opacity-50" 
                                                 />
                                             </div>
+                                            <div>
+                                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>
+                                                <select 
+                                                    defaultValue={(templates as any[]).find(t => t.id === editingTemplateId)?.category || 'MARKETING'}
+                                                    onChange={e => updateTmpl.mutate({ id: editingTemplateId, data: { category: e.target.value } })}
+                                                    disabled={updateTmpl.isPending}
+                                                    className="w-full bg-slate-50 border-slate-200 rounded-lg focus:ring-primary focus:border-primary outline-none disabled:opacity-50" 
+                                                >
+                                                    {TEMPLATE_CATEGORIES.map(cat => (
+                                                        <option key={cat} value={cat}>{cat}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
                                         </div>
-                                        <textarea 
-                                            defaultValue={(templates as any[]).find(t => t.id === editingTemplateId)?.content || ''}
-                                            onBlur={e => updateTmpl.mutate({ id: editingTemplateId, data: { content: e.target.value } })}
-                                            disabled={updateTmpl.isPending}
-                                            className="w-full min-h-[300px] p-6 focus:outline-none bg-white text-sm leading-relaxed border rounded-xl disabled:opacity-50"
-                                        />
+                                        <div className="relative">
+                                            <textarea 
+                                                defaultValue={(templates as any[]).find(t => t.id === editingTemplateId)?.content || ''}
+                                                onBlur={e => updateTmpl.mutate({ id: editingTemplateId, data: { content: e.target.value } })}
+                                                disabled={updateTmpl.isPending}
+                                                className="w-full min-h-[350px] p-6 focus:outline-none bg-white text-sm leading-relaxed border rounded-xl disabled:opacity-50"
+                                            />
+                                            {updateTmpl.isPending && <div className="absolute top-4 right-4"><div className="size-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin" /></div>}
+                                        </div>
                                     </div>
                                 </div>
                             ) : (
