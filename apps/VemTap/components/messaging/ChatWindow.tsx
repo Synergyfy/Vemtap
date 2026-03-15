@@ -6,7 +6,7 @@ import { Search, Maximize2, Minimize2, Check, CheckCheck, FileText } from 'lucid
 import ChatInput from './ChatInput';
 import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
-import { useThreadMessages, useChatThreads } from '@/hooks/useMessaging';
+import { useChatThreads } from '@/hooks/useMessaging';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
@@ -49,22 +49,23 @@ export default function ChatWindow() {
     const activeConversationId = useChatStore(s => s.activeConversationId);
     const user = useAuthStore(s => s.user);
     const isCustomer = user?.role === 'customer';
+    const branchId = user?.branchId;
     
     // Fetch all threads to find the active one
-    const { data: threads = [] } = useChatThreads('IN_HOUSE');
+    const { data: threads = [] } = useChatThreads('IN_HOUSE', branchId);
     const activeConv = (threads as any[]).find(c => c.id === activeConversationId);
 
     // Fetch messages for active thread (business or customer endpoint)
     const { data: messages = [], isLoading } = useQuery({
-        queryKey: ['chat-messages', activeConversationId],
+        queryKey: ['chat-messages', activeConversationId, branchId],
         queryFn: () => {
             const endpoint = isCustomer 
                 ? `/customer/messaging/threads/${activeConversationId}` 
-                : `/messaging/inbox/threads/${activeConversationId}`;
+                : `/messaging/inbox/threads/${activeConversationId}${branchId ? `?branchId=${branchId}` : ''}`;
             return api.get(endpoint);
         },
         enabled: !!activeConversationId,
-        refetchInterval: 5000, // Poll for new messages every 5s
+        refetchInterval: 5000,
     });
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -136,14 +137,14 @@ export default function ChatWindow() {
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Configuration</p>
                                 </div>
                                 <Link 
-                                    href="/dashboard/messaging/chat/settings?tab=automation"
+                                    href={`/dashboard/messaging/chat/settings?tab=automation${branchId ? `&branchId=${branchId}` : ''}`}
                                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors"
                                 >
                                     <span className="material-symbols-outlined text-[20px]">smart_toy</span>
                                     <span>Automated Replies</span>
                                 </Link>
                                 <Link 
-                                    href="/dashboard/messaging/chat/settings?tab=templates"
+                                    href={`/dashboard/messaging/chat/settings?tab=templates${branchId ? `&branchId=${branchId}` : ''}`}
                                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors"
                                 >
                                     <span className="material-symbols-outlined text-[20px]">description</span>
@@ -190,14 +191,6 @@ export default function ChatWindow() {
 }
 
 function MessageBubble({ message, isCustomer }: { message: any; isCustomer: boolean }) {
-    const isOutbound = isCustomer 
-        ? message.direction === 'INBOUND' // For customer, their own messages are 'INBOUND' from backend perspective
-        : message.direction === 'OUTBOUND';
-
-    // Correction: Backend 'INBOUND' means from customer to business.
-    // If current user is customer, 'INBOUND' is THEIR message (right side).
-    // If current user is business, 'OUTBOUND' is THEIR message (right side).
-    
     const isMine = isCustomer 
         ? message.direction === 'INBOUND'
         : message.direction === 'OUTBOUND';

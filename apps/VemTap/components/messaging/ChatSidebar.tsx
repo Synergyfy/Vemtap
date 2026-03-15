@@ -43,7 +43,8 @@ export default function ChatSidebar() {
     const { data: business } = useMyBusiness(isAuthenticated);
     const user = useAuthStore(s => s.user);
 
-    const { data: threads = [], isLoading } = useChatThreads('IN_HOUSE');
+    const branchId = user?.branchId;
+    const { data: threads = [], isLoading } = useChatThreads('IN_HOUSE', branchId);
 
     const isCustomer = user?.role === 'customer';
     
@@ -83,14 +84,14 @@ export default function ChatSidebar() {
                 {!isCustomer && (
                     <div className="flex gap-2 text-slate-400">
                         <Link 
-                            href="/dashboard/messaging/chat/settings?tab=templates"
+                            href={`/dashboard/messaging/chat/settings?tab=templates${branchId ? `&branchId=${branchId}` : ''}`}
                             className="p-1.5 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors"
                             title="Message Templates"
                         >
                             <Plus size={18} />
                         </Link>
                         <Link 
-                            href="/dashboard/messaging/chat/settings"
+                            href={`/dashboard/messaging/chat/settings${branchId ? `?branchId=${branchId}` : ''}`}
                             className="p-1.5 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors"
                             title="Chat Settings"
                         >

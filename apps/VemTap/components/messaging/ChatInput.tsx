@@ -24,6 +24,7 @@ export default function ChatInput({ conversationId }: ChatInputProps) {
     const queryClient = useQueryClient();
 
     const isCustomer = user?.role === 'customer';
+    const branchId = user?.branchId;
     
     // Business reply mutation
     const businessReply = useSendReply();
@@ -45,7 +46,7 @@ export default function ChatInput({ conversationId }: ChatInputProps) {
             if (isCustomer) {
                 await customerReply.mutateAsync({ threadId: conversationId, content: text.trim() });
             } else {
-                await businessReply.mutateAsync({ threadId: conversationId, content: text.trim() });
+                await businessReply.mutateAsync({ threadId: conversationId, content: text.trim(), branchId });
             }
             setText('');
             setShowEmojiPicker(false);
@@ -79,11 +80,7 @@ export default function ChatInput({ conversationId }: ChatInputProps) {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'file' | 'image') => {
         const file = e.target.files?.[0];
         if (!file) return;
-        
-        // Attachment support requires backend upload logic, 
-        // for now we only support text as per typical chat MVP.
         toast.error('File uploads are coming soon!');
-        
         if (e.target) e.target.value = '';
     };
 
@@ -132,7 +129,6 @@ export default function ChatInput({ conversationId }: ChatInputProps) {
             />
 
             <div className="flex items-end gap-2">
-                {/* Tool Buttons */}
                 <div className="flex items-center gap-0.5 text-slate-400 mb-1">
                     <button 
                         onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -157,7 +153,6 @@ export default function ChatInput({ conversationId }: ChatInputProps) {
                     </button>
                 </div>
 
-                {/* Input */}
                 <div className="flex-1 bg-slate-100 rounded-2xl px-4 py-2 border border-transparent focus-within:border-slate-200 focus-within:bg-white transition-all flex items-end">
                     <textarea
                         ref={textareaRef}
@@ -172,7 +167,6 @@ export default function ChatInput({ conversationId }: ChatInputProps) {
                     />
                 </div>
 
-                {/* Send */}
                 <button
                     onClick={handleSend}
                     disabled={!text.trim() || isSending}

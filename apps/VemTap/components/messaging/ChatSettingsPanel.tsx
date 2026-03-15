@@ -32,29 +32,31 @@ export default function ChatSettingsPanel() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const activeTab = searchParams.get('tab') || 'automation';
+    
+    const user = useAuthStore(s => s.user);
+    const branchId = searchParams.get('branchId') || user?.branchId;
 
     // Queries
-    const { data: automation = {} as any, isLoading: autoLoading } = useChatAutomation();
-    const { data: templates = [], isLoading: templatesLoading } = useChatTemplates();
-    const { data: categories = [], isLoading: categoriesLoading } = useChatCategories();
+    const { data: automation = {} as any, isLoading: autoLoading } = useChatAutomation(branchId);
+    const { data: templates = [], isLoading: templatesLoading } = useChatTemplates(branchId);
+    const { data: categories = [], isLoading: categoriesLoading } = useChatCategories(branchId);
 
     // Mutations
-    const updateAuto = useUpdateChatAutomation();
-    const addFaq = useAddFaqKeyword();
-    const updateFaq = useUpdateFaqKeyword();
-    const deleteFaq = useDeleteFaqKeyword();
+    const updateAuto = useUpdateChatAutomation(branchId);
+    const addFaq = useAddFaqKeyword(branchId);
+    const updateFaq = useUpdateFaqKeyword(branchId);
+    const deleteFaq = useDeleteFaqKeyword(branchId);
     
-    const createTmpl = useCreateTemplate();
+    const createTmpl = useCreateTemplate(); // Created template will use its own branchId in DTO
     const updateTmpl = useUpdateTemplate();
     const deleteTmpl = useDeleteTemplate();
     
-    const createCat = useCreateChatCategory();
-    const updateCat = useUpdateChatCategory();
-    const deleteCat = useDeleteChatCategory();
+    const createCat = useCreateChatCategory(branchId);
+    const updateCat = useUpdateChatCategory(branchId);
+    const deleteCat = useDeleteChatCategory(branchId);
     
     const isAuthenticated = useAuthStore(s => s.isAuthenticated);
     const { data: business } = useMyBusiness(isAuthenticated);
-    const user = useAuthStore(s => s.user);
 
     const businessName = business?.name || user?.businessName || 'Vemtap';
     const businessLogo = business?.logoUrl || user?.businessLogo;
@@ -78,6 +80,7 @@ export default function ChatSettingsPanel() {
             content: 'Hi {FirstName}, ...',
             category: 'General',
             channel: 'IN_HOUSE',
+            branchId,
         }, {
             onSuccess: (data: any) => {
                 setEditingTemplateId(data.id);
@@ -91,6 +94,7 @@ export default function ChatSettingsPanel() {
             name: 'New Category',
             routeTo: 'Default Queue',
             urgency: 'Medium',
+            branchId,
         });
         toast.success('Category created');
     };
@@ -143,7 +147,13 @@ export default function ChatSettingsPanel() {
             </header>
 
             <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-8">
-                {activeTab === 'automation' && (
+                {(autoLoading || templatesLoading || categoriesLoading) && (
+                    <div className="flex justify-center p-12">
+                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    </div>
+                )}
+
+                {activeTab === 'automation' && !autoLoading && (
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="grid grid-cols-1 gap-8">
                             {/* Welcome Message */}
@@ -264,7 +274,7 @@ export default function ChatSettingsPanel() {
                     </div>
                 )}
 
-                {activeTab === 'templates' && (
+                {activeTab === 'templates' && !templatesLoading && (
                     <div className="grid grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         {/* Left Column: Template List */}
                         <div className="col-span-12 lg:col-span-4 space-y-4">
@@ -335,7 +345,7 @@ export default function ChatSettingsPanel() {
                     </div>
                 )}
 
-                {activeTab === 'categories' && (
+                {activeTab === 'categories' && !categoriesLoading && (
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="flex justify-between items-end">
                             <h1 className="text-3xl font-bold text-slate-900">Ticket Categories</h1>
