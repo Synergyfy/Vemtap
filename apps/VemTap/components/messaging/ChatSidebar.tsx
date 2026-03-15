@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { useChatStore, ChatConversation } from '@/lib/store/useChatStore';
+import { useChatStore } from '@/lib/store/useChatStore';
 import { Search, Plus, MoreVertical } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useChatThreads } from '@/hooks/useMessaging';
 import Link from 'next/link';
 
 const AVATAR_COLORS = [
@@ -22,18 +23,18 @@ function getAvatarColor(id: string) {
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
-function formatTime(timestamp: number) {
-    const diff = Date.now() - timestamp;
+function formatTime(timestamp: string | number | Date) {
+    const time = new Date(timestamp).getTime();
+    const diff = Date.now() - time;
     const hours = diff / 3_600_000;
     if (hours < 24) {
-        return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
     if (hours < 48) return 'Yesterday';
-    return new Date(timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
+    return new Date(time).toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
 export default function ChatSidebar() {
-    const conversations = useChatStore(s => s.conversations);
     const activeConversationId = useChatStore(s => s.activeConversationId);
     const searchQuery = useChatStore(s => s.searchQuery);
     const setSearchQuery = useChatStore(s => s.setSearchQuery);
@@ -42,11 +43,11 @@ export default function ChatSidebar() {
     const { data: business } = useMyBusiness(isAuthenticated);
     const user = useAuthStore(s => s.user);
 
+    const { data: threads = [], isLoading } = useChatThreads('IN_HOUSE');
+
     const isCustomer = user?.role === 'customer';
     
-    // For business users, show their own business profile in the sidebar header
-    // For customers, show the business they are talking to (or a placeholder if none selected)
-    const activeConv = conversations.find(c => c.id === activeConversationId);
+    const activeConv = (threads as any[]).find(c => c.id === activeConversationId);
     
     const headerName = isCustomer 
         ? (activeConv?.contact?.name || 'Business Chat') 
@@ -59,12 +60,11 @@ export default function ChatSidebar() {
 
     const filtered = useMemo(() => {
         const q = searchQuery.trim().toLowerCase();
-        if (!q) return conversations;
-        return conversations.filter(c =>
-            c.contact.name.toLowerCase().includes(q) ||
-            c.lastMessage.toLowerCase().includes(q)
+        if (!q) return threads as any[];
+        return (threads as any[]).filter(c =>
+            c.contact?.name?.toLowerCase().includes(q)
         );
-    }, [conversations, searchQuery]);
+    }, [threads, searchQuery]);
 
     return (
         <aside className="w-80 lg:w-96 glass-sidebar flex flex-col h-full border-r border-slate-200 shrink-0">
@@ -116,7 +116,9 @@ export default function ChatSidebar() {
 
             {/* Conversations */}
             <nav className="flex-1 overflow-y-auto custom-scrollbar">
-                {filtered.length === 0 ? (
+                {isLoading ? (
+                     <div className="p-8 text-center text-slate-400 text-sm">Loading conversations...</div>
+                ) : filtered.length === 0 ? (
                     <div className="p-8 text-center text-slate-400 text-sm">No conversations found.</div>
                 ) : (
                     filtered.map(conv => (
@@ -138,11 +140,12 @@ function ConversationItem({
     isActive,
     onClick,
 }: {
-    conversation: ChatConversation;
+    conversation: any;
     isActive: boolean;
     onClick: () => void;
 }) {
     const { contact } = conversation;
+    const name = contact?.name || 'Unknown';
 
     return (
         <button
@@ -155,15 +158,12 @@ function ConversationItem({
         >
             {/* Avatar */}
             <div className="relative flex-shrink-0">
-                {contact.avatar ? (
-                    <img src={contact.avatar} alt={contact.name} className="w-12 h-12 rounded-full object-cover" />
+                {contact?.avatar ? (
+                    <img src={contact.avatar} alt={name} className="w-12 h-12 rounded-full object-cover" />
                 ) : (
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm ${getAvatarColor(contact.id)}`}>
-                        {getInitials(contact.name)}
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm ${getAvatarColor(conversation.id)}`}>
+                        {getInitials(name)}
                     </div>
-                )}
-                {contact.isOnline && (
-                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
                 )}
             </div>
 
@@ -171,27 +171,16 @@ function ConversationItem({
             <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-baseline">
                     <h3 className={`text-sm truncate ${isActive ? 'font-semibold text-slate-900' : 'font-medium text-slate-900'}`}>
-                        {contact.name}
+                        {name}
                     </h3>
                     <span className="text-xs text-slate-400 shrink-0 ml-2">
-                        {formatTime(conversation.lastMessageTime)}
+                        {formatTime(conversation.lastActivityAt || conversation.updatedAt)}
                     </span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <p className={`text-xs truncate flex-1 ${
-                        conversation.unreadCount > 0 ? 'font-semibold text-slate-700' : 'text-slate-500'
-                    }`}>
-                        {conversation.isTyping ? (
-                            <span className="text-primary font-medium">typing...</span>
-                        ) : (
-                            conversation.lastMessage
-                        )}
+                    <p className="text-xs truncate flex-1 text-slate-500">
+                        {conversation.status || 'Active conversation'}
                     </p>
-                    {conversation.unreadCount > 0 && (
-                        <span className="min-w-[18px] h-[18px] rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center px-1">
-                            {conversation.unreadCount}
-                        </span>
-                    )}
                 </div>
             </div>
         </button>

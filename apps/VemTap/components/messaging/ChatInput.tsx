@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { useChatStore } from '@/lib/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Smile, Paperclip, Camera, Send, X } from 'lucide-react';
+import { useSendReply } from '@/hooks/useMessaging';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import toast from 'react-hot-toast';
 
 interface ChatInputProps {
     conversationId: string;
@@ -14,22 +17,43 @@ const COMMON_EMOJIS = ['😊', '😂', '❤️', '👍', '🙏', '🔥', '✨', 
 export default function ChatInput({ conversationId }: ChatInputProps) {
     const [text, setText] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-    const sendMessage = useChatStore(s => s.sendMessage);
     const user = useAuthStore(s => s.user);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
+    const queryClient = useQueryClient();
 
     const isCustomer = user?.role === 'customer';
-    const direction = isCustomer ? 'inbound' : 'outbound';
+    
+    // Business reply mutation
+    const businessReply = useSendReply();
+    
+    // Customer reply mutation (different endpoint)
+    const customerReply = useMutation({
+        mutationFn: ({ threadId, content }: { threadId: string; content: string }) =>
+          api.post(`/customer/messaging/threads/${threadId}/reply`, { content }),
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ['chat-messages', conversationId] });
+          queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
+        },
+    });
 
-    const handleSend = () => {
+    const handleSend = async () => {
         if (!text.trim()) return;
-        sendMessage(conversationId, text.trim(), 'text', direction);
-        setText('');
-        setShowEmojiPicker(false);
-        if (textareaRef.current) {
-            textareaRef.current.style.height = '';
+        
+        try {
+            if (isCustomer) {
+                await customerReply.mutateAsync({ threadId: conversationId, content: text.trim() });
+            } else {
+                await businessReply.mutateAsync({ threadId: conversationId, content: text.trim() });
+            }
+            setText('');
+            setShowEmojiPicker(false);
+            if (textareaRef.current) {
+                textareaRef.current.style.height = '';
+            }
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to send message');
         }
     };
 
@@ -49,29 +73,21 @@ export default function ChatInput({ conversationId }: ChatInputProps) {
 
     const addEmoji = (emoji: string) => {
         setText(prev => prev + emoji);
-        // Focus back to textarea
         textareaRef.current?.focus();
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'file' | 'image') => {
         const file = e.target.files?.[0];
         if (!file) return;
-
-        // In a real app, you'd upload use a service like Cloudinary or S3
-        // Here we'll simulate it by creating a local URL
-        const fileUrl = URL.createObjectURL(file);
-        const fileName = file.name;
-        const fileSize = (file.size / 1024).toFixed(1) + ' KB';
-
-        sendMessage(conversationId, `Shared a ${type}: ${fileName}`, type, direction, {
-            fileUrl,
-            fileName,
-            fileSize
-        });
-
-        // Clear input
+        
+        // Attachment support requires backend upload logic, 
+        // for now we only support text as per typical chat MVP.
+        toast.error('File uploads are coming soon!');
+        
         if (e.target) e.target.value = '';
     };
+
+    const isSending = businessReply.isPending || customerReply.isPending;
 
     return (
         <footer className="p-4 bg-white border-t border-slate-200 shrink-0 relative">
@@ -151,6 +167,7 @@ export default function ChatInput({ conversationId }: ChatInputProps) {
                         onInput={handleInput}
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message..."
+                        disabled={isSending}
                         className="w-full bg-transparent border-none focus:ring-0 p-0 text-sm max-h-32 resize-none py-1 outline-none"
                     />
                 </div>
@@ -158,10 +175,10 @@ export default function ChatInput({ conversationId }: ChatInputProps) {
                 {/* Send */}
                 <button
                     onClick={handleSend}
-                    disabled={!text.trim()}
+                    disabled={!text.trim() || isSending}
                     className="w-10 h-10 flex items-center justify-center bg-primary text-white rounded-full shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed mb-1"
                 >
-                    <Send size={18} className="rotate-0" />
+                    <Send size={18} className={`${isSending ? 'animate-pulse' : ''}`} />
                 </button>
             </div>
         </footer>

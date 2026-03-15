@@ -19,6 +19,7 @@ import { FlowTriggerConfig } from './entities/flow-trigger-config.entity';
 import { FlowLog } from './entities/flow-log.entity';
 import { AutomationRule } from './entities/automation-rule.entity';
 import { AutomationLog } from './entities/automation-log.entity';
+import { ChatCategory } from './entities/chat-category.entity';
 import { CreditPlan } from './entities/credit-plan.entity';
 import { BusinessCredit } from './entities/business-credit.entity';
 import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
@@ -42,9 +43,11 @@ import { FlowEngineService } from './services/flow-engine.service';
 import { AdminFlowEngineService } from './services/admin-flow-engine.service';
 import { AutomationService } from './services/automation.service';
 import { MessagingFlowService } from './services/messaging-flow.service';
+import { ChatSettingsService } from './services/chat-settings.service';
 
 import { MessagingController } from './controllers/messaging.controller';
 import { CustomerMessagingController } from './controllers/customer-messaging.controller';
+import { ChatSettingsController } from './controllers/chat-settings.controller';
 import { FlowController } from './controllers/flow.controller';
 import { AdminFlowEngineController } from './controllers/admin-flow-engine.controller';
 import { TermiiWebhookController } from './controllers/termii.controller';
@@ -159,10 +162,12 @@ import { AutomationProcessor } from './processors/automation.processor';
     AutomationProcessor,
     CreditPlanService,
     MessagingFlowService,
+    ChatSettingsService,
   ],
   controllers: [
     MessagingController,
     CustomerMessagingController,
+    ChatSettingsController,
     FlowController,
     AdminFlowEngineController,
     TermiiWebhookController,
