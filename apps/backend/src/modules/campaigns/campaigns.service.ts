@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { Campaign } from './entities/campaign.entity';
@@ -23,6 +23,7 @@ import {
   PointEarnRequestDto,
   RewardRedeemRequestDto,
   UpdateLoyaltyRuleDto,
+  GenerateRedemptionCodeDto,
 } from './dto/loyalty.dto';
 
 @Injectable()
@@ -499,12 +500,14 @@ export class CampaignsService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + reward.validityDays);
 
+    const redemptionCode = Math.floor(100000000 + Math.random() * 900000000).toString(); // 9-digit code
+
     const redemption = this.redemptionRepository.create({
       loyaltyProfile: profile,
       reward: reward,
       branchId,
       businessId: profile.businessId,
-      redemptionCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
+      redemptionCode,
       pointsSpent: pointCost,
       status: 'pending',
       expiresAt,
@@ -528,28 +531,85 @@ export class CampaignsService {
     return { success: true, redemption };
   }
 
-  async verifyRedemption(branchId: string, code: string): Promise<any> {
+  async generateRedemptionCode(
+    branchId: string,
+    dto: GenerateRedemptionCodeDto,
+    generatedByUserId: string,
+  ): Promise<any> {
+    const reward = await this.rewardRepository.findOne({
+      where: { id: dto.rewardId, branchId },
+    });
+    if (!reward) throw new NotFoundException('Reward not found for this branch');
+
+    const redemptionCode = Math.floor(100000000 + Math.random() * 900000000).toString();
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + (reward.validityDays || 30));
+
+    const redemption = this.redemptionRepository.create({
+      rewardId: reward.id,
+      branchId,
+      businessId: reward.businessId,
+      redemptionCode,
+      pointsSpent: reward.pointCost,
+      status: 'pending',
+      expiresAt,
+      generatedByUserId,
+      loyaltyProfileId: dto.loyaltyProfileId, // Optional, can be assigned later during claim
+    } as any) as unknown as Redemption;
+
+    return this.redemptionRepository.save(redemption);
+  }
+
+  async claimRedemptionCode(
+    userId: string,
+    branchId: string,
+    code: string,
+  ): Promise<any> {
     const redemption = await this.redemptionRepository.findOne({
       where: { redemptionCode: code, status: 'pending' },
       relations: ['reward'],
     });
 
-    if (!redemption)
-      return { success: false, error: 'Invalid or already used code' };
-    if (redemption.reward.branchId !== branchId)
-      return { success: false, error: 'Reward not found for this branch' };
-
+    if (!redemption) throw new NotFoundException('Invalid or already used code');
+    if (redemption.branchId !== branchId) throw new BadRequestException('This code is not valid for this branch');
+    
     if (new Date(redemption.expiresAt) < new Date()) {
       redemption.status = 'expired';
       await this.redemptionRepository.save(redemption);
-      return { success: false, error: 'Reward has expired' };
+      throw new BadRequestException('This code has expired');
     }
 
-    redemption.status = 'verified';
-    redemption.verifiedAt = new Date();
-    await this.redemptionRepository.save(redemption);
+    const profile = await this.getLoyaltyProfile(userId, branchId);
+    if (profile.currentPointsBalance < redemption.pointsSpent) {
+      throw new BadRequestException('Insufficient points to claim this reward');
+    }
 
-    return { success: true, redemption };
+    return await (this.redemptionRepository.manager as any).transaction(async (manager: any) => {
+      profile.currentPointsBalance -= redemption.pointsSpent;
+      profile.points = profile.currentPointsBalance;
+      profile.pointsRedeemed += redemption.pointsSpent;
+      await manager.save(profile);
+
+      redemption.status = 'verified';
+      redemption.verifiedAt = new Date();
+      redemption.loyaltyProfileId = profile.id;
+      await manager.save(redemption);
+
+      // Record transaction
+      const transaction = this.transactionRepository.create({
+        loyaltyProfile: profile,
+        businessId: profile.businessId,
+        transactionType: 'redeem',
+        pointsAmount: -redemption.pointsSpent,
+        points: -redemption.pointsSpent,
+        reason: `Claimed Reward: ${redemption.reward.name}`,
+        referenceId: redemption.id,
+      } as any) as unknown as PointTransaction;
+      await manager.save(transaction);
+
+      return { success: true, redemption };
+    });
   }
 
   async getTransactions(profileId: string): Promise<PointTransaction[]> {

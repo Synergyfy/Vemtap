@@ -210,10 +210,38 @@ export class VerifyRedemptionDto {
   @IsOptional()
   branchId?: string;
 
-  @ApiProperty({ description: 'Redemption code', example: 'A1B2C3D4' })
+  @ApiProperty({ description: 'Redemption code', example: '123456789' })
   @IsString()
   code: string;
 }
+
+export class GenerateRedemptionCodeDto {
+  @ApiProperty({ description: 'The reward ID', example: 'rew_123' })
+  @IsString()
+  rewardId: string;
+
+  @ApiProperty({ description: 'Loyalty profile ID (Optional)', example: 'lp_123', required: false })
+  @IsString()
+  @IsOptional()
+  loyaltyProfileId?: string;
+
+  @ApiProperty({ description: 'Branch ID', example: 'branch_001', required: false })
+  @IsString()
+  @IsOptional()
+  branchId?: string;
+}
+
+export class ClaimCodeDto {
+  @ApiProperty({ description: 'The 9-digit code', example: '123456789' })
+  @IsString()
+  code: string;
+
+  @ApiProperty({ description: 'Branch ID', example: 'branch_001', required: false })
+  @IsString()
+  @IsOptional()
+  branchId?: string;
+}
+
 export class BranchQueryDto {
   @ApiProperty({
     description: 'Branch ID',

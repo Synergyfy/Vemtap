@@ -1,13 +1,10 @@
-export type { 
+import type { 
     PointTransactionType, 
     RewardType, 
     RedemptionStatus, 
     TierLevel, 
     RuleType, 
-    ExpiryType 
-} from '@/types/loyalty';
-
-export type { 
+    ExpiryType,
     LoyaltyProfile, 
     PointTransaction, 
     LoyaltyRule, 
@@ -19,12 +16,39 @@ export type {
     RewardRedeemResponse 
 } from '@/types/loyalty';
 
+export type { 
+    PointTransactionType, 
+    RewardType, 
+    RedemptionStatus, 
+    TierLevel, 
+    RuleType, 
+    ExpiryType,
+    LoyaltyProfile, 
+    PointTransaction, 
+    LoyaltyRule, 
+    Reward, 
+    Redemption, 
+    PointEarnRequest, 
+    PointEarnResponse, 
+    RewardRedeemRequest, 
+    RewardRedeemResponse 
+};
+
 export interface VerifyRedemptionResponse {
     success: boolean;
     redemption?: {
         id: string;
         status: string;
         verifiedAt: string;
+        pointsSpent: number;
+        redemptionCode: string;
+        reward: Reward;
+        loyaltyProfile: LoyaltyProfile & {
+            user?: {
+                firstName: string;
+                lastName: string;
+            }
+        };
     };
     error?: string;
 }

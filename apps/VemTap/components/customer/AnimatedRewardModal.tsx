@@ -10,6 +10,7 @@ interface AnimatedRewardModalProps {
     rewardName: string;
     rewardIcon?: React.ReactNode;
     points: number;
+    redemptionCode?: string;
 }
 
 export default function AnimatedRewardModal({
@@ -17,7 +18,8 @@ export default function AnimatedRewardModal({
     onClose,
     rewardName,
     rewardIcon,
-    points
+    points,
+    redemptionCode
 }: AnimatedRewardModalProps) {
 
     useEffect(() => {
@@ -183,8 +185,14 @@ export default function AnimatedRewardModal({
                                     transition={{ delay: 0.7 }}
                                     className="bg-blue-50 rounded-lg p-4 mb-6"
                                 >
+                                    {redemptionCode ? (
+                                        <div className="mb-2">
+                                            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Your Code</p>
+                                            <p className="text-2xl font-display font-black text-blue-900 tracking-[0.2em]">{redemptionCode.slice(0,3)}-{redemptionCode.slice(3,6)}-{redemptionCode.slice(6,9)}</p>
+                                        </div>
+                                    ) : null}
                                     <p className="text-xs text-blue-900 font-medium">
-                                        📱 Show this confirmation to the staff at the venue to claim your reward.
+                                        📱 Show this code to the staff at the venue to claim your reward.
                                     </p>
                                 </motion.div>
 
