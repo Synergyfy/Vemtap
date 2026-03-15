@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { 
     Moon, BookOpen, Plus, Trash2, 
     Bolt, Handshake, 
-    SearchCheck, ArrowLeft, X, Save, AlertTriangle, FileText
+    SearchCheck, ArrowLeft, X, Save, AlertTriangle, FileText,
+    UserCircle, Building2, Link as LinkIcon, Star, Coins
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -29,6 +30,16 @@ import {
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 const TEMPLATE_CATEGORIES = ['MARKETING', 'UTILITY', 'AUTHENTICATION'];
+
+const PLACEHOLDERS = [
+    { label: 'First Name', tag: '{FirstName}', icon: <UserCircle size={12} /> },
+    { label: 'Full Name', tag: '{Name}', icon: <UserCircle size={12} /> },
+    { label: 'Points', tag: '{Points}', icon: <Coins size={12} /> },
+    { label: 'Business Name', tag: '{BusinessName}', icon: <Building2 size={12} /> },
+    { label: 'Branch Name', tag: '{BranchName}', icon: <Building2 size={12} /> },
+    { label: 'Website', tag: '{Website}', icon: <LinkIcon size={12} /> },
+    { label: 'Review Link', tag: '{ReviewLink}', icon: <Star size={12} /> },
+];
 
 export default function ChatSettingsPanel() {
     const searchParams = useSearchParams();
@@ -75,6 +86,9 @@ export default function ChatSettingsPanel() {
     const [newCategoryData, setNewCategoryData] = useState({ name: '', routeTo: '', urgency: 'Medium' });
     const [newTemplateData, setNewTemplateData] = useState({ name: '', category: 'MARKETING', content: '' });
 
+    const modalTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const editorTextareaRef = useRef<HTMLTextAreaElement>(null);
+
     const setTab = (tab: string) => {
         const params = new URLSearchParams(searchParams.toString());
         params.set('tab', tab);
@@ -88,6 +102,35 @@ export default function ChatSettingsPanel() {
         }
         updateAuto.mutate({ [field]: !value });
         toast.success(`Setting updated`);
+    };
+
+    const insertPlaceholder = (tag: string, isModal: boolean) => {
+        const ref = isModal ? modalTextareaRef : editorTextareaRef;
+        if (!ref.current) return;
+
+        const start = ref.current.selectionStart;
+        const end = ref.current.selectionEnd;
+        const text = ref.current.value;
+        const before = text.substring(0, start);
+        const after = text.substring(end, text.length);
+        const newValue = before + tag + after;
+
+        if (isModal) {
+            setNewTemplateData(prev => ({ ...prev, content: newValue }));
+        } else if (editingTemplateId) {
+            // For the main editor, we update the textarea value and trigger the blur manually or wait for the user
+            ref.current.value = newValue;
+            // Trigger mutation immediately to persist
+            updateTmpl.mutate({ id: editingTemplateId, data: { content: newValue } });
+        }
+
+        // Reset focus and cursor
+        setTimeout(() => {
+            if (ref.current) {
+                ref.current.focus();
+                ref.current.selectionStart = ref.current.selectionEnd = start + tag.length;
+            }
+        }, 0);
     };
 
     const handleCreateTemplate = () => {
@@ -200,15 +243,33 @@ export default function ChatSettingsPanel() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Content</label>
+                                <div className="flex justify-between items-center mb-1.5">
+                                    <label className="block text-sm font-semibold text-slate-700">Content</label>
+                                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">Smart Placeholders</span>
+                                </div>
+                                
+                                {/* Placeholder Buttons */}
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                    {PLACEHOLDERS.map(p => (
+                                        <button 
+                                            key={p.tag}
+                                            onClick={() => insertPlaceholder(p.tag, true)}
+                                            className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:border-primary hover:text-primary transition-all shadow-sm"
+                                        >
+                                            {p.icon}
+                                            {p.label}
+                                        </button>
+                                    ))}
+                                </div>
+
                                 <textarea 
+                                    ref={modalTextareaRef}
                                     value={newTemplateData.content}
                                     onChange={e => setNewTemplateData(prev => ({ ...prev, content: e.target.value }))}
                                     placeholder="Hi {FirstName}, how can we help you?"
                                     rows={4}
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none"
                                 />
-                                <p className="mt-1.5 text-[10px] text-slate-400">Available placeholders: {'{FirstName}, {Name}, {Points}, {BusinessName}'}</p>
                             </div>
                         </div>
                         <div className="p-6 bg-slate-50 flex gap-3">
@@ -615,14 +676,37 @@ export default function ChatSettingsPanel() {
                                                 </select>
                                             </div>
                                         </div>
-                                        <div className="relative">
-                                            <textarea 
-                                                defaultValue={(templates as any[]).find(t => t.id === editingTemplateId)?.content || ''}
-                                                onBlur={e => updateTmpl.mutate({ id: editingTemplateId, data: { content: e.target.value } })}
-                                                disabled={updateTmpl.isPending}
-                                                className="w-full min-h-[350px] p-6 focus:outline-none bg-white text-sm leading-relaxed border rounded-xl disabled:opacity-50"
-                                            />
-                                            {updateTmpl.isPending && <div className="absolute top-4 right-4"><div className="size-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin" /></div>}
+
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1.5">
+                                                <label className="block text-sm font-semibold text-slate-700">Content</label>
+                                                <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">Smart Placeholders</span>
+                                            </div>
+                                            
+                                            {/* Placeholder Buttons for Editor */}
+                                            <div className="flex flex-wrap gap-1.5 mb-3">
+                                                {PLACEHOLDERS.map(p => (
+                                                    <button 
+                                                        key={p.tag}
+                                                        onClick={() => insertPlaceholder(p.tag, false)}
+                                                        className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:border-primary hover:text-primary transition-all shadow-sm"
+                                                    >
+                                                        {p.icon}
+                                                        {p.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            <div className="relative">
+                                                <textarea 
+                                                    ref={editorTextareaRef}
+                                                    defaultValue={(templates as any[]).find(t => t.id === editingTemplateId)?.content || ''}
+                                                    onBlur={e => updateTmpl.mutate({ id: editingTemplateId, data: { content: e.target.value } })}
+                                                    disabled={updateTmpl.isPending}
+                                                    className="w-full min-h-[350px] p-6 focus:outline-none bg-white text-sm leading-relaxed border rounded-xl disabled:opacity-50"
+                                                />
+                                                {updateTmpl.isPending && <div className="absolute top-4 right-4"><div className="size-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin" /></div>}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
