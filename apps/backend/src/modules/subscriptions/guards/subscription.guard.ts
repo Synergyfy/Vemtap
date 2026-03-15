@@ -46,7 +46,8 @@ export class SubscriptionGuard implements CanActivate {
       return true;
     }
 
-    if (user.role === UserRole.ADMIN) {
+    const userRole = String(user.role || '').toLowerCase();
+    if (userRole === 'admin' || user.role === UserRole.ADMIN) {
       return true;
     }
 

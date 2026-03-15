@@ -34,6 +34,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CapabilityGuard } from '../subscriptions/guards/capability.guard';
 import { RequireCapability } from '../subscriptions/decorators/capability.decorator';
+import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
 import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
 import { Reward } from '../campaigns/entities/reward.entity';
 import { Redemption } from '../campaigns/entities/redemption.entity';
@@ -41,7 +42,6 @@ import { LoyaltyRule } from '../campaigns/entities/loyalty-rule.entity';
 
 @ApiTags('Loyalty & Rewards')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('loyalty')
 export class LoyaltyController {
   constructor(private readonly loyaltyService: LoyaltyService) {}
@@ -131,13 +131,15 @@ export class LoyaltyController {
   }
 
   @Get('templates')
-  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @SkipSubscriptionCheck()
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Get loyalty program templates' })
   async getTemplates() {
     return this.loyaltyService.getLoyaltyTemplates();
   }
 
   @Post('templates')
+  @SkipSubscriptionCheck()
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a new loyalty template (System Admin only)' })
   async createTemplate(@Body() data: any) {
@@ -145,6 +147,7 @@ export class LoyaltyController {
   }
 
   @Patch('templates/:id')
+  @SkipSubscriptionCheck()
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Update a loyalty template (System Admin only)' })
   async updateTemplate(@Param('id') id: string, @Body() data: any) {
@@ -152,6 +155,7 @@ export class LoyaltyController {
   }
 
   @Delete('templates/:id')
+  @SkipSubscriptionCheck()
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Delete a loyalty template (System Admin only)' })
   async deleteTemplate(@Param('id') id: string) {

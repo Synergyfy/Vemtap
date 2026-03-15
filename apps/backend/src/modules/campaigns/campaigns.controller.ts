@@ -29,10 +29,10 @@ import { User, UserRole } from '../users/entities/user.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
 
 @ApiTags('Campaigns')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('campaigns')
 export class CampaignsController {
   constructor(private readonly campaignsService: CampaignsService) {}
@@ -100,6 +100,7 @@ export class CampaignsController {
   }
 
   @Get('templates')
+  @SkipSubscriptionCheck()
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ summary: 'Get campaign templates' })
   async getTemplates(@Req() req: { user: User }, @Query() query: BranchQueryDto) {
