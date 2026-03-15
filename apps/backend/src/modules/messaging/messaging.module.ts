@@ -56,6 +56,7 @@ import { CreditPlanController } from './controllers/credit-plan.controller';
 
 import { CreditPlanService } from './services/credit-plan.service';
 import { TermiiProvider } from './providers/termii.provider';
+import { TwilioProvider } from './providers/twilio.provider';
 import { AfricaTalkingProvider } from './providers/africastalking.provider';
 import { EmailProvider } from './providers/email.provider';
 import { BestBulkSmsProvider } from './providers/bestbulksms.provider';
@@ -65,6 +66,7 @@ import { BatchSendProcessor } from './processors/batch-send.processor';
 import { IndividualSendProcessor } from './processors/individual-send.processor';
 import { FlowDelayProcessor } from './processors/flow-delay.processor';
 import { AutomationProcessor } from './processors/automation.processor';
+import { TwilioWebhookController } from './controllers/twilio.controller';
 
 @Module({
   imports: [
@@ -152,6 +154,7 @@ import { AutomationProcessor } from './processors/automation.processor';
     AdminFlowEngineService,
     AutomationService,
     TermiiProvider,
+    TwilioProvider,
     AfricaTalkingProvider,
     BestBulkSmsProvider,
     EmailProvider,
@@ -172,6 +175,7 @@ import { AutomationProcessor } from './processors/automation.processor';
     FlowController,
     AdminFlowEngineController,
     TermiiWebhookController,
+    TwilioWebhookController,
     AutomationsController,
     CreditPlanController,
   ],
@@ -188,6 +192,7 @@ import { AutomationProcessor } from './processors/automation.processor';
     AdminFlowEngineService,
     AutomationService,
     TermiiProvider,
+    TwilioProvider,
     AfricaTalkingProvider,
     BestBulkSmsProvider,
     EmailProvider,

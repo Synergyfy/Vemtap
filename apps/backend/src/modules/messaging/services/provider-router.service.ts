@@ -6,6 +6,7 @@ import {
   ProviderResponse,
 } from '../interfaces/messaging-provider.interface';
 import { TermiiProvider } from '../providers/termii.provider';
+import { TwilioProvider } from '../providers/twilio.provider';
 import { AfricaTalkingProvider } from '../providers/africastalking.provider';
 import { BestBulkSmsProvider } from '../providers/bestbulksms.provider';
 import { EmailProvider } from '../providers/email.provider';
@@ -15,6 +16,7 @@ import { InHouseProvider } from '../providers/inhouse.provider';
 export class ProviderRouterService {
   constructor(
     private readonly termiiProvider: TermiiProvider,
+    private readonly twilioProvider: TwilioProvider,
     private readonly africaTalkingProvider: AfricaTalkingProvider,
     private readonly bestBulkSmsProvider: BestBulkSmsProvider,
     private readonly emailProvider: EmailProvider,
@@ -25,8 +27,8 @@ export class ProviderRouterService {
     switch (channel) {
       case Channel.SMS:
         return this.bestBulkSmsProvider;
-      case Channel.WHATSAPP: // Route WhatsApp to Termii
-        return this.termiiProvider;
+      case Channel.WHATSAPP: // Route WhatsApp to Twilio
+        return this.twilioProvider;
       case Channel.EMAIL:
         return this.emailProvider;
       case Channel.IN_HOUSE:
