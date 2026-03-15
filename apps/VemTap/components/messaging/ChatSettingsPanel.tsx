@@ -7,7 +7,7 @@ import {
     Moon, BookOpen, Plus, Trash2, 
     Bolt, Handshake, 
     SearchCheck, ArrowLeft, X, Save, AlertTriangle, FileText,
-    UserCircle, Building2, Link as LinkIcon, Star, Coins, Clock
+    UserCircle, Building2, Link as LinkIcon, Star, Coins, Clock, Copy
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -206,6 +206,23 @@ export default function ChatSettingsPanel() {
         });
     };
 
+    const copyScheduleToAll = (sourceDay: string) => {
+        const source = localAuto.customSchedule?.days?.[sourceDay];
+        if (!source) return;
+
+        setLocalAuto((prev: any) => {
+            const days: any = {};
+            DAYS.forEach(day => {
+                days[day] = { ...source };
+            });
+            return {
+                ...prev,
+                customSchedule: { ...prev.customSchedule, days }
+            };
+        });
+        toast.success(`Copied ${sourceDay}'s schedule to all days`);
+    };
+
     const handleCreateTemplate = () => {
         if (!newTemplateData.name.trim() || !newTemplateData.content.trim()) {
             toast.error('Name and Content are required');
@@ -282,7 +299,7 @@ export default function ChatSettingsPanel() {
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col relative">
-            {/* Template Creation Modal */}
+            {/* Modals */}
             {isTemplateModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -362,7 +379,6 @@ export default function ChatSettingsPanel() {
                 </div>
             )}
 
-            {/* Template Delete Confirmation */}
             {templateToDelete && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 text-center p-8">
@@ -391,7 +407,6 @@ export default function ChatSettingsPanel() {
                 </div>
             )}
 
-            {/* Category Creation Modal */}
             {isCategoryModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -455,7 +470,6 @@ export default function ChatSettingsPanel() {
                 </div>
             )}
 
-            {/* Category Delete Confirmation */}
             {categoryToDelete && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 text-center p-8">
@@ -632,13 +646,16 @@ export default function ChatSettingsPanel() {
 
                                     {localAuto.offHoursSchedule === 'Custom Schedule' && (
                                         <div className="mb-8 p-6 bg-white border border-slate-200 rounded-2xl animate-in slide-in-from-top-2 duration-300">
-                                            <div className="flex items-center gap-2 mb-4 text-slate-800 font-bold">
-                                                <Clock size={18} className="text-primary" />
-                                                <h4>Configure Active Off-Hours</h4>
+                                            <div className="flex items-center justify-between mb-4 text-slate-800 font-bold">
+                                                <div className="flex items-center gap-2">
+                                                    <Clock size={18} className="text-primary" />
+                                                    <h4>Configure Active Off-Hours</h4>
+                                                </div>
+                                                <p className="text-[10px] text-slate-400 font-medium">Auto-replies only send during these slots</p>
                                             </div>
                                             <div className="grid grid-cols-1 gap-3">
                                                 {DAYS.map(day => (
-                                                    <div key={day} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-colors">
+                                                    <div key={day} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-colors border border-transparent hover:border-slate-100">
                                                         <div className="flex items-center gap-3">
                                                             <button 
                                                                 onClick={() => toggleDay(day)}
@@ -646,27 +663,37 @@ export default function ChatSettingsPanel() {
                                                             >
                                                                 {localAuto.customSchedule?.days?.[day] && <Plus size={14} className="rotate-45" />}
                                                             </button>
-                                                            <span className="text-sm font-semibold capitalize text-slate-700 w-24">{day}</span>
+                                                            <span className="text-sm font-bold capitalize text-slate-700 w-24">{day}</span>
                                                         </div>
                                                         
                                                         {localAuto.customSchedule?.days?.[day] ? (
-                                                            <div className="flex items-center gap-2 animate-in fade-in duration-200">
-                                                                <input 
-                                                                    type="time" 
-                                                                    value={localAuto.customSchedule.days[day].startTime}
-                                                                    onChange={e => updateDaySchedule(day, 'startTime', e.target.value)}
-                                                                    className="px-3 py-1.5 text-xs font-bold bg-slate-100 border-none rounded-lg focus:ring-2 focus:ring-primary/20"
-                                                                />
-                                                                <span className="text-slate-400 text-xs font-bold">to</span>
-                                                                <input 
-                                                                    type="time" 
-                                                                    value={localAuto.customSchedule.days[day].endTime}
-                                                                    onChange={e => updateDaySchedule(day, 'endTime', e.target.value)}
-                                                                    className="px-3 py-1.5 text-xs font-bold bg-slate-100 border-none rounded-lg focus:ring-2 focus:ring-primary/20"
-                                                                />
+                                                            <div className="flex items-center gap-3 animate-in fade-in duration-200">
+                                                                <div className="flex items-center gap-2">
+                                                                    <input 
+                                                                        type="time" 
+                                                                        value={localAuto.customSchedule.days[day].startTime}
+                                                                        onChange={e => updateDaySchedule(day, 'startTime', e.target.value)}
+                                                                        className="px-3 py-1.5 text-xs font-bold bg-slate-100 border-none rounded-lg focus:ring-2 focus:ring-primary/20"
+                                                                    />
+                                                                    <span className="text-slate-400 text-xs font-bold">to</span>
+                                                                    <input 
+                                                                        type="time" 
+                                                                        value={localAuto.customSchedule.days[day].endTime}
+                                                                        onChange={e => updateDaySchedule(day, 'endTime', e.target.value)}
+                                                                        className="px-3 py-1.5 text-xs font-bold bg-slate-100 border-none rounded-lg focus:ring-2 focus:ring-primary/20"
+                                                                    />
+                                                                </div>
+                                                                
+                                                                <button 
+                                                                    onClick={() => copyScheduleToAll(day)}
+                                                                    title="Apply this time slot to all days"
+                                                                    className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                                                                >
+                                                                    <Copy size={14} />
+                                                                </button>
                                                             </div>
                                                         ) : (
-                                                            <span className="text-xs text-slate-400 italic">No auto-reply set for this day</span>
+                                                            <span className="text-xs text-slate-400 italic font-medium">No auto-reply set for this day</span>
                                                         )}
                                                     </div>
                                                 ))}
