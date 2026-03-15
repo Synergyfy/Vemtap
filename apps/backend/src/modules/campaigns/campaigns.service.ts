@@ -11,6 +11,8 @@ import { PointTransaction } from './entities/point-transaction.entity';
 import { LoyaltyRule } from './entities/loyalty-rule.entity';
 import { Reward } from './entities/reward.entity';
 import { Redemption } from './entities/redemption.entity';
+import { LoyaltyTemplate } from './entities/loyalty-template.entity';
+import { CreateLoyaltyTemplateDto, UpdateLoyaltyTemplateDto } from './dto/loyalty-template.dto';
 import { Business } from '../businesses/entities/business.entity';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
@@ -42,6 +44,8 @@ export class CampaignsService {
     private rewardRepository: Repository<Reward>,
     @InjectRepository(Redemption)
     private redemptionRepository: Repository<Redemption>,
+    @InjectRepository(LoyaltyTemplate)
+    private loyaltyTemplateRepository: Repository<LoyaltyTemplate>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
     @InjectRepository(Contact)
@@ -195,6 +199,45 @@ export class CampaignsService {
       where,
       order: { createdAt: 'ASC' },
     });
+  }
+
+  // Loyalty Templates (Global Admin-defined)
+  async createLoyaltyTemplate(dto: CreateLoyaltyTemplateDto): Promise<LoyaltyTemplate> {
+    const template = this.loyaltyTemplateRepository.create(dto);
+    return this.loyaltyTemplateRepository.save(template);
+  }
+
+  async findAllLoyaltyTemplates(isAdmin: boolean = false): Promise<LoyaltyTemplate[]> {
+    const where: any = {};
+    if (!isAdmin) {
+      where.status = 'published';
+    }
+    return this.loyaltyTemplateRepository.find({
+      where,
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findOneLoyaltyTemplate(id: string): Promise<LoyaltyTemplate> {
+    const template = await this.loyaltyTemplateRepository.findOne({ where: { id } });
+    if (!template) {
+      throw new NotFoundException(`Loyalty Template with ID ${id} not found`);
+    }
+    return template;
+  }
+
+  async updateLoyaltyTemplate(
+    id: string,
+    dto: UpdateLoyaltyTemplateDto,
+  ): Promise<LoyaltyTemplate> {
+    const template = await this.findOneLoyaltyTemplate(id);
+    Object.assign(template, dto);
+    return this.loyaltyTemplateRepository.save(template);
+  }
+
+  async removeLoyaltyTemplate(id: string): Promise<void> {
+    const template = await this.findOneLoyaltyTemplate(id);
+    await this.loyaltyTemplateRepository.softDelete(template.id);
   }
 
   // Loyalty Features

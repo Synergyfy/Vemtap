@@ -2,10 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { 
-    LoyaltyProfile, 
-    LoyaltyRule, 
-    Reward, 
+import {
+    LoyaltyProfile,
+    LoyaltyRule,
+    Reward,
     PointTransaction,
     PointEarnRequest,
     PointEarnResponse,
@@ -20,7 +20,7 @@ import {
 function useResolvedBranchParams(branchId?: string): { branchId?: string; allBranches?: boolean } {
     const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
     const resolvedBranchId = branchId || urlBranchId;
-    
+
     if (resolvedBranchId === 'all' || !resolvedBranchId) {
         return { allBranches: true };
     }
@@ -206,5 +206,55 @@ export const usePointTransactions = (profileId: string) => {
         queryKey: ['loyalty', 'transactions', profileId],
         queryFn: async () => await api.get(`/campaigns/loyalty/transactions/${profileId}`),
         enabled: !!profileId,
+    });
+};
+
+export const useLoyaltyTemplates = () => {
+    return useQuery<LoyaltyTemplate[], Error>({
+        queryKey: ['loyalty', 'templates'],
+        queryFn: async () => await api.get('/campaigns/loyalty-templates'),
+    });
+};
+
+export const useLoyaltyTemplate = (id: string) => {
+    return useQuery<LoyaltyTemplate, Error>({
+        queryKey: ['loyalty', 'templates', id],
+        queryFn: async () => await api.get(`/campaigns/loyalty-templates/${id}`),
+        enabled: !!id,
+    });
+};
+
+export const useCreateLoyaltyTemplate = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation<LoyaltyTemplate, Error, CreateLoyaltyTemplateRequest>({
+        mutationFn: async (dto) => await api.post('/campaigns/loyalty-templates', dto),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates'] });
+        },
+    });
+};
+
+export const useUpdateLoyaltyTemplate = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation<LoyaltyTemplate, Error, { id: string; updates: UpdateLoyaltyTemplateRequest }>({
+        mutationFn: async ({ id, updates }) =>
+            await api.patch(`/campaigns/loyalty-templates/${id}`, updates),
+        onSuccess: (_, { id }) => {
+            queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates'] });
+            queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates', id] });
+        },
+    });
+};
+
+export const useDeleteLoyaltyTemplate = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation<void, Error, string>({
+        mutationFn: async (id) => await api.delete(`/campaigns/loyalty-templates/${id}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates'] });
+        },
     });
 };

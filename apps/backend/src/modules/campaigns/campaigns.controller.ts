@@ -39,6 +39,8 @@ import {
   VerifyRedemptionDto,
   BranchQueryDto,
 } from './dto/loyalty.dto';
+import { CreateLoyaltyTemplateDto, UpdateLoyaltyTemplateDto } from './dto/loyalty-template.dto';
+import { LoyaltyTemplate } from './entities/loyalty-template.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -291,6 +293,68 @@ export class CampaignsController {
   @ApiResponse({ status: 200, description: 'Campaign successfully deleted' })
   remove(@Param('id') id: string) {
     return this.campaignsService.remove(id);
+  }
+
+  // --- Loyalty Template Endpoints ---
+
+  @Post('loyalty-templates')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Create a new loyalty template (Admin only)' })
+  @ApiResponse({
+    status: 201,
+    description: 'The loyalty template has been created.',
+    type: LoyaltyTemplate,
+  })
+  async createLoyaltyTemplate(@Body() dto: CreateLoyaltyTemplateDto) {
+    return this.campaignsService.createLoyaltyTemplate(dto);
+  }
+
+  @Get('loyalty-templates')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Get all loyalty templates' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of loyalty templates',
+    type: [LoyaltyTemplate],
+  })
+  async findAllLoyaltyTemplates(@Req() req: { user: User }) {
+    const isAdmin = req.user.role === UserRole.ADMIN;
+    return this.campaignsService.findAllLoyaltyTemplates(isAdmin);
+  }
+
+  @Get('loyalty-templates/:id')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Get a loyalty template by ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'The loyalty template details',
+    type: LoyaltyTemplate,
+  })
+  async findOneLoyaltyTemplate(@Param('id') id: string) {
+    return this.campaignsService.findOneLoyaltyTemplate(id);
+  }
+
+  @Patch('loyalty-templates/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update a loyalty template (Admin only)' })
+  @ApiResponse({
+    status: 200,
+    description: 'The updated loyalty template',
+    type: LoyaltyTemplate,
+  })
+  async updateLoyaltyTemplate(
+    @Param('id') id: string,
+    @Body() dto: UpdateLoyaltyTemplateDto,
+  ) {
+    return this.campaignsService.updateLoyaltyTemplate(id, dto);
+  }
+
+  @Delete('loyalty-templates/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Delete a loyalty template (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Loyalty template successfully deleted' })
+  async removeLoyaltyTemplate(@Param('id') id: string) {
+    return this.campaignsService.removeLoyaltyTemplate(id);
   }
 
   // --- Loyalty Endpoints ---
