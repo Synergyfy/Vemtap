@@ -6,6 +6,7 @@ import { Search, Plus, MoreVertical } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useChatThreads } from '@/hooks/useMessaging';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import Link from 'next/link';
 
 const AVATAR_COLORS = [
@@ -42,12 +43,13 @@ export default function ChatSidebar() {
     const isAuthenticated = useAuthStore(s => s.isAuthenticated);
     const { data: business } = useMyBusiness(isAuthenticated);
     const user = useAuthStore(s => s.user);
-
-    const branchId = user?.branchId;
-    const { data: threads = [], isLoading } = useChatThreads('IN_HOUSE', branchId);
+    const { activeBranchId } = useActiveBranch();
 
     const isCustomer = user?.role === 'customer';
+    const branchId = isCustomer ? undefined : activeBranchId;
     
+    const { data: threads = [], isLoading } = useChatThreads('IN_HOUSE', branchId || undefined);
+
     const activeConv = (threads as any[]).find(c => c.id === activeConversationId);
     
     const headerName = isCustomer 
@@ -117,7 +119,9 @@ export default function ChatSidebar() {
 
             {/* Conversations */}
             <nav className="flex-1 overflow-y-auto custom-scrollbar">
-                {isLoading ? (
+                {!isCustomer && !branchId ? (
+                    <div className="p-8 text-center text-amber-500 text-sm font-medium">Please select a branch first</div>
+                ) : isLoading ? (
                      <div className="p-8 text-center text-slate-400 text-sm">Loading conversations...</div>
                 ) : filtered.length === 0 ? (
                     <div className="p-8 text-center text-slate-400 text-sm">No conversations found.</div>

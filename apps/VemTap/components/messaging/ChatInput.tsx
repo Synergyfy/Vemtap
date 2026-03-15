@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Smile, Paperclip, Camera, Send, X } from 'lucide-react';
 import { useSendReply } from '@/hooks/useMessaging';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -18,13 +19,14 @@ export default function ChatInput({ conversationId }: ChatInputProps) {
     const [text, setText] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const user = useAuthStore(s => s.user);
+    const { activeBranchId } = useActiveBranch();
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const queryClient = useQueryClient();
 
     const isCustomer = user?.role === 'customer';
-    const branchId = user?.branchId;
+    const branchId = isCustomer ? undefined : activeBranchId;
     
     // Business reply mutation
     const businessReply = useSendReply();
@@ -42,11 +44,16 @@ export default function ChatInput({ conversationId }: ChatInputProps) {
     const handleSend = async () => {
         if (!text.trim()) return;
         
+        if (!isCustomer && !branchId) {
+            toast.error('Please select a branch first');
+            return;
+        }
+
         try {
             if (isCustomer) {
                 await customerReply.mutateAsync({ threadId: conversationId, content: text.trim() });
             } else {
-                await businessReply.mutateAsync({ threadId: conversationId, content: text.trim(), branchId });
+                await businessReply.mutateAsync({ threadId: conversationId, content: text.trim(), branchId: branchId! });
             }
             setText('');
             setShowEmojiPicker(false);

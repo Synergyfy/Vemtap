@@ -7,6 +7,7 @@ import ChatInput from './ChatInput';
 import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
 import { useChatThreads } from '@/hooks/useMessaging';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
@@ -48,11 +49,12 @@ function StatusIcon({ status }: { status: string }) {
 export default function ChatWindow() {
     const activeConversationId = useChatStore(s => s.activeConversationId);
     const user = useAuthStore(s => s.user);
+    const { activeBranchId } = useActiveBranch();
     const isCustomer = user?.role === 'customer';
-    const branchId = user?.branchId;
+    const branchId = isCustomer ? undefined : activeBranchId;
     
     // Fetch all threads to find the active one
-    const { data: threads = [] } = useChatThreads('IN_HOUSE', branchId);
+    const { data: threads = [] } = useChatThreads('IN_HOUSE', branchId || undefined);
     const activeConv = (threads as any[]).find(c => c.id === activeConversationId);
 
     // Fetch messages for active thread (business or customer endpoint)
@@ -64,7 +66,7 @@ export default function ChatWindow() {
                 : `/messaging/inbox/threads/${activeConversationId}${branchId ? `?branchId=${branchId}` : ''}`;
             return api.get(endpoint);
         },
-        enabled: !!activeConversationId,
+        enabled: !!activeConversationId && (isCustomer || !!branchId),
         refetchInterval: 5000,
     });
 

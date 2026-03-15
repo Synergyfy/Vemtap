@@ -27,6 +27,7 @@ import {
     useUpdateChatCategory,
     useDeleteChatCategory
 } from '@/hooks/useMessaging';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 export default function ChatSettingsPanel() {
     const searchParams = useSearchParams();
@@ -34,26 +35,27 @@ export default function ChatSettingsPanel() {
     const activeTab = searchParams.get('tab') || 'automation';
     
     const user = useAuthStore(s => s.user);
-    const branchId = searchParams.get('branchId') || user?.branchId;
+    const { activeBranchId } = useActiveBranch();
+    const branchId = searchParams.get('branchId') || activeBranchId;
 
     // Queries
-    const { data: automation = {} as any, isLoading: autoLoading } = useChatAutomation(branchId);
-    const { data: templates = [], isLoading: templatesLoading } = useChatTemplates(branchId);
-    const { data: categories = [], isLoading: categoriesLoading } = useChatCategories(branchId);
+    const { data: automation = {} as any, isLoading: autoLoading } = useChatAutomation(branchId || undefined);
+    const { data: templates = [], isLoading: templatesLoading } = useChatTemplates(branchId || undefined);
+    const { data: categories = [], isLoading: categoriesLoading } = useChatCategories(branchId || undefined);
 
     // Mutations
-    const updateAuto = useUpdateChatAutomation(branchId);
-    const addFaq = useAddFaqKeyword(branchId);
-    const updateFaq = useUpdateFaqKeyword(branchId);
-    const deleteFaq = useDeleteFaqKeyword(branchId);
+    const updateAuto = useUpdateChatAutomation(branchId || undefined);
+    const addFaq = useAddFaqKeyword(branchId || undefined);
+    const updateFaq = useUpdateFaqKeyword(branchId || undefined);
+    const deleteFaq = useDeleteFaqKeyword(branchId || undefined);
     
-    const createTmpl = useCreateTemplate(); // Created template will use its own branchId in DTO
+    const createTmpl = useCreateTemplate();
     const updateTmpl = useUpdateTemplate();
     const deleteTmpl = useDeleteTemplate();
     
-    const createCat = useCreateChatCategory(branchId);
-    const updateCat = useUpdateChatCategory(branchId);
-    const deleteCat = useDeleteChatCategory(branchId);
+    const createCat = useCreateChatCategory(branchId || undefined);
+    const updateCat = useUpdateChatCategory(branchId || undefined);
+    const deleteCat = useDeleteChatCategory(branchId || undefined);
     
     const isAuthenticated = useAuthStore(s => s.isAuthenticated);
     const { data: business } = useMyBusiness(isAuthenticated);
@@ -70,11 +72,19 @@ export default function ChatSettingsPanel() {
     };
 
     const handleToggle = (field: string, value: boolean) => {
+        if (!branchId) {
+            toast.error('Please select a branch first');
+            return;
+        }
         updateAuto.mutate({ [field]: !value });
         toast.success(`Setting updated`);
     };
 
     const handleNewTemplate = () => {
+        if (!branchId) {
+            toast.error('Please select a branch first');
+            return;
+        }
         createTmpl.mutate({
             name: 'New Template',
             content: 'Hi {FirstName}, ...',
@@ -90,6 +100,10 @@ export default function ChatSettingsPanel() {
     };
 
     const handleNewCategory = () => {
+        if (!branchId) {
+            toast.error('Please select a branch first');
+            return;
+        }
         createCat.mutate({
             name: 'New Category',
             routeTo: 'Default Queue',
@@ -98,6 +112,23 @@ export default function ChatSettingsPanel() {
         });
         toast.success('Category created');
     };
+
+    if (!branchId && user?.role !== 'customer') {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+                <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center max-w-md">
+                    <div className="size-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Bolt size={32} />
+                    </div>
+                    <h2 className="text-xl font-bold text-slate-900 mb-2">Select a Branch</h2>
+                    <p className="text-slate-500 mb-6">Please select a branch from the sidebar or dashboard to manage chat settings.</p>
+                    <Link href="/dashboard" className="inline-flex items-center justify-center px-6 py-2.5 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all">
+                        Go to Dashboard
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
