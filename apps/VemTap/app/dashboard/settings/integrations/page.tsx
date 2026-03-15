@@ -5,11 +5,9 @@ import PageHeader from '@/components/dashboard/PageHeader';
 
 export default function IntegrationsPage() {
     const integrations = [
-        { name: 'WhatsApp Business', desc: 'Send automated messages and loyalty alerts via WhatsApp.', icon: 'chat', status: 'Connected', color: 'green' },
         { name: 'Square POS', desc: 'Sync customer purchase data with your loyalty program.', icon: 'point_of_sale', status: 'Connect', color: 'blue' },
         { name: 'Mailchimp', desc: 'Sync visitor emails to your marketing segments.', icon: 'email', status: 'Connect', color: 'yellow' },
         { name: 'Shopify', desc: 'Track online vs offline visitor behavior.', icon: 'shopping_bag', status: 'Connect', color: 'indigo' },
-        { name: 'Twilio SMS', desc: 'Provider for all SMS-based visitor notifications.', icon: 'textsms', status: 'Connected', color: 'red' },
         { name: 'Zapier', desc: 'Connect VemTap with 5000+ other web applications.', icon: 'bolt', status: 'Connect', color: 'orange' },
     ];
 
