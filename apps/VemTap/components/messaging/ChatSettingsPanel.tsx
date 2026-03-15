@@ -4,10 +4,9 @@ import React, { useState } from 'react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { 
-    Moon, HelpCircle, BookOpen, Plus, Trash2, 
-    Settings, ArrowLeft, X, Save, History, Bolt, Handshake, 
-    SearchCheck, Headset, TrendingUp, Edit,
-    ShieldCheck, UserRoundSearch, ChevronRight, Mail
+    Moon, BookOpen, Plus, Trash2, 
+    Bolt, Handshake, 
+    SearchCheck, ArrowLeft, X, Save, AlertTriangle
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -63,7 +62,11 @@ export default function ChatSettingsPanel() {
     const businessName = business?.name || user?.businessName || 'Vemtap';
     const businessLogo = business?.logoUrl || user?.businessLogo;
 
+    // Local UI State
     const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+    const [categoryToDelete, setCategoryToDelete] = useState<any | null>(null);
+    const [newCategoryData, setNewCategoryData] = useState({ name: '', routeTo: '', urgency: 'Medium' });
 
     const setTab = (tab: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -99,18 +102,31 @@ export default function ChatSettingsPanel() {
         });
     };
 
-    const handleNewCategory = () => {
-        if (!branchId) {
-            toast.error('Please select a branch first');
+    const handleCreateCategory = () => {
+        if (!newCategoryData.name.trim()) {
+            toast.error('Category name is required');
             return;
         }
         createCat.mutate({
-            name: 'New Category',
-            routeTo: 'Default Queue',
-            urgency: 'Medium',
+            ...newCategoryData,
             branchId,
+        }, {
+            onSuccess: () => {
+                setIsCategoryModalOpen(false);
+                setNewCategoryData({ name: '', routeTo: '', urgency: 'Medium' });
+                toast.success('Category created');
+            }
         });
-        toast.success('Category created');
+    };
+
+    const handleDeleteCategory = () => {
+        if (!categoryToDelete) return;
+        deleteCat.mutate(categoryToDelete.id, {
+            onSuccess: () => {
+                setCategoryToDelete(null);
+                toast.success('Category deleted');
+            }
+        });
     };
 
     if (!branchId && user?.role !== 'customer') {
@@ -131,7 +147,99 @@ export default function ChatSettingsPanel() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col">
+        <div className="min-h-screen bg-slate-50 flex flex-col relative">
+            {/* Modals */}
+            {isCategoryModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-slate-900">Create New Category</h3>
+                            <button onClick={() => setIsCategoryModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category Name</label>
+                                <input 
+                                    type="text"
+                                    value={newCategoryData.name}
+                                    onChange={e => setNewCategoryData(prev => ({ ...prev, name: e.target.value }))}
+                                    placeholder="e.g. Technical Support"
+                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Route To (Team/Queue)</label>
+                                <input 
+                                    type="text"
+                                    value={newCategoryData.routeTo}
+                                    onChange={e => setNewCategoryData(prev => ({ ...prev, routeTo: e.target.value }))}
+                                    placeholder="e.g. Engineering Team"
+                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Urgency Level</label>
+                                <select 
+                                    value={newCategoryData.urgency}
+                                    onChange={e => setNewCategoryData(prev => ({ ...prev, urgency: e.target.value }))}
+                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                >
+                                    <option value="Low">Low</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="High">High</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="p-6 bg-slate-50 flex gap-3">
+                            <button 
+                                onClick={() => setIsCategoryModalOpen(false)}
+                                className="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleCreateCategory}
+                                disabled={createCat.isPending}
+                                className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary-dark shadow-lg shadow-primary/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {createCat.isPending ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={18} />}
+                                Create Category
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {categoryToDelete && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 text-center p-8">
+                        <div className="size-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <AlertTriangle size={32} />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">Delete Category?</h3>
+                        <p className="text-slate-500 mb-8 text-sm">Are you sure you want to delete <b>{categoryToDelete.name}</b>? This action cannot be undone.</p>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setCategoryToDelete(null)}
+                                className="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all"
+                            >
+                                No, Keep it
+                            </button>
+                            <button 
+                                onClick={handleDeleteCategory}
+                                disabled={deleteCat.isPending}
+                                className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-red-500 rounded-xl hover:bg-red-600 shadow-lg shadow-red-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {deleteCat.isPending ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Trash2 size={18} />}
+                                Yes, Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Top Navigation Bar */}
             <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md px-6 md:px-10 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -179,8 +287,9 @@ export default function ChatSettingsPanel() {
 
             <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-8">
                 {(autoLoading || templatesLoading || categoriesLoading) && (
-                    <div className="flex justify-center p-12">
-                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    <div className="flex flex-col items-center justify-center p-24 animate-pulse">
+                         <div className="size-16 border-4 border-slate-200 border-t-primary rounded-full animate-spin mb-4" />
+                         <p className="text-slate-400 font-medium">Synchronizing settings...</p>
                     </div>
                 )}
 
@@ -202,17 +311,22 @@ export default function ChatSettingsPanel() {
                                     <ToggleSwitch
                                         enabled={automation.welcomeEnabled}
                                         onToggle={() => handleToggle('welcomeEnabled', automation.welcomeEnabled)}
+                                        loading={updateAuto.isPending}
                                     />
                                 </div>
                                 <div className="p-6 bg-slate-50/50">
                                     <label className="block mb-2 text-sm font-medium text-slate-700">Response Text</label>
-                                    <textarea 
-                                        defaultValue={automation.welcomeMessage}
-                                        onBlur={e => updateAuto.mutate({ welcomeMessage: e.target.value })}
-                                        className="block w-full px-4 py-3 text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-primary focus:border-primary outline-none transition-all"
-                                        placeholder="Hi there! Thanks for reaching out..."
-                                        rows={3} 
-                                    />
+                                    <div className="relative">
+                                        <textarea 
+                                            defaultValue={automation.welcomeMessage}
+                                            onBlur={e => updateAuto.mutate({ welcomeMessage: e.target.value })}
+                                            className="block w-full px-4 py-3 text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-primary focus:border-primary outline-none transition-all disabled:opacity-50"
+                                            placeholder="Hi there! Thanks for reaching out..."
+                                            rows={3} 
+                                            disabled={updateAuto.isPending}
+                                        />
+                                        {updateAuto.isPending && <div className="absolute right-3 bottom-3"><div className="size-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin" /></div>}
+                                    </div>
                                 </div>
                             </section>
 
@@ -231,6 +345,7 @@ export default function ChatSettingsPanel() {
                                     <ToggleSwitch
                                         enabled={automation.offHoursEnabled}
                                         onToggle={() => handleToggle('offHoursEnabled', automation.offHoursEnabled)}
+                                        loading={updateAuto.isPending}
                                     />
                                 </div>
                                 <div className="p-6 bg-slate-50/50">
@@ -240,7 +355,8 @@ export default function ChatSettingsPanel() {
                                             <select 
                                                 value={automation.offHoursSchedule}
                                                 onChange={e => updateAuto.mutate({ offHoursSchedule: e.target.value })}
-                                                className="block w-full px-4 py-2 text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-primary focus:border-primary outline-none"
+                                                disabled={updateAuto.isPending}
+                                                className="block w-full px-4 py-2 text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-primary focus:border-primary outline-none disabled:opacity-50"
                                             >
                                                 <option>Outside Business Hours</option>
                                                 <option>Always On (Away Mode)</option>
@@ -249,13 +365,17 @@ export default function ChatSettingsPanel() {
                                         </div>
                                     </div>
                                     <label className="block mb-2 text-sm font-medium text-slate-700">Away Message</label>
-                                    <textarea 
-                                        defaultValue={automation.offHoursMessage}
-                                        onBlur={e => updateAuto.mutate({ offHoursMessage: e.target.value })}
-                                        className="block w-full px-4 py-3 text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-primary focus:border-primary outline-none transition-all"
-                                        placeholder="We're currently closed but will get back to you soon."
-                                        rows={3} 
-                                    />
+                                    <div className="relative">
+                                        <textarea 
+                                            defaultValue={automation.offHoursMessage}
+                                            onBlur={e => updateAuto.mutate({ offHoursMessage: e.target.value })}
+                                            className="block w-full px-4 py-3 text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-primary focus:border-primary outline-none transition-all disabled:opacity-50"
+                                            placeholder="We're currently closed but will get back to you soon."
+                                            rows={3} 
+                                            disabled={updateAuto.isPending}
+                                        />
+                                        {updateAuto.isPending && <div className="absolute right-3 bottom-3"><div className="size-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin" /></div>}
+                                    </div>
                                 </div>
                             </section>
 
@@ -274,30 +394,36 @@ export default function ChatSettingsPanel() {
                                 </div>
                                 <div className="p-6 bg-slate-50/50 space-y-4">
                                     {(automation.faqKeywords || []).map((faq: any, i: number) => (
-                                        <div key={faq.id} className={`p-4 bg-white border border-slate-200 rounded-xl ${!faq.enabled ? 'opacity-60' : ''}`}>
+                                        <div key={faq.id} className={`p-4 bg-white border border-slate-200 rounded-xl ${!faq.enabled ? 'opacity-60' : ''} transition-all`}>
                                             <div className="flex flex-wrap gap-2 mb-3">
                                                 {faq.keywords.map((kw: string) => (
                                                     <span key={kw} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-medium border border-slate-200 flex items-center gap-1">
                                                         {kw}
                                                     </span>
                                                 ))}
-                                                <button onClick={() => deleteFaq.mutate(faq.id)} className="text-red-500 p-1 hover:bg-red-50 rounded ml-auto">
-                                                    <Trash2 size={14} />
+                                                <button 
+                                                    onClick={() => deleteFaq.mutate(faq.id)} 
+                                                    disabled={deleteFaq.isPending}
+                                                    className="text-red-500 p-1 hover:bg-red-50 rounded ml-auto transition-colors disabled:opacity-30"
+                                                >
+                                                    {deleteFaq.isPending ? <div className="size-3 border-2 border-red-200 border-t-red-500 rounded-full animate-spin" /> : <Trash2 size={14} />}
                                                 </button>
                                             </div>
                                             <textarea 
                                                 defaultValue={faq.response}
                                                 onBlur={e => updateFaq.mutate({ id: faq.id, data: { response: e.target.value } })}
-                                                className="block w-full px-4 py-2 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:ring-primary focus:border-primary outline-none"
+                                                disabled={updateFaq.isPending}
+                                                className="block w-full px-4 py-2 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:ring-primary focus:border-primary outline-none transition-all disabled:opacity-50"
                                                 rows={2} 
                                             />
                                         </div>
                                     ))}
                                     <button 
                                         onClick={() => addFaq.mutate({ keywords: ['new-keyword'], response: 'New auto response' })}
-                                        className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 font-bold text-sm hover:border-primary/50 hover:text-primary transition-all"
+                                        disabled={addFaq.isPending}
+                                        className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 font-bold text-sm hover:border-primary/50 hover:text-primary transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                                     >
-                                        + Add New Keyword Trigger
+                                        {addFaq.isPending ? <div className="size-4 border-2 border-slate-200 border-t-primary rounded-full animate-spin" /> : '+ Add New Keyword Trigger'}
                                     </button>
                                 </div>
                             </section>
@@ -307,15 +433,16 @@ export default function ChatSettingsPanel() {
 
                 {activeTab === 'templates' && !templatesLoading && (
                     <div className="grid grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {/* Left Column: Template List */}
                         <div className="col-span-12 lg:col-span-4 space-y-4">
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-bold">My Templates</h2>
                                 <button 
                                     onClick={handleNewTemplate}
-                                    className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
+                                    disabled={createTmpl.isPending}
+                                    className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
                                 >
-                                    <Plus size={16} /> Create New
+                                    {createTmpl.isPending ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus size={16} />} 
+                                    Create New
                                 </button>
                             </div>
                             <div className="space-y-3">
@@ -331,9 +458,10 @@ export default function ChatSettingsPanel() {
                                             </span>
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); deleteTmpl.mutate(tmpl.id); }}
-                                                className="text-slate-400 hover:text-red-500"
+                                                disabled={deleteTmpl.isPending}
+                                                className="text-slate-400 hover:text-red-500 transition-colors"
                                             >
-                                                <Trash2 size={16} />
+                                                {deleteTmpl.isPending ? <div className="size-4 border-2 border-slate-200 border-t-red-500 rounded-full animate-spin" /> : <Trash2 size={16} />}
                                             </button>
                                         </div>
                                         <h3 className="font-bold text-slate-900">{tmpl.name}</h3>
@@ -343,7 +471,6 @@ export default function ChatSettingsPanel() {
                             </div>
                         </div>
 
-                        {/* Right Column: Editor */}
                         <div className="col-span-12 lg:col-span-8">
                             {editingTemplateId ? (
                                 <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
@@ -355,14 +482,16 @@ export default function ChatSettingsPanel() {
                                                     type="text" 
                                                     defaultValue={(templates as any[]).find(t => t.id === editingTemplateId)?.name || ''} 
                                                     onBlur={e => updateTmpl.mutate({ id: editingTemplateId, data: { name: e.target.value } })}
-                                                    className="w-full bg-slate-50 border-slate-200 rounded-lg focus:ring-primary focus:border-primary outline-none" 
+                                                    disabled={updateTmpl.isPending}
+                                                    className="w-full bg-slate-50 border-slate-200 rounded-lg focus:ring-primary focus:border-primary outline-none disabled:opacity-50" 
                                                 />
                                             </div>
                                         </div>
                                         <textarea 
                                             defaultValue={(templates as any[]).find(t => t.id === editingTemplateId)?.content || ''}
                                             onBlur={e => updateTmpl.mutate({ id: editingTemplateId, data: { content: e.target.value } })}
-                                            className="w-full min-h-[300px] p-6 focus:outline-none bg-white text-sm leading-relaxed border rounded-xl"
+                                            disabled={updateTmpl.isPending}
+                                            className="w-full min-h-[300px] p-6 focus:outline-none bg-white text-sm leading-relaxed border rounded-xl disabled:opacity-50"
                                         />
                                     </div>
                                 </div>
@@ -381,7 +510,7 @@ export default function ChatSettingsPanel() {
                         <div className="flex justify-between items-end">
                             <h1 className="text-3xl font-bold text-slate-900">Ticket Categories</h1>
                             <button 
-                                onClick={handleNewCategory}
+                                onClick={() => setIsCategoryModalOpen(true)}
                                 className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-4 py-2.5 rounded-xl font-semibold shadow-lg shadow-primary/20 transition-all"
                             >
                                 <Plus size={20} /> New Category
@@ -404,22 +533,25 @@ export default function ChatSettingsPanel() {
                                             <td className="px-6 py-4">
                                                 <input 
                                                     defaultValue={cat.name} 
-                                                    className="bg-transparent border-none p-0 font-semibold focus:ring-0" 
+                                                    disabled={updateCat.isPending}
+                                                    className="bg-transparent border-none p-0 font-semibold focus:ring-0 disabled:opacity-50" 
                                                     onBlur={e => updateCat.mutate({ id: cat.id, data: { name: e.target.value } })}
                                                 />
                                             </td>
                                             <td className="px-6 py-4 text-slate-600">
                                                 <input 
                                                     defaultValue={cat.routeTo} 
-                                                    className="bg-transparent border-none p-0 focus:ring-0" 
+                                                    disabled={updateCat.isPending}
+                                                    className="bg-transparent border-none p-0 focus:ring-0 disabled:opacity-50" 
                                                     onBlur={e => updateCat.mutate({ id: cat.id, data: { routeTo: e.target.value } })}
                                                 />
                                             </td>
                                             <td className="px-6 py-4">
                                                 <select 
                                                     defaultValue={cat.urgency}
+                                                    disabled={updateCat.isPending}
                                                     onChange={e => updateCat.mutate({ id: cat.id, data: { urgency: e.target.value } })}
-                                                    className="bg-transparent border-none p-0 focus:ring-0 text-xs font-bold"
+                                                    className="bg-transparent border-none p-0 focus:ring-0 text-xs font-bold disabled:opacity-50"
                                                 >
                                                     <option value="Low">Low</option>
                                                     <option value="Medium">Medium</option>
@@ -427,12 +559,20 @@ export default function ChatSettingsPanel() {
                                                 </select>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <button onClick={() => deleteCat.mutate(cat.id)} className="text-slate-400 hover:text-red-500">
+                                                <button 
+                                                    onClick={() => setCategoryToDelete(cat)} 
+                                                    className="text-slate-400 hover:text-red-500 transition-colors"
+                                                >
                                                     <Trash2 size={18} />
                                                 </button>
                                             </td>
                                         </tr>
                                     ))}
+                                    {(categories as any[]).length === 0 && (
+                                        <tr>
+                                            <td colSpan={4} className="px-6 py-12 text-center text-slate-400 italic">No categories defined for this branch.</td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -443,11 +583,12 @@ export default function ChatSettingsPanel() {
     );
 }
 
-function ToggleSwitch({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
+function ToggleSwitch({ enabled, onToggle, loading }: { enabled: boolean; onToggle: () => void; loading?: boolean }) {
     return (
         <button
             onClick={onToggle}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+            disabled={loading}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
                 enabled ? 'bg-primary' : 'bg-slate-200'
             }`}
         >
