@@ -1,5 +1,28 @@
-import { IsString, IsBoolean, IsOptional, IsArray, MinLength } from 'class-validator';
+import { IsString, IsBoolean, IsOptional, IsArray, MinLength, IsObject, ValidateNested, IsInt, Min, Max } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+
+export class DayScheduleDto {
+  @ApiProperty({ description: 'Start time in HH:mm format' })
+  @IsString()
+  startTime: string;
+
+  @ApiProperty({ description: 'End time in HH:mm format' })
+  @IsString()
+  endTime: string;
+}
+
+export class CustomScheduleDto {
+  @ApiProperty({ type: 'object', additionalProperties: { $ref: '#/components/schemas/DayScheduleDto' } })
+  @IsObject()
+  @IsOptional()
+  days?: Record<string, DayScheduleDto>; // e.g., { "monday": { startTime: "09:00", endTime: "17:00" } }
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  timezone?: string;
+}
 
 export class UpdateChatAutomationDto {
   @ApiProperty({ required: false })
@@ -10,7 +33,6 @@ export class UpdateChatAutomationDto {
   @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
-  @MinLength(1, { message: 'Welcome message cannot be empty when enabled' })
   welcomeMessage?: string;
 
   @ApiProperty({ required: false })
@@ -21,13 +43,19 @@ export class UpdateChatAutomationDto {
   @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
-  @MinLength(1, { message: 'Off-hours message cannot be empty when enabled' })
   offHoursMessage?: string;
 
   @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
-  offHoursSchedule?: string;
+  offHoursSchedule?: string; // 'Outside Business Hours' | 'Always On (Away Mode)' | 'Custom Schedule'
+
+  @ApiProperty({ required: false, type: CustomScheduleDto })
+  @IsObject()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CustomScheduleDto)
+  customSchedule?: CustomScheduleDto;
   
   @IsString()
   @IsOptional()

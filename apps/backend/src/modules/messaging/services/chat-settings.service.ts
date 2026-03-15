@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AutomationRule } from '../entities/automation-rule.entity';
 import { ChatCategory } from '../entities/chat-category.entity';
 import { TriggerType, ActionType } from '../enums/automation.enum';
-import { User } from '../../users/entities/user.entity';
+import { UpdateChatAutomationDto } from '../dto/chat-automation.dto';
 
 @Injectable()
 export class ChatSettingsService {
@@ -21,11 +21,9 @@ export class ChatSettingsService {
     const rules = await this.automationRepo.find({
       where: {
         branchId,
-        triggerType: TriggerType.WELCOME_MESSAGE || TriggerType.OFF_HOURS || TriggerType.INBOUND_MESSAGE,
       },
     });
 
-    // To make it easy for frontend, we can format this
     const welcome = rules.find(r => r.triggerType === TriggerType.WELCOME_MESSAGE);
     const offHours = rules.find(r => r.triggerType === TriggerType.OFF_HOURS);
     const faqs = rules.filter(r => r.triggerType === TriggerType.INBOUND_MESSAGE);
@@ -36,6 +34,7 @@ export class ChatSettingsService {
       offHoursEnabled: offHours?.isActive ?? false,
       offHoursMessage: offHours?.actionConfig?.message ?? '',
       offHoursSchedule: offHours?.actionConfig?.schedule ?? 'Outside Business Hours',
+      customSchedule: offHours?.actionConfig?.customSchedule ?? null,
       faqEnabled: faqs.length > 0,
       faqKeywords: faqs.map(f => ({
         id: f.id,
@@ -46,7 +45,7 @@ export class ChatSettingsService {
     };
   }
 
-  async updateAutomatedReplies(branchId: string, dto: any) {
+  async updateAutomatedReplies(branchId: string, dto: UpdateChatAutomationDto) {
     if (dto.welcomeEnabled !== undefined || dto.welcomeMessage !== undefined) {
       await this.upsertRule(branchId, TriggerType.WELCOME_MESSAGE, {
         isActive: dto.welcomeEnabled,
@@ -54,15 +53,45 @@ export class ChatSettingsService {
       });
     }
 
-    if (dto.offHoursEnabled !== undefined || dto.offHoursMessage !== undefined || dto.offHoursSchedule !== undefined) {
+    if (
+      dto.offHoursEnabled !== undefined || 
+      dto.offHoursMessage !== undefined || 
+      dto.offHoursSchedule !== undefined ||
+      dto.customSchedule !== undefined
+    ) {
+      if (dto.offHoursSchedule === 'Custom Schedule' && dto.customSchedule) {
+        this.validateCustomSchedule(dto.customSchedule);
+      }
+
       await this.upsertRule(branchId, TriggerType.OFF_HOURS, {
         isActive: dto.offHoursEnabled,
         message: dto.offHoursMessage,
         schedule: dto.offHoursSchedule,
+        customSchedule: dto.customSchedule,
       });
     }
 
     return this.getAutomatedReplies(branchId);
+  }
+
+  private validateCustomSchedule(schedule: any) {
+    if (!schedule.days || typeof schedule.days !== 'object') {
+      throw new BadRequestException('Invalid custom schedule format: days required');
+    }
+
+    const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+    for (const [day, config] of Object.entries(schedule.days)) {
+      if (!validDays.includes(day.toLowerCase())) {
+        throw new BadRequestException(`Invalid day: ${day}`);
+      }
+
+      const { startTime, endTime } = config as any;
+      if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
+        throw new BadRequestException(`Invalid time format for ${day}. Use HH:mm`);
+      }
+    }
   }
 
   private async upsertRule(branchId: string, triggerType: TriggerType, config: any) {
@@ -81,8 +110,16 @@ export class ChatSettingsService {
     }
 
     if (config.isActive !== undefined) rule.isActive = config.isActive;
-    rule.actionConfig = { ...rule.actionConfig, ...config };
-    delete rule.actionConfig.isActive; // Clean up
+    
+    // Merge only the keys provided in config
+    const currentConfig = rule.actionConfig || {};
+    rule.actionConfig = { 
+        ...currentConfig, 
+        ...config 
+    };
+    
+    // Clean up isActive if it accidentally got into actionConfig
+    delete rule.actionConfig.isActive;
 
     return this.automationRepo.save(rule);
   }

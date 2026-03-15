@@ -7,7 +7,7 @@ import {
     Moon, BookOpen, Plus, Trash2, 
     Bolt, Handshake, 
     SearchCheck, ArrowLeft, X, Save, AlertTriangle, FileText,
-    UserCircle, Building2, Link as LinkIcon, Star, Coins, Calendar
+    UserCircle, Building2, Link as LinkIcon, Star, Coins, Clock
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -30,6 +30,7 @@ import {
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 const TEMPLATE_CATEGORIES = ['MARKETING', 'UTILITY', 'AUTHENTICATION'];
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const PLACEHOLDERS = [
     { label: 'First Name', tag: '{FirstName}', icon: <UserCircle size={12} /> },
@@ -55,7 +56,7 @@ export default function ChatSettingsPanel() {
     const { data: templates = [], isLoading: templatesLoading } = useChatTemplates(branchId || undefined);
     const { data: categories = [], isLoading: categoriesLoading } = useChatCategories(branchId || undefined);
 
-    // Mutations - Split for individual loading states
+    // Mutations
     const updateWelcome = useUpdateChatAutomation(branchId || undefined);
     const updateOffHours = useUpdateChatAutomation(branchId || undefined);
     
@@ -93,7 +94,10 @@ export default function ChatSettingsPanel() {
 
     useEffect(() => {
         if (automation && Object.keys(automation).length > 0) {
-            setLocalAuto(automation);
+            setLocalAuto({
+                ...automation,
+                customSchedule: automation.customSchedule || { days: {} }
+            });
         }
     }, [automation]);
 
@@ -131,6 +135,7 @@ export default function ChatSettingsPanel() {
             data.offHoursEnabled = localAuto.offHoursEnabled;
             data.offHoursMessage = localAuto.offHoursMessage;
             data.offHoursSchedule = localAuto.offHoursSchedule;
+            data.customSchedule = localAuto.customSchedule;
             updateOffHours.mutate(data, { onSuccess: () => toast.success('Off-hours settings saved') });
         }
     };
@@ -168,6 +173,37 @@ export default function ChatSettingsPanel() {
                 ref.current.selectionStart = ref.current.selectionEnd = start + tag.length;
             }
         }, 0);
+    };
+
+    const updateDaySchedule = (day: string, field: 'startTime' | 'endTime', value: string) => {
+        setLocalAuto((prev: any) => {
+            const days = { ...prev.customSchedule?.days };
+            days[day] = { 
+                startTime: '09:00', 
+                endTime: '17:00', 
+                ...(days[day] || {}), 
+                [field]: value 
+            };
+            return {
+                ...prev,
+                customSchedule: { ...prev.customSchedule, days }
+            };
+        });
+    };
+
+    const toggleDay = (day: string) => {
+        setLocalAuto((prev: any) => {
+            const days = { ...prev.customSchedule?.days };
+            if (days[day]) {
+                delete days[day];
+            } else {
+                days[day] = { startTime: '09:00', endTime: '17:00' };
+            }
+            return {
+                ...prev,
+                customSchedule: { ...prev.customSchedule, days }
+            };
+        });
     };
 
     const handleCreateTemplate = () => {
@@ -246,7 +282,7 @@ export default function ChatSettingsPanel() {
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col relative">
-            {/* Modals - Template Creation */}
+            {/* Template Creation Modal */}
             {isTemplateModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -579,7 +615,7 @@ export default function ChatSettingsPanel() {
                                     />
                                 </div>
                                 <div className="p-6 bg-slate-50/50">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                         <div>
                                             <label className="block mb-2 text-sm font-medium text-slate-700">Trigger Schedule</label>
                                             <select 
@@ -592,21 +628,51 @@ export default function ChatSettingsPanel() {
                                                 <option>Custom Schedule</option>
                                             </select>
                                         </div>
-                                        {localAuto.offHoursSchedule === 'Custom Schedule' && (
-                                            <div className="animate-in slide-in-from-left-2 duration-200">
-                                                <label className="block mb-2 text-sm font-medium text-slate-700 flex items-center gap-2">
-                                                    <Calendar size={14} /> Specify Schedule
-                                                </label>
-                                                <input 
-                                                    type="text"
-                                                    value={localAuto.offHoursCustomSchedule || ''}
-                                                    onChange={e => setLocalAuto((prev: any) => ({ ...prev, offHoursCustomSchedule: e.target.value }))}
-                                                    placeholder="e.g. Mon-Fri, 9pm-8am"
-                                                    className="block w-full px-4 py-2 text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-primary focus:border-primary outline-none transition-all"
-                                                />
-                                            </div>
-                                        )}
                                     </div>
+
+                                    {localAuto.offHoursSchedule === 'Custom Schedule' && (
+                                        <div className="mb-8 p-6 bg-white border border-slate-200 rounded-2xl animate-in slide-in-from-top-2 duration-300">
+                                            <div className="flex items-center gap-2 mb-4 text-slate-800 font-bold">
+                                                <Clock size={18} className="text-primary" />
+                                                <h4>Configure Active Off-Hours</h4>
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-3">
+                                                {DAYS.map(day => (
+                                                    <div key={day} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-colors">
+                                                        <div className="flex items-center gap-3">
+                                                            <button 
+                                                                onClick={() => toggleDay(day)}
+                                                                className={`size-5 rounded border-2 flex items-center justify-center transition-all ${localAuto.customSchedule?.days?.[day] ? 'bg-primary border-primary text-white' : 'border-slate-300 bg-white'}`}
+                                                            >
+                                                                {localAuto.customSchedule?.days?.[day] && <Plus size={14} className="rotate-45" />}
+                                                            </button>
+                                                            <span className="text-sm font-semibold capitalize text-slate-700 w-24">{day}</span>
+                                                        </div>
+                                                        
+                                                        {localAuto.customSchedule?.days?.[day] ? (
+                                                            <div className="flex items-center gap-2 animate-in fade-in duration-200">
+                                                                <input 
+                                                                    type="time" 
+                                                                    value={localAuto.customSchedule.days[day].startTime}
+                                                                    onChange={e => updateDaySchedule(day, 'startTime', e.target.value)}
+                                                                    className="px-3 py-1.5 text-xs font-bold bg-slate-100 border-none rounded-lg focus:ring-2 focus:ring-primary/20"
+                                                                />
+                                                                <span className="text-slate-400 text-xs font-bold">to</span>
+                                                                <input 
+                                                                    type="time" 
+                                                                    value={localAuto.customSchedule.days[day].endTime}
+                                                                    onChange={e => updateDaySchedule(day, 'endTime', e.target.value)}
+                                                                    className="px-3 py-1.5 text-xs font-bold bg-slate-100 border-none rounded-lg focus:ring-2 focus:ring-primary/20"
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs text-slate-400 italic">No auto-reply set for this day</span>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                     
                                     <div className="mb-4">
                                         <div className="flex justify-between items-center mb-1.5">
