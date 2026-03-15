@@ -9,6 +9,7 @@ import {
   UseGuards,
   Query,
   Request,
+  Patch,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -43,7 +44,7 @@ export class MessagingController {
     private readonly templateService: TemplateService,
     private readonly analyticsService: AnalyticsService,
     private readonly inboxService: InboxService,
-  ) {}
+  ) { }
 
   private async getBranchId(req: any, queryBranchId?: string): Promise<string> {
     const user = req.user;

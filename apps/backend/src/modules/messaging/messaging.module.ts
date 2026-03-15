@@ -84,6 +84,7 @@ import { AutomationProcessor } from './processors/automation.processor';
       Contact,
       AutomationRule,
       AutomationLog,
+      ChatCategory,
       CreditPlan,
       BusinessCredit,
       LoyaltyProfile,
