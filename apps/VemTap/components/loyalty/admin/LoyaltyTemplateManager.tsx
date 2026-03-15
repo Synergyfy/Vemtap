@@ -3,30 +3,19 @@
 import React, { useMemo, useState } from 'react';
 import { BadgeCheck, BookOpen, Info, LayoutTemplate, LayoutList, Plus, Save, Search, Trash2, X } from 'lucide-react';
 import { LoyaltyRule } from '@/types/loyalty';
-import { TemplateReward } from '@/services/loyalty/templates';
+import { LoyaltyTemplate, TemplateReward, TemplateStatus } from '@/services/loyalty/types';
 import { cn } from '@/lib/utils';
 import Tooltip from '@/components/ui/Tooltip';
 import { notify } from '@/lib/notify';
 
-export type TemplateStatus = 'draft' | 'published';
 type Step = 1 | 2 | 3;
 type TemplateView = 'grid' | 'list';
 type ScreenMode = 'list' | 'builder';
 
-export interface LoyaltyTemplateDraft {
-    id: string;
-    name: string;
-    description?: string;
-    status: TemplateStatus;
-    rewards: TemplateReward[];
-    rules: Partial<LoyaltyRule>;
-    createdAt: string;
-}
-
 interface LoyaltyTemplateManagerProps {
-    templates: LoyaltyTemplateDraft[];
-    onCreate: (template: LoyaltyTemplateDraft) => void;
-    onUpdate: (id: string, updates: Partial<LoyaltyTemplateDraft>) => void;
+    templates: LoyaltyTemplate[];
+    onCreate: (template: Partial<LoyaltyTemplate>) => void;
+    onUpdate: (id: string, updates: Partial<LoyaltyTemplate>) => void;
     onDelete: (id: string) => void;
 }
 
@@ -109,12 +98,12 @@ const GuidanceCards: React.FC<{ cards: { title: string; body: string }[] }> = ({
 );
 
 const TemplateListItem: React.FC<{
-    template: LoyaltyTemplateDraft;
+    template: LoyaltyTemplate;
     isActive: boolean;
     onSelect: () => void;
     onDelete: () => void;
 }> = ({ template, isActive, onSelect, onDelete }) => {
-    const previewImage = template.rewards.find((r) => r.imageUrl)?.imageUrl;
+    const previewImage = template.rewards.find((r: TemplateReward) => r.imageUrl)?.imageUrl;
     return (
         <button
             onClick={onSelect}
@@ -169,7 +158,7 @@ const TemplateListItem: React.FC<{
 };
 
 const TemplateListRow: React.FC<{
-    template: LoyaltyTemplateDraft;
+    template: LoyaltyTemplate;
     isActive: boolean;
     onSelect: () => void;
     onDelete: () => void;
@@ -182,9 +171,9 @@ const TemplateListRow: React.FC<{
     >
         <button onClick={onSelect} className="col-span-5 text-left flex items-center gap-3">
             <div className="size-10 rounded-full overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
-                {template.rewards.find((r) => r.imageUrl)?.imageUrl ? (
+                {template.rewards.find((r: TemplateReward) => r.imageUrl)?.imageUrl ? (
                     <img
-                        src={template.rewards.find((r) => r.imageUrl)?.imageUrl as string}
+                        src={template.rewards.find((r: TemplateReward) => r.imageUrl)?.imageUrl as string}
                         alt={`${template.name} preview`}
                         className="w-full h-full object-cover"
                     />
@@ -222,8 +211,8 @@ const TemplateListRow: React.FC<{
 );
 
 const CoreDetailsStep: React.FC<{
-    template: LoyaltyTemplateDraft;
-    onChange: (updates: Partial<LoyaltyTemplateDraft>) => void;
+    template: LoyaltyTemplate;
+    onChange: (updates: Partial<LoyaltyTemplate>) => void;
 }> = ({ template, onChange }) => (
     <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5">
         <div className="flex items-center justify-between">
@@ -292,7 +281,7 @@ const CoreDetailsStep: React.FC<{
 );
 
 const EarningRulesStep: React.FC<{
-    template: LoyaltyTemplateDraft;
+    template: LoyaltyTemplate;
     onRulesChange: (rules: Partial<LoyaltyRule>) => void;
 }> = ({ template, onRulesChange }) => (
     <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6">
@@ -596,7 +585,7 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
     onDelete,
 }) => {
     const [activeId, setActiveId] = useState<string | null>(templates[0]?.id ?? null);
-    const [localDraft, setLocalDraft] = useState<LoyaltyTemplateDraft | null>(null);
+    const [localDraft, setLocalDraft] = useState<LoyaltyTemplate | null>(null);
     const [currentStep, setCurrentStep] = useState<Step>(1);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [viewType, setViewType] = useState<TemplateView>('grid');
@@ -608,7 +597,7 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
     const filteredTemplates = useMemo(() => {
         const q = query.trim().toLowerCase();
         if (!q) return templates;
-        return templates.filter((t) =>
+        return templates.filter((t: LoyaltyTemplate) =>
             `${t.name} ${t.description || ''}`.toLowerCase().includes(q)
         );
     }, [templates, query]);
@@ -622,7 +611,7 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
 
     const activeTemplate = useMemo(() => {
         if (localDraft) return localDraft;
-        return templates.find((t) => t.id === activeId) || null;
+        return templates.find((t: LoyaltyTemplate) => t.id === activeId) || null;
     }, [templates, activeId, localDraft]);
 
     const startNew = () => {
@@ -646,7 +635,7 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
         setPage(1);
     };
 
-    const updateDraft = (updates: Partial<LoyaltyTemplateDraft>) => {
+    const updateDraft = (updates: Partial<LoyaltyTemplate>) => {
         if (!activeTemplate) return;
         const next = { ...activeTemplate, ...updates };
         if (localDraft) {
@@ -672,7 +661,7 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
 
     const handleRewardUpdate = (id: string, updates: Partial<TemplateReward>) => {
         if (!activeTemplate) return;
-        const nextRewards = activeTemplate.rewards.map((r) => (r.id === id ? { ...r, ...updates } : r));
+        const nextRewards = activeTemplate.rewards.map((r: TemplateReward) => (r.id === id ? { ...r, ...updates } : r));
         updateDraft({ rewards: nextRewards });
     };
 
@@ -695,7 +684,7 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
 
     const handleRewardDelete = (id: string) => {
         if (!activeTemplate) return;
-        updateDraft({ rewards: activeTemplate.rewards.filter((r) => r.id !== id) });
+        updateDraft({ rewards: activeTemplate.rewards.filter((r: TemplateReward) => r.id !== id) });
     };
 
     const handleDeleteTemplate = (id: string) => {
@@ -925,3 +914,4 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
         </div>
     );
 };
+

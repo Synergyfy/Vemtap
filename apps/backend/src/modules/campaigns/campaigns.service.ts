@@ -11,6 +11,7 @@ import { PointTransaction } from './entities/point-transaction.entity';
 import { LoyaltyRule } from './entities/loyalty-rule.entity';
 import { Reward } from './entities/reward.entity';
 import { Redemption } from './entities/redemption.entity';
+import { LoyaltyTemplate } from './entities/loyalty-template.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
@@ -43,6 +44,8 @@ export class CampaignsService {
     private rewardRepository: Repository<Reward>,
     @InjectRepository(Redemption)
     private redemptionRepository: Repository<Redemption>,
+    @InjectRepository(LoyaltyTemplate)
+    private loyaltyTemplateRepository: Repository<LoyaltyTemplate>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
     @InjectRepository(Contact)
@@ -617,5 +620,149 @@ export class CampaignsService {
       where: { loyaltyProfileId: profileId },
       order: { createdAt: 'DESC' },
     });
+  }
+
+  // Loyalty Templates
+  async getLoyaltyTemplates(): Promise<LoyaltyTemplate[]> {
+    const templates = await this.loyaltyTemplateRepository.find({
+      order: { createdAt: 'ASC' },
+    });
+
+    if (templates.length === 0) {
+      return this.seedLoyaltyTemplates();
+    }
+    return templates;
+  }
+
+  async createLoyaltyTemplate(data: any): Promise<LoyaltyTemplate> {
+    const template = this.loyaltyTemplateRepository.create(data);
+    return this.loyaltyTemplateRepository.save(template);
+  }
+
+  async updateLoyaltyTemplate(id: string, updates: any): Promise<LoyaltyTemplate> {
+    const template = await this.loyaltyTemplateRepository.findOne({ where: { id } });
+    if (!template) throw new NotFoundException('Template not found');
+    Object.assign(template, updates);
+    return this.loyaltyTemplateRepository.save(template);
+  }
+
+  async deleteLoyaltyTemplate(id: string): Promise<void> {
+    const result = await this.loyaltyTemplateRepository.delete(id);
+    if (result.affected === 0) throw new NotFoundException('Template not found');
+  }
+
+  async applyLoyaltyTemplate(branchId: string, templateId: string): Promise<any> {
+    const template = await this.loyaltyTemplateRepository.findOne({
+      where: { id: templateId },
+    });
+    if (!template) throw new NotFoundException('Template not found');
+
+    const branch = await this.branchesService.findById(branchId);
+
+    return await (this.loyaltyTemplateRepository.manager as any).transaction(async (manager: any) => {
+      // 1. Update Rules
+      const existingRule = await manager.findOne(LoyaltyRule, { where: { branchId } });
+      if (existingRule) {
+        Object.assign(existingRule, template.rules);
+        await manager.save(existingRule);
+      } else {
+        const newRule = manager.create(LoyaltyRule, {
+          ...template.rules,
+          branchId,
+          businessId: branch.businessId,
+        });
+        await manager.save(newRule);
+      }
+
+      // 2. Create Rewards
+      const rewardEntities = template.rewards.map((rewardData: any) =>
+        manager.create(Reward, {
+          ...rewardData,
+          branchId,
+          businessId: branch.businessId,
+          totalRedeemed: 0,
+          isActive: true,
+        }),
+      );
+      await manager.save(Reward, rewardEntities);
+
+      return { success: true, message: `Applied template: ${template.name}` };
+    });
+  }
+
+  private async seedLoyaltyTemplates(): Promise<LoyaltyTemplate[]> {
+    const seeds = [
+      {
+        name: 'Cafe Welcome Boost',
+        description: 'Great for cafés and casual dining. Small rewards + fast visits.',
+        rules: {
+          ruleType: 'visit',
+          visitPoints: 5,
+          visitCooldownHours: 24,
+          firstVisitBonus: 20,
+          birthdayBonus: 30,
+          referralBonus: 10,
+          isActive: true,
+        },
+        rewards: [
+          {
+            name: 'Free Pastry',
+            description: 'Enjoy a free pastry with any drink.',
+            rewardType: 'free_item',
+            pointCost: 60,
+            value: 0,
+            validityDays: 30,
+            usageLimitPerUser: 1,
+          },
+          {
+            name: '10% Off Next Visit',
+            description: 'Discount applied on the next purchase.',
+            rewardType: 'discount',
+            pointCost: 120,
+            value: 10,
+            validityDays: 30,
+            usageLimitPerUser: 1,
+          },
+        ],
+      },
+      {
+        name: 'Retail VIP Tier',
+        description: 'Higher point cost rewards and spending-based earning.',
+        rules: {
+          ruleType: 'spending',
+          spendingBaseAmount: 1000,
+          spendingBasePoints: 15,
+          visitCooldownHours: 24,
+          firstVisitBonus: 25,
+          birthdayBonus: 50,
+          referralBonus: 20,
+          isActive: true,
+        },
+        rewards: [
+          {
+            name: '₦1,000 Voucher',
+            description: 'Redeemable store credit.',
+            rewardType: 'cashback',
+            pointCost: 300,
+            value: 1000,
+            validityDays: 30,
+            usageLimitPerUser: 1,
+          },
+          {
+            name: 'Premium Gift',
+            description: 'Exclusive gift for loyal customers.',
+            rewardType: 'gift',
+            pointCost: 500,
+            value: 0,
+            validityDays: 45,
+            usageLimitPerUser: 1,
+            totalAvailable: 50,
+          },
+        ],
+      },
+    ];
+
+    const templates = this.loyaltyTemplateRepository.create(seeds as any);
+    return this.loyaltyTemplateRepository.save(templates);
   }
 }

@@ -254,6 +254,16 @@ export class LoyaltyService {
     );
   }
 
+  // --- Templates ---
+
+  async getLoyaltyTemplates() {
+    return this.campaignsService.getLoyaltyTemplates();
+  }
+
+  async applyLoyaltyTemplate(branchId: string, templateId: string) {
+    return this.campaignsService.applyLoyaltyTemplate(branchId, templateId);
+  }
+
   // --- Code Flow ---
 
   async generateRedemptionCode(branchId: string, dto: GenerateRedemptionCodeDto, staffId: string): Promise<Redemption> {

@@ -130,6 +130,46 @@ export class LoyaltyController {
     return this.loyaltyService.getRewards(context.branchId, context.businessId);
   }
 
+  @Get('templates')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get loyalty program templates' })
+  async getTemplates() {
+    return this.loyaltyService.getLoyaltyTemplates();
+  }
+
+  @Post('templates')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Create a new loyalty template (System Admin only)' })
+  async createTemplate(@Body() data: any) {
+    return this.loyaltyService.createLoyaltyTemplate(data);
+  }
+
+  @Patch('templates/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update a loyalty template (System Admin only)' })
+  async updateTemplate(@Param('id') id: string, @Body() data: any) {
+    return this.loyaltyService.updateLoyaltyTemplate(id, data);
+  }
+
+  @Delete('templates/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Delete a loyalty template (System Admin only)' })
+  async deleteTemplate(@Param('id') id: string) {
+    return this.loyaltyService.deleteLoyaltyTemplate(id);
+  }
+
+  @Post('templates/:id/apply')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Apply a loyalty template to a branch' })
+  async applyTemplate(
+    @Param('id') id: string,
+    @Request() req: { user: User },
+    @Query('branchId') branchId?: string,
+  ) {
+    const targetBranchId = await this.getBranchId(req, branchId);
+    return this.loyaltyService.applyLoyaltyTemplate(targetBranchId, id);
+  }
+
   @Post('generate-code')
   @Roles(UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
   @ApiOperation({ summary: 'Staff/Owner generates a 9-digit code for a reward' })

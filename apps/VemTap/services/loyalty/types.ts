@@ -34,6 +34,32 @@ export type {
     RewardRedeemResponse 
 };
 
+export type TemplateStatus = 'draft' | 'published';
+
+export interface TemplateReward {
+    id: string;
+    name: string;
+    description: string;
+    rewardType: RewardType;
+    pointCost: number;
+    value: number;
+    validityDays: number;
+    usageLimitPerUser: number;
+    totalAvailable?: number;
+    isActive?: boolean;
+    imageUrl?: string;
+}
+
+export interface LoyaltyTemplate {
+    id: string;
+    name: string;
+    description?: string;
+    status: TemplateStatus;
+    rewards: TemplateReward[];
+    rules: Partial<LoyaltyRule>;
+    createdAt: string;
+}
+
 export interface VerifyRedemptionResponse {
     success: boolean;
     redemption?: {

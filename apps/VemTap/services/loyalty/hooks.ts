@@ -15,6 +15,7 @@ import {
     UpdateRewardRequest,
     UpdateLoyaltyRuleRequest,
     VerifyRedemptionResponse,
+    LoyaltyTemplate,
 } from './types';
 
 function useResolvedBranchParams(branchId?: string): { branchId?: string; allBranches?: boolean } {
@@ -242,5 +243,59 @@ export const usePointTransactions = (profileId: string) => {
         queryKey: ['loyalty', 'transactions', profileId],
         queryFn: async () => await api.get(`/loyalty/transactions/${profileId}`),
         enabled: !!profileId,
+    });
+};
+
+export const useLoyaltyTemplates = () => {
+    return useQuery<LoyaltyTemplate[], Error>({
+        queryKey: ['loyalty', 'templates'],
+        queryFn: async () => await api.get('/loyalty/templates')
+    });
+};
+
+export const useCreateLoyaltyTemplate = () => {
+    const queryClient = useQueryClient();
+    return useMutation<LoyaltyTemplate, Error, Partial<LoyaltyTemplate>>({
+        mutationFn: async (data) => await api.post('/loyalty/templates', data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates'] });
+        }
+    });
+};
+
+export const useUpdateLoyaltyTemplate = () => {
+    const queryClient = useQueryClient();
+    return useMutation<LoyaltyTemplate, Error, { id: string; updates: Partial<LoyaltyTemplate> }>({
+        mutationFn: async ({ id, updates }) => await api.patch(`/loyalty/templates/${id}`, updates),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates'] });
+        }
+    });
+};
+
+export const useDeleteLoyaltyTemplate = () => {
+    const queryClient = useQueryClient();
+    return useMutation<void, Error, string>({
+        mutationFn: async (id) => await api.delete(`/loyalty/templates/${id}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates'] });
+        }
+    });
+};
+
+export const useApplyLoyaltyTemplate = (branchId?: string) => {
+    const queryClient = useQueryClient();
+    const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
+
+    return useMutation<any, Error, string>({
+        mutationFn: async (id) => {
+            const params = new URLSearchParams();
+            if (resolvedBranchId) params.append('branchId', resolvedBranchId);
+            return await api.post(`/loyalty/templates/${id}/apply?${params.toString()}`, {});
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['loyalty', 'rewards'] });
+            queryClient.invalidateQueries({ queryKey: ['loyalty', 'rules'] });
+        }
     });
 };
