@@ -16,6 +16,15 @@ import { ChatSettingsService } from '../services/chat-settings.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { MessagingEngineService } from '../services/messaging-engine.service';
+import { 
+  UpdateChatAutomationDto, 
+  AddFaqKeywordDto, 
+  UpdateFaqKeywordDto 
+} from '../dto/chat-automation.dto';
+import { 
+  CreateChatCategoryDto, 
+  UpdateChatCategoryDto 
+} from '../dto/chat-category.dto';
 
 @ApiTags('Chat Settings')
 @Controller('messaging/chat/settings')
@@ -62,7 +71,7 @@ export class ChatSettingsController {
   @ApiOperation({ summary: 'Update automated reply settings' })
   async updateAutomation(
     @Request() req: { user: User }, 
-    @Body() dto: any,
+    @Body() dto: UpdateChatAutomationDto,
     @Query('branchId') branchId?: string
   ) {
     const effectiveBranchId = await this.getBranchId(req, branchId || dto.branchId);
@@ -73,7 +82,7 @@ export class ChatSettingsController {
   @ApiOperation({ summary: 'Add a new FAQ keyword trigger' })
   async addFaq(
     @Request() req: { user: User }, 
-    @Body() dto: any,
+    @Body() dto: AddFaqKeywordDto,
     @Query('branchId') branchId?: string
   ) {
     const effectiveBranchId = await this.getBranchId(req, branchId || dto.branchId);
@@ -85,10 +94,10 @@ export class ChatSettingsController {
   async updateFaq(
     @Param('id') id: string,
     @Request() req: { user: User },
-    @Body() dto: any,
+    @Body() dto: UpdateFaqKeywordDto,
     @Query('branchId') branchId?: string
   ) {
-    const effectiveBranchId = await this.getBranchId(req, branchId || dto.branchId);
+    const effectiveBranchId = await this.getBranchId(req, branchId);
     return this.chatSettingsService.updateFaqKeyword(id, effectiveBranchId, dto);
   }
 
@@ -114,7 +123,7 @@ export class ChatSettingsController {
   @ApiOperation({ summary: 'Create a new ticket category' })
   async createCategory(
     @Request() req: { user: User }, 
-    @Body() dto: any,
+    @Body() dto: CreateChatCategoryDto,
     @Query('branchId') branchId?: string
   ) {
     const effectiveBranchId = await this.getBranchId(req, branchId || dto.branchId);
@@ -126,10 +135,10 @@ export class ChatSettingsController {
   async updateCategory(
     @Param('id') id: string,
     @Request() req: { user: User },
-    @Body() dto: any,
+    @Body() dto: UpdateChatCategoryDto,
     @Query('branchId') branchId?: string
   ) {
-    const effectiveBranchId = await this.getBranchId(req, branchId || dto.branchId);
+    const effectiveBranchId = await this.getBranchId(req, branchId);
     return this.chatSettingsService.updateCategory(id, effectiveBranchId, dto);
   }
 

@@ -112,9 +112,17 @@ export default function ChatSettingsPanel() {
 
         const data: any = {};
         if (section === 'welcome') {
+            if (localAuto.welcomeEnabled && !localAuto.welcomeMessage?.trim()) {
+                toast.error('Welcome message content is required when enabled');
+                return;
+            }
             data.welcomeEnabled = localAuto.welcomeEnabled;
             data.welcomeMessage = localAuto.welcomeMessage;
         } else {
+            if (localAuto.offHoursEnabled && !localAuto.offHoursMessage?.trim()) {
+                toast.error('Off-hours message content is required when enabled');
+                return;
+            }
             data.offHoursEnabled = localAuto.offHoursEnabled;
             data.offHoursMessage = localAuto.offHoursMessage;
             data.offHoursSchedule = localAuto.offHoursSchedule;
@@ -152,8 +160,12 @@ export default function ChatSettingsPanel() {
     };
 
     const handleCreateTemplate = () => {
-        if (!newTemplateData.name.trim() || !newTemplateData.content.trim()) {
-            toast.error('Name and Content are required');
+        if (!newTemplateData.name.trim()) {
+            toast.error('Template name is required');
+            return;
+        }
+        if (!newTemplateData.content.trim()) {
+            toast.error('Template content is required');
             return;
         }
         createTmpl.mutate({
@@ -609,7 +621,14 @@ export default function ChatSettingsPanel() {
                                             </div>
                                             <textarea 
                                                 defaultValue={faq.response}
-                                                onBlur={e => updateFaq.mutate({ id: faq.id, data: { response: e.target.value } })}
+                                                onBlur={e => {
+                                                    if (e.target.value.trim()) {
+                                                        updateFaq.mutate({ id: faq.id, data: { response: e.target.value } });
+                                                    } else {
+                                                        toast.error('Response cannot be empty');
+                                                        e.target.value = faq.response;
+                                                    }
+                                                }}
                                                 disabled={updateFaq.isPending}
                                                 className="block w-full px-4 py-2 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:ring-primary focus:border-primary outline-none transition-all disabled:opacity-50"
                                                 rows={2} 
@@ -681,7 +700,14 @@ export default function ChatSettingsPanel() {
                                                 <input 
                                                     type="text" 
                                                     defaultValue={(templates as any[]).find(t => t.id === editingTemplateId)?.name || ''} 
-                                                    onBlur={e => updateTmpl.mutate({ id: editingTemplateId, data: { name: e.target.value } })}
+                                                    onBlur={e => {
+                                                        if (e.target.value.trim()) {
+                                                            updateTmpl.mutate({ id: editingTemplateId, data: { name: e.target.value } });
+                                                        } else {
+                                                            toast.error('Template name cannot be empty');
+                                                            e.target.value = (templates as any[]).find(t => t.id === editingTemplateId)?.name || '';
+                                                        }
+                                                    }}
                                                     disabled={updateTmpl.isPending}
                                                     className="w-full bg-slate-50 border-slate-200 rounded-lg focus:ring-primary focus:border-primary outline-none disabled:opacity-50" 
                                                 />
@@ -724,7 +750,14 @@ export default function ChatSettingsPanel() {
                                                 <textarea 
                                                     ref={editorTextareaRef}
                                                     defaultValue={(templates as any[]).find(t => t.id === editingTemplateId)?.content || ''}
-                                                    onBlur={e => updateTmpl.mutate({ id: editingTemplateId, data: { content: e.target.value } })}
+                                                    onBlur={e => {
+                                                        if (e.target.value.trim()) {
+                                                            updateTmpl.mutate({ id: editingTemplateId, data: { content: e.target.value } });
+                                                        } else {
+                                                            toast.error('Template content cannot be empty');
+                                                            e.target.value = (templates as any[]).find(t => t.id === editingTemplateId)?.content || '';
+                                                        }
+                                                    }}
                                                     disabled={updateTmpl.isPending}
                                                     className="w-full min-h-[350px] p-6 focus:outline-none bg-white text-sm leading-relaxed border rounded-xl disabled:opacity-50"
                                                 />
@@ -773,7 +806,14 @@ export default function ChatSettingsPanel() {
                                                     defaultValue={cat.name} 
                                                     disabled={updateCat.isPending}
                                                     className="bg-transparent border-none p-0 font-semibold focus:ring-0 disabled:opacity-50" 
-                                                    onBlur={e => updateCat.mutate({ id: cat.id, data: { name: e.target.value } })}
+                                                    onBlur={e => {
+                                                        if (e.target.value.trim()) {
+                                                            updateCat.mutate({ id: cat.id, data: { name: e.target.value } });
+                                                        } else {
+                                                            toast.error('Category name cannot be empty');
+                                                            e.target.value = cat.name;
+                                                        }
+                                                    }}
                                                 />
                                             </td>
                                             <td className="px-6 py-4 text-slate-600">
