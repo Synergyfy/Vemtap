@@ -9,6 +9,7 @@ import {
   UseGuards,
   Query,
   Request,
+  Patch,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -43,7 +44,7 @@ export class MessagingController {
     private readonly templateService: TemplateService,
     private readonly analyticsService: AnalyticsService,
     private readonly inboxService: InboxService,
-  ) {}
+  ) { }
 
   private async getBranchId(req: any, queryBranchId?: string): Promise<string> {
     const user = req.user;
@@ -125,6 +126,22 @@ export class MessagingController {
     const branchId = await this.getBranchId(req, dto.branchId);
     dto.branchId = branchId;
     return this.templateService.createTemplate(dto, req.user);
+  }
+
+  @Patch('templates/:id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update a message template' })
+  async updateTemplate(
+    @Param('id') id: string,
+    @Body() dto: Partial<CreateTemplateDto>,
+    @Request() req: { user: User },
+  ) {
+    const template = await this.templateService.getTemplate(id, req.user);
+    Object.assign(template, dto);
+    // Directly using the repository from the service (assuming it is exported or we can add an update method)
+    return (this.templateService as any).templateRepo.save(template);
   }
 
   @Get('campaigns')

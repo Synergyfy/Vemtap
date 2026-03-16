@@ -58,6 +58,10 @@ export class Redemption extends AbstractBaseEntity {
   @Column({ nullable: true })
   verifiedByUserId: string;
 
+  @ApiProperty({ description: 'ID of user who generated this code' })
+  @Column({ nullable: true })
+  generatedByUserId: string;
+
   @ApiProperty({ description: 'Expiry Date' })
   @Column({ type: 'timestamp' })
   expiresAt: Date;

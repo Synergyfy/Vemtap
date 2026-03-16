@@ -1,11 +1,15 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
-import { useChatStore, ChatMessage } from '@/lib/store/useChatStore';
-import { Search, Phone, MoreVertical, FileText, Check, CheckCheck, Maximize2, Minimize2 } from 'lucide-react';
+import { useChatStore } from '@/lib/store/useChatStore';
+import { Search, Maximize2, Minimize2, Check, CheckCheck, FileText } from 'lucide-react';
 import ChatInput from './ChatInput';
 import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
+import { useChatThreads } from '@/hooks/useMessaging';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
@@ -22,11 +26,11 @@ function getAvatarColor(id: string) {
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
-function formatMessageTime(timestamp: number) {
+function formatMessageTime(timestamp: string | number | Date) {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-function formatDateSeparator(timestamp: number) {
+function formatDateSeparator(timestamp: string | number | Date) {
     const today = new Date();
     const msgDate = new Date(timestamp);
     if (today.toDateString() === msgDate.toDateString()) return 'Today';
@@ -36,29 +40,44 @@ function formatDateSeparator(timestamp: number) {
     return msgDate.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
-function StatusIcon({ status }: { status: ChatMessage['status'] }) {
-    if (status === 'sent') return <Check size={14} className="text-slate-400" />;
-    if (status === 'delivered') return <CheckCheck size={14} className="text-slate-400" />;
+function StatusIcon({ status }: { status: string }) {
+    if (status === 'SENT') return <Check size={14} className="text-slate-400" />;
+    if (status === 'DELIVERED') return <CheckCheck size={14} className="text-slate-400" />;
     return <CheckCheck size={14} className="text-primary" />;
 }
 
 export default function ChatWindow() {
     const activeConversationId = useChatStore(s => s.activeConversationId);
-    const conversations = useChatStore(s => s.conversations);
-    const messages = useChatStore(s => s.messages);
+    const user = useAuthStore(s => s.user);
+    const { activeBranchId } = useActiveBranch();
+    const isCustomer = user?.role === 'customer';
+    const branchId = isCustomer ? undefined : activeBranchId;
+    
+    // Fetch all threads to find the active one
+    const { data: threads = [] } = useChatThreads('IN_HOUSE', branchId || undefined);
+    const activeConv = (threads as any[]).find(c => c.id === activeConversationId);
+
+    // Fetch messages for active thread (business or customer endpoint)
+    const { data: messages = [], isLoading } = useQuery({
+        queryKey: ['chat-messages', activeConversationId, branchId],
+        queryFn: () => {
+            const endpoint = isCustomer 
+                ? `/customer/messaging/threads/${activeConversationId}` 
+                : `/messaging/inbox/threads/${activeConversationId}${branchId ? `?branchId=${branchId}` : ''}`;
+            return api.get(endpoint);
+        },
+        enabled: !!activeConversationId && (isCustomer || !!branchId),
+        refetchInterval: 5000,
+    });
+
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [isFullScreen, setIsFullScreen] = React.useState(false);
-    const user = useAuthStore(s => s.user);
-    const isCustomer = user?.role === 'customer';
-
-    const activeConv = conversations.find(c => c.id === activeConversationId);
-    const activeMessages = activeConversationId ? (messages[activeConversationId] || []) : [];
 
     useEffect(() => {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [activeMessages.length, activeConversationId]);
+    }, [messages?.length, activeConversationId]);
 
     if (!activeConv) {
         return (
@@ -75,6 +94,7 @@ export default function ChatWindow() {
     }
 
     const { contact } = activeConv;
+    const contactName = contact?.name || 'Customer';
 
     // Group messages by date
     let lastDate = '';
@@ -85,40 +105,27 @@ export default function ChatWindow() {
             <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 z-10 bg-white shrink-0">
                 <div className="flex items-center gap-3">
                     <div className="relative">
-                        {contact.avatar ? (
-                            <img src={contact.avatar} alt={contact.name} className="w-10 h-10 rounded-full object-cover" />
+                        {contact?.avatar ? (
+                            <img src={contact.avatar} alt={contactName} className="w-10 h-10 rounded-full object-cover" />
                         ) : (
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs ${getAvatarColor(contact.id)}`}>
-                                {getInitials(contact.name)}
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs ${getAvatarColor(activeConv.id)}`}>
+                                {getInitials(contactName)}
                             </div>
-                        )}
-                        {contact.isOnline && (
-                            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full" />
                         )}
                     </div>
                     <div>
-                        <h2 className="text-sm font-bold text-slate-800 leading-tight">{contact.name}</h2>
-                        {activeConv.isTyping ? (
-                            <p className="text-[11px] text-primary font-medium animate-pulse">typing...</p>
-                        ) : contact.isOnline ? (
-                            <p className="text-[11px] text-green-600 font-medium">Online</p>
-                        ) : (
-                            <p className="text-[11px] text-slate-400">
-                                {contact.phone || contact.email || 'Offline'}
-                            </p>
-                        )}
+                        <h2 className="text-sm font-bold text-slate-800 leading-tight">{contactName}</h2>
+                        <p className="text-[11px] text-slate-400">
+                            {contact?.phone || contact?.email || 'Active now'}
+                        </p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3 text-slate-400">
                     <button 
                         onClick={() => setIsFullScreen(!isFullScreen)}
                         className="p-2 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
-                        title={isFullScreen ? 'Close Full Screen' : 'Full Screen'}
                     >
                         {isFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-                    </button>
-                    <button className="p-2 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
-                        <Search size={18} />
                     </button>
                     {!isCustomer && (
                         <div className="relative group">
@@ -127,31 +134,23 @@ export default function ChatWindow() {
                                 <span>Settings</span>
                             </button>
                             
-                            {/* Dropdown Menu */}
                             <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all transform scale-95 group-hover:scale-100 origin-top-right z-50">
                                 <div className="px-4 py-2 border-b border-slate-50 mb-1">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Configuration</p>
                                 </div>
                                 <Link 
-                                    href="/dashboard/messaging/chat/settings?tab=automation"
+                                    href={`/dashboard/messaging/chat/settings?tab=automation${branchId ? `&branchId=${branchId}` : ''}`}
                                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors"
                                 >
                                     <span className="material-symbols-outlined text-[20px]">smart_toy</span>
                                     <span>Automated Replies</span>
                                 </Link>
                                 <Link 
-                                    href="/dashboard/messaging/chat/settings?tab=templates"
+                                    href={`/dashboard/messaging/chat/settings?tab=templates${branchId ? `&branchId=${branchId}` : ''}`}
                                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors"
                                 >
                                     <span className="material-symbols-outlined text-[20px]">description</span>
                                     <span>Message Templates</span>
-                                </Link>
-                                <Link 
-                                    href="/dashboard/messaging/chat/settings?tab=categories"
-                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors"
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">category</span>
-                                    <span>Ticket Categories</span>
                                 </Link>
                             </div>
                         </div>
@@ -161,7 +160,9 @@ export default function ChatWindow() {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-6 space-y-3 chat-bg custom-scrollbar">
-                {activeMessages.map((msg, i) => {
+                {isLoading ? (
+                    <div className="flex items-center justify-center h-full text-slate-400 text-sm">Loading messages...</div>
+                ) : (messages as any[]).map((msg, i) => {
                     const msgDate = formatDateSeparator(msg.timestamp);
                     let showDate = false;
                     if (msgDate !== lastDate) {
@@ -191,57 +192,25 @@ export default function ChatWindow() {
     );
 }
 
-function MessageBubble({ message, isCustomer }: { message: ChatMessage; isCustomer: boolean }) {
-    // If user is a customer, the store's "outbound" messages (from business) are actually "inbound" for them
-    // and the store's "inbound" messages (from customer) are "outbound" for them.
-    const isOutbound = isCustomer 
-        ? message.direction === 'inbound' 
-        : message.direction === 'outbound';
+function MessageBubble({ message, isCustomer }: { message: any; isCustomer: boolean }) {
+    const isMine = isCustomer 
+        ? message.direction === 'INBOUND'
+        : message.direction === 'OUTBOUND';
 
     return (
-        <div className={`flex flex-col ${isOutbound ? 'items-end' : 'items-start'} max-w-[80%] ${isOutbound ? 'ml-auto' : ''}`}>
+        <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} max-w-[80%] ${isMine ? 'ml-auto' : ''}`}>
             <div className={`p-3 shadow-sm ${
-                isOutbound
+                isMine
                     ? 'bg-primary text-white bubble-right'
                     : 'bg-white border border-slate-200 text-slate-700 bubble-left'
             }`}>
-                {/* File attachment */}
-                {message.type === 'file' && (
-                    <div className={`flex items-center gap-3 p-3 rounded-lg mb-2 ${
-                        isOutbound ? 'bg-white/10' : 'bg-slate-50 border border-slate-100'
-                    }`}>
-                        <div className={`p-2 rounded ${isOutbound ? 'bg-white/20' : 'bg-red-50 text-red-600'}`}>
-                            <FileText size={24} />
-                        </div>
-                        <div className="overflow-hidden">
-                            <p className="text-xs font-bold truncate">{message.fileName}</p>
-                            <p className={`text-[10px] uppercase ${isOutbound ? 'text-white/70' : 'text-slate-500'}`}>
-                                {message.fileSize} • PDF
-                            </p>
-                        </div>
-                    </div>
-                )}
-
-                {/* Image */}
-                {message.type === 'image' && message.fileUrl && (
-                    <div className="mb-2">
-                        <img
-                            src={message.fileUrl}
-                            alt="Shared image"
-                            className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
-                            style={{ maxHeight: 240 }}
-                        />
-                    </div>
-                )}
-
-                {/* Text content */}
                 <p className="text-sm leading-relaxed">{message.content}</p>
             </div>
 
             {/* Timestamp & Status */}
-            <div className={`flex items-center gap-1 mt-1 ${isOutbound ? 'mr-1' : 'ml-1'}`}>
+            <div className={`flex items-center gap-1 mt-1 ${isMine ? 'mr-1' : 'ml-1'}`}>
                 <span className="text-[10px] text-slate-400">{formatMessageTime(message.timestamp)}</span>
-                {isOutbound && <StatusIcon status={message.status} />}
+                {isMine && <StatusIcon status={message.status} />}
             </div>
         </div>
     );

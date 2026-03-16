@@ -14,6 +14,7 @@ export default function CustomerRewardsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
     const [showRewardAnimation, setShowRewardAnimation] = useState(false);
+    const [redemptionCode, setRedemptionCode] = useState<string | undefined>();
     const businessId = user?.businessId;
     const { data: profileResponse } = useCustomerLoyaltyProfile(businessId);
     const { data: rewardsResponse = [], isLoading } = useCustomerLoyaltyRewards(businessId);
@@ -40,6 +41,7 @@ export default function CustomerRewardsPage() {
         try {
             const result = await redeemMutation.mutateAsync({ rewardId: reward.id, businessId });
             if (result.success) {
+                setRedemptionCode(result.redemption?.redemptionCode);
                 setSelectedReward(null);
                 setShowRewardAnimation(true);
             } else {
@@ -256,6 +258,7 @@ export default function CustomerRewardsPage() {
                 rewardName={selectedReward?.name ?? ''}
                 rewardIcon={<Gift size={64} />}
                 points={selectedReward?.pointCost ?? 0}
+                redemptionCode={redemptionCode}
             />
         </div>
     );

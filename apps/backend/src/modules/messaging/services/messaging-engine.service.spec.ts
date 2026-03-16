@@ -80,6 +80,7 @@ describe('MessagingEngineService', () => {
         .fn()
         .mockImplementation((e) => Promise.resolve({ id: '1', ...e })),
       update: jest.fn(),
+      findOne: jest.fn(),
     };
     loyaltyRepoMock = {
       findOne: jest.fn(),
