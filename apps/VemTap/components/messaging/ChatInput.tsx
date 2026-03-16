@@ -8,18 +8,21 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { useChatStore } from '@/lib/store/useChatStore';
 
 interface ChatInputProps {
     conversationId: string;
+    isMock?: boolean;
 }
 
 const COMMON_EMOJIS = ['😊', '😂', '❤️', '👍', '🙏', '🔥', '✨', '🙌', '😮', '😢', '😍', '🤔', '🎉', '✅', '🚀', '👋'];
 
-export default function ChatInput({ conversationId }: ChatInputProps) {
+export default function ChatInput({ conversationId, isMock }: ChatInputProps) {
     const [text, setText] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const user = useAuthStore(s => s.user);
     const { activeBranchId } = useActiveBranch();
+    const addMockMessage = useChatStore(s => s.addMockMessage);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
@@ -43,6 +46,24 @@ export default function ChatInput({ conversationId }: ChatInputProps) {
 
     const handleSend = async () => {
         if (!text.trim()) return;
+
+        if (isMock || conversationId.startsWith('mock-')) {
+            addMockMessage(conversationId, {
+                id: `mock-msg-${Date.now()}`,
+                threadId: conversationId,
+                direction: isCustomer ? 'INBOUND' : 'OUTBOUND',
+                type: 'text',
+                content: text.trim(),
+                timestamp: new Date().toISOString(),
+                status: 'SENT',
+            });
+            setText('');
+            setShowEmojiPicker(false);
+            if (textareaRef.current) {
+                textareaRef.current.style.height = '';
+            }
+            return;
+        }
         
         if (!isCustomer && !branchId) {
             toast.error('Please select a branch first');

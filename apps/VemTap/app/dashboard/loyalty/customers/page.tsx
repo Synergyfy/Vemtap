@@ -8,11 +8,13 @@ import { Visitor } from '@/services/visitors/types';
 import { User, Search, Filter, Phone, Mail, Calendar, CreditCard, Repeat, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/utils/date';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export default function LoyaltyCustomersPage() {
     const [searchQuery, setSearchQuery] = useState('');
+    const debouncedSearch = useDebounce(searchQuery, 400);
     const { data: paginatedData, isLoading } = useVisitors(undefined, {
-        search: searchQuery
+        search: debouncedSearch
     });
 
     const customers = paginatedData?.data || [];

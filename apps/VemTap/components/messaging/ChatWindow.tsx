@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
-import { Search, Maximize2, Minimize2, Check, CheckCheck, FileText } from 'lucide-react';
+import { Search, Maximize2, Minimize2, Check, CheckCheck, FileText, Info } from 'lucide-react';
 import ChatInput from './ChatInput';
 import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
@@ -48,6 +48,8 @@ function StatusIcon({ status }: { status: string }) {
 
 export default function ChatWindow() {
     const activeConversationId = useChatStore(s => s.activeConversationId);
+    const mockThreads = useChatStore(s => s.mockThreads);
+    const mockMessages = useChatStore(s => s.mockMessages);
     const user = useAuthStore(s => s.user);
     const { activeBranchId } = useActiveBranch();
     const isCustomer = user?.role === 'customer';
@@ -55,7 +57,14 @@ export default function ChatWindow() {
     
     // Fetch all threads to find the active one
     const { data: threads = [] } = useChatThreads('IN_HOUSE', branchId || undefined);
-    const activeConv = (threads as any[]).find(c => c.id === activeConversationId);
+    const allThreads = useMemo(() => {
+        const apiThreads = threads as any[];
+        const apiIds = new Set(apiThreads.map(t => t.id));
+        const mergedMocks = mockThreads.filter(t => !apiIds.has(t.id));
+        return [...mergedMocks, ...apiThreads];
+    }, [threads, mockThreads]);
+    const activeConv = allThreads.find(c => c.id === activeConversationId);
+    const isMockThread = !!activeConversationId && mockThreads.some(t => t.id === activeConversationId);
 
     // Fetch messages for active thread (business or customer endpoint)
     const { data: messages = [], isLoading } = useQuery({
@@ -66,18 +75,23 @@ export default function ChatWindow() {
                 : `/messaging/inbox/threads/${activeConversationId}${branchId ? `?branchId=${branchId}` : ''}`;
             return api.get(endpoint);
         },
-        enabled: !!activeConversationId && (isCustomer || !!branchId),
+        enabled: !!activeConversationId && (isCustomer || !!branchId) && !isMockThread,
         refetchInterval: 5000,
     });
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [isFullScreen, setIsFullScreen] = React.useState(false);
+    const [showProfile, setShowProfile] = React.useState(false);
 
     useEffect(() => {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [messages?.length, activeConversationId]);
+    }, [messages?.length, activeConversationId, mockMessages]);
+
+    useEffect(() => {
+        setShowProfile(false);
+    }, [activeConversationId]);
 
     if (!activeConv) {
         return (
@@ -95,16 +109,31 @@ export default function ChatWindow() {
 
     const { contact } = activeConv;
     const contactName = contact?.name || 'Customer';
+    const threadMessages = isMockThread ? (mockMessages[activeConversationId as string] || []) : (messages as any[]);
+    const contactIsOnline = contact?.isOnline;
+    const contactLastSeen = contact?.lastSeen ? new Date(contact.lastSeen).toLocaleString() : null;
+
+    const lastActivityLabel = (() => {
+        const raw = activeConv?.lastActivityAt || activeConv?.updatedAt;
+        if (!raw) return 'Not available';
+        const date = new Date(raw);
+        return Number.isNaN(date.getTime()) ? 'Not available' : date.toLocaleString();
+    })();
 
     // Group messages by date
     let lastDate = '';
 
     return (
-        <div className={`flex-1 flex flex-col h-full bg-white transition-all duration-300 ${isFullScreen ? 'fixed inset-0 z-[100] m-0 rounded-none' : ''}`}>
+        <div className={`flex-1 flex flex-col h-full min-h-0 bg-white transition-all duration-300 relative ${isFullScreen ? 'fixed inset-0 z-[100] m-0 rounded-none' : ''}`}>
             {/* Header */}
             <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 z-10 bg-white shrink-0">
-                <div className="flex items-center gap-3">
-                    <div className="relative">
+                <div className="flex items-center gap-3 min-w-0">
+                    <button
+                        type="button"
+                        onClick={() => setShowProfile(prev => !prev)}
+                        className="relative"
+                        title="View profile"
+                    >
                         {contact?.avatar ? (
                             <img src={contact.avatar} alt={contactName} className="w-10 h-10 rounded-full object-cover" />
                         ) : (
@@ -112,15 +141,24 @@ export default function ChatWindow() {
                                 {getInitials(contactName)}
                             </div>
                         )}
-                    </div>
-                    <div>
-                        <h2 className="text-sm font-bold text-slate-800 leading-tight">{contactName}</h2>
-                        <p className="text-[11px] text-slate-400">
+                    </button>
+                    <div className="min-w-0">
+                        <h2 className="text-sm font-bold text-slate-800 leading-tight truncate" title={contactName}>
+                            {contactName}
+                        </h2>
+                        <p className="text-[11px] text-slate-400 truncate">
                             {contact?.phone || contact?.email || 'Active now'}
                         </p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3 text-slate-400">
+                    <button
+                        onClick={() => setShowProfile(prev => !prev)}
+                        className={`p-2 rounded-lg transition-colors ${showProfile ? 'text-primary bg-primary/10' : 'hover:text-slate-600 hover:bg-slate-50'}`}
+                        title="Contact info"
+                    >
+                        <Info size={18} />
+                    </button>
                     <button 
                         onClick={() => setIsFullScreen(!isFullScreen)}
                         className="p-2 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
@@ -158,36 +196,102 @@ export default function ChatWindow() {
                 </div>
             </header>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-3 chat-bg custom-scrollbar">
-                {isLoading ? (
-                    <div className="flex items-center justify-center h-full text-slate-400 text-sm">Loading messages...</div>
-                ) : (messages as any[]).map((msg, i) => {
-                    const msgDate = formatDateSeparator(msg.timestamp);
-                    let showDate = false;
-                    if (msgDate !== lastDate) {
-                        showDate = true;
-                        lastDate = msgDate;
-                    }
+            <div className={`flex-1 flex flex-col min-h-0 transition-[padding] duration-300 ${showProfile ? 'pr-80' : ''}`}>
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-3 chat-bg custom-scrollbar">
+                    {isLoading ? (
+                        <div className="flex items-center justify-center h-full text-slate-400 text-sm">Loading messages...</div>
+                    ) : threadMessages.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm">
+                            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                <FileText size={18} />
+                            </div>
+                            <p className="font-semibold text-slate-500">No messages yet</p>
+                            <p className="text-xs text-slate-400 mt-1">Start the conversation to see messages here.</p>
+                        </div>
+                    ) : threadMessages.map((msg, i) => {
+                        const msgDate = formatDateSeparator(msg.timestamp);
+                        let showDate = false;
+                        if (msgDate !== lastDate) {
+                            showDate = true;
+                            lastDate = msgDate;
+                        }
 
-                    return (
-                        <React.Fragment key={msg.id}>
-                            {showDate && (
-                                <div className="flex justify-center my-3">
-                                    <span className="px-3 py-1 bg-slate-200/70 text-[10px] font-semibold text-slate-500 rounded-full uppercase tracking-wider">
-                                        {msgDate}
-                                    </span>
-                                </div>
-                            )}
-                            <MessageBubble message={msg} isCustomer={isCustomer} />
-                        </React.Fragment>
-                    );
-                })}
-                <div ref={messagesEndRef} />
+                        return (
+                            <React.Fragment key={msg.id}>
+                                {showDate && (
+                                    <div className="flex justify-center my-3">
+                                        <span className="px-3 py-1 bg-slate-200/70 text-[10px] font-semibold text-slate-500 rounded-full uppercase tracking-wider">
+                                            {msgDate}
+                                        </span>
+                                    </div>
+                                )}
+                                <MessageBubble message={msg} isCustomer={isCustomer} />
+                            </React.Fragment>
+                        );
+                    })}
+                    <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input */}
+                <ChatInput conversationId={activeConversationId!} isMock={isMockThread} />
             </div>
 
-            {/* Input */}
-            <ChatInput conversationId={activeConversationId!} />
+            {/* Profile Panel */}
+            <div
+                className={`absolute top-16 right-0 bottom-0 w-80 bg-white border-l border-slate-200 shadow-lg transition-transform duration-300 ${showProfile ? 'translate-x-0' : 'translate-x-full'}`}
+            >
+                <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Contact Info</p>
+                        <h3 className="text-lg font-bold text-slate-900">Profile</h3>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setShowProfile(false)}
+                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg"
+                    >
+                        <Minimize2 size={18} />
+                    </button>
+                </div>
+
+                <div className="p-6 space-y-6 overflow-y-auto h-full">
+                    <div className="flex flex-col items-center text-center gap-3">
+                        {contact?.avatar ? (
+                            <img src={contact.avatar} alt={contactName} className="w-20 h-20 rounded-full object-cover" />
+                        ) : (
+                            <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-lg ${getAvatarColor(activeConv.id)}`}>
+                                {getInitials(contactName)}
+                            </div>
+                        )}
+                        <div>
+                            <p className="text-lg font-bold text-slate-900">{contactName}</p>
+                            <p className="text-xs text-slate-400 font-semibold">
+                                {contactIsOnline ? 'Online' : contactLastSeen ? `Last seen ${contactLastSeen}` : 'Offline'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className="rounded-xl border border-slate-100 p-3">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Phone</p>
+                            <p className="text-sm font-semibold text-slate-900">{contact?.phone || 'Not provided'}</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-100 p-3">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Email</p>
+                            <p className="text-sm font-semibold text-slate-900">{contact?.email || 'Not provided'}</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-100 p-3">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status</p>
+                            <p className="text-sm font-semibold text-slate-900">{activeConv?.status || 'Active conversation'}</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-100 p-3">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Last Activity</p>
+                            <p className="text-sm font-semibold text-slate-900">{lastActivityLabel}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDate } from '@/lib/utils/date';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export default function AllVisitorsPage() {
     const router = useRouter();
@@ -39,12 +40,14 @@ export default function AllVisitorsPage() {
     const [deleteVisitorId, setDeleteVisitorId] = useState<string | null>(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
+    const debouncedSearch = useDebounce(searchQuery, 400);
+
     const userBusinessId = useAuthStore((state) => state.user?.businessId);
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const { data: branches = [] } = useBranches();
 
     const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(undefined, {
-        search: searchQuery,
+        search: debouncedSearch,
         status: filterStatus !== 'all' ? filterStatus : undefined
     });
     const { data: statsData } = useVisitorStats();

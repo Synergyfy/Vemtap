@@ -31,6 +31,7 @@ export interface Branch {
     showReview: boolean;
     showSocial: boolean;
     showFeedback: boolean;
+    showRewards?: boolean;
     businessId: string;
     createdAt: string;
     updatedAt: string;
@@ -88,6 +89,7 @@ export interface Business {
     showReview?: boolean;
     showSocial?: boolean;
     showFeedback?: boolean;
+    showRewards?: boolean;
     isRegistered?: boolean;
     documents?: string[];
     branches?: Branch[];

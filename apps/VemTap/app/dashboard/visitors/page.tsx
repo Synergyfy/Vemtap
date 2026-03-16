@@ -14,6 +14,7 @@ import { formatDate } from '@/lib/utils/date';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import { exportToCSV } from '@/lib/utils/export';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export default function VisitorsOverviewPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -21,8 +22,10 @@ export default function VisitorsOverviewPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' | 'general' } | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
 
+    const debouncedSearch = useDebounce(searchQuery, 400);
+
     const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(undefined, {
-        search: searchQuery,
+        search: debouncedSearch,
         status: filterStatus !== 'all' ? filterStatus : undefined
     });
     const { data: statsData } = useVisitorStats();
