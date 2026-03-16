@@ -48,6 +48,7 @@ export interface TemplateReward {
     totalAvailable?: number;
     isActive?: boolean;
     imageUrl?: string;
+    imageUrls?: string[];
 }
 
 export interface LoyaltyTemplate {
@@ -90,6 +91,7 @@ export interface CreateRewardRequest {
     totalAvailable?: number;
     branchId?: string;
     imageUrl?: string;
+    imageUrls?: string[];
 }
 
 export interface UpdateRewardRequest {
@@ -103,6 +105,7 @@ export interface UpdateRewardRequest {
     isActive?: boolean;
     branchId?: string;
     imageUrl?: string;
+    imageUrls?: string[];
 }
 
 export interface UpdateLoyaltyRuleRequest {
@@ -114,4 +117,30 @@ export interface UpdateLoyaltyRuleRequest {
     birthdayBonus?: number;
     referralBonus?: number;
     isActive?: boolean;
+}
+
+export interface BusinessLoyaltyStats {
+    stats: { label: string; value: string; change: number; trend: 'up' | 'down' }[];
+    tierDistribution: { label: string; value: number; color: string }[];
+    activityTrend: { name: string; earnings: number; claims: number }[];
+    growthForecast: string;
+}
+
+export interface CustomerAnalytics {
+    totalVisits: number;
+    currentPointsBalance: number;
+    netSavings: number;
+    visitTrends: { month: string; visits: number }[];
+    pointsByVenue: { venueName: string; points: number }[];
+    topVenues: { venueName: string; points: number; visits: number }[];
+}
+
+export interface ClaimCodeResponse {
+    success: boolean;
+    redemption: Redemption;
+}
+
+export interface ApplyTemplateResponse {
+    success: boolean;
+    message: string;
 }

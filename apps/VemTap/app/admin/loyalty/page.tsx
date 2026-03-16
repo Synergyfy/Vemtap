@@ -23,9 +23,11 @@ export default function AdminLoyaltyPage() {
         <div className="p-8 space-y-10">
             <LoyaltyTemplateManager
                 templates={templates}
-                onCreate={(template) => createMutation.mutate(template)}
-                onUpdate={(id, updates) => updateMutation.mutate({ id, updates })}
+                onCreate={(template) => createMutation.mutateAsync(template)}
+                onUpdate={(id, updates) => updateMutation.mutateAsync({ id, updates })}
                 onDelete={(id) => deleteMutation.mutate(id)}
+                isCreating={createMutation.isPending}
+                isUpdating={updateMutation.isPending}
             />
         </div>
     );
