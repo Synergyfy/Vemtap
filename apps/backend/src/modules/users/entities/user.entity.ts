@@ -60,7 +60,7 @@ export class User extends AbstractBaseEntity {
   role: UserRole;
 
   @ApiProperty({ example: '+2348012345678', nullable: true })
-  @Column({ nullable: true })
+  @Column({ nullable: true, unique: true })
   phone: string;
 
   @ApiProperty({ example: 'Store Manager', nullable: true })

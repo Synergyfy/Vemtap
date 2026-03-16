@@ -108,4 +108,16 @@ describe('PlansService', () => {
     await service.remove('1');
     expect(mockPlanRepository.softRemove).toHaveBeenCalledWith(mockPlan);
   });
+
+  it('should return a free plan', async () => {
+    mockPlanRepository.findOne.mockResolvedValueOnce({
+      ...mockPlan,
+      isFree: true,
+    });
+    const plan = await service.findFreePlan();
+    expect(plan.isFree).toBe(true);
+    expect(mockPlanRepository.findOne).toHaveBeenCalledWith({
+      where: { isFree: true, isActive: true },
+    });
+  });
 });
