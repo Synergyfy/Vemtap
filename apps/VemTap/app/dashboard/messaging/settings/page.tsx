@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { StepWelcomeBack } from '@/components/visitor/StepWelcomeBack';
@@ -40,7 +39,7 @@ export default function MessageSettingsPage() {
     // Auto-sync tab with preview screen
     React.useEffect(() => {
         if (activeTab === 'welcome') setPreviewIndex(0);
-        else if (activeTab === 'new_welcome') setPreviewIndex(1); // Preview for new user? Maybe we need a Screen D
+        else if (activeTab === 'new_welcome') setPreviewIndex(1);
         else if (activeTab === 'success') setPreviewIndex(2);
         else if (activeTab === 'rewards') setPreviewIndex(3);
     }, [activeTab]);
@@ -67,10 +66,6 @@ export default function MessageSettingsPage() {
     React.useEffect(() => {
         if (business && business.welcomeMessage) {
             setSettings(prev => ({ ...prev, welcomeMessage: business.welcomeMessage || prev.welcomeMessage }));
-        }
-        if (business && business.welcomeSubMessage) {
-            // we map welcomeSubMessage to one of these fields if we want, or create new fields in Business entity.
-            // for now just map existing if present
         }
     }, [business]);
 
@@ -365,7 +360,7 @@ export default function MessageSettingsPage() {
                                                     dashboardData.rewards.map((reward: Reward) => (
                                                         <div key={reward.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center justify-between group hover:border-primary/20 transition-all">
                                                             <div className="flex items-center gap-3">
-                                                                <div className={`size-8 rounded-lg flex items-center justify-center text-[10px] font-bold ${reward.active ? 'bg-primary text-white' : 'bg-gray-200 text-gray-400'}`}>
+                                                                 <div className={`size-8 rounded-lg flex items-center justify-center text-[10px] font-bold ${reward.active ? 'bg-primary text-white' : 'bg-gray-200 text-gray-400'}`}>
                                                                     {reward.title.charAt(0)}
                                                                 </div>
                                                                 <p className="text-sm font-bold text-text-main">{reward.title}</p>
@@ -434,30 +429,10 @@ export default function MessageSettingsPage() {
                                 <span className="text-[10px] font-bold text-green-600">Live sync</span>
                             </div>
                             <div className="flex bg-gray-200 p-1 rounded-lg">
-                                <button
-                                    onClick={() => setPreviewIndex(0)}
-                                    className={`px-3 py-1 text-[10px] font-bold transition-all rounded-md ${previewIndex === 0 ? 'bg-white shadow-sm text-primary' : 'text-text-secondary hover:text-text-main'}`}
-                                >
-                                    New User
-                                </button>
-                                <button
-                                    onClick={() => setPreviewIndex(1)}
-                                    className={`px-3 py-1 text-[10px] font-bold transition-all rounded-md ${previewIndex === 1 ? 'bg-white shadow-sm text-primary' : 'text-text-secondary hover:text-text-main'}`}
-                                >
-                                    Returning
-                                </button>
-                                <button
-                                    onClick={() => setPreviewIndex(2)}
-                                    className={`px-3 py-1 text-[10px] font-bold transition-all rounded-md ${previewIndex === 2 ? 'bg-white shadow-sm text-primary' : 'text-text-secondary hover:text-text-main'}`}
-                                >
-                                    Success
-                                </button>
-                                <button
-                                    onClick={() => setPreviewIndex(3)}
-                                    className={`px-3 py-1 text-[10px] font-bold transition-all rounded-md ${previewIndex === 3 ? 'bg-white shadow-sm text-primary' : 'text-text-secondary hover:text-text-main'}`}
-                                >
-                                    Reward
-                                </button>
+                                <button onClick={() => setPreviewIndex(0)} className={`px-3 py-1 text-[10px] font-bold transition-all rounded-md ${previewIndex === 0 ? 'bg-white shadow-sm text-primary' : 'text-text-secondary hover:text-text-main'}`}>New User</button>
+                                <button onClick={() => setPreviewIndex(1)} className={`px-3 py-1 text-[10px] font-bold transition-all rounded-md ${previewIndex === 1 ? 'bg-white shadow-sm text-primary' : 'text-text-secondary hover:text-text-main'}`}>Returning</button>
+                                <button onClick={() => setPreviewIndex(2)} className={`px-3 py-1 text-[10px] font-bold transition-all rounded-md ${previewIndex === 2 ? 'bg-white shadow-sm text-primary' : 'text-text-secondary hover:text-text-main'}`}>Success</button>
+                                <button onClick={() => setPreviewIndex(3)} className={`px-3 py-1 text-[10px] font-bold transition-all rounded-md ${previewIndex === 3 ? 'bg-white shadow-sm text-primary' : 'text-text-secondary hover:text-text-main'}`}>Reward</button>
                             </div>
                         </div>
                     </div>
@@ -466,24 +441,13 @@ export default function MessageSettingsPage() {
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={previewIndex}
-                                drag="x"
-                                dragConstraints={{ left: 0, right: 0 }}
-                                onDragEnd={(e, { offset, velocity }) => {
-                                    const swipe = offset.x;
-                                    if (swipe < -50 && previewIndex < 3) {
-                                        setPreviewIndex(previewIndex + 1);
-                                    } else if (swipe > 50 && previewIndex > 0) {
-                                        setPreviewIndex(previewIndex - 1);
-                                    }
-                                }}
                                 initial={{ opacity: 0, x: -100 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: 100 }}
                                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                                className="w-full max-w-[380px] cursor-grab active:cursor-grabbing"
+                                className="w-full max-w-[380px]"
                             >
                                 {previewIndex === 0 ? (
-                                    /* Device 0: New Visitor / Form */
                                     <div className="space-y-6">
                                         <div className="flex flex-col items-center gap-1">
                                             <p className="text-[10px] font-bold text-text-secondary">Screen A</p>
@@ -492,7 +456,7 @@ export default function MessageSettingsPage() {
                                         <div className="bg-gray-900 rounded-3xl p-4 shadow-2xl border-[6px] border-gray-800 aspect-10/18 relative overflow-hidden">
                                             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-gray-800 rounded-b-xl z-50"></div>
                                             <div className="bg-white w-full h-full rounded-xl overflow-hidden relative flex flex-col">
-                                                <div className="flex-1 overflow-y-auto pt-10 px-5 bg-white">
+                                                <div className="flex-1 overflow-y-auto pt-10 px-5 bg-white text-black">
                                                     <div className="scale-[0.85] origin-top">
                                                         <StepWelcomeBack
                                                             storeName={store.storeName}
@@ -516,16 +480,15 @@ export default function MessageSettingsPage() {
                                         </div>
                                     </div>
                                 ) : previewIndex === 1 ? (
-                                    /* Device 1: Returning / Welcome */
                                     <div className="space-y-6">
                                         <div className="flex flex-col items-center gap-1">
-                                            <p className="text-[10px] font-bold text-text-secondary">Screen B</p>
+                                            <p className="text-[10px) font-bold text-text-secondary">Screen B</p>
                                             <p className="text-xs font-bold text-text-main">Returning user flow</p>
                                         </div>
                                         <div className="bg-gray-900 rounded-3xl p-4 shadow-2xl border-[6px] border-gray-800 aspect-10/18 relative overflow-hidden">
                                             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-gray-800 rounded-b-xl z-50"></div>
                                             <div className="bg-white w-full h-full rounded-xl overflow-hidden relative flex flex-col">
-                                                <div className="flex-1 overflow-y-auto pt-12 px-5 bg-gray-50">
+                                                <div className="flex-1 overflow-y-auto pt-12 px-5 bg-gray-50 text-black">
                                                     <StepWelcomeBack
                                                         storeName={store.storeName}
                                                         logoUrl={store.logoUrl}
@@ -547,7 +510,6 @@ export default function MessageSettingsPage() {
                                         </div>
                                     </div>
                                 ) : previewIndex === 2 ? (
-                                    /* Device 2: Final Success */
                                     <div className="space-y-6">
                                         <div className="flex flex-col items-center gap-1">
                                             <p className="text-[10px] font-bold text-text-secondary">Screen C</p>
@@ -556,7 +518,7 @@ export default function MessageSettingsPage() {
                                         <div className="bg-gray-900 rounded-3xl p-4 shadow-2xl border-[6px] border-gray-800 aspect-10/18 relative overflow-hidden">
                                             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-gray-800 rounded-b-xl z-50"></div>
                                             <div className="bg-white w-full h-full rounded-xl overflow-hidden relative flex flex-col">
-                                                <div className="flex-1 overflow-y-auto pt-12 px-5 bg-gray-50">
+                                                <div className="flex-1 overflow-y-auto pt-12 px-5 bg-gray-50 text-black">
                                                     <StepFinalSuccess
                                                         customSuccessTag={settings.successTag}
                                                         customSuccessTitle={settings.successTitle}
@@ -569,7 +531,6 @@ export default function MessageSettingsPage() {
                                         </div>
                                     </div>
                                 ) : (
-                                    /* Device 3: Reward Unlocked */
                                     <div className="space-y-6">
                                         <div className="flex flex-col items-center gap-1">
                                             <p className="text-[10px] font-bold text-text-secondary">Screen D</p>
@@ -578,7 +539,7 @@ export default function MessageSettingsPage() {
                                         <div className="bg-gray-900 rounded-3xl p-4 shadow-2xl border-[6px] border-gray-800 aspect-10/18 relative overflow-hidden">
                                             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-gray-800 rounded-b-xl z-50"></div>
                                             <div className="bg-white w-full h-full rounded-xl overflow-hidden relative flex flex-col">
-                                                <div className="flex-1 overflow-y-auto pt-12 px-5 bg-gray-50">
+                                                <div className="flex-1 overflow-y-auto pt-12 px-5 bg-gray-50 text-black">
                                                     <StepWelcomeBack
                                                         storeName={store.storeName}
                                                         logoUrl={store.logoUrl}
@@ -605,20 +566,20 @@ export default function MessageSettingsPage() {
 
                         {/* Carousel Navigation Buttons */}
                         <button
-                            onClick={() => setPreviewIndex(0)}
+                            onClick={() => setPreviewIndex(Math.max(0, previewIndex - 1))}
                             className={`absolute left-4 p-3 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200 shadow-lg text-text-secondary hover:text-primary transition-all ${previewIndex === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
                         >
                             <ChevronLeft size={24} />
                         </button>
                         <button
-                            onClick={() => setPreviewIndex(1)}
-                            className={`absolute right-4 p-3 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200 shadow-lg text-text-secondary hover:text-primary transition-all ${previewIndex === 1 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                            onClick={() => setPreviewIndex(Math.min(3, previewIndex + 1))}
+                            className={`absolute right-4 p-3 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200 shadow-lg text-text-secondary hover:text-primary transition-all ${previewIndex === 3 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
                         >
                             <ChevronRight size={24} />
                         </button>
 
                         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-3">
-                            {[0, 1, 2].map((idx) => (
+                            {[0, 1, 2, 3].map((idx) => (
                                 <button
                                     key={idx}
                                     onClick={() => setPreviewIndex(idx)}
@@ -648,7 +609,7 @@ export default function MessageSettingsPage() {
                             className="relative w-full max-w-2xl bg-white rounded-2xl overflow-hidden shadow-2xl"
                         >
                             <div className="p-10">
-                                <div className="flex justify-between items-start mb-10">
+                                <div className="flex justify-between items-start mb-10 text-black">
                                     <div className="flex items-center gap-4">
                                         <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
                                             <HelpCircle size={28} />
@@ -666,7 +627,7 @@ export default function MessageSettingsPage() {
                                     </button>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 text-black">
                                     <div className="p-6 bg-gray-50 rounded-xl border border-gray-100">
                                         <div className="flex items-center gap-3 mb-4 text-primary">
                                             <ArrowRight size={20} />
