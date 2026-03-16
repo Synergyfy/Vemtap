@@ -2,11 +2,12 @@
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Edit2, Gift, Ticket, Tag, Clock, Save, X, Eye, ImageIcon, Upload, Image as ImageIcon2, HelpCircle, Wallet, Package, Percent, ChevronDown, CheckCircle2, AlertCircle, Star, Search, Users, Calendar } from 'lucide-react';
+import { Plus, Trash2, Edit2, Gift, Ticket, Tag, Clock, Save, X, Eye, ImageIcon, Upload, Image as ImageIcon2, HelpCircle, Wallet, Package, Percent, ChevronDown, CheckCircle2, AlertCircle, Star, Search, Users, Calendar, Loader2 } from 'lucide-react';
 import { Reward, RewardType } from '@/types/loyalty';
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import Tooltip from '@/components/ui/Tooltip';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 interface RewardManagerProps {
     rewards: Reward[];
@@ -49,9 +50,11 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isTypeOpen, setIsTypeOpen] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [viewingRewardForCustomers, setViewingRewardForCustomers] = useState<Reward | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [localImageFile, setLocalImageFile] = useState<File | null>(null);
 
     const [formData, setFormData] = useState<Partial<Reward>>({
         name: '',
@@ -77,17 +80,18 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
             isActive: true,
             imageUrl: ''
         });
+        setLocalImageFile(null);
         setIsAdding(false);
         setEditingId(null);
         setIsSubmitted(false);
         setIsTypeOpen(false);
+        setIsUploading(false);
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            // In a real app, you'd upload to Supabase/S3 here. 
-            // For mock/development, we use a Local Preview URL.
+            setLocalImageFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
                 setFormData(prev => ({ ...prev, imageUrl: reader.result as string }));
@@ -109,17 +113,34 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
             return;
         }
 
+        setIsUploading(true);
+        let toastId: string | undefined;
+
         try {
+            let finalImageUrl = formData.imageUrl;
+
+            if (localImageFile) {
+                toastId = notify.loading('Uploading reward image to Cloudinary...');
+                finalImageUrl = await uploadToCloudinary(localImageFile);
+                notify.dismiss(toastId);
+            }
+
+            const submissionData = { ...formData, imageUrl: finalImageUrl };
+
             if (editingId) {
-                await onUpdate(editingId, formData);
+                await onUpdate(editingId, submissionData);
                 notify.success('Reward updated successfully');
             } else {
-                await onCreate(formData);
+                await onCreate(submissionData);
                 notify.success('Reward created successfully');
             }
             resetForm();
         } catch (error) {
+            if (toastId) notify.dismiss(toastId);
             notify.error('Failed to save reward');
+            console.error('Submit error:', error);
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -603,7 +624,10 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                             <Plus size={18} />
                                                         </button>
                                                         <button
-                                                            onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
+                                                            onClick={() => {
+                                                                setFormData(prev => ({ ...prev, imageUrl: '' }));
+                                                                setLocalImageFile(null);
+                                                            }}
                                                             className="p-2 bg-white rounded-lg text-red-500 hover:bg-gray-50 transition-colors"
                                                             title="Remove Image"
                                                         >
@@ -633,27 +657,38 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                             <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between sticky bottom-0 z-30">
                                 <button
                                     onClick={resetForm}
-                                    className="px-6 py-3 font-semibold text-sm text-slate-400 hover:text-slate-900 transition-colors"
+                                    disabled={isUploading}
+                                    className="px-6 py-3 font-semibold text-sm text-slate-400 hover:text-slate-900 transition-colors disabled:opacity-50"
                                 >
                                     Go Back
                                 </button>
                                 <div className="flex items-center gap-4">
-                                    {(!formData.name || !formData.pointCost) && isSubmitted && (
+                                    {(!formData.name || !formData.pointCost) && isSubmitted && !isUploading && (
                                         <span className="text-xs font-semibold text-rose-500 animate-pulse">
                                             Basics Required
                                         </span>
                                     )}
                                     <button
                                         onClick={handleSubmit}
+                                        disabled={isUploading || !formData.name || !formData.pointCost}
                                         className={cn(
                                             "px-10 py-4 font-semibold text-sm rounded-2xl transition-all flex items-center gap-2",
-                                            (!formData.name || !formData.pointCost) 
+                                            (isUploading || !formData.name || !formData.pointCost) 
                                                 ? "bg-slate-200 text-slate-400 cursor-not-allowed" 
                                                 : "bg-primary text-white shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95"
                                         )}
                                     >
-                                        <Save size={18} />
-                                        {editingId ? 'Update Reward' : 'Confirm & Launch'}
+                                        {isUploading ? (
+                                            <>
+                                                <Loader2 size={18} className="animate-spin" />
+                                                Processing...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Save size={18} />
+                                                {editingId ? 'Update Reward' : 'Confirm & Launch'}
+                                            </>
+                                        )}
                                     </button>
                                 </div>
                             </div>

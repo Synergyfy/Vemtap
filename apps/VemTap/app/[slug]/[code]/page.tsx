@@ -273,7 +273,7 @@ export default function DynamicTapJourneyPage() {
         try {
             // This monitors the "stay" and triggers rule-based point earnings
             // Authentication is now required as backend was reverted
-            const response = await api.post(`/loyalty/tap/${deviceCode}`, {});
+            const response = await api.post(`/campaigns/loyalty/tap/${deviceCode}`, {});
             if (response && response.profile) {
                 // Refresh local profile state
                 const { fetchLoyaltyProfile } = useLoyaltyStore.getState();

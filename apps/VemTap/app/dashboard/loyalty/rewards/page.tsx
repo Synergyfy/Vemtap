@@ -42,6 +42,7 @@ export default function RewardManagementPage() {
             usageLimitPerUser: updates.usageLimitPerUser,
             totalAvailable: updates.totalAvailable,
             isActive: updates.isActive,
+            imageUrl: updates.imageUrl,
         };
         await updateMutation.mutateAsync({ id, updates: dto });
     };
