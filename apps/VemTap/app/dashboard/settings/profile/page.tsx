@@ -18,7 +18,7 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 
 const statesData: Record<string, string[]> = {
     'Lagos': ['Ikeja', 'Lekki', 'Victoria Island', 'Surulere', 'Yaba', 'Ajah', 'Ikorodu', 'Epe'],
-    'Abuja (FCT)': ['Garki', 'Wuse', 'Maitama', 'Asokoro', 'Gwarinpa', 'Kubwa', 'Jabi'],
+    'FCT - Abuja': ['Garki', 'Wuse', 'Maitama', 'Asokoro', 'Gwarinpa', 'Kubwa', 'Jabi'],
     'Rivers': ['Port Harcourt', 'Obio-Akpor', 'Eleme', 'Oyigbo'],
     'Oyo': ['Ibadan', 'Ogbomosho', 'Oyo Town', 'Iseyin'],
     'Kano': ['Kano City', 'Wudil', 'Gwarzo'],
@@ -107,27 +107,32 @@ export default function BusinessProfilePage() {
     const qrId = (isAllBranches ? business?.uniqueCode : branch?.uniqueCode) || business?.uniqueCode || '';
 
     useEffect(() => {
-        if (isAllBranches && business) {
-            setName(business.name || '');
-            setLogo(business.logoUrl || '');
-            setCategoryId(business.categoryId || '');
-            setSubcategoryId(business.subcategoryId || '');
-            setOtherSubcategoryName(business.otherSubcategoryName || '');
-            setState(business.state || '');
-            setCity(business.city || '');
+        const source = (isAllBranches && business) ? business : branch;
+        
+        if (source) {
+            setName(source.name || '');
+            setLogo(source.logoUrl || '');
             
-            setSupportEmail(business.officialEmail || '');
-            setSupportPhone(business.phone || business.whatsappNumber || '');
-            setAddress(business.address || '');
+            // For categories/location, prioritize business-level data if it's main branch or all-branches
+            const catSource = business || source;
+            setCategoryId(catSource.categoryId || '');
+            setSubcategoryId(catSource.subcategoryId || '');
+            setOtherSubcategoryName(catSource.otherSubcategoryName || '');
+            setState(source.state || business?.state || '');
+            setCity(source.city || business?.city || '');
+            
+            setSupportEmail(source.officialEmail || '');
+            setSupportPhone(source.phone || source.whatsappNumber || '');
+            setAddress(source.address || '');
 
-            setAbout(business.about || '');
-            setWelcomeMessage(business.welcomeMessage || '');
-            setSuccessMessage(business.successMessage || '');
-            setPrivacyMessage(business.privacyMessage || '');
-            setRewardMessage(business.rewardMessage || '');
+            setAbout(source.about || '');
+            setWelcomeMessage(source.welcomeMessage || '');
+            setSuccessMessage(source.successMessage || '');
+            setPrivacyMessage(source.privacyMessage || '');
+            setRewardMessage(source.rewardMessage || '');
 
-            if (business.businessHours) {
-                setBusinessHours(business.businessHours);
+            if (source.businessHours) {
+                setBusinessHours(source.businessHours);
             } else {
                 const defaultHours: Record<string, BusinessHours> = {};
                 DAYS.forEach(day => {
@@ -136,33 +141,36 @@ export default function BusinessProfilePage() {
                 setBusinessHours(defaultHours);
             }
 
-            setRewardEnabled(business.rewardEnabled || false);
-            setRewardVisitThreshold(business.rewardVisitThreshold || 5);
+            setRewardEnabled(source.rewardEnabled || false);
+            setRewardVisitThreshold(source.rewardVisitThreshold || 5);
 
-            setFacebookUrl(business.facebookUrl || '');
-            setInstagramUrl(business.instagramUrl || '');
-            setTiktokUrl(business.tiktokUrl || '');
-            setXUrl(business.xUrl || '');
-            setYoutubeUrl(business.youtubeUrl || '');
-            setCustomLink(business.customLink || '');
-            setLinkedinUrl(business.linkedinUrl || '');
-            setReviewUrl(business.reviewUrl || '');
-            setTrustpilotUrl(business.trustpilotUrl || '');
+            setFacebookUrl(business?.facebookUrl || '');
+            setInstagramUrl(business?.instagramUrl || '');
+            setTiktokUrl(business?.tiktokUrl || '');
+            setXUrl(business?.xUrl || '');
+            setYoutubeUrl(business?.youtubeUrl || '');
+            setCustomLink(business?.customLink || '');
+            
+            setLinkedinUrl(source.linkedinUrl || '');
+            setReviewUrl(source.reviewUrl || '');
+            setTrustpilotUrl(source.trustpilotUrl || '');
 
-            setShowReview(business.showReview ?? true);
-            setShowSocial(business.showSocial ?? true);
-            setShowFeedback(business.showFeedback ?? true);
+            setShowReview(source.showReview ?? true);
+            setShowSocial(source.showSocial ?? true);
+            setShowFeedback(source.showFeedback ?? true);
 
-            setCacDocument(business.cacDocument || '');
-            setIdDocument(business.idDocument || '');
-            setIsRegistered(business.isRegistered || false);
-            setRegistrationNumber(business.registrationNumber || '');
-            if ((business.registrationNumber || '').startsWith('BN')) setCacType('BN');
-            else if ((business.registrationNumber || '').startsWith('IT')) setCacType('IT');
-            else setCacType('RC');
+            if (business) {
+                setCacDocument(business.cacDocument || '');
+                setIdDocument(business.idDocument || '');
+                setIsRegistered(business.isRegistered || false);
+                setRegistrationNumber(business.registrationNumber || '');
+                if ((business.registrationNumber || '').startsWith('BN')) setCacType('BN');
+                else if ((business.registrationNumber || '').startsWith('IT')) setCacType('IT');
+                else setCacType('RC');
+            }
 
-            if (business.uniqueCode) {
-                const nextPublicUrl = `${origin}/b/${business.uniqueCode}`;
+            if (source.uniqueCode) {
+                const nextPublicUrl = `${origin}/b/${source.uniqueCode}`;
                 setPublicProfileUrl(nextPublicUrl);
                 if (qrId) {
                     setRedirect(qrId, nextPublicUrl);
@@ -170,56 +178,11 @@ export default function BusinessProfilePage() {
             } else {
                 setPublicProfileUrl('');
             }
-        } else if (branch) {
-            setName(branch.name || '');
-            setLogo(branch.logoUrl || '');
-            setState(branch.state || '');
-            setCity(branch.city || '');
-            setSupportEmail(branch.officialEmail || '');
-            setSupportPhone(branch.phone || branch.whatsappNumber || '');
-            setAddress(branch.address || '');
-
-            setAbout(branch.about || '');
-            setWelcomeMessage(branch.welcomeMessage || '');
-            setSuccessMessage(branch.successMessage || '');
-            setPrivacyMessage(branch.privacyMessage || '');
-            setRewardMessage(branch.rewardMessage || '');
-
-            if (branch.businessHours) {
-                setBusinessHours(branch.businessHours);
-            } else {
-                const defaultHours: Record<string, BusinessHours> = {};
-                DAYS.forEach(day => {
-                    defaultHours[day] = { open: '09:00', close: '18:00', closed: false };
-                });
-                setBusinessHours(defaultHours);
-            }
-
-            setRewardEnabled(branch.rewardEnabled || false);
-            setRewardVisitThreshold(branch.rewardVisitThreshold || 5);
-
-            setLinkedinUrl(branch.linkedinUrl || '');
-            setReviewUrl(branch.reviewUrl || '');
-            setTrustpilotUrl(branch.trustpilotUrl || '');
-
-            setShowReview(branch.showReview ?? true);
-            setShowSocial(branch.showSocial ?? true);
-            setShowFeedback(branch.showFeedback ?? true);
-
-            if (branch.uniqueCode) {
-                const nextPublicUrl = `${origin}/b/${branch.uniqueCode}`;
-                setPublicProfileUrl(nextPublicUrl);
-                if (qrId) {
-                    setRedirect(qrId, nextPublicUrl);
-                }
-            } else {
-                setPublicProfileUrl('');
-            }
-        } else if (user) {
+        } else if (user && !businessLoading) {
             setName(user.businessName || '');
             setLogo(user.businessLogo || '');
         }
-    }, [business, branch, isAllBranches, activeBranchId, origin, branches.length, user]);
+    }, [business, branch, isAllBranches, activeBranchId, origin, branches.length, user, businessLoading]);
 
     const handleSave = async () => {
         const hasChanged = (current: any, original: any) => {
@@ -849,10 +812,10 @@ export default function BusinessProfilePage() {
                                                 <span className="material-icons-round text-green-500 text-xl">verified</span>
                                             )}
                                         </div>
-                                        <p className="text-sm text-text-secondary font-medium">Verify your business to establish trust and unlock all features.</p>
+                                        <p className="text-sm text-text-secondary font-normal">Verify your business to establish trust and unlock all features.</p>
                                     </div>
                                     <div className="text-right shrink-0">
-                                        <div className="text-2xl font-display font-black text-primary">{Math.round(progress)}% <span className="text-text-secondary text-sm font-bold">Health Score</span></div>
+                                        <div className="text-2xl font-display font-black text-primary">{Math.round(progress)}% <span className="text-text-secondary text-sm font-normal">Health Score</span></div>
                                         <div className="text-[10px] font-black uppercase tracking-widest text-text-secondary mt-1">{completedCount} of {totalCount} tasks completed</div>
                                     </div>
                                 </div>
@@ -899,7 +862,7 @@ export default function BusinessProfilePage() {
                                         </div>
                                         <div className="text-left">
                                             <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Business Identity (CAC)</h3>
-                                            <p className="text-xs text-text-secondary font-medium">Official Corporate Affairs Commission details</p>
+                                            <p className="text-xs text-text-secondary font-normal">Official Corporate Affairs Commission details</p>
                                         </div>
                                     </div>
                                     <div className={`size-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center transition-transform duration-300 ${isDocsCollapsed ? 'rotate-180' : ''}`}>
@@ -916,7 +879,7 @@ export default function BusinessProfilePage() {
                                                     <select
                                                         value={cacType}
                                                         onChange={(e) => setCacType(e.target.value)}
-                                                        className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
+                                                        className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-normal focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
                                                         style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%239ca3af\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1.25rem center', backgroundSize: '1.25rem' }}
                                                     >
                                                         <option value="RC">Limited Liability Company (RC)</option>
@@ -932,7 +895,7 @@ export default function BusinessProfilePage() {
                                                         value={registrationNumber}
                                                         onChange={(e) => setRegistrationNumber(e.target.value)}
                                                         placeholder={`Enter your ${cacType} number`}
-                                                        className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                        className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-normal focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                                     />
                                                 </div>
                                             </div>
@@ -946,7 +909,7 @@ export default function BusinessProfilePage() {
                                                                 <div className="size-10 rounded-full bg-white flex items-center justify-center mb-2 shadow-sm text-gray-400 group-hover:text-primary transition-colors">
                                                                     <span className="material-icons-round">cloud_upload</span>
                                                                 </div>
-                                                                <p className="text-xs font-bold text-text-main">Click to upload doc</p>
+                                                                <p className="text-xs font-normal text-text-main">Click to upload doc</p>
                                                                 <p className="text-[10px] text-text-secondary mt-1 uppercase tracking-tighter">MAX. 10MB</p>
                                                             </div>
                                                             <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => {
@@ -965,8 +928,8 @@ export default function BusinessProfilePage() {
                                                                     <span className="material-icons-round">description</span>
                                                                 </div>
                                                                 <div className="flex-1 min-w-0">
-                                                                    <p className="text-sm font-black text-text-main truncate">CAC Certificate</p>
-                                                                    <p className="text-[10px] text-green-600 font-bold uppercase tracking-widest">Attached</p>
+                                                                    <p className="text-sm font-normal text-text-main truncate">CAC Certificate</p>
+                                                                    <p className="text-[10px] text-green-600 font-normal uppercase tracking-widest">Attached</p>
                                                                 </div>
                                                             </div>
                                                             <button 
@@ -993,10 +956,10 @@ export default function BusinessProfilePage() {
                                         </div>
                                         <div className="text-left">
                                             <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Means of Identity</h3>
-                                            <p className="text-xs text-text-secondary font-medium">Valid government-issued ID for verification</p>
+                                            <p className="text-xs text-text-secondary font-normal">Valid government-issued ID for verification</p>
                                         </div>
                                     </div>
-                                    <span className="px-3 py-1 bg-amber-100/50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-lg border border-amber-200/50">KYC Requirement</span>
+                                    <span className="px-3 py-1 bg-amber-100/50 text-amber-600 text-[10px] font-normal uppercase tracking-widest rounded-lg border border-amber-200/50">KYC Requirement</span>
                                 </div>
 
                                 <div className="p-8 space-y-8">
@@ -1004,7 +967,7 @@ export default function BusinessProfilePage() {
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Identity Type</label>
                                             <select
-                                                className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
+                                                className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-normal focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
                                                 style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%239ca3af\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1.25rem center', backgroundSize: '1.25rem' }}
                                             >
                                                 <option>National ID (NIN)</option>
@@ -1023,7 +986,7 @@ export default function BusinessProfilePage() {
                                                             <div className="size-10 rounded-full bg-white flex items-center justify-center mb-2 shadow-sm text-gray-400 group-hover:text-primary transition-colors">
                                                                 <span className="material-icons-round">face</span>
                                                             </div>
-                                                            <p className="text-xs font-bold text-text-main">Click to upload ID</p>
+                                                            <p className="text-xs font-normal text-text-main">Click to upload ID</p>
                                                         </div>
                                                         <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => {
                                                             const file = e.target.files?.[0];
@@ -1041,8 +1004,8 @@ export default function BusinessProfilePage() {
                                                                 <span className="material-icons-round">assignment_ind</span>
                                                             </div>
                                                             <div className="flex-1 min-w-0">
-                                                                <p className="text-sm font-black text-text-main truncate">Owner ID Document</p>
-                                                                <p className="text-[10px] text-green-600 font-bold uppercase tracking-widest">Attached</p>
+                                                                <p className="text-sm font-normal text-text-main truncate">Owner ID Document</p>
+                                                                <p className="text-[10px] text-green-600 font-normal uppercase tracking-widest">Attached</p>
                                                             </div>
                                                         </div>
                                                         <button 
