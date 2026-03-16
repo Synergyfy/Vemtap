@@ -6,6 +6,7 @@ import { QrCode, Keyboard, ScanLine, Search, CheckCircle2, Ticket, Gift, ArrowRi
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import { useVerifyRedemption, useGenerateRedemptionCode, useRewards } from '@/services/loyalty/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { Reward } from '@/types/loyalty';
 
 type RedeemMethod = 'scan' | 'verify' | 'generate' | null;
@@ -20,6 +21,7 @@ interface RewardResult {
 }
 
 export default function RedeemRewardPage() {
+    const { activeBranchId } = useActiveBranch();
     const [method, setMethod] = useState<RedeemMethod>(null);
     const [code, setCode] = useState('');
     const [isScanning, setIsScanning] = useState(false);
@@ -28,9 +30,9 @@ export default function RedeemRewardPage() {
     const [generatedCode, setGeneratedCode] = useState<string | null>(null);
     const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
     
-    const verifyMutation = useVerifyRedemption();
+    const verifyMutation = useVerifyRedemption(activeBranchId || undefined);
     const generateMutation = useGenerateRedemptionCode();
-    const { data: rewards = [] } = useRewards();
+    const { data: rewards = [] } = useRewards(activeBranchId || undefined);
 
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -79,7 +81,10 @@ export default function RedeemRewardPage() {
 
     const handleGenerateCode = async (reward: Reward) => {
         try {
-            const result = await generateMutation.mutateAsync({ rewardId: reward.id });
+            const result = await generateMutation.mutateAsync({ 
+                rewardId: reward.id,
+                branchId: activeBranchId || undefined
+            });
             if (result.redemptionCode) {
                 setGeneratedCode(result.redemptionCode);
                 setSelectedReward(reward);

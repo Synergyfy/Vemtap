@@ -2,8 +2,7 @@
 
 import React from 'react';
 import { Wallet, Loader2, Plus } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { fetchMyCredits } from '@/lib/api/credit-plans';
+import { useMyCredits } from '@/services/messaging/hooks';
 
 interface ChannelBalanceProps {
     channel: 'whatsapp' | 'sms' | 'email';
@@ -12,11 +11,7 @@ interface ChannelBalanceProps {
 }
 
 export default function ChannelBalance({ channel, onTopUp, compact = false }: ChannelBalanceProps) {
-    const { data: credits, isLoading } = useQuery({
-        queryKey: ['my-credits'],
-        queryFn: fetchMyCredits,
-        refetchInterval: 60000,
-    });
+    const { data: credits, isLoading } = useMyCredits();
 
     const balanceMap = {
         whatsapp: credits?.whatsappBalance ?? 0,
