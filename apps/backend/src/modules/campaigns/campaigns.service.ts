@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { Campaign } from './entities/campaign.entity';
@@ -11,6 +11,7 @@ import { PointTransaction } from './entities/point-transaction.entity';
 import { LoyaltyRule } from './entities/loyalty-rule.entity';
 import { Reward } from './entities/reward.entity';
 import { Redemption } from './entities/redemption.entity';
+import { LoyaltyTemplate } from './entities/loyalty-template.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
@@ -23,6 +24,7 @@ import {
   PointEarnRequestDto,
   RewardRedeemRequestDto,
   UpdateLoyaltyRuleDto,
+  GenerateRedemptionCodeDto,
 } from './dto/loyalty.dto';
 
 @Injectable()
@@ -42,6 +44,8 @@ export class CampaignsService {
     private rewardRepository: Repository<Reward>,
     @InjectRepository(Redemption)
     private redemptionRepository: Repository<Redemption>,
+    @InjectRepository(LoyaltyTemplate)
+    private loyaltyTemplateRepository: Repository<LoyaltyTemplate>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
     @InjectRepository(Contact)
@@ -499,12 +503,14 @@ export class CampaignsService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + reward.validityDays);
 
+    const redemptionCode = Math.floor(100000000 + Math.random() * 900000000).toString(); // 9-digit code
+
     const redemption = this.redemptionRepository.create({
       loyaltyProfile: profile,
       reward: reward,
       branchId,
       businessId: profile.businessId,
-      redemptionCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
+      redemptionCode,
       pointsSpent: pointCost,
       status: 'pending',
       expiresAt,
@@ -528,28 +534,85 @@ export class CampaignsService {
     return { success: true, redemption };
   }
 
-  async verifyRedemption(branchId: string, code: string): Promise<any> {
+  async generateRedemptionCode(
+    branchId: string,
+    dto: GenerateRedemptionCodeDto,
+    generatedByUserId: string,
+  ): Promise<any> {
+    const reward = await this.rewardRepository.findOne({
+      where: { id: dto.rewardId, branchId },
+    });
+    if (!reward) throw new NotFoundException('Reward not found for this branch');
+
+    const redemptionCode = Math.floor(100000000 + Math.random() * 900000000).toString();
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + (reward.validityDays || 30));
+
+    const redemption = this.redemptionRepository.create({
+      rewardId: reward.id,
+      branchId,
+      businessId: reward.businessId,
+      redemptionCode,
+      pointsSpent: reward.pointCost,
+      status: 'pending',
+      expiresAt,
+      generatedByUserId,
+      loyaltyProfileId: dto.loyaltyProfileId, // Optional, can be assigned later during claim
+    } as any) as unknown as Redemption;
+
+    return this.redemptionRepository.save(redemption);
+  }
+
+  async claimRedemptionCode(
+    userId: string,
+    branchId: string,
+    code: string,
+  ): Promise<any> {
     const redemption = await this.redemptionRepository.findOne({
       where: { redemptionCode: code, status: 'pending' },
       relations: ['reward'],
     });
 
-    if (!redemption)
-      return { success: false, error: 'Invalid or already used code' };
-    if (redemption.reward.branchId !== branchId)
-      return { success: false, error: 'Reward not found for this branch' };
-
+    if (!redemption) throw new NotFoundException('Invalid or already used code');
+    if (redemption.branchId !== branchId) throw new BadRequestException('This code is not valid for this branch');
+    
     if (new Date(redemption.expiresAt) < new Date()) {
       redemption.status = 'expired';
       await this.redemptionRepository.save(redemption);
-      return { success: false, error: 'Reward has expired' };
+      throw new BadRequestException('This code has expired');
     }
 
-    redemption.status = 'verified';
-    redemption.verifiedAt = new Date();
-    await this.redemptionRepository.save(redemption);
+    const profile = await this.getLoyaltyProfile(userId, branchId);
+    if (profile.currentPointsBalance < redemption.pointsSpent) {
+      throw new BadRequestException('Insufficient points to claim this reward');
+    }
 
-    return { success: true, redemption };
+    return await (this.redemptionRepository.manager as any).transaction(async (manager: any) => {
+      profile.currentPointsBalance -= redemption.pointsSpent;
+      profile.points = profile.currentPointsBalance;
+      profile.pointsRedeemed += redemption.pointsSpent;
+      await manager.save(profile);
+
+      redemption.status = 'verified';
+      redemption.verifiedAt = new Date();
+      redemption.loyaltyProfileId = profile.id;
+      await manager.save(redemption);
+
+      // Record transaction
+      const transaction = this.transactionRepository.create({
+        loyaltyProfile: profile,
+        businessId: profile.businessId,
+        transactionType: 'redeem',
+        pointsAmount: -redemption.pointsSpent,
+        points: -redemption.pointsSpent,
+        reason: `Claimed Reward: ${redemption.reward.name}`,
+        referenceId: redemption.id,
+      } as any) as unknown as PointTransaction;
+      await manager.save(transaction);
+
+      return { success: true, redemption };
+    });
   }
 
   async getTransactions(profileId: string): Promise<PointTransaction[]> {
@@ -557,5 +620,149 @@ export class CampaignsService {
       where: { loyaltyProfileId: profileId },
       order: { createdAt: 'DESC' },
     });
+  }
+
+  // Loyalty Templates
+  async getLoyaltyTemplates(): Promise<LoyaltyTemplate[]> {
+    const templates = await this.loyaltyTemplateRepository.find({
+      order: { createdAt: 'ASC' },
+    });
+
+    if (templates.length === 0) {
+      return this.seedLoyaltyTemplates();
+    }
+    return templates;
+  }
+
+  async createLoyaltyTemplate(data: any): Promise<LoyaltyTemplate> {
+    const template = this.loyaltyTemplateRepository.create(data);
+    return this.loyaltyTemplateRepository.save(template);
+  }
+
+  async updateLoyaltyTemplate(id: string, updates: any): Promise<LoyaltyTemplate> {
+    const template = await this.loyaltyTemplateRepository.findOne({ where: { id } });
+    if (!template) throw new NotFoundException('Template not found');
+    Object.assign(template, updates);
+    return this.loyaltyTemplateRepository.save(template);
+  }
+
+  async deleteLoyaltyTemplate(id: string): Promise<void> {
+    const result = await this.loyaltyTemplateRepository.delete(id);
+    if (result.affected === 0) throw new NotFoundException('Template not found');
+  }
+
+  async applyLoyaltyTemplate(branchId: string, templateId: string): Promise<any> {
+    const template = await this.loyaltyTemplateRepository.findOne({
+      where: { id: templateId },
+    });
+    if (!template) throw new NotFoundException('Template not found');
+
+    const branch = await this.branchesService.findById(branchId);
+
+    return await (this.loyaltyTemplateRepository.manager as any).transaction(async (manager: any) => {
+      // 1. Update Rules
+      const existingRule = await manager.findOne(LoyaltyRule, { where: { branchId } });
+      if (existingRule) {
+        Object.assign(existingRule, template.rules);
+        await manager.save(existingRule);
+      } else {
+        const newRule = manager.create(LoyaltyRule, {
+          ...template.rules,
+          branchId,
+          businessId: branch.businessId,
+        });
+        await manager.save(newRule);
+      }
+
+      // 2. Create Rewards
+      const rewardEntities = template.rewards.map((rewardData: any) =>
+        manager.create(Reward, {
+          ...rewardData,
+          branchId,
+          businessId: branch.businessId,
+          totalRedeemed: 0,
+          isActive: true,
+        }),
+      );
+      await manager.save(Reward, rewardEntities);
+
+      return { success: true, message: `Applied template: ${template.name}` };
+    });
+  }
+
+  private async seedLoyaltyTemplates(): Promise<LoyaltyTemplate[]> {
+    const seeds = [
+      {
+        name: 'Cafe Welcome Boost',
+        description: 'Great for cafés and casual dining. Small rewards + fast visits.',
+        rules: {
+          ruleType: 'visit',
+          visitPoints: 5,
+          visitCooldownHours: 24,
+          firstVisitBonus: 20,
+          birthdayBonus: 30,
+          referralBonus: 10,
+          isActive: true,
+        },
+        rewards: [
+          {
+            name: 'Free Pastry',
+            description: 'Enjoy a free pastry with any drink.',
+            rewardType: 'free_item',
+            pointCost: 60,
+            value: 0,
+            validityDays: 30,
+            usageLimitPerUser: 1,
+          },
+          {
+            name: '10% Off Next Visit',
+            description: 'Discount applied on the next purchase.',
+            rewardType: 'discount',
+            pointCost: 120,
+            value: 10,
+            validityDays: 30,
+            usageLimitPerUser: 1,
+          },
+        ],
+      },
+      {
+        name: 'Retail VIP Tier',
+        description: 'Higher point cost rewards and spending-based earning.',
+        rules: {
+          ruleType: 'spending',
+          spendingBaseAmount: 1000,
+          spendingBasePoints: 15,
+          visitCooldownHours: 24,
+          firstVisitBonus: 25,
+          birthdayBonus: 50,
+          referralBonus: 20,
+          isActive: true,
+        },
+        rewards: [
+          {
+            name: '₦1,000 Voucher',
+            description: 'Redeemable store credit.',
+            rewardType: 'cashback',
+            pointCost: 300,
+            value: 1000,
+            validityDays: 30,
+            usageLimitPerUser: 1,
+          },
+          {
+            name: 'Premium Gift',
+            description: 'Exclusive gift for loyal customers.',
+            rewardType: 'gift',
+            pointCost: 500,
+            value: 0,
+            validityDays: 45,
+            usageLimitPerUser: 1,
+            totalAvailable: 50,
+          },
+        ],
+      },
+    ];
+
+    const templates = this.loyaltyTemplateRepository.create(seeds as any);
+    return this.loyaltyTemplateRepository.save(templates);
   }
 }

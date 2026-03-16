@@ -12,6 +12,10 @@ export class PointTransaction extends AbstractBaseEntity {
   @Column({ type: 'uuid', nullable: true })
   businessId: string;
 
+  @ApiProperty({ description: 'Branch ID' })
+  @Column({ nullable: true })
+  branchId: string;
+
   @ApiProperty({
     description: 'earn, redeem, bonus, adjustment',
     example: 'earn',

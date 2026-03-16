@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
 import { Business } from '../businesses/entities/business.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { Contact } from '../contacts/entities/contact.entity';
 
 import { MessageTemplate } from './entities/message-template.entity';
 import { MessageCampaign } from './entities/message-campaign.entity';
@@ -18,6 +19,7 @@ import { FlowTriggerConfig } from './entities/flow-trigger-config.entity';
 import { FlowLog } from './entities/flow-log.entity';
 import { AutomationRule } from './entities/automation-rule.entity';
 import { AutomationLog } from './entities/automation-log.entity';
+import { ChatCategory } from './entities/chat-category.entity';
 import { CreditPlan } from './entities/credit-plan.entity';
 import { BusinessCredit } from './entities/business-credit.entity';
 import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
@@ -41,8 +43,11 @@ import { FlowEngineService } from './services/flow-engine.service';
 import { AdminFlowEngineService } from './services/admin-flow-engine.service';
 import { AutomationService } from './services/automation.service';
 import { MessagingFlowService } from './services/messaging-flow.service';
+import { ChatSettingsService } from './services/chat-settings.service';
 
 import { MessagingController } from './controllers/messaging.controller';
+import { CustomerMessagingController } from './controllers/customer-messaging.controller';
+import { ChatSettingsController } from './controllers/chat-settings.controller';
 import { FlowController } from './controllers/flow.controller';
 import { AdminFlowEngineController } from './controllers/admin-flow-engine.controller';
 import { TermiiWebhookController } from './controllers/termii.controller';
@@ -51,14 +56,17 @@ import { CreditPlanController } from './controllers/credit-plan.controller';
 
 import { CreditPlanService } from './services/credit-plan.service';
 import { TermiiProvider } from './providers/termii.provider';
+import { TwilioProvider } from './providers/twilio.provider';
 import { AfricaTalkingProvider } from './providers/africastalking.provider';
 import { EmailProvider } from './providers/email.provider';
 import { BestBulkSmsProvider } from './providers/bestbulksms.provider';
+import { InHouseProvider } from './providers/inhouse.provider';
 import { ProviderRouterService } from './services/provider-router.service';
 import { BatchSendProcessor } from './processors/batch-send.processor';
 import { IndividualSendProcessor } from './processors/individual-send.processor';
 import { FlowDelayProcessor } from './processors/flow-delay.processor';
 import { AutomationProcessor } from './processors/automation.processor';
+import { TwilioWebhookController } from './controllers/twilio.controller';
 
 @Module({
   imports: [
@@ -75,8 +83,10 @@ import { AutomationProcessor } from './processors/automation.processor';
       FlowLog,
       Business,
       Branch,
+      Contact,
       AutomationRule,
       AutomationLog,
+      ChatCategory,
       CreditPlan,
       BusinessCredit,
       LoyaltyProfile,
@@ -144,9 +154,11 @@ import { AutomationProcessor } from './processors/automation.processor';
     AdminFlowEngineService,
     AutomationService,
     TermiiProvider,
+    TwilioProvider,
     AfricaTalkingProvider,
     BestBulkSmsProvider,
     EmailProvider,
+    InHouseProvider,
     ProviderRouterService,
     BatchSendProcessor,
     IndividualSendProcessor,
@@ -154,12 +166,16 @@ import { AutomationProcessor } from './processors/automation.processor';
     AutomationProcessor,
     CreditPlanService,
     MessagingFlowService,
+    ChatSettingsService,
   ],
   controllers: [
     MessagingController,
+    CustomerMessagingController,
+    ChatSettingsController,
     FlowController,
     AdminFlowEngineController,
     TermiiWebhookController,
+    TwilioWebhookController,
     AutomationsController,
     CreditPlanController,
   ],
@@ -176,9 +192,11 @@ import { AutomationProcessor } from './processors/automation.processor';
     AdminFlowEngineService,
     AutomationService,
     TermiiProvider,
+    TwilioProvider,
     AfricaTalkingProvider,
     BestBulkSmsProvider,
     EmailProvider,
+    InHouseProvider,
     ProviderRouterService,
     MessagingFlowService,
   ],
