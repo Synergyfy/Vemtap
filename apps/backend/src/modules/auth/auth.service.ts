@@ -11,6 +11,7 @@ import { Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { BusinessesService } from '../businesses/businesses.service';
 import { DevicesService } from '../devices/devices.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
@@ -28,6 +29,7 @@ export class AuthService {
     private usersService: UsersService,
     private businessesService: BusinessesService,
     private devicesService: DevicesService,
+    private subscriptionsService: SubscriptionsService,
     private mailService: MailService,
     private jwtService: JwtService,
     @InjectRepository(Otp)
@@ -254,7 +256,7 @@ export class AuthService {
       !user.branchId
     ) {
       // BusinessesService.create handles main branch creation and linking owner
-      await this.businessesService.create({
+      const business = await this.businessesService.create({
         name: registrationData.businessName,
         categoryId: registrationData.categoryId,
         subcategoryId: registrationData.subcategoryId,
@@ -263,6 +265,14 @@ export class AuthService {
         goal: registrationData.goal,
         ownerId: user.id,
       });
+
+      // Auto-Subscribe to Free Plan if available
+      try {
+        await this.subscriptionsService.subscribeToFreePlan(business.id);
+      } catch (error) {
+        console.error('Failed to auto-subscribe to free plan:', error);
+      }
+
       // Fetch fresh user with branchId
       const refreshed = await this.usersService.findOne(user.id);
       if (refreshed) user = refreshed;
@@ -383,11 +393,12 @@ export class AuthService {
       user.status = UserStatus.ACTIVE;
       await this.usersService.create(user);
 
-      // 5. Auto-Generate Device for Business
-      const branches = await this.businessesService.findById(business.id);
-      const mainBranch = branches.branches.find((b) => b.isMainBranch);
-      if (mainBranch) {
-        await this.devicesService.createAutoDevice(mainBranch.id);
+      // 5. Auto-Subscribe to Free Plan if available
+      try {
+        await this.subscriptionsService.subscribeToFreePlan(business.id);
+      } catch (error) {
+        // We don't want to fail the whole registration if auto-subscription fails
+        console.error('Failed to auto-subscribe to free plan:', error);
       }
     }
 
