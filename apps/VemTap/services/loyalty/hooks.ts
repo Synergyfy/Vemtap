@@ -45,7 +45,7 @@ export const useLoyaltyProfiles = (branchId?: string) => {
             } else if (allBranches) {
                 params.append('allBranches', 'true');
             }
-            return await api.get(`/campaigns/loyalty/profiles?${params.toString()}`);
+            return await api.get(`/loyalty/profiles?${params.toString()}`);
         }
     });
 };
@@ -62,7 +62,7 @@ export const useLoyaltyProfile = (userId: string, branchId?: string) => {
             } else if (allBranches) {
                 params.append('allBranches', 'true');
             }
-            return await api.get(`/campaigns/loyalty/profile/${userId}?${params.toString()}`);
+            return await api.get(`/loyalty/profile/${userId}?${params.toString()}`);
         },
         enabled: !!userId,
     });
@@ -80,7 +80,7 @@ export const useLoyaltyRules = (branchId?: string) => {
             } else if (allBranches) {
                 params.append('allBranches', 'true');
             }
-            return await api.get(`/campaigns/loyalty/rules?${params.toString()}`);
+            return await api.get(`/loyalty/rules?${params.toString()}`);
         }
     });
 };
@@ -93,7 +93,7 @@ export const useUpdateLoyaltyRules = (branchId?: string) => {
         mutationFn: async (updates) => {
             const params = new URLSearchParams();
             if (resolvedBranchId) params.append('branchId', resolvedBranchId);
-            return await api.patch(`/campaigns/loyalty/rules?${params.toString()}`, updates);
+            return await api.patch(`/loyalty/rules?${params.toString()}`, updates);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'rules'] });
@@ -145,7 +145,7 @@ export const useBusinessLoyaltyStats = (branchId?: string) => {
             } else if (allBranches) {
                 params.append('allBranches', 'true');
             }
-            return await api.get(`/campaigns/loyalty/business-stats?${params.toString()}`);
+            return await api.get(`/loyalty/business-stats?${params.toString()}`);
         },
         enabled: !!businessId,
     });
@@ -187,7 +187,7 @@ export const useEarnPoints = () => {
     const queryClient = useQueryClient();
 
     return useMutation<PointEarnResponse, Error, PointEarnRequest>({
-        mutationFn: async (dto) => await api.post('/campaigns/loyalty/earn', dto),
+        mutationFn: async (dto) => await api.post('/loyalty/earn', dto),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty'] });
         },
@@ -198,7 +198,7 @@ export const useRedeemReward = () => {
     const queryClient = useQueryClient();
 
     return useMutation<RewardRedeemResponse, Error, RewardRedeemRequest>({
-        mutationFn: async (dto) => await api.post('/campaigns/loyalty/redeem', dto),
+        mutationFn: async (dto) => await api.post('/loyalty/redeem', dto),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty'] });
         },
@@ -213,7 +213,7 @@ export const useVerifyRedemption = (branchId?: string) => {
         mutationFn: async (code) => {
             const params = new URLSearchParams();
             if (resolvedBranchId) params.append('branchId', resolvedBranchId);
-            return await api.post(`/campaigns/loyalty/verify-redemption?${params.toString()}`, { code });
+            return await api.post(`/loyalty/verify-redemption?${params.toString()}`, { code });
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty'] });
@@ -224,7 +224,7 @@ export const useVerifyRedemption = (branchId?: string) => {
 export const useLoyaltyAnalytics = () => {
     return useQuery<CustomerAnalytics, Error>({
         queryKey: ['loyalty', 'analytics'],
-        queryFn: async () => await api.get('/campaigns/loyalty/analytics')
+        queryFn: async () => await api.get('/loyalty/analytics')
     });
 };
 
@@ -236,21 +236,21 @@ export const useLoyaltyHistory = (branchId?: string) => {
             const params = new URLSearchParams();
             if (resolvedBranchId) params.append('branchId', resolvedBranchId);
             else if (allBranches) params.append('allBranches', 'true');
-            return await api.get(`/campaigns/loyalty/history?${params.toString()}`);
+            return await api.get(`/loyalty/history?${params.toString()}`);
         }
     });
 };
 
 export const useGenerateRedemptionCode = () => {
     return useMutation<Redemption, Error, { rewardId: string; branchId?: string }>({
-        mutationFn: async (dto) => await api.post('/campaigns/loyalty/generate-code', dto)
+        mutationFn: async (dto) => await api.post('/loyalty/generate-code', dto)
     });
 };
 
 export const useClaimRedemptionCode = () => {
     const queryClient = useQueryClient();
     return useMutation<ClaimCodeResponse, Error, { code: string; branchId?: string }>({
-        mutationFn: async (dto) => await api.post('/campaigns/loyalty/claim-code', dto),
+        mutationFn: async (dto) => await api.post('/loyalty/claim-code', dto),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty'] });
         }
@@ -260,7 +260,7 @@ export const useClaimRedemptionCode = () => {
 export const usePointTransactions = (profileId: string) => {
     return useQuery<PointTransaction[], Error>({
         queryKey: ['loyalty', 'transactions', profileId],
-        queryFn: async () => await api.get(`/campaigns/loyalty/transactions/${profileId}`),
+        queryFn: async () => await api.get(`/loyalty/transactions/${profileId}`),
         enabled: !!profileId,
     });
 };

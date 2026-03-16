@@ -120,5 +120,5 @@ export const createDevice = async (data: any): Promise<Device> => {
 };
 
 export const fetchDeviceByCode = async (code: string): Promise<Device> => {
-    return await api.get(`/campaigns/loyalty/device-info/${code}`);
+    return await api.get(`/loyalty/device-info/${code}`);
 };

@@ -167,7 +167,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
     const [searchQuery, setSearchQuery] = useState('');
     const [viewingRewardForCustomers, setViewingRewardForCustomers] = useState<Reward | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [isUploading, setIsUploading] = useState(false);
+    const [localImageFile, setLocalImageFile] = useState<File | null>(null);
 
     const [formData, setFormData] = useState<Partial<Reward>>({
         name: '',
@@ -205,27 +205,9 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
         const file = e.target.files?.[0];
         if (file) {
             setLocalImageFile(file);
-            setIsUploading(true);
             const reader = new FileReader();
-            reader.onloadend = async () => {
-                try {
-                    const response = await fetch('/api/upload', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ file: reader.result }),
-                    });
-                    const data = await response.json();
-                    if (data.url) {
-                        setFormData(prev => ({ ...prev, imageUrl: data.url }));
-                        notify.success('Image uploaded successfully');
-                    } else {
-                        throw new Error(data.error || 'Upload failed');
-                    }
-                } catch (error: any) {
-                    notify.error(error.message || 'Image upload failed');
-                } finally {
-                    setIsUploading(false);
-                }
+            reader.onloadend = () => {
+                setFormData(prev => ({ ...prev, imageUrl: reader.result as string }));
             };
             reader.readAsDataURL(file);
         }
@@ -647,10 +629,16 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                         <div
                                             className={cn(
                                                 "relative h-48 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden",
-                                                formData.imageUrl ? "border-solid border-slate-200 bg-white" : "border-slate-200 bg-slate-50 hover:bg-white hover:border-primary/40"
+                                                formData.imageUrl ? "border-solid border-slate-200 bg-white" : "border-slate-200 bg-slate-50 hover:bg-white hover:border-primary/40",
+                                                isUploading && "opacity-50 cursor-wait"
                                             )}
                                         >
-                                            {formData.imageUrl ? (
+                                            {isUploading ? (
+                                                <div className="flex flex-col items-center gap-3">
+                                                    <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                                                    <p className="text-[10px] font-black uppercase text-primary">Uploading Image...</p>
+                                                </div>
+                                            ) : formData.imageUrl ? (
                                                 <div className="w-full h-full relative group">
                                                     <img src={formData.imageUrl} alt="Reward Preview" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -686,18 +674,6 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                         <p className="text-[10px] text-slate-400 font-medium mt-1">PNG, JPG or WebP (Max 2MB)</p>
                                                     </div>
                                                 </div>
-                                                "relative h-48 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden cursor-pointer",
-                                                formData.imageUrl ? "border-solid border-slate-200 bg-white" : "border-slate-200 bg-slate-50 hover:bg-white hover:border-primary/40",
-                                                isUploading && "opacity-50 cursor-wait"
-                                            )}
-                                            onClick={() => fileInputRef.current?.click()}
-                                        >
-                                            {isUploading ? (
-                                                <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                                            ) : formData.imageUrl ? (
-                                                <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <ImageIcon2 className="w-8 h-8 text-slate-300" />
                                             )}
                                         </div>
                                     </div>

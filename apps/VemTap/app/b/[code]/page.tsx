@@ -135,7 +135,7 @@ async function fetchPublicBusiness(code: string): Promise<PublicBusinessResponse
 async function fetchPublicRewards(businessId?: string): Promise<PublicReward[]> {
     if (!businessId) return [];
     try {
-        const response = await fetch(`${BASE_URL}/campaigns/loyalty/rewards?businessId=${encodeURIComponent(businessId)}`, {
+        const response = await fetch(`${BASE_URL}/loyalty/rewards?businessId=${encodeURIComponent(businessId)}`, {
             cache: 'no-store',
         });
         if (!response.ok) return [];

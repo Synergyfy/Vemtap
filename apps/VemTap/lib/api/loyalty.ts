@@ -76,6 +76,6 @@ export const loyaltyApi = {
     pointsByVenue: { venueName: string; points: number }[];
     topVenues: { venueName: string; points: number }[];
   }> => {
-    return api.get('/campaigns/loyalty/analytics');
+    return api.get('/loyalty/analytics');
   }
 };

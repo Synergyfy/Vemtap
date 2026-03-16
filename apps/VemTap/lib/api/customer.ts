@@ -14,15 +14,15 @@ export const customerApi = {
     updateMe: (data: { name?: string; phone?: string }) => api.patch('/users/me', data),
     deactivateMe: () => api.delete('/users/me'),
 
-    getLoyaltyAnalytics: () => api.get('/campaigns/loyalty/analytics'),
-    tapDevice: (code: string) => api.post(`/campaigns/loyalty/tap/${code}`, {}),
-    getDeviceInfo: (code: string) => api.get(`/campaigns/loyalty/device-info/${code}`),
-    getLoyaltyProfile: (businessId?: string) => api.get(withQuery('/campaigns/loyalty/profile', { businessId })),   
-    getLoyaltyHistory: (businessId?: string) => api.get(withQuery('/campaigns/loyalty/history', { businessId })),   
-    getMyHistory: () => api.get('/campaigns/loyalty/my-history'),
+    getLoyaltyAnalytics: () => api.get('/loyalty/analytics'),
+    tapDevice: (code: string) => api.post(`/loyalty/tap/${code}`, {}),
+    getDeviceInfo: (code: string) => api.get(`/loyalty/device-info/${code}`),
+    getLoyaltyProfile: (businessId?: string) => api.get(withQuery('/loyalty/profile', { businessId })),   
+    getLoyaltyHistory: (businessId?: string) => api.get(withQuery('/loyalty/history', { businessId })),   
+    getMyHistory: () => api.get('/loyalty/my-history'),
     getLoyaltyRewards: (businessId?: string) => api.get(withQuery('/campaigns/loyalty/rewards', { businessId })),
-    redeemReward: (data: { rewardId: string; businessId?: string }) => api.post('/campaigns/loyalty/redeem', data),
-    claimCode: (data: { code: string; branchId?: string }) => api.post('/campaigns/loyalty/claim-code', data),
+    redeemReward: (data: { rewardId: string; businessId?: string }) => api.post('/loyalty/redeem', data),
+    claimCode: (data: { code: string; branchId?: string }) => api.post('/loyalty/claim-code', data),
 
     getSupportTickets: () => api.get('/support/tickets'),
     createSupportTicket: (data: { subject: string; category: string; priority: string; description: string }) =>
