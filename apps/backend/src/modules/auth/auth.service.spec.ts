@@ -27,6 +27,7 @@ describe('AuthService', () => {
 
   const mockUsersService = {
     findByEmail: jest.fn(),
+    findByPhone: jest.fn(),
     findByIdentifier: jest.fn(),
     findOne: jest.fn(),
     create: jest
@@ -106,6 +107,7 @@ describe('AuthService', () => {
       };
 
       usersService.findByEmail.mockResolvedValue(null);
+      usersService.findByPhone.mockResolvedValue(null);
 
       const result = await service.requestOwnerOtp(dto);
 
@@ -137,6 +139,7 @@ describe('AuthService', () => {
         id: 'user-1',
         status: 'Pending',
       });
+      usersService.findByPhone.mockResolvedValue(null);
 
       const result = await service.requestOwnerOtp(dto);
 
@@ -155,6 +158,27 @@ describe('AuthService', () => {
 
       usersService.findByEmail.mockResolvedValue({
         id: 'user-1',
+        status: 'Active',
+      });
+      usersService.findByPhone.mockResolvedValue(null);
+
+      await expect(service.requestOwnerOtp(dto)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('should throw ConflictException if phone number already exists', async () => {
+      const dto: RequestOtpDto = {
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'new@example.com',
+        phone: 'existing_phone',
+        role: UserRole.OWNER,
+      };
+
+      usersService.findByEmail.mockResolvedValue(null);
+      usersService.findByPhone.mockResolvedValue({
+        id: 'user-2',
         status: 'Active',
       });
 

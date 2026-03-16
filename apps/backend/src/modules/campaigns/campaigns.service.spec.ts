@@ -8,6 +8,7 @@ import { PointTransaction } from './entities/point-transaction.entity';
 import { LoyaltyRule } from './entities/loyalty-rule.entity';
 import { Reward } from './entities/reward.entity';
 import { Redemption } from './entities/redemption.entity';
+import { LoyaltyTemplate } from './entities/loyalty-template.entity';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { BranchesService } from '../branches/branches.service';
@@ -50,6 +51,7 @@ describe('CampaignsService', () => {
         { provide: getRepositoryToken(LoyaltyRule), useValue: mockRepo },
         { provide: getRepositoryToken(Reward), useValue: mockRepo },
         { provide: getRepositoryToken(Redemption), useValue: mockRepo },
+        { provide: getRepositoryToken(LoyaltyTemplate), useValue: mockRepo },
         { provide: getRepositoryToken(User), useValue: mockRepo },
         { provide: getRepositoryToken(Contact), useValue: mockRepo },
         { provide: BranchesService, useValue: mockBranchesService },

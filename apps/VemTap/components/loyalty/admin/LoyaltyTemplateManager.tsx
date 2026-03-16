@@ -116,7 +116,7 @@ const TemplateListItem: React.FC<{
     onSelect: () => void;
     onDelete: () => void;
 }> = ({ template, isActive, onSelect, onDelete }) => {
-    const previewImage = template.rewards.find((r: any) => r.imageUrl)?.imageUrl;
+    const previewImage = template.rewards.find((r: any) => r.imageUrls?.length > 0)?.imageUrls?.[0];
     return (
         <button
             onClick={onSelect}
@@ -184,9 +184,9 @@ const TemplateListRow: React.FC<{
     >
         <button onClick={onSelect} className="col-span-5 text-left flex items-center gap-3">
             <div className="size-10 rounded-full overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
-                {template.rewards.find((r: any) => r.imageUrl)?.imageUrl ? (
+                {template.rewards.find((r: any) => r.imageUrls?.length > 0)?.imageUrls?.[0] ? (
                     <img
-                        src={template.rewards.find((r: any) => r.imageUrl)?.imageUrl as string}
+                        src={template.rewards.find((r: any) => r.imageUrls?.length > 0)?.imageUrls?.[0] as string}
                         alt={`${template.name} preview`}
                         className="w-full h-full object-cover"
                     />
