@@ -9,8 +9,10 @@ import { useRewards, useCreateReward, useUpdateReward, useLoyaltyTemplates, useA
 import { Reward, CreateRewardRequest, UpdateRewardRequest } from '@/services/loyalty/types';
 import Tooltip from '@/components/ui/Tooltip';
 import { notify } from '@/lib/notify';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 export default function RewardManagementPage() {
+    const { activeBranchId } = useActiveBranch();
     const { data: rewards, isLoading } = useRewards();
     const createMutation = useCreateReward();
     const updateMutation = useUpdateReward();
@@ -27,7 +29,8 @@ export default function RewardManagementPage() {
             validityDays: reward.validityDays || 30,
             usageLimitPerUser: reward.usageLimitPerUser || 1,
             totalAvailable: reward.totalAvailable || 0,
-            imageUrl: reward.imageUrl,
+            imageUrls: reward.imageUrls,
+            branchId: activeBranchId || undefined,
         };
         await createMutation.mutateAsync(dto);
     };
@@ -42,6 +45,8 @@ export default function RewardManagementPage() {
             usageLimitPerUser: updates.usageLimitPerUser,
             totalAvailable: updates.totalAvailable,
             isActive: updates.isActive,
+            imageUrls: updates.imageUrls,
+            branchId: activeBranchId || undefined,
         };
         await updateMutation.mutateAsync({ id, updates: dto });
     };

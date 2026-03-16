@@ -35,8 +35,8 @@ export const RewardsStore: React.FC<RewardsStoreProps> = ({ rewards, userPoints,
                             "h-48 w-full flex items-center justify-center relative overflow-hidden",
                             isLocked ? "bg-slate-100" : "bg-primary/5"
                         )}>
-                            {reward.imageUrl ? (
-                                <img src={reward.imageUrl} alt={reward.name} className="w-full h-full object-cover" />
+                            {reward.imageUrls && reward.imageUrls.length > 0 ? (
+                                <img src={reward.imageUrls[0]} alt={reward.name} className="w-full h-full object-cover" />
                             ) : (
                                 <Gift className={cn("w-16 h-16 transition-transform group-hover:scale-110", isLocked ? "text-slate-300" : "text-primary/20")} />
                             )}
