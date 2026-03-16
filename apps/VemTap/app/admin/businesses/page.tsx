@@ -4,13 +4,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
 import { adminBusinessesApi } from '@/lib/api/admin';
-import { Search, Plus, RefreshCw, Loader2, Trash2, CheckCircle, XCircle, Ban, RotateCcw, Copy, Download } from 'lucide-react';
+import { Search, Plus, RefreshCw, Loader2, Trash2, CheckCircle, XCircle, Ban, RotateCcw, Copy, Download, Eye } from 'lucide-react';
 const PAGE_SIZE = 10;
 
 interface Business {
     id: string;
     name: string;
-    email: string; // This might be the user email
+    email: string;
     officialEmail?: string;
     phone?: string;
     whatsappNumber?: string;
@@ -18,9 +18,26 @@ interface Business {
     status: string;
     planId?: string;
     createdAt: string;
-    owner?: { firstName: string; lastName: string; email: string };
+    owner?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        phone?: string;
+    };
     branches?: any[];
     devices?: any[];
+    category?: string;
+    subcategory?: string;
+    monthlyVisitors?: string;
+    goal?: string;
+    totalBranches?: number;
+    // New registration fields
+    isRegistered?: boolean;
+    registrationNumber?: string;
+    state?: string;
+    city?: string;
+    businessWebsite?: string;
 }
 
 const normalizeBusinessStatus = (status?: string) => (status || '').toLowerCase();
@@ -52,6 +69,27 @@ const extractBusinesses = (payload: any): { items: Business[]; total?: number; s
     return { items: [], total, stats };
 };
 
+const DetailItem = ({ label, value, icon, link }: { label: string, value?: string | number | null, icon: string, link?: boolean }) => {
+    if (!value && value !== 0) value = 'Not provided';
+    return (
+        <div className="flex gap-4">
+            <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 shrink-0 border border-gray-100">
+                <span className="material-icons-round text-lg">{icon}</span>
+            </div>
+            <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-0.5">{label}</p>
+                {link && value !== 'Not provided' ? (
+                    <a href={String(value).startsWith('http') ? String(value) : `https://${value}`} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-primary hover:underline break-all truncate block">
+                        {value}
+                    </a>
+                ) : (
+                    <p className="text-sm font-bold text-text-main break-all">{value}</p>
+                )}
+            </div>
+        </div>
+    );
+};
+
 export default function AdminBusinessesPage() {
     const router = useRouter();
     const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -70,6 +108,9 @@ export default function AdminBusinessesPage() {
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [confirmAction, setConfirmAction] = useState<'approve' | 'reject' | 'suspend' | 'reactivate' | 'delete' | null>(null);
     const [confirmReason, setConfirmReason] = useState('');
+
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [detailBusiness, setDetailBusiness] = useState<Business | null>(null);
 
     useEffect(() => {
         setCurrentPage(1);
@@ -309,7 +350,7 @@ export default function AdminBusinessesPage() {
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Owner</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Contact Info</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Location</th>
-                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Branches</th>
+                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Business Locations</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Status</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Joined</th>
                                 <th className="text-right py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Actions</th>
@@ -381,6 +422,17 @@ export default function AdminBusinessesPage() {
                                             </td>
                                             <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex items-center justify-end gap-1">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setDetailBusiness(biz);
+                                                            setIsDetailModalOpen(true);
+                                                        }}
+                                                        className="p-2 text-primary hover:bg-primary/5 rounded-lg transition-all"
+                                                        title="View Onboarding Details"
+                                                    >
+                                                        <Eye size={16} />
+                                                    </button>
                                                     {normalizeBusinessStatus(biz.status) === 'pending' && <>
                                                         <button onClick={() => handleAction('approve', biz)} className="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-all" title="Approve"><CheckCircle size={16} /></button>
                                                         <button onClick={() => handleAction('reject', biz)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Reject"><XCircle size={16} /></button>
@@ -530,6 +582,123 @@ export default function AdminBusinessesPage() {
                             >
                                 {isSubmitting && <Loader2 size={16} className="animate-spin" />}
                                 Confirm {confirmAction}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Business Detail Modal */}
+            {isDetailModalOpen && detailBusiness && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsDetailModalOpen(false)} />
+                    <div className="relative w-full max-w-3xl bg-white rounded-3xl p-0 shadow-2xl animate-in fade-in zoom-in duration-300 overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                                    <span className="material-icons-round text-2xl">storefront</span>
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-display font-bold text-text-main">{detailBusiness.name}</h2>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${getStatusBadge(detailBusiness.status)}`}>
+                                            {detailBusiness.status}
+                                        </span>
+                                        <span className="text-[11px] text-text-secondary font-medium">• Joined {new Date(detailBusiness.createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsDetailModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                                <span className="material-icons-round text-gray-400">close</span>
+                            </button>
+                        </div>
+
+                        <div className="p-8 overflow-y-auto space-y-8 flex-1">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-6">
+                                    <div>
+                                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-4">Onboarding Details</h3>
+                                        <div className="space-y-4">
+                                            <DetailItem label="Business Category" value={detailBusiness.category} icon="category" />
+                                            <DetailItem label="Subcategory" value={detailBusiness.subcategory || 'N/A'} icon="subdirectory_arrow_right" />
+                                            <DetailItem label="Monthly Visitors" value={detailBusiness.monthlyVisitors} icon="groups" />
+                                            <DetailItem label="Business Goals" value={detailBusiness.goal} icon="flag" />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-4">Registration Status</h3>
+                                        <div className="space-y-4">
+                                            <DetailItem
+                                                label="Registered Business"
+                                                value={detailBusiness.isRegistered !== undefined ? (detailBusiness.isRegistered ? 'Yes - Registered' : 'No - Not Registered') : 'N/A'}
+                                                icon="verified"
+                                            />
+                                            {detailBusiness.isRegistered && (
+                                                <DetailItem label="Registration Number" value={detailBusiness.registrationNumber} icon="badge" />
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div>
+                                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-4">Owner Information</h3>
+                                        <div className="space-y-4">
+                                            <DetailItem
+                                                label="Full Name"
+                                                value={detailBusiness.owner ? `${detailBusiness.owner.firstName} ${detailBusiness.owner.lastName}` : 'N/A'}
+                                                icon="person"
+                                            />
+                                            <DetailItem label="Account Email" value={detailBusiness.owner?.email} icon="alternate_email" />
+                                            <DetailItem label="Owner Phone" value={detailBusiness.owner?.phone} icon="phone" />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-4">Public Contact</h3>
+                                        <div className="space-y-4">
+                                            <DetailItem label="Official Email" value={detailBusiness.officialEmail} icon="mail" />
+                                            <DetailItem label="Business Phone" value={detailBusiness.phone} icon="call" />
+                                            <DetailItem label="WhatsApp Number" value={detailBusiness.branches?.[0]?.whatsappNumber || detailBusiness.whatsappNumber} icon="chat" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="border-t border-gray-100 pt-8 mt-4">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-4">Location & Digital Presence</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <DetailItem label="Full Address" value={detailBusiness.branches?.[0]?.address || detailBusiness.address} icon="location_on" />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <DetailItem label="State" value={detailBusiness.state} icon="map" />
+                                            <DetailItem label="City" value={detailBusiness.city} icon="apartment" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <DetailItem label="Website URL" value={detailBusiness.branches?.[0]?.website || detailBusiness.businessWebsite} icon="language" link />
+                                        <DetailItem label="Total Business Locations" value={detailBusiness.totalBranches !== undefined ? detailBusiness.totalBranches : detailBusiness.branches?.length} icon="account_tree" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 sticky bottom-0">
+                            <button
+                                onClick={() => setIsDetailModalOpen(false)}
+                                className="px-6 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-text-secondary hover:bg-gray-50 transition-all"
+                            >
+                                Close Details
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setIsDetailModalOpen(false);
+                                    router.push(`/admin/businesses/${detailBusiness.id}/analytics?name=${encodeURIComponent(detailBusiness.name)}`);
+                                }}
+                                className="px-6 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all flex items-center gap-2"
+                            >
+                                <span className="material-icons-round text-sm">analytics</span>
+                                View Full Analytics
                             </button>
                         </div>
                     </div>

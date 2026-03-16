@@ -11,7 +11,6 @@ import {
 } from '../../src/modules/users/entities/user.entity';
 import {
   Business,
-  BusinessType,
 } from '../../src/modules/businesses/entities/business.entity';
 import { Branch } from '../../src/modules/branches/entities/branch.entity';
 import { Contact } from '../../src/modules/contacts/entities/contact.entity';
@@ -24,6 +23,7 @@ import {
   BillingPeriod,
 } from '../../src/modules/subscriptions/entities/subscription.entity';
 import { TermiiProvider } from '../../src/modules/messaging/providers/termii.provider';
+import { BestBulkSmsProvider } from '../../src/modules/messaging/providers/bestbulksms.provider';
 import * as bcrypt from 'bcrypt';
 
 describe('Messaging (e2e)', () => {
@@ -45,6 +45,13 @@ describe('Messaging (e2e)', () => {
       builder.overrideProvider(TermiiProvider).useValue({
         sendMessage: jest.fn().mockResolvedValue({
           messageId: 'test-msg-id',
+          status: 'sent',
+        }),
+        estimateCost: jest.fn().mockReturnValue(0.05),
+      });
+      builder.overrideProvider(BestBulkSmsProvider).useValue({
+        sendMessage: jest.fn().mockResolvedValue({
+          messageId: 'test-sms-id',
           status: 'sent',
         }),
         estimateCost: jest.fn().mockReturnValue(0.05),
@@ -79,7 +86,6 @@ describe('Messaging (e2e)', () => {
     const business = (await businessRepo.save(
       businessRepo.create({
         name: 'Msg Test Biz',
-        type: BusinessType.RETAIL,
         ownerId: owner.id,
       } as any),
     )) as unknown as Business;

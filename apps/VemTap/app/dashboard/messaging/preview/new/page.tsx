@@ -12,6 +12,7 @@ export default function NewUserPreview() {
         customNewUserWelcomeMessage,
         customNewUserWelcomeTitle,
         customNewUserWelcomeTag,
+        customNewUserWelcomeButton,
         customPrivacyMessage
     } = useCustomerFlowStore();
 
@@ -26,6 +27,8 @@ export default function NewUserPreview() {
                         customWelcomeTitle={customNewUserWelcomeTitle}
                         customWelcomeTag={customNewUserWelcomeTag}
                         customPrivacyMessage={customPrivacyMessage}
+                        submitLabel={customNewUserWelcomeButton || 'Submit'}
+                        headerVariant="inline"
                         onBack={() => alert('Back clicked')}
                         onSubmit={(data) => alert('Form submitted: ' + JSON.stringify(data))}
                     />

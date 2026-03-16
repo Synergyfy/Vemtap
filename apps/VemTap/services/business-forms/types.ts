@@ -5,7 +5,8 @@ export type ApiFormFieldType =
   | 'select'
   | 'radio'
   | 'checkbox'
-  | 'date';
+  | 'date'
+  | 'date-no-year';
 
 export interface BusinessFormField {
   id?: string;
@@ -18,13 +19,17 @@ export interface BusinessFormField {
 
 export interface BusinessForm {
   id: string;
+  uniqueCode: string;
   title: string;
   description?: string;
   isActive: boolean;
   isPublished: boolean;
+  showAfterLeadCapture?: boolean;
+  responseCount?: number;
   businessId: string;
   branchId: string;
   businessName?: string;
+  branchName?: string;
   businessLogo?: string;
   templateId?: string;
   templateName?: string;
@@ -33,6 +38,8 @@ export interface BusinessForm {
   linkedTargets?: string[];
   redirectUrl?: string;
   redirectLabel?: string;
+  successTitle?: string;
+  successMessage?: string;
   instructions?: string;
   fields: BusinessFormField[];
   createdAt?: string;
@@ -44,10 +51,10 @@ export interface CreateBusinessFormRequest {
   description?: string;
   isActive: boolean;
   isPublished: boolean;
+  showAfterLeadCapture?: boolean;
   branchId: string;
   businessId?: string;
   businessName?: string;
-  businessLogo?: string;
   templateId?: string;
   templateName?: string;
   templateScope?: 'branch' | 'business' | 'global';
@@ -55,6 +62,8 @@ export interface CreateBusinessFormRequest {
   linkedTargets?: string[];
   redirectUrl?: string;
   redirectLabel?: string;
+  successTitle?: string;
+  successMessage?: string;
   instructions?: string;
   fields: Omit<BusinessFormField, 'id'>[];
 }
@@ -72,6 +81,8 @@ export interface FormTemplate {
   fields: Omit<BusinessFormField, 'id'>[];
   redirectUrl?: string;
   redirectLabel?: string;
+  successTitle?: string;
+  successMessage?: string;
   linkedTargets?: string[];
   usageModes?: Array<'link' | 'qr' | 'messaging'>;
   instructions?: string;
@@ -87,6 +98,8 @@ export interface CreateFormTemplateRequest {
   fields: Omit<BusinessFormField, 'id'>[];
   redirectUrl?: string;
   redirectLabel?: string;
+  successTitle?: string;
+  successMessage?: string;
   linkedTargets?: string[];
   usageModes?: Array<'link' | 'qr' | 'messaging'>;
   instructions?: string;
@@ -97,9 +110,6 @@ export interface BusinessFormResponseItem {
   formId?: string;
   createdAt?: string;
   updatedAt?: string;
-  customerName?: string;
-  customerEmail?: string;
-  customerPhone?: string;
   respondent?: {
     name?: string;
     email?: string;
@@ -108,3 +118,12 @@ export interface BusinessFormResponseItem {
   answers?: Record<string, unknown> | Array<{ fieldId?: string; question?: string; value?: unknown }>;
   [key: string]: unknown;
 }
+
+export type BusinessFormSubmitAnswer = {
+  fieldId: string;
+  value: unknown;
+};
+
+export type SubmitBusinessFormResponseRequest = {
+  answers: BusinessFormSubmitAnswer[];
+};

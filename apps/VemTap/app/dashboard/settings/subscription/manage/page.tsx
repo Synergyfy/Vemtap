@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useActiveSubscription, useCapabilities } from '@/services/subscriptions/hooks';
 import { fetchPricingPlans } from '@/lib/api/pricing';
+import { usePricingPlans } from '@/services/pricing/hooks';
 import { PricingPlan } from '@/types/pricing';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
@@ -25,10 +26,7 @@ export default function ManagePlanPage() {
         queryKey: ['my-business'],
         queryFn: async () => await api.get('/businesses/my-business')
     });
-    const { data: plans = [] } = useQuery({
-        queryKey: ['subscription-plans'],
-        queryFn: fetchPricingPlans
-    });
+    const { data: plans = [] } = usePricingPlans();
 
     const cancelMutation = useMutation({
         mutationFn: async () => {
@@ -164,13 +162,17 @@ export default function ManagePlanPage() {
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-bold text-slate-600">{item.label}</span>
                                     <span className="text-sm font-black text-slate-900">
-                                        {item.used.toLocaleString()} / {item.limit.toLocaleString()}
+                                        {item.used.toLocaleString()} / {(item.limit === 'unlimited' as any || item.limit === -1) ? 'Unlimited' : (item.limit as number).toLocaleString()}
                                     </span>
                                 </div>
                                 <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
                                     <div
                                         className="h-full bg-primary rounded-full transition-all"
-                                        style={{ width: `${item.limit ? Math.min(100, (item.used / item.limit) * 100) : 0}%` }}
+                                        style={{ 
+                                            width: (item.limit === 'unlimited' as any || item.limit === -1) 
+                                                ? '100%' 
+                                                : `${item.limit ? Math.min(100, (item.used / (item.limit as number)) * 100) : 0}%` 
+                                        }}
                                     />
                                 </div>
                             </div>

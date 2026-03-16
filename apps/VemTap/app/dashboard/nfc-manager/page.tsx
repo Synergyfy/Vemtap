@@ -15,11 +15,14 @@ import { MarketplaceOrder } from '@/types/marketplace';
 import { useBranches } from '@/services/branches/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { Building2 } from 'lucide-react';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import UsageIndicator from '@/components/dashboard/UsageIndicator';
 
 export default function NFCManagerPage() {
     const queryClient = useQueryClient();
     const { user } = useAuthStore();
-    const { activeBranchId: urlBranchId } = useActiveBranch();
+    const { capabilities } = useSubscriptionStore();
+    const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
     const [selectedLink, setSelectedLink] = useState<any | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editData, setEditData] = useState({ name: '', location: '', branchId: '', targetUrl: '', status: 'active' });
@@ -28,18 +31,18 @@ export default function NFCManagerPage() {
 
     // API Data
     const { data: devices = [], isLoading: devicesLoading } = useQuery({
-        queryKey: ['devices', user?.businessId, urlBranchId],
-        queryFn: () => fetchDevices(urlBranchId || undefined)
+        queryKey: ['devices', user?.businessId, urlBranchId, isAllBranches],
+        queryFn: () => fetchDevices(urlBranchId || undefined, isAllBranches)
     });
 
     const { data: stats, isLoading: statsLoading } = useQuery({
-        queryKey: ['device-stats', user?.businessId, urlBranchId],
-        queryFn: () => fetchDeviceStats(urlBranchId || undefined)
+        queryKey: ['device-stats', user?.businessId, urlBranchId, isAllBranches],
+        queryFn: () => fetchDeviceStats(urlBranchId || undefined, isAllBranches)
     });
 
     const { data: orders = [], isLoading: ordersLoading } = useQuery<MarketplaceOrder[]>({
         queryKey: ['my-orders'],
-        queryFn: fetchMyOrders
+        queryFn: () => fetchMyOrders()
     });
 
     // Filtering for ready-to-generate orders (Allocations)
@@ -55,7 +58,7 @@ export default function NFCManagerPage() {
 
     // Mutations
     const generateMutation = useMutation({
-        mutationFn: generateDevices,
+        mutationFn: (branchId?: string) => generateDevices(branchId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['devices'] });
             queryClient.invalidateQueries({ queryKey: ['my-orders'] });
@@ -76,7 +79,7 @@ export default function NFCManagerPage() {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: deleteDevice,
+        mutationFn: ({ id, branchId }: { id: string, branchId?: string }) => deleteDevice(id, branchId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['devices'] });
             queryClient.invalidateQueries({ queryKey: ['device-stats'] });
@@ -90,9 +93,22 @@ export default function NFCManagerPage() {
             toast.error('No pending allocations to generate.');
             return;
         }
-        generateMutation.mutate();
-    };
 
+        // Check subscription limits
+        if (capabilities && capabilities.capabilities.tags.limit !== 'unlimited' &&
+            capabilities.capabilities.tags.used >= (capabilities.capabilities.tags.limit as number)) {
+            toast.error('NFC Tag limit reached. Please upgrade your plan.');
+            return;
+        }
+
+        // For Owners and Admins, a branchId is required for write operations
+        if (!urlBranchId && (user?.role === 'owner' || user?.role === 'admin')) {
+            toast.error('Please select a specific branch before generating assets.');
+            return;
+        }
+
+        generateMutation.mutate(urlBranchId || undefined);
+    };
     const openEditModal = (device: any) => {
         const fallbackTapUrl = `${window.location.origin}/tap/${device.code}`;
         const currentTargetUrl = device.targetUrl || device.redirectUrl || device.url || fallbackTapUrl;
@@ -240,6 +256,14 @@ export default function NFCManagerPage() {
                         </div>
                     </div>
                 ) : null}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <UsageIndicator 
+                    label="NFC Assets (Tags)" 
+                    usage={capabilities?.capabilities.tags} 
+                    icon={<Smartphone size={20} />} 
+                />
             </div>
 
             {/* Fleet Analytics Stats */}
@@ -393,7 +417,7 @@ export default function NFCManagerPage() {
                                                         <button
                                                             onClick={() => {
                                                                 if (confirm('Decommission this asset?')) {
-                                                                    deleteMutation.mutate(device.id);
+                                                                    deleteMutation.mutate({ id: device.id, branchId: device.branchId });
                                                                 }
                                                             }}
                                                             disabled={deleteMutation.isPending}

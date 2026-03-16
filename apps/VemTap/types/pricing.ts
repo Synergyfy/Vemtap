@@ -10,13 +10,17 @@ export interface PricingPlan {
     isFree: boolean;
     trialDurationDays: number;
     freeDurationDays?: number;
+    messagingEnabled: boolean;
     smsCredits: number;
     whatsappCredits: number;
     emailCredits: number;
+    teamMembersEnabled: boolean;
     teamMembersLimit: number;
+    loyaltyEnabled: boolean;
     loyaltyLimit: number;
-    tagsLimit: number;
+    branchesEnabled: boolean;
     branchLimit: number;
+    analyticsEnabled: boolean;
     analyticsLevel: 'basic' | 'advanced' | 'none';
     isActive: boolean;
     description: string;

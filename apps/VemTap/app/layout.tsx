@@ -14,8 +14,10 @@ import "./globals.css";
 //     variable: "--font-display",
 // });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://vemtap.io";
+
 export const metadata: Metadata = {
-    metadataBase: new URL("https://vemtap.io"),
+    metadataBase: new URL(siteUrl),
     title: {
         default: "VemTap | NFC Visitor Engagement and Loyalty Platform",
         template: "%s | VemTap"
@@ -27,7 +29,7 @@ export const metadata: Metadata = {
     publisher: "VemTap",
     category: "technology",
     alternates: {
-        canonical: "/",
+        canonical: siteUrl,
     },
     robots: {
         index: true,
@@ -41,7 +43,7 @@ export const metadata: Metadata = {
     openGraph: {
         type: "website",
         locale: "en_US",
-        url: "/",
+        url: siteUrl,
         siteName: "VemTap",
         title: "VemTap | NFC Visitor Engagement and Loyalty Platform",
         description: "Capture, engage, and retain visitors with NFC-powered check-ins, analytics, and loyalty workflows.",
@@ -67,6 +69,7 @@ export const metadata: Metadata = {
 };
 
 import QueryProvider from "./providers/QueryProvider";
+import AuthProvider from "@/components/providers/AuthProvider";
 import CookieBanner from "@/components/shared/CookieBanner";
 import ToastProvider from "@/components/providers/ToastProvider";
 import SupportChatbot from "@/components/shared/SupportChatbot";
@@ -86,6 +89,7 @@ export default function RootLayout({
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />  
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
                 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+                <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
                 <script src="https://js.paystack.co/v1/inline.js" async></script>
                 <style dangerouslySetInnerHTML={{
                     __html: `
@@ -100,11 +104,13 @@ export default function RootLayout({
                 style={{ fontFamily: "var(--font-body)" }}
                 suppressHydrationWarning
             >                <QueryProvider>
-                    <ToastProvider />
-                    {children}
-                    <CookieBanner />
-                    <SupportChatbot />
-                    <InstallPWA />
+                    <AuthProvider>
+                        <ToastProvider />
+                        {children}
+                        <CookieBanner />
+                        <SupportChatbot />
+                        <InstallPWA />
+                    </AuthProvider>
                 </QueryProvider>
             </body>
         </html>

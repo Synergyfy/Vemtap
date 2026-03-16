@@ -18,16 +18,17 @@ export function useActiveBranch() {
     // 1. Get branchId from URL and sanitize it (ignore 'all')
     const rawUrlId = searchParams.get('branchId');
     const urlBranchId = (rawUrlId === 'all' || !rawUrlId) ? null : rawUrlId;
+    const effectiveBranchId = urlBranchId ?? storeBranchId;
 
     // 2. Sync URL to Store
     // This ensures that even if a user manually changes the URL, the store (and legacy components) stay in sync.
     useEffect(() => {
-        if (urlBranchId !== storeBranchId) {
+        if (urlBranchId && urlBranchId !== storeBranchId) {
             setStoreBranch(urlBranchId);
         }
     }, [urlBranchId, storeBranchId, setStoreBranch]);
 
-    // 3. Method to update branch (updates URL)
+    // 3. Method to update branch (updates URL; store sync happens via effect)
     const setActiveBranch = useCallback((id: string | null) => {
         const params = new URLSearchParams(searchParams.toString());
         
@@ -42,20 +43,22 @@ export function useActiveBranch() {
         
         const query = params.toString();
         const newUrl = `${pathname}${query ? `?${query}` : ''}`;
+        
+        // Use router.replace to update the URL without adding to history
         router.replace(newUrl);
-    }, [pathname, router, searchParams]);
+    }, [pathname, router, searchParams, setStoreBranch]);
 
     return {
         // Source of truth is the sanitized URL ID
-        activeBranchId: urlBranchId, 
+        activeBranchId: effectiveBranchId,
         setActiveBranch,
-        isAllBranches: !urlBranchId,
+        isAllBranches: !effectiveBranchId,
         
         /**
          * Helper to append current branchId to any href
          */
         getLinkWithBranch: (href: string) => {
-            if (!urlBranchId) return href;
+            if (!effectiveBranchId) return href;
             
             // Handle both absolute paths and relative paths
             const isAbsolute = href.startsWith('http');
@@ -63,12 +66,12 @@ export function useActiveBranch() {
             
             try {
                 const url = new URL(href, baseUrl);
-                url.searchParams.set('branchId', urlBranchId);
+                url.searchParams.set('branchId', effectiveBranchId);
                 return isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
             } catch (e) {
                 // Fallback for malformed URLs
                 const separator = href.includes('?') ? '&' : '?';
-                return `${href}${separator}branchId=${urlBranchId}`;
+                return `${href}${separator}branchId=${effectiveBranchId}`;
             }
         }
     };

@@ -11,6 +11,7 @@ describe('Forms Module (E2E)', () => {
   let branchId: string;
   let formId: string;
   let fieldId: string;
+  let formUniqueCode: string;
 
   beforeAll(async () => {
     app = await createTestApp();
@@ -37,6 +38,8 @@ describe('Forms Module (E2E)', () => {
         title: 'Feedback Form',
         description: 'Tell us what you think',
         branchId: branchId,
+        isActive: true,
+        isPublished: true,
         fields: [
           {
             type: 'text',
@@ -55,8 +58,10 @@ describe('Forms Module (E2E)', () => {
 
       formId = res.body.id;
       fieldId = res.body.fields[0].id;
+      formUniqueCode = res.body.uniqueCode;
       expect(formId).toBeDefined();
       expect(fieldId).toBeDefined();
+      expect(formUniqueCode).toBeDefined();
     });
 
     it('should get all forms for the branch', async () => {
@@ -91,7 +96,7 @@ describe('Forms Module (E2E)', () => {
       };
 
       await request(app.getHttpServer())
-        .post(`/api/v1/visitor-forms/${formId}/responses`)
+        .post(`/api/v1/visitor-forms/${formUniqueCode}/responses`)
         .set('Authorization', `Bearer ${visitorToken}`)
         .send(payload)
         .expect(201);

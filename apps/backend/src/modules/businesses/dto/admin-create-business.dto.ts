@@ -7,7 +7,7 @@ import {
   IsUUID,
   IsEmail,
 } from 'class-validator';
-import { BusinessType, BusinessStatus } from '../entities/business.entity';
+import { BusinessStatus } from '../entities/business.entity';
 
 export class AdminCreateBusinessDto {
   @ApiProperty({
@@ -58,15 +58,25 @@ export class AdminCreateBusinessDto {
   @IsOptional()
   ownerPhone?: string;
 
-  @ApiPropertyOptional({ enum: BusinessType, example: BusinessType.RETAIL })
-  @IsEnum(BusinessType)
-  @IsOptional()
-  type?: BusinessType;
-
   @ApiPropertyOptional({ enum: BusinessStatus, example: BusinessStatus.ACTIVE })
   @IsEnum(BusinessStatus)
   @IsOptional()
   status?: BusinessStatus;
+
+  @ApiPropertyOptional({ example: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @ApiPropertyOptional({ example: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  subcategoryId?: string;
+
+  @ApiPropertyOptional({ example: 'Art Studio' })
+  @IsOptional()
+  @IsString()
+  otherSubcategoryName?: string;
 
   @ApiPropertyOptional({ example: 'https://example.com/logo.png' })
   @IsString()
@@ -77,6 +87,16 @@ export class AdminCreateBusinessDto {
   @IsString()
   @IsOptional()
   address?: string;
+
+  @ApiPropertyOptional({ example: 'Lagos' })
+  @IsString()
+  @IsOptional()
+  state?: string;
+
+  @ApiPropertyOptional({ example: 'Ikeja' })
+  @IsString()
+  @IsOptional()
+  city?: string;
 
   @ApiPropertyOptional({ example: 'https://vemtap.com' })
   @IsString()
@@ -92,4 +112,18 @@ export class AdminCreateBusinessDto {
   @IsEmail()
   @IsOptional()
   officialEmail?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  isRegistered?: boolean;
+
+  @ApiPropertyOptional({ example: 'RC1234567' })
+  @IsOptional()
+  @IsString()
+  registrationNumber?: string;
+
+  @ApiPropertyOptional({ example: ['https://example.com/doc.pdf'] })
+  @IsOptional()
+  @IsString({ each: true })
+  documents?: string[];
 }

@@ -2,31 +2,45 @@
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { ArrowLeft, Mail, MessageCircle, Phone, Star, X } from 'lucide-react';
+import { useParams, useSearchParams } from 'next/navigation';
+import { ArrowLeft, Mail, MessageCircle, Star, X } from 'lucide-react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import {
     useBusinessForm,
     useBusinessFormResponses,
 } from '@/services/business-forms/hooks';
+import { useMyBusiness } from '@/services/businesses/hooks';
+import { useAuthStore } from '@/store/useAuthStore';
 import type { BusinessFormResponseItem } from '@/services/business-forms/types';
 
-const resolveContact = (response: BusinessFormResponseItem) => {
-    const email =
-        response.customerEmail ||
-        response.respondent?.email ||
-        (typeof response.email === 'string' ? response.email : undefined);
-    const phone =
-        response.customerPhone ||
-        response.respondent?.phone ||
-        (typeof response.phone === 'string' ? response.phone : undefined);
-    const name =
-        response.customerName ||
-        response.respondent?.name ||
-        (typeof response.name === 'string' ? response.name : undefined) ||
-        'Anonymous';
+type ContactInfo = {
+  name: string;
+  email?: string;
+  phone?: string;
+};
 
-    return { email, phone, name };
+const resolveContact = (response: BusinessFormResponseItem): ContactInfo => {
+  const email =
+    response.customerEmail ||
+    response.respondent?.email ||
+    (typeof response.email === 'string' ? response.email : undefined);
+
+  const phone =
+    response.customerPhone ||
+    response.respondent?.phone ||
+    (typeof response.phone === 'string' ? response.phone : undefined);
+
+  const name =
+    response.customerName ||
+    response.respondent?.name ||
+    (typeof response.name === 'string' ? response.name : undefined) ||
+    'Anonymous';
+
+  return {
+    email: typeof email === 'string' ? email : undefined,
+    phone: typeof phone === 'string' ? phone : undefined,
+    name: typeof name === 'string' ? name : 'Anonymous',
+  };
 };
 
 const resolveAnswer = (response: BusinessFormResponseItem, fieldId: string, question?: string) => {
@@ -66,9 +80,17 @@ const resolveRating = (response: BusinessFormResponseItem, fieldIds: string[]) =
 export default function SingleFormResponsesPage() {
     const params = useParams<{ formId: string }>();
     const formId = params?.formId;
+    const searchParams = useSearchParams();
+    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const userBranchId = useAuthStore((state) => state.user?.branchId);
+    const user = useAuthStore((state) => state.user);
+    const branchIdParam = searchParams?.get('branchId') || undefined;
+    const allBranches = activeBranchId === 'all';
+    const branchId = branchIdParam || (!allBranches ? (activeBranchId || userBranchId || undefined) : undefined);
+    const { data: myBusiness } = useMyBusiness();
 
-    const { data: form, isLoading: formLoading } = useBusinessForm(formId);
-    const { data: responses = [], isLoading: responsesLoading } = useBusinessFormResponses(formId);
+    const { data: form, isLoading: formLoading } = useBusinessForm(formId, { branchId, allBranches });
+    const { data: responses = [], isLoading: responsesLoading } = useBusinessFormResponses(formId, { branchId, allBranches });
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -116,14 +138,30 @@ export default function SingleFormResponsesPage() {
                 description={`Viewing ${sortedResponses.length} responses for this form.`}
             />
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
                 <Link href="/dashboard/settings/engagement/forms/responses" className="px-4 h-10 rounded-xl bg-white border border-gray-200 text-sm font-bold text-text-secondary flex items-center gap-2">
                     <ArrowLeft size={14} />
                     Back
                 </Link>
-                <span className="px-4 h-10 rounded-xl bg-primary text-white text-sm font-black flex items-center">
-                    BUSINESS FORM
-                </span>
+                <div className="flex items-center gap-2 px-3 h-10 rounded-full bg-white border border-gray-200 shadow-sm">
+                    <div className="size-7 rounded-full bg-primary/10 overflow-hidden border border-primary/20 flex items-center justify-center">
+                        {(form.businessLogo || myBusiness?.logoUrl) ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                                src={form.businessLogo || myBusiness?.logoUrl}
+                                alt={form.businessName || myBusiness?.name || user?.businessName || 'Business'}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <span className="text-[10px] font-black text-primary">
+                                {(form.businessName || myBusiness?.name || user?.businessName || 'B').charAt(0)}
+                            </span>
+                        )}
+                    </div>
+                    <span className="text-xs font-black text-text-main">
+                        {myBusiness?.name || user?.businessName || form.businessName || 'Business'}
+                    </span>
+                </div>
             </div>
 
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -138,17 +176,18 @@ export default function SingleFormResponsesPage() {
                                 <th className="px-5 py-3 font-black">Contact</th>
                                 <th className="px-5 py-3 font-black">Rating</th>
                                 <th className="px-5 py-3 font-black">Submitted</th>
+                                <th className="px-5 py-3 font-black text-right">User</th>
                             </tr>
                         </thead>
                         <tbody>
                             {responsesLoading && (
                                 <tr>
-                                    <td colSpan={4} className="px-5 py-6 text-sm text-text-secondary">Loading responses...</td>
+                                    <td colSpan={5} className="px-5 py-6 text-sm text-text-secondary">Loading responses...</td>
                                 </tr>
                             )}
                             {!responsesLoading && sortedResponses.length === 0 && (
                                 <tr>
-                                    <td colSpan={4} className="px-5 py-6 text-sm text-text-secondary">No responses yet.</td>
+                                    <td colSpan={5} className="px-5 py-6 text-sm text-text-secondary">No responses yet.</td>
                                 </tr>
                             )}
                             {sortedResponses.map((item) => {
@@ -187,6 +226,18 @@ export default function SingleFormResponsesPage() {
                                             )}
                                         </td>
                                         <td className="px-5 py-4 text-xs text-text-secondary">{item.createdAt ? new Date(item.createdAt).toLocaleString() : 'Unknown'}</td>
+                                        <td className="px-5 py-4 text-right">
+                                            <button
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    setSelectedId(item.id);
+                                                    setIsSidebarOpen(true);
+                                                }}
+                                                className="h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest bg-primary text-white hover:bg-primary/90 inline-flex items-center justify-center"
+                                            >
+                                                User
+                                            </button>
+                                        </td>
                                     </tr>
                                 );
                             })}
@@ -255,11 +306,13 @@ export default function SingleFormResponsesPage() {
                                         SMS
                                     </a>
                                     <a
-                                        href={resolveContact(selected).phone ? `tel:${resolveContact(selected).phone}` : undefined}
+                                        href={resolveContact(selected).phone ? `https://wa.me/${String(resolveContact(selected).phone).replace(/\D/g, '')}` : undefined}
+                                        target="_blank"
+                                        rel="noreferrer"
                                         className={`h-10 rounded-xl border text-xs font-black uppercase tracking-widest flex items-center justify-center gap-1 ${resolveContact(selected).phone ? 'border-gray-200 text-text-secondary' : 'border-gray-100 text-gray-300 pointer-events-none'}`}
                                     >
-                                        <Phone size={12} />
-                                        Call
+                                        <MessageCircle size={12} />
+                                        WhatsApp
                                     </a>
                                 </div>
                             </div>

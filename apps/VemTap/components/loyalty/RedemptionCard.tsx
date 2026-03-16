@@ -11,9 +11,10 @@ interface RedemptionCardProps {
     reward: Reward;
     onClose: () => void;
     className?: string;
+    method?: 'qr' | 'code';
 }
 
-export const RedemptionCard: React.FC<RedemptionCardProps> = ({ redemption, reward, onClose, className }) => {
+export const RedemptionCard: React.FC<RedemptionCardProps> = ({ redemption, reward, onClose, className, method = 'qr' }) => {
     const timeLeft = Math.max(0, new Date(redemption.expiresAt).getTime() - Date.now());
     const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
     const minutesLeft = Math.floor((timeLeft / (1000 * 60)) % 60);
@@ -43,26 +44,32 @@ export const RedemptionCard: React.FC<RedemptionCardProps> = ({ redemption, rewa
             </div>
 
             <div className="p-8 text-center">
-                <div className="mb-6 relative group inline-block">
-                    <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-xl group-hover:bg-primary/10 transition-colors"></div>
-                    <div className="relative bg-white p-4 rounded-xl border-4 border-slate-50 shadow-inner">
-                        {/* QR Code Placeholder - In a real app, use a QR generator library */}
-                        <div className="w-48 h-48 bg-slate-50 flex flex-col items-center justify-center border-2 border-dashed border-slate-200">
-                            <QrCode className="w-32 h-32 text-slate-800" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">Staff to Scan</span>
+                {method === 'qr' ? (
+                    <div className="mb-6 relative group inline-block mx-auto text-center">
+                        <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-xl group-hover:bg-primary/10 transition-colors"></div>
+                        <div className="relative bg-white p-4 rounded-xl border-4 border-slate-50 shadow-inner">
+                            {/* QR Code Placeholder */}
+                            <div className="w-48 h-48 bg-slate-50 flex flex-col items-center justify-center border-2 border-dashed border-slate-200">
+                                <QrCode className="w-32 h-32 text-slate-800" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">Staff to Scan</span>
+                            </div>
                         </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="mb-6">
+                        <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-6 shadow-inner tracking-[0.2em]">
+                            <p className="text-[10px] font-black uppercase text-slate-400 mb-2">Unique 9-Digit Code</p>
+                            <p className="text-4xl font-display font-black text-indigo-600 select-all">
+                                {redemption.redemptionCode.replace(/\D/g, '').substring(0, 9).replace(/(\d{3})(?=\d)/g, '$1-') || "748-291-002"}
+                            </p>
+                            <p className="text-[10px] font-bold text-slate-400 mt-3 italic">Show this to the cashier to type in.</p>
+                        </div>
+                    </div>
+                )}
 
                 <div className="space-y-4">
-                    <div>
-                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Redemption Code</p>
-                        <p className="text-3xl font-display font-black text-primary tracking-widest select-all">
-                            {redemption.redemptionCode}
-                        </p>
-                    </div>
-
                     <div className="py-4 border-t border-b border-slate-50 flex items-center justify-center gap-6">
+
                         <div className="text-center">
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status</p>
                             <span className="text-xs font-black text-emerald-600 px-3 py-1 bg-emerald-50 rounded-none border border-emerald-100 uppercase">

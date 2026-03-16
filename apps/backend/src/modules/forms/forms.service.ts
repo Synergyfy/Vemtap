@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, FindOptionsWhere } from 'typeorm';
 import { Form } from './entities/form.entity';
@@ -14,6 +14,7 @@ import { CreateFormTemplateDto } from './dto/create-form-template.dto';
 import { UpdateFormTemplateDto } from './dto/update-form-template.dto';
 import { FormTemplateQueryDto } from './dto/form-template-query.dto';
 import { BranchesService } from '../branches/branches.service';
+import { DevicesService } from '../devices/devices.service';
 import { User } from '../users/entities/user.entity';
 
 @Injectable()
@@ -32,7 +33,8 @@ export class FormsService {
     @InjectRepository(FormFieldTemplate)
     private readonly formFieldTemplatesRepository: Repository<FormFieldTemplate>,
     private readonly branchesService: BranchesService,
-  ) {}
+    private readonly devicesService: DevicesService,
+  ) { }
 
   async checkBranchAccess(user: User, branchId: string): Promise<boolean> {
     return this.branchesService.checkBranchAccess(user, branchId);
@@ -58,6 +60,25 @@ export class FormsService {
   async getFormById(branchId: string, id: string): Promise<Form> {
     const form = await this.formsRepository.findOne({
       where: { id, branchId },
+      relations: ['fields'],
+    });
+
+    if (!form) throw new NotFoundException('Form not found');
+    return form;
+  }
+
+  async getFormByUniqueCode(uniqueCode: string): Promise<Form> {
+    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(uniqueCode);
+    const where: FindOptionsWhere<Form>[] = [
+      { uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
+    ];
+
+    if (isUuid) {
+      where.push({ id: uniqueCode, isPublished: true, isActive: true, adminDisabled: false });
+    }
+
+    const form = await this.formsRepository.findOne({
+      where,
       relations: ['fields'],
     });
 
@@ -220,38 +241,52 @@ export class FormsService {
     });
   }
 
-  async getFormByIdForVisitor(id: string, branchId: string): Promise<Form> {
-    const form = await this.formsRepository.findOne({
+  async getFormsByDeviceCode(deviceCode: string): Promise<Form[]> {
+    const device = await this.devicesService.findByCode(deviceCode);
+    if (!device) throw new NotFoundException('Device not found');
+    if (!device.branchId) throw new BadRequestException('Device is not linked to any branch');
+
+    return this.formsRepository.find({
       where: {
-        id,
-        branchId,
+        branchId: device.branchId,
         isPublished: true,
         isActive: true,
         adminDisabled: false,
+        showAfterLeadCapture: true,
       },
       relations: ['fields'],
+      order: { createdAt: 'DESC' },
     });
-
-    if (!form) throw new NotFoundException('Form not available');
-    return form;
   }
 
   async submitResponse(
-    formId: string,
+    uniqueCode: string,
     visitorId: string,
     dto: SubmitFormResponseDto,
   ): Promise<FormResponse> {
-    const form = await this.formsRepository.findOneBy({ id: formId });
+    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(uniqueCode);
+    const where: FindOptionsWhere<Form>[] = [
+      { uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
+    ];
+
+    if (isUuid) {
+      where.push({ id: uniqueCode, isPublished: true, isActive: true, adminDisabled: false });
+    }
+
+    const form = await this.formsRepository.findOne({ where });
     if (!form) throw new NotFoundException('Form not found');
 
     const response = this.formResponsesRepository.create({
-      formId,
+      formId: form.id,
       visitorId,
       branchId: form.branchId,
       businessId: form.businessId ?? undefined,
     });
 
     const savedResponse = await this.formResponsesRepository.save(response);
+
+    // Increment response count on the form
+    await this.formsRepository.increment({ id: form.id }, 'responseCount', 1);
 
     if (dto.answers && Array.isArray(dto.answers)) {
       const answers = dto.answers.map((ans) =>

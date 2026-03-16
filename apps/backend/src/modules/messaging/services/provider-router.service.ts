@@ -6,22 +6,33 @@ import {
   ProviderResponse,
 } from '../interfaces/messaging-provider.interface';
 import { TermiiProvider } from '../providers/termii.provider';
+import { TwilioProvider } from '../providers/twilio.provider';
+import { AfricaTalkingProvider } from '../providers/africastalking.provider';
+import { BestBulkSmsProvider } from '../providers/bestbulksms.provider';
 import { EmailProvider } from '../providers/email.provider';
+import { InHouseProvider } from '../providers/inhouse.provider';
 
 @Injectable()
 export class ProviderRouterService {
   constructor(
     private readonly termiiProvider: TermiiProvider,
+    private readonly twilioProvider: TwilioProvider,
+    private readonly africaTalkingProvider: AfricaTalkingProvider,
+    private readonly bestBulkSmsProvider: BestBulkSmsProvider,
     private readonly emailProvider: EmailProvider,
+    private readonly inHouseProvider: InHouseProvider,
   ) {}
 
   public getProvider(channel: Channel): MessagingProvider {
     switch (channel) {
       case Channel.SMS:
-      case Channel.WHATSAPP: // Route WhatsApp to Termii
-        return this.termiiProvider;
+        return this.bestBulkSmsProvider;
+      case Channel.WHATSAPP: // Route WhatsApp to Twilio
+        return this.twilioProvider;
       case Channel.EMAIL:
         return this.emailProvider;
+      case Channel.IN_HOUSE:
+        return this.inHouseProvider;
       default:
         throw new Error(`No provider found for channel ${channel}`);
     }

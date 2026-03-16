@@ -24,6 +24,12 @@ export class PlansService {
     return this.planRepository.save(plan);
   }
 
+  async findFreePlan(): Promise<Plan | null> {
+    return this.planRepository.findOne({
+      where: { isFree: true, isActive: true },
+    });
+  }
+
   async findAll(onlyActive: boolean = false): Promise<Plan[]> {
     const where = onlyActive ? { isActive: true } : {};
     return this.planRepository.find({ where, order: { monthlyPrice: 'ASC' } });
@@ -51,6 +57,6 @@ export class PlansService {
 
   async remove(id: string): Promise<void> {
     const plan = await this.findOne(id);
-    await this.planRepository.remove(plan);
+    await this.planRepository.softRemove(plan);
   }
 }

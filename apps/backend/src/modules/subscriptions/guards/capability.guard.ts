@@ -28,16 +28,24 @@ export class CapabilityGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    const branchId =
-      user?.branchId || request.body?.branchId || request.query?.branchId;
+    let businessId = user?.businessId;
 
-    if (!branchId) {
-      throw new ForbiddenException(
-        'Branch context is required for capability check',
-      );
+    if (!businessId) {
+      const branchId =
+        user?.branchId || request.body?.branchId || request.query?.branchId;
+
+      if (!branchId) {
+        throw new ForbiddenException(
+          'Branch or Business context is required for capability check',
+        );
+      }
+      businessId = await this.branchesService.getBusinessId(branchId);
     }
 
-    const businessId = await this.branchesService.getBusinessId(branchId);
+    // Security: Ensure users (except Admin) can only check capabilities for their own business
+    if (user.role !== 'Admin' && user.businessId && businessId !== user.businessId) {
+        throw new ForbiddenException('You do not have permission to check capabilities for this business');
+    }
 
     const capabilitiesData =
       await this.subscriptionsService.getCapabilities(businessId);
@@ -47,7 +55,13 @@ export class CapabilityGuard implements CanActivate {
       throw new ForbiddenException(`Unknown capability ${requiredCapability}`);
     }
 
-    if (feature.limit !== 'unlimited' && feature.remaining <= 0) {
+    if (feature.enabled === false) {
+      throw new ForbiddenException(
+        `The ${requiredCapability} feature is not included in your current plan.`,
+      );
+    }
+
+    if (feature.limit !== undefined && feature.limit !== 'unlimited' && feature.remaining <= 0) {
       throw new ForbiddenException(
         `You have reached the limit for ${requiredCapability} on your current plan.`,
       );

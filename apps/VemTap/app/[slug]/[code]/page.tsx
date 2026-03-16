@@ -19,11 +19,14 @@ import { StepForm } from '@/components/visitor/StepForm';
 import { StepWelcomeBack } from '@/components/visitor/StepWelcomeBack';
 import { StepOutcome } from '@/components/visitor/StepOutcome';
 import { StepSurvey } from '@/components/visitor/StepSurvey';
+import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { StepFinalSuccess } from '@/components/visitor/StepFinalSuccess';
 import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { EarnPointsModal } from '@/components/loyalty/EarnPointsModal';
 import { loyaltyApi } from '@/lib/api/loyalty';
 import { api } from '@/lib/api';
+import { useBusinessForms, useSubmitBusinessFormResponse, useFormsByDevice } from '@/services/business-forms/hooks';
+import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 
 export default function DynamicTapJourneyPage() {
     const params = useParams();
@@ -38,24 +41,61 @@ export default function DynamicTapJourneyPage() {
         setBusinessType, userData, branchId, logoUrl, visitCount, rewardVisitThreshold,
         redemptionStatus, lastRedemptionId, requestRedemption, setRedemptionStatus, resetVisitCountAfterRedemption,
         engagementSettings, surveyQuestions,
-        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag,
-        businessId, initializeFromBusiness, recordVisit, isFirstTimeVisit
+        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton,
+        businessId, initializeFromBusiness, recordVisit, isFirstTimeVisit,
+        customSuccessTitle, activeForm, setActiveForm
     } = useCustomerFlowStore();
 
     const addRedemptionRequest = useMockDashboardStore(state => state.addRedemptionRequest);
     const redemptionRequests = useMockDashboardStore(state => state.redemptionRequests);
 
-    const { user, isAuthenticated, login } = useAuthStore();
+    const { user, isAuthenticated, login, access_token, logout } = useAuthStore();
     const { lastEarnedResponse, setLastEarnedResponse } = useLoyaltyStore();
     const config = getBusinessConfig();
+
+    const [selectedBusinessFormId, setSelectedBusinessFormId] = useState<string | null>(null);
+
+    // Fetch forms ONLY when user reaches the outcome/success stage
+    // Relying strictly on /api/v1/visitor-forms/device/{code}
+    const shouldFetchForms = currentStep === 'OUTCOME' || currentStep === 'FINAL_SUCCESS' || currentStep === 'SURVEY';
+    const { data: deviceForms = [], isLoading: formsLoading } = useFormsByDevice(
+        shouldFetchForms ? (deviceCode || '') : ''
+    );
+
+    const submitBusinessFormResponse = useSubmitBusinessFormResponse();
+
+    const selectedBusinessForm = useMemo(
+        () => deviceForms.find((f) => f.id === selectedBusinessFormId) || null,
+        [deviceForms, selectedBusinessFormId]
+    );
 
     const isCustomer = isAuthenticated && user?.role?.toLowerCase() === 'customer';
 
     const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
     const [isSyncingReal, setIsSyncingReal] = useState(false);
     const [isDeviceSynced, setIsDeviceSynced] = useState(false);
     const [hasVisitedBefore, setHasVisitedBefore] = useState(false);
+    const [attachedForms, setAttachedForms] = useState<any[]>([]);
+    const [completedFormIds, setCompletedFormIds] = useState<string[]>([]);
+
+    // 0. Early Token Expiration Check
+    useEffect(() => {
+        if (isAuthenticated && access_token) {
+            try {
+                const decoded = jwtDecode<{ exp: number }>(access_token);
+                const currentTime = Date.now() / 1000;
+                if (decoded.exp < currentTime) {
+                    console.warn('[TAP JOURNEY] Session expired, logging out...');
+                    logout();
+                }
+            } catch (err) {
+                console.error('[TAP JOURNEY] Failed to decode token:', err);
+                logout();
+            }
+        }
+    }, [isAuthenticated, access_token, logout]);
 
     // Fetch full user details if authenticated
     useEffect(() => {
@@ -120,6 +160,37 @@ export default function DynamicTapJourneyPage() {
         initJourney();
     }, [deviceCode, businessId, initializeFromBusiness, recordVisit, router, setStep]);
 
+    // Fetch attached forms if needed
+    useEffect(() => {
+        const fetchAttachedForms = async () => {
+            const formIds = engagementSettings?.postSubmitFormIds;
+            if (engagementSettings?.showPostSubmitForms && Array.isArray(formIds) && formIds.length > 0) {
+                try {
+                    const fetched = await Promise.all(
+                        formIds.map(async (id) => {
+                            try {
+                                const response = await api.get(`/business-forms/${id}`);
+                                return response;
+                            } catch (err) {
+                                console.error(`Failed to fetch form ${id}:`, err);
+                                return null;
+                            }
+                        })
+                    );
+                    setAttachedForms(fetched.filter(Boolean));
+                } catch (err) {
+                    console.error('Failed to fetch attached forms:', err);
+                }
+            } else {
+                setAttachedForms([]);
+            }
+        };
+
+        if (businessId) {
+            fetchAttachedForms();
+        }
+    }, [engagementSettings, businessId]);
+
     // Live Sync for Staff Approvals
     useEffect(() => {
         if (redemptionStatus === 'pending' && lastRedemptionId) {
@@ -152,7 +223,7 @@ export default function DynamicTapJourneyPage() {
     const handleCredentialResponse = (response: any) => {
         try {
             setIsSyncingReal(true);
-            const decoded: any = jwtDecode(response.credential);
+            const decoded = jwtDecode<{ name: string; email: string }>(response.credential);
 
             const identity = {
                 name: decoded.name,
@@ -217,25 +288,27 @@ export default function DynamicTapJourneyPage() {
     };
 
     const onFormSubmit = async (data: any) => {
+        setIsSubmitting(true);
         try {
             if (!isCustomer) {
                 // Split name into firstName/lastName for backend DTO
                 const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
                 const firstName = nameParts[0];
                 const lastName = nameParts.slice(1).join(' ') || ' ';
+                const defaultPassword = '123456';
 
                 // 1. Register user via public signup endpoint
-                await api.post('/visitors/signup', {
+                await api.post(`/visitors/signup?branchId=${branchId}`, {
                     firstName,
                     lastName,
                     email: data.email,
                     phone: data.phone
                 });
 
-                // 2. Performance Silent Login to get a token (Backend uses 'mypassword' for default signup)
+                // 2. Performance Silent Login to get a token (Backend uses '123456' for default signup)
                 const authResponse = await api.post('/auth/login', {
                     identifier: data.email,
-                    password: 'mypassword'
+                    password: defaultPassword
                 });
 
                 if (authResponse?.access_token) {
@@ -263,6 +336,8 @@ export default function DynamicTapJourneyPage() {
         } catch (err: any) {
             console.error('Registration/Login failed:', err);
             toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -298,19 +373,55 @@ export default function DynamicTapJourneyPage() {
         toast.success('Redemption request sent to staff!');
     };
 
-    const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards') => {
+    const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
         if (type === 'review') {
-            window.open(engagementSettings.reviewUrl, '_blank');
+            window.open(engagementSettings.googleReviewUrl || engagementSettings.reviewUrl, '_blank');
+        } else if (type === 'social') {
+            // Social modal is handled inside StepOutcome
         } else if (type === 'feedback') {
-            setStep('SURVEY');
+            if (formId) {
+                const targetForm = attachedForms.find(f => f.id === formId);
+                if (targetForm) {
+                    setActiveForm(targetForm);
+                    setStep('BUSINESS_FORM');
+                } else {
+                    toast.error('Form not found');
+                }
+            } else {
+                setStep('SURVEY');
+            }
         } else if (type === 'rewards') {
             toast.success('Reward points added to your account!');
         }
     };
 
-    const handleSurveyComplete = (answers: Record<string, any>) => {
+    const handleSurveyComplete = async (answers: Record<string, any>) => {
+        if (selectedBusinessForm && businessId) {
+            try {
+                await submitBusinessFormResponse.mutateAsync({
+                    id: selectedBusinessForm.uniqueCode || selectedBusinessForm.id,
+                    payload: {
+                        answers: Object.entries(answers).map(([fieldId, value]) => ({
+                            fieldId,
+                            // Ensure value is a string for backend compatibility
+                            value: Array.isArray(value) ? value.join(', ') : String(value || ''),
+                        })),
+                    },
+                });
+            } catch (error) {
+                console.warn('Form response submission failed:', error);
+            }
+        }
+
         console.log('Survey completed:', answers);
         toast.success('Thank you for your feedback!');
+
+        if (selectedBusinessForm?.redirectUrl && typeof window !== 'undefined') {
+            window.location.assign(selectedBusinessForm.redirectUrl);
+            return;
+        }
+
+        setSelectedBusinessFormId(null);
         setStep('FINAL_SUCCESS');
     };
 
@@ -344,12 +455,14 @@ export default function DynamicTapJourneyPage() {
                         storeName={storeName}
                         logoUrl={logoUrl}
                         customWelcomeMessage={customNewUserWelcomeMessage}
-                        customWelcomeTitle={customNewUserWelcomeTitle}
+                        customWelcomeTitle={customWelcomeTitle}
                         customWelcomeTag={customNewUserWelcomeTag}
                         customPrivacyMessage={customPrivacyMessage}
+                        submitLabel={customNewUserWelcomeButton || 'Submit'}
                         initialData={userData || storedIdentity || user}
                         isSyncingReal={isSyncingReal}
                         isDeviceSynced={isDeviceSynced}
+                        isSubmitting={isSubmitting}
                         onBack={() => setStep('SELECT_TYPE')}
                         onSubmit={onFormSubmit}
                     />
@@ -376,11 +489,15 @@ export default function DynamicTapJourneyPage() {
                             if (isCustomer) {
                                 onFormSubmit({});
                             } else {
-                                if (!user && (userData || storedIdentity)) {
-                                    const identity = userData || storedIdentity;
-                                    recordLoyaltyTap(identity);
+                                const identity = userData || storedIdentity;
+                                if (identity) {
+                                    // If we recognize them, run them through the signup/login flow 
+                                    // to ensure they earn points and are authenticated.
+                                    onFormSubmit(identity);
+                                } else {
+                                    // Fallback if no identity found (shouldn't happen in StepWelcomeBack)
+                                    setStep('FORM');
                                 }
-                                setStep('OUTCOME');
                             }
                         }}
                         onClear={() => {
@@ -398,23 +515,62 @@ export default function DynamicTapJourneyPage() {
                         customRewardMessage={customRewardMessage}
                         hasRewardSetup={hasRewardSetup}
                         isDownloading={isDownloading}
+                        isFormsLoading={formsLoading}
                         onDownload={handleDownloadReward}
                         onFinish={() => setStep('FINAL_SUCCESS')}
                         onRestart={resetFlow}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}
+                        attachedForms={deviceForms.map((form) => ({
+                            id: form.id,
+                            title: form.title,
+                            description: form.description,
+                        }))}
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
+                        }}
+                        completedFormIds={completedFormIds}
+                        customSuccessTitle={customSuccessTitle}
+                        customSuccessDescription={customSuccessMessage}
+                    />
+                )}
+
+                {currentStep === 'BUSINESS_FORM' && activeForm && (
+                    <StepBusinessForm
+                        form={activeForm}
+                        onSkip={() => setStep('OUTCOME')}
+                        onComplete={(answers: any) => {
+                            console.log('Additional Form submitted:', answers);
+                            const formId = activeForm.id;
+                            if (formId && !completedFormIds.includes(formId)) {
+                                const newCompleted = [...completedFormIds, formId];
+                                setCompletedFormIds(newCompleted);
+                                
+                                // If all attached forms are now completed, we can potentially auto-finish later
+                                // But the user wants a "Close" button first.
+                                // In onSkip (Close), we can check if all are done.
+                            }
                         }}
                     />
                 )}
 
                 {currentStep === 'SURVEY' && (
-                    <StepSurvey
-                        questions={surveyQuestions}
-                        onComplete={handleSurveyComplete}
-                        onSkip={() => setStep('FINAL_SUCCESS')}
-                    />
+                    selectedBusinessForm ? (
+                        <StepBusinessForm
+                            form={selectedBusinessForm}
+                            onComplete={handleSurveyComplete}
+                            onSkip={() => {
+                                setSelectedBusinessFormId(null);
+                                setStep('FINAL_SUCCESS');
+                            }}
+                        />
+                    ) : (
+                        <StepSurvey
+                            questions={surveyQuestions}
+                            onComplete={handleSurveyComplete}
+                            onSkip={() => setStep('FINAL_SUCCESS')}
+                        />
+                    )
                 )}
 
                 {currentStep === 'FINAL_SUCCESS' && (
@@ -423,12 +579,18 @@ export default function DynamicTapJourneyPage() {
                         customSuccessTitle={useCustomerFlowStore.getState().customSuccessTitle}
                         finalSuccessMessage={useCustomerFlowStore.getState().customSuccessMessage || config.finalSuccessMessage}
                         customSuccessButton={useCustomerFlowStore.getState().customSuccessButton}
+                        isFormsLoading={formsLoading}
                         onFinish={() => {
                             resetFlow();
                             router.push(`/${businessSlug}?code=${deviceCode}`);
                         }}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}
+                        attachedForms={deviceForms.map((form) => ({
+                            id: form.id,
+                            title: form.title,
+                            description: form.description,
+                        }))}
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
                         }}

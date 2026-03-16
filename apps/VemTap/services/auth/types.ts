@@ -11,14 +11,19 @@ export interface RegisterOwnerRequest {
     password: string;
     businessName: string;
     businessLogo?: string;
-    category?: string;
+    categoryId: string;
+    subcategoryId: string;
+    otherSubcategoryName?: string;
     visitors?: string;
     goals?: string[];
     whatsappNumber?: string;
-    officialEmail?: string;
-    businessNumber?: string;
+    officialEmail: string;
+    businessNumber: string;
     businessAddress?: string;
     businessWebsite?: string;
+    state?: string;
+    city?: string;
+    isRegistered?: boolean;
 }
 
 export interface AuthResponse {

@@ -6,10 +6,24 @@ import { useQuery } from '@tanstack/react-query';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { api } from '@/lib/api';
 import { useBusinessForms } from '@/services/business-forms/hooks';
-import { BarChart3, Eye } from 'lucide-react';
+import { BarChart3, Eye, FileText } from 'lucide-react';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useBranches } from '@/services/branches/hooks';
+import { useMyBusiness } from '@/services/businesses/hooks';
 
 export default function EngagementFormResponsesPage() {
-    const { data: forms = [], isLoading: formsLoading } = useBusinessForms();
+    const activeBranchId = useAuthStore((s) => s.activeBranchId);
+    const userBranchId = useAuthStore((s) => s.user?.branchId);
+    const user = useAuthStore((s) => s.user);
+    const { data: myBusiness } = useMyBusiness();
+    const { data: branches = [] } = useBranches();
+
+    const branchScope = activeBranchId === 'all' ? null : (activeBranchId || userBranchId || null);
+
+    const { data: forms = [], isLoading: formsLoading } = useBusinessForms({
+        branchId: branchScope || userBranchId || branches[0]?.id || undefined,
+        allBranches: !branchScope,
+    });
 
     const { data: responsesSummary = [], isLoading: summaryLoading } = useQuery<
         Array<{ formId: string; count: number; lastResponseAt?: string }>,
@@ -19,7 +33,7 @@ export default function EngagementFormResponsesPage() {
         queryFn: async () => {
             const summary = await Promise.all(
                 forms.map(async (form) => {
-                    const response = await api.get(`/business-forms/${form.id}/responses`);
+                    const response = await api.get(`/business-forms/${form.id}/responses?branchId=${form.branchId}`);
                     const rows = Array.isArray(response) ? response : Array.isArray(response?.data) ? response.data : [];
                     const sorted = [...rows].sort(
                         (a, b) =>
@@ -43,6 +57,8 @@ export default function EngagementFormResponsesPage() {
     );
     const publishedForms = forms.filter((form) => form.isPublished).length;
     const activeForms = forms.filter((form) => form.isActive).length;
+    const businessName = myBusiness?.name || user?.businessName || 'Your Business';
+    const businessLogo = myBusiness?.logoUrl || forms.find((form) => form.businessLogo)?.businessLogo || '';
 
     return (
         <div className="p-8 space-y-8">
@@ -50,11 +66,24 @@ export default function EngagementFormResponsesPage() {
                 title="Form Responses"
                 description="View customer answers submitted to each business form."
             />
+            <div className="flex flex-wrap items-center gap-3">
+                <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary uppercase tracking-widest text-xs font-bold">Business</span>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-gray-200 shadow-sm">
+                    <div className="size-6 rounded-full bg-primary/10 overflow-hidden border border-primary/20 flex items-center justify-center">
+                        {businessLogo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={businessLogo} alt={businessName} className="w-full h-full object-cover" />
+                        ) : (
+                            <span className="text-[10px] font-black text-primary">{businessName.charAt(0)}</span>
+                        )}
+                    </div>
+                    <span className="text-xs font-black text-text-main">{businessName}</span>
+                </div>
+            </div>
 
-            <div className="flex items-center gap-3">
-                <Link href="/dashboard/settings/engagement/socials" className="px-4 h-10 rounded-xl bg-white border border-gray-200 text-sm font-bold text-text-secondary flex items-center">Socials</Link>
-                <Link href="/dashboard/settings/engagement/forms" className="px-4 h-10 rounded-xl bg-white border border-gray-200 text-sm font-bold text-text-secondary flex items-center">Form Creator</Link>
-                <span className="px-4 h-10 rounded-xl bg-primary text-white text-sm font-black flex items-center">Form Responses</span>
+            <div className="flex items-center gap-2 text-xs font-bold text-text-secondary">
+                <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary uppercase tracking-widest">Responses</span>
+                <span>All Forms</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -85,6 +114,7 @@ export default function EngagementFormResponsesPage() {
                         <thead>
                             <tr className="text-[10px] uppercase tracking-widest text-text-secondary border-b border-gray-100">
                                 <th className="px-5 py-3 font-black">Form</th>
+                                <th className="px-5 py-3 font-black">Business</th>
                                 <th className="px-5 py-3 font-black">Branch</th>
                                 <th className="px-5 py-3 font-black">Published</th>
                                 <th className="px-5 py-3 font-black">Responses</th>
@@ -95,29 +125,43 @@ export default function EngagementFormResponsesPage() {
                         <tbody>
                             {(formsLoading || summaryLoading) && (
                                 <tr>
-                                    <td colSpan={6} className="px-5 py-6 text-sm text-text-secondary">Loading...</td>
+                                    <td colSpan={7} className="px-5 py-6 text-sm text-text-secondary">Loading...</td>
                                 </tr>
                             )}
                             {!formsLoading && !summaryLoading && forms.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="px-5 py-6 text-sm text-text-secondary">No forms found.</td>
+                                    <td colSpan={7} className="px-5 py-6 text-sm text-text-secondary">No forms found.</td>
                                 </tr>
                             )}
                             {forms.map((form) => {
                                 const current = responsesSummary.find((item) => item.formId === form.id);
+                                const formBusinessName = form.businessName || businessName;
+                                const formBusinessLogo = form.businessLogo || businessLogo;
                                 return (
                                     <tr key={form.id} className="border-b border-gray-50 hover:bg-gray-50">
                                         <td className="px-5 py-4">
                                             <p className="text-sm font-bold text-text-main">{form.title}</p>
                                             <p className="text-xs text-text-secondary">{form.description || 'No description'}</p>
                                         </td>
+                                        <td className="px-5 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <div className="size-7 rounded-full bg-primary/10 overflow-hidden border border-primary/20 flex items-center justify-center">
+                                                    {formBusinessLogo ? (
+                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                        <img src={formBusinessLogo} alt={formBusinessName} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <span className="text-[10px] font-black text-primary">{formBusinessName.charAt(0)}</span>
+                                                    )}
+                                                </div>
+                                                <span className="text-xs font-bold text-text-secondary">{formBusinessName}</span>
+                                            </div>
+                                        </td>
                                         <td className="px-5 py-4 text-xs font-bold text-text-secondary">{form.branchId}</td>
                                         <td className="px-5 py-4">
-                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                                form.isPublished
-                                                    ? 'bg-emerald-100 text-emerald-700'
-                                                    : 'bg-amber-100 text-amber-700'
-                                            }`}>
+                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${form.isPublished
+                                                ? 'bg-emerald-100 text-emerald-700'
+                                                : 'bg-amber-100 text-amber-700'
+                                                }`}>
                                                 {form.isPublished ? 'Published' : 'Draft'}
                                             </span>
                                         </td>

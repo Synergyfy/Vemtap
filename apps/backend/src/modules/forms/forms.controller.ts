@@ -108,6 +108,7 @@ export class FormsController {
       type: 'object',
       properties: {
         id: { type: 'string', example: 'uuid-form-1234' },
+        uniqueCode: { type: 'string', example: 'ABC123XYZ' },
         title: { type: 'string', example: 'Customer Feedback' },
         description: {
           type: 'string',
@@ -160,6 +161,7 @@ export class FormsController {
         type: 'object',
         properties: {
           id: { type: 'string', example: 'uuid-form-1234' },
+          uniqueCode: { type: 'string', example: 'ABC123XYZ' },
           title: { type: 'string', example: 'Customer Feedback' },
           description: {
             type: 'string',
@@ -189,6 +191,7 @@ export class FormsController {
       type: 'object',
       properties: {
         id: { type: 'string', example: 'uuid-form-1234' },
+        uniqueCode: { type: 'string', example: 'ABC123XYZ' },
         title: { type: 'string', example: 'Customer Feedback' },
         fields: {
           type: 'array',
@@ -227,6 +230,7 @@ export class FormsController {
         value: {
           title: 'Updated Feedback Form',
           isActive: false,
+          showAfterLeadCapture: true,
         },
       },
     },

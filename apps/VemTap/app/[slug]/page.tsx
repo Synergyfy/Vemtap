@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { fetchDeviceByCode, Device } from '@/lib/api/devices';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function BusinessPublicPage() {
     const params = useParams();
@@ -22,8 +23,19 @@ export default function BusinessPublicPage() {
     const queryCode = searchParams.get('code');
     const deviceCode = storeDeviceCode || queryCode;
 
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const user = useAuthStore((state) => state.user);
+    const isBusinessAccount = isAuthenticated && user?.role?.toLowerCase() !== 'customer';
+    const isCustomerAccount = isAuthenticated && user?.role?.toLowerCase() === 'customer';
+
     const [businessData, setBusinessData] = useState<Device | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!isAuthenticated && deviceCode) {
+            router.replace(`/${params.slug}/${deviceCode}`);
+        }
+    }, [deviceCode, isAuthenticated, params.slug, router]);
 
     useEffect(() => {
         const loadBusiness = async () => {
@@ -83,22 +95,26 @@ export default function BusinessPublicPage() {
     return (
         <div className="min-h-screen bg-[#fafbfc] font-sans selection:bg-primary/10">
             {/* Minimal Header */}
-            <div className="h-[40vh] bg-linear-to-b from-slate-50 to-[#fafbfc] relative overflow-hidden flex items-center justify-center">
+            <div className="h-[40vh] bg-linear-to-b from-primary/10 to-[#fafbfc] relative overflow-hidden flex items-center justify-center">
                 {/* Abstract background elements for a "premium" feel */}
                 <div className="absolute top-0 left-0 w-full h-full">
-                    <div className="absolute top-[-10%] left-[-5%] size-96 bg-primary/5 rounded-full blur-3xl animate-pulse" />
-                    <div className="absolute bottom-[-10%] right-[-5%] size-96 bg-indigo-500/5 rounded-full blur-3xl" />
+                    <div className="absolute top-[-10%] left-[-5%] size-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
+                    <div className="absolute bottom-[-10%] right-[-5%] size-96 bg-primary/10 rounded-full blur-3xl" />
                 </div>
 
-                <div className="absolute top-8 left-8 right-8 flex justify-between items-center z-10 font-bold uppercase tracking-widest text-[10px]">
-                    <button
-                        onClick={() => router.back()}
-                        className="flex items-center gap-2 text-slate-400 hover:text-primary transition-colors"
-                    >
-                        <ChevronRight size={14} className="rotate-180" /> Back
-                    </button>
-                    <div className="text-slate-900 tracking-[0.3em] font-black">
-                        Business Profile
+                <div className="absolute top-6 left-4 right-4 md:top-8 md:left-8 md:right-8 flex justify-between items-center z-10 font-bold uppercase tracking-widest text-[10px]">
+                    {isBusinessAccount ? (
+                        <button
+                            onClick={() => router.back()}
+                            className="flex items-center gap-2 text-slate-400 hover:text-primary transition-colors"
+                        >
+                            <ChevronRight size={14} className="rotate-180" /> Back
+                        </button>
+                    ) : (
+                        <div />
+                    )}
+                    <div className="px-4 py-1.5 rounded-full bg-primary/10 text-primary tracking-[0.3em] font-black">
+                        {businessName}
                     </div>
                     <button className="text-slate-400 hover:text-primary transition-colors">
                         <Share2 size={16} />
@@ -106,7 +122,7 @@ export default function BusinessPublicPage() {
                 </div>
 
                 {/* Hero Content */}
-                <div className="flex flex-col items-center text-center z-10 px-6">
+                <div className="flex flex-col items-center text-center z-10 px-4 md:px-6">
                     <div className="size-28 md:size-32 rounded-3xl bg-white p-1.5 shadow-2xl shadow-slate-200/50 mb-6 border border-white">
                         {logoUrl ? (
                             <img
@@ -139,7 +155,7 @@ export default function BusinessPublicPage() {
             </div>
 
             {/* Main Content Area */}
-            <div className="max-w-4xl mx-auto px-6 -mt-10 relative z-20 pb-24">
+            <div className="max-w-4xl mx-auto px-4 md:px-6 -mt-10 relative z-20 pb-24">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
 
                     {/* Primary Info Card */}
@@ -192,12 +208,14 @@ export default function BusinessPublicPage() {
                                     <p className="text-slate-500 font-bold mb-6 leading-relaxed">
                                         {business.rewardMessage || `Visit us ${business.rewardVisitThreshold || 5} times to unlock special rewards and benefits tailored for you.`}
                                     </p>
-                                    <button
-                                        onClick={() => router.push(`/customer/dashboard`)}
-                                        className="inline-flex items-center gap-2 text-primary font-black uppercase tracking-widest text-[10px] hover:gap-3 transition-all underline underline-offset-8"
-                                    >
-                                        View your progress <ExternalLink size={14} />
-                                    </button>
+                                    {isCustomerAccount && (
+                                        <button
+                                            onClick={() => router.push(`/customer/dashboard`)}
+                                            className="inline-flex items-center gap-2 text-primary font-black uppercase tracking-widest text-[10px] hover:gap-3 transition-all underline underline-offset-8"
+                                        >
+                                            View your progress <ExternalLink size={14} />
+                                        </button>
+                                    )}
                                 </section>
                             )}
 
@@ -305,7 +323,7 @@ export default function BusinessPublicPage() {
                                 <div className="mt-4">
                                     <button
                                         onClick={() => window.open(business.reviewUrl, '_blank')}
-                                        className="w-full h-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center gap-2 hover:bg-orange-100 transition-colors text-xs font-black uppercase tracking-widest"
+                                    className="w-full h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors text-xs font-black uppercase tracking-widest"
                                     >
                                         <Star size={16} fill="currentColor" />
                                         Google Review
@@ -332,21 +350,23 @@ export default function BusinessPublicPage() {
 
                 {/* Main CTA - Prominent and Stunning */}
                 <div className="mt-12 text-center flex flex-col items-center">
-                    <button
-                        onClick={() => router.push('/customer/dashboard')}
-                        className="group relative px-12 h-20 bg-slate-900 text-white rounded-[2rem] overflow-hidden shadow-2xl shadow-slate-900/40 hover:scale-105 transition-all duration-500"
-                    >
-                        <div className="absolute inset-0 bg-linear-to-r from-primary/20 to-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="relative flex items-center gap-4">
-                            <div className="flex flex-col items-start">
-                                <span className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">Ready to engage?</span>
-                                <span className="text-lg font-black tracking-tight">Open Customer Dashboard</span>
+                    {isCustomerAccount && (
+                        <button
+                            onClick={() => router.push('/customer/dashboard')}
+                            className="group relative px-12 h-20 bg-primary text-white rounded-[2rem] overflow-hidden shadow-2xl shadow-primary/40 hover:scale-105 transition-all duration-500"
+                        >
+                            <div className="absolute inset-0 bg-linear-to-r from-primary/30 to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="relative flex items-center gap-4">
+                                <div className="flex flex-col items-start">
+                                    <span className="text-[10px] uppercase tracking-[0.3em] font-black text-white/80">Ready to engage?</span>
+                                    <span className="text-lg font-black tracking-tight">Open Customer Dashboard</span>
+                                </div>
+                                <div className="size-10 rounded-2xl bg-white/15 flex items-center justify-center group-hover:rotate-12 transition-transform">
+                                    <LayoutDashboard size={20} />
+                                </div>
                             </div>
-                            <div className="size-10 rounded-2xl bg-white/10 flex items-center justify-center group-hover:rotate-12 transition-transform">
-                                <LayoutDashboard size={20} />
-                            </div>
-                        </div>
-                    </button>
+                        </button>
+                    )}
 
                     <div className="mt-12 flex items-center gap-4 grayscale opacity-30 hover:grayscale-0 hover:opacity-100 transition-all duration-700 cursor-default">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Powered by</span>
@@ -358,3 +378,5 @@ export default function BusinessPublicPage() {
         </div>
     );
 }
+
+

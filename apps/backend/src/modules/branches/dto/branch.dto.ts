@@ -82,6 +82,16 @@ export class CreateBranchDto {
   @IsOptional()
   address?: string;
 
+  @ApiPropertyOptional({ example: 'Lagos' })
+  @IsString()
+  @IsOptional()
+  state?: string;
+
+  @ApiPropertyOptional({ example: 'Ikeja' })
+  @IsString()
+  @IsOptional()
+  city?: string;
+
   @ApiProperty({ example: '+1234567890', required: false })
   @IsString()
   @IsOptional()
@@ -103,6 +113,16 @@ export class UpdateBranchDto {
   @IsString()
   @IsOptional()
   address?: string;
+
+  @ApiPropertyOptional({ example: 'Lagos' })
+  @IsString()
+  @IsOptional()
+  state?: string;
+
+  @ApiPropertyOptional({ example: 'Ikeja' })
+  @IsString()
+  @IsOptional()
+  city?: string;
 
   @ApiPropertyOptional({ example: '+1987654321' })
   @IsString()
@@ -194,4 +214,9 @@ export class UpdateBranchDto {
   @IsBoolean()
   @IsOptional()
   showFeedback?: boolean;
+
+  @ApiPropertyOptional({ example: false })
+  @IsBoolean()
+  @IsOptional()
+  isMainBranch?: boolean;
 }

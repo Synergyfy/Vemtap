@@ -5,8 +5,7 @@ import { AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useMockDashboardStore } from '@/lib/store/mockDashboardStore';
-import { useBusinessForms, useSubmitBusinessFormResponse } from '@/services/business-forms/hooks';
+import { useBusinessForms, useSubmitBusinessFormResponse, useFormsByDevice } from '@/services/business-forms/hooks';
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import { jwtDecode } from 'jwt-decode';
 import { toast } from 'react-hot-toast';
@@ -24,42 +23,46 @@ import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { StepFinalSuccess } from '@/components/visitor/StepFinalSuccess';
 import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { EarnPointsModal } from '@/components/loyalty/EarnPointsModal';
+import Spinner from '@/components/ui/Spinner';
 
 function UserStepPageContent() {
     const {
         currentStep, setStep, storeName, setUserData, resetFlow,
-        getBusinessConfig, customWelcomeMessage, customSuccessMessage,
+        getBusinessConfig, customWelcomeMessage, customWelcomeTitle, customSuccessMessage,
         customPrivacyMessage, customRewardMessage, hasRewardSetup,
         setBusinessType, userData, branchId, logoUrl, visitCount, rewardVisitThreshold,
-        redemptionStatus, lastRedemptionId, requestRedemption, setRedemptionStatus, resetVisitCountAfterRedemption,
+        redemptionStatus, requestRedemption,
         engagementSettings, surveyQuestions,
-        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, businessId
+        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton, businessId, deviceCode
     } = useCustomerFlowStore();
     const searchParams = useSearchParams();
     const preferredFormIdParam = searchParams.get('formId') || searchParams.get('form');
     const [selectedBusinessFormId, setSelectedBusinessFormId] = useState<string | null>(null);
-    const { data: businessForms = [] } = useBusinessForms();
-    const submitBusinessFormResponse = useSubmitBusinessFormResponse(selectedBusinessFormId || '');
+    
+    // Fetch forms ONLY when user reaches the outcome/success stage
+    const shouldFetchForms = currentStep === 'OUTCOME' || currentStep === 'FINAL_SUCCESS' || currentStep === 'SURVEY';
+    const { data: deviceForms = [], isLoading: formsLoading } = useFormsByDevice(
+        shouldFetchForms ? (deviceCode || '') : ''
+    );
+    
+    const submitBusinessFormResponse = useSubmitBusinessFormResponse();
+
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const userBranchId = useAuthStore((state) => state.user?.branchId);
     const getDefaultFormId = useFormPreferencesStore((state) => state.getDefaultFormId);
+    const getActiveFormIds = useFormPreferencesStore((state) => state.getActiveFormIds);
     const formBranchScope = branchId || activeBranchId || userBranchId || null;
     const defaultFormId = getDefaultFormId(formBranchScope || 'global');
-    const approvedFormsForBusiness = useMemo(
-        () =>
-            businessForms.filter(
-                (f) =>
-                    f.isPublished &&
-                    f.isActive &&
-                    (!businessId || f.businessId === businessId) &&
-                    (!branchId || f.branchId === branchId)
-            ),
-        [branchId, businessForms, businessId]
-    );
+    const locallyActiveFormIds = getActiveFormIds(formBranchScope || 'global');
+
+    // Filtered forms for the business (fallback/additional logic)
+    const approvedFormsForBusiness = useMemo(() => deviceForms, [deviceForms]);
+
     const selectedBusinessForm = useMemo(
         () => approvedFormsForBusiness.find((f) => f.id === selectedBusinessFormId) || null,
         [approvedFormsForBusiness, selectedBusinessFormId]
     );
+
     const preferredBusinessForm = useMemo(() => {
         const explicit = preferredFormIdParam
             ? approvedFormsForBusiness.find((form) => form.id === preferredFormIdParam)
@@ -70,31 +73,28 @@ function UserStepPageContent() {
         return explicit || branchDefault || approvedFormsForBusiness[0] || null;
     }, [approvedFormsForBusiness, preferredFormIdParam, defaultFormId]);
 
-    const addRedemptionRequest = useMockDashboardStore(state => state.addRedemptionRequest);
-    const redemptionRequests = useMockDashboardStore(state => state.redemptionRequests);
+    const attachedFormIds = useMemo(
+        () => {
+            if (engagementSettings?.showPostSubmitForms === false) return [];
+            const serverIds = Array.isArray(engagementSettings?.postSubmitFormIds)
+                ? engagementSettings.postSubmitFormIds
+                : [];
+            return Array.from(new Set([...serverIds, ...locallyActiveFormIds]));
+        },
+        [engagementSettings?.postSubmitFormIds, engagementSettings?.showPostSubmitForms, locallyActiveFormIds]
+    );
+
+    const attachedBusinessForms = useMemo(
+        () => approvedFormsForBusiness.filter((form) => attachedFormIds.includes(form.id) && form.id !== preferredBusinessForm?.id),
+        [approvedFormsForBusiness, attachedFormIds, preferredBusinessForm?.id]
+    );
 
     const { user } = useAuthStore();
     const { lastEarnedResponse, setLastEarnedResponse } = useLoyaltyStore();
     const config = getBusinessConfig();
 
-    // Live Sync Simulation: Listen for approvals/declines from the business dashboard
-    useEffect(() => {
-        if (redemptionStatus === 'pending' && lastRedemptionId) {
-            const request = redemptionRequests.find(r => r.id === lastRedemptionId);
-            if (request && request.status !== 'pending') {
-                if (request.status === 'approved') {
-                    setRedemptionStatus('approved');
-                    resetVisitCountAfterRedemption(rewardVisitThreshold);
-                    toast.success('Your reward has been approved! Claim it now.', { duration: 5000 });
-                } else if (request.status === 'declined') {
-                    setRedemptionStatus('declined');
-                    toast.error('Redemption declined by staff.');
-                }
-            }
-        }
-    }, [redemptionRequests, redemptionStatus, lastRedemptionId, setRedemptionStatus, resetVisitCountAfterRedemption, rewardVisitThreshold]);
-
     const [isDownloading, setIsDownloading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSyncingReal, setIsSyncingReal] = useState(false);
     const [isDeviceSynced, setIsDeviceSynced] = useState(false);
 
@@ -161,22 +161,28 @@ function UserStepPageContent() {
     }, [currentStep, setStep, storedIdentity, userData]);
 
     const onFormSubmit = async (data: any) => {
-        localStorage.setItem('google_identity', JSON.stringify(data));
-        setUserData(data);
+        setIsSubmitting(true);
+        try {
+            localStorage.setItem('google_identity', JSON.stringify(data));
+            setUserData(data);
 
-        // Loyalty Integration: Earn points for the visit after identity is provided
-        const businessId = useCustomerFlowStore.getState().businessId;
-        if (businessId) {
-            const { earnPoints } = useLoyaltyStore.getState();
-            earnPoints({
-                userId: data.email || data.phone || data.uniqueId || 'anonymous',
-                businessId: businessId,
-                branchId: branchId || 'head-office',
-                isVisit: true
-            }).catch(err => console.error('Failed to earn points after form submit:', err));
+            // Loyalty Integration: Earn points for the visit after identity is provided
+            const businessId = useCustomerFlowStore.getState().businessId;
+            if (businessId) {
+                const { earnPoints } = useLoyaltyStore.getState();
+                const identity = data;
+                await earnPoints({
+                    userId: identity.email || identity.phone || identity.uniqueId || 'anonymous',
+                    businessId: businessId,
+                    branchId: branchId || 'head-office',
+                    isVisit: true
+                }).catch(err => console.error('Failed to earn points after form submit:', err));
+            }
+
+            setStep('OUTCOME');
+        } finally {
+            setIsSubmitting(false);
         }
-
-        setStep('OUTCOME');
     };
 
     const handleDownloadReward = () => {
@@ -200,25 +206,27 @@ function UserStepPageContent() {
         }
 
         const name = userData?.name || storedIdentity?.name || 'Guest';
-        // 1. Request in business dashboard
-        addRedemptionRequest({
-            visitorId: userData?.uniqueId || `V-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
-            visitorName: name,
-            rewardTitle: customRewardMessage || "Free Reward",
-            branchId: useCustomerFlowStore.getState().businessId || 'head-office'
-        });
 
-        // 2. Update customer state
         requestRedemption(customRewardMessage || "Free Reward");
-        toast.success('Redemption request sent to staff!');
+        toast.success(`Redemption request sent for ${name}.`);
     };
 
-    const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards') => {
+    const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
         if (type === 'review') {
-            window.open(engagementSettings.reviewUrl, '_blank');
+            window.open(engagementSettings?.reviewUrl, '_blank');
         } else if (type === 'social') {
             // Handled by the component's internal modal
         } else if (type === 'feedback') {
+            if (formId) {
+                const attached = approvedFormsForBusiness.find((form) => form.id === formId);
+                if (attached) {
+                    setSelectedBusinessFormId(attached.id);
+                    setStep('SURVEY');
+                    return;
+                }
+            }
+
+            // Fallback logic from dev
             const explicitlyRequested = preferredFormIdParam
                 ? approvedFormsForBusiness.find((form) => form.id === preferredFormIdParam)
                 : null;
@@ -235,31 +243,35 @@ function UserStepPageContent() {
         }
     };
 
-    const handleSurveyComplete = async (answers: Record<string, any>) => {
-        if (selectedBusinessForm && businessId) {
-            const identity = userData || storedIdentity || user;
-            try {
-                await submitBusinessFormResponse.mutateAsync({
-                    customerName: identity?.name || 'Guest',
-                    customerEmail: identity?.email || undefined,
-                    customerPhone: identity?.phone || undefined,
-                    answers,
-                });
-            } catch (error) {
-                // Keep journey smooth even if response endpoint is unavailable.
-                console.warn('Form response submission failed:', error);
-            }
-        }
+   const handleSurveyComplete = async (answers: Record<string, any>) => {
+  if (selectedBusinessForm && businessId) {
+    try {
+      await submitBusinessFormResponse.mutateAsync({
+        id: selectedBusinessForm.uniqueCode || selectedBusinessForm.id,
+        payload: {
+            answers: Object.entries(answers).map(([fieldId, value]) => ({
+                fieldId,
+                // Ensure value is a string for backend compatibility
+                value: Array.isArray(value) ? value.join(', ') : String(value || ''),
+            })),
+        },
+      });
+    } catch (error) {
+      console.warn('Form response submission failed:', error);
+    }
+  }
 
-        console.log('Survey completed:', answers);
-        toast.success('Thank you for your feedback!');
-        if (selectedBusinessForm?.redirectUrl && typeof window !== 'undefined') {
-            window.location.assign(selectedBusinessForm.redirectUrl);
-            return;
-        }
-        setSelectedBusinessFormId(null);
-        setStep('FINAL_SUCCESS');
-    };
+  console.log('Survey completed:', answers);
+  toast.success('Thank you for your feedback!');
+
+  if (selectedBusinessForm?.redirectUrl && typeof window !== 'undefined') {
+    window.location.assign(selectedBusinessForm.redirectUrl);
+    return;
+  }
+
+  setSelectedBusinessFormId(null);
+  setStep('FINAL_SUCCESS');
+};
 
     return (
         <VisitorLayout
@@ -292,9 +304,11 @@ function UserStepPageContent() {
                         customWelcomeTitle={customNewUserWelcomeTitle}
                         customWelcomeTag={customNewUserWelcomeTag}
                         customPrivacyMessage={customPrivacyMessage}
+                        submitLabel={customNewUserWelcomeButton || 'Submit'}
                         initialData={userData || storedIdentity || user}
                         isSyncingReal={isSyncingReal}
                         isDeviceSynced={isDeviceSynced}
+                        isSubmitting={isSubmitting}
                         onBack={() => setStep('SELECT_TYPE')}
                         onSubmit={onFormSubmit}
                     />
@@ -342,6 +356,7 @@ function UserStepPageContent() {
                         customRewardMessage={customRewardMessage}
                         hasRewardSetup={hasRewardSetup}
                         isDownloading={isDownloading}
+                        isFormsLoading={formsLoading}
                         onDownload={handleDownloadReward}
                         onFinish={() => setStep('FINAL_SUCCESS')}
                         onRestart={resetFlow}
@@ -349,6 +364,11 @@ function UserStepPageContent() {
                         engagementSettings={engagementSettings}
                         selectedFormTitle={preferredBusinessForm?.title || null}
                         selectedFormType="Form"
+                        attachedForms={attachedBusinessForms.map((form) => ({
+                            id: form.id,
+                            title: form.title,
+                            description: form.description,
+                        }))}
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
                             // Add other placeholder or config links here
@@ -381,9 +401,15 @@ function UserStepPageContent() {
                         customSuccessTitle={useCustomerFlowStore.getState().customSuccessTitle}
                         finalSuccessMessage={useCustomerFlowStore.getState().customSuccessMessage || config.finalSuccessMessage}
                         customSuccessButton={useCustomerFlowStore.getState().customSuccessButton}
+                        isFormsLoading={formsLoading}
                         onFinish={resetFlow}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}
+                        attachedForms={attachedBusinessForms.map((form) => ({
+                            id: form.id,
+                            title: form.title,
+                            description: form.description,
+                        }))}
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
                         }}

@@ -26,13 +26,31 @@ export default function PlanDetailsPage() {
     const normalizeFeatures = (plan: any) => {
         const baseFeatures = Array.isArray(plan?.features) ? plan.features.filter(Boolean) : [];
         const limits = [];
-        if (plan?.teamMembersLimit) limits.push(`${plan.teamMembersLimit} Team Members`);
-        if (plan?.tagsLimit) limits.push(`${plan.tagsLimit} Tags`);
-        if (plan?.branchLimit) limits.push(`${plan.branchLimit} Branches`);
-        if (plan?.loyaltyLimit) limits.push(`${plan.loyaltyLimit} Loyalty Points`);
-        if (plan?.smsCredits) limits.push(`${plan.smsCredits.toLocaleString()} SMS Credits`);
-        if (plan?.emailCredits) limits.push(`${plan.emailCredits.toLocaleString()} Email Credits`);
-        if (plan?.whatsappCredits) limits.push(`${plan.whatsappCredits.toLocaleString()} WhatsApp Credits`);
+        
+        const formatLimit = (value: number | undefined | null, label: string) => {
+            if (value === undefined || value === null) return null;
+            if (value === -1) return `Unlimited ${label}`;
+            return `${value.toLocaleString()} ${label}`;
+        };
+
+        const team = formatLimit(plan?.teamMembersLimit, 'Team Members');
+        if (team) limits.push(team);
+
+        const branch = formatLimit(plan?.branchLimit, 'Branches');
+        if (branch) limits.push(branch);
+
+        const loyalty = formatLimit(plan?.loyaltyLimit, 'Loyalty Points');
+        if (loyalty) limits.push(loyalty);
+
+        const sms = formatLimit(plan?.smsCredits, 'SMS Credits');
+        if (sms) limits.push(sms);
+
+        const email = formatLimit(plan?.emailCredits, 'Email Credits');
+        if (email) limits.push(email);
+
+        const whatsapp = formatLimit(plan?.whatsappCredits, 'WhatsApp Credits');
+        if (whatsapp) limits.push(whatsapp);
+
         if (plan?.analyticsLevel && plan.analyticsLevel !== 'none') {
             limits.push(`${String(plan.analyticsLevel).charAt(0).toUpperCase()}${String(plan.analyticsLevel).slice(1)} Analytics`);
         }

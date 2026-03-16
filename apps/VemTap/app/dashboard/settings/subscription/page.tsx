@@ -6,13 +6,15 @@ import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { fetchPricingPlans } from '@/lib/api/pricing';
+import { usePricingPlans } from '@/services/pricing/hooks';
 import { useActiveSubscription, useSubscribe } from '@/services/subscriptions/hooks';
 import SubscriptionCheckout from '@/components/dashboard/SubscriptionCheckout';
 import TrialCountdown from '@/components/dashboard/TrialCountdown';
 import toast from 'react-hot-toast';
 import { PricingPlan } from '@/types/pricing';
 import { Crown, ShieldCheck, CheckCircle2, Loader2 } from 'lucide-react';
+
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 
 export default function DashboardPricingPage() {
     const router = useRouter();
@@ -21,10 +23,7 @@ export default function DashboardPricingPage() {
     const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
     const [isTrialSelection, setIsTrialSelection] = useState(false);
 
-    const { data: plans = [], isLoading: plansLoading } = useQuery({
-        queryKey: ['subscription-plans'],
-        queryFn: fetchPricingPlans
-    });
+    const { data: plans = [], isLoading: plansLoading } = usePricingPlans();
 
     const [personalConfig, setPersonalConfig] = useState({
         visitors: 1000,
@@ -38,18 +37,28 @@ export default function DashboardPricingPage() {
         return base + visitorCost + tagCost;
     };
 
-    const { data: subscription, isLoading: subLoading, refetch: refetchSub } = useActiveSubscription();
+    const { activeSubscription: subscription, fetchSubscriptionData, isLoading: subLoading } = useSubscriptionStore();
     const subscribeMutation = useSubscribe();
 
     const isLoading = plansLoading || subLoading;
-    const activePlanId = subscription?.planId || 'free';
-    const activePlan = plans.find((p: PricingPlan) => p.id === activePlanId);
+    const freePlan = plans.find((p: PricingPlan) => p.isFree);
+    
+    // Robust active plan detection
+    const activePlanId = subscription?.planId;
+    const activePlanNameFromSub = subscription?.plan?.name?.toLowerCase();
+    
+    const activePlan = plans.find((p: PricingPlan) => 
+        p.id === activePlanId || 
+        (activePlanNameFromSub && p.name.toLowerCase() === activePlanNameFromSub)
+    ) || freePlan;
+
     const activeBillingPeriod = (subscription as any)?.billingPeriod || 'monthly';
     const isOnTrial = subscription?.status === 'trial' || subscription?.status === 'trialing';
     const trialEndDate = subscription?.trialEndDate || null;
     const periodStart = subscription?.currentPeriodStart || subscription?.startDate || null;
     const periodEnd = subscription?.currentPeriodEnd || subscription?.trialEndDate || subscription?.endDate || null;
     const isOwner = user?.role?.toLowerCase() === 'owner';
+    
     const configuredTrialDays = activePlan?.isFree ? 0 : (activePlan?.trialDurationDays || activePlan?.freeDurationDays || 30);
     const derivedTrialEndFromStart = (isOnTrial && periodStart && configuredTrialDays > 0)
         ? new Date(new Date(periodStart).getTime() + configuredTrialDays * 24 * 60 * 60 * 1000).toISOString()
@@ -59,7 +68,8 @@ export default function DashboardPricingPage() {
     const isTrialWindowActive = effectiveTrialEndDate ? new Date(effectiveTrialEndDate).getTime() > Date.now() : false;
     const showTrialCountdown = Boolean(!activePlan?.isFree) && isTrialWindowActive;
     const showFreeTrialHeader = showTrialCountdown;
-    const activePlanName = activePlan?.name || subscription?.plan?.name || 'Free Plan';
+    
+    const activePlanName = subscription?.plan?.name || activePlan?.name || 'Free Plan';
 
     const handlePlanSelect = async (plan: PricingPlan, useTrial: boolean = false) => {
         if (!isOwner) {
@@ -67,10 +77,10 @@ export default function DashboardPricingPage() {
             return;
         }
 
-        localStorage.setItem('has_selected_plan', 'true');
-        localStorage.setItem('selected_plan_id', plan.id);
-        const isCurrentPaidTrial = isOnTrial && plan.id === activePlanId && !plan.isFree;
-        if (plan.id === activePlanId && plan.id !== 'personal' && !isCurrentPaidTrial) {
+        const isCurrent = plan.id === activePlan?.id || plan.name.toLowerCase() === activePlan?.name.toLowerCase();
+        const isCurrentPaidTrial = isOnTrial && isCurrent && !plan.isFree;
+        
+        if (isCurrent && plan.id !== 'personal' && !isCurrentPaidTrial) {
             toast.error('You are already on this plan');
             return;
         }
@@ -78,20 +88,16 @@ export default function DashboardPricingPage() {
         const trialDays = plan.isFree ? 0 : (plan.trialDurationDays || plan.freeDurationDays || 0);
 
         if (plan.isFree) {
-            if (!user?.businessId) {
-                toast.error('Business ID not found. Please log in again.');
-                return;
-            }
             const shouldStartTrial = trialDays > 0;
             subscribeMutation.mutate({
-                businessId: user.businessId,
+                businessId: user?.businessId,
                 planId: plan.id,
                 billingPeriod: 'monthly',
                 isTrial: shouldStartTrial
             }, {
                 onSuccess: () => {
                     toast.success(shouldStartTrial ? `Started ${trialDays}-Day Free Trial!` : 'Switched to Free plan!');
-                    refetchSub();
+                    fetchSubscriptionData();
                 },
                 onError: (error) => toast.error(error instanceof Error ? error.message : 'Failed to update plan')
             });
@@ -132,13 +138,31 @@ export default function DashboardPricingPage() {
     const normalizeFeatures = (plan: any) => {
         const baseFeatures = Array.isArray(plan.features) ? plan.features.filter(Boolean) : [];
         const derivedFeatures = [];
-        if (plan.smsCredits) derivedFeatures.push(`${plan.smsCredits.toLocaleString()} SMS Credits`);
-        if (plan.whatsappCredits) derivedFeatures.push(`${plan.whatsappCredits.toLocaleString()} WhatsApp Credits`);
-        if (plan.emailCredits) derivedFeatures.push(`${plan.emailCredits.toLocaleString()} Email Credits`);
-        if (plan.teamMembersLimit) derivedFeatures.push(`${plan.teamMembersLimit} Team Members`);
-        if (plan.loyaltyLimit) derivedFeatures.push(`${plan.loyaltyLimit} Loyalty Points`);
-        if (plan.tagsLimit) derivedFeatures.push(`${plan.tagsLimit} Tags`);
-        if (plan.branchLimit) derivedFeatures.push(`${plan.branchLimit} Branches`);
+        
+        const formatLimit = (value: number | undefined, label: string) => {
+            if (value === undefined || value === null) return null;
+            if (value === -1) return `Unlimited ${label}`;
+            return `${value.toLocaleString()} ${label}`;
+        };
+
+        const sms = formatLimit(plan.smsCredits, 'SMS Credits');
+        if (sms) derivedFeatures.push(sms);
+
+        const whatsapp = formatLimit(plan.whatsappCredits, 'WhatsApp Credits');
+        if (whatsapp) derivedFeatures.push(whatsapp);
+
+        const email = formatLimit(plan.emailCredits, 'Email Credits');
+        if (email) derivedFeatures.push(email);
+
+        const team = formatLimit(plan.teamMembersLimit, 'Team Members');
+        if (team) derivedFeatures.push(team);
+
+        const loyalty = formatLimit(plan.loyaltyLimit, 'Loyalty Points');
+        if (loyalty) derivedFeatures.push(loyalty);
+
+        const branch = formatLimit(plan.branchLimit, 'Business Locations');
+        if (branch) derivedFeatures.push(branch);
+
         if (plan.analyticsLevel && plan.analyticsLevel !== 'none') {
             const level = plan.analyticsLevel.charAt(0).toUpperCase() + plan.analyticsLevel.slice(1);
             derivedFeatures.push(`${level} Analytics`);
@@ -230,12 +254,18 @@ export default function DashboardPricingPage() {
                     </div>
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Period</p>
-                        <p className="mt-2 text-lg font-black text-text-main">
-                            {periodStart ? `Start ${new Date(periodStart).toLocaleDateString()}` : 'Start N/A'}
-                        </p>
-                        <p className="mt-1 text-xs font-bold text-slate-500">
-                            {displayPeriodEnd ? `End ${new Date(displayPeriodEnd).toLocaleDateString()}` : 'End N/A'}
-                        </p>
+                        {activePlan?.isFree ? (
+                            <p className="mt-2 text-lg font-black text-green-600">Free Plan</p>
+                        ) : (
+                            <>
+                                <p className="mt-2 text-lg font-black text-text-main">
+                                    {periodStart ? `Start ${new Date(periodStart).toLocaleDateString()}` : 'Start N/A'}
+                                </p>
+                                <p className="mt-1 text-xs font-bold text-slate-500">
+                                    {displayPeriodEnd ? `End ${new Date(displayPeriodEnd).toLocaleDateString()}` : 'End N/A'}
+                                </p>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -408,8 +438,8 @@ export default function DashboardPricingPage() {
                                             ? isOnTrial && !plan.isFree && isOwner
                                                 ? highlight ? 'bg-primary text-white hover:bg-primary-hover' : 'bg-primary text-white hover:bg-primary-hover shadow-primary/20'
                                                 : isPersonal && isOwner
-                                                ? highlight ? 'bg-primary text-white hover:bg-primary-hover' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20'
-                                                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                                    ? highlight ? 'bg-primary text-white hover:bg-primary-hover' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20'
+                                                    : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                             : !isOwner
                                                 ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                                 : highlight

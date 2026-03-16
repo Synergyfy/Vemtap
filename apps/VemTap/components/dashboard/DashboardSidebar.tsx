@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useBusinessStore } from '@/store/useBusinessStore';
 const defaultLogo = '/VEMTAP_PNG.png';
@@ -11,8 +12,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
 import { Notification } from '@/lib/store/mockDashboardStore';
 import {
-    Home, Users, Nfc, Send, Gift, BarChart, Users2, Settings,
-    ChevronDown, LogOut, Bell, Search, HelpCircle, Menu, X, Zap, MessageSquare, Smartphone, Building2, ShieldCheck
+    Home, Users, Nfc, Gift, BarChart, Users2, Settings,
+    ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
+    MessageCircle, LucideIcon
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
@@ -21,9 +23,24 @@ import { useMyBusiness } from '@/services/businesses/hooks';
 import TrialBanner from './TrialBanner';
 import { useActiveSubscription } from '@/services/subscriptions/hooks';
 import DashboardMobileNav from './DashboardMobileNav';
+import UpgradeModal from './UpgradeModal';
 
 interface SidebarProps {
     children: React.ReactNode;
+}
+
+interface MenuItem {
+    id?: string;
+    label: string;
+    description?: string;
+    icon?: LucideIcon;
+    href?: string;
+    roles?: string[];
+    feature?: string;
+    featureName?: string;
+    submenu?: MenuItem[];
+    external?: boolean;
+    onClick?: () => void;
 }
 
 export default function DashboardSidebar({ children }: SidebarProps) {
@@ -33,9 +50,25 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-    const { data: myBusiness } = useMyBusiness();
-    const { data: activeSubscription } = useActiveSubscription();
-    const { getLinkWithBranch } = useActiveBranch();
+    const { data: myBusiness, isLoading: isBusinessLoading } = useMyBusiness();
+    const { fetchSubscriptionData, isFeatureLocked, capabilities, activeSubscription } = useSubscriptionStore();
+    const { activeBranchId, getLinkWithBranch } = useActiveBranch();
+    const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
+
+    // Close upgrade modal on navigation
+    useEffect(() => {
+        setUpgradeModal({ isOpen: false, featureName: '' });
+    }, [pathname, searchParams]);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            fetchSubscriptionData();
+        }
+    }, [isAuthenticated, fetchSubscriptionData]);
+
+    const mainBranch = myBusiness?.branches?.find(b => b.isMainBranch);
+    const businessLogo = myBusiness?.logoUrl || mainBranch?.logoUrl || defaultLogo;
+    const businessName = myBusiness?.name || user?.businessName || 'Business Profile';
 
     // eslint-disable-next-line no-console
     console.log('[DASHBOARD SIDEBAR] 🔍 isAuthenticated:', isAuthenticated, 'path:', pathname);
@@ -53,7 +86,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const queryClient = useQueryClient();
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
 
     const { data } = useQuery({
         queryKey: ['dashboard', activeBranchId],
@@ -65,13 +97,12 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const redemptionRequests = data?.redemptionRequests || [];
     const unreadCount = notifications.filter((n: Notification) => !n.read).length;
     const pendingRedemptions = redemptionRequests.filter((r: any) => r.status === 'pending').length;
-    const subscriptionPlanId = String(activeSubscription?.planId || '').toLowerCase();
+    const isFreePlan = Boolean(activeSubscription?.plan?.isFree) || String(activeSubscription?.planId || '').toLowerCase().includes('free');
     const showPlanPill = Boolean(activeSubscription)
         && activeSubscription?.status !== 'cancelled'
         && activeSubscription?.status !== 'expired'
-        && activeSubscription?.status !== 'pending'
-        && !subscriptionPlanId.includes('free');
-    const planPillLabel = activeSubscription?.plan?.name || 'Paid Plan';
+        && activeSubscription?.status !== 'pending';
+    const planPillLabel = activeSubscription?.plan?.name || (isFreePlan ? 'Free Plan' : 'Active Plan');
 
     const readNotificationMutation = useMutation({
         mutationFn: dashboardApi.markNotificationRead,
@@ -121,7 +152,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         });
     };
 
-    const menuItems = [
+    const menuItems: MenuItem[] = [
         {
             id: 'overview',
             label: 'Dashboard',
@@ -151,65 +182,23 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ]
         },
         {
-            id: 'messaging-center',
-            label: 'Messaging Center',
-            icon: MessageSquare,
-            roles: ['owner', 'manager'],
-            submenu: [
-                { label: 'Overview', href: '/dashboard/messaging' },
-                {
-                    id: 'whatsapp',
-                    label: 'WhatsApp Channel',
-                    submenu: [
-                        { label: 'Overview', href: '/dashboard/messaging/whatsapp' },
-                        { label: 'Send Message', href: '/dashboard/messaging/whatsapp/send' },
-                        { label: 'Templates', href: '/dashboard/messaging/whatsapp/templates' },
-                        { label: 'Top up', href: '/dashboard/messaging/whatsapp/topup' },
-                        { label: 'Settings', href: '/dashboard/messaging/whatsapp/settings' },
-                        {
-                            id: 'whatsapp-automations',
-                            label: 'Automation',
-                            submenu: [
-                                { label: 'Overview', href: '/dashboard/automations' },
-                                { label: 'Active Automations', href: '/dashboard/automations/active' },
-                                { label: 'Automation Logs', href: '/dashboard/automations/logs' },
-                                { label: 'Performance Overview', href: '/dashboard/automations/performance' },
-                            ]
-                        }
-                    ]
-                },
-                {
-                    id: 'sms',
-                    label: 'SMS Channel',
-                    submenu: [
-                        { label: 'Overview', href: '/dashboard/messaging/sms' },
-                        { label: 'Send Message', href: '/dashboard/messaging/sms/send' },
-                        { label: 'Templates', href: '/dashboard/messaging/sms/templates' },
-                        { label: 'Top up', href: '/dashboard/messaging/sms/topup' },
-                        { label: 'Settings', href: '/dashboard/messaging/sms/settings' },
-                    ]
-                },
-                {
-                    id: 'email',
-                    label: 'Email Channel',
-                    submenu: [
-                        { label: 'Overview', href: '/dashboard/messaging/email' },
-                        { label: 'Send Message', href: '/dashboard/messaging/email/send' },
-                        { label: 'Templates', href: '/dashboard/messaging/email/templates' },
-                        { label: 'Settings', href: '/dashboard/messaging/email/settings' },
-                    ]
-                },
-                { label: 'Message History', href: '/dashboard/messaging/history' },
-            ].map(item => ({ ...item, onClick: () => setIsMobileOpen(false) }))
+            id: 'live-chat',
+            label: 'Live Messaging',
+            icon: MessageCircle,
+            href: '/dashboard/messaging/chat',
+            roles: ['owner', 'manager', 'staff'],
         },
         {
             id: 'loyalty',
             label: 'Loyalty',
             icon: Gift,
             roles: ['owner', 'manager', 'staff'],
+            feature: 'loyalty',
+            featureName: 'Loyalty Programs',
             submenu: [
                 { label: 'Overview', href: '/dashboard/loyalty' },
                 { label: 'Rewards', href: '/dashboard/loyalty/rewards' },
+                { label: 'Redeem Reward', href: '/dashboard/loyalty/redeem' },
                 { label: 'Settings', href: '/dashboard/loyalty/settings' },
                 { label: 'Customers', href: '/dashboard/loyalty/customers' },
                 { label: 'Verify', href: '/dashboard/loyalty/verify' },
@@ -224,16 +213,9 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             roles: ['owner', 'manager'],
             submenu: [
                 { label: 'Overview', href: '/dashboard/analytics' },
-                { label: 'Footfall', href: '/dashboard/analytics/footfall' },
-                { label: 'Peak Times', href: '/dashboard/analytics/peak-times' },
+                { label: 'Footfall', href: '/dashboard/analytics/footfall', feature: 'footfall', featureName: 'Advanced Analytics' },
+                { label: 'Peak Times', href: '/dashboard/analytics/peak-times', feature: 'peak-times', featureName: 'Advanced Analytics' },
             ]
-        },
-        {
-            id: 'forms',
-            label: 'Forms',
-            icon: Building2,
-            href: '/dashboard/forms',
-            roles: ['owner', 'manager']
         },
         {
             id: 'support',
@@ -272,14 +254,23 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             roles: ['owner', 'manager'],
             submenu: [
                 { label: 'Profile', href: '/dashboard/settings/profile' },
-                { label: 'Branches', href: '/dashboard/settings/branches' },
+                { label: 'Business Locations', href: '/dashboard/settings/branches' },
+                {
+                    id: 'messaging-hub',
+                    label: 'Messaging Channels',
+                    submenu: [
+                        { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp' },
+                        { label: 'SMS', href: '/dashboard/messaging/sms' },
+                        { label: 'Email', href: '/dashboard/messaging/email' },
+                        { label: 'History', href: '/dashboard/messaging/history' },
+                    ]
+                },
                 {
                     id: 'engagement',
                     label: 'Engagement',
                     submenu: [
-                        { label: 'Socials', href: '/dashboard/settings/engagement/socials' },
+                        { label: 'User Experience', href: '/dashboard/settings/engagement/experience' },
                         { label: 'Form Creator', href: '/dashboard/settings/engagement/forms' },
-                        { label: 'Form Responses', href: '/dashboard/settings/engagement/forms/responses' },
                     ]
                 },
                 { label: 'Notifications', href: '/dashboard/settings/notifications' },
@@ -305,6 +296,28 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         active
             ? 'bg-gray-100 text-text-main'
             : 'text-text-secondary hover:bg-gray-100 hover:text-text-main';
+    const withBranch = (href: string) => getLinkWithBranch(href);
+
+    const handleItemClick = (e: React.MouseEvent, item: any, parentId?: string) => {
+        // Close modal if open when clicking something else
+        if (upgradeModal.isOpen) {
+            setUpgradeModal({ isOpen: false, featureName: '' });
+        }
+
+        if (item.feature && isFeatureLocked(item.feature)) {
+            e.preventDefault();
+            e.stopPropagation();
+            setUpgradeModal({ isOpen: true, featureName: item.featureName || item.label });
+            return false;
+        }
+        if (item.submenu) {
+            if (!item.id) {
+                return true;
+            }
+            toggleMenu(item.id, parentId);
+        }
+        return true;
+    };
 
     return (
         <div className="flex h-screen bg-gray-50 overflow-hidden relative">
@@ -323,7 +336,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             `}>
                 {/* Logo  */}
                 <div className="h-16 flex items-center px-6 border-b border-gray-200">
-                    <Link href="/dashboard" className="flex items-center gap-2">
+                    <Link href={withBranch('/dashboard')} className="flex items-center gap-2">
                         <Logo />
                     </Link>
                 </div>
@@ -332,117 +345,201 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 <nav className="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
                     {filteredMenuItems.map((item) => {
                         const IconComponent = item.icon;
+                        const isLocked = item.feature && isFeatureLocked(item.feature);
                         return (
                             <div key={item.id} className="mb-1">
                                 {item.submenu ? (
                                     <>
                                         <button
-                                            onClick={() => toggleMenu(item.id)}
+                                            onClick={(e) => handleItemClick(e, item)}
                                             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${primaryNavClasses(isParentActive(item.submenu))
-                                                }`}
+                                                } ${isLocked ? 'opacity-70' : ''}`}
                                         >
                                             <div className="flex items-center gap-3">
                                                 {IconComponent && <IconComponent size={18} />}
                                                 <span>{item.label}</span>
                                             </div>
-                                            <ChevronDown
-                                                size={16}
-                                                className={`transition-transform ${expandedMenus.includes(item.id) ? 'rotate-180' : ''}`}
-                                            />
+                                            <div className="flex items-center gap-2">
+                                                {isLocked && <Lock size={14} className="text-text-secondary" />}
+                                                <ChevronDown
+                                                    size={16}
+                                                    className={`transition-transform ${expandedMenus.includes(item.id || '') ? 'rotate-180' : ''}`}
+                                                />
+                                            </div>
                                         </button>
-                                        {expandedMenus.includes(item.id) && (
+                                        {expandedMenus.includes(item.id || '') && !isLocked && (
                                             <div className="mt-2 ml-4 space-y-2">
-                                                {item.submenu.map((subItem: any, idx) => (
-                                                    subItem.submenu ? (
+                                                {item.submenu.map((subItem: any, idx) => {
+                                                    const isSubLocked = subItem.feature && isFeatureLocked(subItem.feature);
+                                                    return subItem.submenu ? (
                                                         <div key={subItem.id || idx} className="mb-1">
                                                             <button
-                                                                onClick={() => toggleMenu(subItem.id, item.id)}
+                                                                onClick={(e) => handleItemClick(e, subItem, item.id)}
                                                                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isParentActive(subItem.submenu))
-                                                                    }`}
+                                                                    } ${isSubLocked ? 'opacity-70' : ''}`}
                                                             >
                                                                 <span>{subItem.label}</span>
-                                                                <ChevronDown
-                                                                    size={14}
-                                                                    className={`transition-transform ${expandedMenus.includes(subItem.id) ? 'rotate-180' : ''}`}
-                                                                />
+                                                                <div className="flex items-center gap-2">
+                                                                    {isSubLocked && <Lock size={12} className="text-text-secondary" />}
+                                                                    <ChevronDown
+                                                                        size={14}
+                                                                        className={`transition-transform ${expandedMenus.includes(subItem.id) ? 'rotate-180' : ''}`}
+                                                                    />
+                                                                </div>
                                                             </button>
-                                                            {expandedMenus.includes(subItem.id) && (
+                                                            {expandedMenus.includes(subItem.id) && !isSubLocked && (
                                                                 <div className="mt-2 ml-3 space-y-2">
-                                                                    {subItem.submenu.map((nestedItem: any, nIdx: number) => (
-                                                                        nestedItem.submenu ? (
+                                                                    {subItem.submenu.map((nestedItem: any, nIdx: number) => {
+                                                                        const isNestedLocked = nestedItem.feature && isFeatureLocked(nestedItem.feature);
+                                                                        return nestedItem.submenu ? (
                                                                             <div key={nestedItem.id || nIdx} className="mb-1">
                                                                                 <button
-                                                                                    onClick={() => toggleMenu(nestedItem.id, subItem.id)}
+                                                                                    onClick={(e) => handleItemClick(e, nestedItem, subItem.id)}
                                                                                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isParentActive(nestedItem.submenu))
-                                                                                        }`}
+                                                                                        } ${isNestedLocked ? 'opacity-70' : ''}`}
                                                                                 >
                                                                                     <span>{nestedItem.label}</span>
-                                                                                    <ChevronDown
-                                                                                        size={12}
-                                                                                        className={`transition-transform ${expandedMenus.includes(nestedItem.id) ? 'rotate-180' : ''}`}
-                                                                                    />
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        {isNestedLocked && <Lock size={12} className="text-text-secondary" />}
+                                                                                        <ChevronDown
+                                                                                            size={12}
+                                                                                            className={`transition-transform ${expandedMenus.includes(nestedItem.id) ? 'rotate-180' : ''}`}
+                                                                                        />
+                                                                                    </div>
                                                                                 </button>
-                                                                                {expandedMenus.includes(nestedItem.id) && (
+                                                                                {expandedMenus.includes(nestedItem.id) && !isNestedLocked && (
                                                                                     <div className="mt-1 ml-3 space-y-1 border-l border-gray-100">
-                                                                                        {nestedItem.submenu.map((deepItem: any) => (
-                                                                                            <Link
-                                                                                                key={deepItem.href}
-                                                                                                href={getLinkWithBranch(deepItem.href)}
-                                                                                                className={`block px-3 py-1 rounded-lg text-[10px] font-medium transition-colors ${isActive(deepItem.href)
-                                                                                                    ? 'text-primary border-l-2 border-primary -ml-px'
-                                                                                                    : 'text-text-secondary hover:text-text-main'
-                                                                                                    }`}
-                                                                                            >
-                                                                                                {deepItem.label}
-                                                                                            </Link>
+                                                                                        {nestedItem.submenu.map((deepItem: any, dIdx: number) => (
+                                                                                            deepItem.href ? (
+                                                                                                <Link
+                                                                                                    key={deepItem.href}
+                                                                                                    href={getLinkWithBranch(deepItem.href!)}
+                                                                                                    onClick={(e) => {
+                                                                                                        if (deepItem.feature && isFeatureLocked(deepItem.feature)) {
+                                                                                                            e.preventDefault();
+                                                                                                            setUpgradeModal({ isOpen: true, featureName: deepItem.featureName || deepItem.label });
+                                                                                                        }
+                                                                                                    }}
+                                                                                                    className={`flex items-center justify-between px-3 py-1 rounded-lg text-[10px] font-medium transition-colors ${isActive(deepItem.href)
+                                                                                                        ? 'text-primary border-l-2 border-primary -ml-px'
+                                                                                                        : 'text-text-secondary hover:text-text-main'
+                                                                                                        }`}
+                                                                                                >
+                                                                                                    <span>{deepItem.label}</span>
+                                                                                                    {deepItem.feature && isFeatureLocked(deepItem.feature) && <Lock size={10} className="text-text-secondary" />}
+                                                                                                </Link>
+                                                                                            ) : (
+                                                                                                <span
+                                                                                                    key={`${deepItem.label}-${dIdx}`}
+                                                                                                    className="flex items-center justify-between px-3 py-1 rounded-lg text-[10px] font-medium text-text-secondary"
+                                                                                                >
+                                                                                                    <span>{deepItem.label}</span>
+                                                                                                    {deepItem.feature && isFeatureLocked(deepItem.feature) && <Lock size={10} className="text-text-secondary" />}
+                                                                                                </span>
+                                                                                            )
                                                                                         ))}
                                                                                     </div>
                                                                                 )}
                                                                             </div>
                                                                         ) : (
-                                                                            <Link
-                                                                                key={nestedItem.href}
-                                                                                href={nestedItem.href}
-                                                                                className={`block px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(nestedItem.href))
-                                                                                    }`}
-                                                                            >
-                                                                                {nestedItem.label}
-                                                                            </Link>
-                                                                        )
-                                                                    ))}
+                                                                            nestedItem.href ? (
+                                                                                <Link
+                                                                                    key={nestedItem.href}
+                                                                                    href={withBranch(nestedItem.href!)}
+                                                                                    onClick={(e) => {
+                                                                                        if (nestedItem.feature && isFeatureLocked(nestedItem.feature)) {
+                                                                                            e.preventDefault();
+                                                                                            setUpgradeModal({ isOpen: true, featureName: nestedItem.featureName || nestedItem.label });
+                                                                                        }
+                                                                                    }}
+                                                                                    className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(nestedItem.href))
+                                                                                        }`}
+                                                                                >
+                                                                                    <span className="flex flex-col text-left">
+                                                                                        <span>{nestedItem.label}</span>
+                                                                                        {nestedItem.description && (
+                                                                                            <span className="text-[10px] font-medium text-text-secondary mt-0.5">{nestedItem.description}</span>
+                                                                                        )}
+                                                                                    </span>
+                                                                                    {nestedItem.feature && isFeatureLocked(nestedItem.feature) && <Lock size={12} className="text-text-secondary" />}
+                                                                                </Link>
+                                                                            ) : (
+                                                                                <span
+                                                                                    key={`${nestedItem.label}-${nIdx}`}
+                                                                                    className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black text-text-secondary"
+                                                                                >
+                                                                                    <span>{nestedItem.label}</span>
+                                                                                    {nestedItem.feature && isFeatureLocked(nestedItem.feature) && <Lock size={12} className="text-text-secondary" />}
+                                                                                </span>
+                                                                            )
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                             )}
                                                         </div>
                                                     ) : (
-                                                        <Link
-                                                            key={subItem.href}
-                                                            href={getLinkWithBranch(subItem.href)}
-                                                            onClick={() => setIsMobileOpen(false)}
-                                                            className={`block px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(subItem.href))
-                                                                }`}
-                                                        >
-                                                            {subItem.label}
-                                                        </Link>
-                                                    )
-                                                ))}
+                                                        subItem.href ? (
+                                                            <Link
+                                                                key={subItem.href}
+                                                                href={getLinkWithBranch(subItem.href!)}
+                                                                onClick={(e) => {
+                                                                    setIsMobileOpen(false);
+                                                                    if (subItem.feature && isFeatureLocked(subItem.feature)) {
+                                                                        e.preventDefault();
+                                                                        setUpgradeModal({ isOpen: true, featureName: subItem.featureName || subItem.label });
+                                                                    }
+                                                                }}
+                                                                className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${subNavClasses(isActive(subItem.href))
+                                                                    }`}
+                                                            >
+                                                                <span className="flex flex-col text-left">
+                                                                    <span>{subItem.label}</span>
+                                                                    {subItem.description && (
+                                                                        <span className="text-[10px] font-medium text-text-secondary mt-0.5">{subItem.description}</span>
+                                                                    )}
+                                                                </span>
+                                                                {subItem.feature && isFeatureLocked(subItem.feature) && <Lock size={12} className="text-text-secondary" />}
+                                                            </Link>
+                                                        ) : (
+                                                            <span
+                                                                key={`${subItem.label}-${idx}`}
+                                                                className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black text-text-secondary"
+                                                            >
+                                                                <span>{subItem.label}</span>
+                                                                {subItem.feature && isFeatureLocked(subItem.feature) && <Lock size={12} className="text-text-secondary" />}
+                                                            </span>
+                                                        )
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </>
                                 ) : (
                                     <Link
-                                        href={item.href!}
+                                        href={item.external ? item.href! : withBranch(item.href!)}
+                                        target={item.external ? '_blank' : undefined}
+                                        rel={item.external ? 'noopener noreferrer' : undefined}
+                                        onClick={(e) => {
+                                            if (item.feature && isFeatureLocked(item.feature)) {
+                                                e.preventDefault();
+                                                setUpgradeModal({ isOpen: true, featureName: item.featureName || item.label });
+                                            }
+                                        }}
                                         className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-black transition-colors ${primaryNavClasses(isActive(item.href!))
-                                            }`}
+                                            } ${isLocked ? 'opacity-70' : ''}`}
                                     >
                                         <div className="flex items-center gap-3">
                                             {IconComponent && <IconComponent size={18} />}
                                             <span>{item.label}</span>
                                         </div>
-                                        {item.id === 'loyalty' && pendingRedemptions > 0 && (
-                                            <span className="w-5 h-5 bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center rounded-full shadow-sm shadow-emerald-500/20">
-                                                {pendingRedemptions}
-                                            </span>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {isLocked && <Lock size={14} className="text-text-secondary" />}
+                                            {item.id === 'loyalty' && pendingRedemptions > 0 && !isLocked && (
+                                                <span className="w-5 h-5 bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center rounded-full shadow-sm shadow-emerald-500/20">
+                                                    {pendingRedemptions}
+                                                </span>
+                                            )}
+                                        </div>
                                     </Link>
                                 )}
 
@@ -454,14 +551,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 {/* User Profile */}
                 <div className="border-t border-gray-200 p-4">
                     <Link
-                        href={`/business/${(myBusiness?.name || user?.businessName || 'profile').toLowerCase().replace(/\s+/g, '-')}`}
+                        href={`/business/${businessName.toLowerCase().replace(/\s+/g, '-')}`}
                         className="flex items-center gap-3 mb-3 hover:bg-gray-50 p-2 rounded-xl transition-colors group"
                     >
                         <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-gray-100 group-hover:scale-105 transition-transform">
-                            {myBusiness?.logoUrl || defaultLogo ? (
+                            {businessLogo ? (
                                 <img
-                                    src={myBusiness?.logoUrl || defaultLogo}
-                                    alt={myBusiness?.name || 'Store'}
+                                    src={businessLogo}
+                                    alt={businessName}
                                     className="w-full h-full object-contain p-1"
                                 />
                             ) : (
@@ -470,7 +567,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-text-main truncate">{user?.name || 'Business Owner'}</p>
-                            <p className="text-xs text-text-secondary truncate">{myBusiness?.name || user?.businessName || 'Business Profile'}</p>
+                            <p className="text-xs text-text-secondary truncate">{businessName}</p>
                         </div>
                     </Link>
                     <button
@@ -500,7 +597,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                     </div>
                     <div className="flex items-center gap-2 lg:gap-4 relative">
                         <TrialBanner compact />
-                        {showPlanPill && (
+                        {isFreePlan ? (
+                            <Link
+                                href="/dashboard/settings/subscription"
+                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
+                            >
+                                Free Plan
+                            </Link>
+                        ) : showPlanPill && (
                             <Link
                                 href="/dashboard/settings/subscription/manage"
                                 className="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
@@ -516,7 +620,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         >
                             <Bell size={20} />
                             {unreadCount > 0 && (
-                                <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full px-1">
+                                <span className="absolute top-1.5 right-1.5 min-w-4.5 h-4.5 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full px-1">
                                     {unreadCount > 9 ? '9+' : unreadCount}
                                 </span>
                             )}
@@ -594,10 +698,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                 className="flex items-center gap-2 p-0.5 hover:bg-gray-100 rounded-full transition-all focus:outline-none border border-transparent hover:border-gray-200"
                             >
                                 <div className="size-8 rounded-full bg-primary/5 flex items-center justify-center overflow-hidden border border-gray-100 shadow-sm transition-transform hover:scale-105 active:scale-95">
-                                    {myBusiness?.logoUrl || defaultLogo ? (
+                                    {businessLogo ? (
                                         <img
-                                            src={myBusiness?.logoUrl || defaultLogo}
-                                            alt={myBusiness?.name || 'Store'}
+                                            src={businessLogo}
+                                            alt={businessName}
                                             className="w-full h-full object-contain p-1"
                                         />
                                     ) : (
@@ -615,7 +719,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                     <div className="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden py-2 animate-in fade-in slide-in-from-top-2 duration-200">
                                         <div className="px-4 py-3 border-b border-gray-50 mb-1 bg-gray-50/50">
                                             <p className="text-sm font-bold text-text-main truncate">{user?.name || 'User'}</p>
-                                            <p className="text-[11px] text-text-secondary truncate">{user?.email || (user as any)?.email}</p>
+                                            <p className="text-[11px] text-text-secondary truncate">{user?.email}</p>
                                         </div>
                                         <div className="px-2">
                                             <Link
@@ -664,6 +768,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             </div>
 
             <DashboardMobileNav />
+            <UpgradeModal 
+                isOpen={upgradeModal.isOpen} 
+                onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })} 
+                featureName={upgradeModal.featureName} 
+            />
         </div>
     );
 }

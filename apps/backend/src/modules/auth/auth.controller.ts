@@ -90,6 +90,7 @@ export class AuthController {
 
   @Public()
   @Post('register/owner/request-otp')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request OTP for Owner Registration' })
   @ApiBody({ type: RequestOtpDto })
   @ApiResponse({

@@ -48,6 +48,17 @@ export const useRedeemCustomerReward = () => {
     });
 };
 
+export const useClaimCode = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { code: string; branchId?: string }) => customerApi.claimCode(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['customer', 'loyalty'] });
+            queryClient.invalidateQueries({ queryKey: ['customer', 'loyalty', 'history', 'global'] });
+        },
+    });
+};
+
 export const useCustomerSupportTickets = () =>
     useQuery({
         queryKey: ['customer', 'support', 'tickets'],

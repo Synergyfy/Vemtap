@@ -13,6 +13,7 @@ export type CustomerStep =
     | 'FORM'
     | 'OUTCOME'
     | 'SURVEY'
+    | 'BUSINESS_FORM'
     | 'FINAL_SUCCESS';
 
 export type BusinessType = 'RESTAURANT' | 'RETAIL' | 'GYM' | 'EVENT';
@@ -115,6 +116,12 @@ interface CustomerFlowState {
     customNewUserWelcomeMessage: string | null;
     customNewUserWelcomeTitle: string | null;
     customNewUserWelcomeTag: string | null;
+    customNewUserWelcomeButton: string | null;
+    attachedForms: any[];
+    activeForm: any | null;
+    setActiveForm: (form: any | null) => void;
+
+    // Actions
     customSuccessMessage: string | null;
     customSuccessTitle: string | null;
     customSuccessButton: string | null;
@@ -130,12 +137,16 @@ interface CustomerFlowState {
         showReview: boolean;
         showSocial: boolean;
         showFeedback: boolean;
+        showPostSubmitForms?: boolean;
         reviewUrl: string;
+        googleReviewUrl?: string;
         socialUrl: string; // Maintain for legacy
         instagram?: string;
         twitter?: string;
         facebook?: string;
         linkedin?: string;
+        postSubmitFormIds?: string[];
+        brandColor?: string;
     };
     surveyQuestions: Array<{
         id: string;
@@ -163,6 +174,7 @@ interface CustomerFlowState {
         newUserWelcomeMessage?: string;
         newUserWelcomeTitle?: string;
         newUserWelcomeTag?: string;
+        newUserWelcomeButton?: string;
         successMessage?: string;
         successTitle?: string;
         successButton?: string;
@@ -188,7 +200,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             currentStep: 'SELECT_TYPE',
             serialNumber: 'LT-8829-X',
             storeName: 'VemTap Venue',
-            businessType: 'RESTAURANT',
+            businessType: 'RETAIL',
             visitCount: 1,
             rewardVisitThreshold: 5,
             hasRewardSetup: true,
@@ -207,6 +219,10 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             customNewUserWelcomeMessage: null,
             customNewUserWelcomeTitle: null,
             customNewUserWelcomeTag: null,
+            customNewUserWelcomeButton: null,
+            attachedForms: [],
+            activeForm: null,
+
             customSuccessMessage: null,
             customSuccessTitle: null,
             customSuccessButton: null,
@@ -221,19 +237,28 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 showReview: true,
                 showSocial: true,
                 showFeedback: true,
+                showPostSubmitForms: true,
                 reviewUrl: 'https://g.page/review/vemtap',
+                googleReviewUrl: '',
                 socialUrl: 'https://instagram.com/vemtap',
                 instagram: 'https://instagram.com/vemtap',
                 twitter: '',
                 facebook: '',
-                linkedin: ''
+                linkedin: '',
+                postSubmitFormIds: [],
+                brandColor: '#2563eb',
             },
             surveyQuestions: [
                 { id: 'q3', text: 'Any other feedback?', type: 'text' }
             ],
             redirects: {},
 
-            setStep: (step) => set({ currentStep: step }),
+            setActiveForm: (form) => set({ activeForm: form }),
+
+            setStep: (step) => set((state) => ({
+            currentStep: step,
+            activeForm: step === 'BUSINESS_FORM' ? state.activeForm : null
+        })),
             setUserData: (data) => {
                 const uniqueId = data.uniqueId || `LT-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
                 set({ userData: { ...data, uniqueId }, visitCount: 1 });
@@ -268,41 +293,54 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             getBusinessConfig: () => businessConfigs[get().businessType],
             initializeFromBusiness: (device) => {
                 const b = device.business || {};
+                const branch = device.branch || {};
                 const hasEngagement = !!device.owner?.engagement;
+                const ownerEngagement = device.owner?.engagement || {};
 
                 set({
                     businessId: b.id || device.businessId,
                     deviceCode: device.code,
                     branchId: device.branchId || 'head-office',
-                    storeName: b.name || device.name,
+                    storeName: branch.name || b.name || device.name,
                     businessType: b.type || 'RETAIL',
-                    customWelcomeMessage: b.welcomeMessage,
-                    customWelcomeTitle: b.welcomeTitle,
-                    customWelcomeButton: b.welcomeButton,
-                    customWelcomeTag: b.welcomeTag,
-                    customNewUserWelcomeMessage: b.welcomeMessage,
-                    customNewUserWelcomeTitle: b.welcomeTitle,
-                    customNewUserWelcomeTag: b.welcomeTag,
-                    customSuccessMessage: b.successMessage,
-                    customSuccessTitle: b.successTitle,
-                    customSuccessButton: b.successButton,
-                    customSuccessTag: b.successTag,
-                    customPrivacyMessage: b.privacyMessage,
-                    customRewardMessage: b.rewardMessage,
-                    hasRewardSetup: b.rewardEnabled,
-                    logoUrl: b.logoUrl,
+                    customWelcomeMessage: branch.welcomeMessage || b.welcomeMessage,
+                    customWelcomeTitle: branch.welcomeTitle || b.welcomeTitle,
+                    customWelcomeButton: branch.welcomeButton || b.welcomeButton,
+                    customWelcomeTag: branch.welcomeTag || b.welcomeTag,
+                    customNewUserWelcomeMessage: branch.welcomeMessage || b.welcomeMessage,
+                    customNewUserWelcomeTitle: branch.welcomeTitle || b.welcomeTitle,
+                    customNewUserWelcomeTag: branch.welcomeTag || b.welcomeTag,
+                    customNewUserWelcomeButton: branch.welcomeButton || b.welcomeButton,
+                    customSuccessMessage: branch.successMessage || b.successMessage,
+                    customSuccessTitle: branch.successTitle || b.successTitle,
+                    customSuccessButton: branch.successButton || b.successButton,
+                    customSuccessTag: branch.successTag || b.successTag,
+                    customPrivacyMessage: branch.privacyMessage || b.privacyMessage,
+                    customRewardMessage: branch.rewardMessage || b.rewardMessage,
+                    hasRewardSetup: branch.rewardEnabled ?? b.rewardEnabled,
+                    logoUrl: branch.logoUrl || b.logoUrl,
                     isFirstTimeVisit: device.isFirstTimeVisit ?? true,
                     isReturningUser: !(device.isFirstTimeVisit ?? true),
                     engagementSettings: {
-                        showReview: hasEngagement ? (b.showReview ?? true) : false,
-                        showSocial: hasEngagement ? (b.showSocial ?? true) : false,
-                        showFeedback: hasEngagement ? (b.showFeedback ?? true) : false,
-                        reviewUrl: b.reviewUrl || '',
-                        socialUrl: b.instagramUrl || b.socialUrl || '',
-                        instagram: b.instagramUrl || '',
-                        twitter: b.twitterUrl || '',
-                        facebook: b.facebookUrl || '',
-                        linkedin: b.linkedinUrl || '',
+                        showReview: hasEngagement
+                            ? (branch.showReview ?? b.showReview ?? ownerEngagement.showReview ?? true)
+                            : (branch.showReview ?? b.showReview ?? true),
+                        showSocial: hasEngagement
+                            ? (branch.showSocial ?? b.showSocial ?? ownerEngagement.showSocial ?? true)
+                            : (branch.showSocial ?? b.showSocial ?? true),
+                        showFeedback: hasEngagement
+                            ? (branch.showFeedback ?? b.showFeedback ?? ownerEngagement.showFeedback ?? true)
+                            : (branch.showFeedback ?? b.showFeedback ?? true),
+                        showPostSubmitForms: ownerEngagement.showPostSubmitForms ?? true,
+                        reviewUrl: branch.reviewUrl || b.reviewUrl || ownerEngagement.reviewUrl || '',
+                        socialUrl: branch.instagramUrl || b.instagramUrl || b.socialUrl || ownerEngagement.socialUrl || '',
+                        instagram: branch.instagramUrl || b.instagramUrl || ownerEngagement.instagram || '',
+                        twitter: branch.twitterUrl || b.twitterUrl || ownerEngagement.twitter || '',
+                        facebook: branch.facebookUrl || b.facebookUrl || ownerEngagement.facebook || '',
+                        linkedin: branch.linkedinUrl || b.linkedinUrl || ownerEngagement.linkedin || '',
+                        postSubmitFormIds: Array.isArray(ownerEngagement.postSubmitFormIds)
+                            ? ownerEngagement.postSubmitFormIds
+                            : [],
                     },
                     currentStep: 'SCANNING'
                 });
@@ -315,6 +353,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 customNewUserWelcomeMessage: settings.newUserWelcomeMessage ?? state.customNewUserWelcomeMessage,
                 customNewUserWelcomeTitle: settings.newUserWelcomeTitle ?? state.customNewUserWelcomeTitle,
                 customNewUserWelcomeTag: settings.newUserWelcomeTag ?? state.customNewUserWelcomeTag,
+                customNewUserWelcomeButton: settings.newUserWelcomeButton ?? state.customNewUserWelcomeButton,
                 customSuccessMessage: settings.successMessage ?? state.customSuccessMessage,
                 customSuccessTitle: settings.successTitle ?? state.customSuccessTitle,
                 customSuccessButton: settings.successButton ?? state.customSuccessButton,

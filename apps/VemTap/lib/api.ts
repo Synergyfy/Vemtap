@@ -1,5 +1,5 @@
 export const normalizeBaseUrl = (raw?: string) => {
-    if (!raw) return 'http://localhost:3002/api/v1';
+    if (!raw) return 'http://localhost:3001/api/v1';
     const trimmed = raw.replace(/\/+$/, '');
     if (trimmed.endsWith('/api/v1')) return trimmed;
     return `${trimmed}/api/v1`;
@@ -47,8 +47,12 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
                 try {
                     localStorage.removeItem('auth-storage-v2');
                     document.cookie = 'vemtap-auth-token=; path=/; max-age=0; SameSite=Lax';
-                    // Redirect to login if not already there
-                    if (window.location.pathname !== '/login') {
+                    
+                    // Only redirect to login if we are on a protected route
+                    const protectedRoutes = ['/dashboard', '/admin', '/agent', '/business', '/marketplace', '/customer', '/user-step', '/bussinesss'];
+                    const isProtectedRoute = protectedRoutes.some(route => window.location.pathname.startsWith(route));
+
+                    if (isProtectedRoute && window.location.pathname !== '/login') {
                         window.location.href = '/login';
                         return Promise.reject(new Error('Session expired. Redirecting to login...'));
                     }

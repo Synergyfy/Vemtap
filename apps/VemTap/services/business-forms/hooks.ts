@@ -1,42 +1,143 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { useAuthStore } from '@/store/useAuthStore';
 import type {
   BusinessForm,
   BusinessFormResponseItem,
   CreateBusinessFormRequest,
   CreateFormTemplateRequest,
   FormTemplate,
+  SubmitBusinessFormResponseRequest,
   UpdateBusinessFormRequest,
 } from './types';
 
 const toList = <T,>(payload: unknown): T[] => {
   if (Array.isArray(payload)) return payload as T[];
   if (payload && typeof payload === 'object') {
-    const maybeData = (payload as { data?: unknown }).data;
-    if (Array.isArray(maybeData)) return maybeData as T[];
+    const objectPayload = payload as {
+      data?: unknown;
+      items?: unknown;
+      forms?: unknown;
+      results?: unknown;
+    };
+    if (Array.isArray(objectPayload.data)) return objectPayload.data as T[];
+    if (Array.isArray(objectPayload.items)) return objectPayload.items as T[];
+    if (Array.isArray(objectPayload.forms)) return objectPayload.forms as T[];
+    if (Array.isArray(objectPayload.results)) return objectPayload.results as T[];
   }
   return [];
 };
 
-export const useBusinessForms = () =>
+type BusinessFormsQuery = {
+  branchId?: string;
+  allBranches?: boolean;
+};
+
+export const useBusinessForms = (params: BusinessFormsQuery = {}) =>
   useQuery<BusinessForm[], Error>({
-    queryKey: ['business-forms'],
+    queryKey: ['business-forms', params.branchId || 'all', params.allBranches ? 'all-branches' : 'scoped'],
     queryFn: async () => {
-      const businessId = useAuthStore.getState().user?.businessId;
-      if (!businessId) return [];
-      const response = await api.get(`/visitor-forms/business/${businessId}`);
+      const query = new URLSearchParams();
+      if (params.branchId) query.set('branchId', params.branchId);
+      if (params.allBranches) query.set('allBranches', 'true');
+      const suffix = query.toString();
+      const response = await api.get(`/business-forms${suffix ? `?${suffix}` : ''}`);
       return toList<BusinessForm>(response);
     },
   });
 
-export const useBusinessForm = (id?: string) =>
+export const useBusinessForm = (id?: string, params: BusinessFormsQuery = {}) =>
   useQuery<BusinessForm, Error>({
-    queryKey: ['business-forms', id],
+    queryKey: ['business-forms', id, params.branchId || 'all', params.allBranches ? 'all-branches' : 'scoped'],
     queryFn: async () => {
-      return await api.get(`/visitor-forms/${id}`);
+      const query = new URLSearchParams();
+      if (params.branchId) query.set('branchId', params.branchId);
+      if (params.allBranches) query.set('allBranches', 'true');
+      const suffix = query.toString();
+      return await api.get(`/business-forms/${id}${suffix ? `?${suffix}` : ''}`);
     },
     enabled: !!id,
+  });
+
+export const usePublicBusinessForm = (id?: string) =>
+  useQuery<BusinessForm, Error>({
+    queryKey: ['public-business-form', id],
+    queryFn: async () => {
+      try {
+        return await api.get(`/visitor-forms/code/${id}`);
+      } catch {
+        return await api.get(`/visitor-forms/public/${id}`);
+      }
+    },
+    enabled: !!id,
+  });
+
+/** Fetch public business info (name, logo, branches) by businessId */
+export interface PublicBusinessInfo {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  branches?: Array<{ id: string; name: string; logoUrl?: string; address?: string }>;
+}
+
+export const usePublicBusinessInfo = (businessId?: string) =>
+  useQuery<PublicBusinessInfo | null, Error>({
+    queryKey: ['public-business-info', businessId],
+    queryFn: async (): Promise<PublicBusinessInfo | null> => {
+      if (!businessId) return null;
+      // Try public endpoint first, then fallback
+      const endpoints = [
+        `/businesses/${businessId}/public`,
+        `/businesses/${businessId}`,
+      ];
+      for (const endpoint of endpoints) {
+        try {
+          const data = await api.get(endpoint);
+          if (data && typeof data === 'object' && (data as any).name) {
+            return data as PublicBusinessInfo;
+          }
+        } catch {
+          // try next endpoint
+        }
+      }
+      return null;
+    },
+    enabled: !!businessId,
+    staleTime: 1000 * 60 * 10,
+    retry: false,
+  });
+
+/** Fetch public branch info by branchId */
+export interface PublicBranchInfo {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  address?: string;
+}
+
+export const usePublicBranchInfo = (branchId?: string) =>
+  useQuery<PublicBranchInfo | null, Error>({
+    queryKey: ['public-branch-info', branchId],
+    queryFn: async (): Promise<PublicBranchInfo | null> => {
+      if (!branchId) return null;
+      const endpoints = [
+        `/branches/${branchId}/public`,
+        `/branches/${branchId}`,
+      ];
+      for (const endpoint of endpoints) {
+        try {
+          const data = await api.get(endpoint);
+          if (data && typeof data === 'object' && (data as any).name) {
+            return data as PublicBranchInfo;
+          }
+        } catch {
+          // try next
+        }
+      }
+      return null;
+    },
+    enabled: !!branchId,
+    staleTime: 1000 * 60 * 10,
+    retry: false,
   });
 
 export const useCreateBusinessForm = () => {
@@ -45,30 +146,42 @@ export const useCreateBusinessForm = () => {
     mutationFn: async (payload) => {
       return await api.post('/business-forms', payload);
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
+      queryClient.setQueryData<BusinessForm[]>(['business-forms'], (previous) => {
+        if (!previous) return created ? [created] : [];
+        if (!created?.id) return previous;
+        if (previous.some((item) => item.id === created.id)) return previous;
+        return [created, ...previous];
+      });
       queryClient.invalidateQueries({ queryKey: ['business-forms'] });
     },
   });
 };
 
-export const useUpdateBusinessForm = (id: string) => {
+export const useUpdateBusinessForm = (id?: string) => {
   const queryClient = useQueryClient();
-  return useMutation<BusinessForm, Error, UpdateBusinessFormRequest>({
-    mutationFn: async (payload) => {
-      return await api.patch(`/business-forms/${id}`, payload);
+  return useMutation<BusinessForm, Error, { id?: string; payload: UpdateBusinessFormRequest }>({
+    mutationFn: async ({ id: mutationId, payload }) => {
+      const targetId = mutationId || id;
+      if (!targetId) throw new Error('No form ID provided');
+      return await api.patch(`/business-forms/${targetId}`, payload);
     },
-    onSuccess: () => {
+    onSuccess: (_, { id: mutationId }) => {
+      const targetId = mutationId || id;
       queryClient.invalidateQueries({ queryKey: ['business-forms'] });
-      queryClient.invalidateQueries({ queryKey: ['business-forms', id] });
+      if (targetId) queryClient.invalidateQueries({ queryKey: ['business-forms', targetId] });
     },
   });
 };
 
 export const useDeleteBusinessForm = () => {
   const queryClient = useQueryClient();
-  return useMutation<void, Error, string>({
-    mutationFn: async (id) => {
-      await api.delete(`/business-forms/${id}`);
+  return useMutation<void, Error, { id: string; branchId?: string }>({
+    mutationFn: async ({ id, branchId }) => {
+      const query = new URLSearchParams();
+      if (branchId) query.set('branchId', branchId);
+      const suffix = query.toString();
+      await api.delete(`/business-forms/${id}${suffix ? `?${suffix}` : ''}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['business-forms'] });
@@ -76,37 +189,50 @@ export const useDeleteBusinessForm = () => {
   });
 };
 
-export const useBusinessFormResponses = (id?: string) =>
+export const useBusinessFormResponses = (id?: string, params: BusinessFormsQuery = {}) =>
   useQuery<BusinessFormResponseItem[], Error>({
-    queryKey: ['business-forms', id, 'responses'],
+    queryKey: ['business-forms', id, 'responses', params.branchId || 'any', params.allBranches ? 'all' : 'scoped'],
     queryFn: async () => {
       try {
-        const response = await api.get(`/business-forms/${id}/responses`);
+        const query = new URLSearchParams();
+        if (params.branchId) query.set('branchId', params.branchId);
+        if (params.allBranches) query.set('allBranches', 'true');
+        const suffix = query.toString();
+        const response = await api.get(`/business-forms/${id}/responses${suffix ? `?${suffix}` : ''}`);
         return toList<BusinessFormResponseItem>(response);
       } catch (err) {
         // Fallback to visitor-forms responses if business-forms fails
-        const response = await api.get(`/visitor-forms/${id}`);
-        const candidate =
-          response && typeof response === 'object'
-            ? (response as { responses?: unknown }).responses
-            : undefined;
-        return toList<BusinessFormResponseItem>(candidate);
+        try {
+          const response = await api.get(`/visitor-forms/code/${id}`);
+          const candidate =
+            response && typeof response === 'object'
+              ? (response as { responses?: unknown }).responses
+              : undefined;
+          return toList<BusinessFormResponseItem>(candidate);
+        } catch {
+          const response = await api.get(`/visitor-forms/${id}`);
+          const candidate =
+            response && typeof response === 'object'
+              ? (response as { responses?: unknown }).responses
+              : undefined;
+          return toList<BusinessFormResponseItem>(candidate);
+        }
       }
     },
     enabled: !!id,
   });
 
-export const useSubmitBusinessFormResponse = (id: string) => {
+export const useSubmitBusinessFormResponse = () => {
   const queryClient = useQueryClient();
-  return useMutation<
-    BusinessFormResponseItem,
-    Error,
-    Pick<BusinessFormResponseItem, 'customerName' | 'customerEmail' | 'customerPhone' | 'answers'>
-  >({
-    mutationFn: async (payload) => {
-      return await api.post(`/visitor-forms/${id}/responses`, payload);
+  return useMutation<BusinessFormResponseItem, Error, { id: string; payload: SubmitBusinessFormResponseRequest }>({
+    mutationFn: async ({ id, payload }) => {
+      try {
+        return await api.post(`/visitor-forms/code/${id}/responses`, payload);
+      } catch {
+        return await api.post(`/visitor-forms/${id}/responses`, payload);
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['business-forms', id, 'responses'] });
     },
   });
@@ -121,6 +247,15 @@ export const useFormTemplates = () =>
     },
   });
 
+export const useFormsByDevice = (deviceCode: string) =>
+  useQuery<BusinessForm[], Error>({
+    queryKey: ['forms-by-device', deviceCode],
+    queryFn: async () => {
+      return await api.get(`/visitor-forms/device/${deviceCode}`);
+    },
+    enabled: !!deviceCode,
+  });
+
 export const useCreateFormTemplate = () => {
   const queryClient = useQueryClient();
   return useMutation<FormTemplate, Error, CreateFormTemplateRequest>({
@@ -132,4 +267,3 @@ export const useCreateFormTemplate = () => {
     },
   });
 };
-

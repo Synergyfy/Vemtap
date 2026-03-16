@@ -44,6 +44,13 @@ export const StepWelcomeBack: React.FC<StepWelcomeBackProps> = ({
 }) => {
     const [hasConsented, setHasConsented] = React.useState(!showConsent);
 
+    // Sync hasConsented if showConsent changes (e.g. after late profile fetch)
+    React.useEffect(() => {
+        if (!showConsent) {
+            setHasConsented(true);
+        }
+    }, [showConsent]);
+
     return (
         <motion.div
             key="welcome-back"

@@ -31,6 +31,7 @@ describe('PlansService', () => {
     find: jest.fn().mockResolvedValue([mockPlan]),
     findOne: jest.fn().mockResolvedValue(mockPlan),
     remove: jest.fn().mockResolvedValue(undefined),
+    softRemove: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -105,6 +106,18 @@ describe('PlansService', () => {
 
   it('should remove a plan', async () => {
     await service.remove('1');
-    expect(mockPlanRepository.remove).toHaveBeenCalledWith(mockPlan);
+    expect(mockPlanRepository.softRemove).toHaveBeenCalledWith(mockPlan);
+  });
+
+  it('should return a free plan', async () => {
+    mockPlanRepository.findOne.mockResolvedValueOnce({
+      ...mockPlan,
+      isFree: true,
+    });
+    const plan = await service.findFreePlan();
+    expect(plan.isFree).toBe(true);
+    expect(mockPlanRepository.findOne).toHaveBeenCalledWith({
+      where: { isFree: true, isActive: true },
+    });
   });
 });

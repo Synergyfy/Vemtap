@@ -14,6 +14,8 @@ import { ImportCustomersDto } from './dto/import-customers.dto';
 import { MailService } from '../mail/mail.service';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
+import { DevicesService } from '../devices/devices.service';
+import { Reward } from '../campaigns/entities/reward.entity';
 
 @Injectable()
 export class BusinessesService {
@@ -26,7 +28,10 @@ export class BusinessesService {
     private branchRepository: Repository<Branch>,
     @InjectRepository(Visit)
     private visitRepository: Repository<Visit>,
+    @InjectRepository(Reward)
+    private rewardRepository: Repository<Reward>,
     private readonly mailService: MailService,
+    private readonly devicesService: DevicesService,
   ) {}
 
   async create(
@@ -34,14 +39,23 @@ export class BusinessesService {
       logoUrl?: string;
       address?: string;
       website?: string;
+      state?: string;
+      city?: string;
       whatsappNumber?: string;
       officialEmail?: string;
     },
   ): Promise<Business> {
     if (businessData.ownerId) {
-      const existing = await this.findByOwner(businessData.ownerId);
-      if (existing) {
+      const existingByOwner = await this.findByOwner(businessData.ownerId);
+      if (existingByOwner) {
         throw new ConflictException('Owner already has a business');
+      }
+    }
+
+    if (businessData.phone) {
+      const existingByPhone = await this.findByPhone(businessData.phone);
+      if (existingByPhone) {
+        throw new ConflictException('Business with this phone number already exists');
       }
     }
 
@@ -50,6 +64,8 @@ export class BusinessesService {
       logoUrl,
       address,
       website,
+      state,
+      city,
       whatsappNumber,
       officialEmail,
       phone,
@@ -60,6 +76,12 @@ export class BusinessesService {
       ...businessBaseData,
       officialEmail,
       phone,
+      logoUrl,
+      address,
+      website,
+      state,
+      city,
+      whatsappNumber,
     } as Partial<Business>);
     const savedBusiness = await this.businessesRepository.save(business);
 
@@ -70,6 +92,8 @@ export class BusinessesService {
       isMainBranch: true,
       logoUrl,
       address,
+      state,
+      city,
       website,
       whatsappNumber,
       officialEmail: officialEmail,
@@ -86,11 +110,25 @@ export class BusinessesService {
       });
     }
 
+    // Automatically generate a device for the Main Branch
+    try {
+      await this.devicesService.createAutoDevice(savedBranch.id);
+    } catch (error) {
+      console.error(
+        `Failed to auto-generate device for business ${savedBusiness.id} main branch:`,
+        error,
+      );
+    }
+
     return savedBusiness;
   }
 
   async findByOwner(ownerId: string): Promise<Business | null> {
     return this.businessesRepository.findOne({ where: { ownerId } });
+  }
+
+  async findByPhone(phone: string): Promise<Business | null> {
+    return this.businessesRepository.findOne({ where: { phone } });
   }
 
   async findById(id: string): Promise<Business> {
@@ -102,6 +140,65 @@ export class BusinessesService {
       throw new NotFoundException('Business not found');
     }
     return business;
+  }
+
+  async findByCode(uniqueCode: string): Promise<any> {
+    const business = await this.businessesRepository.findOne({
+      where: { uniqueCode, status: BusinessStatus.ACTIVE },
+      relations: ['branches', 'category', 'subcategory', 'owner'],
+    });
+    if (!business) {
+      throw new NotFoundException('Business not found');
+    }
+
+    const { owner, ...businessData } = business;
+
+    // Filter owner sensitive data
+    let safeOwner: any = null;
+    if (owner) {
+      safeOwner = {
+        id: owner.id,
+        firstName: owner.firstName,
+        lastName: owner.lastName,
+        email: owner.email,
+        phone: owner.phone,
+        role: owner.role,
+        jobTitle: owner.jobTitle,
+        status: owner.status,
+      };
+    }
+
+    // Fetch active rewards across all branches and business level
+    let activeRewards: Reward[] = [];
+    if (businessData.branches && businessData.branches.length > 0) {
+      const branchIds = businessData.branches.map((b) => b.id);
+      
+      const [branchRewards, businessRewards] = await Promise.all([
+        this.rewardRepository.find({
+          where: { branchId: In(branchIds), isActive: true },
+        }),
+        this.rewardRepository.find({
+          where: { businessId: business.id, isActive: true },
+        })
+      ]);
+      
+      activeRewards = [...branchRewards, ...businessRewards];
+      
+      // Remove duplicates if any happen to overlap
+      const uniqueMap = new Map();
+      activeRewards.forEach(r => uniqueMap.set(r.id, r));
+      activeRewards = Array.from(uniqueMap.values());
+    } else {
+      activeRewards = await this.rewardRepository.find({
+        where: { businessId: business.id, isActive: true },
+      });
+    }
+
+    return {
+      ...businessData,
+      owner: safeOwner,
+      rewards: activeRewards,
+    };
   }
 
   async update(
@@ -286,10 +383,18 @@ export class BusinessesService {
     const business = this.businessesRepository.create({
       name: dto.name,
       ownerId: savedUser.id,
-      type: dto.type,
       status: dto.status || BusinessStatus.ACTIVE,
       officialEmail: dto.officialEmail,
-      phone: dto.whatsappNumber || dto.officialEmail, // Using whatsappNumber or officialEmail as fallback for phone if not provided? wait, dto has officialEmail and whatsappNumber but not phone.
+      categoryId: dto.categoryId,
+      subcategoryId: dto.subcategoryId,
+      otherSubcategoryName: dto.otherSubcategoryName,
+      phone: dto.whatsappNumber || dto.officialEmail,
+      logoUrl: dto.logoUrl,
+      address: dto.address,
+      website: dto.website,
+      state: dto.state,
+      city: dto.city,
+      whatsappNumber: dto.whatsappNumber,
     } as Partial<Business>);
 
     const savedBusiness = await this.businessesRepository.save(business);
@@ -301,6 +406,8 @@ export class BusinessesService {
       isMainBranch: true,
       logoUrl: dto.logoUrl,
       address: dto.address,
+      state: dto.state,
+      city: dto.city,
       website: dto.website,
       whatsappNumber: dto.whatsappNumber,
       officialEmail: dto.officialEmail,
@@ -312,6 +419,16 @@ export class BusinessesService {
     // Link branchId back to user for proper context
     savedUser.branchId = savedBranch.id;
     await this.usersRepository.save(savedUser);
+
+    // Automatically generate a device for the Main Branch
+    try {
+      await this.devicesService.createAutoDevice(savedBranch.id);
+    } catch (error) {
+      console.error(
+        `Failed to auto-generate device for business ${savedBusiness.id} main branch (admin create):`,
+        error,
+      );
+    }
 
     return savedBusiness;
   }

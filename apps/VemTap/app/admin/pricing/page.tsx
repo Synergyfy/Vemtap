@@ -4,15 +4,16 @@ import { useState, useEffect } from 'react';
 import { notify } from '@/lib/notify';
 import {
     Tag, Plus, Trash2, Edit3, Save, X,
-    Zap, Shield, Globe, Crown, ChevronUp, ChevronDown
+    Zap, Shield, Globe, Crown, ChevronUp, ChevronDown, Loader2
 } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { fetchAdminPricingPlans, updatePricingPlan, addPricingPlan, deletePricingPlan } from '@/lib/api/pricing';
 import { PricingPlan } from '@/types/pricing';
 import FormattedNumberInput from '@/components/shared/FormattedNumberInput';
+import { useAdminPricingPlans, useAddPricingPlan, useUpdatePricingPlan, useDeletePricingPlan } from '@/services/pricing/hooks';
+import ConfirmationModal from '@/components/shared/ConfirmationModal';
 
-type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice' | 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'tagsLimit' | 'branchLimit'> & {
+type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice' | 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit'> & {
     id?: string;
     monthlyPrice: string;
     trialDurationDays: string;
@@ -21,7 +22,6 @@ type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice
     emailCredits: string;
     teamMembersLimit: string;
     loyaltyLimit: string;
-    tagsLimit: string;
     branchLimit: string;
 };
 
@@ -32,13 +32,17 @@ const defaultNewPlan: EditablePlanForm = {
     currency: 'NGN',
     isFree: false,
     trialDurationDays: '0',
+    messagingEnabled: false,
     smsCredits: '',
     whatsappCredits: '',
     emailCredits: '',
+    teamMembersEnabled: false,
     teamMembersLimit: '',
+    loyaltyEnabled: false,
     loyaltyLimit: '',
-    tagsLimit: '',
+    branchesEnabled: false,
     branchLimit: '',
+    analyticsEnabled: false,
     analyticsLevel: 'basic',
     isActive: true,
     description: '',
@@ -53,13 +57,17 @@ const toEditablePlan = (plan: PricingPlan): EditablePlanForm => ({
     currency: plan.currency || 'NGN',
     isFree: !!plan.isFree,
     trialDurationDays: Number(plan.trialDurationDays || 0).toString(),
-    smsCredits: Number(plan.smsCredits || 0).toString(),
-    whatsappCredits: Number(plan.whatsappCredits || 0).toString(),
-    emailCredits: Number(plan.emailCredits || 0).toString(),
-    teamMembersLimit: Number(plan.teamMembersLimit || 0).toString(),
-    loyaltyLimit: Number(plan.loyaltyLimit || 0).toString(),
-    tagsLimit: Number(plan.tagsLimit || 0).toString(),
-    branchLimit: Number(plan.branchLimit || 0).toString(),
+    messagingEnabled: !!plan.messagingEnabled,
+    smsCredits: (plan.smsCredits ?? 0).toString(),
+    whatsappCredits: (plan.whatsappCredits ?? 0).toString(),
+    emailCredits: (plan.emailCredits ?? 0).toString(),
+    teamMembersEnabled: !!plan.teamMembersEnabled,
+    teamMembersLimit: (plan.teamMembersLimit ?? 0).toString(),
+    loyaltyEnabled: !!plan.loyaltyEnabled,
+    loyaltyLimit: (plan.loyaltyLimit ?? 0).toString(),
+    branchesEnabled: !!plan.branchesEnabled,
+    branchLimit: (plan.branchLimit ?? 1).toString(),
+    analyticsEnabled: !!plan.analyticsEnabled,
     analyticsLevel: plan.analyticsLevel || 'basic',
     isActive: plan.isActive ?? true,
     description: plan.description || '',
@@ -67,25 +75,41 @@ const toEditablePlan = (plan: PricingPlan): EditablePlanForm => ({
 });
 
 export default function AdminPricingPage() {
-    const queryClient = useQueryClient();
     const [editingPlan, setEditingPlan] = useState<EditablePlanForm | null>(null);
+    const [originalPlan, setOriginalPlan] = useState<PricingPlan | null>(null);
     const [isAddingNew, setIsAddingNew] = useState(false);
     const [featureInput, setFeatureInput] = useState('');
+    const [planToDelete, setPlanToDelete] = useState<string | null>(null);
 
-    const { data: plans = [], isLoading: plansLoading } = useQuery({
-        queryKey: ['subscription-plans'],
-        queryFn: fetchAdminPricingPlans,
-    });
+    const { data: plans = [], isLoading: plansLoading } = useAdminPricingPlans();
 
     const [orderedPlans, setOrderedPlans] = useState<PricingPlan[]>([]);
     const [originalOrderIds, setOriginalOrderIds] = useState<string[]>([]);
 
+    // Sync orderedPlans with fetched plans
     useEffect(() => {
-        if (plans.length > 0 && originalOrderIds.length === 0) {
-            setOrderedPlans(plans);
-            setOriginalOrderIds(plans.map(p => p.id));
+        if (plans.length > 0) {
+            const currentIds = orderedPlans.map(p => p.id);
+            const newIds = plans.map(p => p.id);
+            const isOrderDirty = JSON.stringify(currentIds) !== JSON.stringify(originalOrderIds);
+            const hasStructureChanged = JSON.stringify([...currentIds].sort()) !== JSON.stringify([...newIds].sort());
+
+            // If the set of plans changed (add/delete) or if we aren't in a dirty order state, sync
+            if (hasStructureChanged || !isOrderDirty || originalOrderIds.length === 0) {
+                setOrderedPlans(plans);
+                setOriginalOrderIds(newIds);
+            } else {
+                // If order is dirty but we refetched (e.g. an edit), 
+                // we should at least update the content of the plans while keeping the dirty order
+                setOrderedPlans(prev => {
+                    return prev.map(p => {
+                        const updated = plans.find(up => up.id === p.id);
+                        return updated ? updated : p;
+                    });
+                });
+            }
         }
-    }, [plans, originalOrderIds]);
+    }, [plans]);
 
     const orderChanged = JSON.stringify(orderedPlans.map(p => p.id)) !== JSON.stringify(originalOrderIds);
 
@@ -114,39 +138,23 @@ export default function AdminPricingPage() {
         });
     };
 
-    const updateMutation = useMutation({
-        mutationFn: (plan: PricingPlan) => updatePricingPlan(plan as PricingPlan & { id: string }),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
-            setEditingPlan(null);
-            setIsAddingNew(false);
-            setFeatureInput('');
-            notify.success('Pricing plan updated successfully');
-        },
-    });
+    const resetForm = () => {
+        setOriginalOrderIds([]); // Trigger re-sync of orderedPlans
+        setEditingPlan(null);
+        setOriginalPlan(null);
+        setIsAddingNew(false);
+        setFeatureInput('');
+    };
 
-    const addMutation = useMutation({
-        mutationFn: (plan: Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice'>) => addPricingPlan(plan),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
-            setEditingPlan(null);
-            setIsAddingNew(false);
-            setFeatureInput('');
-            notify.success('New plan added successfully');
-        },
-    });
+    const updateMutation = useUpdatePricingPlan();
+    const addMutation = useAddPricingPlan();
+    const deleteMutation = useDeletePricingPlan();
 
-    const deleteMutation = useMutation({
-        mutationFn: deletePricingPlan,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
-            notify.success('Plan deleted successfully');
-        },
-    });
+    const isSaving = updateMutation.isPending || addMutation.isPending;
 
-    // For feature limits: null/undefined = Unlimited, a number = that limit
+    // For feature limits: -1 = Unlimited, a number = that limit
     const unlimited = (val: any) => {
-        if (val === null || val === undefined || val === '' || val === 'null') return 'Unlimited';
+        if (val === -1 || val === '-1') return 'Unlimited';
         return val;
     };
 
@@ -165,6 +173,7 @@ export default function AdminPricingPage() {
 
     const openEdit = (plan: PricingPlan) => {
         setEditingPlan(toEditablePlan(plan));
+        setOriginalPlan(plan);
         setFeatureInput('');
         setIsAddingNew(false);
     };
@@ -179,8 +188,14 @@ export default function AdminPricingPage() {
     const currentPlan = editingPlan;
 
     const handleDelete = (id: string) => {
-        if (confirm('Are you sure you want to delete this plan?')) {
-            deleteMutation.mutate(id);
+        setPlanToDelete(id);
+    };
+
+    const confirmDelete = () => {
+        if (planToDelete) {
+            deleteMutation.mutate(planToDelete, {
+                onSettled: () => setPlanToDelete(null)
+            });
         }
     };
 
@@ -199,20 +214,24 @@ export default function AdminPricingPage() {
         currency: plan.currency || 'NGN',
         isFree: !!plan.isFree,
         trialDurationDays: toNumber(plan.trialDurationDays, 0),
+        messagingEnabled: !!plan.messagingEnabled,
         smsCredits: toNumber(plan.smsCredits),
         whatsappCredits: toNumber(plan.whatsappCredits),
         emailCredits: toNumber(plan.emailCredits),
+        teamMembersEnabled: !!plan.teamMembersEnabled,
         teamMembersLimit: toNumber(plan.teamMembersLimit),
+        loyaltyEnabled: !!plan.loyaltyEnabled,
         loyaltyLimit: toNumber(plan.loyaltyLimit),
-        tagsLimit: toNumber(plan.tagsLimit),
+        branchesEnabled: !!plan.branchesEnabled,
         branchLimit: toNumber(plan.branchLimit),
+        analyticsEnabled: !!plan.analyticsEnabled,
         analyticsLevel: plan.analyticsLevel || 'basic',
         isActive: plan.isActive ?? true,
         description: plan.description || '',
         isPopular: !!plan.isPopular,
     });
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!currentPlan) return;
         if (!currentPlan.name.trim()) {
             notify.error('Plan name is required');
@@ -223,17 +242,63 @@ export default function AdminPricingPage() {
             return;
         }
 
+        const payload = toPayload(currentPlan);
+
         if (isAddingNew) {
-            const payload = toPayload(currentPlan);
             const { id, quarterlyPrice, yearlyPrice, ...createPayload } = payload;
-            addMutation.mutate(createPayload);
+            addMutation.mutate(createPayload, {
+                onSuccess: resetForm
+            });
             return;
         }
-        updateMutation.mutate(toPayload(currentPlan));
+
+        // SMART DELTA DETECTION
+        if (originalPlan) {
+            const deltas: any = { id: originalPlan.id };
+            let hasChanges = false;
+
+            const editableFields: (keyof PricingPlan)[] = [
+                'name', 'monthlyPrice', 'features', 'currency', 'isFree',
+                'trialDurationDays', 'messagingEnabled', 'smsCredits',
+                'whatsappCredits', 'emailCredits', 'teamMembersEnabled',
+                'teamMembersLimit', 'loyaltyEnabled', 'loyaltyLimit',
+                'branchesEnabled', 'branchLimit', 'analyticsEnabled',
+                'analyticsLevel', 'isActive', 'description', 'isPopular'
+            ];
+
+            editableFields.forEach((k) => {
+                const newVal = payload[k];
+                const oldVal = originalPlan[k];
+
+                let changed = false;
+                if (Array.isArray(newVal)) {
+                    if (JSON.stringify(newVal) !== JSON.stringify(oldVal)) changed = true;
+                } else if (typeof newVal === 'number' || typeof oldVal === 'number') {
+                    if (Number(newVal) !== Number(oldVal)) changed = true;
+                } else {
+                    if (newVal !== oldVal) changed = true;
+                }
+
+                if (changed) {
+                    deltas[k] = newVal;
+                    hasChanges = true;
+                }
+            });
+
+            if (!hasChanges) {
+                notify.info('No changes detected');
+                setEditingPlan(null);
+                return;
+            }
+
+            updateMutation.mutate(deltas, {
+                onSuccess: resetForm
+            });
+        }
     };
 
     const setNumericField = (
-        key: keyof Pick<EditablePlanForm, 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'tagsLimit' | 'branchLimit'>,
+        key: keyof Pick<EditablePlanForm, 'monthlyPrice' | 'trialDurationDays' | 'smsCredits' | 'whatsappCredits' | 'emailCredits' | 'teamMembersLimit' | 'loyaltyLimit' | 'branchLimit'>,
         value: string,
     ) => {
         setEditingPlan((prev) => (prev ? { ...prev, [key]: value } : prev));
@@ -392,24 +457,50 @@ export default function AdminPricingPage() {
                                             {plan.description}
                                         </p>
 
-                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div className="grid grid-cols-2 gap-4 text-sm mb-6 pb-6 border-b border-gray-50">
                                             <div className="space-y-2">
-                                                <p className="font-bold text-text-main">Limits</p>
+                                                <p className="font-bold text-text-main">Features</p>
                                                 <div className="space-y-1 text-text-secondary">
-                                                    <p>Team Members: {unlimited(plan.teamMembersLimit)}</p>
-                                                    <p>Loyalty: {unlimited(plan.loyaltyLimit)}</p>
-                                                    <p>Tags: {unlimited(plan.tagsLimit)}</p>
-                                                    <p>Branches: {unlimited(plan.branchLimit)}</p>
+                                                    <p className="flex items-center gap-2">
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${plan.messagingEnabled ? 'bg-green-500' : 'bg-red-400'}`} />
+                                                        Messaging: {plan.messagingEnabled ? 'Enabled' : 'Disabled'}
+                                                    </p>
+                                                    <p className="flex items-center gap-2">
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${plan.analyticsEnabled ? 'bg-green-500' : 'bg-red-400'}`} />
+                                                        Analytics: {plan.analyticsEnabled ? 'Enabled' : 'Disabled'}
+                                                    </p>
+                                                    <p className="flex items-center gap-2">
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${plan.teamMembersEnabled ? 'bg-green-500' : 'bg-red-400'}`} />
+                                                        Team: {plan.teamMembersEnabled ? 'Enabled' : 'Disabled'}
+                                                    </p>
+                                                    <p className="flex items-center gap-2">
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${plan.loyaltyEnabled ? 'bg-green-500' : 'bg-red-400'}`} />
+                                                        Loyalty: {plan.loyaltyEnabled ? 'Enabled' : 'Disabled'}
+                                                    </p>
+                                                    <p className="flex items-center gap-2">
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${plan.branchesEnabled ? 'bg-green-500' : 'bg-red-400'}`} />
+                                                        Branches: {plan.branchesEnabled ? 'Enabled' : 'Disabled'}
+                                                    </p>
                                                 </div>
                                             </div>
                                             <div className="space-y-2">
-                                                <p className="font-bold text-text-main">Access</p>
+                                                <p className="font-bold text-text-main">Limits</p>
                                                 <div className="space-y-1 text-text-secondary">
-                                                    <p>Trial Days: {plan.trialDurationDays}</p>
+                                                    <p>Team Limit: {unlimited(plan.teamMembersLimit)}</p>
+                                                    <p>Branch Limit: {unlimited(plan.branchLimit)}</p>
+                                                    <p>Loyalty Limit: {unlimited(plan.loyaltyLimit)}</p>
+                                                    <p>Trial: {plan.trialDurationDays} days</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 gap-4 text-sm">
+                                            <div className="space-y-2">
+                                                <p className="font-bold text-text-main">Credits</p>
+                                                <div className="flex gap-4 text-text-secondary">
                                                     <p>SMS: {formatCredit(plan.smsCredits)}</p>
                                                     <p>WA: {formatCredit(plan.whatsappCredits)}</p>
                                                     <p>Email: {formatCredit(plan.emailCredits)}</p>
-                                                    <p>Features: {(plan.features || []).length}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -424,14 +515,14 @@ export default function AdminPricingPage() {
 
             {isModalOpen && currentPlan && (
                 <div className="fixed inset-0 z-100 flex items-center justify-end p-4">
-                    <div className="absolute inset-0 bg-text-main/20 backdrop-blur-sm" onClick={() => { setEditingPlan(null); setIsAddingNew(false); setFeatureInput(''); }} />
+                    <div className="absolute inset-0 bg-text-main/20 backdrop-blur-sm" onClick={() => { setEditingPlan(null); setOriginalPlan(null); setIsAddingNew(false); setFeatureInput(''); }} />
                     <div className="relative w-full max-w-xl bg-white h-full rounded-2xl shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
                         <div className="p-8 border-b border-gray-100 flex items-center justify-between">
                             <div>
                                 <h2 className="text-2xl font-bold text-text-main">{isAddingNew ? 'Add New Plan' : 'Edit Plan'}</h2>
                                 <p className="text-sm text-text-secondary font-medium uppercase tracking-widest mt-1">Plan Configuration</p>
                             </div>
-                            <button onClick={() => { setEditingPlan(null); setIsAddingNew(false); setFeatureInput(''); }} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                            <button onClick={() => { setEditingPlan(null); setOriginalPlan(null); setIsAddingNew(false); setFeatureInput(''); }} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                                 <X size={24} />
                             </button>
                         </div>
@@ -468,73 +559,328 @@ export default function AdminPricingPage() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
-                                        SMS Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 = none, -1 = unlimited)</span>
-                                    </label>
-                                    <FormattedNumberInput value={currentPlan.smsCredits} onChange={(value) => setNumericField('smsCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
+                            <div className="space-y-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div 
+                                                onClick={() => setEditingPlan(prev => {
+                                                    if (!prev) return prev;
+                                                    const nextEnabled = !prev.messagingEnabled;
+                                                    return {
+                                                        ...prev,
+                                                        messagingEnabled: nextEnabled,
+                                                        smsCredits: nextEnabled ? prev.smsCredits : '0',
+                                                        whatsappCredits: nextEnabled ? prev.whatsappCredits : '0',
+                                                        emailCredits: nextEnabled ? prev.emailCredits : '0'
+                                                    };
+                                                })}
+                                                className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors duration-200 ${currentPlan.messagingEnabled ? 'bg-primary' : 'bg-gray-300'}`}
+                                            >
+                                                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.messagingEnabled ? 'translate-x-6' : ''}`} />
+                                            </div>
+                                            <label className="text-sm font-bold text-text-main">Messaging Feature</label>
+                                        </div>
+                                    </div>
+
+                                    {currentPlan.messagingEnabled && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            className="grid grid-cols-3 gap-4 pt-2 border-t border-slate-200"
+                                        >
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block ml-1">SMS Credits</label>
+                                                {currentPlan.smsCredits === '-1' ? (
+                                                    <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
+                                                        Unlimited
+                                                    </div>
+                                                ) : (
+                                                    <FormattedNumberInput 
+                                                        value={currentPlan.smsCredits} 
+                                                        onChange={(value) => setNumericField('smsCredits', value)} 
+                                                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                        placeholder="0" 
+                                                    />
+                                                )}
+                                                <div className="flex justify-end pr-1">
+                                                    <label className="flex items-center gap-1 cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={currentPlan.smsCredits === '-1'} 
+                                                            onChange={(e) => setNumericField('smsCredits', e.target.checked ? '-1' : '0')}
+                                                            className="w-3 h-3 rounded border-gray-300 text-primary focus:ring-primary"
+                                                        />
+                                                        <span className="text-[9px] font-bold text-text-secondary uppercase tracking-tighter">Unlimited</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block ml-1">WhatsApp</label>
+                                                {currentPlan.whatsappCredits === '-1' ? (
+                                                    <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
+                                                        Unlimited
+                                                    </div>
+                                                ) : (
+                                                    <FormattedNumberInput 
+                                                        value={currentPlan.whatsappCredits} 
+                                                        onChange={(value) => setNumericField('whatsappCredits', value)} 
+                                                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                        placeholder="0" 
+                                                    />
+                                                )}
+                                                <div className="flex justify-end pr-1">
+                                                    <label className="flex items-center gap-1 cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={currentPlan.whatsappCredits === '-1'} 
+                                                            onChange={(e) => setNumericField('whatsappCredits', e.target.checked ? '-1' : '0')}
+                                                            className="w-3 h-3 rounded border-gray-300 text-primary focus:ring-primary"
+                                                        />
+                                                        <span className="text-[9px] font-bold text-text-secondary uppercase tracking-tighter">Unlimited</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block ml-1">Email</label>
+                                                {currentPlan.emailCredits === '-1' ? (
+                                                    <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
+                                                        Unlimited
+                                                    </div>
+                                                ) : (
+                                                    <FormattedNumberInput 
+                                                        value={currentPlan.emailCredits} 
+                                                        onChange={(value) => setNumericField('emailCredits', value)} 
+                                                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                        placeholder="0" 
+                                                    />
+                                                )}
+                                                <div className="flex justify-end pr-1">
+                                                    <label className="flex items-center gap-1 cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={currentPlan.emailCredits === '-1'} 
+                                                            onChange={(e) => setNumericField('emailCredits', e.target.checked ? '-1' : '0')}
+                                                            className="w-3 h-3 rounded border-gray-300 text-primary focus:ring-primary"
+                                                        />
+                                                        <span className="text-[9px] font-bold text-text-secondary uppercase tracking-tighter">Unlimited</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
-                                        WhatsApp Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 = none, -1 = unlimited)</span>
-                                    </label>
-                                    <FormattedNumberInput value={currentPlan.whatsappCredits} onChange={(value) => setNumericField('whatsappCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
+
+                                <div className="space-y-4 pt-4 border-t border-slate-200">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div 
+                                                onClick={() => setEditingPlan(prev => {
+                                                    if (!prev) return prev;
+                                                    const nextEnabled = !prev.teamMembersEnabled;
+                                                    return {
+                                                        ...prev,
+                                                        teamMembersEnabled: nextEnabled,
+                                                        teamMembersLimit: nextEnabled ? (prev.teamMembersLimit || '1') : '0'
+                                                    };
+                                                })}
+                                                className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors duration-200 ${currentPlan.teamMembersEnabled ? 'bg-primary' : 'bg-gray-300'}`}
+                                            >
+                                                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.teamMembersEnabled ? 'translate-x-6' : ''}`} />
+                                            </div>
+                                            <label className="text-sm font-bold text-text-main">Team Members Feature</label>
+                                        </div>
+                                    </div>
+
+                                    {currentPlan.teamMembersEnabled && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            className="grid grid-cols-1 gap-4 pt-2 border-t border-slate-200"
+                                        >
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between ml-1">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block">Staff Limit</label>
+                                                    <label className="flex items-center gap-1 cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={currentPlan.teamMembersLimit === '-1'} 
+                                                            onChange={(e) => setNumericField('teamMembersLimit', e.target.checked ? '-1' : '1')}
+                                                            className="w-3 h-3 rounded border-gray-300 text-primary focus:ring-primary"
+                                                        />
+                                                        <span className="text-[9px] font-bold text-text-secondary uppercase tracking-tighter">Unlimited</span>
+                                                    </label>
+                                                </div>
+                                                {currentPlan.teamMembersLimit === '-1' ? (
+                                                    <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
+                                                        Unlimited
+                                                    </div>
+                                                ) : (
+                                                    <FormattedNumberInput 
+                                                        value={currentPlan.teamMembersLimit} 
+                                                        onChange={(value) => setNumericField('teamMembersLimit', value)} 
+                                                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                        placeholder="0" 
+                                                    />
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    )}
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
-                                        Email Credits <span className="text-[9px] lowercase font-normal opacity-70">(0 = none, -1 = unlimited)</span>
-                                    </label>
-                                    <FormattedNumberInput value={currentPlan.emailCredits} onChange={(value) => setNumericField('emailCredits', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
+
+                                <div className="space-y-4 pt-4 border-t border-slate-200">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div 
+                                                onClick={() => setEditingPlan(prev => {
+                                                    if (!prev) return prev;
+                                                    const nextEnabled = !prev.loyaltyEnabled;
+                                                    return {
+                                                        ...prev,
+                                                        loyaltyEnabled: nextEnabled,
+                                                        loyaltyLimit: nextEnabled ? (prev.loyaltyLimit || '1') : '0'
+                                                    };
+                                                })}
+                                                className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors duration-200 ${currentPlan.loyaltyEnabled ? 'bg-primary' : 'bg-gray-300'}`}
+                                            >
+                                                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.loyaltyEnabled ? 'translate-x-6' : ''}`} />
+                                            </div>
+                                            <label className="text-sm font-bold text-text-main">Loyalty Feature</label>
+                                        </div>
+                                    </div>
+
+                                    {currentPlan.loyaltyEnabled && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            className="grid grid-cols-1 gap-4 pt-2 border-t border-slate-200"
+                                        >
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between ml-1">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block">Loyalty Programs Limit</label>
+                                                    <label className="flex items-center gap-1 cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={currentPlan.loyaltyLimit === '-1'} 
+                                                            onChange={(e) => setNumericField('loyaltyLimit', e.target.checked ? '-1' : '1')}
+                                                            className="w-3 h-3 rounded border-gray-300 text-primary focus:ring-primary"
+                                                        />
+                                                        <span className="text-[9px] font-bold text-text-secondary uppercase tracking-tighter">Unlimited</span>
+                                                    </label>
+                                                </div>
+                                                {currentPlan.loyaltyLimit === '-1' ? (
+                                                    <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
+                                                        Unlimited
+                                                    </div>
+                                                ) : (
+                                                    <FormattedNumberInput 
+                                                        value={currentPlan.loyaltyLimit} 
+                                                        onChange={(value) => setNumericField('loyaltyLimit', value)} 
+                                                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                        placeholder="0" 
+                                                    />
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-4 pt-4 border-t border-slate-200">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div 
+                                                onClick={() => setEditingPlan(prev => {
+                                                    if (!prev) return prev;
+                                                    const nextEnabled = !prev.branchesEnabled;
+                                                    return {
+                                                        ...prev,
+                                                        branchesEnabled: nextEnabled,
+                                                        branchLimit: nextEnabled ? (prev.branchLimit || '1') : '0'
+                                                    };
+                                                })}
+                                                className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors duration-200 ${currentPlan.branchesEnabled ? 'bg-primary' : 'bg-gray-300'}`}
+                                            >
+                                                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.branchesEnabled ? 'translate-x-6' : ''}`} />
+                                            </div>
+                                            <label className="text-sm font-bold text-text-main">Branches Feature</label>
+                                        </div>
+                                    </div>
+
+                                    {currentPlan.branchesEnabled && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            className="grid grid-cols-1 gap-4 pt-2 border-t border-slate-200"
+                                        >
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between ml-1">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary block">Branch Limit</label>
+                                                    <label className="flex items-center gap-1 cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={currentPlan.branchLimit === '-1'} 
+                                                            onChange={(e) => setNumericField('branchLimit', e.target.checked ? '-1' : '1')}
+                                                            className="w-3 h-3 rounded border-gray-300 text-primary focus:ring-primary"
+                                                        />
+                                                        <span className="text-[9px] font-bold text-text-secondary uppercase tracking-tighter">Unlimited</span>
+                                                    </label>
+                                                </div>
+                                                {currentPlan.branchLimit === '-1' ? (
+                                                    <div className="w-full h-12 px-4 bg-primary/5 border border-primary/20 rounded-xl font-bold text-sm flex items-center text-primary">
+                                                        Unlimited
+                                                    </div>
+                                                ) : (
+                                                    <FormattedNumberInput 
+                                                        value={currentPlan.branchLimit} 
+                                                        onChange={(value) => setNumericField('branchLimit', value)} 
+                                                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                                        placeholder="0" 
+                                                    />
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-4 pt-4 border-t border-slate-200">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div 
+                                                onClick={() => setEditingPlan(prev => prev ? { ...prev, analyticsEnabled: !prev.analyticsEnabled } : prev)}
+                                                className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors duration-200 ${currentPlan.analyticsEnabled ? 'bg-primary' : 'bg-gray-300'}`}
+                                            >
+                                                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${currentPlan.analyticsEnabled ? 'translate-x-6' : ''}`} />
+                                            </div>
+                                            <label className="text-sm font-bold text-text-main">Analytics Feature</label>
+                                        </div>
+                                    </div>
+
+                                    {currentPlan.analyticsEnabled && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            className="grid grid-cols-1 gap-4 pt-2 border-t border-slate-200"
+                                        >
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Access Level</label>
+                                                <select
+                                                    value={currentPlan.analyticsLevel}
+                                                    onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, analyticsLevel: e.target.value as PricingPlan['analyticsLevel'] } : prev))}
+                                                    className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                                >
+                                                    <option value="basic">Basic</option>
+                                                    <option value="advanced">Advanced</option>
+                                                </select>
+                                            </div>
+                                        </motion.div>
+                                    )}
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Trial Duration (Days)</label>
                                     <FormattedNumberInput value={currentPlan.trialDurationDays} onChange={(value) => setNumericField('trialDurationDays', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="30" />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Analytics Level</label>
-                                    <select
-                                        value={currentPlan.analyticsLevel}
-                                        onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, analyticsLevel: e.target.value as PricingPlan['analyticsLevel'] } : prev))}
-                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                                    >
-                                        <option value="basic">Basic</option>
-                                        <option value="advanced">Advanced</option>
-                                        <option value="none">None</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
-                                        Team Members Limit <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
-                                    </label>
-                                    <FormattedNumberInput value={currentPlan.teamMembersLimit} onChange={(value) => setNumericField('teamMembersLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
-                                        Loyalty Limit <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
-                                    </label>
-                                    <FormattedNumberInput value={currentPlan.loyaltyLimit} onChange={(value) => setNumericField('loyaltyLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
-                                        Tags Limit <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
-                                    </label>
-                                    <FormattedNumberInput value={currentPlan.tagsLimit} onChange={(value) => setNumericField('tagsLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">
-                                        Branch Limit <span className="text-[9px] lowercase font-normal opacity-70">(0 for unlimited)</span>
-                                    </label>
-                                    <FormattedNumberInput value={currentPlan.branchLimit} onChange={(value) => setNumericField('branchLimit', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="0" />
                                 </div>
                             </div>
 
@@ -629,7 +975,7 @@ export default function AdminPricingPage() {
                                         onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, isActive: e.target.checked } : prev))}
                                         className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
                                     />
-                                    <label className="text-sm font-bold text-text-main">Active</label>
+                                    <label className="text-sm font-bold text-text-main">Active Status</label>
                                 </div>
                             </div>
 
@@ -647,21 +993,37 @@ export default function AdminPricingPage() {
 
                         <div className="p-8 border-t border-gray-100 flex gap-4">
                             <button
-                                onClick={() => { setEditingPlan(null); setIsAddingNew(false); setFeatureInput(''); }}
+                                onClick={() => { setEditingPlan(null); setOriginalPlan(null); setIsAddingNew(false); setFeatureInput(''); }}
                                 className="flex-1 h-14 border border-gray-200 rounded-xl font-bold text-sm hover:bg-gray-50 transition-all"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleSave}
-                                className="flex-1 h-14 bg-primary text-white rounded-xl font-bold text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                disabled={isSaving}
+                                className="flex-1 h-14 bg-primary text-white rounded-xl font-bold text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
                             >
-                                <Save size={20} /> {isAddingNew ? 'Create Plan' : 'Save Changes'}
+                                {isSaving ? (
+                                    <Loader2 size={20} className="animate-spin" />
+                                ) : (
+                                    <Save size={20} />
+                                )}
+                                {isAddingNew ? 'Create Plan' : 'Save Changes'}
                             </button>
                         </div>
                     </div>
                 </div>
             )}
+
+            <ConfirmationModal
+                isOpen={planToDelete !== null}
+                onClose={() => setPlanToDelete(null)}
+                onConfirm={confirmDelete}
+                title="Delete Plan"
+                message="Are you sure you want to delete this pricing plan? This action cannot be undone, although existing subscriptions will remain valid."
+                confirmText="Delete Plan"
+                isLoading={deleteMutation.isPending}
+            />
         </>
     );
 }

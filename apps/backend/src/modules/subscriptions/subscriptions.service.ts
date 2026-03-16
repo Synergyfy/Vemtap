@@ -22,6 +22,7 @@ import {
   PaymentPurpose,
   PaymentStatus,
 } from '../payments/entities/payment.entity';
+import { SubscriptionCapabilities } from './types/capabilities';
 
 @Injectable()
 export class SubscriptionsService {
@@ -62,6 +63,22 @@ export class SubscriptionsService {
     }
 
     return sub;
+  }
+
+  async subscribeToFreePlan(businessId: string): Promise<Subscription | null> {
+    const freePlan = await this.plansService.findFreePlan();
+    if (!freePlan) {
+      this.logger.warn(
+        `No active free plan found to auto-subscribe business ${businessId}`,
+      );
+      return null;
+    }
+
+    return this.subscribe({
+      planId: freePlan.id,
+      businessId,
+      billingPeriod: BillingPeriod.YEARLY, // Default for free plan
+    });
   }
 
   async subscribe(subscribeDto: SubscribeDto): Promise<Subscription> {
@@ -300,7 +317,7 @@ export class SubscriptionsService {
       sub.endDate.setFullYear(sub.endDate.getFullYear() + 1);
   }
 
-  async getCapabilities(businessId: string) {
+  async getCapabilities(businessId: string): Promise<SubscriptionCapabilities> {
     const sub = await this.activeSubscription(businessId);
 
     let plan = sub?.plan;
@@ -329,7 +346,7 @@ export class SubscriptionsService {
     const usedTags = await this.deviceRepository.count({
       where: { branchId: In(branchIds) },
     });
-    const usedBranches = branches.length;
+    const usedBranches = branches.filter((b) => !b.isMainBranch).length;
 
     const usedLoyaltyPrograms = 0;
 
@@ -341,38 +358,51 @@ export class SubscriptionsService {
       isTrial: sub?.status === SubscriptionStatus.TRIAL,
       capabilities: {
         teamMembers: {
-          limit: plan.teamMembersLimit ?? 'unlimited',
+          enabled: plan.teamMembersEnabled,
+          limit: plan.teamMembersLimit === -1 ? 'unlimited' : (plan.teamMembersLimit ?? 0),
           used: usedStaff,
           remaining:
-            plan.teamMembersLimit === null
-              ? 'unlimited'
-              : Math.max(0, plan.teamMembersLimit - usedStaff),
+            !plan.teamMembersEnabled
+              ? 0
+              : plan.teamMembersLimit === -1
+                ? 'unlimited'
+                : Math.max(0, (plan.teamMembersLimit ?? 0) - usedStaff),
         },
         tags: {
-          limit: plan.tagsLimit ?? 'unlimited',
+          enabled: true, // Tags are always enabled for now
+          limit: 'unlimited',
           used: usedTags,
-          remaining:
-            plan.tagsLimit === null
-              ? 'unlimited'
-              : Math.max(0, plan.tagsLimit - usedTags),
+          remaining: 'unlimited',
         },
         loyaltyPrograms: {
-          limit: plan.loyaltyLimit ?? 'unlimited',
+          enabled: plan.loyaltyEnabled,
+          limit: plan.loyaltyLimit === -1 ? 'unlimited' : (plan.loyaltyLimit ?? 0),
           used: usedLoyaltyPrograms,
           remaining:
-            plan.loyaltyLimit === null
-              ? 'unlimited'
-              : Math.max(0, plan.loyaltyLimit - usedLoyaltyPrograms),
+            !plan.loyaltyEnabled
+              ? 0
+              : plan.loyaltyLimit === -1
+                ? 'unlimited'
+                : Math.max(0, (plan.loyaltyLimit ?? 0) - usedLoyaltyPrograms),
         },
         branches: {
-          limit: plan.branchLimit ?? 'unlimited',
+          enabled: plan.branchesEnabled,
+          limit: plan.branchLimit === -1 ? 'unlimited' : (plan.branchLimit ?? 0),
           used: usedBranches,
           remaining:
-            plan.branchLimit === null
-              ? 'unlimited'
-              : Math.max(0, plan.branchLimit - usedBranches),
+            !plan.branchesEnabled
+              ? 0
+              : plan.branchLimit === -1
+                ? 'unlimited'
+                : Math.max(0, (plan.branchLimit ?? 0) - usedBranches),
         },
-        analytics: plan.analyticsLevel,
+        analytics: {
+          enabled: plan.analyticsEnabled,
+          level: plan.analyticsLevel as 'basic' | 'advanced' | 'none',
+        },
+        messaging: {
+          enabled: plan.messagingEnabled,
+        },
         features: plan.features || [],
         credits: {
           sms: plan.smsCredits || 0,

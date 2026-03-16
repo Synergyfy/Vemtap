@@ -10,9 +10,11 @@ interface StepFinalSuccessProps {
     customSuccessButton?: string | null;
     customSuccessTag?: string | null;
     onFinish: () => void;
-    onEngagement?: (type: 'review' | 'social' | 'feedback' | 'rewards') => void;
+    onEngagement?: (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => void;
     engagementSettings?: any;
     socialLinks?: any;
+    attachedForms?: Array<{ id: string; title: string; description?: string }>;
+    isFormsLoading?: boolean;
 }
 
 export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
@@ -23,6 +25,8 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
     onFinish,
     onEngagement,
     engagementSettings,
+    attachedForms,
+    isFormsLoading = false,
 }) => {
     const [isSocialModalOpen, setIsSocialModalOpen] = React.useState(false);
 
@@ -31,13 +35,13 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
     const hasFeedback = !!engagementSettings?.showFeedback;
     const hasRewards = !!engagementSettings?.showRewards;
 
-    const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards);
+    const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards || attachedForms?.length);
 
-    const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards') => {
+    const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
         if (type === 'social') {
             setIsSocialModalOpen(true);
         }
-        onEngagement?.(type);
+        onEngagement?.(type, formId);
     };
 
     return (
@@ -78,6 +82,7 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
                     <EngagementTiles
                         onAction={handleEngagement}
                         settings={engagementSettings}
+                        attachedForms={attachedForms}
                     />
                 </div>
             )}

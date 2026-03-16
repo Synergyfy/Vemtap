@@ -26,9 +26,13 @@ describe('SubscriptionsService', () => {
     monthlyPrice: 5000,
     trialDurationDays: 0,
     features: ['basic'],
+    messagingEnabled: true,
+    analyticsEnabled: true,
+    teamMembersEnabled: true,
+    branchesEnabled: true,
     teamMembersLimit: 5,
-    tagsLimit: 10,
     loyaltyLimit: 2,
+    branchLimit: 3,
     analyticsLevel: 'basic',
   };
 

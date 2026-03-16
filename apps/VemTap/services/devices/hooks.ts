@@ -6,15 +6,19 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 export const useDevices = (branchId?: string) => {
-    const { activeBranchId: urlBranchId } = useActiveBranch();
+    const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
     const businessId = useAuthStore((state) => state.user?.businessId);
     const resolvedBranchId = branchId || urlBranchId;
 
     return useQuery<Device[], Error>({
-        queryKey: ['devices', businessId, resolvedBranchId],
+        queryKey: ['devices', businessId, resolvedBranchId, isAllBranches],
         queryFn: async () => {
             const searchParams = new URLSearchParams();
-            if (resolvedBranchId) searchParams.append('branchId', resolvedBranchId);
+            if (resolvedBranchId) {
+                searchParams.append('branchId', resolvedBranchId);
+            } else if (isAllBranches) {
+                searchParams.append('allBranches', 'true');
+            }
             const query = searchParams.toString();
             return await api.get(`/devices${query ? `?${query}` : ''}`);
         },
@@ -23,15 +27,19 @@ export const useDevices = (branchId?: string) => {
 };
 
 export const useDeviceStats = (branchId?: string) => {
-    const { activeBranchId: urlBranchId } = useActiveBranch();
+    const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
     const businessId = useAuthStore((state) => state.user?.businessId);
     const resolvedBranchId = branchId || urlBranchId;
 
     return useQuery<any, Error>({
-        queryKey: ['devices', 'stats', businessId, resolvedBranchId],
+        queryKey: ['devices', 'stats', businessId, resolvedBranchId, isAllBranches],
         queryFn: async () => {
             const searchParams = new URLSearchParams();
-            if (resolvedBranchId) searchParams.append('branchId', resolvedBranchId);
+            if (resolvedBranchId) {
+                searchParams.append('branchId', resolvedBranchId);
+            } else if (isAllBranches) {
+                searchParams.append('allBranches', 'true');
+            }
             const query = searchParams.toString();
             return await api.get(`/devices/stats${query ? `?${query}` : ''}`);
         },
@@ -82,6 +90,25 @@ export const useDeleteDevice = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['devices'] });
+        },
+    });
+};
+
+export const useDeviceTapContext = (code: string) => {
+    return useQuery<any, Error>({
+        queryKey: ['device-tap-context', code],
+        queryFn: async () => {
+            return await api.get(`/tap/context/${code}`);
+        },
+        enabled: !!code,
+        retry: 1,
+    });
+};
+
+export const useRecordDeviceVisit = (code: string) => {
+    return useMutation<any, Error, { visitorId?: string; name?: string; email?: string; phone?: string }>({
+        mutationFn: async (payload) => {
+            return await api.post(`/tap/record/${code}`, payload);
         },
     });
 };

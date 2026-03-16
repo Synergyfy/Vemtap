@@ -1,6 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsEnum } from 'class-validator';
-import { BusinessType } from '../entities/business.entity';
+import { IsString, IsOptional, IsUUID } from 'class-validator';
 
 export class UpdateBusinessDto {
   @ApiPropertyOptional({ example: 'The Azure Bistro' })
@@ -8,8 +7,47 @@ export class UpdateBusinessDto {
   @IsOptional()
   name?: string;
 
-  @ApiPropertyOptional({ enum: BusinessType, example: BusinessType.RESTAURANT })
-  @IsEnum(BusinessType)
+  @ApiPropertyOptional({ example: 'uuid' })
   @IsOptional()
-  type?: BusinessType;
+  @IsUUID()
+  categoryId?: string;
+
+  @ApiPropertyOptional({ example: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  subcategoryId?: string;
+
+  @ApiPropertyOptional({ example: 'Art Studio' })
+  @IsOptional()
+  @IsString()
+  otherSubcategoryName?: string;
+
+  @ApiPropertyOptional({ example: 'Lagos' })
+  @IsString()
+  @IsOptional()
+  state?: string;
+
+  @ApiPropertyOptional({ example: 'Ikeja' })
+  @IsString()
+  @IsOptional()
+  city?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  isRegistered?: boolean;
+
+  @ApiPropertyOptional({ example: 'RC1234567' })
+  @IsOptional()
+  @IsString()
+  registrationNumber?: string;
+
+  @ApiPropertyOptional({ example: ['https://example.com/doc.pdf'] })
+  @IsOptional()
+  @IsString({ each: true })
+  documents?: string[];
+
+  @ApiPropertyOptional({ example: 'https://example.com/logo.png' })
+  @IsOptional()
+  @IsString()
+  logoUrl?: string;
 }

@@ -169,4 +169,40 @@ describe('CampaignsService', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('verifyRedemption', () => {
+    const branchId = 'branch-1';
+    const code = '123456789';
+    const verifiedByUserId = 'staff-1';
+
+    it('should return error if redemption not found', async () => {
+      mockRepo.findOne.mockResolvedValueOnce(null);
+      const result = await service.verifyRedemption(branchId, code, verifiedByUserId);
+      expect(result).toEqual({ success: false, error: 'Invalid or already used code' });
+    });
+
+    it('should return error if branch mismatch', async () => {
+      mockRepo.findOne.mockResolvedValueOnce({ reward: { branchId: 'other-branch' } });
+      const result = await service.verifyRedemption(branchId, code, verifiedByUserId);
+      expect(result).toEqual({ success: false, error: 'Reward not found for this branch' });
+    });
+
+    it('should mark as verified and save verifiedByUserId', async () => {
+      const mockRedemption = {
+        id: 'red-1',
+        status: 'pending',
+        expiresAt: new Date(Date.now() + 100000), // Future date
+        reward: { branchId },
+      };
+      mockRepo.findOne.mockResolvedValueOnce(mockRedemption);
+      
+      const result = await service.verifyRedemption(branchId, code, verifiedByUserId);
+      
+      expect(result.success).toBe(true);
+      expect(mockRedemption.status).toBe('verified');
+      expect(mockRedemption).toHaveProperty('verifiedAt');
+      expect(mockRedemption).toHaveProperty('verifiedByUserId', verifiedByUserId);
+      expect(mockRepo.save).toHaveBeenCalledWith(mockRedemption);
+    });
+  });
 });

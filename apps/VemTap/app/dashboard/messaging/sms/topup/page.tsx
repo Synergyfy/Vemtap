@@ -12,7 +12,7 @@ export default function SMSTopUpPage() {
 
     const { data: credits, isLoading } = useQuery({
         queryKey: ['my-credits'],
-        queryFn: fetchMyCredits,
+        queryFn: () => fetchMyCredits(),
         refetchInterval: 30000,
     });
 

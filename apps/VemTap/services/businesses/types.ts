@@ -4,38 +4,75 @@ export interface BusinessHours {
     closed: boolean;
 }
 
+export interface Branch {
+    id: string;
+    uniqueCode?: string;
+    name: string;
+    address: string;
+    phone: string;
+    isActive: boolean;
+    isMainBranch: boolean;
+    logoUrl?: string;
+    website?: string;
+    whatsappNumber?: string;
+    officialEmail?: string;
+    welcomeMessage?: string;
+    successTitle?: string;
+    successMessage?: string;
+    privacyMessage?: string;
+    rewardMessage?: string;
+    about?: string;
+    businessHours?: Record<string, BusinessHours>;
+    rewardEnabled: boolean;
+    rewardVisitThreshold: number;
+    linkedinUrl?: string;
+    reviewUrl?: string;
+    trustpilotUrl?: string;
+    showReview: boolean;
+    showSocial: boolean;
+    showFeedback: boolean;
+    businessId: string;
+    createdAt: string;
+    updatedAt: string;
+    deletedAt?: string | null;
+}
+
 export interface Business {
     id: string;
+    uniqueCode?: string;
     name: string;
     type?: string;
     category: string;
+    subcategory?: string;
+    categoryId?: string;
+    subcategoryId?: string;
+    otherSubcategoryName?: string;
     monthlyVisitors: string;
     goal: string;
     logoUrl?: string;
     welcomeMessage?: string;
     welcomeSubMessage?: string;
+    welcomeTitle?: string;
+    welcomeTag?: string;
+    welcomeButton?: string;
     whatsappMessage?: string;
+    successTitle?: string;
     successMessage?: string;
     privacyMessage?: string;
     rewardMessage?: string;
     about?: string;
-    businessHours?: {
-        monday?: BusinessHours;
-        tuesday?: BusinessHours;
-        wednesday?: BusinessHours;
-        thursday?: BusinessHours;
-        friday?: BusinessHours;
-        saturday?: BusinessHours;
-        sunday?: BusinessHours;
-    };
+    businessHours?: Record<string, BusinessHours>;
     rewardEnabled?: boolean;
     rewardVisitThreshold?: number;
     rewardSetup?: any;
     emailSettings?: any;
     ownerId: string;
     address?: string;
+    state?: string;
+    city?: string;
     website?: string;
     whatsappNumber?: string;
+    phone?: string;
     officialEmail?: string;
     facebookUrl?: string;
     instagramUrl?: string;
@@ -44,12 +81,20 @@ export interface Business {
     youtubeUrl?: string;
     customLink?: string;
     isActive: boolean;
-    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+    status: 'pending' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
     linkedinUrl?: string;
     reviewUrl?: string;
+    trustpilotUrl?: string;
     showReview?: boolean;
     showSocial?: boolean;
     showFeedback?: boolean;
+    isRegistered?: boolean;
+    documents?: string[];
+    branches?: Branch[];
     createdAt?: string;
     updatedAt?: string;
+    cacDocument?: string;
+    idDocument?: string;
+    registrationNumber?: string;
+    cacType?: string;
 }

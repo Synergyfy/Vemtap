@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
+import Spinner from '@/components/ui/Spinner';
+
 interface EngagementTileProps {
     icon: string;
     label: string;
@@ -28,9 +30,11 @@ const EngagementTile: React.FC<EngagementTileProps> = ({ icon, label, descriptio
 );
 
 interface EngagementTilesProps {
-    onAction: (type: 'review' | 'social' | 'feedback' | 'rewards') => void;
+    onAction: (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => void;
     selectedFormTitle?: string | null;
     selectedFormType?: string | null;
+    attachedForms?: Array<{ id: string; title: string; description?: string }>;
+    completedFormIds?: string[];
     settings?: {
         showReview?: boolean;
         showSocial?: boolean;
@@ -49,6 +53,8 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
     onAction,
     selectedFormTitle,
     selectedFormType,
+    attachedForms = [],
+    completedFormIds = [],
     settings = {}
 }) => {
     const hasSocial = !!(settings.instagram || settings.twitter || settings.facebook || settings.linkedin || settings.socialUrl);
@@ -61,52 +67,74 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
                 Boost Your Experience
             </h3>
 
-            {hasSelectedForm ? (
-                <EngagementTile
-                    icon="assignment"
-                    label={selectedFormTitle || 'Open Form'}
-                    description={`Fill ${selectedFormType || 'selected'} form`}
-                    color="bg-amber-50 text-amber-600"
-                    onClick={() => onAction('feedback')}
-                />
-            ) : settings.showReview && hasReview && (
-                <EngagementTile
-                    icon="star"
-                    label="Leave a Review"
-                    description="Share your experience on Google"
-                    color="bg-amber-50 text-amber-500"
-                    onClick={() => onAction('review')}
-                />
-            )}
+            {attachedForms.length > 0 ? (
+                attachedForms.map((form) => {
+                    const isCompleted = completedFormIds.includes(form.id);
+                    return (
+                        <EngagementTile
+                            key={form.id}
+                            icon={isCompleted ? "check_circle" : "assignment"}
+                            label={isCompleted ? `${form.title} (Redeemed)` : (form.title || 'Open Form')}
+                            description={isCompleted ? "Thank you for filling this form!" : (form.description || 'Fill this form')}
+                            color={isCompleted ? "bg-emerald-50 text-emerald-500" : "bg-amber-50 text-amber-600"}
+                            onClick={() => !isCompleted && onAction('feedback', form.id)}
+                        />
+                    );
+                })
+            ) : (
+                <>
+                    {hasSelectedForm ? (
+                        <EngagementTile
+                            icon="assignment"
+                            label={selectedFormTitle || 'Open Form'}
+                            description={`Fill ${selectedFormType || 'selected'} form`}
+                            color="bg-amber-50 text-amber-600"
+                            onClick={() => onAction('feedback')}
+                        />
+                    ) : (
+                        <>
+                            {settings.showReview && hasReview && (
+                                <EngagementTile
+                                    icon="star"
+                                    label="Leave a Review"
+                                    description="Share your experience on Google"
+                                    color="bg-amber-50 text-amber-500"
+                                    onClick={() => onAction('review')}
+                                />
+                            )}
 
-            {settings.showSocial && hasSocial && (
-                <EngagementTile
-                    icon="share"
-                    label="Follow on Social"
-                    description="Stay updated with our latest news"
-                    color="bg-blue-50 text-blue-500"
-                    onClick={() => onAction('social')}
-                />
-            )}
+                            {settings.showSocial && hasSocial && (
+                                <EngagementTile
+                                    icon="share"
+                                    label="Show Social Links"
+                                    description="Open social links after default submission"
+                                    color="bg-blue-50 text-blue-500"
+                                    onClick={() => onAction('social')}
+                                />
+                            )}
 
-            {settings.showFeedback && (
-                <EngagementTile
-                    icon="chat_bubble"
-                    label="Quick Feedback"
-                    description="Help us improve our service"
-                    color="bg-purple-50 text-purple-500"
-                    onClick={() => onAction('feedback')}
-                />
-            )}
+                            {settings.showFeedback && (
+                                <EngagementTile
+                                    icon="chat_bubble"
+                                    label="Quick Feedback"
+                                    description="Help us improve our service"
+                                    color="bg-purple-50 text-purple-500"
+                                    onClick={() => onAction('feedback')}
+                                />
+                            )}
 
-            {settings.showRewards && (
-                <EngagementTile
-                    icon="redeem"
-                    label="Claim Rewards"
-                    description="Unlock exclusive benefits"
-                    color="bg-emerald-50 text-emerald-500"
-                    onClick={() => onAction('rewards')}
-                />
+                            {settings.showRewards && (
+                                <EngagementTile
+                                    icon="redeem"
+                                    label="Claim Rewards"
+                                    description="Unlock exclusive benefits"
+                                    color="bg-emerald-50 text-emerald-500"
+                                    onClick={() => onAction('rewards')}
+                                />
+                            )}
+                        </>
+                    )}
+                </>
             )}
         </div>
     );

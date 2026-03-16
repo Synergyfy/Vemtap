@@ -36,18 +36,20 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     canAddTag: (currentTagCount) => {
         const plan = get().getPlan();
         if (!plan) return false;
-        return currentTagCount < plan.tagsLimit;
+        return true; // Tags are now unlimited
     },
 
     hasReachedTeamLimit: (currentTeamCount) => {
         const plan = get().getPlan();
         if (!plan) return false;
+        if (plan.teamMembersLimit === -1) return false;
         return currentTeamCount >= plan.teamMembersLimit;
     },
 
     hasReachedVisitorLimit: (currentVisitorCount) => {
         const plan = get().getPlan();
         if (!plan) return false;
+        if (plan.teamMembersLimit === -1) return false;
         return currentVisitorCount >= (plan.teamMembersLimit * 100);
     }
 }));

@@ -5,13 +5,21 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import { useStaff, useInviteStaff, useUpdateStaff, useRemoveStaff } from '@/services/users/hooks';
 import { StaffMember, UserRole } from '@/services/users/types';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBusinessStore } from '@/store/useBusinessStore';
 import toast from 'react-hot-toast';
-import { UserPlus, Shield, Edit3, Trash2, Eye, MessageSquare, BarChart3, Users as UsersIcon, Settings as SettingsIcon, Building2, Loader2 } from 'lucide-react';
+import { 
+    UserPlus, Shield, Edit3, Trash2, Eye, MessageSquare, 
+    BarChart3, Users as UsersIcon, Settings as SettingsIcon, 
+    Building2, Loader2, Lock 
+} from 'lucide-react';
 import { useBranches } from '@/services/branches/hooks';
 import Modal from '@/components/ui/Modal';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import UsageIndicator from '@/components/dashboard/UsageIndicator';
+import UpgradeModal from '@/components/dashboard/UpgradeModal';
+import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 
 const PERMISSIONS = [
     { id: 'dashboard', label: 'Dashboard', icon: Eye },
@@ -24,14 +32,18 @@ const PERMISSIONS = [
 
 export default function StaffManagementPage() {
     const router = useRouter();
+    const pathname = usePathname();
     const { user, activeBranchId } = useAuthStore();
+    const { capabilities, isLimitReached } = useSubscriptionStore();
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
     const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
-    const [staffToDelete, setStaffToDelete] = useState<{ id: string, name: string } | null>(null);        
-    const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['dashboard', 'visitors']);  
+    const [staffToDelete, setStaffToDelete] = useState<{ id: string, name: string } | null>(null);
+    const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['dashboard', 'visitors']);
+
+    const teamLimitReached = isLimitReached('teamMembers');
 
     const { data: realBranches = [] } = useBranches();
-    // We'll use real branches if available, otherwise an empty array (DataTable handles it)
     const branches = realBranches;
 
     const { data: staffMembers, isLoading: isStaffLoading } = useStaff(activeBranchId || undefined);
@@ -43,6 +55,11 @@ export default function StaffManagementPage() {
 
     const isOwner = user?.role?.toLowerCase() === 'owner';
 
+    // Close upgrade modal on navigation
+    React.useEffect(() => {
+        setShowUpgradeModal(false);
+    }, [pathname]);
+
     React.useEffect(() => {
         if (!isLoading && user && !['owner', 'manager'].includes((user.role as string)?.toLowerCase())) {
             router.push('/dashboard');
@@ -51,6 +68,14 @@ export default function StaffManagementPage() {
 
     const handleInviteStaff = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+
+        // Check limits
+        if (teamLimitReached) {
+            setShowUpgradeModal(true);
+            toast.error('Team member limit reached. Please upgrade your plan.');
+            return;
+        }
+
         const formData = new FormData(e.currentTarget);
         const roleValue = formData.get('role') as string;
         const branchId = formData.get('branchId') as string;
@@ -191,15 +216,29 @@ export default function StaffManagementPage() {
                     actions={
                         isOwner ? (
                             <button
-                                onClick={() => setIsInviteModalOpen(true)}
-                                className="flex items-center gap-2 px-6 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary-hover transition-all text-sm shadow-lg shadow-primary/20 active:scale-95"
+                                onClick={() => {
+                                    if (teamLimitReached) {
+                                        setShowUpgradeModal(true);
+                                    } else {
+                                        setIsInviteModalOpen(true);
+                                    }
+                                }}
+                                className={`flex items-center gap-2 px-6 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary-hover transition-all text-sm shadow-lg shadow-primary/20 active:scale-95 ${teamLimitReached ? 'opacity-70 grayscale-[0.5]' : ''}`}
                             >
-                                <UserPlus size={18} />
+                                {teamLimitReached ? <Lock size={18} /> : <UserPlus size={18} />}
                                 Invite Staff
                             </button>
                         ) : undefined
                     }
                 />
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <UsageIndicator 
+                        label="Team Members" 
+                        usage={capabilities?.capabilities.teamMembers} 
+                        icon={<UsersIcon size={20} />} 
+                    />
+                </div>
 
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                     {isLoading ? (
@@ -428,7 +467,12 @@ export default function StaffManagementPage() {
                     </button>
                 </div>
             </Modal>
+
+            <UpgradeModal 
+                isOpen={showUpgradeModal} 
+                onClose={() => setShowUpgradeModal(false)} 
+                featureName="Team Members" 
+            />
         </>
     );
 }
-

@@ -34,11 +34,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             toast.error('User email not found. Please log in again.');
             return;
         }
-        const resolvedBusinessId = businessId || user?.businessId || '';
-        if (!resolvedBusinessId) {
-            toast.error('Business ID not found. Please refresh and try again.');
-            return;
-        }
+        const resolvedBusinessId = businessId || user?.businessId;
 
         setIsProcessing(true);
 
@@ -79,9 +75,15 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             ref: `SUB-${resolvedBusinessId || 'anon'}-${Date.now()}`,
             onClose: () => {
                 setIsProcessing(false);
+                onClose(); // Ensure modal closes when paystack window is closed
                 toast.error('Payment window closed');
             },
             callback: (response: any) => {
+                // Close modal immediately after payment success to prevent double clicks
+                // even before the mutation finishes if necessary, or at least ensure it closes on success
+                onClose();
+                setIsProcessing(false);
+
                 // Payment successful
                 subscribeMutation.mutate({
                     businessId: resolvedBusinessId,
@@ -91,20 +93,16 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                     isTrial: isTrial
                 }, {
                     onSuccess: () => {
-                        setIsProcessing(false);
                         toast.success(isTrial ? `Trial started! You won't be charged for ${plan.trialDurationDays} days.` : `Welcome to the ${plan.name} plan!`);
-                        onClose();
                     },
                     onError: (error) => {
-                        setIsProcessing(false);
                         toast.error(error instanceof Error ? error.message : 'Payment verified but subscription sync failed. Please contact support.');
                     }
                 });
             }
         });
-
         handler.openIframe();
-    };
+        };
 
     const getPriceByCycle = () => {
         if (billingPeriod === 'yearly') return plan.yearlyPrice;

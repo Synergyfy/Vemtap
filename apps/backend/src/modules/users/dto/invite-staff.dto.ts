@@ -37,6 +37,11 @@ export class InviteStaffDto {
   @IsNotEmpty()
   email: string;
 
+  @ApiProperty({ example: '+2348012345678', required: false })
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
   @ApiProperty({
     enum: [UserRole.MANAGER, UserRole.STAFF],
     example: UserRole.STAFF,
