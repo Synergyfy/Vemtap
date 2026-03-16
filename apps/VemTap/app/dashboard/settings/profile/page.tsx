@@ -163,7 +163,6 @@ export default function BusinessProfilePage() {
             setReviewUrl(source.reviewUrl || '');
             setTrustpilotUrl(source.trustpilotUrl || '');
 
-<<<<<<< HEAD
             setShowReview(business?.showReview ?? true);
             setShowSocial(business?.showSocial ?? true);
             setShowFeedback(business?.showFeedback ?? true);
@@ -179,7 +178,7 @@ export default function BusinessProfilePage() {
                 else setCacType('RC');
             }
 
-            const publicCode = business.uniqueCode || fallbackProfileCode;
+            const publicCode = business?.uniqueCode || fallbackProfileCode;
             if (publicCode) {
                 const nextPublicUrl = `${origin}/b/${publicCode}`;
                 setPublicProfileUrl(nextPublicUrl);
@@ -189,7 +188,6 @@ export default function BusinessProfilePage() {
             } else {
                 setPublicProfileUrl('');
             }
-<<<<<<< HEAD
         } else if (branch) {
             setName(branch.name || '');
             setLogo(branch.logoUrl || '');
