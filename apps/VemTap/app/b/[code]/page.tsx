@@ -1,7 +1,8 @@
-'use client';
+﻿'use client';
 
 import Script from 'next/script';
-import { useEffect, useMemo, useRef, useState, use } from 'react'; // Added use
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { normalizeBaseUrl } from '@/lib/api';
 import {
     MapPin,
@@ -53,6 +54,7 @@ type PublicBusinessResponse = {
     linkedinUrl?: string;
     tiktokUrl?: string;
     youtubeUrl?: string;
+    showRewards?: boolean;
 };
 
 type PublicBranchResponse = {
@@ -78,6 +80,7 @@ type PublicBranchResponse = {
     businessHours?: Record<string, BusinessHours>;
     isActive?: boolean;
     isMainBranch?: boolean;
+    showRewards?: boolean;
     businessId?: string;
     business?: { id?: string; uniqueCode?: string; name?: string; logoUrl?: string };
 };
@@ -146,10 +149,10 @@ async function fetchPublicRewards(businessId?: string): Promise<PublicReward[]> 
     }
 }
 
-export default function PublicBusinessProfilePage({ params }: { params: Promise<{ code: string }> }) {
-    // Unwrap the params promise using React.use()
-    const unwrappedParams = use(params);
-    const code = unwrappedParams.code;
+export default function PublicBusinessProfilePage() {
+    const params = useParams();
+    const codeParam = params?.code;
+    const code = Array.isArray(codeParam) ? codeParam[0] : codeParam || '';
 
     const [business, setBusiness] = useState<PublicBusinessResponse | null>(null);
     const [branch, setBranch] = useState<PublicBranchResponse | null>(null);
@@ -203,7 +206,10 @@ export default function PublicBusinessProfilePage({ params }: { params: Promise<
 
     useEffect(() => {
         let isMounted = true;
-        const address = formatLocation(business?.address || branch?.address, business?.city || branch?.city, business?.state || branch?.state);
+        const useBusinessDetails = !branch || branch.isMainBranch;
+        const address = useBusinessDetails
+            ? formatLocation(business?.address || branch?.address, business?.city || branch?.city, business?.state || branch?.state)
+            : formatLocation(branch?.address, branch?.city, branch?.state);
         if (!address || address === 'Location not provided') {
             setMapCoords(null);
             return;
@@ -227,7 +233,7 @@ export default function PublicBusinessProfilePage({ params }: { params: Promise<
         return () => {
             isMounted = false;
         };
-    }, [business?.address, business?.city, business?.state, branch?.address, branch?.city, branch?.state]);
+    }, [business?.address, business?.city, business?.state, branch?.address, branch?.city, branch?.state, branch?.isMainBranch]);
 
     useEffect(() => {
         const initMap = () => {
@@ -259,32 +265,43 @@ export default function PublicBusinessProfilePage({ params }: { params: Promise<
         };
     }, [mapCoords, leafletReady]);
 
-    const profileName = useMemo(() => {
-        if (branch && !branch.isMainBranch) return branch.name || branch.business?.name || 'Business';
-        return business?.name || branch?.business?.name || branch?.name || 'Business';
-    }, [branch, business]);
+    const useBusinessDetails = !branch || branch.isMainBranch;
+    const profileSource = useBusinessDetails ? (business || branch) : branch;
+    const locationAddress = useBusinessDetails
+        ? formatLocation(business?.address || branch?.address, business?.city || branch?.city, business?.state || branch?.state)
+        : formatLocation(branch?.address, branch?.city, branch?.state);
 
-    const profileLogo = branch?.logoUrl || business?.logoUrl || branch?.business?.logoUrl || '';
+    const profileName = useMemo(() => {
+        if (!useBusinessDetails) return branch?.name || 'Branch';
+        return business?.name || branch?.business?.name || branch?.name || 'Business';
+    }, [branch, business, useBusinessDetails]);
+
+    const profileLogo = useBusinessDetails
+        ? (business?.logoUrl || branch?.logoUrl || branch?.business?.logoUrl || '')
+        : (branch?.logoUrl || '');
 
     useEffect(() => {
         setLogoFailed(false);
         setLogoLoaded(false);
     }, [profileLogo]);
 
-    const profileEmail = branch?.officialEmail || business?.officialEmail;
-    const profilePhone = branch?.phone || business?.phone;
-    const profileWebsite = branch?.website || business?.website;
-    const profileWhatsapp = branch?.whatsappNumber || business?.whatsappNumber;
-    const profileAbout = branch?.about || business?.about;
-    const profileWelcome = branch?.welcomeMessage || business?.welcomeMessage;
-    const profileHours = branch?.businessHours || business?.businessHours;
+    const profileEmail = profileSource?.officialEmail;
+    const profilePhone = profileSource?.phone;
+    const profileWebsite = profileSource?.website;
+    const profileWhatsapp = profileSource?.whatsappNumber;
+    const profileAbout = profileSource?.about;
+    const profileWelcome = profileSource?.welcomeMessage;
+    const profileHours = profileSource?.businessHours;
+    const profileShowRewards = useBusinessDetails
+        ? (business?.showRewards ?? branch?.showRewards ?? true)
+        : (branch?.showRewards ?? true);
     const profileSocials = {
-        facebookUrl: branch?.facebookUrl || business?.facebookUrl,
-        instagramUrl: branch?.instagramUrl || business?.instagramUrl,
-        xUrl: branch?.xUrl || business?.xUrl,
-        linkedinUrl: branch?.linkedinUrl || business?.linkedinUrl,
-        tiktokUrl: branch?.tiktokUrl || business?.tiktokUrl,
-        youtubeUrl: branch?.youtubeUrl || business?.youtubeUrl,
+        facebookUrl: profileSource?.facebookUrl,
+        instagramUrl: profileSource?.instagramUrl,
+        xUrl: profileSource?.xUrl,
+        linkedinUrl: profileSource?.linkedinUrl,
+        tiktokUrl: profileSource?.tiktokUrl,
+        youtubeUrl: profileSource?.youtubeUrl,
     };
 
     const socialItems = [
@@ -297,10 +314,11 @@ export default function PublicBusinessProfilePage({ params }: { params: Promise<
     ];
 
     const categoryLabel = useMemo(() => {
+        if (!useBusinessDetails) return 'Branch Location';
         const cat = business?.category?.name;
         const sub = business?.subcategory?.name;
         return cat && sub ? `${cat} - ${sub}` : cat || sub || 'General Business';
-    }, [business]);
+    }, [business, useBusinessDetails]);
 
     if (isLoading) {
         return (
@@ -371,67 +389,69 @@ export default function PublicBusinessProfilePage({ params }: { params: Promise<
                                 </p>
                             </section>
 
-                            <section className="asymmetric-card bg-white p-8 shadow-sm border border-slate-100">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h3 className="font-display text-2xl font-bold text-slate-900">Active Rewards</h3>
-                                    <span className="bg-primary/10 text-primary text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                                        Loyalty Program
-                                    </span>
-                                </div>
-                                {rewards.length === 0 ? (
-                                    <div className="p-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 flex items-center gap-4">
-                                        <div className="size-12 rounded-lg bg-primary flex items-center justify-center text-white shrink-0">
-                                            <Gift size={18} />
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-slate-900">Not available</p>
-                                            <p className="text-xs text-slate-500">No reward data</p>
-                                        </div>
+                            {useBusinessDetails && profileShowRewards && (
+                                <section className="asymmetric-card bg-white p-8 shadow-sm border border-slate-100">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="font-display text-2xl font-bold text-slate-900">Active Rewards</h3>
+                                        <span className="bg-primary/10 text-primary text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                                            Loyalty Program
+                                        </span>
                                     </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {rewards.slice(0, 4).map((reward) => (
-                                            <div
-                                                key={reward.id}
-                                                className="group bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all"
-                                            >
-                                                <div className="h-32 w-full overflow-hidden relative bg-slate-100">
-                                                    {reward.imageUrl ? (
-                                                        <img
-                                                            src={reward.imageUrl}
-                                                            alt={reward.name || 'Reward'}
-                                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                                            <Gift size={24} />
-                                                        </div>
-                                                    )}
-                                                    {reward.rewardType && (
-                                                        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-primary shadow-sm">
-                                                            {reward.rewardType.replace('_', ' ')}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="p-4 space-y-2">
-                                                    <h4 className="font-bold text-slate-900">{displayText(reward.name)}</h4>
-                                                    <p className="text-xs text-slate-500 line-clamp-2">
-                                                        {displayText(reward.description)}
-                                                    </p>
-                                                    <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-                                                        <span>{reward.pointCost || 0} pts</span>
-                                                        {reward.validityDays ? (
-                                                            <span>{reward.validityDays} days</span>
+                                    {rewards.length === 0 ? (
+                                        <div className="p-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 flex items-center gap-4">
+                                            <div className="size-12 rounded-lg bg-primary flex items-center justify-center text-white shrink-0">
+                                                <Gift size={18} />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-slate-900">Not available</p>
+                                                <p className="text-xs text-slate-500">No reward data</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {rewards.slice(0, 4).map((reward) => (
+                                                <div
+                                                    key={reward.id}
+                                                    className="group bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all"
+                                                >
+                                                    <div className="h-32 w-full overflow-hidden relative bg-slate-100">
+                                                        {reward.imageUrl ? (
+                                                            <img
+                                                                src={reward.imageUrl}
+                                                                alt={reward.name || 'Reward'}
+                                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                            />
                                                         ) : (
-                                                            <span>Valid anytime</span>
+                                                            <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                                                <Gift size={24} />
+                                                            </div>
+                                                        )}
+                                                        {reward.rewardType && (
+                                                            <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-primary shadow-sm">
+                                                                {reward.rewardType.replace('_', ' ')}
+                                                            </div>
                                                         )}
                                                     </div>
+                                                    <div className="p-4 space-y-2">
+                                                        <h4 className="font-bold text-slate-900">{displayText(reward.name)}</h4>
+                                                        <p className="text-xs text-slate-500 line-clamp-2">
+                                                            {displayText(reward.description)}
+                                                        </p>
+                                                        <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                                                            <span>{reward.pointCost || 0} pts</span>
+                                                            {reward.validityDays ? (
+                                                                <span>{reward.validityDays} days</span>
+                                                            ) : (
+                                                                <span>Valid anytime</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </section>
+                                            ))}
+                                        </div>
+                                    )}
+                                </section>
+                            )}
 
                             <section className="asymmetric-card bg-white p-8 shadow-sm border border-slate-100">
                                 <div className="flex items-center justify-between mb-6">
@@ -457,24 +477,24 @@ export default function PublicBusinessProfilePage({ params }: { params: Promise<
                             </section>
 
                             <section className="asymmetric-card bg-white p-8 shadow-sm border border-slate-100">
-                                <h3 className="font-display text-2xl font-bold mb-6 text-slate-900">Locations & Branches</h3>
+                                <h3 className="font-display text-2xl font-bold mb-6 text-slate-900">
+                                    {useBusinessDetails ? 'Locations & Branches' : 'Branch Location'}
+                                </h3>
                                 <div className="space-y-6">
                                     <div className="flex gap-4">
                                         <div className="size-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
                                             <MapPin className="text-primary" size={20} />
                                         </div>
                                         <div>
-                                            <p className="font-bold text-slate-900">Main Headquarters</p>
+                                            <p className="font-bold text-slate-900">
+                                                {useBusinessDetails ? 'Main Headquarters' : (branch?.name || 'Branch')}
+                                            </p>
                                             <p className="text-slate-500">
-                                                {formatLocation(
-                                                    business?.address || branch?.address,
-                                                    business?.city || branch?.city,
-                                                    business?.state || branch?.state
-                                                )}
+                                                {locationAddress}
                                             </p>
                                         </div>
                                     </div>
-                                    {(business?.branches || [])
+                                    {useBusinessDetails && (business?.branches || [])
                                         .filter((item) => !item.isMainBranch)
                                         .map((item) => (
                                             <div key={item.id} className="flex gap-4">
