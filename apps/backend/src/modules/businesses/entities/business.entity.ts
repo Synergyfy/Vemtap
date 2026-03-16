@@ -74,7 +74,7 @@ export class Business extends AbstractBaseEntity {
   @Column({ nullable: true })
   officialEmail: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, unique: true })
   phone: string;
 
   @Column({ nullable: true })

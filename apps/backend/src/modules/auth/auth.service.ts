@@ -38,9 +38,14 @@ export class AuthService {
 
   async requestOwnerOtp(dto: RequestOtpDto) {
     const email = dto.email.toLowerCase();
-    const existingUser = await this.usersService.findByEmail(email);
-    if (existingUser && existingUser.status !== UserStatus.PENDING) {
+    const existingUserByEmail = await this.usersService.findByEmail(email);
+    if (existingUserByEmail && existingUserByEmail.status !== UserStatus.PENDING) {
       throw new ConflictException('User with this email already exists');
+    }
+
+    const existingUserByPhone = await this.usersService.findByPhone(dto.phone);
+    if (existingUserByPhone && existingUserByPhone.status !== UserStatus.PENDING) {
+      throw new ConflictException('User with this phone number already exists');
     }
 
     const code = Math.floor(1000 + Math.random() * 9000).toString(); // 4 digit OTP
