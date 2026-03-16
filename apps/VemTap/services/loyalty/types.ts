@@ -115,3 +115,29 @@ export interface UpdateLoyaltyRuleRequest {
     referralBonus?: number;
     isActive?: boolean;
 }
+
+export interface BusinessLoyaltyStats {
+    stats: { label: string; value: string; change: number; trend: 'up' | 'down' }[];
+    tierDistribution: { label: string; value: number; color: string }[];
+    activityTrend: { name: string; earnings: number; claims: number }[];
+    growthForecast: string;
+}
+
+export interface CustomerAnalytics {
+    totalVisits: number;
+    currentPointsBalance: number;
+    netSavings: number;
+    visitTrends: { month: string; visits: number }[];
+    pointsByVenue: { venueName: string; points: number }[];
+    topVenues: { venueName: string; points: number; visits: number }[];
+}
+
+export interface ClaimCodeResponse {
+    success: boolean;
+    redemption: Redemption;
+}
+
+export interface ApplyTemplateResponse {
+    success: boolean;
+    message: string;
+}

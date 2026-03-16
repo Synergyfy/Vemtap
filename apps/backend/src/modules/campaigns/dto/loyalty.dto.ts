@@ -1,11 +1,13 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsString,
   IsNumber,
   IsBoolean,
   IsOptional,
   IsObject,
+  IsArray,
+  ValidateNested,
 } from 'class-validator';
 
 export class UpdateLoyaltyRuleDto {
@@ -140,9 +142,44 @@ export class CreateRewardDto {
   @IsNumber()
   @IsOptional()
   usageLimitPerUser?: number;
+
+  @ApiProperty({ description: 'Image URL', example: 'https://...', required: false })
+  @IsString()
+  @IsOptional()
+  imageUrl?: string;
 }
 
 export class UpdateRewardDto extends PartialType(CreateRewardDto) {}
+
+export class CreateLoyaltyTemplateDto {
+  @ApiProperty({ description: 'Template name', example: 'Cafe Welcome' })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ description: 'Template description', example: '...', required: false })
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @ApiProperty({ description: 'Loyalty rules', type: UpdateLoyaltyRuleDto })
+  @IsObject()
+  @ValidateNested()
+  @Type(() => UpdateLoyaltyRuleDto)
+  rules: UpdateLoyaltyRuleDto;
+
+  @ApiProperty({ description: 'Rewards to include', type: [CreateRewardDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateRewardDto)
+  rewards: CreateRewardDto[];
+
+  @ApiProperty({ description: 'Status', example: 'published', required: false })
+  @IsString()
+  @IsOptional()
+  status?: string;
+}
+
+export class UpdateLoyaltyTemplateDto extends PartialType(CreateLoyaltyTemplateDto) {}
 
 export class PointEarnRequestDto {
   @ApiProperty({
@@ -174,7 +211,7 @@ export class PointEarnRequestDto {
   })
   @IsObject()
   @IsOptional()
-  metadata?: any;
+  metadata?: Record<string, any>;
 }
 
 export class RewardRedeemRequestDto {

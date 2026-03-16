@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from 'react';
-import { BadgeCheck, BookOpen, Info, LayoutTemplate, LayoutList, Plus, Save, Search, Trash2, X } from 'lucide-react';
+import { BadgeCheck, BookOpen, Info, LayoutTemplate, LayoutList, Plus, Save, Search, Trash2, X, Loader2 } from 'lucide-react';
 import { LoyaltyRule } from '@/types/loyalty';
 import { LoyaltyTemplate, TemplateReward, TemplateStatus } from '@/services/loyalty/types';
 import { cn } from '@/lib/utils';
@@ -393,11 +393,33 @@ const RewardsStep: React.FC<{
     onUpdate: (id: string, updates: Partial<TemplateReward>) => void;
     onDelete: (id: string) => void;
 }> = ({ rewards, onAdd, onUpdate, onDelete }) => {
-    const handleImageUpload = (id: string, file?: File) => {
+    const [uploadingId, setUploadingId] = useState<string | null>(null);
+
+    const handleImageUpload = async (id: string, file?: File) => {
         if (!file) return;
+        
+        setUploadingId(id);
         const reader = new FileReader();
-        reader.onloadend = () => {
-            onUpdate(id, { imageUrl: reader.result as string });
+        reader.onloadend = async () => {
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file: reader.result }),
+                });
+                
+                const data = await response.json();
+                if (data.url) {
+                    onUpdate(id, { imageUrl: data.url });
+                    notify.success('Image uploaded successfully');
+                } else {
+                    throw new Error(data.error || 'Upload failed');
+                }
+            } catch (error: any) {
+                notify.error(error.message || 'Image upload failed');
+            } finally {
+                setUploadingId(null);
+            }
         };
         reader.readAsDataURL(file);
     };
@@ -510,16 +532,20 @@ const RewardsStep: React.FC<{
                             </Tooltip>
                         </label>
                         <div className="flex flex-col sm:flex-row gap-3 items-start">
-                            <label className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-xs font-black uppercase tracking-widest text-slate-600 cursor-pointer hover:bg-slate-50">
+                            <label className={cn(
+                                "inline-flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-xs font-black uppercase tracking-widest text-slate-600 cursor-pointer hover:bg-slate-50 transition-all",
+                                uploadingId === reward.id && "opacity-50 cursor-wait"
+                            )}>
                                 <input
                                     type="file"
                                     accept="image/*"
                                     className="hidden"
+                                    disabled={uploadingId === reward.id}
                                     onChange={(e) => handleImageUpload(reward.id, e.target.files?.[0])}
                                 />
-                                Upload Image
+                                {uploadingId === reward.id ? <><Loader2 size={14} className="animate-spin" /> Uploading...</> : 'Upload Image'}
                             </label>
-                            <div className="w-full sm:w-28 h-16 border border-slate-200 rounded-lg bg-slate-50 flex items-center justify-center overflow-hidden">
+                            <div className="w-full sm:w-28 h-16 border border-slate-200 rounded-lg bg-slate-50 flex items-center justify-center overflow-hidden relative">
                                 {reward.imageUrl ? (
                                     <img
                                         src={reward.imageUrl}
@@ -528,6 +554,11 @@ const RewardsStep: React.FC<{
                                     />
                                 ) : (
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Preview</span>
+                                )}
+                                {uploadingId === reward.id && (
+                                    <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+                                        <Loader2 size={16} className="animate-spin text-primary" />
+                                    </div>
                                 )}
                             </div>
                         </div>

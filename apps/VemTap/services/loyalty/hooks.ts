@@ -16,6 +16,11 @@ import {
     UpdateLoyaltyRuleRequest,
     VerifyRedemptionResponse,
     LoyaltyTemplate,
+    BusinessLoyaltyStats,
+    CustomerAnalytics,
+    ClaimCodeResponse,
+    ApplyTemplateResponse,
+    Redemption,
 } from './types';
 
 function useResolvedBranchParams(branchId?: string): { branchId?: string; allBranches?: boolean } {
@@ -113,11 +118,25 @@ export const useRewards = (branchId?: string) => {
     });
 };
 
+export const useRewardRedemptions = (rewardId: string, branchId?: string) => {
+    const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
+
+    return useQuery<Redemption[], Error>({
+        queryKey: ['loyalty', 'rewards', rewardId, 'redemptions', resolvedBranchId],
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            if (resolvedBranchId) params.append('branchId', resolvedBranchId);
+            return await api.get(`/loyalty/rewards/${rewardId}/redemptions?${params.toString()}`);
+        },
+        enabled: !!rewardId,
+    });
+};
+
 export const useBusinessLoyaltyStats = (branchId?: string) => {
     const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
 
-    return useQuery<any, Error>({
+    return useQuery<BusinessLoyaltyStats, Error>({
         queryKey: ['loyalty', 'business-stats', resolvedBranchId, allBranches, businessId],
         queryFn: async () => {
             const params = new URLSearchParams();
@@ -203,7 +222,7 @@ export const useVerifyRedemption = (branchId?: string) => {
 };
 
 export const useLoyaltyAnalytics = () => {
-    return useQuery<any, Error>({
+    return useQuery<CustomerAnalytics, Error>({
         queryKey: ['loyalty', 'analytics'],
         queryFn: async () => await api.get('/loyalty/analytics')
     });
@@ -211,7 +230,7 @@ export const useLoyaltyAnalytics = () => {
 
 export const useLoyaltyHistory = (branchId?: string) => {
     const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
-    return useQuery<any[], Error>({
+    return useQuery<(PointTransaction | Redemption)[], Error>({
         queryKey: ['loyalty', 'history', resolvedBranchId, allBranches],
         queryFn: async () => {
             const params = new URLSearchParams();
@@ -223,14 +242,14 @@ export const useLoyaltyHistory = (branchId?: string) => {
 };
 
 export const useGenerateRedemptionCode = () => {
-    return useMutation<any, Error, { rewardId: string; branchId?: string }>({
+    return useMutation<Redemption, Error, { rewardId: string; branchId?: string }>({
         mutationFn: async (dto) => await api.post('/loyalty/generate-code', dto)
     });
 };
 
 export const useClaimRedemptionCode = () => {
     const queryClient = useQueryClient();
-    return useMutation<any, Error, { code: string; branchId?: string }>({
+    return useMutation<ClaimCodeResponse, Error, { code: string; branchId?: string }>({
         mutationFn: async (dto) => await api.post('/loyalty/claim-code', dto),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty'] });
@@ -287,7 +306,7 @@ export const useApplyLoyaltyTemplate = (branchId?: string) => {
     const queryClient = useQueryClient();
     const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
 
-    return useMutation<any, Error, string>({
+    return useMutation<ApplyTemplateResponse, Error, string>({
         mutationFn: async (id) => {
             const params = new URLSearchParams();
             if (resolvedBranchId) params.append('branchId', resolvedBranchId);

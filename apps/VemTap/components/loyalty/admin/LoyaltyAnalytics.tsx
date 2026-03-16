@@ -1,24 +1,30 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import {
     Users, Gift, Zap, TrendingUp, BarChart3,
-    ArrowUpRight, ArrowDownRight, Activity, PieChart, Loader2
+    ArrowUpRight, ArrowDownRight, Activity, PieChart, Loader2,
+    LucideIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useLoyaltyStore } from '@/store/loyaltyStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useBusinessStore } from '@/store/useBusinessStore';
 import { useBusinessLoyaltyStats } from '@/services/loyalty/hooks';
+import { BusinessLoyaltyStats } from '@/services/loyalty/types';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 interface AnalyticsStat {
     label: string;
     value: string | number;
     change: number;
-    icon: any;
+    icon: LucideIcon;
     trend: 'up' | 'down';
+}
+
+interface TierData {
+    label: string;
+    value: number;
+    color: string;
 }
 
 export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }) => {
@@ -30,16 +36,18 @@ export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }
         { label: 'Points Earned', value: '0', change: 0, trend: 'up' },
         { label: 'Rewards Claimed', value: '0', change: 0, trend: 'up' },
         { label: 'Redemption Rate', value: '0%', change: 0, trend: 'up' },
-    ]).map((s: any, i: number) => {
+    ]).map((s: BusinessLoyaltyStats['stats'][0], i: number) => {
         const icons = [Users, Zap, Gift, Activity];
         return {
-            ...s,
+            label: s.label,
+            value: s.value,
+            change: s.change,
+            trend: s.trend,
             icon: icons[i] || Activity,
-            trend: s.trend || 'up'
         };
     });
 
-    const tierData = data?.tierDistribution || [
+    const tierData: TierData[] = data?.tierDistribution || [
         { label: 'Bronze', value: 0, color: 'bg-orange-600' },
         { label: 'Silver', value: 0, color: 'bg-slate-400' },
         { label: 'Gold', value: 0, color: 'bg-yellow-500' },
@@ -136,7 +144,7 @@ export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }
                     </div>
 
                     <div className="space-y-6">
-                        {tierData.map((tier: any) => (
+                        {tierData.map((tier) => (
                             <div key={tier.label} className="space-y-2">
                                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
                                     <span className="text-slate-500">{tier.label} Members</span>

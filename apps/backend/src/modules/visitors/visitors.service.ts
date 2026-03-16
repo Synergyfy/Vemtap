@@ -403,7 +403,7 @@ export class VisitorsService {
 
     const activeRule = await this.campaignsService.findActiveRule(branchId);
 
-    let loyaltyResult = null;
+    let loyaltyResult: { success: boolean; pointsEarned: number; newBalance: number; message: string } | null = null;
     if (activeRule) {
       const profile = await this.campaignsService.findProfile(
         user.id,
