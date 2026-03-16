@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -54,11 +54,19 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const { fetchSubscriptionData, isFeatureLocked, capabilities, activeSubscription } = useSubscriptionStore();
     const { activeBranchId, getLinkWithBranch } = useActiveBranch();
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
+    const isChatRoute = pathname.includes('/messaging/chat');
+    const mainRef = useRef<HTMLElement | null>(null);
 
     // Close upgrade modal on navigation
     useEffect(() => {
         setUpgradeModal({ isOpen: false, featureName: '' });
     }, [pathname, searchParams]);
+
+    useEffect(() => {
+        if (isChatRoute && mainRef.current) {
+            mainRef.current.scrollTop = 0;
+        }
+    }, [isChatRoute, pathname]);
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -67,8 +75,13 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     }, [isAuthenticated, fetchSubscriptionData]);
 
     const mainBranch = myBusiness?.branches?.find(b => b.isMainBranch);
+    const activeBranch = myBusiness?.branches?.find(b => b.id === activeBranchId);
+    const firstBranchWithCode = myBusiness?.branches?.find(b => b.uniqueCode);
     const businessLogo = myBusiness?.logoUrl || mainBranch?.logoUrl || defaultLogo;
     const businessName = myBusiness?.name || user?.businessName || 'Business Profile';
+    const businessSlug = businessName.toLowerCase().replace(/\s+/g, '-');
+    const publicProfileCode = activeBranch?.uniqueCode || mainBranch?.uniqueCode || firstBranchWithCode?.uniqueCode || myBusiness?.uniqueCode;
+    const publicProfileHref = publicProfileCode ? `/b/${publicProfileCode}` : `/business/${businessSlug}`;
 
     // eslint-disable-next-line no-console
     console.log('[DASHBOARD SIDEBAR] 🔍 isAuthenticated:', isAuthenticated, 'path:', pathname);
@@ -561,7 +574,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 {/* User Profile */}
                 <div className="border-t border-gray-200 p-4">
                     <Link
-                        href={`/business/${businessName.toLowerCase().replace(/\s+/g, '-')}`}
+                        href={publicProfileHref}
                         className="flex items-center gap-3 mb-3 hover:bg-gray-50 p-2 rounded-xl transition-colors group"
                     >
                         <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-gray-100 group-hover:scale-105 transition-transform">
@@ -591,7 +604,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             </aside>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col h-screen overflow-hidden w-full">
+            <div className="flex-1 flex flex-col h-screen overflow-hidden w-full min-h-0">
                 {/* Top Bar */}
                 <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 shrink-0">
                     <div className="flex items-center gap-4 flex-1">
@@ -772,7 +785,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto bg-gray-50 pb-16 lg:pb-0">
+                <main
+                    ref={mainRef}
+                    className={`flex-1 bg-gray-50 min-h-0 ${isChatRoute ? 'overflow-hidden' : 'overflow-y-auto pb-16 lg:pb-0'}`}
+                >
                     {children}
                 </main>
             </div>

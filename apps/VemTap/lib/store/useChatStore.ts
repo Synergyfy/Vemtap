@@ -38,6 +38,9 @@ export interface ChatConversation {
     unreadCount: number;
     isTyping: boolean;
     channel: string;
+    lastActivityAt?: string;
+    updatedAt?: string;
+    status?: string;
 }
 
 export interface AutomatedReplyConfig {
@@ -63,11 +66,15 @@ export interface ChatCategory {
 interface ChatState {
     activeConversationId: string | null;
     searchQuery: string;
+    mockThreads: ChatConversation[];
+    mockMessages: Record<string, ChatMessage[]>;
 
     // Actions
     setActiveConversation: (id: string | null) => void;
     setSearchQuery: (query: string) => void;
     markAsRead: (conversationId: string) => void;
+    addMockThread: (contact: ChatContact) => string;
+    addMockMessage: (threadId: string, message: ChatMessage) => void;
 }
 
 // ─── Store ───────────────────────────────────────────────────────────────────
@@ -75,6 +82,8 @@ interface ChatState {
 export const useChatStore = create<ChatState>()((set, get) => ({
     activeConversationId: null,
     searchQuery: '',
+    mockThreads: [],
+    mockMessages: {},
 
     setActiveConversation: (id) => {
         set({ activeConversationId: id });
@@ -84,5 +93,55 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
     markAsRead: (conversationId) => {
         // Implementation handled by TanStack Query invalidation in hooks
+    },
+    addMockThread: (contact) => {
+        const existing = get().mockThreads.find(thread => thread.contact.id === contact.id);
+        if (existing) {
+            set({ activeConversationId: existing.id });
+            return existing.id;
+        }
+
+        const now = new Date().toISOString();
+        const threadId = `mock-${contact.id}`;
+        const newThread: ChatConversation = {
+            id: threadId,
+            contact,
+            lastMessage: '',
+            lastMessageTime: Date.now(),
+            unreadCount: 0,
+            isTyping: false,
+            channel: 'IN_HOUSE',
+            lastActivityAt: now,
+            updatedAt: now,
+            status: 'New conversation',
+        };
+
+        set(state => ({
+            mockThreads: [newThread, ...state.mockThreads],
+            activeConversationId: threadId,
+        }));
+        return threadId;
+    },
+    addMockMessage: (threadId, message) => {
+        set(state => {
+            const prevMessages = state.mockMessages[threadId] || [];
+            const updatedMessages = [...prevMessages, message];
+            const updatedThreads = state.mockThreads.map(thread => {
+                if (thread.id !== threadId) return thread;
+                return {
+                    ...thread,
+                    lastMessage: message.content,
+                    lastMessageTime: Date.now(),
+                    lastActivityAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    status: 'Active conversation',
+                };
+            });
+
+            return {
+                mockMessages: { ...state.mockMessages, [threadId]: updatedMessages },
+                mockThreads: updatedThreads,
+            };
+        });
     },
 }));

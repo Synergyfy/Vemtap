@@ -84,7 +84,7 @@ function useResolvedBranchParams(branchId?: string): { branchId?: string; allBra
 
 export const useVisitors = (branchId?: string, query?: Record<string, any>) => {
     const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
-    const businessId = useAuthStore((state) => state.user?.businessId);
+    const businessId = query?.businessId || useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });

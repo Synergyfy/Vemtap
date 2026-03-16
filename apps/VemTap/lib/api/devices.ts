@@ -61,6 +61,7 @@ export interface BusinessData {
     showReview?: boolean;
     showSocial?: boolean;
     showFeedback?: boolean;
+    showRewards?: boolean;
     monthlyVisitors?: string;
     goal?: string;
 }

@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
-import { Search, Plus, MoreVertical } from 'lucide-react';
+import { Search, Plus, MoreVertical, FileText } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useChatThreads } from '@/hooks/useMessaging';
@@ -12,6 +12,13 @@ import Link from 'next/link';
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
     'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-teal-500',
+];
+
+const MOCK_CUSTOMERS = [
+    { id: 'cust-01', name: 'Amaka Okafor', phone: '+234 802 334 9910', email: 'amaka.okafor@example.com', isOnline: true },
+    { id: 'cust-02', name: 'Chinedu Eze', phone: '+234 806 120 3421', email: 'chinedu.eze@example.com', isOnline: false },
+    { id: 'cust-03', name: 'Aisha Bello', phone: '+234 809 778 1502', email: 'aisha.bello@example.com', isOnline: true },
+    { id: 'cust-04', name: 'Tomi Adebayo', phone: '+234 701 550 8893', email: 'tomi.adebayo@example.com', isOnline: false },
 ];
 
 function getInitials(name: string) {
@@ -40,17 +47,29 @@ export default function ChatSidebar() {
     const searchQuery = useChatStore(s => s.searchQuery);
     const setSearchQuery = useChatStore(s => s.setSearchQuery);
     const setActiveConversation = useChatStore(s => s.setActiveConversation);
+    const mockThreads = useChatStore(s => s.mockThreads);
+    const addMockThread = useChatStore(s => s.addMockThread);
     const isAuthenticated = useAuthStore(s => s.isAuthenticated);
     const { data: business } = useMyBusiness(isAuthenticated);
     const user = useAuthStore(s => s.user);
     const { activeBranchId } = useActiveBranch();
+    const [showNewChat, setShowNewChat] = useState(false);
+    const [customerQuery, setCustomerQuery] = useState('');
+    const newChatRef = useRef<HTMLDivElement>(null);
 
     const isCustomer = user?.role === 'customer';
     const branchId = isCustomer ? undefined : activeBranchId;
     
     const { data: threads = [], isLoading } = useChatThreads('IN_HOUSE', branchId || undefined);
 
-    const activeConv = (threads as any[]).find(c => c.id === activeConversationId);
+    const allThreads = useMemo(() => {
+        const apiThreads = threads as any[];
+        const apiIds = new Set(apiThreads.map(t => t.id));
+        const mergedMocks = mockThreads.filter(t => !apiIds.has(t.id));
+        return [...mergedMocks, ...apiThreads];
+    }, [threads, mockThreads]);
+
+    const activeConv = allThreads.find(c => c.id === activeConversationId);
     
     const headerName = isCustomer 
         ? (activeConv?.contact?.name || 'Business Chat') 
@@ -63,14 +82,35 @@ export default function ChatSidebar() {
 
     const filtered = useMemo(() => {
         const q = searchQuery.trim().toLowerCase();
-        if (!q) return threads as any[];
-        return (threads as any[]).filter(c =>
+        if (!q) return allThreads;
+        return allThreads.filter(c =>
             c.contact?.name?.toLowerCase().includes(q)
         );
-    }, [threads, searchQuery]);
+    }, [allThreads, searchQuery]);
+
+    const availableCustomers = useMemo(() => {
+        const existingContactIds = new Set(allThreads.map(conv => conv.contact?.id).filter(Boolean));
+        const q = customerQuery.trim().toLowerCase();
+        return MOCK_CUSTOMERS.filter(customer => {
+            if (existingContactIds.has(customer.id)) return false;
+            if (!q) return true;
+            return customer.name.toLowerCase().includes(q) || customer.phone?.includes(q) || customer.email?.toLowerCase().includes(q);
+        });
+    }, [allThreads, customerQuery]);
+
+    useEffect(() => {
+        if (!showNewChat) return;
+        const handleClickOutside = (event: MouseEvent) => {
+            if (newChatRef.current && !newChatRef.current.contains(event.target as Node)) {
+                setShowNewChat(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showNewChat]);
 
     return (
-        <aside className="w-80 lg:w-96 glass-sidebar flex flex-col h-full border-r border-slate-200 shrink-0">
+        <aside className="w-80 lg:w-96 glass-sidebar flex flex-col h-full min-h-0 border-r border-slate-200 shrink-0">
             {/* Header */}
             <header className="p-4 border-b border-slate-200 flex justify-between items-center bg-white/50">
                 <div className="flex items-center gap-2">
@@ -85,12 +125,66 @@ export default function ChatSidebar() {
                 </div>
                 {!isCustomer && (
                     <div className="flex gap-2 text-slate-400">
+                        <div className="relative" ref={newChatRef}>
+                            <button
+                                type="button"
+                                onClick={() => setShowNewChat(prev => !prev)}
+                                className={`p-1.5 rounded-lg transition-colors ${branchId ? 'hover:text-primary hover:bg-slate-100' : 'text-slate-300'}`}
+                                title="New Chat"
+                            >
+                                <Plus size={18} />
+                            </button>
+
+                            {showNewChat && (
+                                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 py-3 z-50">
+                                    <div className="px-4 pb-2 border-b border-slate-100">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Start new chat</p>
+                                        <input
+                                            type="text"
+                                            placeholder="Search customers..."
+                                            value={customerQuery}
+                                            onChange={e => setCustomerQuery(e.target.value)}
+                                            className="mt-2 w-full h-9 rounded-lg bg-slate-100 px-3 text-xs font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                        />
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto custom-scrollbar">
+                                        {!branchId ? (
+                                            <div className="px-4 py-4 text-xs text-amber-600">Select a branch to start a chat.</div>
+                                        ) : availableCustomers.length === 0 ? (
+                                            <div className="px-4 py-4 text-xs text-slate-400">No customer available.</div>
+                                        ) : (
+                                            availableCustomers.map(customer => (
+                                                <button
+                                                    key={customer.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const threadId = addMockThread(customer);
+                                                        setActiveConversation(threadId);
+                                                        setShowNewChat(false);
+                                                        setCustomerQuery('');
+                                                    }}
+                                                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 text-left"
+                                                >
+                                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold ${getAvatarColor(customer.id)}`}>
+                                                        {getInitials(customer.name)}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-semibold text-slate-900 truncate">{customer.name}</p>
+                                                        <p className="text-xs text-slate-400 truncate">{customer.phone || customer.email}</p>
+                                                    </div>
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                         <Link 
                             href={`/dashboard/messaging/chat/settings?tab=templates${branchId ? `&branchId=${branchId}` : ''}`}
                             className="p-1.5 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors"
                             title="Message Templates"
                         >
-                            <Plus size={18} />
+                            <FileText size={18} />
                         </Link>
                         <Link 
                             href={`/dashboard/messaging/chat/settings${branchId ? `?branchId=${branchId}` : ''}`}
