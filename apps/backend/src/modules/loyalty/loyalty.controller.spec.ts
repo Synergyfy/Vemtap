@@ -80,7 +80,7 @@ describe('LoyaltyController', () => {
   it('should get rewards for a branch', async () => {
     const result = [];
     mockLoyaltyService.getRewards.mockResolvedValue(result);
-    expect(await controller.getRewards({ branchId: 'branch-1' }, mockReq)).toBe(
+    expect(await controller.getRewards(mockReq, { branchId: 'branch-1' })).toBe(
       result,
     );
     expect(mockLoyaltyService.getRewards).toHaveBeenCalledWith('branch-1', undefined);
@@ -90,44 +90,40 @@ describe('LoyaltyController', () => {
     const result = [];
     mockLoyaltyService.getRewards.mockResolvedValue(result);
     // OWNER should be able to fetch all rewards without branchId
-    expect(await controller.getRewards({ allBranches: true }, mockReq)).toBe(
+    expect(await controller.getRewards(mockReq, { allBranches: true })).toBe(
       result,
     );
     expect(mockLoyaltyService.getRewards).toHaveBeenCalledWith(undefined, 'biz-1');
 
     // Default to allBranches if neither is provided for OWNER
-    expect(await controller.getRewards({}, mockReq)).toBe(result);
+    expect(await controller.getRewards(mockReq, {})).toBe(result);
     expect(mockLoyaltyService.getRewards).toHaveBeenCalledWith(undefined, 'biz-1');
   });
 
   it('should redeem reward', async () => {
-    const dto = { rewardId: 'r1', loyaltyProfileId: 'lp1' };
+    const dto = { rewardId: 'r1', loyaltyProfileId: 'lp1', branchId: 'branch-1' };
     const result = { id: 'red1' };
     mockLoyaltyService.redeemReward.mockResolvedValue(result);
-    expect(await controller.redeemReward(mockReq, dto as any, 'branch-1')).toBe(
+    expect(await controller.redeemReward(mockReq, dto as any)).toBe(
       result,
     );
   });
 
   it('should earn points', async () => {
-    const dto = { userId: 'u1', points: 100 };
+    const dto = { userId: 'u1', points: 100, branchId: 'branch-1' };
     const result = { success: true };
     mockLoyaltyService.earnPoints.mockResolvedValue(result);
     expect(
-      await controller.earnPoints(dto as any, mockReq, {
-        branchId: 'branch-1',
-      }),
+      await controller.earnPoints(mockReq, dto as any),
     ).toBe(result);
   });
 
   it('should create reward', async () => {
-    const dto = { name: 'Reward 1', pointsRequired: 100 };
+    const dto = { name: 'Reward 1', pointsRequired: 100, branchId: 'branch-1' };
     const result = { id: 'r1' };
     mockLoyaltyService.createReward.mockResolvedValue(result);
     expect(
-      await controller.createReward(dto as any, mockReq, {
-        branchId: 'branch-1',
-      }),
+      await controller.createReward(mockReq, dto as any),
     ).toBe(result);
   });
 });

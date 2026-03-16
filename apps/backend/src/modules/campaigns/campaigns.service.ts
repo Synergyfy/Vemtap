@@ -622,6 +622,39 @@ export class CampaignsService {
     });
   }
 
+  async verifyRedemption(
+    branchId: string,
+    code: string,
+    verifiedByUserId: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    const redemption = await this.redemptionRepository.findOne({
+      where: { redemptionCode: code, status: 'pending' },
+      relations: ['reward'],
+    });
+
+    if (!redemption) {
+      return { success: false, error: 'Invalid or already used code' };
+    }
+
+    if (redemption.branchId !== branchId && redemption.reward.branchId !== branchId) {
+      return { success: false, error: 'Reward not found for this branch' };
+    }
+
+    if (new Date(redemption.expiresAt) < new Date()) {
+      redemption.status = 'expired';
+      await this.redemptionRepository.save(redemption);
+      return { success: false, error: 'This code has expired' };
+    }
+
+    redemption.status = 'verified';
+    redemption.verifiedAt = new Date();
+    redemption.verifiedByUserId = verifiedByUserId;
+
+    await this.redemptionRepository.save(redemption);
+
+    return { success: true };
+  }
+
   // Loyalty Templates
   async getLoyaltyTemplates(): Promise<LoyaltyTemplate[]> {
     const templates = await this.loyaltyTemplateRepository.find({

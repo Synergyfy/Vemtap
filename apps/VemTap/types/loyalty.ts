@@ -65,7 +65,7 @@ export interface Reward {
   totalRedeemed: number;
   isActive: boolean;
   branchId?: string;
-  imageUrl?: string;
+  imageUrls?: string[];
   createdAt: string;
   updatedAt: string;
 }

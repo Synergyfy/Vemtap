@@ -67,7 +67,7 @@ const INITIAL_REWARDS: Reward[] = [
     totalAvailable: 100,
     totalRedeemed: 15,
     isActive: true,
-    imageUrl: 'https://images.unsplash.com/photo-1541167760496-162955ed8a9f?w=400&h=400&fit=crop',
+    imageUrls: ['https://images.unsplash.com/photo-1541167760496-162955ed8a9f?w=400&h=400&fit=crop'],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   },
@@ -85,7 +85,7 @@ const INITIAL_REWARDS: Reward[] = [
     usageLimitPerUser: 1,
     totalRedeemed: 5,
     isActive: true,
-    imageUrl: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=400&fit=crop',
+    imageUrls: ['https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=400&fit=crop'],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   },
@@ -103,7 +103,7 @@ const INITIAL_REWARDS: Reward[] = [
     usageLimitPerUser: 1,
     totalRedeemed: 2,
     isActive: true,
-    imageUrl: 'https://images.unsplash.com/photo-1547573854-74d2a71d0826?w=400&h=400&fit=crop',
+    imageUrls: ['https://images.unsplash.com/photo-1547573854-74d2a71d0826?w=400&h=400&fit=crop'],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }

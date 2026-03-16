@@ -93,7 +93,7 @@ type PublicReward = {
     pointCost?: number;
     value?: number;
     validityDays?: number;
-    imageUrl?: string;
+    imageUrls?: string[];
     isActive?: boolean;
 };
 

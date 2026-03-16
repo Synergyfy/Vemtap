@@ -113,16 +113,6 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
                                 />
                             )}
 
-                            {settings.showFeedback && (
-                                <EngagementTile
-                                    icon="chat_bubble"
-                                    label="Quick Feedback"
-                                    description="Help us improve our service"
-                                    color="bg-purple-50 text-purple-500"
-                                    onClick={() => onAction('feedback')}
-                                />
-                            )}
-
                             {settings.showRewards && (
                                 <EngagementTile
                                     icon="redeem"

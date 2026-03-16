@@ -76,20 +76,11 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
     return (
         <motion.div key="outcome" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={presets.card}>
             <div className="flex flex-col items-center text-center">
-                {(attachedForms && attachedForms.length > 0) ? (
-                    <div className="mb-6">
-                        <h1 className="text-xl font-black text-slate-900 leading-tight">Post-Submission</h1>
-                        <p className="text-xs text-slate-500 mt-2">Finish these quick forms to complete your visit.</p>
-                    </div>
-                ) : (
-                    <>
-                        <div className="size-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-inner">
-                            <span className="material-symbols-outlined text-4xl">check_circle</span>
-                        </div>
-                        <h1 className={presets.title}>{customSuccessTitle || "Visit Recorded"}</h1>
-                        <p className={`${presets.body} mt-4 mb-4`}>{customSuccessDescription || customSuccessMessage || "Thank you for visiting our store"}</p>
-                    </>
-                )}
+                <div className="size-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                    <span className="material-symbols-outlined text-4xl">check_circle</span>
+                </div>
+                <h1 className={presets.title}>{customSuccessTitle || "Visit Recorded"}</h1>
+                <p className={`${presets.body} mt-4 mb-4`}>{customSuccessDescription || customSuccessMessage || "Thank you for visiting our store"}</p>
 
                 {hasRewardSetup && (
                     <motion.div
@@ -147,10 +138,7 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
                 )}
 
                 <div className="w-full space-y-4 mt-8">
-                    {allFormsCompleted && (
-                        <button onClick={onFinish} className={presets.button}>Complete Visit</button>
-                    )}
-                    {!hasRewardSetup && !allFormsCompleted && (
+                    {!hasRewardSetup && (
                         <button onClick={onFinish} className={presets.button}>Finish</button>
                     )}
                     <button onClick={onRestart} className="text-[10px] font-black text-gray-300 uppercase tracking-widest hover:text-red-400 transition-colors">Return to Start</button>
