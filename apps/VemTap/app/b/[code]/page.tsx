@@ -415,9 +415,9 @@ export default function PublicBusinessProfilePage() {
                                                     className="group bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all"
                                                 >
                                                     <div className="h-32 w-full overflow-hidden relative bg-slate-100">
-                                                        {reward.imageUrl ? (
+                                                        {reward.imageUrls ? (
                                                             <img
-                                                                src={reward.imageUrl}
+                                                                src={reward.imageUrls[0]}
                                                                 alt={reward.name || 'Reward'}
                                                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                             />

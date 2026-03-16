@@ -163,16 +163,10 @@ export default function BusinessProfilePage() {
             setReviewUrl(source.reviewUrl || '');
             setTrustpilotUrl(source.trustpilotUrl || '');
 
-<<<<<<< HEAD
-            setShowReview(business.showReview ?? true);
-            setShowSocial(business.showSocial ?? true);
-            setShowFeedback(business.showFeedback ?? true);
-            setShowRewards(business.showRewards ?? true);
-=======
-            setShowReview(source.showReview ?? true);
-            setShowSocial(source.showSocial ?? true);
-            setShowFeedback(source.showFeedback ?? true);
->>>>>>> 592fb0b0655f18207741f9e60295ecf30f6e17c2
+            setShowReview(business?.showReview ?? true);
+            setShowSocial(business?.showSocial ?? true);
+            setShowFeedback(business?.showFeedback ?? true);
+            setShowRewards(business?.showRewards ?? true);
 
             if (business) {
                 setCacDocument(business.cacDocument || '');
@@ -184,14 +178,9 @@ export default function BusinessProfilePage() {
                 else setCacType('RC');
             }
 
-<<<<<<< HEAD
-            const publicCode = business.uniqueCode || fallbackProfileCode;
+            const publicCode = business?.uniqueCode || fallbackProfileCode;
             if (publicCode) {
                 const nextPublicUrl = `${origin}/b/${publicCode}`;
-=======
-            if (source.uniqueCode) {
-                const nextPublicUrl = `${origin}/b/${source.uniqueCode}`;
->>>>>>> 592fb0b0655f18207741f9e60295ecf30f6e17c2
                 setPublicProfileUrl(nextPublicUrl);
                 if (qrId) {
                     setRedirect(qrId, nextPublicUrl);
@@ -199,7 +188,6 @@ export default function BusinessProfilePage() {
             } else {
                 setPublicProfileUrl('');
             }
-<<<<<<< HEAD
         } else if (branch) {
             setName(branch.name || '');
             setLogo(branch.logoUrl || '');
@@ -252,13 +240,7 @@ export default function BusinessProfilePage() {
             setLogo(user.businessLogo || '');
         }
     }, [business, branch, isAllBranches, activeBranchId, origin, branches.length, fallbackProfileCode, qrId, user]);
-=======
-        } else if (user && !businessLoading) {
-            setName(user.businessName || '');
-            setLogo(user.businessLogo || '');
-        }
-    }, [business, branch, isAllBranches, activeBranchId, origin, branches.length, user, businessLoading]);
->>>>>>> 592fb0b0655f18207741f9e60295ecf30f6e17c2
+
 
     const handleSave = async () => {
         const hasChanged = (current: any, original: any) => {
@@ -271,6 +253,7 @@ export default function BusinessProfilePage() {
             let finalLogoUrl = logo;
             if (logo && logo.startsWith('data:image')) {
                 const uploadToast = toast.loading('Uploading new logo...');
+                
                 finalLogoUrl = await uploadToCloudinary(logo);
                 setLogo(finalLogoUrl);
                 toast.dismiss(uploadToast);
