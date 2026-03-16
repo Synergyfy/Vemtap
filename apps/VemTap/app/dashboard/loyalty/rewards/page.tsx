@@ -27,7 +27,7 @@ export default function RewardManagementPage() {
             validityDays: reward.validityDays || 30,
             usageLimitPerUser: reward.usageLimitPerUser || 1,
             totalAvailable: reward.totalAvailable || 0,
-            imageUrl: reward.imageUrl,
+            imageUrls: reward.imageUrls,
         };
         await createMutation.mutateAsync(dto);
     };
@@ -42,7 +42,7 @@ export default function RewardManagementPage() {
             usageLimitPerUser: updates.usageLimitPerUser,
             totalAvailable: updates.totalAvailable,
             isActive: updates.isActive,
-            imageUrl: updates.imageUrl,
+            imageUrls: updates.imageUrls,
         };
         await updateMutation.mutateAsync({ id, updates: dto });
     };

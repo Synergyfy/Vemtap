@@ -167,7 +167,9 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
     const [searchQuery, setSearchQuery] = useState('');
     const [viewingRewardForCustomers, setViewingRewardForCustomers] = useState<Reward | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const galleryInputRef = useRef<HTMLInputElement>(null);
     const [localImageFile, setLocalImageFile] = useState<File | null>(null);
+    const [localGalleryFiles, setLocalGalleryFiles] = useState<File[]>([]);
 
     const [formData, setFormData] = useState<Partial<Reward>>({
         name: '',
@@ -178,7 +180,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
         value: 0,
         totalAvailable: 0,
         isActive: true,
-        imageUrl: ''
+        imageUrls: []
     });
 
     const resetForm = () => {
@@ -191,9 +193,10 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
             value: 0,
             totalAvailable: 0,
             isActive: true,
-            imageUrl: ''
+            imageUrls: []
         });
         setLocalImageFile(null);
+        setLocalGalleryFiles([]);
         setIsAdding(false);
         setEditingId(null);
         setIsSubmitted(false);
@@ -207,9 +210,38 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
             setLocalImageFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, imageUrl: reader.result as string }));
+                const result = reader.result as string;
+                setFormData(prev => {
+                    const currentUrls = [...(prev.imageUrls || [])];
+                    // If we already have urls, the first one is the "main" one
+                    // We replace the first one or prepend it
+                    if (currentUrls.length > 0 && currentUrls[0].startsWith('data:')) {
+                        currentUrls[0] = result;
+                    } else {
+                        currentUrls.unshift(result);
+                    }
+                    return { ...prev, imageUrls: currentUrls };
+                });
             };
             reader.readAsDataURL(file);
+        }
+    };
+
+    const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length > 0) {
+            setLocalGalleryFiles(prev => [...prev, ...files]);
+            
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setFormData(prev => ({ 
+                        ...prev, 
+                        imageUrls: [...(prev.imageUrls || []), reader.result as string] 
+                    }));
+                };
+                reader.readAsDataURL(file);
+            });
         }
     };
 
@@ -230,15 +262,32 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
         let toastId: string | undefined;
 
         try {
-            let finalImageUrl = formData.imageUrl;
+            let finalImageUrls = [...(formData.imageUrls || [])];
 
-            if (localImageFile) {
-                toastId = notify.loading('Uploading reward image to Cloudinary...');
-                finalImageUrl = await uploadToCloudinary(localImageFile);
+            if (localImageFile || localGalleryFiles.length > 0) {
+                toastId = notify.loading('Uploading reward images to Cloudinary...');
+                
+                // Filter out local data URLs
+                let remoteUrls = finalImageUrls.filter(url => !url.startsWith('data:'));
+
+                if (localImageFile) {
+                    const uploadedMain = await uploadToCloudinary(localImageFile);
+                    remoteUrls.unshift(uploadedMain);
+                }
+
+                if (localGalleryFiles.length > 0) {
+                    const uploadedGallery = await Promise.all(localGalleryFiles.map(f => uploadToCloudinary(f)));
+                    remoteUrls = [...remoteUrls, ...uploadedGallery];
+                }
+
+                finalImageUrls = remoteUrls;
                 notify.dismiss(toastId);
             }
 
-            const submissionData = { ...formData, imageUrl: finalImageUrl };
+            const submissionData = { 
+                ...formData, 
+                imageUrls: finalImageUrls 
+            };
 
             if (editingId) {
                 await onUpdate(editingId, submissionData);
@@ -320,9 +369,9 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                     <div className="flex items-start justify-between mb-5">
                                         <div className="flex items-center space-x-4">
                                             <div className="relative w-16 h-16 shrink-0 bg-white border border-primary/10 overflow-hidden rounded-2xl flex items-center justify-center p-2 shadow-sm ring-4 ring-primary/5">
-                                                {reward.imageUrl ? (
+                                                {reward.imageUrls && reward.imageUrls.length > 0 ? (
                                                     <img
-                                                        src={reward.imageUrl}
+                                                        src={reward.imageUrls[0]}
                                                         alt={reward.name}
                                                         className="w-full h-full object-cover rounded-xl"
                                                     />
@@ -358,9 +407,20 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                         </div>
                                     </div>
 
-                                    <p className="text-sm text-slate-500 font-medium mb-6 line-clamp-2 min-h-[40px]">
+                                    <p className="text-sm text-slate-500 font-medium mb-4 line-clamp-2 min-h-[40px]">
                                         {reward.description || 'No description provided for this reward.'}
                                     </p>
+
+                                    {/* Gallery Preview */}
+                                    {reward.imageUrls && reward.imageUrls.length > 0 && (
+                                        <div className="flex gap-2 mb-6 overflow-x-auto pb-1 scrollbar-hide">
+                                            {reward.imageUrls.map((url, i) => (
+                                                <div key={i} className="size-12 rounded-xl overflow-hidden border border-slate-100 shrink-0 shadow-sm ring-2 ring-white">
+                                                    <img src={url} alt={`Gallery ${i}`} className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
 
                                     {/* Stats grid */}
                                     <div className="grid grid-cols-2 gap-3 mb-5">
@@ -457,11 +517,11 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                 </div>
 
                                 {/* Progress Bar */}
-                                <div className="flex gap-1.5 mb-8">
-                                    <div className={cn("h-1.5 flex-1 rounded-full transition-all", formData.name ? "bg-primary" : "bg-slate-100")} />
-                                    <div className={cn("h-1.5 flex-1 rounded-full transition-all", (formData.pointCost ?? 0) > 0 ? "bg-primary" : "bg-slate-100")} />
-                                    <div className={cn("h-1.5 flex-1 rounded-full transition-all", formData.imageUrl ? "bg-primary" : "bg-slate-100")} />
-                                </div>
+                                    <div className="flex gap-1.5 mb-8">
+                                        <div className={cn("h-1.5 flex-1 rounded-full transition-all", formData.name ? "bg-primary" : "bg-slate-100")} />
+                                        <div className={cn("h-1.5 flex-1 rounded-full transition-all", (formData.pointCost ?? 0) > 0 ? "bg-primary" : "bg-slate-100")} />
+                                        <div className={cn("h-1.5 flex-1 rounded-full transition-all", (formData.imageUrls?.length || 0) > 0 ? "bg-primary" : "bg-slate-100")} />
+                                    </div>
 
                                 <div className="space-y-8">
                                     <div className="space-y-6">
@@ -629,7 +689,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                         <div
                                             className={cn(
                                                 "relative h-48 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden",
-                                                formData.imageUrl ? "border-solid border-slate-200 bg-white" : "border-slate-200 bg-slate-50 hover:bg-white hover:border-primary/40",
+                                                (formData.imageUrls?.length || 0) > 0 ? "border-solid border-slate-200 bg-white" : "border-slate-200 bg-slate-50 hover:bg-white hover:border-primary/40",
                                                 isUploading && "opacity-50 cursor-wait"
                                             )}
                                         >
@@ -638,9 +698,9 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                     <Loader2 className="w-10 h-10 text-primary animate-spin" />
                                                     <p className="text-[10px] font-black uppercase text-primary">Uploading Image...</p>
                                                 </div>
-                                            ) : formData.imageUrl ? (
+                                            ) : formData.imageUrls && formData.imageUrls.length > 0 ? (
                                                 <div className="w-full h-full relative group">
-                                                    <img src={formData.imageUrl} alt="Reward Preview" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                                                    <img src={formData.imageUrls[0]} alt="Reward Preview" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                                         <button
                                                             onClick={() => fileInputRef.current?.click()}
@@ -651,7 +711,11 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                         </button>
                                                         <button
                                                             onClick={() => {
-                                                                setFormData(prev => ({ ...prev, imageUrl: '' }));
+                                                                setFormData(prev => {
+                                                                    const newUrls = [...(prev.imageUrls || [])];
+                                                                    newUrls.shift(); // Remove the first image
+                                                                    return { ...prev, imageUrls: newUrls };
+                                                                });
                                                                 setLocalImageFile(null);
                                                             }}
                                                             className="p-2 bg-white rounded-lg text-red-500 hover:bg-gray-50 transition-colors"
@@ -675,6 +739,54 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                     </div>
                                                 </div>
                                             )}
+                                        </div>
+                                    </div>
+
+                                    {/* Gallery Images */}
+                                    <div className="space-y-4 pb-8">
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="text-sm font-semibold text-slate-600">Gallery Images</h4>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{formData.imageUrls?.length || 0} Images</span>
+                                        </div>
+                                        <input
+                                            type="file"
+                                            ref={galleryInputRef}
+                                            onChange={handleGalleryUpload}
+                                            accept="image/*"
+                                            multiple
+                                            className="hidden"
+                                            disabled={isUploading}
+                                        />
+                                        <div className="grid grid-cols-4 gap-4">
+                                            {(formData.imageUrls || []).map((url, idx) => (
+                                                <div key={idx} className="relative aspect-square rounded-xl overflow-hidden group border border-slate-100 shadow-sm">
+                                                    <img src={url} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <button
+                                                            onClick={() => {
+                                                                const newUrls = [...(formData.imageUrls || [])];
+                                                                newUrls.splice(idx, 1);
+                                                                setFormData({ ...formData, imageUrls: newUrls });
+                                                                
+                                                                // Also need to handle local files if it was a local upload
+                                                                // For simplicity, we just filter the state in next submit
+                                                            }}
+                                                            className="p-1.5 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <button
+                                                type="button"
+                                                onClick={() => galleryInputRef.current?.click()}
+                                                disabled={isUploading}
+                                                className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 hover:bg-white hover:border-primary/40 transition-all text-slate-400 hover:text-primary gap-1"
+                                            >
+                                                <Plus size={20} />
+                                                <span className="text-[9px] font-black uppercase">Add Image</span>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>

@@ -90,7 +90,7 @@ type PublicReward = {
     pointCost?: number;
     value?: number;
     validityDays?: number;
-    imageUrl?: string;
+    imageUrls?: string[];
     isActive?: boolean;
 };
 
@@ -396,9 +396,9 @@ export default function PublicBusinessProfilePage({ params }: { params: Promise<
                                                 className="group bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all"
                                             >
                                                 <div className="h-32 w-full overflow-hidden relative bg-slate-100">
-                                                    {reward.imageUrl ? (
+                                                    {(reward.imageUrls && reward.imageUrls.length > 0) ? (
                                                         <img
-                                                            src={reward.imageUrl}
+                                                            src={reward.imageUrls[0]}
                                                             alt={reward.name || 'Reward'}
                                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                         />
@@ -418,6 +418,17 @@ export default function PublicBusinessProfilePage({ params }: { params: Promise<
                                                     <p className="text-xs text-slate-500 line-clamp-2">
                                                         {displayText(reward.description)}
                                                     </p>
+                                                    
+                                                    {reward.imageUrls && reward.imageUrls.length > 0 && (
+                                                        <div className="flex gap-1 overflow-x-auto py-1 scrollbar-hide">
+                                                            {reward.imageUrls.map((url, i) => (
+                                                                <div key={i} className="size-8 rounded-lg overflow-hidden border border-slate-100 shrink-0">
+                                                                    <img src={url} alt={`Gallery ${i}`} className="w-full h-full object-cover" />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
                                                     <div className="flex items-center justify-between text-xs font-bold text-slate-500">
                                                         <span>{reward.pointCost || 0} pts</span>
                                                         {reward.validityDays ? (

@@ -113,7 +113,7 @@ export const useRewards = (branchId?: string) => {
             } else if (allBranches) {
                 params.append('allBranches', 'true');
             }
-            return await api.get(`/campaigns/loyalty/rewards?${params.toString()}`);
+            return await api.get(`/loyalty/rewards?${params.toString()}`);
         }
     });
 };
@@ -157,9 +157,8 @@ export const useCreateReward = (branchId?: string) => {
 
     return useMutation<Reward, Error, CreateRewardRequest>({
         mutationFn: async (dto) => {
-            const params = new URLSearchParams();
-            if (resolvedBranchId) params.append('branchId', resolvedBranchId);
-            return await api.post(`/campaigns/loyalty/rewards?${params.toString()}`, dto);
+            const url = resolvedBranchId ? `/loyalty/rewards/create?branchId=${resolvedBranchId}` : '/loyalty/rewards/create';
+            return await api.post(url, dto);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'rewards'] });
@@ -175,7 +174,7 @@ export const useUpdateReward = (branchId?: string) => {
         mutationFn: async ({ id, updates }) => {
             const params = new URLSearchParams();
             if (resolvedBranchId) params.append('branchId', resolvedBranchId);
-            return await api.patch(`/campaigns/loyalty/rewards/${id}?${params.toString()}`, updates);
+            return await api.patch(`/loyalty/rewards/${id}?${params.toString()}`, updates);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'rewards'] });
@@ -268,7 +267,7 @@ export const usePointTransactions = (profileId: string) => {
 export const useLoyaltyTemplates = () => {
     return useQuery<LoyaltyTemplate[], Error>({
         queryKey: ['loyalty', 'templates'],
-        queryFn: async () => await api.get('/campaigns/loyalty/templates')
+        queryFn: async () => await api.get('/loyalty/templates')
     });
 };
 
@@ -277,7 +276,7 @@ import { notify } from '@/lib/notify';
 export const useCreateLoyaltyTemplate = () => {
     const queryClient = useQueryClient();
     return useMutation<LoyaltyTemplate, Error, Partial<LoyaltyTemplate>>({
-        mutationFn: async (data) => await api.post('/campaigns/loyalty/templates', data),
+        mutationFn: async (data) => await api.post('/loyalty/templates', data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates'] });
             notify.success('Template created successfully');
@@ -291,7 +290,7 @@ export const useCreateLoyaltyTemplate = () => {
 export const useUpdateLoyaltyTemplate = () => {
     const queryClient = useQueryClient();
     return useMutation<LoyaltyTemplate, Error, { id: string; updates: Partial<LoyaltyTemplate> }>({
-        mutationFn: async ({ id, updates }) => await api.patch(`/campaigns/loyalty/templates/${id}`, updates),
+        mutationFn: async ({ id, updates }) => await api.patch(`/loyalty/templates/${id}`, updates),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates'] });
             notify.success('Template updated successfully');
@@ -305,7 +304,7 @@ export const useUpdateLoyaltyTemplate = () => {
 export const useDeleteLoyaltyTemplate = () => {
     const queryClient = useQueryClient();
     return useMutation<void, Error, string>({
-        mutationFn: async (id) => await api.delete(`/campaigns/loyalty/templates/${id}`),
+        mutationFn: async (id) => await api.delete(`/loyalty/templates/${id}`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates'] });
             notify.success('Template deleted successfully');
@@ -324,7 +323,7 @@ export const useApplyLoyaltyTemplate = (branchId?: string) => {
         mutationFn: async (id) => {
             const params = new URLSearchParams();
             if (resolvedBranchId) params.append('branchId', resolvedBranchId);
-            return await api.post(`/campaigns/loyalty/templates/${id}/apply?${params.toString()}`, {});
+            return await api.post(`/loyalty/templates/${id}/apply?${params.toString()}`, {});
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'rewards'] });

@@ -47,7 +47,6 @@ export interface TemplateReward {
     usageLimitPerUser: number;
     totalAvailable?: number;
     isActive?: boolean;
-    imageUrl?: string;
     imageUrls?: string[];
 }
 
@@ -90,7 +89,6 @@ export interface CreateRewardRequest {
     usageLimitPerUser: number;
     totalAvailable?: number;
     branchId?: string;
-    imageUrl?: string;
     imageUrls?: string[];
 }
 
@@ -104,7 +102,6 @@ export interface UpdateRewardRequest {
     totalAvailable?: number;
     isActive?: boolean;
     branchId?: string;
-    imageUrl?: string;
     imageUrls?: string[];
 }
 
