@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { toast } from 'react-hot-toast';
 import DynamicQRCode from '@/components/shared/DynamicQRCode';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { BusinessHours } from '@/services/businesses/types';
@@ -31,6 +32,7 @@ const statesData: Record<string, string[]> = {
 
 export default function BusinessProfilePage() {
     const { storeName, logoUrl, updateCustomSettings, setRedirect } = useCustomerFlowStore();
+    const user = useAuthStore((state) => state.user);
     const { activeBranchId, isAllBranches: rawIsAllBranches } = useActiveBranch();
 
     const { data: business, isLoading: businessLoading } = useMyBusiness();
@@ -45,7 +47,6 @@ export default function BusinessProfilePage() {
 
     const [name, setName] = useState('');
     const [logo, setLogo] = useState('');
-    const [profileSlug, setProfileSlug] = useState('');
     const [publicProfileUrl, setPublicProfileUrl] = useState('');
     const [categoryId, setCategoryId] = useState('');
     const [subcategoryId, setSubcategoryId] = useState('');
@@ -83,6 +84,7 @@ export default function BusinessProfilePage() {
     const [customLink, setCustomLink] = useState('');
     const [linkedinUrl, setLinkedinUrl] = useState('');
     const [reviewUrl, setReviewUrl] = useState('');
+    const [trustpilotUrl, setTrustpilotUrl] = useState('');
 
     const [showReview, setShowReview] = useState(true);
     const [showSocial, setShowSocial] = useState(true);
@@ -102,7 +104,7 @@ export default function BusinessProfilePage() {
         }
     }, []);
 
-    const qrId = 'biz-profile-main';
+    const qrId = (isAllBranches ? business?.uniqueCode : branch?.uniqueCode) || business?.uniqueCode || '';
 
     useEffect(() => {
         if (isAllBranches && business) {
@@ -145,6 +147,7 @@ export default function BusinessProfilePage() {
             setCustomLink(business.customLink || '');
             setLinkedinUrl(business.linkedinUrl || '');
             setReviewUrl(business.reviewUrl || '');
+            setTrustpilotUrl(business.trustpilotUrl || '');
 
             setShowReview(business.showReview ?? true);
             setShowSocial(business.showSocial ?? true);
@@ -158,10 +161,14 @@ export default function BusinessProfilePage() {
             else if ((business.registrationNumber || '').startsWith('IT')) setCacType('IT');
             else setCacType('RC');
 
-            if (!profileSlug) {
-                const slug = (business.name).toLowerCase().replace(/\s+/g, '-');
-                setProfileSlug(slug);
-                setRedirect(qrId, `${origin}/${slug}`);
+            if (business.uniqueCode) {
+                const nextPublicUrl = `${origin}/b/${business.uniqueCode}`;
+                setPublicProfileUrl(nextPublicUrl);
+                if (qrId) {
+                    setRedirect(qrId, nextPublicUrl);
+                }
+            } else {
+                setPublicProfileUrl('');
             }
         } else if (branch) {
             setName(branch.name || '');
@@ -193,6 +200,7 @@ export default function BusinessProfilePage() {
 
             setLinkedinUrl(branch.linkedinUrl || '');
             setReviewUrl(branch.reviewUrl || '');
+            setTrustpilotUrl(branch.trustpilotUrl || '');
 
             setShowReview(branch.showReview ?? true);
             setShowSocial(branch.showSocial ?? true);
@@ -201,12 +209,17 @@ export default function BusinessProfilePage() {
             if (branch.uniqueCode) {
                 const nextPublicUrl = `${origin}/b/${branch.uniqueCode}`;
                 setPublicProfileUrl(nextPublicUrl);
-                setRedirect(qrId, nextPublicUrl);
+                if (qrId) {
+                    setRedirect(qrId, nextPublicUrl);
+                }
             } else {
                 setPublicProfileUrl('');
             }
+        } else if (user) {
+            setName(user.businessName || '');
+            setLogo(user.businessLogo || '');
         }
-    }, [business, branch, isAllBranches, activeBranchId, origin, branches.length]);
+    }, [business, branch, isAllBranches, activeBranchId, origin, branches.length, user]);
 
     const handleSave = async () => {
         const hasChanged = (current: any, original: any) => {
@@ -276,9 +289,9 @@ export default function BusinessProfilePage() {
                 if (hasChanged(rewardVisitThreshold, branch.rewardVisitThreshold)) branchUpdates.rewardVisitThreshold = rewardVisitThreshold;
 
                 if (hasChanged(reviewUrl, branch.reviewUrl)) branchUpdates.reviewUrl = reviewUrl;
+                if (hasChanged(trustpilotUrl, branch.trustpilotUrl)) branchUpdates.trustpilotUrl = trustpilotUrl;
                 if (hasChanged(showReview, branch.showReview)) branchUpdates.showReview = showReview;
                 if (hasChanged(showSocial, branch.showSocial)) branchUpdates.showSocial = showSocial;
-                if (hasChanged(showFeedback, branch.showFeedback)) branchUpdates.showFeedback = showFeedback;
 
                 if (Object.keys(branchUpdates).length === 0) {
                     toast.success('No changes discovered.');
@@ -670,18 +683,80 @@ export default function BusinessProfilePage() {
 
                 {activeTab === 'socials' && !isAllBranches && (
                     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                        <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Social Media & Links</h3>
+                        <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                            <div>
+                                <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Social Media & Reviews</h3>
+                                <p className="text-xs text-text-secondary mt-1">Manage links to your social pages and review platforms.</p>
+                            </div>
+                            { (instagramUrl || linkedinUrl || reviewUrl || trustpilotUrl) && (
+                                <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-gray-100 shadow-sm">
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-text-main">Enable in Journey</span>
+                                        <span className="text-[9px] text-text-secondary">Show after form submission</span>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowSocial(!showSocial)}
+                                        className={`w-12 h-6 rounded-full transition-all relative ${showSocial ? 'bg-primary' : 'bg-gray-200'}`}
+                                    >
+                                        <div className={`absolute top-1 left-1 size-4 bg-white rounded-full transition-transform ${showSocial ? 'translate-x-6' : 'translate-x-0'}`} />
+                                    </button>
+                                </div>
+                            )}
                         </div>
-                        <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-text-secondary ml-1">Instagram URL</label>
-                                <input type="url" value={instagramUrl} onChange={(e) => setInstagramUrl(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" />
+                        <div className="p-8 space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Instagram URL</label>
+                                    <input 
+                                        type="url" 
+                                        value={instagramUrl} 
+                                        onChange={(e) => setInstagramUrl(e.target.value)} 
+                                        placeholder="https://instagram.com/your-business" 
+                                        className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" 
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">LinkedIn URL</label>
+                                    <input 
+                                        type="url" 
+                                        value={linkedinUrl} 
+                                        onChange={(e) => setLinkedinUrl(e.target.value)} 
+                                        placeholder="https://linkedin.com/company/your-business" 
+                                        className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" 
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Google Review URL</label>
+                                    <input 
+                                        type="url" 
+                                        value={reviewUrl} 
+                                        onChange={(e) => setReviewUrl(e.target.value)} 
+                                        placeholder="https://g.page/r/your-google-code" 
+                                        className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" 
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Trustpilot URL</label>
+                                    <input 
+                                        type="url" 
+                                        value={trustpilotUrl} 
+                                        onChange={(e) => setTrustpilotUrl(e.target.value)} 
+                                        placeholder="https://trustpilot.com/review/your-business" 
+                                        className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" 
+                                    />
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-text-secondary ml-1">LinkedIn URL</label>
-                                <input type="url" value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" />
-                            </div>
+
+                            {!(instagramUrl || linkedinUrl || reviewUrl || trustpilotUrl) && (
+                                <div className="p-5 rounded-2xl bg-amber-50 border border-amber-100 flex items-start gap-3">
+                                    <div className="size-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                                        <span className="material-icons-round text-lg">lock</span>
+                                    </div>
+                                    <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                                        Add at least one link above to enable the social media step in your customer journey.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
@@ -706,12 +781,18 @@ export default function BusinessProfilePage() {
                             <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Dynamic Business QR</h3>
                         </div>
                         <div className="p-8 flex flex-col md:flex-row items-center md:items-start gap-8">
-                            <DynamicQRCode
-                                redirectId={qrId}
-                                label="Scan to Visit Profile"
-                                subLabel={origin.replace(/^https?:\/\//, '')}
-                                color="#000000"
-                            />
+                            {qrId ? (
+                                <DynamicQRCode
+                                    redirectId={qrId}
+                                    label="Scan to Visit Profile"
+                                    subLabel={origin.replace(/^https?:\/\//, '')}
+                                    color="#000000"
+                                />
+                            ) : (
+                                <div className="rounded-2xl border border-amber-100 bg-amber-50 p-6 text-xs text-amber-800 font-bold max-w-sm">
+                                    Unique code not available for this business yet.
+                                </div>
+                            )}
                             <div className="w-full max-w-sm">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">Public Profile Link</p>
                                 {publicProfileUrl ? (

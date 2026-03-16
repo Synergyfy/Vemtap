@@ -5,7 +5,7 @@ import Link from 'next/link';
 import PageHeader from '@/components/dashboard/PageHeader';
 import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 import { LoyaltyAnalytics } from '@/components/loyalty/admin/LoyaltyAnalytics';
-import { Gift, Users, Settings, Smartphone, ArrowRight, ExternalLink } from 'lucide-react';
+import { Gift, Users, Settings, Smartphone, ArrowRight, ExternalLink, Ticket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const QUICK_LINKS = [
@@ -24,6 +24,14 @@ const QUICK_LINKS = [
         icon: Users,
         color: 'text-blue-600',
         bgColor: 'bg-blue-50'
+    },
+    {
+        title: 'Process Redemption',
+        description: 'Verify codes or generate promo vouchers.',
+        href: '/dashboard/loyalty/redeem',
+        icon: Ticket,
+        color: 'text-rose-600',
+        bgColor: 'bg-rose-50'
     },
     {
         title: 'Program Settings',

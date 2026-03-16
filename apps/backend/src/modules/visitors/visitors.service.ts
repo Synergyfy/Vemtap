@@ -251,9 +251,21 @@ export class VisitorsService {
     const dto = createVisitorDto as CreateVisitorDto & {
       deviceId?: string;
     };
+    
+    // Check by email
     let user = await this.userRepository.findOne({
       where: { email: dto.email },
     });
+
+    // Check by phone if provided and user not found by email
+    if (!user && dto.phone) {
+      user = await this.userRepository.findOne({
+        where: { phone: dto.phone },
+      });
+      if (user && user.email !== dto.email) {
+        throw new BadRequestException('A user with this phone number already exists with a different email');
+      }
+    }
 
     const defaultPassword = '123456';
 
@@ -403,7 +415,7 @@ export class VisitorsService {
 
     const activeRule = await this.campaignsService.findActiveRule(branchId);
 
-    let loyaltyResult = null;
+    let loyaltyResult: { success: boolean; pointsEarned: number; newBalance: number; message: string } | null = null;
     if (activeRule) {
       const profile = await this.campaignsService.findProfile(
         user.id,

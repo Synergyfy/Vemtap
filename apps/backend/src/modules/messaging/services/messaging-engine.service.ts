@@ -25,10 +25,21 @@ import { BranchesService } from '../../branches/branches.service';
 import { Branch } from '../../branches/entities/branch.entity';
 import { User } from '../../users/entities/user.entity';
 import { AudienceType } from '../entities/message-campaign.entity';
+import { LoyaltyProfile } from '../../campaigns/entities/loyalty-profile.entity';
 import {
   InboundMessage,
   DeliveryReport,
 } from '../interfaces/messaging-provider.interface';
+
+export interface SendMessageResult {
+  message: string;
+  count: number;
+  messageIds: string[];
+  campaignId?: string;
+  totalCost?: number;
+  totalUnits?: number;
+  status?: string;
+}
 
 @Injectable()
 export class MessagingEngineService {
@@ -45,7 +56,10 @@ export class MessagingEngineService {
     private readonly threadRepo: Repository<ConversationThread>,
     @InjectRepository(Branch)
     private readonly branchRepo: Repository<Branch>,
+    @InjectRepository(LoyaltyProfile)
+    private readonly loyaltyRepo: Repository<LoyaltyProfile>,
     @InjectQueue('messaging-batch-send') private readonly batchQueue: Queue,
+    @InjectQueue('messaging-individual-send') private readonly individualQueue: Queue,
     private readonly complianceService: ComplianceService,
     private readonly creditService: CreditService,
     private readonly templateService: TemplateService,
@@ -63,7 +77,7 @@ export class MessagingEngineService {
     return this.branchesService.checkBranchAccess(user, branchId);
   }
 
-  public async sendMessage(dto: SendMessageDto): Promise<any> {
+  public async sendMessage(dto: SendMessageDto): Promise<SendMessageResult> {
     const {
       branchId,
       businessId,
@@ -80,6 +94,8 @@ export class MessagingEngineService {
     });
     if (!branch) throw new NotFoundException('Branch not found');
 
+    const effectiveBusinessId = businessId || branch.businessId;
+
     // 1. Resolve Contacts
     let targetContactIds: string[] = contactIds || [];
 
@@ -89,10 +105,33 @@ export class MessagingEngineService {
         select: ['id'],
       });
       targetContactIds = allContacts.map((c) => c.id);
+    } else if (audienceType === AudienceType.RECENT) {
+      // Last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const recentContacts = await this.contactRepo
+        .createQueryBuilder('contact')
+        .where('contact.branchId = :branchId', { branchId })
+        .andWhere('contact.optOut = :optOut', { optOut: false })
+        .andWhere('contact.updatedAt >= :thirtyDaysAgo', { thirtyDaysAgo })
+        .select(['contact.id'])
+        .getMany();
+      targetContactIds = recentContacts.map((c) => c.id);
+    } else if (audienceType === AudienceType.TAGGED) {
+      // Any contacts with tags
+      const taggedContacts = await this.contactRepo
+        .createQueryBuilder('contact')
+        .where('contact.branchId = :branchId', { branchId })
+        .andWhere('contact.optOut = :optOut', { optOut: false })
+        .andWhere('contact.tags IS NOT NULL')
+        .select(['contact.id'])
+        .getMany();
+      targetContactIds = taggedContacts.map((c) => c.id);
     }
 
     if (targetContactIds.length === 0) {
-      throw new BadRequestException('No contacts provided');
+      throw new BadRequestException('No contacts found for selected audience');
     }
 
     // 2. Validate Credits
@@ -108,7 +147,11 @@ export class MessagingEngineService {
     const validContactIds = validContacts.map((c) => c.id);
 
     if (validContactIds.length === 0) {
-      return { message: 'No valid contacts to send to (all opted out)' };
+      return { 
+        message: 'No valid contacts to send to (all opted out)',
+        count: 0,
+        messageIds: []
+      };
     }
 
     // 4. Resolve Content (if template)
@@ -119,8 +162,12 @@ export class MessagingEngineService {
     }
 
     // 5. Determine "From" number/id
-    let from = '';
-    if (channel === Channel.WHATSAPP) {
+    let from = dto.from || '';
+    if (channel === Channel.SMS && !from) {
+      from = 'VEMTAP'; // Use default sender ID for all businesses for now
+    }
+    
+    if (channel === Channel.WHATSAPP && !from) {
       from =
         branch.whatsappNumber || (branch.business as any)?.whatsappNumber || '';
       if (!from) {
@@ -154,27 +201,32 @@ export class MessagingEngineService {
         content: finalContent,
         from,
       });
-      return { message: 'Batch campaign queued', status: 'QUEUED', campaignId };
+      return { 
+        message: 'Batch campaign queued', 
+        status: 'QUEUED', 
+        campaignId,
+        count: validContactIds.length,
+        messageIds: []
+      };
     }
 
-    // 8. Send Individual Messages
-    const messageIds: string[] = [];
+    // 8. Queue Individual Messages for Background Processing
     for (const contactId of validContactIds) {
-      const result = await this.sendIndividualMessage(
-        branch,
+      await this.individualQueue.add('send-individual', {
+        branchId,
         contactId,
-        finalContent,
+        content: finalContent,
         channel,
         from,
         campaignId,
-      );
-      messageIds.push(result.id);
+      });
     }
 
     return {
-      message: 'Messages processed',
+      message: 'Messages queued for background processing',
+      status: 'QUEUED',
       count: validContactIds.length,
-      messageIds,
+      messageIds: [],
       campaignId,
     };
   }
@@ -190,12 +242,35 @@ export class MessagingEngineService {
     const contact = await this.contactRepo.findOneBy({ id: contactId });
     if (!contact) throw new NotFoundException('Contact not found');
 
+    const resolvedContent = await this.resolvePlaceholders(content, contactId, branch);
+
+    // Find or create conversation thread
+    let thread = await this.threadRepo.findOne({
+      where: {
+        branchId: branch.id,
+        contactId,
+        channel,
+      },
+    });
+
+    if (!thread) {
+      thread = this.threadRepo.create({
+        branchId: branch.id,
+        businessId: branch.businessId,
+        contactId,
+        channel,
+        status: 'OPEN' as any,
+      } as any) as unknown as ConversationThread;
+      await this.threadRepo.save(thread);
+    }
+
     const message = this.messageRepo.create({
       branchId: branch.id,
       businessId: branch.businessId,
       contactId,
+      threadId: thread.id,
       campaignId,
-      content,
+      content: resolvedContent,
       channel,
       direction: MessageDirection.OUTBOUND,
       status: MessageStatus.PENDING,
@@ -219,13 +294,15 @@ export class MessagingEngineService {
         metadata: { messageId: savedMessage.id },
       });
 
-      savedMessage.status = MessageStatus.SENT;
-      savedMessage.providerMessageId =
-        (providerResult as any).providerId || (providerResult as any).id;
+      savedMessage.status = this.mapProviderStatus(providerResult.status);
+      savedMessage.providerMessageId = providerResult.messageId || '';
+      savedMessage.cost = providerResult.cost;
+      savedMessage.units = providerResult.units;
+      savedMessage.reference = providerResult.reference;
       await this.messageRepo.save(savedMessage);
 
       await this.logMessage(savedMessage);
-    } catch (err) {
+    } catch (err: any) {
       this.logger.error(
         `Failed to send message ${savedMessage.id}: ${err.message}`,
       );
@@ -234,6 +311,64 @@ export class MessagingEngineService {
     }
 
     return savedMessage;
+  }
+
+  private async resolvePlaceholders(
+    content: string,
+    contactId: string,
+    branch: Branch,
+  ): Promise<string> {
+    if (!content) return '';
+
+    const contact = await this.contactRepo.findOneBy({ id: contactId });
+    if (!contact) return content;
+
+    let resolved = content;
+
+    // --- Contact Placeholders ---
+    const fullName = contact.name || 'Customer';
+    const nameParts = fullName.split(' ');
+    const firstName = nameParts[0] || 'Customer';
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
+    resolved = resolved.replace(/{Name}/g, fullName);
+    resolved = resolved.replace(/{FirstName}/g, firstName);
+    resolved = resolved.replace(/{LastName}/g, lastName || '');
+    resolved = resolved.replace(/{Email}/g, contact.email || '');
+    resolved = resolved.replace(/{Phone}/g, contact.phone || '');
+
+    // --- Business/Branch Placeholders ---
+    const bizName = branch.business?.name || branch.name || 'Our Business';
+    resolved = resolved.replace(/{BusinessName}/g, bizName);
+    resolved = resolved.replace(/{BranchName}/g, branch.name || '');
+    resolved = resolved.replace(/{BranchAddress}/g, branch.address || '');
+    resolved = resolved.replace(/{BranchCity}/g, branch.city || '');
+    resolved = resolved.replace(/{BranchPhone}/g, branch.phone || '');
+    resolved = resolved.replace(/{Website}/g, branch.website || '');
+    resolved = resolved.replace(/{ReviewLink}/g, branch.reviewUrl || '');
+    resolved = resolved.replace(/{Link}/g, branch.website || branch.reviewUrl || '');
+
+    // --- Loyalty Placeholders ---
+    try {
+      const profile = await this.loyaltyRepo.findOne({
+        where: { branchId: branch.id, userId: contact.id },
+      });
+      const points = profile?.currentPointsBalance || 0;
+      resolved = resolved.replace(/{Points}/g, points.toString());
+    } catch (e) {
+      resolved = resolved.replace(/{Points}/g, '0');
+    }
+
+    return resolved;
+  }
+
+  private mapProviderStatus(status: string): MessageStatus {
+    switch (status) {
+      case 'queued': return MessageStatus.PENDING;
+      case 'sent': return MessageStatus.SENT;
+      case 'failed': return MessageStatus.FAILED;
+      default: return MessageStatus.SENT;
+    }
   }
 
   private async logMessage(msg: Message) {
@@ -266,6 +401,7 @@ export class MessagingEngineService {
     content: string,
     channel: Channel,
     from: string,
+    campaignId?: string,
   ) {
     const branch = await this.branchRepo.findOneBy({ id: branchId });
     if (!branch) return;
@@ -275,6 +411,7 @@ export class MessagingEngineService {
       content,
       channel,
       from,
+      campaignId,
     );
   }
 
@@ -292,10 +429,19 @@ export class MessagingEngineService {
   }
 
   async sendReply(thread: ConversationThread, content: string) {
-    const branch = await this.branchRepo.findOneBy({ id: thread.branchId });
+    const branch = await this.branchRepo.findOne({
+      where: { id: thread.branchId },
+      relations: ['business'],
+    });
     if (!branch) throw new NotFoundException('Branch not found');
 
-    const from = branch.whatsappNumber || '';
+    let from = '';
+    if (thread.channel === Channel.IN_HOUSE) {
+      from = branch.business?.name || branch.name || 'Business';
+    } else {
+      from = branch.whatsappNumber || '';
+    }
+
     const msg = await this.sendIndividualMessage(
       branch,
       thread.contactId,

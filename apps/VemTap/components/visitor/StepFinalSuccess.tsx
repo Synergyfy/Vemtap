@@ -83,7 +83,6 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
                         onAction={handleEngagement}
                         settings={engagementSettings}
                         attachedForms={attachedForms}
-                        isLoading={isFormsLoading}
                     />
                 </div>
             )}

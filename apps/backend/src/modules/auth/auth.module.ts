@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
 import { BusinessesModule } from '../businesses/businesses.module';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { MailModule } from '../mail/mail.module';
 import { DevicesModule } from '../devices/devices.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -18,6 +19,7 @@ import { Otp } from './entities/otp.entity';
     UsersModule,
     forwardRef(() => BusinessesModule),
     forwardRef(() => DevicesModule),
+    SubscriptionsModule,
     MailModule,
     PassportModule,
     TypeOrmModule.forFeature([Otp]),

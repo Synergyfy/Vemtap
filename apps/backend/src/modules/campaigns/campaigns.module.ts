@@ -9,6 +9,7 @@ import { PointTransaction } from './entities/point-transaction.entity';
 import { LoyaltyRule } from './entities/loyalty-rule.entity';
 import { Reward } from './entities/reward.entity';
 import { Redemption } from './entities/redemption.entity';
+import { LoyaltyTemplate } from './entities/loyalty-template.entity';
 import { MessagingModule } from '../messaging/messaging.module';
 import { UsersModule } from '../users/users.module';
 import { ContactsModule } from '../contacts/contacts.module';
@@ -26,6 +27,7 @@ import { Contact } from '../contacts/entities/contact.entity';
       LoyaltyRule,
       Reward,
       Redemption,
+      LoyaltyTemplate,
       User,
       Contact,
     ]),

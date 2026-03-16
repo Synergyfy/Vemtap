@@ -8,26 +8,52 @@ import { RedemptionCard } from '@/components/loyalty/RedemptionCard';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Reward, Redemption } from '@/types/loyalty';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Gift, History, LayoutGrid, Info, QrCode, Keyboard, ArrowRight, X } from 'lucide-react';
+import { Star, Gift, History, LayoutGrid, Info, QrCode, Keyboard, ArrowRight, X, Ticket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import {
     useCustomerLoyaltyHistory,
     useCustomerLoyaltyProfile,
     useCustomerLoyaltyRewards,
-    useRedeemCustomerReward
+    useRedeemCustomerReward,
+    useClaimCode
 } from '@/services/customer/hooks';
 
 export default function LoyaltyPage() {
     const { user } = useAuthStore();
     const [activeTab, setActiveTab] = useState<'rewards' | 'history'>('rewards');
     const [pendingReward, setPendingReward] = useState<Reward | null>(null);
+    const [showClaimInput, setShowClaimInput] = useState(false);
+    const [claimCodeVal, setClaimCodeVal] = useState('');
     const [selectedRedemption, setSelectedRedemption] = useState<{ redemption: Redemption, reward: Reward, method: 'qr' | 'code' } | null>(null);
     const businessId = user?.businessId;
     const { data: profileResponse, isLoading: isProfileLoading } = useCustomerLoyaltyProfile(businessId);
     const { data: rewardsResponse = [] } = useCustomerLoyaltyRewards(businessId);
     const { data: historyResponse = [] } = useCustomerLoyaltyHistory(businessId);
     const redeemMutation = useRedeemCustomerReward();
+    const claimMutation = useClaimCode();
+    
+    const handleClaimCode = async () => {
+        const cleanCode = claimCodeVal.replace(/\D/g, '');
+        if (cleanCode.length !== 9) {
+            notify.error('Please enter a valid 9-digit code');
+            return;
+        }
+
+        try {
+            // Backend expects { code, branchId }
+            const result = await claimMutation.mutateAsync({ code: cleanCode, branchId: businessId });
+            if (result.success) {
+                notify.success('Reward claimed successfully!');
+                setClaimCodeVal('');
+                setShowClaimInput(false);
+            } else {
+                notify.error(result.error || 'Failed to claim code');
+            }
+        } catch (error: any) {
+            notify.error(error.response?.data?.message || 'Invalid or expired code');
+        }
+    };
     const profile = profileResponse?.data || profileResponse;
     const availableRewards = Array.isArray(rewardsResponse) ? rewardsResponse : (rewardsResponse?.data || []);
     const recentTransactions = Array.isArray(historyResponse) ? historyResponse : (historyResponse?.data || []);
@@ -74,9 +100,18 @@ export default function LoyaltyPage() {
                             Earn points with every visit and purchase. Unlock exclusive perks at your favorite venues.
                         </p>
                     </div>
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400 bg-slate-100/50 px-4 py-2 border border-slate-100">
-                        <Info className="w-4 h-4" />
-                        <span>Points expire in 12 months</span>
+                    <div className="flex flex-col md:flex-row gap-3">
+                        <button
+                            onClick={() => setShowClaimInput(true)}
+                            className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-primary bg-primary/10 px-6 py-3 border border-primary/20 hover:bg-primary/20 transition-all rounded-xl"
+                        >
+                            <Ticket className="w-4 h-4" />
+                            Claim Promo Code
+                        </button>
+                        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400 bg-slate-100/50 px-4 py-2 border border-slate-100">
+                            <Info className="w-4 h-4" />
+                            <span>Points expire in 12 months</span>
+                        </div>
                     </div>
                 </div>
 
@@ -228,6 +263,64 @@ export default function LoyaltyPage() {
                             method={selectedRedemption.method}
                             onClose={() => setSelectedRedemption(null)}
                         />
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Claim Promo Code Modal */}
+            <AnimatePresence>
+                {showClaimInput && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => setShowClaimInput(false)}
+                        />
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-md w-full relative z-10 p-8"
+                        >
+                            <div className="text-center mb-8">
+                                <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mx-auto mb-4">
+                                    <Ticket size={28} />
+                                </div>
+                                <h3 className="text-2xl font-display font-black text-slate-900 mb-2">Claim Promo Code</h3>
+                                <p className="text-sm text-slate-500">Enter the 9-digit code provided by the venue to claim your reward instantly.</p>
+                            </div>
+
+                            <div className="space-y-6">
+                                <input
+                                    type="text"
+                                    value={claimCodeVal}
+                                    onChange={(e) => {
+                                        let val = e.target.value.replace(/\D/g, '').substring(0, 9);
+                                        let formatted = val;
+                                        if (val.length > 3) formatted = val.slice(0, 3) + '-' + val.slice(3);
+                                        if (val.length > 6) formatted = formatted.slice(0, 7) + '-' + val.slice(6);
+                                        setClaimCodeVal(formatted);
+                                    }}
+                                    placeholder="000-000-000"
+                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-5 text-center font-display font-black text-3xl tracking-[0.1em] outline-none focus:border-primary focus:bg-white transition-all"
+                                />
+
+                                <div className="flex gap-3">
+                                    <button 
+                                        onClick={() => setShowClaimInput(false)}
+                                        className="flex-1 py-4 font-black text-xs uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        onClick={handleClaimCode}
+                                        disabled={claimCodeVal.replace(/\D/g, '').length !== 9 || claimMutation.isPending}
+                                        className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {claimMutation.isPending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Star size={16} />}
+                                        Claim Reward
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
                     </div>
                 )}
             </AnimatePresence>

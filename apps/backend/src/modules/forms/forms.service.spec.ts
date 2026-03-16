@@ -9,11 +9,17 @@ import { FormTemplate } from './entities/form-template.entity';
 import { FormFieldTemplate } from './entities/form-field-template.entity';
 import { NotFoundException } from '@nestjs/common';
 import { BranchesService } from '../branches/branches.service';
+import { DevicesService } from '../devices/devices.service';
 import { CreateFormTemplateDto } from './dto/create-form-template.dto';
 import { FormTemplateQueryDto } from './dto/form-template-query.dto';
 
 describe('FormsService', () => {
   let service: FormsService;
+
+  const mockDevicesService = {
+    findByBranchId: jest.fn(),
+    findById: jest.fn(),
+  };
 
   const mockFormsRepository = {
     create: jest.fn(),
@@ -94,6 +100,10 @@ describe('FormsService', () => {
         {
           provide: BranchesService,
           useValue: mockBranchesService,
+        },
+        {
+          provide: DevicesService,
+          useValue: mockDevicesService,
         },
       ],
     }).compile();

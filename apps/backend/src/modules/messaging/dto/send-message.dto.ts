@@ -45,6 +45,13 @@ export class SendMessageDto {
   content?: string;
 
   @ApiPropertyOptional({
+    description: 'Sender ID or phone number',
+  })
+  @IsOptional()
+  @IsString()
+  from?: string;
+
+  @ApiPropertyOptional({
     description: 'Specific contact IDs for DIRECT send or GROUP send',
     type: [String],
   })

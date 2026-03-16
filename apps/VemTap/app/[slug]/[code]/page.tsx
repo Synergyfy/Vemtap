@@ -42,7 +42,8 @@ export default function DynamicTapJourneyPage() {
         redemptionStatus, lastRedemptionId, requestRedemption, setRedemptionStatus, resetVisitCountAfterRedemption,
         engagementSettings, surveyQuestions,
         customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton,
-        businessId, initializeFromBusiness, recordVisit, isFirstTimeVisit
+        businessId, initializeFromBusiness, recordVisit, isFirstTimeVisit,
+        customSuccessTitle, activeForm, setActiveForm
     } = useCustomerFlowStore();
 
     const addRedemptionRequest = useMockDashboardStore(state => state.addRedemptionRequest);
@@ -76,12 +77,14 @@ export default function DynamicTapJourneyPage() {
     const [isSyncingReal, setIsSyncingReal] = useState(false);
     const [isDeviceSynced, setIsDeviceSynced] = useState(false);
     const [hasVisitedBefore, setHasVisitedBefore] = useState(false);
+    const [attachedForms, setAttachedForms] = useState<any[]>([]);
+    const [completedFormIds, setCompletedFormIds] = useState<string[]>([]);
 
     // 0. Early Token Expiration Check
     useEffect(() => {
         if (isAuthenticated && access_token) {
             try {
-                const decoded: any = jwtDecode(access_token);
+                const decoded = jwtDecode<{ exp: number }>(access_token);
                 const currentTime = Date.now() / 1000;
                 if (decoded.exp < currentTime) {
                     console.warn('[TAP JOURNEY] Session expired, logging out...');
@@ -157,6 +160,37 @@ export default function DynamicTapJourneyPage() {
         initJourney();
     }, [deviceCode, businessId, initializeFromBusiness, recordVisit, router, setStep]);
 
+    // Fetch attached forms if needed
+    useEffect(() => {
+        const fetchAttachedForms = async () => {
+            const formIds = engagementSettings?.postSubmitFormIds;
+            if (engagementSettings?.showPostSubmitForms && Array.isArray(formIds) && formIds.length > 0) {
+                try {
+                    const fetched = await Promise.all(
+                        formIds.map(async (id) => {
+                            try {
+                                const response = await api.get(`/business-forms/${id}`);
+                                return response;
+                            } catch (err) {
+                                console.error(`Failed to fetch form ${id}:`, err);
+                                return null;
+                            }
+                        })
+                    );
+                    setAttachedForms(fetched.filter(Boolean));
+                } catch (err) {
+                    console.error('Failed to fetch attached forms:', err);
+                }
+            } else {
+                setAttachedForms([]);
+            }
+        };
+
+        if (businessId) {
+            fetchAttachedForms();
+        }
+    }, [engagementSettings, businessId]);
+
     // Live Sync for Staff Approvals
     useEffect(() => {
         if (redemptionStatus === 'pending' && lastRedemptionId) {
@@ -189,7 +223,7 @@ export default function DynamicTapJourneyPage() {
     const handleCredentialResponse = (response: any) => {
         try {
             setIsSyncingReal(true);
-            const decoded: any = jwtDecode(response.credential);
+            const decoded = jwtDecode<{ name: string; email: string }>(response.credential);
 
             const identity = {
                 name: decoded.name,
@@ -341,20 +375,19 @@ export default function DynamicTapJourneyPage() {
 
     const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
         if (type === 'review') {
-            window.open(engagementSettings?.reviewUrl, '_blank');
+            window.open(engagementSettings.googleReviewUrl || engagementSettings.reviewUrl, '_blank');
+        } else if (type === 'social') {
+            // Social modal is handled inside StepOutcome
         } else if (type === 'feedback') {
             if (formId) {
-                const attached = deviceForms.find((form) => form.id === formId);
-                if (attached) {
-                    setSelectedBusinessFormId(attached.id);
-                    setStep('SURVEY');
-                    return;
+                const targetForm = attachedForms.find(f => f.id === formId);
+                if (targetForm) {
+                    setActiveForm(targetForm);
+                    setStep('BUSINESS_FORM');
+                } else {
+                    toast.error('Form not found');
                 }
-            }
-
-            // Fallback to first available form if no specific ID provided
-            if (deviceForms.length > 0) {
-                setSelectedBusinessFormId(deviceForms[0].id);
+            } else {
                 setStep('SURVEY');
             }
         } else if (type === 'rewards') {
@@ -495,6 +528,28 @@ export default function DynamicTapJourneyPage() {
                         }))}
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
+                        }}
+                        completedFormIds={completedFormIds}
+                        customSuccessTitle={customSuccessTitle}
+                        customSuccessDescription={customSuccessMessage}
+                    />
+                )}
+
+                {currentStep === 'BUSINESS_FORM' && activeForm && (
+                    <StepBusinessForm
+                        form={activeForm}
+                        onSkip={() => setStep('OUTCOME')}
+                        onComplete={(answers: any) => {
+                            console.log('Additional Form submitted:', answers);
+                            const formId = activeForm.id;
+                            if (formId && !completedFormIds.includes(formId)) {
+                                const newCompleted = [...completedFormIds, formId];
+                                setCompletedFormIds(newCompleted);
+                                
+                                // If all attached forms are now completed, we can potentially auto-finish later
+                                // But the user wants a "Close" button first.
+                                // In onSkip (Close), we can check if all are done.
+                            }
                         }}
                     />
                 )}

@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { CheckCircle2, ChevronDown, ChevronUp, Eye, GripVertical, Info, Loader2, Pencil, Share2, X } from 'lucide-react';
+import { Building2, CheckCircle2, ChevronDown, ChevronUp, Eye, GripVertical, Info, Loader2, Palette, Pencil, Share2, X } from 'lucide-react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import PhoneFrame from '@/components/shared/PhoneFrame';
@@ -14,6 +14,8 @@ import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import type { BusinessForm } from '@/services/business-forms/types';
 
 const Toggle = ({ active, onChange }: { active: boolean; onChange: (val: boolean) => void }) => (
     <button
@@ -38,7 +40,7 @@ export default function ActiveFormsPage() {
         allBranches: !branchScope,
     });
 
-    const { toggleActiveForm, moveActiveForm, setActiveFormIds } = useFormPreferencesStore();
+    const { toggleActiveForm, moveActiveForm, setActiveFormIds, getActiveFormIds } = useFormPreferencesStore();
     const activeFormIdsByBranch = useFormPreferencesStore((state) => state.activeFormIdsByBranch);
     const { engagementSettings, updateEngagementSettings } = useCustomerFlowStore();
     const branchKey = branchScope || userBranchId || 'global';
@@ -52,11 +54,23 @@ export default function ActiveFormsPage() {
     const [draggedFormId, setDraggedFormId] = useState<string | null>(null);
     const [helpModal, setHelpModal] = useState<{ title: string; description: string } | null>(null);
 
-    const activeFormIds = activeFormIdsByBranch[branchKey] || [];
+    const { data: business } = useMyBusiness();
+    const { activeBranchId: currentActiveBranchId } = useActiveBranch();
+    const activeBranch = branches.find(b => b.id === currentActiveBranchId);
+
+    const isSocialEnabled = activeBranch ? activeBranch.showSocial : business?.showSocial;
+    const hasSocialLinks = activeBranch 
+        ? (activeBranch.instagramUrl || activeBranch.linkedinUrl || activeBranch.reviewUrl || activeBranch.trustpilotUrl)
+        : (business?.instagramUrl || business?.linkedinUrl || business?.reviewUrl || business?.trustpilotUrl);
+
+    const activeFormIds = useMemo(
+        () => getActiveFormIds(branchKey),
+        [branchKey, getActiveFormIds]
+    );
 
     const activeForms = useMemo(() => {
         const formById = new Map(availableForms.map((form) => [form.id, form]));
-        return activeFormIds.map((id) => formById.get(id)).filter((form): form is NonNullable<typeof form> => !!form);
+        return activeFormIds.map((id: string) => formById.get(id)).filter((form: any): form is NonNullable<typeof form> => !!form);
     }, [activeFormIds, availableForms]);
 
     const selectedForm =
@@ -85,8 +99,8 @@ export default function ActiveFormsPage() {
     return (
         <div className="p-8 space-y-6">
             <PageHeader
-                title="Additional Forms"
-                description="Choose which forms appear after the default form, and preview them on mobile."
+                title="User experience"
+                description="Control the main form visitors fill before any post-submit actions."
             />
             <div className="bg-white rounded-2xl border border-gray-100 p-5 flex items-start gap-3">
                 <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -103,7 +117,6 @@ export default function ActiveFormsPage() {
 
             <EngagementTabs
                 tabs={[
-                    { label: 'Socials', href: '/dashboard/settings/engagement/experience/socials' },
                     { label: 'Default Form', href: '/dashboard/settings/engagement/experience/default-form' },
                     { label: 'Additional Forms', active: true },
                 ]}
@@ -134,6 +147,49 @@ export default function ActiveFormsPage() {
                             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
                                 Note: This controls the user step sequence.
                             </p>
+                        </div>
+
+                        <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-6 shadow-sm">
+                            <div className="flex items-center gap-2 pb-2 border-b border-gray-50">
+                                <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                                    <Palette size={18} />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-bold text-gray-900">Global Form Appearance</h3>
+                                    <p className="text-[10px] text-gray-500 font-medium">Customize how your forms look across all branches</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50/30">
+                                    <div className="space-y-0.5">
+                                        <p className="text-xs font-bold text-gray-900">Brand Primary Color</p>
+                                        <p className="text-[10px] text-gray-500 font-medium leading-normal">Applied to buttons, accents, and branding elements</p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-[10px] font-mono font-bold text-gray-400">{(engagementSettings?.brandColor || '#2563eb').toUpperCase()}</span>
+                                        <div className="relative group">
+                                            <input 
+                                                type="color" 
+                                                value={engagementSettings?.brandColor || '#2563eb'}
+                                                onChange={(e) => updateEngagementSettings({ brandColor: e.target.value })}
+                                                className="size-10 rounded-xl border-4 border-white shadow-sm cursor-pointer p-0 overflow-hidden appearance-none"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-5 gap-2">
+                                    {['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'].map((color) => (
+                                        <button
+                                            key={color}
+                                            onClick={() => updateEngagementSettings({ brandColor: color })}
+                                            className={`h-8 rounded-lg transition-all ${engagementSettings?.brandColor === color ? 'ring-2 ring-offset-2 ring-primary scale-95' : 'hover:scale-105'}`}
+                                            style={{ backgroundColor: color }}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
                         </div>
 
                         {availableForms.length === 0 ? (
@@ -176,7 +232,7 @@ export default function ActiveFormsPage() {
                                         </div>
                                     ) : (
                                         <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
-                                            {activeForms.map((form, index) => (
+                                            {activeForms.map((form: any, index: number) => (
                                                 <div
                                                     key={form.id}
                                                     draggable
@@ -237,16 +293,6 @@ export default function ActiveFormsPage() {
                                                             <ChevronDown size={14} />
                                                         </button>
                                                         <button
-                                                            onClick={() => setHelpModal({
-                                                                title: 'Remove from sequence',
-                                                                description: 'This removes the form from the post‑submit flow. It does not delete the form.',
-                                                            })}
-                                                            className="size-8 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50"
-                                                            title="Why remove?"
-                                                        >
-                                                            <Info size={14} />
-                                                        </button>
-                                                        <button
                                                             onClick={() => toggleActiveForm(branchKey, form.id)}
                                                             className="h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest bg-gray-100 text-gray-600 hover:bg-gray-200"
                                                         >
@@ -255,6 +301,35 @@ export default function ActiveFormsPage() {
                                                     </div>
                                                 </div>
                                             ))}
+
+                                            {/* Final Sequence: Social Media */}
+                                            <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 bg-gray-50/50 border-dashed ${isSocialEnabled && hasSocialLinks ? 'border-primary/30 opacity-100' : 'border-gray-200 opacity-60'}`}>
+                                                <div className={`size-8 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${isSocialEnabled && hasSocialLinks ? 'bg-primary text-white' : 'bg-gray-200 text-gray-400'}`}>
+                                                    {activeForms.length + 1}
+                                                </div>
+                                                <div className="size-8 rounded-lg border border-gray-200 text-gray-300 flex items-center justify-center bg-white/50">
+                                                    <Info size={14} />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-sm font-semibold text-gray-900 truncate">Social Media & Reviews</p>
+                                                        {isSocialEnabled && hasSocialLinks ? (
+                                                            <span className="px-1.5 py-0.5 bg-green-50 text-[8px] font-black uppercase tracking-tighter text-green-600 rounded-md border border-green-100">Enabled</span>
+                                                        ) : (
+                                                            <span className="px-1.5 py-0.5 bg-gray-100 text-[8px] font-black uppercase tracking-tighter text-gray-500 rounded-md border border-gray-200">Hidden</span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 truncate">Automatically appears last in the journey</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Link
+                                                        href="/dashboard/settings/profile?tab=socials"
+                                                        className="h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest bg-white border border-gray-100 text-text-secondary hover:text-primary hover:border-primary transition-all flex items-center justify-center"
+                                                    >
+                                                        Customize
+                                                    </Link>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -345,34 +420,86 @@ export default function ActiveFormsPage() {
                     </div>
 
                     <div className="sticky top-6">
-                        <details open className="rounded-2xl border border-gray-100 bg-white">
-                            <summary className="cursor-pointer list-none px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-500 flex items-center justify-between">
-                                Preview
-                                <span className="text-[10px] font-semibold text-gray-400">Active Form</span>
-                            </summary>
-                            <div className="px-4 pb-4">
+                        <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm">
+                            <div className="px-5 py-4 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Live Phone Preview</p>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="text-[9px] font-bold text-emerald-600">LIVE SYNC</span>
+                                </div>
+                            </div>
+                            <div className="p-5">
                                 {selectedForm ? (
-                                    <PhoneFrame title="Active Form Preview">
-                                        <div className="p-6">
-                                            <StepBusinessForm
-                                                form={{
-                                                    ...selectedForm,
-                                                    businessName: myBusiness?.name || user?.businessName || selectedForm.businessName,
-                                                    businessLogo: myBusiness?.logoUrl || mainBranch?.logoUrl || user?.businessLogo || selectedForm.businessLogo,
-                                                }}
-                                                onComplete={() => { }}
-                                                onSkip={() => { }}
-                                            />
-                                            <SocialLinksPreview settings={engagementSettings} />
-                                        </div>
-                                    </PhoneFrame>
+                                    <div className="flex justify-center">
+                                        <PhoneFrame title="Active Form Preview">
+                                            <div className="min-h-full bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 py-6 px-3 space-y-3">
+                                                {/* ─── Container 1: Header — Business branding + Form title + Description ─── */}
+                                                <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                                                    {/* Top accent bar uses brandColor */}
+                                                    <div 
+                                                        className="h-1" 
+                                                        style={{ backgroundColor: engagementSettings?.brandColor || '#2563eb' }}
+                                                    />
+
+                                                    <div className="px-4 pt-3 pb-4 text-left">
+                                                        <div className="flex items-center gap-1.5 mb-2.5">
+                                                            {selectedForm.businessLogo ? (
+                                                                <img
+                                                                    src={selectedForm.businessLogo}
+                                                                    alt={selectedForm.businessName || 'Business'}
+                                                                    className="size-5 rounded-full object-cover border border-gray-200 shrink-0"
+                                                                />
+                                                            ) : (
+                                                                <div 
+                                                                    className="size-5 rounded-full flex items-center justify-center shrink-0"
+                                                                    style={{ backgroundColor: `${engagementSettings?.brandColor || '#2563eb'}15` }}
+                                                                >
+                                                                    <Building2 size={10} style={{ color: engagementSettings?.brandColor || '#2563eb' }} />
+                                                                </div>
+                                                            )}
+                                                            <span className="text-[10px] font-semibold text-slate-500 truncate">
+                                                                {selectedForm.businessName || 'Your Business'}
+                                                                <span className="text-slate-300 mx-1">·</span>
+                                                                <span className="text-slate-400 font-medium">{selectedForm.branchName || 'Main Branch'}</span>
+                                                            </span>
+                                                        </div>
+
+                                                        <h1 className="text-base font-display font-black text-slate-900 tracking-tight leading-tight">
+                                                            {selectedForm.title}
+                                                        </h1>
+
+                                                        {selectedForm.description && (
+                                                            <p className="mt-1 text-[11px] text-slate-500 font-medium leading-relaxed">
+                                                                {selectedForm.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* ─── Container 2: Form questions ─── */}
+                                                <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm text-left">
+                                                    <StepBusinessForm
+                                                        form={selectedForm}
+                                                        hideHeader
+                                                        brandColor={engagementSettings?.brandColor}
+                                                        onComplete={() => {}}
+                                                        onSkip={() => setPreviewFormId(null)}
+                                                    />
+                                                </div>
+
+                                                <p className="text-center text-[8px] font-medium text-slate-400">
+                                                    Powered by <span className="font-bold" style={{ color: engagementSettings?.brandColor || '#2563eb' }}>VemTap</span>
+                                                </p>
+                                            </div>
+                                        </PhoneFrame>
+                                    </div>
                                 ) : (
                                     <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-8 text-center text-sm text-gray-500">
                                         Select a form to preview it.
                                     </div>
                                 )}
                             </div>
-                        </details>
+                        </div>
                     </div>
                 </div>
             )}

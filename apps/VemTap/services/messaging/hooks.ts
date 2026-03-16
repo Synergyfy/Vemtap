@@ -20,6 +20,23 @@ import {
     AutomationPerformance
 } from './types';
 
+import { fetchMyCredits, BusinessCredit } from '@/lib/api/credit-plans';
+
+// ─── Credits ─────────────────────────────────────────────────────────────
+
+export const useMyCredits = () => {
+    const { branchId: resolvedBranchId } = useResolvedBranchParams();
+    const businessId = useAuthStore((state) => state.user?.businessId);
+    const role = useAuthStore((state) => state.user?.role);
+
+    return useQuery<BusinessCredit, Error>({
+        queryKey: ['my-credits', businessId, role, resolvedBranchId],
+        queryFn: async () => await fetchMyCredits(resolvedBranchId === 'all' ? undefined : resolvedBranchId),
+        refetchInterval: 60000,
+        enabled: !!businessId,
+    });
+};
+
 const toUiChannel = (channel?: string): 'WhatsApp' | 'SMS' | 'Email' => {
     if (channel === 'WHATSAPP') return 'WhatsApp';
     if (channel === 'EMAIL') return 'Email';
@@ -190,10 +207,6 @@ export const useSendMessage = () => {
     const role = useAuthStore((state) => state.user?.role);
     return useMutation<any, Error, SendMessageRequest>({
         mutationFn: async (dto) => {
-            if (!businessId) {
-                throw new Error('Missing businessId in user session');
-            }
-
             const normalizedActiveBranchId =
                 !urlBranchId || urlBranchId === 'all' ? undefined : urlBranchId;
             const resolvedBranchId = getWriteBranchId({
@@ -205,7 +218,7 @@ export const useSendMessage = () => {
 
             return await api.post('/messaging/send', {
                 ...dto,
-                businessId,
+                businessId: businessId || undefined,
                 branchId: resolvedBranchId || undefined,
                 audienceType: dto.audienceType,
             });
@@ -220,19 +233,28 @@ export const useSendMessage = () => {
 // ─── Templates ────────────────────────────────────────────────────────────────
 
 export const useMessagingTemplates = (channel?: Channel) => {
+    const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams();
     const businessId = useAuthStore((state) => state.user?.businessId);
     const role = useAuthStore((state) => state.user?.role);
     const isAdmin = String(role || '').toLowerCase() === 'admin';
+    const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
+
     return useQuery<Template[], Error>({
-        queryKey: ['messaging', 'templates', channel],
+        queryKey: ['messaging', 'templates', businessId, role, resolvedBranchId, allBranches, channel, contextParams.toString()],
         queryFn: async () => {
             try {
+                const params = new URLSearchParams(contextParams);
+                if (channel) params.append('channel', channel);
+
                 const templates = isAdmin
                     ? await api.get('/messaging/admin/templates')
-                    : await api.get('/messaging/templates');
+                    : await api.get(`/messaging/templates?${params.toString()}`);
+                
                 if (!channel) {
                     return templates;
                 }
+                // Backend already filters by branch, but we might still want to filter by channel if not done by backend
+                // Actually, MessagingController.getTemplates doesn't take channel as a query param currently.
                 return (templates as Template[]).filter((t) => t.channel === channel);
             } catch {
                 return [];

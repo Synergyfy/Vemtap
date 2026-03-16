@@ -11,10 +11,20 @@ import {
 } from '../interfaces/messaging-provider.interface';
 import { Channel } from '../enums/channel.enum';
 
+interface BestBulkSmsResponse {
+  ok: boolean;
+  message: string;
+  reference?: string;
+  sms_message_id?: number;
+  total_cost?: number;
+  units?: number;
+  status?: string;
+}
+
 @Injectable()
 export class BestBulkSmsProvider implements MessagingProvider {
   private readonly logger = new Logger(BestBulkSmsProvider.name);
-  private readonly baseUrl = 'https://bestbulksms.com.ng/api/v1/send_sms';
+  private readonly baseUrl = 'https://bestbulksms.com.ng/api/sms/send';
 
   constructor(
     private readonly configService: ConfigService,
@@ -33,35 +43,43 @@ export class BestBulkSmsProvider implements MessagingProvider {
       throw new Error(`Channel ${payload.channel} not supported by BestBulkSmsProvider (SMS only)`);
     }
 
-    // BestBulkSMS parameters: api_key, sender, to, message, routing
+    // BestBulkSMS parameters for v1/send: to, sender_id, message
     const data = {
-      api_key: apiKey,
-      sender: payload.from || 'VemTap', // Default sender ID
+      sender_id: payload.from || 'VEMTAP', // Default sender ID
       to: payload.to,
       message: payload.content,
-      routing: 2, // Default to DND (Corporate) route for better delivery in Nigeria
     };
 
     try {
       const response = await firstValueFrom(
-        this.httpService.post(this.baseUrl, data),
+        this.httpService.post<BestBulkSmsResponse>(this.baseUrl, data, {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          }
+        }),
       );
 
-      if (response.data.status === 'success') {
+      const responseData = response.data;
+
+      if (responseData.ok === true) {
         return {
-          messageId: response.data.data?.message_id || null,
-          status: 'sent',
-          rawResponse: response.data,
+          messageId: responseData.sms_message_id?.toString() || responseData.reference || null,
+          status: responseData.message === 'Queued' ? 'queued' : 'sent',
+          cost: responseData.total_cost,
+          units: responseData.units,
+          reference: responseData.reference,
+          rawResponse: responseData,
         };
       } else {
-        this.logger.error('BestBulkSMS SMS Send Failed', response.data);
+        this.logger.error('BestBulkSMS SMS Send Failed', responseData);
         return {
           messageId: null,
           status: 'failed',
-          rawResponse: response.data,
+          rawResponse: responseData,
         };
       }
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(
         'BestBulkSMS SMS Send Failed',
         error.response?.data || error.message,

@@ -13,7 +13,8 @@ import { dashboardApi } from '@/lib/api/dashboard';
 import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Nfc, Gift, BarChart, Users2, Settings,
-    ChevronDown,Lock, LogOut, Bell,  HelpCircle, Menu, MessageSquare, ShieldCheck
+    ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
+    MessageCircle, LucideIcon
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
@@ -32,12 +33,13 @@ interface MenuItem {
     id?: string;
     label: string;
     description?: string;
-    icon?: any;
+    icon?: LucideIcon;
     href?: string;
     roles?: string[];
     feature?: string;
     featureName?: string;
     submenu?: MenuItem[];
+    external?: boolean;
     onClick?: () => void;
 }
 
@@ -50,7 +52,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const { data: myBusiness, isLoading: isBusinessLoading } = useMyBusiness();
     const { fetchSubscriptionData, isFeatureLocked, capabilities, activeSubscription } = useSubscriptionStore();
-    const { getLinkWithBranch } = useActiveBranch();
+    const { activeBranchId, getLinkWithBranch } = useActiveBranch();
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
 
     // Close upgrade modal on navigation
@@ -84,7 +86,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const queryClient = useQueryClient();
-    const activeBranchId = useAuthStore((state) => state.activeBranchId);
 
     const { data } = useQuery({
         queryKey: ['dashboard', activeBranchId],
@@ -181,58 +182,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ]
         },
         {
-            id: 'messaging-center',
-            label: 'Messaging Center',
-            icon: MessageSquare,
-            roles: ['owner', 'manager'],
-            feature: 'messages',
-            featureName: 'Messaging Center',
-            submenu: [
-                { label: 'Overview', href: '/dashboard/messaging' },
-                {
-                    id: 'whatsapp',
-                    label: 'WhatsApp Channel',
-                    submenu: [
-                        { label: 'Overview', href: '/dashboard/messaging/whatsapp' },
-                        { label: 'Send Message', href: '/dashboard/messaging/whatsapp/send' },
-                        { label: 'Templates', href: '/dashboard/messaging/whatsapp/templates' },
-                        { label: 'Top up', href: '/dashboard/messaging/whatsapp/topup' },
-                        { label: 'Settings', href: '/dashboard/messaging/whatsapp/settings' },
-                        {
-                            id: 'whatsapp-automations',
-                            label: 'Automation',
-                            submenu: [
-                                { label: 'Overview', href: '/dashboard/automations' },
-                                { label: 'Active Automations', href: '/dashboard/automations/active' },
-                                { label: 'Automation Logs', href: '/dashboard/automations/logs' },
-                                { label: 'Performance Overview', href: '/dashboard/automations/performance' },
-                            ]
-                        }
-                    ]
-                },
-                {
-                    id: 'sms',
-                    label: 'SMS Channel',
-                    submenu: [
-                        { label: 'Overview', href: '/dashboard/messaging/sms' },
-                        { label: 'Send Message', href: '/dashboard/messaging/sms/send' },
-                        { label: 'Templates', href: '/dashboard/messaging/sms/templates' },
-                        { label: 'Top up', href: '/dashboard/messaging/sms/topup' },
-                        { label: 'Settings', href: '/dashboard/messaging/sms/settings' },
-                    ]
-                },
-                {
-                    id: 'email',
-                    label: 'Email Channel',
-                    submenu: [
-                        { label: 'Overview', href: '/dashboard/messaging/email' },
-                        { label: 'Send Message', href: '/dashboard/messaging/email/send' },
-                        { label: 'Templates', href: '/dashboard/messaging/email/templates' },
-                        { label: 'Settings', href: '/dashboard/messaging/email/settings' },
-                    ]
-                },
-                { label: 'Message History', href: '/dashboard/messaging/history' },
-            ].map(item => ({ ...item, onClick: () => setIsMobileOpen(false) }))
+            id: 'live-chat',
+            label: 'Live Messaging',
+            icon: MessageCircle,
+            href: '/dashboard/messaging/chat',
+            roles: ['owner', 'manager', 'staff'],
         },
         {
             id: 'loyalty',
@@ -302,11 +256,21 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 { label: 'Profile', href: '/dashboard/settings/profile' },
                 { label: 'Business Locations', href: '/dashboard/settings/branches' },
                 {
+                    id: 'messaging-hub',
+                    label: 'Messaging Channels',
+                    submenu: [
+                        { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp' },
+                        { label: 'SMS', href: '/dashboard/messaging/sms' },
+                        { label: 'Email', href: '/dashboard/messaging/email' },
+                        { label: 'History', href: '/dashboard/messaging/history' },
+                    ]
+                },
+                {
                     id: 'engagement',
                     label: 'Engagement',
                     submenu: [
-                        { label: 'User Experience', href: '/dashboard/settings/engagement/experience', description: 'Default form, socials, and additional forms.' },
-                        { label: 'Form Creator', href: '/dashboard/settings/engagement/forms', description: 'Build and publish custom forms.' },
+                        { label: 'User Experience', href: '/dashboard/settings/engagement/experience' },
+                        { label: 'Form Creator', href: '/dashboard/settings/engagement/forms' },
                     ]
                 },
                 { label: 'Notifications', href: '/dashboard/settings/notifications' },
@@ -552,7 +516,9 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                     </>
                                 ) : (
                                     <Link
-                                        href={withBranch(item.href!)}
+                                        href={item.external ? item.href! : withBranch(item.href!)}
+                                        target={item.external ? '_blank' : undefined}
+                                        rel={item.external ? 'noopener noreferrer' : undefined}
                                         onClick={(e) => {
                                             if (item.feature && isFeatureLocked(item.feature)) {
                                                 e.preventDefault();
@@ -753,7 +719,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                     <div className="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden py-2 animate-in fade-in slide-in-from-top-2 duration-200">
                                         <div className="px-4 py-3 border-b border-gray-50 mb-1 bg-gray-50/50">
                                             <p className="text-sm font-bold text-text-main truncate">{user?.name || 'User'}</p>
-                                            <p className="text-[11px] text-text-secondary truncate">{user?.email || (user as any)?.email}</p>
+                                            <p className="text-[11px] text-text-secondary truncate">{user?.email}</p>
                                         </div>
                                         <div className="px-2">
                                             <Link

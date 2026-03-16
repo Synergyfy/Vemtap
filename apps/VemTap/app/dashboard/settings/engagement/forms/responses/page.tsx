@@ -58,6 +58,7 @@ export default function EngagementFormResponsesPage() {
     const publishedForms = forms.filter((form) => form.isPublished).length;
     const activeForms = forms.filter((form) => form.isActive).length;
     const businessName = myBusiness?.name || user?.businessName || 'Your Business';
+    const businessLogo = myBusiness?.logoUrl || forms.find((form) => form.businessLogo)?.businessLogo || '';
 
     return (
         <div className="p-8 space-y-8">
@@ -65,9 +66,19 @@ export default function EngagementFormResponsesPage() {
                 title="Form Responses"
                 description="View customer answers submitted to each business form."
             />
-            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-text-secondary">
-                <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary uppercase tracking-widest">Business</span>
-                <span>{businessName}</span>
+            <div className="flex flex-wrap items-center gap-3">
+                <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary uppercase tracking-widest text-xs font-bold">Business</span>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-gray-200 shadow-sm">
+                    <div className="size-6 rounded-full bg-primary/10 overflow-hidden border border-primary/20 flex items-center justify-center">
+                        {businessLogo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={businessLogo} alt={businessName} className="w-full h-full object-cover" />
+                        ) : (
+                            <span className="text-[10px] font-black text-primary">{businessName.charAt(0)}</span>
+                        )}
+                    </div>
+                    <span className="text-xs font-black text-text-main">{businessName}</span>
+                </div>
             </div>
 
             <div className="flex items-center gap-2 text-xs font-bold text-text-secondary">
@@ -125,13 +136,26 @@ export default function EngagementFormResponsesPage() {
                             {forms.map((form) => {
                                 const current = responsesSummary.find((item) => item.formId === form.id);
                                 const formBusinessName = form.businessName || businessName;
+                                const formBusinessLogo = form.businessLogo || businessLogo;
                                 return (
                                     <tr key={form.id} className="border-b border-gray-50 hover:bg-gray-50">
                                         <td className="px-5 py-4">
                                             <p className="text-sm font-bold text-text-main">{form.title}</p>
                                             <p className="text-xs text-text-secondary">{form.description || 'No description'}</p>
                                         </td>
-                                        <td className="px-5 py-4 text-xs font-bold text-text-secondary">{formBusinessName}</td>
+                                        <td className="px-5 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <div className="size-7 rounded-full bg-primary/10 overflow-hidden border border-primary/20 flex items-center justify-center">
+                                                    {formBusinessLogo ? (
+                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                        <img src={formBusinessLogo} alt={formBusinessName} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <span className="text-[10px] font-black text-primary">{formBusinessName.charAt(0)}</span>
+                                                    )}
+                                                </div>
+                                                <span className="text-xs font-bold text-text-secondary">{formBusinessName}</span>
+                                            </div>
+                                        </td>
                                         <td className="px-5 py-4 text-xs font-bold text-text-secondary">{form.branchId}</td>
                                         <td className="px-5 py-4">
                                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${form.isPublished

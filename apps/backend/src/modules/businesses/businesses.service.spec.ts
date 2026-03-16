@@ -8,6 +8,7 @@ import {
 import { User } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
+import { Reward } from '../campaigns/entities/reward.entity';
 import { MailService } from '../mail/mail.service';
 import { DevicesService } from '../devices/devices.service';
 import { NotFoundException } from '@nestjs/common';
@@ -71,6 +72,11 @@ describe('BusinessesService', () => {
     find: jest.fn().mockResolvedValue([]),
   };
 
+  const mockRewardRepository = {
+    find: jest.fn().mockResolvedValue([]),
+    save: jest.fn(),
+  };
+
   const mockMailService = {
     sendWelcomeEmail: jest.fn().mockResolvedValue(true),
   };
@@ -96,12 +102,12 @@ describe('BusinessesService', () => {
           useValue: mockBranchRepository,
         },
         {
-          provide: getRepositoryToken(Business),
-          useValue: mockRepository,
-        },
-        {
           provide: getRepositoryToken(Visit),
           useValue: mockVisitRepository,
+        },
+        {
+          provide: getRepositoryToken(Reward),
+          useValue: mockRewardRepository,
         },
         {
           provide: MailService,

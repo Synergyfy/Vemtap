@@ -134,26 +134,13 @@ export class BranchesService {
     return savedBranch;
   }
 
-  async findAll(ownerId: string): Promise<Branch[]> {
-    const business = await this.businessRepository.findOne({
-      where: { ownerId },
-    });
-    if (!business) {
-      throw new NotFoundException('Business not found for this owner');
-    }
-    return this.branchesRepository.find({ where: { businessId: business.id } });
+  async findAll(businessId: string): Promise<Branch[]> {
+    return this.branchesRepository.find({ where: { businessId } });
   }
 
-  async findOne(ownerId: string, id: string): Promise<Branch> {
-    const business = await this.businessRepository.findOne({
-      where: { ownerId },
-    });
-    if (!business) {
-      throw new NotFoundException('Business not found for this owner');
-    }
-
+  async findOne(businessId: string, id: string): Promise<Branch> {
     const branch = await this.branchesRepository.findOne({
-      where: { id, businessId: business.id },
+      where: { id, businessId },
     });
     if (!branch) {
       throw new NotFoundException(
@@ -191,11 +178,11 @@ export class BranchesService {
   }
 
   async update(
-    ownerId: string,
+    businessId: string,
     id: string,
     updateBranchDto: UpdateBranchDto,
   ): Promise<Branch> {
-    const branch = await this.findOne(ownerId, id);
+    const branch = await this.findOne(businessId, id);
 
     if (updateBranchDto.isMainBranch === true && !branch.isMainBranch) {
       // Unset previous main branch for this business
@@ -213,8 +200,8 @@ export class BranchesService {
     return this.branchesRepository.save(branch);
   }
 
-  async remove(ownerId: string, id: string): Promise<void> {
-    const branch = await this.findOne(ownerId, id);
+  async remove(businessId: string, id: string): Promise<void> {
+    const branch = await this.findOne(businessId, id);
     if (branch.isMainBranch) {
       throw new ForbiddenException('The main branch cannot be deleted');
     }

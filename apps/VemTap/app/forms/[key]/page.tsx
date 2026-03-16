@@ -2,9 +2,9 @@
 
 import React, { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { usePublicBusinessForm, useSubmitBusinessFormResponse } from '@/services/business-forms/hooks';
+import { usePublicBusinessForm, usePublicBusinessInfo, usePublicBranchInfo, useSubmitBusinessFormResponse } from '@/services/business-forms/hooks';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Building2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Spinner from '@/components/ui/Spinner';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -16,6 +16,8 @@ export default function PublicBusinessFormPage() {
     const formKey = String(params?.key || '');
     const { data: form, isLoading } = usePublicBusinessForm(formKey);
     const submitFormResponse = useSubmitBusinessFormResponse();
+    const { data: businessInfo } = usePublicBusinessInfo(form?.businessId);
+    const { data: branchInfo } = usePublicBranchInfo(form?.branchId);
     const user = useAuthStore((state) => state.user);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const isCustomerAccount = isAuthenticated && user?.role?.toLowerCase() === 'customer';
@@ -33,6 +35,21 @@ export default function PublicBusinessFormPage() {
         return `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
     }, []);
 
+    // Resolve business name & logo: prefer fetched businessInfo, fallback to form data
+    const resolvedBusinessName = businessInfo?.name || form?.businessName || '';
+    const resolvedBusinessLogo = businessInfo?.logoUrl || form?.businessLogo || '';
+    const resolvedBranchName = useMemo(() => {
+        // 1. Check direct branch fetch
+        if (branchInfo?.name) return branchInfo.name;
+        // 2. Check business info branches list
+        if (form?.branchId && businessInfo?.branches) {
+            const branch = businessInfo.branches.find((b) => b.id === form.branchId);
+            if (branch?.name) return branch.name;
+        }
+        // 3. Fallback to form data if provided (though form data usually doesn't have it)
+        return (form as any)?.branchName || '';
+    }, [form?.branchId, businessInfo?.branches, branchInfo?.name, form]);
+
     const buildAnswerPayload = (answersMap: Record<string, any>) => {
         return (form?.fields || [])
             .map((field, index) => {
@@ -48,8 +65,8 @@ export default function PublicBusinessFormPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-                <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-md w-full text-center space-y-3">
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 flex items-center justify-center p-6">
+                <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-md w-full text-center space-y-3 shadow-sm">
                     <div className="flex justify-center">
                         <Spinner size="lg" />
                     </div>
@@ -61,8 +78,8 @@ export default function PublicBusinessFormPage() {
 
     if (!form) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-                <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-md w-full text-center">
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 flex items-center justify-center p-6">
+                <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-md w-full text-center shadow-sm">
                     <h1 className="text-xl font-display font-bold text-text-main mb-2">Form Not Available</h1>
                     <p className="text-sm text-text-secondary font-medium">
                         This form link is invalid, unpublished, or has been disabled. Please request a fresh link from the business.
@@ -77,8 +94,8 @@ export default function PublicBusinessFormPage() {
 
     if (submitted) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-                <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-2xl w-full space-y-6">
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 flex items-center justify-center p-6">
+                <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-2xl w-full space-y-6 shadow-sm">
                     <div className="size-14 mx-auto rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4">
                         <CheckCircle2 size={28} />
                     </div>
@@ -121,17 +138,59 @@ export default function PublicBusinessFormPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-10 px-4">
-            <div className="max-w-3xl mx-auto space-y-6">
-                <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Business Form</p>
-                    <h1 className="text-2xl font-display font-bold text-text-main">{form.title || 'Untitled Form'}</h1>
-                    <p className="text-sm text-text-secondary font-medium">{form.businessName || 'Not provided'}</p>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 py-8 px-4 md:py-12">
+            <div className="max-w-xl mx-auto space-y-4">
+
+                {/* ─── Container 1: Header — Business branding + Form title + Description ─── */}
+                <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                    {/* Top accent bar */}
+                    <div className="h-1.5 bg-gradient-to-r from-primary via-primary/80 to-primary/50" />
+
+                    <div className="px-5 pt-4 pb-5 md:px-6 md:pt-5 md:pb-6">
+                        {/* Business logo + name + branch — single line, minimal */}
+                        <div className="flex items-center gap-2 mb-4">
+                            {resolvedBusinessLogo ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                    src={resolvedBusinessLogo}
+                                    alt={resolvedBusinessName || 'Business'}
+                                    className="size-6 rounded-full object-cover border border-gray-200 shrink-0"
+                                />
+                            ) : (
+                                <div className="size-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                    <Building2 size={12} className="text-primary" />
+                                </div>
+                            )}
+                            <span className="text-xs font-semibold text-slate-500 truncate">
+                                {resolvedBusinessName || 'Business'}
+                                {resolvedBranchName ? (
+                                    <span className="text-slate-300 mx-1">·</span>
+                                ) : null}
+                                {resolvedBranchName && (
+                                    <span className="text-slate-400 font-medium">{resolvedBranchName}</span>
+                                )}
+                            </span>
+                        </div>
+
+                        {/* Form title — focal point */}
+                        <h1 className="text-xl md:text-2xl font-display font-black text-slate-900 tracking-tight leading-tight">
+                            {form.title || 'Untitled Form'}
+                        </h1>
+
+                        {/* Form description */}
+                        {form.description && (
+                            <p className="mt-2 text-sm text-slate-500 font-medium leading-relaxed">
+                                {form.description}
+                            </p>
+                        )}
+                    </div>
                 </div>
 
-                <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                {/* ─── Container 2: Form questions ─── */}
+                <div className="bg-white border border-gray-200 rounded-2xl p-5 md:p-6 shadow-sm">
                     <StepBusinessForm
                         form={form}
+                        hideHeader
                         onComplete={async (answers) => {
                             if (!isCustomerAccount) {
                                 setPendingAnswers(answers);
@@ -163,17 +222,23 @@ export default function PublicBusinessFormPage() {
                         onSkip={() => setSubmitted(true)}
                     />
                 </div>
+
+                {/* Powered-by footer */}
+                <p className="text-center text-[10px] font-medium text-slate-400 pb-4">
+                    Powered by <span className="font-bold text-primary">VemTap</span>
+                </p>
             </div>
 
             {showSignup && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white border border-gray-200 rounded-2xl p-6 max-w-md w-full space-y-4">
-                        {form?.businessLogo && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white border border-gray-200 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl">
+                        {resolvedBusinessLogo && (
                             <div className="flex justify-center">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                    src={form.businessLogo}
-                                    alt={form.businessName || 'Business Logo'}
-                                    className="size-16 rounded-full object-cover border border-gray-200"
+                                    src={resolvedBusinessLogo}
+                                    alt={resolvedBusinessName || 'Business Logo'}
+                                    className="size-14 rounded-full object-cover border border-gray-200"
                                 />
                             </div>
                         )}
@@ -189,25 +254,25 @@ export default function PublicBusinessFormPage() {
                                 value={signupName}
                                 onChange={(e) => setSignupName(e.target.value)}
                                 placeholder="Full name"
-                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                             />
                             <input
                                 value={signupEmail}
                                 onChange={(e) => setSignupEmail(e.target.value)}
                                 placeholder="Email"
-                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                             />
                             <input
                                 value={signupPhone}
                                 onChange={(e) => setSignupPhone(e.target.value)}
                                 placeholder="Phone"
-                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                             />
                         </div>
                         <div className="flex gap-3">
                             <button
                                 onClick={() => { setShowSignup(false); setPendingAnswers(null); }}
-                                className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-black text-text-secondary"
+                                className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-black text-text-secondary hover:bg-gray-50 transition-colors"
                             >
                                 Cancel
                             </button>
@@ -274,7 +339,7 @@ export default function PublicBusinessFormPage() {
                                         setIsSubmitting(false);
                                     }
                                 }}
-                                className="flex-1 h-11 rounded-xl bg-primary text-white text-sm font-black disabled:opacity-60"
+                                className="flex-1 h-11 rounded-xl bg-primary text-white text-sm font-black disabled:opacity-60 hover:bg-primary/90 transition-colors"
                             >
                                 {isSubmitting ? 'Submitting...' : 'Create Account & Submit'}
                             </button>
