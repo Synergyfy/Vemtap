@@ -8,6 +8,8 @@ import {
   Delete,
   UseGuards,
   Request,
+  ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BranchesService } from './branches.service';
@@ -35,35 +37,54 @@ export class BranchesController {
   @Get()
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get all branches for the business' })
-  findAll(@Request() req) {
-    // If manager, they might only be allowed to see their own branch,
-    // but the requirement says "owner... can crud branches".
-    // Managers can typically view them.
-    return this.branchesService.findAll(req.user.id);
+  async findAll(@Request() req) {
+    const businessId = await this.getBusinessId(req.user);
+    return this.branchesService.findAll(businessId);
   }
 
   @Get(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get a specific branch' })
-  findOne(@Request() req, @Param('id') id: string) {
-    return this.branchesService.findOne(req.user.id, id);
+  async findOne(@Request() req, @Param('id') id: string) {
+    const businessId = await this.getBusinessId(req.user);
+    return this.branchesService.findOne(businessId, id);
   }
 
   @Patch(':id')
   @Roles(UserRole.OWNER)
   @ApiOperation({ summary: 'Update a branch' })
-  update(
+  async update(
     @Request() req,
     @Param('id') id: string,
     @Body() updateBranchDto: UpdateBranchDto,
   ) {
-    return this.branchesService.update(req.user.id, id, updateBranchDto);
+    const businessId = await this.getBusinessId(req.user);
+    return this.branchesService.update(businessId, id, updateBranchDto);
   }
 
   @Delete(':id')
   @Roles(UserRole.OWNER)
   @ApiOperation({ summary: 'Delete a branch' })
-  remove(@Request() req, @Param('id') id: string) {
-    return this.branchesService.remove(req.user.id, id);
+  async remove(@Request() req, @Param('id') id: string) {
+    const businessId = await this.getBusinessId(req.user);
+    return this.branchesService.remove(businessId, id);
+  }
+
+  private async getBusinessId(user: any): Promise<string> {
+    if (user.businessId) return user.businessId;
+
+    if (user.role === UserRole.OWNER) {
+      const business = await this.branchesService.findBusinessByOwner(user.id);
+      if (!business) {
+        throw new NotFoundException('Business not found for this owner');
+      }
+      return business.id;
+    }
+
+    if (user.branchId) {
+      return this.branchesService.getBusinessId(user.branchId);
+    }
+
+    throw new ForbiddenException('Business context not found');
   }
 }
