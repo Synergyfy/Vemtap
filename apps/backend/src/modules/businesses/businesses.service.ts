@@ -46,9 +46,16 @@ export class BusinessesService {
     },
   ): Promise<Business> {
     if (businessData.ownerId) {
-      const existing = await this.findByOwner(businessData.ownerId);
-      if (existing) {
+      const existingByOwner = await this.findByOwner(businessData.ownerId);
+      if (existingByOwner) {
         throw new ConflictException('Owner already has a business');
+      }
+    }
+
+    if (businessData.phone) {
+      const existingByPhone = await this.findByPhone(businessData.phone);
+      if (existingByPhone) {
+        throw new ConflictException('Business with this phone number already exists');
       }
     }
 
@@ -118,6 +125,10 @@ export class BusinessesService {
 
   async findByOwner(ownerId: string): Promise<Business | null> {
     return this.businessesRepository.findOne({ where: { ownerId } });
+  }
+
+  async findByPhone(phone: string): Promise<Business | null> {
+    return this.businessesRepository.findOne({ where: { phone } });
   }
 
   async findById(id: string): Promise<Business> {

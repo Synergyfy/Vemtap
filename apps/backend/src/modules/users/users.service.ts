@@ -21,15 +21,23 @@ export class UsersService {
   ) {}
 
   async inviteStaff(branchId: string, dto: InviteStaffDto): Promise<User> {
-    const existing = await this.findByEmail(dto.email);
-    if (existing) {
+    const existingEmail = await this.findByEmail(dto.email);
+    if (existingEmail) {
       throw new BadRequestException('User with this email already exists');
+    }
+
+    if (dto.phone) {
+      const existingPhone = await this.findByPhone(dto.phone);
+      if (existingPhone) {
+        throw new BadRequestException('User with this phone number already exists');
+      }
     }
 
     const user = this.usersRepository.create({
       firstName: dto.firstName,
       lastName: dto.lastName,
       email: dto.email.toLowerCase(),
+      phone: dto.phone,
       role: dto.role,
       jobTitle: dto.jobTitle,
       permissions: dto.permissions,
@@ -41,6 +49,20 @@ export class UsersService {
   }
 
   async create(userData: Partial<User>): Promise<User> {
+    if (userData.email) {
+      const existingEmail = await this.findByEmail(userData.email);
+      if (existingEmail && existingEmail.id !== userData.id) {
+        throw new ConflictException('Email already exists');
+      }
+    }
+
+    if (userData.phone) {
+      const existingPhone = await this.findByPhone(userData.phone);
+      if (existingPhone && existingPhone.id !== userData.id) {
+        throw new ConflictException('Phone number already exists');
+      }
+    }
+
     const user = this.usersRepository.create(userData);
     return this.usersRepository.save(user);
   }
@@ -56,6 +78,12 @@ export class UsersService {
   async findByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { email: email.toLowerCase() },
+    });
+  }
+
+  async findByPhone(phone: string): Promise<User | null> {
+    return this.usersRepository.findOne({
+      where: { phone },
     });
   }
 
