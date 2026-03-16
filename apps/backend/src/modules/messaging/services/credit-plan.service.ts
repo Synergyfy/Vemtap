@@ -81,6 +81,22 @@ export class CreditPlanService {
     return this.businessCreditRepo.save(credits);
   }
 
+  async getMyCredits(branchId: string): Promise<BusinessCredit> {
+    let credits = await this.businessCreditRepo.findOne({
+      where: { branchId },
+    });
+    if (!credits) {
+      // Return zero balance if no credits record exists yet
+      return {
+        branchId,
+        smsBalance: 0,
+        emailBalance: 0,
+        whatsappBalance: 0,
+      } as BusinessCredit;
+    }
+    return credits;
+  }
+
   async create(createCreditPlanDto: CreateCreditPlanDto): Promise<CreditPlan> {
     const plan = this.creditPlanRepository.create(createCreditPlanDto);
     return this.creditPlanRepository.save(plan);

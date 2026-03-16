@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { BusinessesService } from '../businesses/businesses.service';
 import { DevicesService } from '../devices/devices.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { MailService } from '../mail/mail.service';
 import { JwtService } from '@nestjs/jwt';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -58,6 +59,10 @@ describe('AuthService', () => {
     sign: jest.fn().mockReturnValue('mock_token'),
   };
 
+  const mockSubscriptionsService = {
+    subscribeToFreePlan: jest.fn().mockResolvedValue({ id: 'sub-1' }),
+  };
+
   const mockOtpRepository = {
     create: jest.fn().mockImplementation((dto) => dto),
     save: jest.fn().mockImplementation((otp) => Promise.resolve(otp)),
@@ -72,6 +77,7 @@ describe('AuthService', () => {
         { provide: UsersService, useValue: mockUsersService },
         { provide: BusinessesService, useValue: mockBusinessesService },
         { provide: DevicesService, useValue: mockDevicesService },
+        { provide: SubscriptionsService, useValue: mockSubscriptionsService },
         { provide: MailService, useValue: mockMailService },
         { provide: JwtService, useValue: mockJwtService },
         { provide: getRepositoryToken(Otp), useValue: mockOtpRepository },
@@ -221,8 +227,8 @@ describe('AuthService', () => {
         }),
       );
 
-      // Verify Device Creation
-      expect(devicesService.createAutoDevice).toHaveBeenCalledWith('br-1');
+      // Verify Auto-Subscription
+      expect(mockSubscriptionsService.subscribeToFreePlan).toHaveBeenCalledWith('biz-1');
 
       // Verify OTP consumed
       expect(otpRepository.remove).toHaveBeenCalled();

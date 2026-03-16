@@ -57,36 +57,6 @@ export class TermiiProvider implements MessagingProvider {
         );
         throw error;
       }
-    } else if (payload.channel === Channel.WHATSAPP) {
-      // Termii WhatsApp Implementation
-      const url = `${this.baseUrl}/whatsapp/send`;
-      const data: any = {
-        api_key: apiKey,
-        to: payload.to,
-        from: payload.from || 'N-Alert', // Should be a registered WhatsApp Sender ID
-        sms: payload.content,
-        channel: 'whatsapp',
-        type: 'plain',
-      };
-
-      if (payload.mediaUrl) {
-        data.media = { url: payload.mediaUrl };
-      }
-
-      try {
-        const response = await firstValueFrom(this.httpService.post(url, data));
-        return {
-          messageId: response.data.message_id,
-          status: 'queued',
-          rawResponse: response.data,
-        };
-      } catch (error) {
-        this.logger.error(
-          'Termii WhatsApp Send Failed',
-          error.response?.data || error.message,
-        );
-        throw error;
-      }
     }
 
     throw new Error(
@@ -100,15 +70,8 @@ export class TermiiProvider implements MessagingProvider {
   } | null> {
     if (!payload) return null;
 
-    // Termii Inbound SMS/WhatsApp usually has: receiver (shortcode/senderID), sender (phone), message, msgid
+    // Termii Inbound SMS
     if (payload.receiver && payload.sender && payload.message) {
-      // Try to detect channel if possible, else default based on context or assume SMS/Unified
-      // If we are strictly using Termii for everything, maybe we can inspect 'receiver' to know if it's a WhatsApp ID
-      let channel = Channel.SMS;
-      if (payload.channel === 'whatsapp' || payload.type === 'whatsapp') {
-        channel = Channel.WHATSAPP;
-      }
-
       return {
         type: 'inbound',
         data: {
@@ -116,7 +79,7 @@ export class TermiiProvider implements MessagingProvider {
           to: payload.receiver,
           content: payload.message,
           providerMessageId: payload.msgid || payload.message_id,
-          channel: channel,
+          channel: Channel.SMS,
           timestamp: new Date(payload.received_at || Date.now()),
           rawPayload: payload,
         },
@@ -141,8 +104,6 @@ export class TermiiProvider implements MessagingProvider {
   estimateCost(payload: SendMessagePayload): number {
     if (payload.channel === Channel.SMS) {
       return 4.0;
-    } else if (payload.channel === Channel.WHATSAPP) {
-      return 15.0; // Higher cost for WhatsApp
     }
     return 0;
   }

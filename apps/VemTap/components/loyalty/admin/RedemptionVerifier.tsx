@@ -33,7 +33,7 @@ export const RedemptionVerifier: React.FC<{ className?: string }> = ({ className
             if (response.success) {
                 setResult({
                     success: true,
-                    redemption: response.redemption as Redemption,
+                    redemption: response.redemption as any as Redemption,
                 });
                 notify.success('Code verified successfully!');
             } else {

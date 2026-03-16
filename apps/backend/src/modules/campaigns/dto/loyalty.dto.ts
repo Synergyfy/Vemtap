@@ -1,14 +1,26 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsString,
   IsNumber,
   IsBoolean,
   IsOptional,
   IsObject,
+  IsArray,
+  ValidateNested,
+  IsUrl,
 } from 'class-validator';
 
 export class UpdateLoyaltyRuleDto {
+  @ApiProperty({
+    description: 'The type of rule (visit or spending)',
+    example: 'visit',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  ruleType?: string;
+
   @ApiProperty({
     description: 'Amount to spend to earn points',
     example: 10,
@@ -140,9 +152,68 @@ export class CreateRewardDto {
   @IsNumber()
   @IsOptional()
   usageLimitPerUser?: number;
+
+  @ApiProperty({
+    description: 'Image URLs array',
+    example: ['https://...'],
+    required: false,
+    type: [String],
+  })
+  @IsArray()
+  @IsUrl({}, { each: true })
+  @IsOptional()
+  imageUrls?: string[];
+
+  @ApiProperty({
+    description: 'Total rewards available for redemption',
+    example: 100,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  totalAvailable?: number;
+
+  @ApiProperty({
+    description: 'Toggle reward active',
+    example: true,
+    required: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 }
 
 export class UpdateRewardDto extends PartialType(CreateRewardDto) {}
+
+export class CreateLoyaltyTemplateDto {
+  @ApiProperty({ description: 'Template name', example: 'Cafe Welcome' })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ description: 'Template description', example: '...', required: false })
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @ApiProperty({ description: 'Loyalty rules', type: UpdateLoyaltyRuleDto })
+  @IsObject()
+  @ValidateNested()
+  @Type(() => UpdateLoyaltyRuleDto)
+  rules: UpdateLoyaltyRuleDto;
+
+  @ApiProperty({ description: 'Rewards to include', type: [CreateRewardDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateRewardDto)
+  rewards: CreateRewardDto[];
+
+  @ApiProperty({ description: 'Status', example: 'published', required: false })
+  @IsString()
+  @IsOptional()
+  status?: string;
+}
+
+export class UpdateLoyaltyTemplateDto extends PartialType(CreateLoyaltyTemplateDto) {}
 
 export class PointEarnRequestDto {
   @ApiProperty({
@@ -174,7 +245,7 @@ export class PointEarnRequestDto {
   })
   @IsObject()
   @IsOptional()
-  metadata?: any;
+  metadata?: Record<string, any>;
 }
 
 export class RewardRedeemRequestDto {
@@ -210,10 +281,38 @@ export class VerifyRedemptionDto {
   @IsOptional()
   branchId?: string;
 
-  @ApiProperty({ description: 'Redemption code', example: 'A1B2C3D4' })
+  @ApiProperty({ description: 'Redemption code', example: '123456789' })
   @IsString()
   code: string;
 }
+
+export class GenerateRedemptionCodeDto {
+  @ApiProperty({ description: 'The reward ID', example: 'rew_123' })
+  @IsString()
+  rewardId: string;
+
+  @ApiProperty({ description: 'Loyalty profile ID (Optional)', example: 'lp_123', required: false })
+  @IsString()
+  @IsOptional()
+  loyaltyProfileId?: string;
+
+  @ApiProperty({ description: 'Branch ID', example: 'branch_001', required: false })
+  @IsString()
+  @IsOptional()
+  branchId?: string;
+}
+
+export class ClaimCodeDto {
+  @ApiProperty({ description: 'The 9-digit code', example: '123456789' })
+  @IsString()
+  code: string;
+
+  @ApiProperty({ description: 'Branch ID', example: 'branch_001', required: false })
+  @IsString()
+  @IsOptional()
+  branchId?: string;
+}
+
 export class BranchQueryDto {
   @ApiProperty({
     description: 'Branch ID',

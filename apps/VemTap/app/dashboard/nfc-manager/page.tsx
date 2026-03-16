@@ -42,7 +42,7 @@ export default function NFCManagerPage() {
 
     const { data: orders = [], isLoading: ordersLoading } = useQuery<MarketplaceOrder[]>({
         queryKey: ['my-orders'],
-        queryFn: fetchMyOrders
+        queryFn: () => fetchMyOrders()
     });
 
     // Filtering for ready-to-generate orders (Allocations)

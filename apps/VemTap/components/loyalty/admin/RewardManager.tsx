@@ -2,11 +2,18 @@
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Edit2, Gift, Ticket, Tag, Clock, Save, X, Eye, ImageIcon, Upload, Image as ImageIcon2, HelpCircle, Wallet, Package, Percent, ChevronDown, CheckCircle2, AlertCircle, Star, Search, Users, Calendar } from 'lucide-react';
-import { Reward, RewardType } from '@/types/loyalty';
+import { 
+    Plus, Trash2, Edit2, Gift, Ticket, Tag, Clock, Save, X, 
+    Eye, ImageIcon, Upload, Image as ImageIcon2, HelpCircle, 
+    Wallet, Package, Percent, ChevronDown, CheckCircle2, 
+    AlertCircle, Star, Search, Users, Calendar, LucideIcon, Loader2 
+} from 'lucide-react';
+import { Reward, RewardType, Redemption } from '@/types/loyalty';
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import Tooltip from '@/components/ui/Tooltip';
+import { useRewardRedemptions } from '@/services/loyalty/hooks';
+import { formatDistanceToNow } from 'date-fns';
 
 interface RewardManagerProps {
     rewards: Reward[];
@@ -16,7 +23,113 @@ interface RewardManagerProps {
     className?: string;
 }
 
-const REWARD_TYPE_DETAILS: Record<RewardType, { label: string, description: string, icon: any }> = {
+const RedemptionsModal: React.FC<{ 
+    reward: Reward; 
+    onClose: () => void 
+}> = ({ reward, onClose }) => {
+    const { data: redemptions, isLoading } = useRewardRedemptions(reward.id);
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={onClose}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-white w-full max-w-3xl text-slate-900 relative shadow-2xl rounded-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]"
+            >
+                {/* Modal Header */}
+                <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-5">
+                        <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-200 ring-4 ring-primary/5 shrink-0">
+                            <Users className="w-7 h-7 text-primary" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-display font-bold text-slate-900">Reward Redemptions</h3>
+                            <p className="text-xs text-slate-500 font-medium mt-0.5">
+                                Tracking customers for: <span className="text-primary font-bold uppercase">{reward.name}</span>
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-3 hover:bg-white hover:shadow-sm rounded-2xl transition-all border border-transparent hover:border-slate-200"
+                    >
+                        <X size={20} className="text-slate-400" />
+                    </button>
+                </div>
+
+                {/* Modal Content */}
+                <div className="flex-grow overflow-y-auto p-8 scrollbar-hide min-h-[300px]">
+                    {isLoading ? (
+                        <div className="h-full flex flex-col items-center justify-center space-y-4">
+                            <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Loading Customers...</p>
+                        </div>
+                    ) : redemptions && redemptions.length > 0 ? (
+                        <div className="space-y-6">
+                            {redemptions.map((redemption) => {
+                                const profile = (redemption as any).loyaltyProfile;
+                                const user = profile?.user;
+                                const firstName = user?.firstName || 'Unknown';
+                                const lastName = user?.lastName || 'Customer';
+                                const initials = `${firstName[0]}${lastName[0]}`;
+
+                                return (
+                                    <div key={redemption.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-primary/10 hover:shadow-sm transition-all group">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 group-hover:bg-primary/5 group-hover:text-primary transition-colors uppercase">
+                                                {initials}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-slate-900">{firstName} {lastName}</p>
+                                                <p className="text-xs text-slate-400 font-medium">{user?.email || 'No email'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="flex items-center gap-2 justify-end">
+                                                <Calendar size={12} className="text-slate-300" />
+                                                <span className="text-xs font-bold text-slate-500">
+                                                    {formatDistanceToNow(new Date(redemption.createdAt), { addSuffix: true })}
+                                                </span>
+                                            </div>
+                                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mt-1">
+                                                -{redemption.pointsSpent} Pts
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-2xl p-12">
+                            <Users className="w-12 h-12 text-slate-200 mb-4" />
+                            <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">No redemptions yet</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-8 bg-slate-50 border-t border-slate-100 shrink-0">
+                    <button
+                        onClick={onClose}
+                        className="w-full py-4 bg-white border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-slate-50 transition-all"
+                    >
+                        Close Overview
+                    </button>
+                </div>
+            </motion.div>
+        </div>
+    );
+};
+
+const REWARD_TYPE_DETAILS: Record<RewardType, { label: string, description: string, icon: LucideIcon }> = {
     discount: {
         label: "Custom Discount",
         description: "Apply percentage or fixed price reduction on checkout.",
@@ -52,6 +165,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
     const [searchQuery, setSearchQuery] = useState('');
     const [viewingRewardForCustomers, setViewingRewardForCustomers] = useState<Reward | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     const [formData, setFormData] = useState<Partial<Reward>>({
         name: '',
@@ -62,7 +176,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
         value: 0,
         totalAvailable: 0,
         isActive: true,
-        imageUrl: '' // New field for Section 11 of PRD
+        imageUrl: ''
     });
 
     const resetForm = () => {
@@ -86,11 +200,27 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            // In a real app, you'd upload to Supabase/S3 here. 
-            // For mock/development, we use a Local Preview URL.
+            setIsUploading(true);
             const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, imageUrl: reader.result as string }));
+            reader.onloadend = async () => {
+                try {
+                    const response = await fetch('/api/upload', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ file: reader.result }),
+                    });
+                    const data = await response.json();
+                    if (data.url) {
+                        setFormData(prev => ({ ...prev, imageUrl: data.url }));
+                        notify.success('Image uploaded successfully');
+                    } else {
+                        throw new Error(data.error || 'Upload failed');
+                    }
+                } catch (error: any) {
+                    notify.error(error.message || 'Image upload failed');
+                } finally {
+                    setIsUploading(false);
+                }
             };
             reader.readAsDataURL(file);
         }
@@ -164,10 +294,8 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                         r.description.toLowerCase().includes(searchQuery.toLowerCase())
                     ).map((reward) => {
                         const Icon = REWARD_TYPE_DETAILS[reward.rewardType].icon;
-                        
-                        // Mock Analytics
-                        const mockRedemptions = Math.floor(Math.random() * 50) + 10; 
-                        const mockPointsRedeemed = mockRedemptions * reward.pointCost;
+                        const redemptionsCount = reward.totalRedeemed || 0;
+                        const pointsSpent = redemptionsCount * reward.pointCost;
 
                         return (
                             <motion.div
@@ -232,7 +360,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
 
                                     {/* Stats grid */}
                                     <div className="grid grid-cols-2 gap-3 mb-5">
-                                        <Tooltip content="The exact number of points a user needs to earn to claim this reward.">
+                                        <Tooltip content="Points required to unlock this.">
                                             <div className="p-3 bg-primary/5 rounded-2xl text-center border border-primary/10 h-full flex flex-col justify-center">
                                                 <div className="flex items-center justify-center gap-1.5 text-primary">
                                                     <Star className="w-5 h-5 fill-primary/20" />
@@ -241,7 +369,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                 <p className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mt-1">Pts Required</p>
                                             </div>
                                         </Tooltip>
-                                        <Tooltip content={`This is a ${REWARD_TYPE_DETAILS[reward.rewardType].label} reward.`}>
+                                        <Tooltip content={`Category: ${REWARD_TYPE_DETAILS[reward.rewardType].label}`}>
                                             <div className="p-3 bg-slate-50 rounded-2xl text-center border border-slate-100 h-full flex flex-col justify-center">
                                                 <span className="text-lg font-black text-slate-700 capitalize truncate px-2">
                                                     {reward.rewardType.replace('_', ' ')}
@@ -251,18 +379,18 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                         </Tooltip>
                                     </div>
 
-                                    {/* Mock Analytics Footer */}
+                                    {/* Real Analytics Footer */}
                                     <div className="mt-auto pt-4 border-t border-slate-100">
                                         <div className="grid grid-cols-2 gap-3 mb-4">
-                                            <Tooltip content="Total number of times this reward has been successfully claimed by customers.">
+                                            <Tooltip content="Total redemptions for this reward.">
                                                 <div className="text-center p-3 bg-purple-50 rounded-xl border border-purple-100/50">
-                                                    <span className="text-xl font-black text-purple-600">{mockRedemptions.toLocaleString()}</span>
+                                                    <span className="text-xl font-black text-purple-600">{redemptionsCount.toLocaleString()}</span>
                                                     <p className="text-[9px] uppercase tracking-widest font-black text-purple-400 mt-1">Redemptions</p>
                                                 </div>
                                             </Tooltip>
-                                            <Tooltip content="Total volume of points that customers have burned on this specific reward.">
+                                            <Tooltip content="Total points burned on this reward.">
                                                 <div className="text-center p-3 bg-amber-50 rounded-xl border border-amber-100/50">
-                                                    <span className="text-xl font-black text-amber-600">{mockPointsRedeemed.toLocaleString()}</span>
+                                                    <span className="text-xl font-black text-amber-600">{pointsSpent.toLocaleString()}</span>
                                                     <p className="text-[9px] uppercase tracking-widest font-black text-amber-400 mt-1">Pts Spent</p>
                                                 </div>
                                             </Tooltip>
@@ -324,7 +452,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                     </div>
                                 </div>
 
-                                {/* Progress Bar - Idiot Proofing */}
+                                {/* Progress Bar */}
                                 <div className="flex gap-1.5 mb-8">
                                     <div className={cn("h-1.5 flex-1 rounded-full transition-all", formData.name ? "bg-primary" : "bg-slate-100")} />
                                     <div className={cn("h-1.5 flex-1 rounded-full transition-all", (formData.pointCost ?? 0) > 0 ? "bg-primary" : "bg-slate-100")} />
@@ -332,7 +460,6 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                 </div>
 
                                 <div className="space-y-8">
-                                    {/* Section 1: Core Configuration */}
                                     <div className="space-y-6">
                                         <div className="flex items-center justify-between">
                                             <h4 className="text-sm font-semibold text-slate-600">Step 1: Core Details</h4>
@@ -344,7 +471,6 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                         </div>
                                         
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            {/* Name Input */}
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between ml-1">
                                                     <label className="text-xs font-medium text-slate-700">Reward Name <span className="text-rose-500">*</span></label>
@@ -364,7 +490,6 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                 />
                                             </div>
 
-                                            {/* Custom Dropdown for Reward Type */}
                                             <div className="space-y-2 relative">
                                                 <label className="text-xs font-medium text-slate-700 ml-1">Category & Behavior</label>
                                                 <div className="relative">
@@ -441,7 +566,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                         </div>
 
                                         <div className="space-y-2">
-                                            <label className="text-xs font-medium text-slate-700 ml-1">Visible Description <span className="text-slate-400 font-normal">(Optional but Recommended)</span></label>
+                                            <label className="text-xs font-medium text-slate-700 ml-1">Visible Description</label>
                                             <textarea
                                                 value={formData.description}
                                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -452,11 +577,9 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                         </div>
                                     </div>
 
-                                    {/* Section 2: Economics & Validity */}
                                     <div className="space-y-6">
                                         <h4 className="text-sm font-semibold text-slate-600">Step 2: Economics & Expiry</h4>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            {/* Point Cost */}
                                             <div className={cn(
                                                 "p-6 rounded-2xl border transition-all",
                                                 isSubmitted && !formData.pointCost 
@@ -465,9 +588,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                             )}>
                                                 <div className="flex items-center justify-between mb-4">
                                                     <label className="text-xs font-medium text-primary">Points Required <span className="text-rose-500">*</span></label>
-                                                    <Tooltip content="How many points must a user earn to unlock this?">
-                                                        <HelpCircle size={14} className="text-primary/40" />
-                                                    </Tooltip>
+                                                    <HelpCircle size={14} className="text-primary/40" />
                                                 </div>
                                                 <div className="flex items-center gap-4">
                                                     <input
@@ -475,280 +596,72 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                         value={formData.pointCost}
                                                         onChange={(e) => setFormData({ ...formData, pointCost: parseInt(e.target.value) || 0 })}
                                                         className="bg-white/50 border-b-2 border-primary/10 focus:border-primary focus:bg-white px-2 py-1 outline-none transition-all font-display font-semibold text-3xl text-primary w-full rounded-t-lg"
-                                                        placeholder="0"
                                                     />
-                                                    <span className="text-xs font-bold text-primary/50 uppercase whitespace-nowrap">Pts to Redeem</span>
                                                 </div>
-                                                {isSubmitted && !formData.pointCost && (
-                                                    <p className="text-[9px] font-bold text-rose-500 uppercase mt-2 flex items-center gap-1">
-                                                        <AlertCircle size={10} /> Cost cannot be zero
-                                                    </p>
-                                                )}
-                                                <p className="text-[10px] font-medium text-primary/70 mt-3 pt-3 border-t border-primary/10 leading-relaxed">
-                                                    Ensure you set a reasonable point cost. For example, if you offer 10 default points on every visit, a 100-point cost takes 10 visits.
-                                                </p>
                                             </div>
 
-                                            {/* Reward Value */}
                                             <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <label className="text-xs font-medium text-slate-700">Reward Value</label>
-                                                    <Tooltip content="Monetary value of this reward">
-                                                        <HelpCircle size={14} className="text-slate-400" />
-                                                    </Tooltip>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xl font-bold text-slate-400">₦</span>
-                                                    <input
-                                                        type="number"
-                                                        value={formData.value}
-                                                        onChange={(e) => setFormData({ ...formData, value: parseInt(e.target.value) || 0 })}
-                                                        className="bg-white/50 border-b-2 border-slate-200 focus:border-primary focus:bg-white px-2 py-1 outline-none transition-all font-display font-semibold text-3xl text-slate-900 w-full rounded-t-lg"
-                                                        placeholder="0"
-                                                    />
-                                                </div>
-                                                <p className="text-[10px] font-medium text-slate-400 mt-2 italic">Actual monetary value to the customer.</p>
-                                            </div>
-
-                                            {/* Total Quantity */}
-                                            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <label className="text-xs font-medium text-slate-700">Total Quantity</label>
-                                                    <Tooltip content="How many of this reward are available in total? Leave 0 for unlimited.">
-                                                        <HelpCircle size={14} className="text-slate-400" />
-                                                    </Tooltip>
-                                                </div>
-                                                <div className="flex items-center gap-4">
-                                                    <input
-                                                        type="number"
-                                                        value={formData.totalAvailable || ''}
-                                                        onChange={(e) => setFormData({ ...formData, totalAvailable: parseInt(e.target.value) || 0 })}
-                                                        className="bg-white/50 border-b-2 border-slate-200 focus:border-primary focus:bg-white px-2 py-1 outline-none transition-all font-display font-semibold text-3xl text-slate-900 w-full rounded-t-lg"
-                                                        placeholder="0 (Unlimited)"
-                                                    />
-                                                </div>
-                                                <p className="text-[10px] font-medium text-slate-400 mt-2 italic">Leave as 0 for unlimited stock.</p>
-                                            </div>
-
-                                            {/* Validity */}
-                                            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <label className="text-xs font-medium text-slate-700">Lifespan</label>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Clock size={12} className="text-slate-400" />
-                                                        <span className="text-xs font-semibold text-slate-400">Days</span>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-4">
-                                                    <input
-                                                        type="number"
-                                                        value={formData.validityDays}
-                                                        onChange={(e) => setFormData({ ...formData, validityDays: parseInt(e.target.value) || 0 })}
-                                                        className="bg-white/50 border-b-2 border-slate-200 focus:border-primary focus:bg-white px-2 py-1 outline-none transition-all font-display font-semibold text-3xl text-slate-900 w-full rounded-t-lg"
-                                                    />
-                                                </div>
-                                                <p className="text-[10px] font-medium text-slate-400 mt-2 italic">Must use within {formData.validityDays || 0} days.</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-4">
-                                            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
-                                                <HelpCircle size={18} />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <p className="text-[10px] font-black text-amber-800 uppercase tracking-widest">Business Tip</p>
-                                                <p className="text-xs text-amber-900/70 font-medium leading-relaxed">
-                                                    Higher point costs (e.g. 500+) drive deeper loyalty but can discourage new users. 
-                                                    Try starting with a "Welcome Reward" at 100-200 points.
-                                                </p>
+                                                <label className="text-xs font-medium text-slate-700 block mb-4">Lifespan (Days)</label>
+                                                <input
+                                                    type="number"
+                                                    value={formData.validityDays}
+                                                    onChange={(e) => setFormData({ ...formData, validityDays: parseInt(e.target.value) || 0 })}
+                                                    className="bg-white/50 border-b-2 border-slate-200 focus:border-primary focus:bg-white px-2 py-1 outline-none transition-all font-display font-semibold text-3xl text-slate-900 w-full rounded-t-lg"
+                                                />
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Section 3: Media */}
                                     <div className="space-y-4 pb-4">
-                                        <div className="flex items-center justify-between">
-                                            <h4 className="text-sm font-semibold text-slate-600">Cover Image</h4>
-                                            <button
-                                                onClick={() => fileInputRef.current?.click()}
-                                                className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline"
-                                            >
-                                                Browse Library
-                                            </button>
-                                        </div>
-
+                                        <h4 className="text-sm font-semibold text-slate-600">Cover Image</h4>
                                         <input
                                             type="file"
                                             ref={fileInputRef}
                                             onChange={handleImageUpload}
                                             accept="image/*"
                                             className="hidden"
+                                            disabled={isUploading}
                                         />
-
                                         <div
                                             className={cn(
-                                                "relative h-48 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden",
-                                                formData.imageUrl ? "border-solid border-slate-200 bg-white" : "border-slate-200 bg-slate-50 hover:bg-white hover:border-primary/40"
+                                                "relative h-48 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden cursor-pointer",
+                                                formData.imageUrl ? "border-solid border-slate-200 bg-white" : "border-slate-200 bg-slate-50 hover:bg-white hover:border-primary/40",
+                                                isUploading && "opacity-50 cursor-wait"
                                             )}
+                                            onClick={() => fileInputRef.current?.click()}
                                         >
-                                            {formData.imageUrl ? (
-                                                <div className="w-full h-full relative group">
-                                                    <img src={formData.imageUrl} alt="Reward Preview" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                        <button
-                                                            onClick={() => fileInputRef.current?.click()}
-                                                            className="p-2 bg-white rounded-lg text-primary hover:bg-gray-50 transition-colors"
-                                                            title="Change Image"
-                                                        >
-                                                            <Plus size={18} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
-                                                            className="p-2 bg-white rounded-lg text-red-500 hover:bg-gray-50 transition-colors"
-                                                            title="Remove Image"
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    </div>
-                                                </div>
+                                            {isUploading ? (
+                                                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                                            ) : formData.imageUrl ? (
+                                                <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
                                             ) : (
-                                                <div
-                                                    className="flex flex-col items-center gap-3 cursor-pointer p-8 w-full h-full"
-                                                    onClick={() => fileInputRef.current?.click()}
-                                                >
-                                                    <div className="p-4 bg-white rounded-2xl shadow-sm border border-slate-100">
-                                                        <ImageIcon2 className="w-8 h-8 text-slate-300" />
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <p className="text-xs font-black text-slate-900 uppercase">Click or Drag to Upload</p>
-                                                        <p className="text-[10px] text-slate-400 font-medium mt-1">PNG, JPG or WebP (Max 2MB)</p>
-                                                    </div>
-                                                </div>
+                                                <ImageIcon2 className="w-8 h-8 text-slate-300" />
                                             )}
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between sticky bottom-0 z-30">
+                            <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                                <button onClick={resetForm} className="text-sm font-semibold text-slate-400">Cancel</button>
                                 <button
-                                    onClick={resetForm}
-                                    className="px-6 py-3 font-semibold text-sm text-slate-400 hover:text-slate-900 transition-colors"
+                                    onClick={handleSubmit}
+                                    className="px-10 py-4 bg-primary text-white font-semibold text-sm rounded-2xl shadow-xl shadow-primary/20"
                                 >
-                                    Go Back
+                                    {editingId ? 'Update Reward' : 'Confirm & Launch'}
                                 </button>
-                                <div className="flex items-center gap-4">
-                                    {(!formData.name || !formData.pointCost) && isSubmitted && (
-                                        <span className="text-xs font-semibold text-rose-500 animate-pulse">
-                                            Basics Required
-                                        </span>
-                                    )}
-                                    <button
-                                        onClick={handleSubmit}
-                                        className={cn(
-                                            "px-10 py-4 font-semibold text-sm rounded-2xl transition-all flex items-center gap-2",
-                                            (!formData.name || !formData.pointCost) 
-                                                ? "bg-slate-200 text-slate-400 cursor-not-allowed" 
-                                                : "bg-primary text-white shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95"
-                                        )}
-                                    >
-                                        <Save size={18} />
-                                        {editingId ? 'Update Reward' : 'Confirm & Launch'}
-                                    </button>
-                                </div>
                             </div>
                         </motion.div>
                     </div>
                 )}
             </AnimatePresence>
-            {/* Redemptions Modal - Mocked */}
+
             <AnimatePresence>
                 {viewingRewardForCustomers && (
-                    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 md:p-8">
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setViewingRewardForCustomers(null)}
-                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-                        />
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white w-full max-w-3xl text-slate-900 relative shadow-2xl rounded-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]"
-                        >
-                            {/* Modal Header */}
-                            <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
-                                <div className="flex items-center gap-5">
-                                    <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-200 ring-4 ring-primary/5 shrink-0">
-                                        <Users className="w-7 h-7 text-primary" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-xl font-display font-bold text-slate-900">Reward Redemptions</h3>
-                                        <p className="text-xs text-slate-500 font-medium mt-0.5">
-                                            Tracking customers for: <span className="text-primary font-bold uppercase">{viewingRewardForCustomers.name}</span>
-                                        </p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setViewingRewardForCustomers(null)}
-                                    className="p-3 hover:bg-white hover:shadow-sm rounded-2xl transition-all border border-transparent hover:border-slate-200"
-                                >
-                                    <X size={20} className="text-slate-400" />
-                                </button>
-                            </div>
-
-                            {/* Modal Content - Mock List */}
-                            <div className="flex-grow overflow-y-auto p-8 scrollbar-hide">
-                                <div className="space-y-6">
-                                    {/* Mock Redemption List */}
-                                    {[
-                                        { name: "Chidi Okafor", email: "chidi.o@gmail.com", date: "2 mins ago", points: viewingRewardForCustomers.pointCost, status: "Verified" },
-                                        { name: "Fatima Yusuf", email: "f.yusuf@yahoo.com", date: "1 hour ago", points: viewingRewardForCustomers.pointCost, status: "Verified" },
-                                        { name: "Bolaji Adeyemi", email: "adeyemi.b@icloud.com", date: "Yesterday, 4:30 PM", points: viewingRewardForCustomers.pointCost, status: "Verified" },
-                                        { name: "Ngozi Obi", email: "ngozi@ngozi.com", date: "March 11, 2024", points: viewingRewardForCustomers.pointCost, status: "Verified" },
-                                        { name: "Emeka John", email: "emeka.j@gmail.com", date: "March 10, 2024", points: viewingRewardForCustomers.pointCost, status: "Verified" },
-                                    ].map((redemption, i) => (
-                                        <div key={i} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-primary/10 hover:shadow-sm transition-all group">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 group-hover:bg-primary/5 group-hover:text-primary transition-colors uppercase">
-                                                    {redemption.name.split(' ').map(n => n[0]).join('')}
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold text-slate-900">{redemption.name}</p>
-                                                    <p className="text-xs text-slate-400 font-medium">{redemption.email}</p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="flex items-center gap-2 justify-end">
-                                                    <Calendar size={12} className="text-slate-300" />
-                                                    <span className="text-xs font-bold text-slate-500">{redemption.date}</span>
-                                                </div>
-                                                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mt-1">
-                                                    -{redemption.points} Pts
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))}
-
-                                    <div className="py-4 text-center">
-                                        <p className="text-xs text-slate-400 font-medium italic">Showing the 5 most recent redemptions</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Modal Footer */}
-                            <div className="p-8 bg-slate-50 border-t border-slate-100 shrink-0">
-                                <button
-                                    onClick={() => setViewingRewardForCustomers(null)}
-                                    className="w-full py-4 bg-white border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-slate-50 transition-all"
-                                >
-                                    Close Overview
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>
+                    <RedemptionsModal 
+                        reward={viewingRewardForCustomers} 
+                        onClose={() => setViewingRewardForCustomers(null)} 
+                    />
                 )}
             </AnimatePresence>
         </div>

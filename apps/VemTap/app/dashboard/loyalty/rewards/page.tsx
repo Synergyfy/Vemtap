@@ -5,9 +5,8 @@ import { Loader2, LayoutTemplate, Info } from 'lucide-react';
 import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { RewardManager } from '@/components/loyalty/admin/RewardManager';
-import { useRewards, useCreateReward, useUpdateReward, useUpdateLoyaltyRules } from '@/services/loyalty/hooks';
+import { useRewards, useCreateReward, useUpdateReward, useLoyaltyTemplates, useApplyLoyaltyTemplate } from '@/services/loyalty/hooks';
 import { Reward, CreateRewardRequest, UpdateRewardRequest } from '@/services/loyalty/types';
-import { useLoyaltyTemplates } from '@/services/loyalty/templates';
 import Tooltip from '@/components/ui/Tooltip';
 import { notify } from '@/lib/notify';
 
@@ -15,9 +14,8 @@ export default function RewardManagementPage() {
     const { data: rewards, isLoading } = useRewards();
     const createMutation = useCreateReward();
     const updateMutation = useUpdateReward();
-    const updateRulesMutation = useUpdateLoyaltyRules();
-    const templates = useLoyaltyTemplates();
-    const [isApplying, setIsApplying] = useState<string | null>(null);
+    const { data: templates = [] } = useLoyaltyTemplates();
+    const applyTemplateMutation = useApplyLoyaltyTemplate();
 
     const handleCreate = async (reward: Partial<Reward>) => {
         const dto: CreateRewardRequest = {
@@ -49,34 +47,11 @@ export default function RewardManagementPage() {
     };
 
     const handleApplyTemplate = async (templateId: string) => {
-        const template = templates.find((t) => t.id === templateId);
-        if (!template) return;
-
-        setIsApplying(templateId);
         try {
-            if (template.rules) {
-                const { ruleType, ...ruleUpdates } = template.rules;
-                await updateRulesMutation.mutateAsync(ruleUpdates);
-            }
-            for (const reward of template.rewards) {
-                const dto: CreateRewardRequest = {
-                    name: reward.name,
-                    description: reward.description || '',
-                    rewardType: reward.rewardType || 'free_item',
-                    pointCost: reward.pointCost || 100,
-                    value: reward.value || 0,
-                    validityDays: reward.validityDays || 30,
-                    usageLimitPerUser: reward.usageLimitPerUser || 1,
-                    totalAvailable: reward.totalAvailable || 0,
-                    imageUrl: reward.imageUrl,
-                };
-                await createMutation.mutateAsync(dto);
-            }
-            notify.success('Template applied to your loyalty program');
+            await applyTemplateMutation.mutateAsync(templateId);
+            notify.success('Template applied successfully');
         } catch (error) {
-            notify.error('Failed to apply template. Please try again.');
-        } finally {
-            setIsApplying(null);
+            notify.error('Failed to apply template');
         }
     };
 
@@ -131,10 +106,10 @@ export default function RewardManagementPage() {
                                 </div>
                                 <button
                                     onClick={() => handleApplyTemplate(template.id)}
-                                    disabled={isApplying === template.id}
+                                    disabled={applyTemplateMutation.isPending}
                                     className="w-full h-11 rounded-2xl bg-primary text-white text-xs font-black uppercase tracking-widest disabled:opacity-60"
                                 >
-                                    {isApplying === template.id ? 'Applying...' : 'Use Template'}
+                                    {applyTemplateMutation.isPending && applyTemplateMutation.variables === template.id ? 'Applying...' : 'Use Template'}
                                 </button>
                             </div>
                         ))}
