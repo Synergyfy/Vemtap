@@ -65,4 +65,8 @@ export class Reward extends AbstractBaseEntity {
   @ApiProperty({ description: 'Image URL' })
   @Column({ nullable: true })
   imageUrl: string;
+
+  @ApiProperty({ description: 'Image URLs array', type: [String], nullable: true })
+  @Column('simple-array', { nullable: true })
+  imageUrls: string[];
 }

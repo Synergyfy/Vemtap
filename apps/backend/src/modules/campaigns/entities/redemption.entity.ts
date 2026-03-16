@@ -7,8 +7,8 @@ import { Branch } from '../../branches/entities/branch.entity';
 
 @Entity('redemptions')
 export class Redemption extends AbstractBaseEntity {
-  @ApiProperty({ description: 'Loyalty profile ID' })
-  @Column()
+  @ApiProperty({ description: 'Loyalty profile ID', nullable: true })
+  @Column({ nullable: true })
   loyaltyProfileId: string;
 
   @ApiProperty({ description: 'Reward ID' })

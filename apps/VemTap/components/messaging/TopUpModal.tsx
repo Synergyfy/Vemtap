@@ -21,7 +21,7 @@ export default function TopUpModal({ isOpen, onClose, onSuccess }: TopUpModalPro
 
     const { data: creditPlans, isLoading, error } = useQuery({
         queryKey: ['credit-plans'],
-        queryFn: fetchCreditPlans,
+        queryFn: () => fetchCreditPlans(),
         enabled: isOpen,
     });
 

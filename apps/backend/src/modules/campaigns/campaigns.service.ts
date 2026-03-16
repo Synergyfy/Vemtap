@@ -25,6 +25,8 @@ import {
   RewardRedeemRequestDto,
   UpdateLoyaltyRuleDto,
   GenerateRedemptionCodeDto,
+  CreateLoyaltyTemplateDto,
+  UpdateLoyaltyTemplateDto,
 } from './dto/loyalty.dto';
 
 @Injectable()
@@ -67,7 +69,7 @@ export class CampaignsService {
       ...createCampaignDto,
       branchId,
       businessId: branch.businessId,
-    } as any) as unknown as Campaign;
+    } as Partial<Campaign>) as unknown as Campaign;
 
     (campaign as any).sent = 0;
     (campaign as any).delivered = '0%';
@@ -179,7 +181,7 @@ export class CampaignsService {
       ...dto,
       branchId: branchId ?? null,
       businessId,
-    } as any) as unknown as CampaignTemplate;
+    } as Partial<CampaignTemplate>) as unknown as CampaignTemplate;
 
     return this.templateRepository.save(template);
   }
@@ -219,7 +221,7 @@ export class CampaignsService {
         tierLevel: 'bronze',
         points: 0,
         currentPointsBalance: 0,
-      } as any) as unknown as LoyaltyProfile;
+      } as Partial<LoyaltyProfile>) as unknown as LoyaltyProfile;
       await this.profileRepository.save(profile);
     }
     return profile;
@@ -251,7 +253,7 @@ export class CampaignsService {
         rule = this.ruleRepository.create({
           branchId,
           businessId: branch.businessId,
-        } as any) as unknown as LoyaltyRule;
+        } as Partial<LoyaltyRule>) as unknown as LoyaltyRule;
         await this.ruleRepository.save(rule);
       } else {
         throw new NotFoundException('Loyalty rule not found');
@@ -290,7 +292,7 @@ export class CampaignsService {
       ...dto,
       branchId,
       businessId: branch.businessId,
-    } as any) as unknown as Reward;
+    } as Partial<Reward>) as unknown as Reward;
     return this.rewardRepository.save(reward);
   }
 
@@ -319,12 +321,11 @@ export class CampaignsService {
     return [];
   }
 
-  async earnPoints(branchId: string, dto: PointEarnRequestDto): Promise<any> {
+  async earnPoints(branchId: string, dto: PointEarnRequestDto): Promise<{ success: boolean; pointsEarned: number; newBalance: number; message: string }> {
     const branch = await this.branchesService.findById(branchId);
     if (!branch) throw new NotFoundException('Branch not found');
 
-    // We need to fetch the business to get the ownerId
-    const business = await (this as any).ruleRepository.manager
+    const business = await this.ruleRepository.manager
       .getRepository(Business)
       .findOne({
         where: { id: branch.businessId },
@@ -334,6 +335,7 @@ export class CampaignsService {
       return {
         success: false,
         pointsEarned: 0,
+        newBalance: 0,
         message: 'Owners cannot earn points at their own business.',
       };
     }
@@ -437,7 +439,7 @@ export class CampaignsService {
             email: user.email,
             phone: user.phone,
             name: `${user.firstName} ${user.lastName}`,
-          } as any) as unknown as Contact;
+          } as Partial<Contact>) as unknown as Contact;
           contact = await this.contactRepo.save(newContact);
         }
 
@@ -463,7 +465,7 @@ export class CampaignsService {
             ? 'Visit'
             : 'Purchase',
       metadata: breakdown,
-    } as any) as unknown as PointTransaction;
+    } as Partial<PointTransaction>) as unknown as PointTransaction;
     await this.transactionRepository.save(transaction);
 
     return {
@@ -471,14 +473,13 @@ export class CampaignsService {
       pointsEarned: earned,
       newBalance: profile.currentPointsBalance,
       message: `Congratulations! You earned ${earned} points.`,
-      breakdown,
     };
   }
 
   async redeemReward(
     branchId: string,
     dto: RewardRedeemRequestDto,
-  ): Promise<any> {
+  ): Promise<{ success: boolean; redemption?: Redemption; error?: string }> {
     const profile = await this.profileRepository.findOne({
       where: { id: dto.loyaltyProfileId, branchId },
     });
@@ -489,8 +490,7 @@ export class CampaignsService {
     if (!profile || !reward)
       return { success: false, error: 'Profile or Reward not found' };
 
-    const pointCost =
-      (reward as any).pointCost || (reward as any).pointsRequired;
+    const pointCost = reward.pointCost;
 
     if (profile.currentPointsBalance < pointCost)
       return { success: false, error: 'Insufficient points' };
@@ -514,7 +514,7 @@ export class CampaignsService {
       pointsSpent: pointCost,
       status: 'pending',
       expiresAt,
-    } as any) as unknown as Redemption;
+    } as Partial<Redemption>) as unknown as Redemption;
     await this.redemptionRepository.save(redemption);
 
     reward.totalRedeemed += 1;
@@ -528,7 +528,7 @@ export class CampaignsService {
       points: -pointCost,
       reason: `Redeemed ${reward.name}`,
       referenceId: redemption.id,
-    } as any) as unknown as PointTransaction;
+    } as Partial<PointTransaction>) as unknown as PointTransaction;
     await this.transactionRepository.save(transaction);
 
     return { success: true, redemption };
@@ -538,7 +538,7 @@ export class CampaignsService {
     branchId: string,
     dto: GenerateRedemptionCodeDto,
     generatedByUserId: string,
-  ): Promise<any> {
+  ): Promise<Redemption> {
     const reward = await this.rewardRepository.findOne({
       where: { id: dto.rewardId, branchId },
     });
@@ -558,8 +558,8 @@ export class CampaignsService {
       status: 'pending',
       expiresAt,
       generatedByUserId,
-      loyaltyProfileId: dto.loyaltyProfileId, // Optional, can be assigned later during claim
-    } as any) as unknown as Redemption;
+      loyaltyProfileId: dto.loyaltyProfileId,
+    } as Partial<Redemption>) as unknown as Redemption;
 
     return this.redemptionRepository.save(redemption);
   }
@@ -568,7 +568,7 @@ export class CampaignsService {
     userId: string,
     branchId: string,
     code: string,
-  ): Promise<any> {
+  ): Promise<{ success: boolean; redemption: Redemption }> {
     const redemption = await this.redemptionRepository.findOne({
       where: { redemptionCode: code, status: 'pending' },
       relations: ['reward'],
@@ -608,7 +608,7 @@ export class CampaignsService {
         points: -redemption.pointsSpent,
         reason: `Claimed Reward: ${redemption.reward.name}`,
         referenceId: redemption.id,
-      } as any) as unknown as PointTransaction;
+      } as Partial<PointTransaction>) as unknown as PointTransaction;
       await manager.save(transaction);
 
       return { success: true, redemption };
@@ -634,16 +634,16 @@ export class CampaignsService {
     return templates;
   }
 
-  async createLoyaltyTemplate(data: any): Promise<LoyaltyTemplate> {
-    const template = this.loyaltyTemplateRepository.create(data);
+  async createLoyaltyTemplate(data: CreateLoyaltyTemplateDto): Promise<LoyaltyTemplate> {
+    const template = this.loyaltyTemplateRepository.create(data as Partial<LoyaltyTemplate>) as unknown as LoyaltyTemplate;
     return this.loyaltyTemplateRepository.save(template);
   }
 
-  async updateLoyaltyTemplate(id: string, updates: any): Promise<LoyaltyTemplate> {
+  async updateLoyaltyTemplate(id: string, updates: UpdateLoyaltyTemplateDto): Promise<LoyaltyTemplate> {
     const template = await this.loyaltyTemplateRepository.findOne({ where: { id } });
     if (!template) throw new NotFoundException('Template not found');
     Object.assign(template, updates);
-    return this.loyaltyTemplateRepository.save(template);
+    return this.loyaltyTemplateRepository.save(template as any);
   }
 
   async deleteLoyaltyTemplate(id: string): Promise<void> {
@@ -651,7 +651,7 @@ export class CampaignsService {
     if (result.affected === 0) throw new NotFoundException('Template not found');
   }
 
-  async applyLoyaltyTemplate(branchId: string, templateId: string): Promise<any> {
+  async applyLoyaltyTemplate(branchId: string, templateId: string): Promise<{ success: boolean; message: string }> {
     const template = await this.loyaltyTemplateRepository.findOne({
       where: { id: templateId },
     });
@@ -762,7 +762,7 @@ export class CampaignsService {
       },
     ];
 
-    const templates = this.loyaltyTemplateRepository.create(seeds as any);
-    return this.loyaltyTemplateRepository.save(templates);
+    const templates = this.loyaltyTemplateRepository.create(seeds as Partial<LoyaltyTemplate>[]) as unknown as LoyaltyTemplate[];
+    return this.loyaltyTemplateRepository.save(templates as any);
   }
 }

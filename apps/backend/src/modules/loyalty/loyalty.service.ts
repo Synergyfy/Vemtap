@@ -19,12 +19,15 @@ import {
   CreateLoyaltyRewardDto,
   UpdateLoyaltyRuleDto,
   GenerateRedemptionCodeDto,
+  CreateLoyaltyTemplateDto,
+  UpdateLoyaltyTemplateDto,
 } from '../campaigns/dto/loyalty.dto';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import { Visit } from '../visitors/entities/visit.entity';
 import { User } from '../users/entities/user.entity';
 import { BranchesService } from '../branches/branches.service';
 import { LoyaltyRule } from '../campaigns/entities/loyalty-rule.entity';
+import { LoyaltyTemplate } from '../campaigns/entities/loyalty-template.entity';
 
 export interface CustomerAnalyticsResponse {
   totalVisits: number;
@@ -40,6 +43,26 @@ export interface BusinessLoyaltyStatsResponse {
   tierDistribution: { label: string; value: number; color: string }[];
   activityTrend: { name: string; earnings: number; claims: number }[];
   growthForecast: string;
+}
+
+export interface TapResponse {
+  success: boolean;
+  pointsEarned: number;
+  newBalance?: number;
+  message: string;
+}
+
+export interface DeviceInfoResponse {
+  id: string;
+  name: string;
+  code: string;
+  branchId: string;
+  branchName: string;
+  branch: any; // Branch entity has complex circular refs, usually okay to leave or use Partial
+  business: any;
+  businessId: string;
+  userProfile: LoyaltyProfile | null;
+  isFirstTimeVisit: boolean;
 }
 
 @Injectable()
@@ -106,7 +129,7 @@ export class LoyaltyService {
         currentPointsBalance: 0,
         totalPointsEarned: 0,
         pointsRedeemed: 0,
-      } as any) as unknown as LoyaltyProfile;
+      } as Partial<LoyaltyProfile>) as unknown as LoyaltyProfile;
       await this.loyaltyProfileRepository.save(profile);
     }
 
@@ -158,7 +181,7 @@ export class LoyaltyService {
       businessId: branch.businessId,
       totalRedeemed: 0,
       isActive: true,
-    } as any) as unknown as Reward;
+    } as Partial<Reward>) as unknown as Reward;
     return this.rewardRepository.save(reward);
   }
 
@@ -201,7 +224,7 @@ export class LoyaltyService {
         status: 'pending',
         redemptionCode,
         expiresAt,
-      } as any) as unknown as Redemption;
+      } as Partial<Redemption>) as unknown as Redemption;
 
       const savedRedemption = await manager.save(redemption);
 
@@ -214,16 +237,24 @@ export class LoyaltyService {
         points: -pointCost,
         reason: `Redeemed Reward: ${reward.name}`,
         referenceId: savedRedemption.id,
-      } as any) as unknown as PointTransaction;
+      } as Partial<PointTransaction>) as unknown as PointTransaction;
       await manager.save(transaction);
 
       return savedRedemption;
     });
   }
 
+  async getRewardRedemptions(rewardId: string, branchId: string): Promise<Redemption[]> {
+    return this.redemptionRepository.find({
+      where: { rewardId, branchId },
+      relations: ['loyaltyProfile', 'loyaltyProfile.user'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   // --- Transactions ---
 
-  async earnPoints(branchId: string, dto: EarnPointsDto): Promise<any> {
+  async earnPoints(branchId: string, dto: EarnPointsDto): Promise<{ success: boolean; pointsEarned: number; newBalance: number; message: string }> {
     return this.campaignsService.earnPoints(branchId, dto);
   }
 
@@ -256,11 +287,23 @@ export class LoyaltyService {
 
   // --- Templates ---
 
-  async getLoyaltyTemplates() {
+  async getLoyaltyTemplates(): Promise<LoyaltyTemplate[]> {
     return this.campaignsService.getLoyaltyTemplates();
   }
 
-  async applyLoyaltyTemplate(branchId: string, templateId: string) {
+  async createLoyaltyTemplate(data: CreateLoyaltyTemplateDto): Promise<LoyaltyTemplate> {
+    return this.campaignsService.createLoyaltyTemplate(data);
+  }
+
+  async updateLoyaltyTemplate(id: string, updates: UpdateLoyaltyTemplateDto): Promise<LoyaltyTemplate> {
+    return this.campaignsService.updateLoyaltyTemplate(id, updates);
+  }
+
+  async deleteLoyaltyTemplate(id: string): Promise<void> {
+    return this.campaignsService.deleteLoyaltyTemplate(id);
+  }
+
+  async applyLoyaltyTemplate(branchId: string, templateId: string): Promise<{ success: boolean; message: string }> {
     return this.campaignsService.applyLoyaltyTemplate(branchId, templateId);
   }
 
@@ -270,13 +313,13 @@ export class LoyaltyService {
     return this.campaignsService.generateRedemptionCode(branchId, dto, staffId);
   }
 
-  async claimRedemptionCode(userId: string, branchId: string, code: string): Promise<any> {
+  async claimRedemptionCode(userId: string, branchId: string, code: string): Promise<{ success: boolean; redemption: Redemption }> {
     return this.campaignsService.claimRedemptionCode(userId, branchId, code);
   }
 
   // --- Taps ---
 
-  async processTap(userId: string, code: string): Promise<any> {
+  async processTap(userId: string, code: string): Promise<{ success: boolean; pointsEarned: number; newBalance?: number; message: string }> {
     const device = await this.devicesService.findByCode(code);
     if (!device) throw new NotFoundException('Device not found');
 
@@ -291,7 +334,18 @@ export class LoyaltyService {
     return this.earnPoints(device.branchId, { userId, isVisit: true });
   }
 
-  async getDeviceByCode(code: string, userId?: string): Promise<any> {
+  async getDeviceByCode(code: string, userId?: string): Promise<{
+    id: string;
+    name: string;
+    code: string;
+    branchId: string;
+    branchName: string;
+    branch: any;
+    business: any;
+    businessId: string;
+    userProfile: LoyaltyProfile | null;
+    isFirstTimeVisit: boolean;
+  }> {
     const device = await this.devicesService.findByCode(code);
     if (!device) throw new NotFoundException('Device not found');
 
@@ -387,15 +441,15 @@ export class LoyaltyService {
     branchId?: string,
     businessId?: string,
   ): Promise<BusinessLoyaltyStatsResponse> {
-    const where: FindOptionsWhere<LoyaltyProfile> = {};
-    if (branchId) where.branchId = branchId;
-    else if (businessId) where.businessId = businessId;
+    const profileWhere: FindOptionsWhere<LoyaltyProfile> = {};
+    if (branchId) profileWhere.branchId = branchId;
+    else if (businessId) profileWhere.businessId = businessId;
 
-    const profiles = await this.loyaltyProfileRepository.find({ where });
+    const profiles = await this.loyaltyProfileRepository.find({ where: profileWhere });
     const totalMembers = profiles.length;
 
     const transactions = await this.transactionRepository.find({
-      where: { businessId: businessId || undefined, branchId: branchId || undefined } as any,
+      where: { businessId: businessId || undefined, branchId: branchId || undefined },
     });
     const totalPointsIssued = transactions.reduce(
       (sum, t) => sum + (t.pointsAmount > 0 ? t.pointsAmount : 0),
@@ -403,7 +457,7 @@ export class LoyaltyService {
     );
 
     const redemptions = await this.redemptionRepository.find({
-      where: { businessId: businessId || undefined, branchId: branchId || undefined } as any,
+      where: { businessId: businessId || undefined, branchId: branchId || undefined },
     });
     const totalRedemptions = redemptions.length;
 

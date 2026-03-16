@@ -9,6 +9,7 @@ import {
   Request,
   BadRequestException,
   Patch,
+  Delete,
 } from '@nestjs/common';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -22,13 +23,14 @@ import {
   BranchQueryDto,
   GenerateRedemptionCodeDto,
   ClaimCodeDto,
+  CreateLoyaltyTemplateDto,
+  UpdateLoyaltyTemplateDto,
 } from '../campaigns/dto/loyalty.dto';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiQuery,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -39,6 +41,7 @@ import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
 import { Reward } from '../campaigns/entities/reward.entity';
 import { Redemption } from '../campaigns/entities/redemption.entity';
 import { LoyaltyRule } from '../campaigns/entities/loyalty-rule.entity';
+import { LoyaltyTemplate } from '../campaigns/entities/loyalty-template.entity';
 
 @ApiTags('Loyalty & Rewards')
 @ApiBearerAuth()
@@ -134,7 +137,7 @@ export class LoyaltyController {
   @SkipSubscriptionCheck()
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Get loyalty program templates' })
-  async getTemplates() {
+  async getTemplates(): Promise<LoyaltyTemplate[]> {
     return this.loyaltyService.getLoyaltyTemplates();
   }
 
@@ -142,7 +145,7 @@ export class LoyaltyController {
   @SkipSubscriptionCheck()
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a new loyalty template (System Admin only)' })
-  async createTemplate(@Body() data: any) {
+  async createTemplate(@Body() data: CreateLoyaltyTemplateDto): Promise<LoyaltyTemplate> {
     return this.loyaltyService.createLoyaltyTemplate(data);
   }
 
@@ -150,7 +153,7 @@ export class LoyaltyController {
   @SkipSubscriptionCheck()
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Update a loyalty template (System Admin only)' })
-  async updateTemplate(@Param('id') id: string, @Body() data: any) {
+  async updateTemplate(@Param('id') id: string, @Body() data: UpdateLoyaltyTemplateDto): Promise<LoyaltyTemplate> {
     return this.loyaltyService.updateLoyaltyTemplate(id, data);
   }
 
@@ -158,7 +161,7 @@ export class LoyaltyController {
   @SkipSubscriptionCheck()
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Delete a loyalty template (System Admin only)' })
-  async deleteTemplate(@Param('id') id: string) {
+  async deleteTemplate(@Param('id') id: string): Promise<void> {
     return this.loyaltyService.deleteLoyaltyTemplate(id);
   }
 
@@ -169,7 +172,7 @@ export class LoyaltyController {
     @Param('id') id: string,
     @Request() req: { user: User },
     @Query('branchId') branchId?: string,
-  ) {
+  ): Promise<{ success: boolean; message: string }> {
     const targetBranchId = await this.getBranchId(req, branchId);
     return this.loyaltyService.applyLoyaltyTemplate(targetBranchId, id);
   }
@@ -185,7 +188,7 @@ export class LoyaltyController {
   @Post('claim-code')
   @Roles(UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Customer claims a reward using a 9-digit code' })
-  async claimCode(@Request() req: { user: User }, @Body() dto: ClaimCodeDto): Promise<any> {
+  async claimCode(@Request() req: { user: User }, @Body() dto: ClaimCodeDto): Promise<{ success: boolean; redemption: Redemption }> {
     const branchId = await this.getBranchId(req, dto.branchId);
     return this.loyaltyService.claimRedemptionCode(req.user.id, branchId, dto.code);
   }
@@ -217,7 +220,7 @@ export class LoyaltyController {
   @Post('earn')
   @Roles(UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
   @ApiOperation({ summary: 'Manually award points to a customer' })
-  async earnPoints(@Request() req: { user: User }, @Body() dto: EarnPointsDto): Promise<any> {
+  async earnPoints(@Request() req: { user: User }, @Body() dto: EarnPointsDto): Promise<{ success: boolean; pointsEarned: number; newBalance: number; message: string }> {
     const branchId = await this.getBranchId(req, dto.branchId);
     return this.loyaltyService.earnPoints(branchId, dto);
   }
@@ -230,6 +233,18 @@ export class LoyaltyController {
   async createReward(@Request() req: { user: User }, @Body() dto: CreateLoyaltyRewardDto): Promise<Reward> {
     const branchId = await this.getBranchId(req, dto.branchId);
     return this.loyaltyService.createReward(branchId, dto);
+  }
+
+  @Get('rewards/:id/redemptions')
+  @Roles(UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
+  @ApiOperation({ summary: 'Get redemptions for a specific reward' })
+  async getRewardRedemptions(
+    @Param('id') id: string,
+    @Request() req: { user: User },
+    @Query('branchId') branchId?: string,
+  ): Promise<Redemption[]> {
+    const targetBranchId = await this.getBranchId(req, branchId);
+    return this.loyaltyService.getRewardRedemptions(id, targetBranchId);
   }
 
   @Public()
