@@ -157,8 +157,13 @@ export const useCreateReward = (branchId?: string) => {
 
     return useMutation<Reward, Error, CreateRewardRequest>({
         mutationFn: async (dto) => {
-            const url = resolvedBranchId ? `/loyalty/rewards/create?branchId=${resolvedBranchId}` : '/loyalty/rewards/create';
-            return await api.post(url, dto);
+            const params = new URLSearchParams();
+            // Try DTO, then hook arg, then resolved branch
+            const bId = dto.branchId || branchId || resolvedBranchId;
+            if (bId && bId !== 'all') {
+                params.append('branchId', bId);
+            }
+            return await api.post(`/loyalty/rewards/create?${params.toString()}`, dto);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'rewards'] });
@@ -173,7 +178,10 @@ export const useUpdateReward = (branchId?: string) => {
     return useMutation<Reward, Error, { id: string; updates: UpdateRewardRequest }>({
         mutationFn: async ({ id, updates }) => {
             const params = new URLSearchParams();
-            if (resolvedBranchId) params.append('branchId', resolvedBranchId);
+            const bId = updates.branchId || branchId || resolvedBranchId;
+            if (bId && bId !== 'all') {
+                params.append('branchId', bId);
+            }
             return await api.patch(`/loyalty/rewards/${id}?${params.toString()}`, updates);
         },
         onSuccess: () => {
