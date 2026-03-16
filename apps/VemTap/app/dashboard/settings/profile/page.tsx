@@ -114,7 +114,7 @@ export default function BusinessProfilePage() {
             setLogo(source.logoUrl || '');
             
             // For categories/location, prioritize business-level data if it's main branch or all-branches
-            const catSource = business || source;
+            const catSource = (business || source) as any;
             setCategoryId(catSource.categoryId || '');
             setSubcategoryId(catSource.subcategoryId || '');
             setOtherSubcategoryName(catSource.otherSubcategoryName || '');

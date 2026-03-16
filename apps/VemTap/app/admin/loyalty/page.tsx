@@ -163,17 +163,18 @@ export default function AdminLoyaltyPage() {
         setIsSubmitting(true);
         try {
             // Process pending images in rewards
-            const finalRewards = await Promise.all(draft.rewards.map(async (r) => {
+            const finalRewards = await Promise.all(draft.rewards.map(async (r: any) => {
                 const existingUrls = r.imageUrls || [];
                 const pendingBase64s = r.localPendingImages || [];
 
                 let uploadedUrls: string[] = [];
                 if (pendingBase64s.length > 0) {
-                    uploadedUrls = await Promise.all(pendingBase64s.map(b64 => uploadImage(b64)));
+                    uploadedUrls = await Promise.all(pendingBase64s.map((b64: string) => uploadImage(b64)));
                 }
                 const allUrls = [...existingUrls, ...uploadedUrls];
 
                 return {
+                    id: r.id, // Include id to satisfy TemplateReward type
                     name: r.name || 'Unnamed Reward',
                     description: r.description || '',
                     pointCost: r.pointCost || 0,
@@ -261,7 +262,7 @@ export default function AdminLoyaltyPage() {
 
     const handleRewardImageAdd = (rewardId: string, files?: FileList | null) => {
         if (!files || files.length === 0) return;
-        const reward = draft.rewards.find(r => r.id === rewardId);
+        const reward = draft.rewards.find(r => r.id === rewardId) as any;
         const currentPending = reward?.localPendingImages || [];
         const newImages: string[] = [];
         let processed = 0;
@@ -738,7 +739,7 @@ export default function AdminLoyaltyPage() {
                                                                         </button>
                                                                     </div>
                                                                 ))}
-                                                                {reward.localPendingImages?.map((base64, idx) => (
+                                                                {(reward as any).localPendingImages?.map((base64: string, idx: number) => (
                                                                     <div key={`pending-${idx}`} className="group relative w-16 h-16 border-2 border-primary/20 rounded-lg bg-slate-50 overflow-hidden shadow-sm">
                                                                         <img src={base64} alt="pending" className="w-full h-full object-cover" />
                                                                         <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
@@ -746,7 +747,7 @@ export default function AdminLoyaltyPage() {
                                                                         </div>
                                                                         <button
                                                                             onClick={() => {
-                                                                                const next = [...(reward.localPendingImages || [])];
+                                                                                const next = [...((reward as any).localPendingImages || [])];
                                                                                 next.splice(idx, 1);
                                                                                 updateReward(reward.id, { localPendingImages: next });
                                                                             }}
