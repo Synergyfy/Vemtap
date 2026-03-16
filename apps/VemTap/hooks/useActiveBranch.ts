@@ -41,6 +41,9 @@ export function useActiveBranch() {
             params.delete('branchId');
         }
         
+        // Sync to store immediately for smoother transition
+        setStoreBranch(cleanId);
+        
         const query = params.toString();
         const newUrl = `${pathname}${query ? `?${query}` : ''}`;
         

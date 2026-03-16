@@ -60,6 +60,7 @@ const DOCS: Category[] = [
           { id: 'messaging-sms', title: 'SMS', path: '/dashboard/messaging/sms', summary: 'SMS flows, templates, settings.' },
           { id: 'messaging-whatsapp', title: 'WhatsApp', path: '/dashboard/messaging/whatsapp', summary: 'WhatsApp campaigns and templates.' },
           { id: 'messaging-email', title: 'Email', path: '/dashboard/messaging/email', summary: 'Email campaigns and templates.' },
+          { id: 'settings-messages', title: 'Engagement Messages', path: '/dashboard/messaging/settings', summary: 'Customer-facing copy and flow text.' },
         ],
       },
       {
@@ -120,7 +121,6 @@ const DOCS: Category[] = [
         pages: [
           { id: 'settings-engagement', title: 'Engagement', path: '/dashboard/settings/engagement', summary: 'Engagement control center.' },
           { id: 'settings-socials', title: 'Socials', path: '/dashboard/settings/engagement/socials', summary: 'Social destination links.' },
-          { id: 'settings-messages', title: 'Messages', path: '/dashboard/settings/messages', summary: 'Customer-facing copy and flow text.' },
         ],
       },
       {

@@ -189,6 +189,26 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             roles: ['owner', 'manager', 'staff'],
         },
         {
+            id: 'messaging-center',
+            label: 'Messaging Center',
+            icon: MessageSquare,
+            roles: ['owner', 'manager'],
+            submenu: [
+                { label: 'Overview', href: '/dashboard/messaging' },
+                {
+                    id: 'messaging-hub',
+                    label: 'Channels',
+                    submenu: [
+                        { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp' },
+                        { label: 'SMS', href: '/dashboard/messaging/sms' },
+                        { label: 'Email', href: '/dashboard/messaging/email' },
+                    ]
+                },
+                { label: 'History', href: '/dashboard/messaging/history' },
+                { label: 'Message Settings', href: '/dashboard/messaging/settings' },
+            ]
+        },
+        {
             id: 'loyalty',
             label: 'Loyalty',
             icon: Gift,
@@ -255,16 +275,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             submenu: [
                 { label: 'Profile', href: '/dashboard/settings/profile' },
                 { label: 'Business Locations', href: '/dashboard/settings/branches' },
-                {
-                    id: 'messaging-hub',
-                    label: 'Messaging Channels',
-                    submenu: [
-                        { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp' },
-                        { label: 'SMS', href: '/dashboard/messaging/sms' },
-                        { label: 'Email', href: '/dashboard/messaging/email' },
-                        { label: 'History', href: '/dashboard/messaging/history' },
-                    ]
-                },
                 {
                     id: 'engagement',
                     label: 'Engagement',

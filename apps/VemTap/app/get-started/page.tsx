@@ -88,7 +88,7 @@ export default function GetStarted() {
         subcategory: '',
         subcategoryId: '',
         selectedRole: 'Owner' as 'Owner' | 'Manager',
-        branchCount: '',
+        branchCount: '1',
         visitors: '',
         whatsappNumber: '',
         phone: '',
@@ -111,12 +111,46 @@ export default function GetStarted() {
     });
 
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
+    
     const { data: categoryData, isLoading: isCategoriesLoading } = useCategories({ limit: 100 });
     const categories = categoryData?.items || [];
 
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const goals = ['Capture Leads', 'Automated Rewards', 'Customer Feedback', 'Digital Loyalty'];
+
+    const PASSWORD_REQUIREMENTS = [
+        { label: 'At least 8 characters', regex: /.{8,}/ },
+        { label: 'At least one uppercase letter', regex: /[A-Z]/ },
+        { label: 'At least one lowercase letter', regex: /[a-z]/ },
+        { label: 'At least one number', regex: /[0-9]/ },
+        { label: 'At least one special symbol', regex: /[!@#$%^&*(),.?":{}|<>]/ },
+    ];
+
+    const checkRequirement = (regex: RegExp) => regex.test(formData.password);
+    
+    const calculateStrength = () => {
+        const metCount = PASSWORD_REQUIREMENTS.filter(req => checkRequirement(req.regex)).length;
+        const percentage = (metCount / PASSWORD_REQUIREMENTS.length) * 100;
+        let color = 'bg-red-500';
+        let label = 'Weak';
+
+        if (percentage > 40 && percentage <= 60) {
+            color = 'bg-yellow-500';
+            label = 'Medium';
+        } else if (percentage > 60 && percentage <= 80) {
+            color = 'bg-blue-500';
+            label = 'Strong';
+        } else if (percentage > 80) {
+            color = 'bg-green-500';
+            label = 'Very Strong';
+        }
+
+        return { percentage, color, label };
+    };
+
+    const strength = calculateStrength();
 
     const isManager = formData.selectedRole === 'Manager';
     const maxSubStep = isManager ? 3 : 9;
@@ -401,20 +435,69 @@ export default function GetStarted() {
                                         />
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <SanitizedInput
-                                                label="Password"
-                                                type="password"
-                                                value={formData.password}
-                                                onChange={(v) => { setFormData({ ...formData, password: v }); setFieldErrors(prev => ({ ...prev, password: '' })); }}
-                                                icon="lock"
-                                                placeholder="••••••••"
-                                                required
-                                                tooltip="Min 8 characters, with uppercase, lowercase, number and symbol"
-                                                error={fieldErrors.password}
-                                                showPasswordToggle
-                                                showPassword={showPassword}
-                                                onTogglePassword={() => setShowPassword(!showPassword)}
-                                            />
+                                            <div className="space-y-2">
+                                                <SanitizedInput
+                                                    label="Password"
+                                                    type="password"
+                                                    value={formData.password}
+                                                    onChange={(v) => { 
+                                                        setFormData({ ...formData, password: v }); 
+                                                        setFieldErrors(prev => ({ ...prev, password: '' })); 
+                                                    }}
+                                                    onFocus={() => setShowPasswordRequirements(true)}
+                                                    onBlur={() => setShowPasswordRequirements(false)}
+                                                    icon="lock"
+                                                    placeholder="••••••••"
+                                                    required
+                                                    tooltip="Min 8 characters, with uppercase, lowercase, number and symbol"
+                                                    error={fieldErrors.password}
+                                                    showPasswordToggle
+                                                    showPassword={showPassword}
+                                                    onTogglePassword={() => setShowPassword(!showPassword)}
+                                                />
+                                                
+                                                <AnimatePresence>
+                                                    {(showPasswordRequirements || formData.password) && (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, height: 0 }}
+                                                            animate={{ opacity: 1, height: 'auto' }}
+                                                            exit={{ opacity: 0, height: 0 }}
+                                                            className="space-y-3 overflow-hidden"
+                                                        >
+                                                            <div className="space-y-1.5">
+                                                                <div className="flex justify-between items-center px-1">
+                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Strength: {strength.label}</span>
+                                                                    <span className="text-[10px] font-black text-text-main">{Math.round(strength.percentage)}%</span>
+                                                                </div>
+                                                                <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                                                                    <motion.div 
+                                                                        className={`h-full ${strength.color}`}
+                                                                        initial={{ width: 0 }}
+                                                                        animate={{ width: `${strength.percentage}%` }}
+                                                                        transition={{ duration: 0.3 }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-1 gap-1.5 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                                                {PASSWORD_REQUIREMENTS.map((req, idx) => {
+                                                                    const isMet = checkRequirement(req.regex);
+                                                                    return (
+                                                                        <div key={idx} className="flex items-center gap-2">
+                                                                            <div className={`size-4 rounded-full flex items-center justify-center transition-colors ${isMet ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                                                                                <span className="material-icons-round text-[10px]">{isMet ? 'check' : 'close'}</span>
+                                                                            </div>
+                                                                            <span className={`text-[10px] font-bold tracking-tight transition-colors ${isMet ? 'text-green-600' : 'text-text-secondary'}`}>
+                                                                                {req.label}
+                                                                            </span>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
                                             <SanitizedInput
                                                 label="Confirm Password"
                                                 type="password"
@@ -745,18 +828,25 @@ export default function GetStarted() {
                                             </motion.div>
                                         )}
 
+                                        {subStep === 4 && !isManager && (
                                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
                                                 <SanitizedInput
                                                     label="Number of Business Locations"
                                                     type="number"
                                                     value={formData.branchCount}
-                                                    onChange={(v) => setFormData({ ...formData, branchCount: v })}
+                                                    onChange={(v) => {
+                                                        const num = parseInt(v);
+                                                        if (num < 1) return;
+                                                        setFormData({ ...formData, branchCount: v });
+                                                    }}
                                                     icon="store"
                                                     placeholder="e.g. 1"
                                                     required
+                                                    min="1"
                                                     tooltip="Include your main location and all branches."
                                                 />
                                             </motion.div>
+                                        )}
 
 
                                         {subStep === 5 && !isManager && (
