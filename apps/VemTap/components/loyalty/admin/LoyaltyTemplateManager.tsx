@@ -7,6 +7,7 @@ import { LoyaltyTemplate, TemplateReward, TemplateStatus } from '@/services/loya
 import { cn } from '@/lib/utils';
 import Tooltip from '@/components/ui/Tooltip';
 import { notify } from '@/lib/notify';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type Step = 1 | 2 | 3;
 type TemplateView = 'grid' | 'list';
@@ -14,17 +15,19 @@ type ScreenMode = 'list' | 'builder';
 
 interface LoyaltyTemplateManagerProps {
     templates: LoyaltyTemplate[];
-    onCreate: (template: Partial<LoyaltyTemplate>) => void;
-    onUpdate: (id: string, updates: Partial<LoyaltyTemplate>) => void;
+    onCreate: (template: any) => Promise<any>;
+    onUpdate: (id: string, updates: any) => Promise<any>;
     onDelete: (id: string) => void;
+    isCreating?: boolean;
+    isUpdating?: boolean;
 }
 
 const emptyRules: Partial<LoyaltyRule> = {
     ruleType: 'visit',
-    visitPoints: 5,
+    visitPoints: 0,
     visitCooldownHours: 24,
     spendingBaseAmount: 1000,
-    spendingBasePoints: 10,
+    spendingBasePoints: 0,
     firstVisitBonus: 0,
     birthdayBonus: 0,
     referralBonus: 0,
@@ -36,8 +39,9 @@ const StepNavigator: React.FC<{
     onStepChange: (step: Step) => void;
     onSave: () => void;
     onBack: () => void;
-}> = ({ currentStep, onStepChange, onSave, onBack }) => (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+    isLoading?: boolean;
+}> = ({ currentStep, onStepChange, onSave, onBack, isLoading }) => (
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
         <div className="flex items-center justify-between">
             <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Step {currentStep} of 3</p>
@@ -47,15 +51,22 @@ const StepNavigator: React.FC<{
             <div className="flex items-center gap-2">
                 <button
                     onClick={onBack}
-                    className="px-4 py-2.5 border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-widest rounded-xl"
+                    disabled={isLoading}
+                    className="px-4 py-2.5 border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-widest rounded-xl disabled:opacity-50 hover:bg-slate-50 transition-colors"
                 >
                     Back to Templates
                 </button>
                 <button
                     onClick={onSave}
-                    className="px-6 py-2.5 bg-primary text-white text-xs font-black uppercase tracking-widest rounded-xl flex items-center gap-2"
+                    disabled={isLoading}
+                    className="px-6 py-2.5 bg-primary text-white text-xs font-black uppercase tracking-widest rounded-xl flex items-center gap-2 disabled:opacity-70 transition-all hover:bg-primary-hover shadow-lg shadow-primary/20"
                 >
-                    <Save size={14} /> Save Template
+                    {isLoading ? (
+                        <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                        <Save size={14} />
+                    )}
+                    {isLoading ? 'Processing...' : 'Save Template'}
                 </button>
             </div>
         </div>
@@ -67,12 +78,14 @@ const StepNavigator: React.FC<{
             ].map((step) => (
                 <button
                     key={step.id}
+                    disabled={isLoading}
                     onClick={() => onStepChange(step.id as Step)}
                     className={cn(
                         "w-full px-4 py-3 border text-left transition-all rounded-xl",
                         currentStep === step.id
-                            ? "border-primary bg-primary/5"
-                            : "border-slate-200 bg-white hover:bg-slate-50"
+                            ? "border-primary bg-primary/5 shadow-inner"
+                            : "border-slate-200 bg-white hover:bg-slate-50",
+                        isLoading && "opacity-50 cursor-not-allowed"
                     )}
                 >
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Step {step.id}</p>
@@ -86,12 +99,12 @@ const StepNavigator: React.FC<{
 const GuidanceCards: React.FC<{ cards: { title: string; body: string }[] }> = ({ cards }) => (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {cards.map((card) => (
-            <div key={card.title} className="p-4 border border-slate-100 rounded-xl bg-slate-50">
+            <div key={card.title} className="p-4 border border-slate-100 rounded-xl bg-slate-50/50">
                 <div className="flex items-center gap-2 mb-2">
                     <Info className="w-4 h-4 text-slate-300" />
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{card.title}</p>
                 </div>
-                <p className="text-xs text-slate-500">{card.body}</p>
+                <p className="text-xs text-slate-500 leading-relaxed">{card.body}</p>
             </div>
         ))}
     </div>
@@ -103,18 +116,18 @@ const TemplateListItem: React.FC<{
     onSelect: () => void;
     onDelete: () => void;
 }> = ({ template, isActive, onSelect, onDelete }) => {
-    const previewImage = template.rewards.find((r: TemplateReward) => r.imageUrl)?.imageUrl;
+    const previewImage = template.rewards.find((r: any) => r.imageUrl)?.imageUrl;
     return (
         <button
             onClick={onSelect}
             className={cn(
-                "w-full text-left border rounded-xl transition-all overflow-hidden",
-                isActive ? "border-primary bg-primary/5" : "border-slate-200 bg-white hover:bg-slate-50"
+                "w-full text-left border rounded-2xl transition-all overflow-hidden group hover:shadow-xl hover:shadow-slate-200/50",
+                isActive ? "border-primary bg-primary/5" : "border-slate-200 bg-white"
             )}
         >
             <div className="h-36 w-full overflow-hidden relative">
                 {previewImage ? (
-                    <img src={previewImage} alt={`${template.name} preview`} className="w-full h-full object-cover" />
+                    <img src={previewImage} alt={`${template.name} preview`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 ) : (
                     <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300">
                         <LayoutTemplate size={28} />
@@ -137,17 +150,17 @@ const TemplateListItem: React.FC<{
                                 event.stopPropagation();
                                 onDelete();
                             }}
-                            className="p-1 rounded-lg text-rose-500 hover:bg-rose-50"
+                            className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
                             title="Delete template"
                         >
                             <Trash2 size={14} />
                         </button>
                     </div>
                 </div>
-                <p className="text-xs text-slate-500 font-medium line-clamp-2">
+                <p className="text-xs text-slate-500 font-medium line-clamp-2 leading-relaxed">
                     {template.description || 'No description provided.'}
                 </p>
-                <div className="flex gap-2 text-[10px] uppercase tracking-widest font-black text-slate-400">
+                <div className="flex gap-2 text-[10px] uppercase tracking-widest font-black text-slate-400 pt-1">
                     <span>{template.rewards.length} rewards</span>
                     <span>&bull;</span>
                     <span>{template.rules?.ruleType || 'rules'}</span>
@@ -165,15 +178,15 @@ const TemplateListRow: React.FC<{
 }> = ({ template, isActive, onSelect, onDelete }) => (
     <div
         className={cn(
-            "grid grid-cols-12 items-center gap-3 border px-4 py-3 text-sm rounded-xl",
+            "grid grid-cols-12 items-center gap-3 border px-4 py-3 text-sm rounded-xl transition-all",
             isActive ? "border-primary bg-primary/5" : "border-slate-200 bg-white hover:bg-slate-50"
         )}
     >
         <button onClick={onSelect} className="col-span-5 text-left flex items-center gap-3">
             <div className="size-10 rounded-full overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
-                {template.rewards.find((r: TemplateReward) => r.imageUrl)?.imageUrl ? (
+                {template.rewards.find((r: any) => r.imageUrl)?.imageUrl ? (
                     <img
-                        src={template.rewards.find((r: TemplateReward) => r.imageUrl)?.imageUrl as string}
+                        src={template.rewards.find((r: any) => r.imageUrl)?.imageUrl as string}
                         alt={`${template.name} preview`}
                         className="w-full h-full object-cover"
                     />
@@ -185,7 +198,7 @@ const TemplateListRow: React.FC<{
             </div>
             <div>
                 <p className="font-black text-slate-900">{template.name}</p>
-                <p className="text-xs text-slate-500">{template.description || 'No description provided.'}</p>
+                <p className="text-xs text-slate-500 truncate max-w-[200px]">{template.description || 'No description provided.'}</p>
             </div>
         </button>
         <div className="col-span-2 text-xs font-black uppercase tracking-widest text-slate-400">
@@ -201,7 +214,7 @@ const TemplateListRow: React.FC<{
             <BadgeCheck className={cn("w-4 h-4", template.status === 'published' ? "text-emerald-500" : "text-slate-300")} />
             <button
                 onClick={onDelete}
-                className="p-1 rounded-lg text-rose-500 hover:bg-rose-50"
+                className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
                 title="Delete template"
             >
                 <Trash2 size={14} />
@@ -214,7 +227,7 @@ const CoreDetailsStep: React.FC<{
     template: LoyaltyTemplate;
     onChange: (updates: Partial<LoyaltyTemplate>) => void;
 }> = ({ template, onChange }) => (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5">
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5 shadow-sm">
         <div className="flex items-center justify-between">
             <div>
                 <p className="text-xs font-black uppercase tracking-widest text-slate-400">Template Identity</p>
@@ -242,7 +255,7 @@ const CoreDetailsStep: React.FC<{
                 <input
                     value={template.name}
                     onChange={(e) => onChange({ name: e.target.value })}
-                    className="w-full h-11 px-4 border border-slate-200 rounded-xl font-bold text-slate-900 focus:border-primary outline-none"
+                    className="w-full h-11 px-4 border border-slate-200 rounded-xl font-bold text-slate-900 focus:border-primary outline-none transition-colors"
                     placeholder="VIP Retail Loyalty"
                 />
             </div>
@@ -256,7 +269,7 @@ const CoreDetailsStep: React.FC<{
                 <select
                     value={template.status}
                     onChange={(e) => onChange({ status: e.target.value as TemplateStatus })}
-                    className="w-full h-11 px-4 border border-slate-200 rounded-xl font-bold text-slate-900 focus:border-primary outline-none"
+                    className="w-full h-11 px-4 border border-slate-200 rounded-xl font-bold text-slate-900 focus:border-primary outline-none transition-colors appearance-none bg-slate-50/50"
                 >
                     <option value="draft">Draft</option>
                     <option value="published">Published</option>
@@ -273,7 +286,7 @@ const CoreDetailsStep: React.FC<{
             <textarea
                 value={template.description}
                 onChange={(e) => onChange({ description: e.target.value })}
-                className="w-full min-h-[90px] px-4 py-3 border border-slate-200 rounded-xl font-medium text-slate-700 focus:border-primary outline-none"
+                className="w-full min-h-[90px] px-4 py-3 border border-slate-200 rounded-xl font-medium text-slate-700 focus:border-primary outline-none transition-colors leading-relaxed"
                 placeholder="Describe who this template is for and how it works."
             />
         </div>
@@ -284,7 +297,7 @@ const EarningRulesStep: React.FC<{
     template: LoyaltyTemplate;
     onRulesChange: (rules: Partial<LoyaltyRule>) => void;
 }> = ({ template, onRulesChange }) => (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6">
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6 shadow-sm">
         <div className="flex items-center justify-between">
             <div>
                 <p className="text-xs font-black uppercase tracking-widest text-slate-400">Earning Rules</p>
@@ -313,7 +326,7 @@ const EarningRulesStep: React.FC<{
                     className={cn(
                         "p-4 border rounded-xl text-left transition-all",
                         template.rules?.ruleType === item.key
-                            ? "border-primary bg-primary/5"
+                            ? "border-primary bg-primary/5 shadow-inner"
                             : "border-slate-200 bg-white hover:bg-slate-50"
                     )}
                 >
@@ -348,10 +361,10 @@ const EarningRulesStep: React.FC<{
                             const value = e.target.value;
                             onRulesChange({
                                 ...template.rules,
-                                [field.key]: value === '' ? undefined : Number(value),
+                                [field.key]: value === '' ? 0 : Number(value),
                             });
                         }}
-                        className="w-full h-11 px-4 border border-slate-200 rounded-xl font-bold text-slate-900"
+                        className="w-full h-11 px-4 border border-slate-200 rounded-xl font-bold text-slate-900 outline-none focus:border-primary transition-colors"
                     />
                 </div>
             ))}
@@ -376,10 +389,10 @@ const EarningRulesStep: React.FC<{
                             const value = e.target.value;
                             onRulesChange({
                                 ...template.rules,
-                                [bonus.key]: value === '' ? undefined : Number(value),
+                                [bonus.key]: value === '' ? 0 : Number(value),
                             });
                         }}
-                        className="w-full h-11 px-4 border border-slate-200 rounded-xl font-bold text-slate-900"
+                        className="w-full h-11 px-4 border border-slate-200 rounded-xl font-bold text-slate-900 outline-none focus:border-primary transition-colors"
                     />
                 </div>
             ))}
@@ -388,44 +401,53 @@ const EarningRulesStep: React.FC<{
 );
 
 const RewardsStep: React.FC<{
-    rewards: TemplateReward[];
+    rewards: (TemplateReward & { localPendingImages?: string[] })[];
     onAdd: () => void;
-    onUpdate: (id: string, updates: Partial<TemplateReward>) => void;
+    onUpdate: (id: string, updates: any) => void;
     onDelete: (id: string) => void;
-}> = ({ rewards, onAdd, onUpdate, onDelete }) => {
-    const [uploadingId, setUploadingId] = useState<string | null>(null);
-
-    const handleImageUpload = async (id: string, file?: File) => {
-        if (!file) return;
+    isLoading?: boolean;
+}> = ({ rewards, onAdd, onUpdate, onDelete, isLoading }) => {
+    const handleImagesChange = (id: string, files?: FileList | null) => {
+        if (!files || files.length === 0) return;
         
-        setUploadingId(id);
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-            try {
-                const response = await fetch('/api/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ file: reader.result }),
-                });
-                
-                const data = await response.json();
-                if (data.url) {
-                    onUpdate(id, { imageUrl: data.url });
-                    notify.success('Image uploaded successfully');
-                } else {
-                    throw new Error(data.error || 'Upload failed');
+        const reward = rewards.find(r => r.id === id);
+        const currentPending = reward?.localPendingImages || [];
+        
+        const newImages: string[] = [];
+        let processed = 0;
+
+        Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                newImages.push(reader.result as string);
+                processed++;
+                if (processed === files.length) {
+                    onUpdate(id, { localPendingImages: [...currentPending, ...newImages] });
+                    notify.info(`${files.length} image(s) selected. They will be uploaded when you save.`);
                 }
-            } catch (error: any) {
-                notify.error(error.message || 'Image upload failed');
-            } finally {
-                setUploadingId(null);
-            }
-        };
-        reader.readAsDataURL(file);
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const removePendingImage = (id: string, index: number) => {
+        const reward = rewards.find(r => r.id === id);
+        if (!reward?.localPendingImages) return;
+        const next = [...reward.localPendingImages];
+        next.splice(index, 1);
+        onUpdate(id, { localPendingImages: next });
+    };
+
+    const removeExistingImage = (id: string, index: number) => {
+        const reward = rewards.find(r => r.id === id);
+        if (!reward?.imageUrls) return;
+        const next = [...reward.imageUrls];
+        next.splice(index, 1);
+        onUpdate(id, { imageUrls: next });
     };
 
     return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4">
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm">
         <div className="flex items-center justify-between">
             <div>
                 <p className="text-xs font-black uppercase tracking-widest text-slate-400">Rewards</p>
@@ -436,26 +458,27 @@ const RewardsStep: React.FC<{
             </div>
             <button
                 onClick={onAdd}
-                className="px-5 py-2.5 bg-slate-900 text-white text-xs font-black uppercase tracking-widest rounded-xl flex items-center gap-2"
+                disabled={isLoading}
+                className="px-5 py-2.5 bg-slate-900 text-white text-xs font-black uppercase tracking-widest rounded-xl flex items-center gap-2 disabled:opacity-50 hover:bg-slate-800 transition-colors"
             >
                 <Plus size={14} /> Add Reward
             </button>
         </div>
         <GuidanceCards
             cards={[
-                { title: 'Start Simple', body: 'Add 1-2 rewards that are easy to redeem.' },
+                { title: 'Multiple Images', body: 'You can now add multiple images to showcase your reward.' },
                 { title: 'Balance Costs', body: 'Use point cost to protect margins while staying attractive.' },
                 { title: 'Set Validity', body: 'Encourage return visits with shorter validity windows.' },
             ]}
         />
         <div className="space-y-3">
             {rewards.length === 0 && (
-                <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">
+                <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-400 text-xs font-bold uppercase tracking-widest bg-slate-50/30">
                     Add rewards to complete this template.
                 </div>
             )}
             {rewards.map((reward) => (
-                <div key={reward.id} className="p-4 border border-slate-200 rounded-xl bg-white">
+                <div key={reward.id} className="p-4 border border-slate-200 rounded-xl bg-white hover:border-slate-300 transition-colors">
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-black uppercase tracking-widest text-slate-400">Reward</span>
@@ -465,16 +488,17 @@ const RewardsStep: React.FC<{
                         </div>
                         <button
                             onClick={() => onDelete(reward.id)}
-                            className="p-2 rounded-xl text-rose-500 hover:bg-rose-50"
+                            disabled={isLoading}
+                            className="p-2 rounded-xl text-rose-500 hover:bg-rose-50 disabled:opacity-50 transition-colors"
                         >
                             <Trash2 size={14} />
                         </button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         {[
-                            { label: 'Reward Name', key: 'name', placeholder: 'Reward name', tip: 'Short title customers will see.' },
-                            { label: 'Point Cost', key: 'pointCost', placeholder: 'Points', tip: 'Points required to redeem this reward.' },
-                            { label: 'Validity Days', key: 'validityDays', placeholder: 'Validity days', tip: 'How long the reward is valid once earned.' },
+                            { label: 'Reward Name', key: 'name', placeholder: 'e.g. Free Coffee', tip: 'Short title customers will see.' },
+                            { label: 'Point Cost', key: 'pointCost', placeholder: '0', tip: 'Points required to redeem this reward.' },
+                            { label: 'Validity Days', key: 'validityDays', placeholder: '30', tip: 'How long the reward is valid once earned.' },
                         ].map((field) => (
                             <div key={field.key} className="space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
@@ -484,6 +508,7 @@ const RewardsStep: React.FC<{
                                     </Tooltip>
                                 </label>
                                 <input
+                                    disabled={isLoading}
                                     value={
                                         field.key === 'name'
                                             ? (reward[field.key as keyof TemplateReward] as string) || ''
@@ -498,13 +523,13 @@ const RewardsStep: React.FC<{
                                                     field.key === 'name'
                                                         ? value
                                                         : value === ''
-                                                            ? undefined
+                                                            ? 0
                                                             : Number(value),
                                             } as Partial<TemplateReward>
                                         );
                                     }}
                                     type={field.key === 'name' ? 'text' : 'number'}
-                                    className="h-10 px-3 border border-slate-200 rounded-lg font-bold text-slate-900"
+                                    className="h-10 px-3 border border-slate-200 rounded-lg font-bold text-slate-900 w-full outline-none focus:border-primary transition-colors"
                                     placeholder={field.placeholder}
                                 />
                             </div>
@@ -518,46 +543,70 @@ const RewardsStep: React.FC<{
                             </Tooltip>
                         </label>
                         <input
-                            value={reward.description}
+                            disabled={isLoading}
+                            value={reward.description || ''}
                             onChange={(e) => onUpdate(reward.id, { description: e.target.value })}
-                            className="h-10 px-3 border border-slate-200 rounded-lg font-medium text-slate-700"
-                            placeholder="Reward description"
+                            className="h-10 px-3 border border-slate-200 rounded-lg font-medium text-slate-700 w-full outline-none focus:border-primary transition-colors"
+                            placeholder="Briefly describe what the customer gets"
                         />
                     </div>
                     <div className="mt-3 space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                            Reward Image
-                            <Tooltip content="Upload a reward image. This is saved as a preview in the template.">
+                            Reward Images
+                            <Tooltip content="Select one or more reward images. They will be uploaded when you save the template.">
                                 <Info className="w-3 h-3 text-slate-300" />
                             </Tooltip>
                         </label>
-                        <div className="flex flex-col sm:flex-row gap-3 items-start">
+                        <div className="flex flex-col gap-3">
                             <label className={cn(
-                                "inline-flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-xs font-black uppercase tracking-widest text-slate-600 cursor-pointer hover:bg-slate-50 transition-all",
-                                uploadingId === reward.id && "opacity-50 cursor-wait"
+                                "inline-flex items-center justify-center gap-2 px-4 py-4 border-2 border-dashed border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:bg-slate-50 hover:border-primary/30 hover:text-primary transition-all",
+                                isLoading && "opacity-50 cursor-wait"
                             )}>
                                 <input
                                     type="file"
                                     accept="image/*"
+                                    multiple
                                     className="hidden"
-                                    disabled={uploadingId === reward.id}
-                                    onChange={(e) => handleImageUpload(reward.id, e.target.files?.[0])}
+                                    disabled={isLoading}
+                                    onChange={(e) => handleImagesChange(reward.id, e.target.files)}
                                 />
-                                {uploadingId === reward.id ? <><Loader2 size={14} className="animate-spin" /> Uploading...</> : 'Upload Image'}
+                                <Plus size={16} />
+                                Add Images
                             </label>
-                            <div className="w-full sm:w-28 h-16 border border-slate-200 rounded-lg bg-slate-50 flex items-center justify-center overflow-hidden relative">
-                                {reward.imageUrl ? (
-                                    <img
-                                        src={reward.imageUrl}
-                                        alt={`${reward.name} preview`}
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Preview</span>
-                                )}
-                                {uploadingId === reward.id && (
-                                    <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
-                                        <Loader2 size={16} className="animate-spin text-primary" />
+                            
+                            <div className="flex flex-wrap gap-2">
+                                {/* Existing Images */}
+                                {reward.imageUrls?.map((url, idx) => (
+                                    <div key={`existing-${idx}`} className="group relative w-20 h-20 border border-slate-200 rounded-lg bg-slate-50 overflow-hidden shadow-sm">
+                                        <img src={url} alt="reward" className="w-full h-full object-cover" />
+                                        <button 
+                                            onClick={() => removeExistingImage(reward.id, idx)}
+                                            className="absolute top-1 right-1 p-1 bg-rose-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    </div>
+                                ))}
+                                
+                                {/* Pending Images */}
+                                {reward.localPendingImages?.map((base64, idx) => (
+                                    <div key={`pending-${idx}`} className="group relative w-20 h-20 border-2 border-primary/20 rounded-lg bg-slate-50 overflow-hidden shadow-sm">
+                                        <img src={base64} alt="pending" className="w-full h-full object-cover" />
+                                        <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
+                                            <span className="text-[8px] font-black text-primary uppercase bg-white/90 px-1 rounded">Pending</span>
+                                        </div>
+                                        <button 
+                                            onClick={() => removePendingImage(reward.id, idx)}
+                                            className="absolute top-1 right-1 p-1 bg-rose-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    </div>
+                                ))}
+                                
+                                {(!reward.imageUrls?.length && !reward.localPendingImages?.length) && (
+                                    <div className="w-20 h-20 border border-slate-100 rounded-lg bg-slate-50/50 flex items-center justify-center">
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-300">No Images</span>
                                     </div>
                                 )}
                             </div>
@@ -614,15 +663,18 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
     onCreate,
     onUpdate,
     onDelete,
+    isCreating,
+    isUpdating,
 }) => {
     const [activeId, setActiveId] = useState<string | null>(templates[0]?.id ?? null);
-    const [localDraft, setLocalDraft] = useState<LoyaltyTemplate | null>(null);
+    const [localDraft, setLocalDraft] = useState<(LoyaltyTemplate & { rewards: (TemplateReward & { localPendingImages?: string[] })[] }) | null>(null);
     const [currentStep, setCurrentStep] = useState<Step>(1);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [viewType, setViewType] = useState<TemplateView>('grid');
     const [query, setQuery] = useState('');
     const [page, setPage] = useState(1);
     const [screenMode, setScreenMode] = useState<ScreenMode>('list');
+    const [internalLoading, setInternalLoading] = useState(false);
     const pageSize = 6;
 
     const filteredTemplates = useMemo(() => {
@@ -642,19 +694,18 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
 
     const activeTemplate = useMemo(() => {
         if (localDraft) return localDraft;
-        return templates.find((t: LoyaltyTemplate) => t.id === activeId) || null;
+        return (templates.find((t: LoyaltyTemplate) => t.id === activeId) as any) || null;
     }, [templates, activeId, localDraft]);
 
     const startNew = () => {
-        const now = new Date().toISOString();
         setLocalDraft({
-            id: `tmpl-${Math.random().toString(36).slice(2, 8)}`,
+            id: 'new-draft-id',
             name: '',
             description: '',
             status: 'draft',
             rewards: [],
             rules: emptyRules,
-            createdAt: now,
+            createdAt: new Date().toISOString(),
         });
         setActiveId(null);
         setCurrentStep(1);
@@ -676,34 +727,123 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
         }
     };
 
-    const handleSave = () => {
-        if (!activeTemplate) return;
-        if (localDraft) {
-            onCreate(activeTemplate);
-            setLocalDraft(null);
-            setActiveId(activeTemplate.id);
-            notify.success('Template created');
-        } else {
-            onUpdate(activeTemplate.id, activeTemplate);
-            notify.success('Template updated');
+    const uploadImage = async (base64: string): Promise<string> => {
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file: base64 }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.url) {
+            throw new Error(data.error || 'Image upload failed');
         }
-        setScreenMode('list');
+        return data.url;
+    };
+
+    const handleSave = async () => {
+        if (!activeTemplate) return;
+        setInternalLoading(true);
+        
+        try {
+            if (localDraft) {
+                // 1. Handle delayed image uploads
+                const finalRewards = await Promise.all(activeTemplate.rewards.map(async (r: any) => {
+                    const existingUrls = r.imageUrls || [];
+                    const pendingBase64s = r.localPendingImages || [];
+                    
+                    let uploadedUrls: string[] = [];
+                    if (pendingBase64s.length > 0) {
+                        try {
+                            uploadedUrls = await Promise.all(
+                                pendingBase64s.map((base64: string) => uploadImage(base64))
+                            );
+                        } catch (err: any) {
+                            throw new Error(`Failed to upload images for reward "${r.name || 'Unnamed'}": ${err.message}`);
+                        }
+                    }
+
+                    const allUrls = [...existingUrls, ...uploadedUrls];
+                    
+                    return {
+                        name: r.name || 'Unnamed Reward',
+                        description: r.description || '',
+                        pointCost: r.pointCost || 0,
+                        rewardType: r.rewardType || 'free_item',
+                        value: r.value || 0,
+                        validityDays: r.validityDays || 30,
+                        usageLimitPerUser: r.usageLimitPerUser || 1,
+                        totalAvailable: r.totalAvailable || 0,
+                        isActive: r.isActive ?? true,
+                        imageUrl: allUrls[0] || '', // backward compatibility
+                        imageUrls: allUrls,
+                    };
+                }));
+
+                const creationPayload = {
+                    name: activeTemplate.name,
+                    description: activeTemplate.description,
+                    status: activeTemplate.status,
+                    rules: {
+                        ruleType: activeTemplate.rules?.ruleType || 'visit',
+                        spendingBaseAmount: activeTemplate.rules?.spendingBaseAmount || 0,
+                        spendingBasePoints: activeTemplate.rules?.spendingBasePoints || 0,
+                        visitPoints: activeTemplate.rules?.visitPoints || 0,
+                        visitCooldownHours: activeTemplate.rules?.visitCooldownHours || 24,
+                        firstVisitBonus: activeTemplate.rules?.firstVisitBonus || 0,
+                        birthdayBonus: activeTemplate.rules?.birthdayBonus || 0,
+                        referralBonus: activeTemplate.rules?.referralBonus || 0,
+                        isActive: activeTemplate.rules?.isActive ?? true,
+                    },
+                    rewards: finalRewards,
+                };
+
+                await onCreate(creationPayload);
+                setLocalDraft(null);
+                setScreenMode('list');
+            } else {
+                // Update logic: if we have pending images, we need to upload them here too
+                const updatedRewards = await Promise.all(activeTemplate.rewards.map(async (r: any) => {
+                    if (r.localPendingImages && r.localPendingImages.length > 0) {
+                        const existingUrls = r.imageUrls || [];
+                        const uploadedUrls = await Promise.all(
+                            r.localPendingImages.map((base64: string) => uploadImage(base64))
+                        );
+                        const allUrls = [...existingUrls, ...uploadedUrls];
+                        return {
+                            ...r,
+                            imageUrls: allUrls,
+                            imageUrl: allUrls[0] || r.imageUrl,
+                            localPendingImages: [] // Clear pending
+                        };
+                    }
+                    return r;
+                }));
+
+                await onUpdate(activeTemplate.id, { ...activeTemplate, rewards: updatedRewards });
+                setScreenMode('list');
+            }
+            notify.success('Template saved successfully');
+        } catch (error: any) {
+            notify.error(error.message || 'Failed to save template');
+        } finally {
+            setInternalLoading(false);
+        }
     };
 
     const handleRewardUpdate = (id: string, updates: Partial<TemplateReward>) => {
         if (!activeTemplate) return;
-        const nextRewards = activeTemplate.rewards.map((r: TemplateReward) => (r.id === id ? { ...r, ...updates } : r));
+        const nextRewards = activeTemplate.rewards.map((r: any) => (r.id === id ? { ...r, ...updates } : r));
         updateDraft({ rewards: nextRewards });
     };
 
     const handleRewardAdd = () => {
         if (!activeTemplate) return;
-        const nextReward: TemplateReward = {
-            id: `reward-${Math.random().toString(36).slice(2, 8)}`,
-            name: 'New Reward',
-            description: 'Describe the reward.',
-            rewardType: 'free_item',
-            pointCost: 100,
+        const nextReward = {
+            id: `new-${Math.random().toString(36).slice(2, 9)}`,
+            name: '',
+            description: '',
+            rewardType: 'free_item' as any,
+            pointCost: 0,
             value: 0,
             validityDays: 30,
             usageLimitPerUser: 1,
@@ -715,7 +855,7 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
 
     const handleRewardDelete = (id: string) => {
         if (!activeTemplate) return;
-        updateDraft({ rewards: activeTemplate.rewards.filter((r: TemplateReward) => r.id !== id) });
+        updateDraft({ rewards: activeTemplate.rewards.filter((r: any) => r.id !== id) });
     };
 
     const handleDeleteTemplate = (id: string) => {
@@ -729,14 +869,41 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
             setActiveId(null);
         }
         setConfirmDeleteId(null);
-        notify.success('Template deleted');
     };
 
     const goNext = () => setCurrentStep((prev) => (prev < 3 ? (prev + 1) as Step : prev));
     const goPrev = () => setCurrentStep((prev) => (prev > 1 ? (prev - 1) as Step : prev));
 
+    const isProcessing = isCreating || isUpdating || internalLoading;
+
     return (
-        <div className="space-y-10">
+        <div className="space-y-10 relative">
+            <AnimatePresence>
+                {isProcessing && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] bg-white/80 backdrop-blur-md flex flex-col items-center justify-center space-y-4"
+                    >
+                        <div className="relative">
+                            <div className="size-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <Save className="text-primary animate-pulse" size={24} />
+                            </div>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-xl font-black text-slate-900">Saving Template...</p>
+                            <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">
+                                {localDraft && activeTemplate?.rewards?.some((r: any) => r.localPendingImage) 
+                                    ? 'Uploading assets & creating blueprint' 
+                                    : 'Please wait while we finalize your changes'}
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-display font-black text-slate-900">Loyalty Templates</h2>
@@ -746,7 +913,8 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
                 </div>
                 <button
                     onClick={startNew}
-                    className="px-5 py-3 bg-primary text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-primary/20 flex items-center gap-2"
+                    disabled={isProcessing}
+                    className="px-5 py-3 bg-primary text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-primary/20 flex items-center gap-2 hover:bg-primary-hover transition-all hover:-translate-y-0.5"
                 >
                     <Plus size={14} /> New Template
                 </button>
@@ -754,22 +922,22 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
 
             {screenMode === 'list' && (
                 <div className="space-y-4">
-                    <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+                    <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-sm">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                             <input
                                 value={query}
                                 onChange={(e) => handleQueryChange(e.target.value)}
-                                placeholder="Search templates..."
-                                className="w-full h-10 pl-9 pr-3 border border-slate-200 rounded-xl text-sm font-medium text-slate-700"
+                                placeholder="Search blueprints..."
+                                className="w-full h-10 pl-9 pr-3 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:border-primary outline-none transition-colors"
                             />
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             <button
                                 onClick={() => setViewType('grid')}
                                 className={cn(
-                                    "h-9 rounded-xl border text-xs font-black uppercase tracking-widest",
-                                    viewType === 'grid' ? "border-primary bg-primary/5 text-primary" : "border-slate-200 text-slate-500"
+                                    "h-9 rounded-xl border text-xs font-black uppercase tracking-widest transition-all",
+                                    viewType === 'grid' ? "border-primary bg-primary/5 text-primary" : "border-slate-200 text-slate-500 hover:bg-slate-50"
                                 )}
                             >
                                 <div className="flex items-center justify-center gap-2">
@@ -779,8 +947,8 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
                             <button
                                 onClick={() => setViewType('list')}
                                 className={cn(
-                                    "h-9 rounded-xl border text-xs font-black uppercase tracking-widest",
-                                    viewType === 'list' ? "border-primary bg-primary/5 text-primary" : "border-slate-200 text-slate-500"
+                                    "h-9 rounded-xl border text-xs font-black uppercase tracking-widest transition-all",
+                                    viewType === 'list' ? "border-primary bg-primary/5 text-primary" : "border-slate-200 text-slate-500 hover:bg-slate-50"
                                 )}
                             >
                                 <div className="flex items-center justify-center gap-2">
@@ -797,7 +965,7 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
                     {viewType === 'grid' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                             {pageTemplates.length === 0 ? (
-                                <div className="col-span-full border border-dashed border-slate-200 rounded-xl p-6 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">
+                                <div className="col-span-full border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest bg-slate-50/30">
                                     No templates found.
                                 </div>
                             ) : (
@@ -819,15 +987,15 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
                         </div>
                     ) : (
                         <div className="space-y-2">
-                            <div className="grid grid-cols-12 text-[10px] font-black uppercase tracking-widest text-slate-400 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50">
-                                <div className="col-span-5">Template</div>
-                                <div className="col-span-2">Rule</div>
+                            <div className="grid grid-cols-12 text-[10px] font-black uppercase tracking-widest text-slate-400 px-4 py-2 rounded-xl border border-slate-200 bg-slate-50/50">
+                                <div className="col-span-5">Template Name</div>
+                                <div className="col-span-2">Type</div>
                                 <div className="col-span-2">Rewards</div>
                                 <div className="col-span-2">Status</div>
                                 <div className="col-span-1 text-right">Action</div>
                             </div>
                             {pageTemplates.length === 0 ? (
-                                <div className="border border-dashed border-slate-200 rounded-xl p-6 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">
+                                <div className="border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest bg-slate-50/30">
                                     No templates found.
                                 </div>
                             ) : (
@@ -849,11 +1017,11 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
                         </div>
                     )}
 
-                    <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center justify-between pt-4">
                         <button
                             onClick={goPrevPage}
                             disabled={page === 1}
-                            className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 disabled:opacity-50"
+                            className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors"
                         >
                             Previous
                         </button>
@@ -863,7 +1031,7 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
                         <button
                             onClick={goNextPage}
                             disabled={page === totalPages}
-                            className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 disabled:opacity-50"
+                            className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors"
                         >
                             Next
                         </button>
@@ -874,7 +1042,7 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
             {screenMode === 'builder' && (
                 <div className="space-y-6">
                     {!activeTemplate ? (
-                        <div className="border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center text-slate-400">
+                        <div className="border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center text-slate-400 bg-slate-50/30">
                             <BookOpen className="w-10 h-10 mx-auto mb-3" />
                             <p className="text-sm font-bold uppercase tracking-widest">Select a template to edit</p>
                         </div>
@@ -885,51 +1053,46 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
                                 onStepChange={setCurrentStep}
                                 onSave={handleSave}
                                 onBack={() => setScreenMode('list')}
+                                isLoading={isProcessing}
                             />
 
-                            {currentStep === 1 && (
-                                <CoreDetailsStep template={activeTemplate} onChange={updateDraft} />
-                            )}
+                            <div className="min-h-[400px]">
+                                {currentStep === 1 && (
+                                    <CoreDetailsStep template={activeTemplate} onChange={updateDraft} />
+                                )}
 
-                            {currentStep === 2 && (
-                                <EarningRulesStep
-                                    template={activeTemplate}
-                                    onRulesChange={(rules) => updateDraft({ rules })}
-                                />
-                            )}
+                                {currentStep === 2 && (
+                                    <EarningRulesStep
+                                        template={activeTemplate}
+                                        onRulesChange={(rules) => updateDraft({ rules })}
+                                    />
+                                )}
 
-                            {currentStep === 3 && (
-                                <RewardsStep
-                                    rewards={activeTemplate.rewards}
-                                    onAdd={handleRewardAdd}
-                                    onUpdate={handleRewardUpdate}
-                                    onDelete={handleRewardDelete}
-                                />
-                            )}
+                                {currentStep === 3 && (
+                                    <RewardsStep
+                                        rewards={activeTemplate.rewards}
+                                        onAdd={handleRewardAdd}
+                                        onUpdate={handleRewardUpdate}
+                                        onDelete={handleRewardDelete}
+                                        isLoading={isProcessing}
+                                    />
+                                )}
+                            </div>
 
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between pt-6 border-t border-slate-100">
                                 <button
                                     onClick={goPrev}
-                                    disabled={currentStep === 1}
-                                    className="px-5 py-2.5 border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-widest rounded-xl disabled:opacity-50"
+                                    disabled={currentStep === 1 || isProcessing}
+                                    className="px-5 py-2.5 border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-widest rounded-xl disabled:opacity-50 hover:bg-slate-50 transition-colors"
                                 >
                                     Back
                                 </button>
                                 <button
                                     onClick={goNext}
-                                    disabled={currentStep === 3}
-                                    className="px-6 py-2.5 bg-primary text-white text-xs font-black uppercase tracking-widest rounded-xl disabled:opacity-60"
+                                    disabled={currentStep === 3 || isProcessing}
+                                    className="px-6 py-2.5 bg-slate-900 text-white text-xs font-black uppercase tracking-widest rounded-xl disabled:opacity-60 hover:bg-slate-800 transition-colors shadow-lg"
                                 >
-                                    Next
-                                </button>
-                            </div>
-
-                            <div className="flex justify-end">
-                                <button
-                                    onClick={() => setScreenMode('list')}
-                                    className="px-5 py-2.5 border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-widest rounded-xl"
-                                >
-                                    Back to Templates
+                                    Next Step
                                 </button>
                             </div>
                         </>
@@ -945,4 +1108,3 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
         </div>
     );
 };
-

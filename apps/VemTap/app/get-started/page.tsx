@@ -72,7 +72,7 @@ export default function GetStarted() {
 
     const { data: plans = [] } = useQuery({
         queryKey: ['subscription-plans'],
-        queryFn: fetchPricingPlans
+        queryFn: () => fetchPricingPlans()
     });
 
     const [formData, setFormData] = useState({

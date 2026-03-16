@@ -12,6 +12,15 @@ import {
 
 export class UpdateLoyaltyRuleDto {
   @ApiProperty({
+    description: 'The type of rule (visit or spending)',
+    example: 'visit',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  ruleType?: string;
+
+  @ApiProperty({
     description: 'Amount to spend to earn points',
     example: 10,
     required: false,
@@ -147,6 +156,35 @@ export class CreateRewardDto {
   @IsString()
   @IsOptional()
   imageUrl?: string;
+
+  @ApiProperty({
+    description: 'Image URLs array',
+    example: ['https://...'],
+    required: false,
+    type: [String],
+  })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  imageUrls?: string[];
+
+  @ApiProperty({
+    description: 'Total rewards available for redemption',
+    example: 100,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  totalAvailable?: number;
+
+  @ApiProperty({
+    description: 'Toggle reward active',
+    example: true,
+    required: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 }
 
 export class UpdateRewardDto extends PartialType(CreateRewardDto) {}

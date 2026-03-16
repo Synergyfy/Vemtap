@@ -14,7 +14,7 @@ export default function WhatsAppTopUpPage() {
 
     const { data: credits, isLoading } = useQuery({
         queryKey: ['my-credits'],
-        queryFn: fetchMyCredits,
+        queryFn: () => fetchMyCredits(),
         refetchInterval: 30000,
     });
 

@@ -29,13 +29,13 @@ export default function MarketplaceActivityPage() {
 
     const { data: quotes, isLoading: quotesLoading } = useQuery<MarketplaceQuote[]>({
         queryKey: ['my-quotes'],
-        queryFn: fetchMyQuotes,
+        queryFn: () => fetchMyQuotes(),
         enabled: isAuthenticated
     });
 
     const { data: orders = [], isLoading: ordersLoading } = useQuery<MarketplaceOrder[]>({
         queryKey: ['my-orders'],
-        queryFn: fetchMyOrders,
+        queryFn: () => fetchMyOrders(),
         enabled: isAuthenticated
     });
 

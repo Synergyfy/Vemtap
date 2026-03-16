@@ -48,6 +48,7 @@ export interface TemplateReward {
     totalAvailable?: number;
     isActive?: boolean;
     imageUrl?: string;
+    imageUrls?: string[];
 }
 
 export interface LoyaltyTemplate {
@@ -90,6 +91,7 @@ export interface CreateRewardRequest {
     totalAvailable?: number;
     branchId?: string;
     imageUrl?: string;
+    imageUrls?: string[];
 }
 
 export interface UpdateRewardRequest {
@@ -103,6 +105,7 @@ export interface UpdateRewardRequest {
     isActive?: boolean;
     branchId?: string;
     imageUrl?: string;
+    imageUrls?: string[];
 }
 
 export interface UpdateLoyaltyRuleRequest {

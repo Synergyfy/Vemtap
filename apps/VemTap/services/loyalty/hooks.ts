@@ -272,12 +272,18 @@ export const useLoyaltyTemplates = () => {
     });
 };
 
+import { notify } from '@/lib/notify';
+
 export const useCreateLoyaltyTemplate = () => {
     const queryClient = useQueryClient();
     return useMutation<LoyaltyTemplate, Error, Partial<LoyaltyTemplate>>({
         mutationFn: async (data) => await api.post('/loyalty/templates', data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates'] });
+            notify.success('Template created successfully');
+        },
+        onError: (error) => {
+            notify.error(error.message || 'Failed to create loyalty template');
         }
     });
 };
@@ -288,6 +294,10 @@ export const useUpdateLoyaltyTemplate = () => {
         mutationFn: async ({ id, updates }) => await api.patch(`/loyalty/templates/${id}`, updates),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates'] });
+            notify.success('Template updated successfully');
+        },
+        onError: (error) => {
+            notify.error(error.message || 'Failed to update loyalty template');
         }
     });
 };
@@ -298,6 +308,10 @@ export const useDeleteLoyaltyTemplate = () => {
         mutationFn: async (id) => await api.delete(`/loyalty/templates/${id}`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates'] });
+            notify.success('Template deleted successfully');
+        },
+        onError: (error) => {
+            notify.error(error.message || 'Failed to delete loyalty template');
         }
     });
 };
