@@ -65,6 +65,22 @@ export class SubscriptionsService {
     return sub;
   }
 
+  async subscribeToFreePlan(businessId: string): Promise<Subscription | null> {
+    const freePlan = await this.plansService.findFreePlan();
+    if (!freePlan) {
+      this.logger.warn(
+        `No active free plan found to auto-subscribe business ${businessId}`,
+      );
+      return null;
+    }
+
+    return this.subscribe({
+      planId: freePlan.id,
+      businessId,
+      billingPeriod: BillingPeriod.YEARLY, // Default for free plan
+    });
+  }
+
   async subscribe(subscribeDto: SubscribeDto): Promise<Subscription> {
     const {
       planId,
