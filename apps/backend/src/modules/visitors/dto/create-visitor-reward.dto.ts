@@ -5,6 +5,8 @@ import {
   IsNotEmpty,
   IsOptional,
   IsUUID,
+  IsArray,
+  IsUrl,
 } from 'class-validator';
 
 export class CreateVisitorRewardDto {
@@ -61,4 +63,14 @@ export class CreateVisitorRewardDto {
   @IsNumber()
   @IsOptional()
   usageLimitPerUser?: number;
+
+  @ApiPropertyOptional({
+    description: 'Image URLs array',
+    example: ['https://...'],
+    type: [String],
+  })
+  @IsArray()
+  @IsUrl({}, { each: true })
+  @IsOptional()
+  imageUrls?: string[];
 }

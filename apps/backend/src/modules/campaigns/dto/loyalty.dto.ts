@@ -8,6 +8,7 @@ import {
   IsObject,
   IsArray,
   ValidateNested,
+  IsUrl,
 } from 'class-validator';
 
 export class UpdateLoyaltyRuleDto {
@@ -152,11 +153,6 @@ export class CreateRewardDto {
   @IsOptional()
   usageLimitPerUser?: number;
 
-  @ApiProperty({ description: 'Image URL', example: 'https://...', required: false })
-  @IsString()
-  @IsOptional()
-  imageUrl?: string;
-
   @ApiProperty({
     description: 'Image URLs array',
     example: ['https://...'],
@@ -164,7 +160,7 @@ export class CreateRewardDto {
     type: [String],
   })
   @IsArray()
-  @IsString({ each: true })
+  @IsUrl({}, { each: true })
   @IsOptional()
   imageUrls?: string[];
 
