@@ -48,6 +48,7 @@ export interface TemplateReward {
     totalAvailable?: number;
     isActive?: boolean;
     imageUrls?: string[];
+    imageUrl?: string;
 }
 
 export interface LoyaltyTemplate {

@@ -14,14 +14,12 @@ import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Nfc, Gift, BarChart, Users2, Settings,
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
-    MessageCircle, LucideIcon
+    MessageCircle, LucideIcon, Zap
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
-import TrialBanner from './TrialBanner';
-import { useActiveSubscription } from '@/services/subscriptions/hooks';
 import DashboardMobileNav from './DashboardMobileNav';
 import UpgradeModal from './UpgradeModal';
 
@@ -620,22 +618,54 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         </div>
                     </div>
                     <div className="flex items-center gap-2 lg:gap-4 relative">
-                        <TrialBanner compact />
-                        {isFreePlan ? (
-                            <Link
-                                href="/dashboard/settings/subscription"
-                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
-                            >
-                                Free Plan
-                            </Link>
-                        ) : showPlanPill && (
-                            <Link
-                                href="/dashboard/settings/subscription/manage"
-                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
-                            >
-                                {planPillLabel}
-                            </Link>
-                        )}
+                        {(() => {
+                            const isOnTrial = activeSubscription?.status === 'trial' || activeSubscription?.status === 'trialing';
+                            const planId = String(activeSubscription?.planId || '').toLowerCase();
+                            const isFree = planId.includes('free') || Boolean(activeSubscription?.plan?.isFree);
+                            
+                            if (isFree || !activeSubscription) {
+                                return (
+                                    <Link
+                                        href="/dashboard/settings/subscription"
+                                        className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-gray-200 transition-colors"
+                                    >
+                                        Free Plan
+                                    </Link>
+                                );
+                            }
+
+                            if (isOnTrial && activeSubscription.trialEndDate) {
+                                const trialEndDate = new Date(activeSubscription.trialEndDate);
+                                const now = new Date();
+                                const daysRemaining = Math.max(0, Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+                                
+                                return (
+                                    <Link
+                                        href="/dashboard/settings/subscription/manage"
+                                        className="flex items-center gap-2 pl-3 pr-1 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-full transition-all group"
+                                    >
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">
+                                            {activeSubscription?.plan?.name || 'Trial'}
+                                        </span>
+                                        <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-500 text-white rounded-full">
+                                            <Zap size={10} className="fill-white" />
+                                            <span className="text-[9px] font-black uppercase tracking-tighter">
+                                                {daysRemaining > 0 ? `${daysRemaining}d trial` : 'Last day!'}
+                                            </span>
+                                        </div>
+                                    </Link>
+                                );
+                            }
+
+                            return (
+                                <Link
+                                    href="/dashboard/settings/subscription/manage"
+                                    className="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-emerald-100 transition-colors"
+                                >
+                                    {activeSubscription?.plan?.name || 'Active Plan'}
+                                </Link>
+                            );
+                        })()}
 
                         {/* Notification Button */}
                         <button

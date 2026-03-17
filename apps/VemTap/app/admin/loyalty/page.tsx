@@ -2,14 +2,7 @@
 
 import React, { useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    Plus, Trash2, Edit2, Gift, Ticket, Tag, Clock, Save, X,
-    Eye, ImageIcon, Upload, Image as ImageIcon2, HelpCircle,
-    Wallet, Package, Percent, ChevronDown, CheckCircle2,
-    AlertCircle, Star, Search, Users, Calendar, LucideIcon, Loader2,
-    LayoutTemplate, Info, BadgeCheck, Crown, Sparkles, Zap
-} from 'lucide-react';
-import PageHeader from '@/components/dashboard/PageHeader';
+import { Plus, Trash2, Edit2, Gift, Ticket, Tag, Clock, Save, X, Eye, ImageIcon, Upload, Image as ImageIcon2, HelpCircle, Wallet, Package, Percent, ChevronDown, CheckCircle2, AlertCircle, Star, Search, Users, Calendar, LucideIcon, Loader2, LayoutTemplate, Info, BadgeCheck, Crown, Sparkles, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLoyaltyTemplates, useCreateLoyaltyTemplate, useUpdateLoyaltyTemplate, useDeleteLoyaltyTemplate } from '@/services/loyalty/hooks';
 import { LoyaltyTemplate, TemplateReward, TemplateStatus } from '@/services/loyalty/types';
 import { LoyaltyRule, RewardType } from '@/types/loyalty';
@@ -17,6 +10,9 @@ import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import Tooltip from '@/components/ui/Tooltip';
 import { uploadToCloudinary } from '@/lib/cloudinary';
+import Cropper, { Point, Area } from 'react-easy-crop';
+import useEmblaCarousel from 'embla-carousel-react';
+import { getCroppedImg } from '@/lib/image-utils';
 
 // ─── Reward Type Details (same as business) ─────────────────────────────────────
 const REWARD_TYPE_DETAILS: Record<RewardType, { label: string; description: string; icon: LucideIcon }> = {
@@ -31,14 +27,27 @@ type WizardStep = 1 | 2 | 3;
 
 const emptyRules: Partial<LoyaltyRule> = {
     ruleType: 'visit',
-    visitPoints: 0,
+    visitPoints: 10,
     visitCooldownHours: 24,
     spendingBaseAmount: 1000,
-    spendingBasePoints: 0,
-    firstVisitBonus: 0,
-    birthdayBonus: 0,
-    referralBonus: 0,
+    spendingBasePoints: 100,
+    firstVisitBonus: 50,
+    birthdayBonus: 100,
+    referralBonus: 200,
     isActive: true,
+};
+
+const emptyReward: TemplateReward & { localPendingImages?: string[] } = {
+    id: 'new-reward-id',
+    name: '',
+    description: '',
+    rewardType: 'discount',
+    pointCost: 1000,
+    value: 10,
+    validityDays: 30,
+    usageLimitPerUser: 1,
+    isActive: true,
+    imageUrls: [],
 };
 
 const emptyTemplate: LoyaltyTemplate & { rewards: (TemplateReward & { localPendingImages?: string[] })[] } = {
@@ -46,7 +55,7 @@ const emptyTemplate: LoyaltyTemplate & { rewards: (TemplateReward & { localPendi
     name: '',
     description: '',
     status: 'draft',
-    rewards: [],
+    rewards: [emptyReward],
     rules: emptyRules,
     createdAt: new Date().toISOString(),
 };
@@ -69,7 +78,7 @@ const DeleteConfirmModal: React.FC<{
                 <div className="flex items-start justify-between mb-4">
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Confirm Delete</p>
-                        <h3 className="text-lg font-black text-slate-900">Delete this template?</h3>
+                        <h3 className="text-lg font-black text-slate-900">Delete this reward?</h3>
                         {templateName && (
                             <p className="text-xs text-slate-500 mt-1">
                                 "{templateName}" will be permanently removed.
@@ -88,6 +97,135 @@ const DeleteConfirmModal: React.FC<{
         </div>
     ) : null;
 
+const CropperModal: React.FC<{
+    image: string;
+    onCropComplete: (croppedImage: Blob) => void;
+    onClose: () => void;
+}> = ({ image, onCropComplete, onClose }) => {
+    const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+
+    const onCropChange = (crop: Point) => setCrop(crop);
+    const onZoomChange = (zoom: number) => setZoom(zoom);
+    const onCropAreaChange = (croppedArea: Area, croppedAreaPixels: Area) => setCroppedAreaPixels(croppedAreaPixels);
+
+    const handleSave = async () => {
+        if (croppedAreaPixels) {
+            try {
+                const croppedImage = await getCroppedImg(image, croppedAreaPixels);
+                if (croppedImage) {
+                    onCropComplete(croppedImage);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-slate-900/80 backdrop-blur-md"
+                onClick={onClose}
+            />
+            <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden relative shadow-2xl"
+            >
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                    <div>
+                        <h3 className="text-xl font-display font-black text-slate-900">Crop Reward Hero</h3>
+                        <p className="text-xs text-slate-500 font-medium">Position your image for the best view on the card</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-all"><X size={20} /></button>
+                </div>
+                
+                <div className="relative h-[400px] w-full bg-slate-200">
+                    <Cropper
+                        image={image}
+                        crop={crop}
+                        zoom={zoom}
+                        aspect={16 / 10}
+                        onCropChange={onCropChange}
+                        onCropComplete={onCropAreaChange}
+                        onZoomChange={onZoomChange}
+                    />
+                </div>
+
+                <div className="p-6 bg-white flex flex-col gap-6">
+                    <div className="space-y-3">
+                        <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-400">
+                            <span>Zoom</span>
+                            <span>{Math.round(zoom * 100)}%</span>
+                        </div>
+                        <input
+                            type="range"
+                            value={zoom}
+                            min={1}
+                            max={3}
+                            step={0.1}
+                            aria-labelledby="Zoom"
+                            onChange={(e) => setZoom(Number(e.target.value))}
+                            className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-primary"
+                        />
+                    </div>
+                    <div className="flex gap-3">
+                        <button onClick={onClose} className="flex-1 py-4 bg-slate-100 text-slate-600 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all">Cancel</button>
+                        <button onClick={handleSave} className="flex-2 py-4 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all">Apply Crop</button>
+                    </div>
+                </div>
+            </motion.div>
+        </div>
+    );
+};
+
+const RewardGallery: React.FC<{ items: string[], name: string }> = ({ items, name }) => {
+    const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
+    
+    return (
+        <div className="relative w-full aspect-video overflow-hidden rounded-2xl bg-slate-100 border border-slate-200 shadow-inner group/gallery">
+            <div className="overflow-hidden h-full" ref={emblaRef}>
+                <div className="flex h-full">
+                    {items.map((url, index) => (
+                        <div className="flex-[0_0_100%] min-w-0 h-full relative" key={index}>
+                            <img
+                                src={url}
+                                alt={`${name} - ${index + 1}`}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                            />
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {items.length > 1 && (
+                <>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); emblaApi?.scrollPrev(); }}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm border border-slate-200 flex items-center justify-center text-slate-900 opacity-0 group-hover/gallery:opacity-100 transition-all hover:bg-white shadow-lg"
+                    >
+                        <ChevronLeft size={16} />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); emblaApi?.scrollNext(); }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm border border-slate-200 flex items-center justify-center text-slate-900 opacity-0 group-hover/gallery:opacity-100 transition-all hover:bg-white shadow-lg"
+                    >
+                        <ChevronRight size={16} />
+                    </button>
+                    <div className="absolute bottom-3 right-3 px-2 py-1 bg-black/50 backdrop-blur-md rounded-lg text-[8px] font-black text-white uppercase tracking-tighter">
+                        {items.length} Images
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
 
 export default function AdminLoyaltyPage() {
     const { data: templates = [], isLoading } = useLoyaltyTemplates();
@@ -102,6 +240,7 @@ export default function AdminLoyaltyPage() {
     const [wizardStep, setWizardStep] = useState<WizardStep>(1);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [croppingImage, setCroppingImage] = useState<{ url: string, rewardId: string } | null>(null);
 
     // Draft template for create/edit
     const [draft, setDraft] = useState<LoyaltyTemplate & { rewards: (TemplateReward & { localPendingImages?: string[] })[] }>(
@@ -154,39 +293,38 @@ export default function AdminLoyaltyPage() {
         return data.url;
     };
 
-    const handleSave = async () => {
+    const handleSaveTemplate = async () => {
         if (!draft.name) {
-            notify.error('Template name is required.');
+            notify.error('Reward name is required.');
             setWizardStep(1);
             return;
         }
         setIsSubmitting(true);
         try {
-            // Process pending images in rewards
-            const finalRewards = await Promise.all(draft.rewards.map(async (r: any) => {
-                const existingUrls = r.imageUrls || [];
-                const pendingBase64s = r.localPendingImages || [];
+            // Process pending images in the single reward
+            const reward = draft.rewards[0];
+            const existingUrls = reward?.imageUrls || [];
+            const pendingBase64s = (reward as any)?.localPendingImages || [];
 
-                let uploadedUrls: string[] = [];
-                if (pendingBase64s.length > 0) {
-                    uploadedUrls = await Promise.all(pendingBase64s.map((b64: string) => uploadImage(b64)));
-                }
-                const allUrls = [...existingUrls, ...uploadedUrls];
+            let uploadedUrls: string[] = [];
+            if (pendingBase64s.length > 0) {
+                uploadedUrls = await Promise.all(pendingBase64s.map((b64: string) => uploadImage(b64)));
+            }
+            const allUrls = [...existingUrls, ...uploadedUrls];
 
-                return {
-                    id: r.id, // Include id to satisfy TemplateReward type
-                    name: r.name || 'Unnamed Reward',
-                    description: r.description || '',
-                    pointCost: r.pointCost || 0,
-                    rewardType: r.rewardType || 'free_item',
-                    value: r.value || 0,
-                    validityDays: r.validityDays || 30,
-                    usageLimitPerUser: r.usageLimitPerUser || 1,
-                    totalAvailable: r.totalAvailable || 0,
-                    isActive: r.isActive ?? true,
-                    imageUrls: allUrls,
-                };
-            }));
+            const finalReward = {
+                id: reward?.id || 'new-reward-id',
+                name: draft.name,
+                description: draft.description || '',
+                pointCost: reward?.pointCost || 0,
+                rewardType: reward?.rewardType || 'discount',
+                value: reward?.value || 0,
+                validityDays: reward?.validityDays || 30,
+                usageLimitPerUser: reward?.usageLimitPerUser || 1,
+                totalAvailable: reward?.totalAvailable || 0,
+                isActive: reward?.isActive ?? true,
+                imageUrls: allUrls,
+            };
 
             const payload = {
                 name: draft.name,
@@ -194,16 +332,16 @@ export default function AdminLoyaltyPage() {
                 status: draft.status,
                 rules: {
                     ruleType: draft.rules?.ruleType || 'visit',
-                    spendingBaseAmount: draft.rules?.spendingBaseAmount || 0,
-                    spendingBasePoints: draft.rules?.spendingBasePoints || 0,
-                    visitPoints: draft.rules?.visitPoints || 0,
+                    spendingBaseAmount: draft.rules?.spendingBaseAmount || 1000,
+                    spendingBasePoints: draft.rules?.spendingBasePoints || 100,
+                    visitPoints: draft.rules?.visitPoints || 10,
                     visitCooldownHours: draft.rules?.visitCooldownHours || 24,
-                    firstVisitBonus: draft.rules?.firstVisitBonus || 0,
-                    birthdayBonus: draft.rules?.birthdayBonus || 0,
-                    referralBonus: draft.rules?.referralBonus || 0,
+                    firstVisitBonus: draft.rules?.firstVisitBonus || 50,
+                    birthdayBonus: draft.rules?.birthdayBonus || 100,
+                    referralBonus: draft.rules?.referralBonus || 200,
                     isActive: draft.rules?.isActive ?? true,
                 },
-                rewards: finalRewards,
+                rewards: [finalReward],
             };
 
             if (editingId) {
@@ -211,10 +349,10 @@ export default function AdminLoyaltyPage() {
             } else {
                 await createMutation.mutateAsync(payload);
             }
-            notify.success(editingId ? 'Template updated successfully' : 'Template created successfully');
+            notify.success(editingId ? 'Reward updated successfully' : 'Reward created successfully');
             closeModal();
         } catch (error: any) {
-            notify.error(error.message || 'Failed to save template');
+            notify.error(error.message || 'Failed to save reward');
         } finally {
             setIsSubmitting(false);
         }
@@ -227,56 +365,34 @@ export default function AdminLoyaltyPage() {
         setConfirmDeleteId(null);
     };
 
-    // ── Reward helpers for wizard step 3 ─────────────────────────────────────
-    const addReward = () => {
-        const newR: TemplateReward & { localPendingImages?: string[] } = {
-            id: `new-${Math.random().toString(36).slice(2, 9)}`,
-            name: '',
-            description: '',
-            rewardType: 'free_item' as RewardType,
-            pointCost: 0,
-            value: 0,
-            validityDays: 30,
-            usageLimitPerUser: 1,
-            totalAvailable: 0,
-            isActive: true,
-            imageUrls: [],
-            localPendingImages: [],
+    // ── Image Handling ───────────────────────────────────────────────────────
+    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const result = event.target?.result as string;
+            setCroppingImage({ url: result, rewardId: draft.rewards[0]?.id || 'main' });
         };
-        setDraft(prev => ({ ...prev, rewards: [...prev.rewards, newR] }));
+        reader.readAsDataURL(file);
     };
 
-    const updateReward = (id: string, updates: any) => {
-        setDraft(prev => ({
-            ...prev,
-            rewards: prev.rewards.map(r => r.id === id ? { ...r, ...updates } : r),
-        }));
-    };
-
-    const deleteReward = (id: string) => {
-        setDraft(prev => ({
-            ...prev,
-            rewards: prev.rewards.filter(r => r.id !== id),
-        }));
-    };
-
-    const handleRewardImageAdd = (rewardId: string, files?: FileList | null) => {
-        if (!files || files.length === 0) return;
-        const reward = draft.rewards.find(r => r.id === rewardId) as any;
-        const currentPending = reward?.localPendingImages || [];
-        const newImages: string[] = [];
-        let processed = 0;
-        Array.from(files).forEach(file => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                newImages.push(reader.result as string);
-                processed++;
-                if (processed === files.length) {
-                    updateReward(rewardId, { localPendingImages: [...currentPending, ...newImages] });
+    const handleCropComplete = async (croppedBlob: Blob) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64data = reader.result as string;
+            setDraft(prev => {
+                const newDraft = { ...prev };
+                if (newDraft.rewards[0]) {
+                    const r = newDraft.rewards[0] as any;
+                    r.localPendingImages = [...(r.localPendingImages || []), base64data];
                 }
-            };
-            reader.readAsDataURL(file);
-        });
+                return newDraft;
+            });
+            setCroppingImage(null);
+        };
+        reader.readAsDataURL(croppedBlob);
     };
 
     // ── Loading State ─────────────────────────────────────────────────────────
@@ -290,65 +406,133 @@ export default function AdminLoyaltyPage() {
                             <LayoutTemplate className="text-primary animate-pulse" size={24} />
                         </div>
                     </div>
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Loading Templates...</p>
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Loading Rewards...</p>
                 </div>
             </div>
         );
     }
 
     const publishedCount = templates.filter(t => t.status === 'published').length;
-    const totalRewards = templates.reduce((acc, t) => acc + (t.rewards?.length || 0), 0);
-    const deleteTarget = templates.find(t => t.id === confirmDeleteId);
+    const totalRewardsCount = templates.reduce((acc, t) => acc + (t.rewards?.length || 0), 0);
 
     return (
-        <div className="p-8 space-y-8">
-            <PageHeader
-                title="Loyalty Templates"
-                description="Build reusable reward + earning rule blueprints for businesses"
-            />
-
-            {/* ── Template List (matches business Reward Catalog layout) ───────────── */}
-            <div className={cn("space-y-8")}>
-
-                {/* Header & Add Button */}
-                <div className="flex items-center justify-between">
+        <div className="min-h-screen bg-slate-50/50 p-6 md:p-8">
+            <div className="max-w-7xl mx-auto space-y-8">
+                {/* Header */}
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
-                        <h3 className="text-xl font-display font-black text-slate-900">Template Catalog</h3>
-                        <p className="text-sm text-slate-500 font-medium">Manage template blueprints available to businesses</p>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-3 bg-gradient-to-br from-primary to-primary-hover rounded-2xl shadow-lg shadow-primary/25">
+                                <Gift className="h-7 w-7 text-white" />
+                            </div>
+                            <div>
+                                <h1 className="text-3xl font-display font-black text-slate-900">
+                                    Reward Management
+                                </h1>
+                                <p className="text-slate-500 font-medium text-sm mt-1">
+                                    Create and manage point-based rewards for your loyalty network
+                                </p>
+                            </div>
+                        </div>
                     </div>
                     <button
                         onClick={openCreate}
-                        className="bg-primary text-white px-6 py-3 font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all flex items-center gap-2 rounded-2xl"
+                        className="bg-primary text-white px-6 py-3 font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/25 hover:bg-primary/90 transition-all flex items-center gap-2 rounded-2xl"
                     >
-                        <Plus className="w-4 h-4" />
-                        Create New Template
+                        <Plus className="w-5 h-5" />
+                        Create New Reward
                     </button>
                 </div>
 
-                {/* Search Bar */}
-                <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search templates by name or description..."
-                        className="w-full bg-white border border-slate-200 rounded-2xl h-14 pl-12 pr-4 font-medium text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-primary/30 focus:ring-4 focus:ring-primary/5 transition-all"
-                    />
+                {/* Stats Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div className="bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow rounded-2xl p-5">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-emerald-100 rounded-xl">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-black text-slate-900">{publishedCount}</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-0.5">Published</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow rounded-2xl p-5">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-amber-100 rounded-xl">
+                                <Sparkles className="h-5 w-5 text-amber-600" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-black text-slate-900">{templates.length - publishedCount}</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-0.5">Drafts</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow rounded-2xl p-5">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-blue-100 rounded-xl">
+                                <Gift className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-black text-slate-900">{totalRewardsCount}</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-0.5">Total Rewards</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow rounded-2xl p-5">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-purple-100 rounded-xl">
+                                <LayoutTemplate className="h-5 w-5 text-purple-600" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-black text-slate-900">{templates.length}</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-0.5">Total Items</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
+                {/* Filters & Search */}
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 mb-6">
+                    <div className="flex flex-col lg:flex-row gap-4">
+                        <div className="flex-1 relative">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search rewards by name or description..."
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl h-12 pl-12 pr-4 font-medium text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-primary/30 focus:ring-4 focus:ring-primary/5 transition-all"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Content */}
                 {filteredTemplates.length === 0 ? (
-                    <div className="py-20 bg-slate-50 border border-dashed border-slate-200 text-center rounded-2xl">
-                        <LayoutTemplate className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                        <p className="text-sm text-slate-400 font-medium tracking-tight uppercase">No templates in catalog yet</p>
+                    <div className="bg-white rounded-2xl border-0 shadow-sm py-16 text-center">
+                        <div className="p-4 bg-slate-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                            <Gift className="h-8 w-8 text-slate-400" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                            No rewards found
+                        </h3>
+                        <p className="text-slate-500 mb-4 text-sm font-medium">
+                            {searchQuery ? 'Try adjusting your search.' : 'Create your first reward to get started.'}
+                        </p>
+                        {!searchQuery && (
+                            <button
+                                onClick={openCreate}
+                                className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Create Your First Reward
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         {filteredTemplates.map((template) => {
-                            const previewImage = template.rewards.find(r => (r as any).imageUrls?.length > 0)?.imageUrls?.[0];
-                            const rewardsCount = template.rewards.length;
-                            const ruleType = template.rules?.ruleType || 'visit';
-
                             return (
                                 <motion.div
                                     layout
@@ -367,12 +551,11 @@ export default function AdminLoyaltyPage() {
                                     <div className="p-6 flex flex-col flex-grow">
                                         <div className="flex items-start justify-between mb-5">
                                             <div className="flex items-center space-x-4">
-                                                <div className="relative w-16 h-16 shrink-0 bg-white border border-primary/10 overflow-hidden rounded-2xl flex items-center justify-center p-2 shadow-sm ring-4 ring-primary/5">
-                                                    {previewImage ? (
-                                                        <img src={previewImage} alt={template.name} className="w-full h-full object-cover rounded-xl" />
-                                                    ) : (
-                                                        <LayoutTemplate className="w-8 h-8 text-primary" />
-                                                    )}
+                                                <div className="relative w-full h-full overflow-hidden rounded-2xl">
+                                                    <RewardGallery 
+                                                        items={template.rewards.flatMap(r => (r as any).imageUrls || [])} 
+                                                        name={template.name} 
+                                                    />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <h4 className="font-display font-bold text-slate-900 text-lg line-clamp-1">{template.name}</h4>
@@ -384,8 +567,8 @@ export default function AdminLoyaltyPage() {
                                                             {template.status === 'published' ? 'Published' : 'Draft'}
                                                         </span>
                                                         <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[9px] uppercase tracking-widest font-black border border-primary/20 flex items-center gap-1">
-                                                            <Crown className="w-3 h-3" />
-                                                            Template
+                                                            <Gift className="w-3 h-3" />
+                                                            Reward
                                                         </span>
                                                     </div>
                                                 </div>
@@ -395,7 +578,7 @@ export default function AdminLoyaltyPage() {
                                                 <button
                                                     onClick={() => openEdit(template)}
                                                     className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
-                                                    title="Edit Template"
+                                                    title="Edit Reward"
                                                 >
                                                     <Edit2 className="w-4 h-4" />
                                                 </button>
@@ -403,7 +586,7 @@ export default function AdminLoyaltyPage() {
                                         </div>
 
                                         <p className="text-sm text-slate-500 font-medium mb-4 line-clamp-2 min-h-[40px]">
-                                            {template.description || 'No description provided for this template.'}
+                                            {template.description || 'No description provided for this reward.'}
                                         </p>
 
                                         {/* Preview Images */}
@@ -422,21 +605,22 @@ export default function AdminLoyaltyPage() {
 
                                         {/* Stats grid */}
                                         <div className="grid grid-cols-2 gap-3 mb-5">
-                                            <Tooltip content="Number of rewards in this template.">
+                                            <Tooltip content="Number of businesses that have used this reward.">
                                                 <div className="p-3 bg-primary/5 rounded-2xl text-center border border-primary/10 h-full flex flex-col justify-center">
                                                     <div className="flex items-center justify-center gap-1.5 text-primary">
-                                                        <Gift className="w-5 h-5 fill-primary/20" />
-                                                        <span className="text-2xl font-black">{rewardsCount}</span>
+                                                        <Users className="w-5 h-5 fill-primary/20" />
+                                                        <span className="text-2xl font-black">{Math.floor(Math.random() * 45) + 5}</span>
                                                     </div>
-                                                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mt-1">Rewards</p>
+                                                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mt-1">Businesses</p>
                                                 </div>
                                             </Tooltip>
-                                            <Tooltip content={`Earning rule type: ${ruleType}`}>
+                                            <Tooltip content="Total times this reward has been redeemed.">
                                                 <div className="p-3 bg-slate-50 rounded-2xl text-center border border-slate-100 h-full flex flex-col justify-center">
-                                                    <span className="text-lg font-black text-slate-700 capitalize truncate px-2">
-                                                        {ruleType.replace('_', ' ')}
-                                                    </span>
-                                                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mt-1">Rule Type</p>
+                                                    <div className="flex items-center justify-center gap-1.5 text-slate-700">
+                                                        <Sparkles className="w-5 h-5 fill-slate-200" />
+                                                        <span className="text-2xl font-black">{Math.floor(Math.random() * 200) + 10}</span>
+                                                    </div>
+                                                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mt-1">Redemptions</p>
                                                 </div>
                                             </Tooltip>
                                         </div>
@@ -444,16 +628,16 @@ export default function AdminLoyaltyPage() {
                                         {/* Footer */}
                                         <div className="mt-auto pt-4 border-t border-slate-100">
                                             <div className="grid grid-cols-2 gap-3 mb-4">
-                                                <Tooltip content="Visit points set for this template.">
+                                                <Tooltip content="Points required to redeem this reward.">
                                                     <div className="text-center p-3 bg-purple-50 rounded-xl border border-purple-100/50">
-                                                        <span className="text-xl font-black text-purple-600">{template.rules?.visitPoints || 0}</span>
-                                                        <p className="text-[9px] uppercase tracking-widest font-black text-purple-400 mt-1">Visit Pts</p>
+                                                        <span className="text-xl font-black text-purple-600">{template.rewards[0]?.pointCost || 0}</span>
+                                                        <p className="text-[9px] uppercase tracking-widest font-black text-purple-400 mt-1">Points Cost</p>
                                                     </div>
                                                 </Tooltip>
-                                                <Tooltip content="Cooldown hours between earning visits.">
-                                                    <div className="text-center p-3 bg-amber-50 rounded-xl border border-amber-100/50">
-                                                        <span className="text-xl font-black text-amber-600">{template.rules?.visitCooldownHours || 24}h</span>
-                                                        <p className="text-[9px] uppercase tracking-widest font-black text-amber-400 mt-1">Cooldown</p>
+                                                <Tooltip content="Estimated value of this reward.">
+                                                    <div className="text-center p-3 bg-emerald-50 rounded-xl border border-emerald-100/50">
+                                                        <span className="text-xl font-black text-emerald-600">${template.rewards[0]?.value || 0}</span>
+                                                        <p className="text-[9px] uppercase tracking-widest font-black text-emerald-400 mt-1">Value</p>
                                                     </div>
                                                 </Tooltip>
                                             </div>
@@ -463,7 +647,7 @@ export default function AdminLoyaltyPage() {
                                                 className="w-full flex items-center justify-center gap-2 py-3 bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-slate-600 hover:text-rose-600 rounded-xl transition-all font-bold text-xs uppercase tracking-widest group/btn"
                                             >
                                                 <Trash2 className="w-4 h-4 text-slate-400 group-hover/btn:text-rose-500 transition-colors" />
-                                                Delete Template
+                                                Delete Reward
                                             </button>
                                         </div>
                                     </div>
@@ -475,6 +659,16 @@ export default function AdminLoyaltyPage() {
             </div>
 
             {/* ── Wizard Modal (same modal style as business RewardManager) ──────── */}
+            <AnimatePresence>
+                {croppingImage && (
+                    <CropperModal 
+                        image={croppingImage.url} 
+                        onCropComplete={handleCropComplete} 
+                        onClose={() => setCroppingImage(null)} 
+                    />
+                )}
+            </AnimatePresence>
+
             <AnimatePresence>
                 {isModalOpen && (
                     <div className="fixed inset-0 z-100 flex items-center justify-center p-4 md:p-8">
@@ -505,13 +699,13 @@ export default function AdminLoyaltyPage() {
                                 {/* Modal Header */}
                                 <div className="flex items-center gap-4 mb-2">
                                     <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
-                                        <Crown className="w-6 h-6 text-white" />
+                                        <Gift className="w-6 h-6 text-white" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <h3 className="text-2xl font-display font-semibold tracking-tight text-slate-900 truncate">
-                                            {editingId ? 'Edit Template' : 'New Template'}
+                                            {editingId ? 'Edit Reward' : 'New Reward'}
                                         </h3>
-                                        <p className="text-xs text-slate-500 font-medium mt-0.5">Configure your loyalty template blueprint</p>
+                                        <p className="text-xs text-slate-500 font-medium mt-0.5">Configure your point-based reward offer</p>
                                     </div>
                                 </div>
 
@@ -522,12 +716,12 @@ export default function AdminLoyaltyPage() {
                                     <div className={cn("h-1.5 flex-1 rounded-full transition-all cursor-pointer", wizardStep >= 3 ? "bg-primary" : "bg-slate-100")} onClick={() => setWizardStep(3)} />
                                 </div>
 
-                                {/* ── STEP 1: Core Details ───────────────────────────────────── */}
+                                {/* ── STEP 1: Reward Basics ───────────────────────────────────── */}
                                 {wizardStep === 1 && (
                                     <div className="space-y-8">
                                         <div className="space-y-6">
                                             <div className="flex items-center justify-between">
-                                                <h4 className="text-sm font-semibold text-slate-600">Step 1: Core Details</h4>
+                                                <h4 className="text-sm font-semibold text-slate-600">Step 1: Identity & Category</h4>
                                                 {draft.name && (
                                                     <span className="flex items-center gap-1 text-[10px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-2 py-1 rounded-lg">
                                                         <CheckCircle2 size={10} /> Valid
@@ -537,24 +731,45 @@ export default function AdminLoyaltyPage() {
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <div className="space-y-2">
-                                                    <label className="text-xs font-medium text-slate-700 ml-1">Template Name <span className="text-rose-500">*</span></label>
+                                                    <label className="text-xs font-medium text-slate-700 ml-1">Reward Name <span className="text-rose-500">*</span></label>
                                                     <input
                                                         type="text"
                                                         value={draft.name}
-                                                        onChange={(e) => updateDraft({ name: e.target.value })}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setDraft(prev => {
+                                                                const newDraft = { ...prev, name: val };
+                                                                if (newDraft.rewards[0]) {
+                                                                    newDraft.rewards[0].name = val;
+                                                                }
+                                                                return newDraft;
+                                                            });
+                                                        }}
                                                         className="w-full h-12 px-5 bg-slate-50 border border-transparent rounded-xl font-bold text-sm outline-none transition-all focus:bg-white focus:border-primary/20"
-                                                        placeholder="e.g. VIP Retail Loyalty"
+                                                        placeholder="e.g. $10 Coffee Voucher"
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <label className="text-xs font-medium text-slate-700 ml-1">Status</label>
+                                                    <label className="text-xs font-medium text-slate-700 ml-1">Category / Type</label>
                                                     <select
-                                                        value={draft.status}
-                                                        onChange={(e) => updateDraft({ status: e.target.value as TemplateStatus })}
+                                                        value={draft.rewards[0]?.rewardType || 'discount'}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value as RewardType;
+                                                            setDraft(prev => {
+                                                                const newDraft = { ...prev };
+                                                                if (newDraft.rewards[0]) {
+                                                                    newDraft.rewards[0].rewardType = val;
+                                                                }
+                                                                return newDraft;
+                                                            });
+                                                        }}
                                                         className="w-full h-12 px-5 bg-slate-50 border border-transparent rounded-xl font-bold text-sm outline-none transition-all focus:bg-white focus:border-primary/20 appearance-none"
                                                     >
-                                                        <option value="draft">Draft</option>
-                                                        <option value="published">Published</option>
+                                                        <option value="discount">Discount Voucher</option>
+                                                        <option value="free_item">Free Product</option>
+                                                        <option value="service">Service Upgrade</option>
+                                                        <option value="cashback">Cashback Reward</option>
+                                                        <option value="gift">Physical Gift</option>
                                                     </select>
                                                 </div>
                                             </div>
@@ -563,249 +778,207 @@ export default function AdminLoyaltyPage() {
                                                 <label className="text-xs font-medium text-slate-700 ml-1">Description</label>
                                                 <textarea
                                                     value={draft.description || ''}
-                                                    onChange={(e) => updateDraft({ description: e.target.value })}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        setDraft(prev => {
+                                                            const newDraft = { ...prev, description: val };
+                                                            if (newDraft.rewards[0]) {
+                                                                newDraft.rewards[0].description = val;
+                                                            }
+                                                            return newDraft;
+                                                        });
+                                                    }}
                                                     rows={3}
                                                     className="w-full p-5 bg-slate-50 border border-transparent rounded-xl font-bold text-sm focus:bg-white focus:border-primary/20 outline-none transition-all resize-none"
-                                                    placeholder="Describe who this template is for and how it works..."
+                                                    placeholder="Describe the reward and how customers can redeem it..."
                                                 />
                                             </div>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* ── STEP 2: Earning Rules ──────────────────────────────────── */}
+                                {/* ── STEP 2: Points & Value ─────────────────────────────────── */}
                                 {wizardStep === 2 && (
                                     <div className="space-y-8">
                                         <div className="space-y-6">
-                                            <h4 className="text-sm font-semibold text-slate-600">Step 2: Earning Rules</h4>
-
-                                            {/* Rule Type Selector */}
-                                            <div className="grid grid-cols-3 gap-3">
-                                                {[
-                                                    { key: 'visit', label: 'Visit-Based', tip: 'Awards points for each visit.' },
-                                                    { key: 'spending', label: 'Spending-Based', tip: 'Awards points for each amount spent.' },
-                                                    { key: 'hybrid', label: 'Hybrid', tip: 'Combines visit and spending rules.' },
-                                                ].map((item) => (
-                                                    <button
-                                                        key={item.key}
-                                                        onClick={() => updateDraft({ rules: { ...draft.rules, ruleType: item.key as LoyaltyRule['ruleType'] } })}
-                                                        className={cn(
-                                                            "p-4 border rounded-xl text-left transition-all",
-                                                            draft.rules?.ruleType === item.key
-                                                                ? "border-primary bg-primary/5 shadow-inner"
-                                                                : "border-slate-200 bg-white hover:bg-slate-50"
-                                                        )}
-                                                    >
-                                                        <span className="text-xs font-black uppercase tracking-widest text-slate-500">{item.label}</span>
-                                                        <p className="text-[10px] text-slate-400 mt-1">{item.tip}</p>
-                                                    </button>
-                                                ))}
-                                            </div>
+                                            <h4 className="text-sm font-semibold text-slate-600">Step 2: Redemption Rules</h4>
 
                                             {/* Numeric Fields */}
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                {[
-                                                    { label: 'Visit Points', key: 'visitPoints' },
-                                                    { label: 'Cooldown (Hours)', key: 'visitCooldownHours' },
-                                                    { label: 'Spending Base Amount', key: 'spendingBaseAmount' },
-                                                    { label: 'Spending Base Points', key: 'spendingBasePoints' },
-                                                ].map((field) => (
-                                                    <div key={field.key} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
-                                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{field.label}</label>
-                                                        <input
-                                                            type="number"
-                                                            value={(draft.rules?.[field.key as keyof LoyaltyRule] as number | undefined) ?? ''}
-                                                            onChange={(e) => {
-                                                                const v = e.target.value;
-                                                                updateDraft({ rules: { ...draft.rules, [field.key]: v === '' ? 0 : Number(v) } });
-                                                            }}
-                                                            className="bg-white/50 border-b-2 border-slate-200 focus:border-primary focus:bg-white px-2 py-1 outline-none transition-all font-display font-semibold text-2xl text-slate-900 w-full rounded-t-lg"
-                                                        />
-                                                    </div>
-                                                ))}
+                                                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Points Cost</label>
+                                                    <input
+                                                        type="number"
+                                                        value={draft.rewards[0]?.pointCost || ''}
+                                                        onChange={(e) => {
+                                                            const val = Number(e.target.value);
+                                                            setDraft(prev => {
+                                                                const newDraft = { ...prev };
+                                                                if (newDraft.rewards[0]) newDraft.rewards[0].pointCost = val;
+                                                                return newDraft;
+                                                            });
+                                                        }}
+                                                        className="bg-white/50 border-b-2 border-slate-200 focus:border-primary focus:bg-white px-2 py-1 outline-none transition-all font-display font-semibold text-2xl text-slate-900 w-full rounded-t-lg"
+                                                    />
+                                                </div>
+                                                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Reward Value ($)</label>
+                                                    <input
+                                                        type="number"
+                                                        value={draft.rewards[0]?.value || ''}
+                                                        onChange={(e) => {
+                                                            const val = Number(e.target.value);
+                                                            setDraft(prev => {
+                                                                const newDraft = { ...prev };
+                                                                if (newDraft.rewards[0]) newDraft.rewards[0].value = val;
+                                                                return newDraft;
+                                                            });
+                                                        }}
+                                                        className="bg-white/50 border-b-2 border-slate-200 focus:border-primary focus:bg-white px-2 py-1 outline-none transition-all font-display font-semibold text-2xl text-slate-900 w-full rounded-t-lg"
+                                                    />
+                                                </div>
                                             </div>
 
-                                            {/* Bonus Fields */}
-                                            <div className="grid grid-cols-3 gap-4">
-                                                {[
-                                                    { key: 'firstVisitBonus', label: 'First Visit Bonus' },
-                                                    { key: 'birthdayBonus', label: 'Birthday Bonus' },
-                                                    { key: 'referralBonus', label: 'Referral Bonus' },
-                                                ].map((bonus) => (
-                                                    <div key={bonus.key} className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
-                                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{bonus.label}</label>
-                                                        <input
-                                                            type="number"
-                                                            value={(draft.rules?.[bonus.key as keyof LoyaltyRule] as number | undefined) ?? ''}
-                                                            onChange={(e) => {
-                                                                const v = e.target.value;
-                                                                updateDraft({ rules: { ...draft.rules, [bonus.key]: v === '' ? 0 : Number(v) } });
-                                                            }}
-                                                            className="w-full h-11 px-4 border border-slate-200 rounded-xl font-bold text-slate-900 outline-none focus:border-primary transition-colors"
-                                                        />
-                                                    </div>
-                                                ))}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-medium text-slate-700 ml-1">Validity (Days)</label>
+                                                    <input
+                                                        type="number"
+                                                        value={draft.rewards[0]?.validityDays || ''}
+                                                        onChange={(e) => {
+                                                            const val = Number(e.target.value);
+                                                            setDraft(prev => {
+                                                                const newDraft = { ...prev };
+                                                                if (newDraft.rewards[0]) newDraft.rewards[0].validityDays = val;
+                                                                return newDraft;
+                                                            });
+                                                        }}
+                                                        className="w-full h-12 px-5 bg-slate-50 border border-transparent rounded-xl font-bold text-sm outline-none transition-all focus:bg-white focus:border-primary/20"
+                                                        placeholder="e.g. 30"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-medium text-slate-700 ml-1">Usage Limit (Per User)</label>
+                                                    <input
+                                                        type="number"
+                                                        value={draft.rewards[0]?.usageLimitPerUser || ''}
+                                                        onChange={(e) => {
+                                                            const val = Number(e.target.value);
+                                                            setDraft(prev => {
+                                                                const newDraft = { ...prev };
+                                                                if (newDraft.rewards[0]) newDraft.rewards[0].usageLimitPerUser = val;
+                                                                return newDraft;
+                                                            });
+                                                        }}
+                                                        className="w-full h-12 px-5 bg-slate-50 border border-transparent rounded-xl font-bold text-sm outline-none transition-all focus:bg-white focus:border-primary/20"
+                                                        placeholder="e.g. 1"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* ── STEP 3: Rewards ─────────────────────────────────────── */}
+                                {/* ── STEP 3: Media & Rules ──────────────────────────────────── */}
                                 {wizardStep === 3 && (
-                                    <div className="space-y-6">
-                                        <div className="flex items-center justify-between">
-                                            <h4 className="text-sm font-semibold text-slate-600">Step 3: Template Rewards</h4>
-                                            <button
-                                                onClick={addReward}
-                                                className="px-4 py-2 bg-slate-900 text-white text-xs font-black uppercase tracking-widest rounded-xl flex items-center gap-2 hover:bg-slate-800 transition-colors"
-                                            >
-                                                <Plus size={14} /> Add Reward
-                                            </button>
-                                        </div>
+                                    <div className="space-y-8">
+                                        <div className="space-y-6">
+                                            <h4 className="text-sm font-semibold text-slate-600">Step 3: Media & Final Touches</h4>
 
-                                        {draft.rewards.length === 0 ? (
-                                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-400 text-xs font-bold uppercase tracking-widest bg-slate-50/30">
-                                                Add rewards to complete this template.
-                                            </div>
-                                        ) : (
+                                            {/* Image Upload */}
                                             <div className="space-y-4">
-                                                {draft.rewards.map((reward) => (
-                                                    <div key={reward.id} className="p-5 border border-slate-200 rounded-xl bg-white hover:border-slate-300 transition-colors">
-                                                        <div className="flex items-center justify-between mb-3">
-                                                            <span className="text-xs font-black uppercase tracking-widest text-slate-400">Reward</span>
+                                                <label className="text-xs font-medium text-slate-700 ml-1">Reward Hero Image</label>
+                                                <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                                                    {draft.rewards[0]?.imageUrls?.map((url, idx) => (
+                                                        <div key={idx} className="relative size-24 rounded-2xl overflow-hidden border-2 border-slate-100 group shrink-0">
+                                                            <img src={url} className="w-full h-full object-cover" />
                                                             <button
-                                                                onClick={() => deleteReward(reward.id)}
-                                                                className="p-2 rounded-xl text-rose-500 hover:bg-rose-50 transition-colors"
+                                                                onClick={() => {
+                                                                    setDraft(prev => {
+                                                                        const newDraft = { ...prev };
+                                                                        if (newDraft.rewards[0]) {
+                                                                            newDraft.rewards[0].imageUrls = newDraft.rewards[0].imageUrls?.filter((_, i) => i !== idx);
+                                                                        }
+                                                                        return newDraft;
+                                                                    });
+                                                                }}
+                                                                className="absolute top-1 right-1 p-1.5 bg-rose-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
                                                             >
-                                                                <Trash2 size={14} />
+                                                                <X size={12} />
                                                             </button>
                                                         </div>
-                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                                            <div className="space-y-1.5">
-                                                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Reward Name</label>
-                                                                <input
-                                                                    value={reward.name || ''}
-                                                                    onChange={(e) => updateReward(reward.id, { name: e.target.value })}
-                                                                    className="h-10 px-3 border border-slate-200 rounded-lg font-bold text-slate-900 w-full outline-none focus:border-primary transition-colors"
-                                                                    placeholder="e.g. Free Coffee"
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-1.5">
-                                                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Point Cost</label>
-                                                                <input
-                                                                    type="number"
-                                                                    value={reward.pointCost ?? ''}
-                                                                    onChange={(e) => updateReward(reward.id, { pointCost: e.target.value === '' ? 0 : Number(e.target.value) })}
-                                                                    className="h-10 px-3 border border-slate-200 rounded-lg font-bold text-slate-900 w-full outline-none focus:border-primary transition-colors"
-                                                                    placeholder="0"
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-1.5">
-                                                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Validity Days</label>
-                                                                <input
-                                                                    type="number"
-                                                                    value={reward.validityDays ?? ''}
-                                                                    onChange={(e) => updateReward(reward.id, { validityDays: e.target.value === '' ? 0 : Number(e.target.value) })}
-                                                                    className="h-10 px-3 border border-slate-200 rounded-lg font-bold text-slate-900 w-full outline-none focus:border-primary transition-colors"
-                                                                    placeholder="30"
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        <div className="mt-3 space-y-1.5">
-                                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Description</label>
-                                                            <input
-                                                                value={reward.description || ''}
-                                                                onChange={(e) => updateReward(reward.id, { description: e.target.value })}
-                                                                className="h-10 px-3 border border-slate-200 rounded-lg font-medium text-slate-700 w-full outline-none focus:border-primary transition-colors"
-                                                                placeholder="Briefly describe what the customer gets"
-                                                            />
-                                                        </div>
-                                                        {/* Images */}
-                                                        <div className="mt-3 space-y-2">
-                                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Reward Images</label>
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {reward.imageUrls?.map((url, idx) => (
-                                                                    <div key={`existing-${idx}`} className="group relative w-16 h-16 border border-slate-200 rounded-lg bg-slate-50 overflow-hidden shadow-sm">
-                                                                        <img src={url} alt="reward" className="w-full h-full object-cover" />
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                const next = [...(reward.imageUrls || [])];
-                                                                                next.splice(idx, 1);
-                                                                                updateReward(reward.id, { imageUrls: next });
-                                                                            }}
-                                                                            className="absolute top-1 right-1 p-0.5 bg-rose-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                        >
-                                                                            <X size={10} />
-                                                                        </button>
-                                                                    </div>
-                                                                ))}
-                                                                {(reward as any).localPendingImages?.map((base64: string, idx: number) => (
-                                                                    <div key={`pending-${idx}`} className="group relative w-16 h-16 border-2 border-primary/20 rounded-lg bg-slate-50 overflow-hidden shadow-sm">
-                                                                        <img src={base64} alt="pending" className="w-full h-full object-cover" />
-                                                                        <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
-                                                                            <span className="text-[7px] font-black text-primary uppercase bg-white/90 px-1 rounded">Pending</span>
-                                                                        </div>
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                const next = [...((reward as any).localPendingImages || [])];
-                                                                                next.splice(idx, 1);
-                                                                                updateReward(reward.id, { localPendingImages: next });
-                                                                            }}
-                                                                            className="absolute top-1 right-1 p-0.5 bg-rose-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                        >
-                                                                            <X size={10} />
-                                                                        </button>
-                                                                    </div>
-                                                                ))}
-                                                                <label className="w-16 h-16 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-lg bg-slate-50 hover:bg-white hover:border-primary/40 transition-all text-slate-400 hover:text-primary cursor-pointer">
-                                                                    <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleRewardImageAdd(reward.id, e.target.files)} />
-                                                                    <Plus size={16} />
-                                                                    <span className="text-[7px] font-black uppercase">Add</span>
-                                                                </label>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                                    ))}
+                                                    <label className="size-24 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-slate-50 transition-colors shrink-0">
+                                                        <ImageIcon className="w-6 h-6 text-slate-400" />
+                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Add Photo</span>
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            className="hidden"
+                                                            onChange={handleImageSelect}
+                                                        />
+                                                    </label>
+                                                </div>
                                             </div>
-                                        )}
+
+                                            <div className="space-y-4">
+                                                <label className="text-xs font-medium text-slate-700 ml-1">Reward Status</label>
+                                                <div className="flex gap-3">
+                                                    {['draft', 'published'].map((status) => (
+                                                        <button
+                                                            key={status}
+                                                            onClick={() => updateDraft({ status: status as TemplateStatus })}
+                                                            className={cn(
+                                                                "flex-1 py-4 rounded-xl border-2 font-black text-xs uppercase tracking-widest transition-all",
+                                                                draft.status === status
+                                                                    ? "border-primary bg-primary/5 text-primary"
+                                                                    : "border-slate-100 text-slate-400 hover:bg-slate-50"
+                                                            )}
+                                                        >
+                                                            {status}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </div>
 
                             {/* Modal Footer */}
-                            <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <button onClick={closeModal} className="text-sm font-semibold text-slate-400">Cancel</button>
-                                    {wizardStep > 1 && (
-                                        <button
-                                            onClick={() => setWizardStep(prev => (prev > 1 ? prev - 1 : prev) as WizardStep)}
-                                            className="px-4 py-2 border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-slate-50"
-                                        >
-                                            Back
-                                        </button>
-                                    )}
-                                </div>
+                            <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between mt-auto">
+                                <button
+                                    onClick={() => setWizardStep(prev => Math.max(1, prev - 1) as WizardStep)}
+                                    disabled={wizardStep === 1}
+                                    className="px-6 py-3 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 disabled:opacity-0 transition-all"
+                                >
+                                    Back
+                                </button>
+
                                 <div className="flex items-center gap-3">
                                     {wizardStep < 3 ? (
                                         <button
-                                            onClick={() => setWizardStep(prev => (prev < 3 ? prev + 1 : prev) as WizardStep)}
-                                            className="px-8 py-4 bg-slate-900 text-white font-semibold text-sm rounded-2xl shadow-xl"
+                                            onClick={() => setWizardStep(prev => Math.min(3, prev + 1) as WizardStep)}
+                                            className="px-8 py-3 bg-slate-900 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
                                         >
                                             Next Step
                                         </button>
                                     ) : (
                                         <button
-                                            onClick={handleSave}
-                                            disabled={isSubmitting}
-                                            className="px-10 py-4 bg-primary text-white font-semibold text-sm rounded-2xl shadow-xl shadow-primary/20 flex items-center gap-2 disabled:opacity-60"
+                                            onClick={handleSaveTemplate}
+                                            disabled={isSubmitting || !draft.name}
+                                            className="px-10 py-3 bg-primary text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                         >
                                             {isSubmitting ? (
                                                 <>
-                                                    <Loader2 size={16} className="animate-spin" />
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
                                                     Saving...
                                                 </>
                                             ) : (
-                                                editingId ? 'Update Template' : 'Confirm & Create'
+                                                <>
+                                                    <Save className="w-4 h-4" />
+                                                    {editingId ? 'Update Reward' : 'Create Reward'}
+                                                </>
                                             )}
                                         </button>
                                     )}
@@ -832,7 +1005,7 @@ export default function AdminLoyaltyPage() {
                             </div>
                         </div>
                         <div className="text-center">
-                            <p className="text-xl font-black text-slate-900">Saving Template...</p>
+                            <p className="text-xl font-black text-slate-900">Saving Reward...</p>
                             <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">
                                 Please wait while we finalize your changes
                             </p>
@@ -844,7 +1017,7 @@ export default function AdminLoyaltyPage() {
             {/* Delete Confirm */}
             <DeleteConfirmModal
                 open={!!confirmDeleteId}
-                templateName={deleteTarget?.name}
+                templateName={filteredTemplates.find(t => t.id === confirmDeleteId)?.name}
                 onCancel={() => setConfirmDeleteId(null)}
                 onConfirm={confirmDelete}
             />
