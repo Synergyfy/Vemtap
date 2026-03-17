@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class InitialSchema1773741068046 implements MigrationInterface {
-    name = 'InitialSchema1773741068046'
+export class InitialSchema1773745978527 implements MigrationInterface {
+    name = 'InitialSchema1773745978527'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TYPE "public"."campaigns_type_enum" AS ENUM('WhatsApp', 'SMS', 'Email')`);
@@ -37,9 +37,9 @@ export class InitialSchema1773741068046 implements MigrationInterface {
         await queryRunner.query(`CREATE TYPE "public"."devices_status_enum" AS ENUM('active', 'inactive')`);
         await queryRunner.query(`CREATE TABLE "devices" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "name" character varying NOT NULL, "code" character varying NOT NULL, "status" "public"."devices_status_enum" NOT NULL DEFAULT 'active', "location" character varying, "totalScans" integer NOT NULL DEFAULT '0', "type" character varying NOT NULL DEFAULT 'Card', "batteryLevel" integer NOT NULL DEFAULT '100', "lastActive" TIMESTAMP, "orderId" uuid, "branchId" uuid, "productTypeId" uuid, CONSTRAINT "UQ_8e5789338ecd743536cf10ca995" UNIQUE ("code"), CONSTRAINT "PK_b1514758245c12daf43486dd1f0" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "visits" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "customerId" uuid NOT NULL, "branchId" uuid, "businessId" uuid, "deviceId" uuid, "status" character varying NOT NULL DEFAULT 'new', CONSTRAINT "PK_0b0b322289a41015c6ea4e8bf30" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "password_reset_history" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "userId" uuid NOT NULL, "ipAddress" character varying, "userAgent" character varying, "resetAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_5cd81a99fa5c65c7df051682aa0" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."surveys_triggertype_enum" AS ENUM('INSTANT', 'DELAYED')`);
         await queryRunner.query(`CREATE TABLE "surveys" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "questions" jsonb NOT NULL DEFAULT '[]', "triggerType" "public"."surveys_triggertype_enum" NOT NULL DEFAULT 'INSTANT', "triggerDelay" integer, "targetAudience" jsonb NOT NULL DEFAULT '{"new":true,"returning":true}', "isActive" boolean NOT NULL DEFAULT true, "branchId" uuid, CONSTRAINT "REL_4533b924f7bc98b20bfa0154e1" UNIQUE ("branchId"), CONSTRAINT "PK_1b5e3d4aaeb2321ffa98498c971" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "password_reset_history" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "userId" uuid NOT NULL, "ipAddress" character varying, "userAgent" character varying, "resetAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_5cd81a99fa5c65c7df051682aa0" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "ticket_activity" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "ticketId" uuid NOT NULL, "action" character varying NOT NULL, "by" character varying NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_5b598792cb53ce51cb4b3cb5db1" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."support_tickets_status_enum" AS ENUM('Pending', 'In Progress', 'Resolved', 'Cancelled')`);
         await queryRunner.query(`CREATE TYPE "public"."support_tickets_priority_enum" AS ENUM('Low', 'Normal', 'High', 'Urgent')`);
@@ -75,8 +75,8 @@ export class InitialSchema1773741068046 implements MigrationInterface {
         await queryRunner.query(`CREATE TYPE "public"."flows_status_enum" AS ENUM('draft', 'active', 'paused')`);
         await queryRunner.query(`CREATE TYPE "public"."flows_triggertype_enum" AS ENUM('new_visitor', 'manual', 'tag_applied', 'birthday', 'loyalty_milestone')`);
         await queryRunner.query(`CREATE TABLE "flows" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "branchId" uuid, "businessId" uuid, "name" character varying NOT NULL, "status" "public"."flows_status_enum" NOT NULL DEFAULT 'draft', "triggerType" "public"."flows_triggertype_enum" NOT NULL, "structure" jsonb NOT NULL DEFAULT '{"nodes":[],"edges":[]}', CONSTRAINT "PK_c346955f4318ef565e6928462fe" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "flow_templates" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "name" character varying NOT NULL, "description" character varying, "triggerType" character varying NOT NULL, "version" character varying NOT NULL DEFAULT 'v1', "status" character varying NOT NULL DEFAULT 'active', "structure" jsonb NOT NULL DEFAULT '{"nodes":[],"edges":[]}', CONSTRAINT "PK_99d311dfe3e94fc45a38d90df19" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "flow_trigger_configs" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "key" character varying NOT NULL, "label" character varying NOT NULL, "enabled" boolean NOT NULL DEFAULT true, "inactivityDays" integer, CONSTRAINT "UQ_e2ab9570dc3e8f4a8d97be07013" UNIQUE ("key"), CONSTRAINT "PK_bc27903f4b35373ffeb71c8ebd0" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "flow_templates" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "name" character varying NOT NULL, "description" character varying, "triggerType" character varying NOT NULL, "version" character varying NOT NULL DEFAULT 'v1', "status" character varying NOT NULL DEFAULT 'active', "structure" jsonb NOT NULL DEFAULT '{"nodes":[],"edges":[]}', CONSTRAINT "PK_99d311dfe3e94fc45a38d90df19" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "flow_logs" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "flowSessionId" uuid NOT NULL, "branchId" uuid NOT NULL, "actionType" character varying NOT NULL, "isError" boolean NOT NULL DEFAULT false, "message" character varying NOT NULL, "details" jsonb, CONSTRAINT "PK_9a57c5a68424a13d4ead0e3211f" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."credit_transactions_channel_enum" AS ENUM('SMS', 'WHATSAPP', 'EMAIL', 'IN_HOUSE')`);
         await queryRunner.query(`CREATE TYPE "public"."credit_transactions_transactiontype_enum" AS ENUM('subscription_allocation', 'message_deduction', 'credit_topup', 'admin_adjustment')`);
@@ -137,8 +137,8 @@ export class InitialSchema1773741068046 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "visits" ADD CONSTRAINT "FK_75f05529507320445c79ac9b33e" FOREIGN KEY ("customerId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "visits" ADD CONSTRAINT "FK_27ac2b146f315a2a56c9aa932b9" FOREIGN KEY ("branchId") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "visits" ADD CONSTRAINT "FK_78adb0c8665c50789286fb0087f" FOREIGN KEY ("deviceId") REFERENCES "devices"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "surveys" ADD CONSTRAINT "FK_4533b924f7bc98b20bfa0154e13" FOREIGN KEY ("branchId") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "password_reset_history" ADD CONSTRAINT "FK_7257ca0273bba3bfd4420303a5c" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "surveys" ADD CONSTRAINT "FK_4533b924f7bc98b20bfa0154e13" FOREIGN KEY ("branchId") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "ticket_activity" ADD CONSTRAINT "FK_7cc9884e6d4b04546686cc610b5" FOREIGN KEY ("ticketId") REFERENCES "support_tickets"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "support_tickets" ADD CONSTRAINT "FK_8679e2ff150ff0e253189ca0253" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "support_tickets" ADD CONSTRAINT "FK_947e77544ab7d5fd9521c44e069" FOREIGN KEY ("assignedToId") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
@@ -230,8 +230,8 @@ export class InitialSchema1773741068046 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "support_tickets" DROP CONSTRAINT "FK_947e77544ab7d5fd9521c44e069"`);
         await queryRunner.query(`ALTER TABLE "support_tickets" DROP CONSTRAINT "FK_8679e2ff150ff0e253189ca0253"`);
         await queryRunner.query(`ALTER TABLE "ticket_activity" DROP CONSTRAINT "FK_7cc9884e6d4b04546686cc610b5"`);
-        await queryRunner.query(`ALTER TABLE "password_reset_history" DROP CONSTRAINT "FK_7257ca0273bba3bfd4420303a5c"`);
         await queryRunner.query(`ALTER TABLE "surveys" DROP CONSTRAINT "FK_4533b924f7bc98b20bfa0154e13"`);
+        await queryRunner.query(`ALTER TABLE "password_reset_history" DROP CONSTRAINT "FK_7257ca0273bba3bfd4420303a5c"`);
         await queryRunner.query(`ALTER TABLE "visits" DROP CONSTRAINT "FK_78adb0c8665c50789286fb0087f"`);
         await queryRunner.query(`ALTER TABLE "visits" DROP CONSTRAINT "FK_27ac2b146f315a2a56c9aa932b9"`);
         await queryRunner.query(`ALTER TABLE "visits" DROP CONSTRAINT "FK_75f05529507320445c79ac9b33e"`);
@@ -292,8 +292,8 @@ export class InitialSchema1773741068046 implements MigrationInterface {
         await queryRunner.query(`DROP TYPE "public"."credit_transactions_transactiontype_enum"`);
         await queryRunner.query(`DROP TYPE "public"."credit_transactions_channel_enum"`);
         await queryRunner.query(`DROP TABLE "flow_logs"`);
-        await queryRunner.query(`DROP TABLE "flow_trigger_configs"`);
         await queryRunner.query(`DROP TABLE "flow_templates"`);
+        await queryRunner.query(`DROP TABLE "flow_trigger_configs"`);
         await queryRunner.query(`DROP TABLE "flows"`);
         await queryRunner.query(`DROP TYPE "public"."flows_triggertype_enum"`);
         await queryRunner.query(`DROP TYPE "public"."flows_status_enum"`);
@@ -329,9 +329,9 @@ export class InitialSchema1773741068046 implements MigrationInterface {
         await queryRunner.query(`DROP TYPE "public"."support_tickets_priority_enum"`);
         await queryRunner.query(`DROP TYPE "public"."support_tickets_status_enum"`);
         await queryRunner.query(`DROP TABLE "ticket_activity"`);
-        await queryRunner.query(`DROP TABLE "password_reset_history"`);
         await queryRunner.query(`DROP TABLE "surveys"`);
         await queryRunner.query(`DROP TYPE "public"."surveys_triggertype_enum"`);
+        await queryRunner.query(`DROP TABLE "password_reset_history"`);
         await queryRunner.query(`DROP TABLE "visits"`);
         await queryRunner.query(`DROP TABLE "devices"`);
         await queryRunner.query(`DROP TYPE "public"."devices_status_enum"`);
