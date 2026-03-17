@@ -442,26 +442,22 @@ export default function ActiveFormsPage() {
                                                     />
 
                                                     <div className="px-4 pt-3 pb-4 text-left">
-                                                        <div className="flex items-center gap-1.5 mb-2.5">
-                                                            {selectedForm.businessLogo ? (
+                                                        <div className="flex items-center gap-2 mb-2.5">
+                                                            <div className="size-8 rounded-lg bg-white border border-gray-100 overflow-hidden flex items-center justify-center p-0.5 shrink-0 shadow-sm">
                                                                 <img
-                                                                    src={selectedForm.businessLogo}
+                                                                    src={selectedForm.businessLogo || '/VEMTAP_PNG.png'}
                                                                     alt={selectedForm.businessName || 'Business'}
-                                                                    className="size-5 rounded-full object-cover border border-gray-200 shrink-0"
+                                                                    className="w-full h-full object-contain"
+                                                                    onError={(e) => {
+                                                                        (e.target as HTMLImageElement).src = '/VEMTAP_PNG.png';
+                                                                    }}
                                                                 />
-                                                            ) : (
-                                                                <div 
-                                                                    className="size-5 rounded-full flex items-center justify-center shrink-0"
-                                                                    style={{ backgroundColor: `${engagementSettings?.brandColor || '#2563eb'}15` }}
-                                                                >
-                                                                    <Building2 size={10} style={{ color: engagementSettings?.brandColor || '#2563eb' }} />
-                                                                </div>
-                                                            )}
-                                                            <span className="text-[10px] font-semibold text-slate-500 truncate">
-                                                                {selectedForm.businessName || 'Your Business'}
-                                                                <span className="text-slate-300 mx-1">·</span>
-                                                                <span className="text-slate-400 font-medium">{selectedForm.branchName || 'Main Branch'}</span>
-                                                            </span>
+                                                            </div>
+                                                            <div className="min-w-0 flex-1">
+                                                                <h2 className="text-[11px] font-black text-slate-900 tracking-tight leading-tight truncate uppercase">
+                                                                    {selectedForm.businessName || 'Your Business'}
+                                                                </h2>
+                                                            </div>
                                                         </div>
 
                                                         <h1 className="text-base font-display font-black text-slate-900 tracking-tight leading-tight">
