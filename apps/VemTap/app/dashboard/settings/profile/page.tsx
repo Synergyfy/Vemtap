@@ -57,7 +57,6 @@ export default function BusinessProfilePage() {
 
     const [name, setName] = useState('');
     const [logo, setLogo] = useState('');
-    const [publicProfileUrl, setPublicProfileUrl] = useState('');
     const [categoryId, setCategoryId] = useState('');
     const [subcategoryId, setSubcategoryId] = useState('');
     const [otherSubcategoryName, setOtherSubcategoryName] = useState('');
@@ -118,7 +117,17 @@ export default function BusinessProfilePage() {
 
     const firstBranchWithCode = branches.find((b) => b.uniqueCode);
     const fallbackProfileCode = firstBranchWithCode?.uniqueCode || business?.uniqueCode || '';
-    const qrId = (isAllBranches ? business?.uniqueCode : branch?.uniqueCode) || fallbackProfileCode || '';
+    
+    // Check if the current branch is the main branch or if it's the only branch
+    const isMainBranch = branch?.isMainBranch || (branches.length === 1 && branches[0].id === effectiveBranchId);
+    const useBusinessLevelCode = isAllBranches || isMainBranch;
+
+    // Use business unique code for main branch or aggregate view
+    const qrId = (useBusinessLevelCode ? (business?.uniqueCode || branch?.uniqueCode) : branch?.uniqueCode) || fallbackProfileCode || '';
+    
+    // Calculate publicProfileUrl directly in render for reliability
+    const derivedPublicCode = (useBusinessLevelCode ? (business?.uniqueCode || branch?.uniqueCode) : (branch?.uniqueCode || business?.uniqueCode)) || fallbackProfileCode || qrId;
+    const derivedPublicProfileUrl = derivedPublicCode ? `${origin}/b/${derivedPublicCode}` : '';
 
     useEffect(() => {
         const source = (isAllBranches && business) ? business : branch;
@@ -184,15 +193,9 @@ export default function BusinessProfilePage() {
                 else setCacType('RC');
             }
 
-            const publicCode = business?.uniqueCode || fallbackProfileCode;
-            if (publicCode) {
-                const nextPublicUrl = `${origin}/b/${publicCode}`;
-                setPublicProfileUrl(nextPublicUrl);
-                if (qrId) {
-                    setRedirect(qrId, nextPublicUrl);
-                }
-            } else {
-                setPublicProfileUrl('');
+            // Still update the redirect side effect
+            if (qrId && derivedPublicProfileUrl) {
+                setRedirect(qrId, derivedPublicProfileUrl);
             }
         } else if (branch) {
             setName(branch.name || '');
@@ -231,21 +234,20 @@ export default function BusinessProfilePage() {
             setShowFeedback(branch.showFeedback ?? true);
             setShowRewards(branch.showRewards ?? true);
 
-            const publicCode = branch.uniqueCode || fallbackProfileCode;
-            if (publicCode) {
-                const nextPublicUrl = `${origin}/b/${publicCode}`;
-                setPublicProfileUrl(nextPublicUrl);
-                if (qrId) {
-                    setRedirect(qrId, nextPublicUrl);
-                }
-            } else {
-                setPublicProfileUrl('');
+            // Still update the redirect side effect
+            if (qrId && derivedPublicProfileUrl) {
+                setRedirect(qrId, derivedPublicProfileUrl);
             }
         } else if (user) {
             setName(user.businessName || '');
             setLogo(user.businessLogo || '');
+            
+            // Still update the redirect side effect
+            if (qrId && derivedPublicProfileUrl) {
+                setRedirect(qrId, derivedPublicProfileUrl);
+            }
         }
-    }, [business, branch, isAllBranches, activeBranchId, origin, branches.length, fallbackProfileCode, qrId, user]);
+    }, [business, branch, isAllBranches, activeBranchId, origin, branches.length, fallbackProfileCode, qrId, user, useBusinessLevelCode, setRedirect, derivedPublicProfileUrl]);
 
     const loadLocalRewardVisibilityFromStorage = () => {
         if (typeof window === 'undefined') return;
@@ -425,7 +427,7 @@ export default function BusinessProfilePage() {
         { id: 'schedule', label: 'Schedule', icon: 'calendar_today', branchOnly: true },
         { id: 'socials', label: 'Socials', icon: 'share', branchOnly: true },
         { id: 'rewards', label: 'Rewards', icon: 'auto_awesome', branchOnly: true },
-        { id: 'qr', label: 'QR Code', icon: 'qr_code_2', branchOnly: true },
+        { id: 'qr', label: 'QR Code', icon: 'qr_code_2' },
         { id: 'documents', label: 'Documents', icon: 'description', bizOnly: true },
     ].filter(tab => {
         if (isAllBranches) {
@@ -459,8 +461,8 @@ export default function BusinessProfilePage() {
                     <div>
                         <h4 className="text-sm font-bold text-amber-900">Aggregate Mode (All Locations)</h4>
                         <p className="text-xs text-amber-800/80 leading-relaxed mt-1">
-                            You are viewing global settings. You can only edit <strong>General Info</strong> and <strong>Documents</strong> here. 
-                            To edit branch-specific settings, socials, or QR codes, please <strong>select a specific branch</strong> from the header.
+                            You are viewing global settings. You can edit <strong>General Info</strong>, <strong>Documents</strong>, and <strong>Business QR</strong> here. 
+                            To edit branch-specific schedules, socials, or rewards, please <strong>select a specific branch</strong> from the header.
                         </p>
                     </div>
                 </div>
@@ -975,7 +977,7 @@ export default function BusinessProfilePage() {
                 </Modal>
 
             
-                {activeTab === 'qr' && !isAllBranches && (
+                {activeTab === 'qr' && (
                     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                         <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                             <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Dynamic Business QR</h3>
@@ -984,6 +986,7 @@ export default function BusinessProfilePage() {
                             {qrId ? (
                                 <DynamicQRCode
                                     redirectId={qrId}
+                                    customUrl={derivedPublicProfileUrl}
                                     label="Scan to Visit Profile"
                                     subLabel={origin.replace(/^https?:\/\//, '')}
                                     color="#000000"
@@ -995,12 +998,12 @@ export default function BusinessProfilePage() {
                             )}
                             <div className="w-full max-w-sm">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">Public Profile Link</p>
-                                {publicProfileUrl ? (
+                                {derivedPublicProfileUrl ? (
                                     <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-3">
-                                        <div className="text-xs font-bold text-text-main break-all">{publicProfileUrl}</div>
+                                        <div className="text-xs font-bold text-text-main break-all">{derivedPublicProfileUrl}</div>
                                         <button
                                             onClick={() => {
-                                                navigator.clipboard.writeText(publicProfileUrl);
+                                                navigator.clipboard.writeText(derivedPublicProfileUrl);
                                                 toast.success('Public link copied');
                                             }}
                                             className="w-full h-10 rounded-xl bg-white border border-gray-200 text-xs font-black text-text-secondary hover:text-primary hover:border-primary transition-colors"

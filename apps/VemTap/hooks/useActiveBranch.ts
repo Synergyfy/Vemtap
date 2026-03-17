@@ -65,12 +65,17 @@ export function useActiveBranch() {
             
             // Handle both absolute paths and relative paths
             const isAbsolute = href.startsWith('http');
-            const baseUrl = isAbsolute ? undefined : window.location.origin;
+            const baseUrl = (isAbsolute || typeof window === 'undefined') ? undefined : window.location.origin;
             
             try {
-                const url = new URL(href, baseUrl);
+                const url = new URL(href, baseUrl || 'https://localhost');
                 url.searchParams.set('branchId', effectiveBranchId);
-                return isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
+                
+                if (isAbsolute) return url.toString();
+                
+                // For relative URLs, just return the path + search + hash
+                const result = `${url.pathname}${url.search}${url.hash}`;
+                return result;
             } catch (e) {
                 // Fallback for malformed URLs
                 const separator = href.includes('?') ? '&' : '?';
