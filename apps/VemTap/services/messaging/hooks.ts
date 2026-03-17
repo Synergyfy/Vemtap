@@ -20,20 +20,27 @@ import {
     AutomationPerformance
 } from './types';
 
-import { fetchMyCredits, BusinessCredit } from '@/lib/api/credit-plans';
+import { BusinessCredit } from '@/lib/api/credit-plans';
 
 // ─── Credits ─────────────────────────────────────────────────────────────
 
 export const useMyCredits = () => {
-    const { branchId: resolvedBranchId } = useResolvedBranchParams();
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
 
     return useQuery<BusinessCredit, Error>({
-        queryKey: ['my-credits', businessId, role, resolvedBranchId],
-        queryFn: async () => await fetchMyCredits(resolvedBranchId === 'all' ? undefined : resolvedBranchId),
+        queryKey: ['my-credits', businessId || 'no-biz', role],
+        queryFn: async () => {
+            try {
+                return await api.get('/credits/balance');
+            } catch (err: any) {
+                console.error('[useMyCredits] Error fetching credits:', err);
+                throw err;
+            }
+        },
         refetchInterval: 60000,
-        enabled: !!businessId,
+        enabled: isAuthenticated,
     });
 };
 
@@ -133,11 +140,12 @@ const getWriteBranchId = ({
 export const useMessagingAnalytics = (channel?: Channel) => {
     const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams();
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
     const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
 
     return useQuery<MessagingAnalytics, Error>({
-        queryKey: ['messaging', 'analytics', businessId, role, resolvedBranchId, allBranches, channel, contextParams.toString()],
+        queryKey: ['messaging', 'analytics', businessId || 'no-biz', role, resolvedBranchId, allBranches, channel, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
             if (channel) params.append('channel', channel);
@@ -163,7 +171,7 @@ export const useMessagingAnalytics = (channel?: Channel) => {
                 trafficTrend: response?.trafficTrend
             } as MessagingAnalytics;
         },
-        enabled: !!businessId,
+        enabled: isAuthenticated,
     });
 };
 
@@ -172,11 +180,12 @@ export const useMessagingAnalytics = (channel?: Channel) => {
 export const useMessagingCampaigns = () => {
     const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams();
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
     const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
 
     return useQuery<Campaign[], Error>({
-        queryKey: ['messaging', 'campaigns', businessId, role, resolvedBranchId, allBranches, contextParams.toString()],
+        queryKey: ['messaging', 'campaigns', businessId || 'no-biz', role, resolvedBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
             const campaigns = await api.get(`/messaging/campaigns?${params.toString()}`);
@@ -193,7 +202,7 @@ export const useMessagingCampaigns = () => {
                                 : campaign?.status || 'Draft',
             }));
         },
-        enabled: !!businessId,
+        enabled: isAuthenticated,
     });
 };
 
@@ -280,11 +289,12 @@ export const useCreateTemplate = () => {
 export const useInboxThreads = (channel: Channel) => {
     const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams();
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
     const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
 
     return useQuery<InboxThread[], Error>({
-        queryKey: ['messaging', 'inbox', channel, businessId, role, resolvedBranchId, allBranches, contextParams.toString()],
+        queryKey: ['messaging', 'inbox', channel, businessId || 'no-biz', role, resolvedBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
             const response = await api.get(`/messaging/inbox/${channel}?${params.toString()}`);
@@ -299,18 +309,19 @@ export const useInboxThreads = (channel: Channel) => {
                 updatedAt: thread?.lastActivityAt || thread?.updatedAt || thread?.createdAt,
             }));
         },
-        enabled: !!businessId && !!channel,
+        enabled: isAuthenticated && !!channel,
     });
 };
 
 export const useThreadMessages = (threadId: string) => {
     const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams();
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
     const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
 
     return useQuery<ThreadMessage[], Error>({
-        queryKey: ['messaging', 'thread', threadId, businessId, role, resolvedBranchId, allBranches, contextParams.toString()],
+        queryKey: ['messaging', 'thread', threadId, businessId || 'no-biz', role, resolvedBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
             const response = await api.get(`/messaging/inbox/threads/${threadId}?${params.toString()}`);
@@ -322,7 +333,7 @@ export const useThreadMessages = (threadId: string) => {
                 createdAt: message.timestamp || message.createdAt,
             }));
         },
-        enabled: !!businessId && !!threadId,
+        enabled: isAuthenticated && !!threadId,
     });
 };
 
@@ -342,16 +353,17 @@ export const useReplyToThread = (threadId: string) => {
 export const useAutomations = (branchId?: string) => {
     const { branchId: targetBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
     const contextParams = getReadContextParams({ role, businessId, branchId: targetBranchId, allBranches });
 
     return useQuery<AutomationRule[], Error>({
-        queryKey: ['messaging', 'automations', businessId, role, targetBranchId, allBranches, contextParams.toString()],
+        queryKey: ['messaging', 'automations', businessId || 'no-biz', role, targetBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
             return await api.get(`/automations?${params.toString()}`);
         },
-        enabled: !!businessId,
+        enabled: isAuthenticated,
     });
 };
 
@@ -388,60 +400,64 @@ export const useDeleteAutomation = () => {
 export const useAutomationLogs = (branchId?: string, limit = 50, offset = 0) => {
     const { branchId: targetBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
     const contextParams = getReadContextParams({ role, businessId, branchId: targetBranchId, allBranches });
 
     return useQuery<{ data: AutomationLog[]; total: number }, Error>({
-        queryKey: ['messaging', 'automation-logs', businessId, role, targetBranchId, allBranches, limit, offset, contextParams.toString()],
+        queryKey: ['messaging', 'automation-logs', businessId || 'no-biz', role, targetBranchId, allBranches, limit, offset, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
             params.append('limit', limit.toString());
             params.append('offset', offset.toString());
             return await api.get(`/automations/logs?${params.toString()}`);
         },
-        enabled: !!businessId,
+        enabled: isAuthenticated,
     });
 };
 
 export const useAutomationLogDetails = (sessionId: string) => {
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     return useQuery<AutomationLog, Error>({
-        queryKey: ['messaging', 'automation-log-details', sessionId],
+        queryKey: ['messaging', 'automation-log-details', sessionId, businessId || 'no-biz'],
         queryFn: async () => await api.get(`/automations/logs/${sessionId}`),
-        enabled: !!businessId && !!sessionId,
+        enabled: isAuthenticated && !!sessionId,
     });
 };
 
 export const useAutomationPerformance = (branchId?: string, startDate?: string, endDate?: string) => {
     const { branchId: targetBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
     const contextParams = getReadContextParams({ role, businessId, branchId: targetBranchId, allBranches });
 
     return useQuery<AutomationPerformance, Error>({
-        queryKey: ['messaging', 'automation-performance', businessId, role, targetBranchId, allBranches, startDate, endDate, contextParams.toString()],
+        queryKey: ['messaging', 'automation-performance', businessId || 'no-biz', role, targetBranchId, allBranches, startDate, endDate, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
             if (startDate) params.append('startDate', startDate);
             if (endDate) params.append('endDate', endDate);
             return await api.get(`/automations/performance?${params.toString()}`);
         },
-        enabled: !!businessId,
+        enabled: isAuthenticated,
     });
 };
 
 export const useWhatsAppConnectionStatus = (branchId?: string) => {
     const { branchId: targetBranchId, allBranches } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.user?.role);
     const contextParams = getReadContextParams({ role, businessId, branchId: targetBranchId, allBranches });
 
     return useQuery<{ status: string; provider: string; updatedAt: string }, Error>({
-        queryKey: ['messaging', 'whatsapp-status', businessId, role, targetBranchId, allBranches, contextParams.toString()],
+        queryKey: ['messaging', 'whatsapp-status', businessId || 'no-biz', role, targetBranchId, allBranches, contextParams.toString()],
         queryFn: async () => {
             const params = new URLSearchParams(contextParams);
             return await api.get(`/automations/connection-status?${params.toString()}`);
         },
-        enabled: !!businessId,
+        enabled: isAuthenticated,
     });
 };

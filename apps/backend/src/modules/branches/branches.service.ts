@@ -32,20 +32,20 @@ export class BranchesService {
     user: User,
     targetBranchId: string,
   ): Promise<boolean> {
-    if (user.role === 'Admin') return true;
+    const userRole = String(user.role || '').toLowerCase();
+    
+    if (userRole === 'admin') return true;
 
-    if (user.role === 'Owner') {
+    if (userRole === 'owner') {
       // Owner can access any branch that belongs to their business
       const branch = await this.branchesRepository.findOne({
         where: { id: targetBranchId },
       });
       if (!branch) return false;
 
-      // We need to check if the branch belongs to the owner's business
-      // Using businessId from token if available, or fetching from DB
-      const businessId = user.businessId;
-      if (businessId) {
-        return branch.businessId === businessId;
+      // Check if branch belongs to user's businessId from token
+      if (user.businessId && branch.businessId === user.businessId) {
+        return true;
       }
 
       // Fallback: check if the business belongs to this owner

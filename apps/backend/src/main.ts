@@ -6,13 +6,22 @@ import {
   INestApplication,
 } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
+import compression from 'compression';
 import { AppModule } from './app.module';
 
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 // 1. Shared Configuration Function
 // This setup applies to both Local and Vercel environments
 export function configureApp(app: INestApplication) {
+  // Security
+  app.use(helmet());
+  
+  // Compression
+  app.use(compression());
+
   // CORS
   app.enableCors({
     origin: true,
@@ -34,6 +43,9 @@ export function configureApp(app: INestApplication) {
     }),
   );
 
+  // Filters & Interceptors
+  app.useGlobalFilters(new AllExceptionsFilter());
+  
   // Serialization & Global Logging
   app.useGlobalInterceptors(
     new ClassSerializerInterceptor(app.get(Reflector)),
