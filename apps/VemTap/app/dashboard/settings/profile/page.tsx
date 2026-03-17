@@ -48,6 +48,12 @@ export default function BusinessProfilePage() {
     
     const updateMutation = useUpdateBusiness();
     const updateBranchMutation = useUpdateBranch();
+    const [selectedRewardToEnable, setSelectedRewardToEnable] = useState<{
+        reward: any;
+        targetStatus: boolean;
+        previousStatus: boolean;
+    } | null>(null);
+    const [localRewardVisibility, setLocalRewardVisibility] = useState<Record<string, boolean>>({});
 
     const [name, setName] = useState('');
     const [logo, setLogo] = useState('');
@@ -241,8 +247,80 @@ export default function BusinessProfilePage() {
         }
     }, [business, branch, isAllBranches, activeBranchId, origin, branches.length, fallbackProfileCode, qrId, user]);
 
+    const loadLocalRewardVisibilityFromStorage = () => {
+        if (typeof window === 'undefined') return;
+        try {
+            const data = localStorage.getItem('vemtap_reward_visibility');
+            if (data) {
+                const parsed = JSON.parse(data || '{}');
+                if (parsed && typeof parsed === 'object') {
+                    setLocalRewardVisibility(parsed);
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to read reward visibility from localStorage', error);
+        }
+    };
 
-    const handleSave = async () => {
+    const persistRewardVisibilityToStorage = (updatedVisibility: Record<string, boolean>) => {
+        setLocalRewardVisibility(updatedVisibility);
+        if (typeof window === 'undefined') return;
+        try {
+            localStorage.setItem('vemtap_reward_visibility', JSON.stringify(updatedVisibility));
+        } catch (error) {
+            console.warn('Failed to save reward visibility to localStorage', error);
+        }
+    };
+
+    useEffect(() => {
+        loadLocalRewardVisibilityFromStorage();
+    }, []);
+
+    const handleRewardToggle = (reward: any) => {
+        if (!reward?.id) return;
+
+        const currentlyActive = localRewardVisibility.hasOwnProperty(reward.id)
+            ? localRewardVisibility[reward.id]
+            : reward.isActive !== false;
+
+        const targetStatus = !currentlyActive;
+        setSelectedRewardToEnable({ reward, targetStatus, previousStatus: currentlyActive });
+
+        // optimistic UI toggle before confirmation
+        setLocalRewardVisibility(prev => ({ ...prev, [reward.id]: targetStatus }));
+        setShowRewardsModal(true);
+    };
+
+    const cancelRewardToggle = () => {
+        if (selectedRewardToEnable?.reward?.id) {
+            setLocalRewardVisibility(prev => ({
+                ...prev,
+                [selectedRewardToEnable.reward.id]: selectedRewardToEnable.previousStatus,
+            }));
+        }
+        setSelectedRewardToEnable(null);
+        setShowRewardsModal(false);
+    };
+
+    const confirmRewardToggle = () => {
+        if (!selectedRewardToEnable?.reward?.id) {
+            setShowRewardsModal(false);
+            return;
+        }
+
+        const { reward, targetStatus } = selectedRewardToEnable;
+        const updatedVisibility = {
+            ...localRewardVisibility,
+            [reward.id]: targetStatus,
+        };
+
+        persistRewardVisibilityToStorage(updatedVisibility);
+        setShowRewardsModal(false);
+        setSelectedRewardToEnable(null);
+        toast.success(`${reward.name || 'Reward'} ${targetStatus ? 'enabled' : 'disabled'} for public profiles.`);
+    };
+
+     const handleSave = async () => {
         const hasChanged = (current: any, original: any) => {
             const normalizedCurrent = current === '' || current === null ? undefined : current;
             const normalizedOriginal = original === '' || original === null ? undefined : original;
@@ -345,7 +423,6 @@ export default function BusinessProfilePage() {
     const availableTabs = [
         { id: 'general', label: 'General', icon: 'business' },
         { id: 'schedule', label: 'Schedule', icon: 'calendar_today', branchOnly: true },
-        { id: 'messaging', label: 'Messaging', icon: 'forum', branchOnly: true },
         { id: 'socials', label: 'Socials', icon: 'share', branchOnly: true },
         { id: 'rewards', label: 'Rewards', icon: 'auto_awesome', branchOnly: true },
         { id: 'visibility', label: 'Visibility', icon: 'visibility', branchOnly: true },
@@ -790,45 +867,9 @@ export default function BusinessProfilePage() {
                         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                             <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-start justify-between gap-4">
                                 <div>
-                                    <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Rewards Visibility</h3>
-                                    <p className="text-xs text-text-secondary mt-1">
-                                        Control whether rewards appear on your public business profile.
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => setShowRewardsModal(true)}
-                                    className="text-[10px] font-black uppercase tracking-widest text-primary bg-white border border-primary/20 px-3 py-2 rounded-xl hover:bg-primary/5 transition-colors"
-                                >
-                                    What is this?
-                                </button>
-                            </div>
-                            <div className="p-8 space-y-4">
-                                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                                    <div>
-                                        <span className="text-sm font-bold text-text-main">Show rewards on public profile</span>
-                                        <p className="text-xs text-text-secondary mt-1">
-                                            Visitors can view your reward catalog and loyalty perks.
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={() => setShowRewards(!showRewards)}
-                                        className={`w-12 h-6 rounded-full transition-all ${showRewards ? 'bg-primary' : 'bg-gray-300'}`}
-                                    >
-                                        <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${showRewards ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                                    </button>
-                                </div>
-                                <p className="text-[11px] text-text-secondary">
-                                    Changes apply after you save this profile.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-start justify-between gap-4">
-                                <div>
                                     <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Rewards Library</h3>
                                     <p className="text-xs text-text-secondary mt-1">
-                                        Rewards created for this branch.
+                                        Manage your branch rewards and toggle each reward on or off individually.
                                     </p>
                                 </div>
                                 <Link
@@ -850,46 +891,89 @@ export default function BusinessProfilePage() {
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {rewards.map((reward) => (
-                                            <div key={reward.id} className="rounded-2xl border border-gray-100 bg-gray-50/60 p-5 space-y-3">
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <div>
-                                                        <p className="text-sm font-bold text-text-main">{reward.name || 'Untitled reward'}</p>
-                                                        <p className="text-xs text-text-secondary line-clamp-2 mt-1">
-                                                            {reward.description || 'No description provided.'}
-                                                        </p>
+                                        {rewards.map((reward) => {
+                                            const isActive = localRewardVisibility.hasOwnProperty(reward.id)
+                                                ? localRewardVisibility[reward.id]
+                                                : reward.isActive !== false;
+                                            return (
+                                                <div key={reward.id} className="rounded-2xl border border-gray-100 bg-gray-50/60 p-5 space-y-3">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <p className="text-sm font-bold text-text-main">{reward.name || 'Untitled reward'}</p>
+                                                            <p className="text-xs text-text-secondary line-clamp-2 mt-1">{reward.description || 'No description provided.'}</p>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleRewardToggle(reward)}
+                                                            disabled={showRewardsModal}
+                                                            className={`relative w-12 h-6 rounded-full transition-all ${isActive ? 'bg-primary' : 'bg-gray-300'} ${showRewardsModal ? 'opacity-70 cursor-wait' : 'cursor-pointer'}`}
+                                                            aria-label={`Toggle ${reward.name || 'reward'} ${isActive ? 'off' : 'on'}`}
+                                                        >
+                                                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isActive ? 'translate-x-6' : 'translate-x-0'}`} />
+                                                        </button>
                                                     </div>
-                                                    <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${reward.isActive !== false ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                        {reward.isActive !== false ? 'Active' : 'Inactive'}
-                                                    </span>
+
+                                                    <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-text-secondary">
+                                                        {reward.rewardType && (
+                                                            <span className="px-2 py-1 bg-white border border-gray-200 rounded-full uppercase tracking-widest">
+                                                                {reward.rewardType.replace(/_/g, ' ')}
+                                                            </span>
+                                                        )}
+                                                        <span className="px-2 py-1 bg-white border border-gray-200 rounded-full">{reward.pointCost ?? 0} pts</span>
+                                                        {reward.validityDays ? (
+                                                            <span className="px-2 py-1 bg-white border border-gray-200 rounded-full">{reward.validityDays} days</span>
+                                                        ) : (
+                                                            <span className="px-2 py-1 bg-white border border-gray-200 rounded-full">No expiry</span>
+                                                        )}
+                                                        <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                            {isActive ? 'Active' : 'Inactive'}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-text-secondary">
-                                                    {reward.rewardType && (
-                                                        <span className="px-2 py-1 bg-white border border-gray-200 rounded-full uppercase tracking-widest">
-                                                            {reward.rewardType.replace(/_/g, ' ')}
-                                                        </span>
-                                                    )}
-                                                    <span className="px-2 py-1 bg-white border border-gray-200 rounded-full">
-                                                        {reward.pointCost ?? 0} pts
-                                                    </span>
-                                                    {reward.validityDays ? (
-                                                        <span className="px-2 py-1 bg-white border border-gray-200 rounded-full">
-                                                            {reward.validityDays} days
-                                                        </span>
-                                                    ) : (
-                                                        <span className="px-2 py-1 bg-white border border-gray-200 rounded-full">
-                                                            No expiry
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
                         </div>
                     </div>
                 )}
+
+                <Modal
+                    isOpen={showRewardsModal}
+                    onClose={cancelRewardToggle}
+                    title="Confirm reward visibility"
+                    description="This setting is saved locally and used for public profile visibility in your browser session."
+                    size="md"
+                >
+                    <div className="space-y-4">
+                        <p className="text-sm text-slate-600">
+                            {selectedRewardToEnable?.reward?.name && (
+                                <span className="font-bold">{selectedRewardToEnable.reward.name}</span>
+                            )}
+                            {selectedRewardToEnable?.targetStatus ?
+                                ' will be visible on your public business profile.' :
+                                ' will be hidden from public business profile.'
+                            }
+                        </p>
+                        <p className="text-xs text-slate-500">
+                            No changes are sent to the backend. This is a local display override in the current browser.
+                        </p>
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={cancelRewardToggle}
+                                className="px-4 py-2 rounded-lg text-sm font-bold border border-slate-300 hover:bg-slate-100 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmRewardToggle}
+                                className="px-4 py-2 rounded-lg text-sm font-bold bg-primary text-white hover:bg-primary-hover transition"
+                            >
+                                {selectedRewardToEnable?.targetStatus ? 'Enable' : 'Disable'}
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
 
                 {activeTab === 'visibility' && !isAllBranches && (
                     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">

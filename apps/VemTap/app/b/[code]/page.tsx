@@ -196,7 +196,26 @@ export default function PublicBusinessProfilePage() {
         const businessId = business?.id || branch?.businessId || branch?.business?.id;
         const loadRewards = async () => {
             const rewardData = await fetchPublicRewards(businessId);
-            if (isMounted) setRewards(rewardData.filter((item) => item?.isActive !== false));
+
+            let visibilityOverrides: Record<string, boolean> = {};
+            if (typeof window !== 'undefined') {
+                try {
+                    const raw = localStorage.getItem('vemtap_reward_visibility');
+                    visibilityOverrides = raw ? JSON.parse(raw) : {};
+                } catch {
+                    visibilityOverrides = {};
+                }
+            }
+
+            const filteredRewards = rewardData.filter((reward) => {
+                if (!reward || !reward.id) return false;
+                if (visibilityOverrides.hasOwnProperty(reward.id)) {
+                    return visibilityOverrides[reward.id] === true;
+                }
+                return reward.isActive !== false;
+            });
+
+            if (isMounted) setRewards(filteredRewards);
         };
         loadRewards();
         return () => {
