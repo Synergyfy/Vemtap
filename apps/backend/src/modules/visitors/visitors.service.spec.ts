@@ -156,7 +156,8 @@ describe('VisitorsService', () => {
       };
       const branchId = 'branch-1';
 
-      mockUserRepo.findOne.mockResolvedValueOnce(null);
+      mockUserRepo.findOne.mockResolvedValueOnce(null); // find by email
+      mockUserRepo.findOne.mockResolvedValueOnce(null); // find by phone
       mockBranchRepo.findOne.mockResolvedValueOnce({ id: branchId });
 
       const savedUser = {

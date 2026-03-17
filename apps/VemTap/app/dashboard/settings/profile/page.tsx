@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { toast } from 'react-hot-toast';
 import DynamicQRCode from '@/components/shared/DynamicQRCode';
@@ -13,6 +14,8 @@ import { Loader2 } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { useUpdateBranch, useBranch, useBranches } from '@/services/branches/hooks';
 import { useCategories } from '@/services/categories/hooks';
+import { useRewards } from '@/services/loyalty/hooks';
+import Modal from '@/components/ui/Modal';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
@@ -41,9 +44,16 @@ export default function BusinessProfilePage() {
     const isAllBranches = rawIsAllBranches && branches.length > 1;
     const effectiveBranchId = activeBranchId || (branches.length === 1 ? branches[0].id : '');
     const { data: branch, isLoading: branchLoading } = useBranch(effectiveBranchId);
+    const { data: rewards = [], isLoading: rewardsLoading } = useRewards(effectiveBranchId || undefined);
     
     const updateMutation = useUpdateBusiness();
     const updateBranchMutation = useUpdateBranch();
+    const [selectedRewardToEnable, setSelectedRewardToEnable] = useState<{
+        reward: any;
+        targetStatus: boolean;
+        previousStatus: boolean;
+    } | null>(null);
+    const [localRewardVisibility, setLocalRewardVisibility] = useState<Record<string, boolean>>({});
 
     const [name, setName] = useState('');
     const [logo, setLogo] = useState('');
@@ -89,7 +99,9 @@ export default function BusinessProfilePage() {
     const [showReview, setShowReview] = useState(true);
     const [showSocial, setShowSocial] = useState(true);
     const [showFeedback, setShowFeedback] = useState(true);
+    const [showRewards, setShowRewards] = useState(true);
     const [activeTab, setActiveTab] = useState('general');
+    const [showRewardsModal, setShowRewardsModal] = useState(false);
 
     const [origin, setOrigin] = useState('https://vemtap.com');
 
@@ -104,7 +116,9 @@ export default function BusinessProfilePage() {
         }
     }, []);
 
-    const qrId = (isAllBranches ? business?.uniqueCode : branch?.uniqueCode) || business?.uniqueCode || '';
+    const firstBranchWithCode = branches.find((b) => b.uniqueCode);
+    const fallbackProfileCode = firstBranchWithCode?.uniqueCode || business?.uniqueCode || '';
+    const qrId = (isAllBranches ? business?.uniqueCode : branch?.uniqueCode) || fallbackProfileCode || '';
 
     useEffect(() => {
         const source = (isAllBranches && business) ? business : branch;
@@ -155,9 +169,10 @@ export default function BusinessProfilePage() {
             setReviewUrl(source.reviewUrl || '');
             setTrustpilotUrl(source.trustpilotUrl || '');
 
-            setShowReview(source.showReview ?? true);
-            setShowSocial(source.showSocial ?? true);
-            setShowFeedback(source.showFeedback ?? true);
+            setShowReview(business?.showReview ?? true);
+            setShowSocial(business?.showSocial ?? true);
+            setShowFeedback(business?.showFeedback ?? true);
+            setShowRewards(business?.showRewards ?? true);
 
             if (business) {
                 setCacDocument(business.cacDocument || '');
@@ -169,8 +184,9 @@ export default function BusinessProfilePage() {
                 else setCacType('RC');
             }
 
-            if (source.uniqueCode) {
-                const nextPublicUrl = `${origin}/b/${source.uniqueCode}`;
+            const publicCode = business?.uniqueCode || fallbackProfileCode;
+            if (publicCode) {
+                const nextPublicUrl = `${origin}/b/${publicCode}`;
                 setPublicProfileUrl(nextPublicUrl);
                 if (qrId) {
                     setRedirect(qrId, nextPublicUrl);
@@ -178,13 +194,133 @@ export default function BusinessProfilePage() {
             } else {
                 setPublicProfileUrl('');
             }
-        } else if (user && !businessLoading) {
+        } else if (branch) {
+            setName(branch.name || '');
+            setLogo(branch.logoUrl || '');
+            setState(branch.state || '');
+            setCity(branch.city || '');
+            setSupportEmail(branch.officialEmail || '');
+            setSupportPhone(branch.phone || branch.whatsappNumber || '');
+            setAddress(branch.address || '');
+
+            setAbout(branch.about || '');
+            setWelcomeMessage(branch.welcomeMessage || '');
+            setSuccessMessage(branch.successMessage || '');
+            setPrivacyMessage(branch.privacyMessage || '');
+            setRewardMessage(branch.rewardMessage || '');
+
+            if (branch.businessHours) {
+                setBusinessHours(branch.businessHours);
+            } else {
+                const defaultHours: Record<string, BusinessHours> = {};
+                DAYS.forEach(day => {
+                    defaultHours[day] = { open: '09:00', close: '18:00', closed: false };
+                });
+                setBusinessHours(defaultHours);
+            }
+
+            setRewardEnabled(branch.rewardEnabled || false);
+            setRewardVisitThreshold(branch.rewardVisitThreshold || 5);
+
+            setLinkedinUrl(branch.linkedinUrl || '');
+            setReviewUrl(branch.reviewUrl || '');
+            setTrustpilotUrl(branch.trustpilotUrl || '');
+
+            setShowReview(branch.showReview ?? true);
+            setShowSocial(branch.showSocial ?? true);
+            setShowFeedback(branch.showFeedback ?? true);
+            setShowRewards(branch.showRewards ?? true);
+
+            const publicCode = branch.uniqueCode || fallbackProfileCode;
+            if (publicCode) {
+                const nextPublicUrl = `${origin}/b/${publicCode}`;
+                setPublicProfileUrl(nextPublicUrl);
+                if (qrId) {
+                    setRedirect(qrId, nextPublicUrl);
+                }
+            } else {
+                setPublicProfileUrl('');
+            }
+        } else if (user) {
             setName(user.businessName || '');
             setLogo(user.businessLogo || '');
         }
-    }, [business, branch, isAllBranches, activeBranchId, origin, branches.length, user, businessLoading]);
+    }, [business, branch, isAllBranches, activeBranchId, origin, branches.length, fallbackProfileCode, qrId, user]);
 
-    const handleSave = async () => {
+    const loadLocalRewardVisibilityFromStorage = () => {
+        if (typeof window === 'undefined') return;
+        try {
+            const data = localStorage.getItem('vemtap_reward_visibility');
+            if (data) {
+                const parsed = JSON.parse(data || '{}');
+                if (parsed && typeof parsed === 'object') {
+                    setLocalRewardVisibility(parsed);
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to read reward visibility from localStorage', error);
+        }
+    };
+
+    const persistRewardVisibilityToStorage = (updatedVisibility: Record<string, boolean>) => {
+        setLocalRewardVisibility(updatedVisibility);
+        if (typeof window === 'undefined') return;
+        try {
+            localStorage.setItem('vemtap_reward_visibility', JSON.stringify(updatedVisibility));
+        } catch (error) {
+            console.warn('Failed to save reward visibility to localStorage', error);
+        }
+    };
+
+    useEffect(() => {
+        loadLocalRewardVisibilityFromStorage();
+    }, []);
+
+    const handleRewardToggle = (reward: any) => {
+        if (!reward?.id) return;
+
+        const currentlyActive = localRewardVisibility.hasOwnProperty(reward.id)
+            ? localRewardVisibility[reward.id]
+            : reward.isActive !== false;
+
+        const targetStatus = !currentlyActive;
+        setSelectedRewardToEnable({ reward, targetStatus, previousStatus: currentlyActive });
+
+        // optimistic UI toggle before confirmation
+        setLocalRewardVisibility(prev => ({ ...prev, [reward.id]: targetStatus }));
+        setShowRewardsModal(true);
+    };
+
+    const cancelRewardToggle = () => {
+        if (selectedRewardToEnable?.reward?.id) {
+            setLocalRewardVisibility(prev => ({
+                ...prev,
+                [selectedRewardToEnable.reward.id]: selectedRewardToEnable.previousStatus,
+            }));
+        }
+        setSelectedRewardToEnable(null);
+        setShowRewardsModal(false);
+    };
+
+    const confirmRewardToggle = () => {
+        if (!selectedRewardToEnable?.reward?.id) {
+            setShowRewardsModal(false);
+            return;
+        }
+
+        const { reward, targetStatus } = selectedRewardToEnable;
+        const updatedVisibility = {
+            ...localRewardVisibility,
+            [reward.id]: targetStatus,
+        };
+
+        persistRewardVisibilityToStorage(updatedVisibility);
+        setShowRewardsModal(false);
+        setSelectedRewardToEnable(null);
+        toast.success(`${reward.name || 'Reward'} ${targetStatus ? 'enabled' : 'disabled'} for public profiles.`);
+    };
+
+     const handleSave = async () => {
         const hasChanged = (current: any, original: any) => {
             const normalizedCurrent = current === '' || current === null ? undefined : current;
             const normalizedOriginal = original === '' || original === null ? undefined : original;
@@ -195,6 +331,7 @@ export default function BusinessProfilePage() {
             let finalLogoUrl = logo;
             if (logo && logo.startsWith('data:image')) {
                 const uploadToast = toast.loading('Uploading new logo...');
+                
                 finalLogoUrl = await uploadToCloudinary(logo);
                 setLogo(finalLogoUrl);
                 toast.dismiss(uploadToast);
@@ -217,6 +354,7 @@ export default function BusinessProfilePage() {
                 if (hasChanged(registrationNumber, business.registrationNumber)) businessUpdates.registrationNumber = registrationNumber;
                 if (hasChanged(cacType, business.cacType)) businessUpdates.cacType = cacType;
                 if (hasChanged(finalLogoUrl, business.logoUrl)) businessUpdates.logoUrl = finalLogoUrl;
+                if (hasChanged(showRewards, business.showRewards)) businessUpdates.showRewards = showRewards;
 
                 const docs = [finalCacDocument, finalIdDocument].filter(Boolean);
                 if (docs.length > 0) businessUpdates.documents = docs;
@@ -255,6 +393,7 @@ export default function BusinessProfilePage() {
                 if (hasChanged(trustpilotUrl, branch.trustpilotUrl)) branchUpdates.trustpilotUrl = trustpilotUrl;
                 if (hasChanged(showReview, branch.showReview)) branchUpdates.showReview = showReview;
                 if (hasChanged(showSocial, branch.showSocial)) branchUpdates.showSocial = showSocial;
+                if (hasChanged(showRewards, branch.showRewards)) branchUpdates.showRewards = showRewards;
 
                 if (Object.keys(branchUpdates).length === 0) {
                     toast.success('No changes discovered.');
@@ -284,7 +423,6 @@ export default function BusinessProfilePage() {
     const availableTabs = [
         { id: 'general', label: 'General', icon: 'business' },
         { id: 'schedule', label: 'Schedule', icon: 'calendar_today', branchOnly: true },
-        { id: 'messaging', label: 'Messaging', icon: 'forum', branchOnly: true },
         { id: 'socials', label: 'Socials', icon: 'share', branchOnly: true },
         { id: 'rewards', label: 'Rewards', icon: 'auto_awesome', branchOnly: true },
         { id: 'visibility', label: 'Visibility', icon: 'visibility', branchOnly: true },
@@ -724,6 +862,119 @@ export default function BusinessProfilePage() {
                     </div>
                 )}
 
+                {activeTab === 'rewards' && !isAllBranches && (
+                    <div className="space-y-6">
+                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-start justify-between gap-4">
+                                <div>
+                                    <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Rewards Library</h3>
+                                    <p className="text-xs text-text-secondary mt-1">
+                                        Manage your branch rewards and toggle each reward on or off individually.
+                                    </p>
+                                </div>
+                                <Link
+                                    href="/dashboard/loyalty/rewards"
+                                    className="text-[10px] font-black uppercase tracking-widest text-primary bg-white border border-primary/20 px-3 py-2 rounded-xl hover:bg-primary/5 transition-colors"
+                                >
+                                    Manage rewards
+                                </Link>
+                            </div>
+                            <div className="p-8">
+                                {rewardsLoading ? (
+                                    <div className="flex items-center gap-2 text-sm text-text-secondary">
+                                        <Loader2 size={16} className="animate-spin" />
+                                        Loading rewards...
+                                    </div>
+                                ) : rewards.length === 0 ? (
+                                    <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-text-secondary">
+                                        No rewards created yet.
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {rewards.map((reward) => {
+                                            const isActive = localRewardVisibility.hasOwnProperty(reward.id)
+                                                ? localRewardVisibility[reward.id]
+                                                : reward.isActive !== false;
+                                            return (
+                                                <div key={reward.id} className="rounded-2xl border border-gray-100 bg-gray-50/60 p-5 space-y-3">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <p className="text-sm font-bold text-text-main">{reward.name || 'Untitled reward'}</p>
+                                                            <p className="text-xs text-text-secondary line-clamp-2 mt-1">{reward.description || 'No description provided.'}</p>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleRewardToggle(reward)}
+                                                            disabled={showRewardsModal}
+                                                            className={`relative w-12 h-6 rounded-full transition-all ${isActive ? 'bg-primary' : 'bg-gray-300'} ${showRewardsModal ? 'opacity-70 cursor-wait' : 'cursor-pointer'}`}
+                                                            aria-label={`Toggle ${reward.name || 'reward'} ${isActive ? 'off' : 'on'}`}
+                                                        >
+                                                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isActive ? 'translate-x-6' : 'translate-x-0'}`} />
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-text-secondary">
+                                                        {reward.rewardType && (
+                                                            <span className="px-2 py-1 bg-white border border-gray-200 rounded-full uppercase tracking-widest">
+                                                                {reward.rewardType.replace(/_/g, ' ')}
+                                                            </span>
+                                                        )}
+                                                        <span className="px-2 py-1 bg-white border border-gray-200 rounded-full">{reward.pointCost ?? 0} pts</span>
+                                                        {reward.validityDays ? (
+                                                            <span className="px-2 py-1 bg-white border border-gray-200 rounded-full">{reward.validityDays} days</span>
+                                                        ) : (
+                                                            <span className="px-2 py-1 bg-white border border-gray-200 rounded-full">No expiry</span>
+                                                        )}
+                                                        <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                            {isActive ? 'Active' : 'Inactive'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <Modal
+                    isOpen={showRewardsModal}
+                    onClose={cancelRewardToggle}
+                    title="Confirm reward visibility"
+                    description="This setting is saved locally and used for public profile visibility in your browser session."
+                    size="md"
+                >
+                    <div className="space-y-4">
+                        <p className="text-sm text-slate-600">
+                            {selectedRewardToEnable?.reward?.name && (
+                                <span className="font-bold">{selectedRewardToEnable.reward.name}</span>
+                            )}
+                            {selectedRewardToEnable?.targetStatus ?
+                                ' will be visible on your public business profile.' :
+                                ' will be hidden from public business profile.'
+                            }
+                        </p>
+                        <p className="text-xs text-slate-500">
+                            No changes are sent to the backend. This is a local display override in the current browser.
+                        </p>
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={cancelRewardToggle}
+                                className="px-4 py-2 rounded-lg text-sm font-bold border border-slate-300 hover:bg-slate-100 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmRewardToggle}
+                                className="px-4 py-2 rounded-lg text-sm font-bold bg-primary text-white hover:bg-primary-hover transition"
+                            >
+                                {selectedRewardToEnable?.targetStatus ? 'Enable' : 'Disable'}
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+
                 {activeTab === 'visibility' && !isAllBranches && (
                     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                         <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
@@ -753,7 +1004,7 @@ export default function BusinessProfilePage() {
                                 />
                             ) : (
                                 <div className="rounded-2xl border border-amber-100 bg-amber-50 p-6 text-xs text-amber-800 font-bold max-w-sm">
-                                    Unique code not available for this business yet.
+                                    Unique code not available yet.
                                 </div>
                             )}
                             <div className="w-full max-w-sm">
@@ -776,7 +1027,7 @@ export default function BusinessProfilePage() {
                                     </div>
                                 ) : (
                                     <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-xs text-amber-800 font-bold">
-                                        Unique code not available for this branch yet.
+                                        Unique code not available yet.
                                     </div>
                                 )}
                             </div>
@@ -1030,6 +1281,48 @@ export default function BusinessProfilePage() {
                         <button className="text-xs font-black uppercase tracking-widest text-red-500 hover:text-red-600 transition-colors">Deactivate Business Profile</button>
                     </div>
                 )}
+
+                <Modal
+                    isOpen={showRewardsModal}
+                    onClose={() => setShowRewardsModal(false)}
+                    title="Rewards visibility"
+                    description="Decide whether visitors can see your rewards on the public profile."
+                    size="sm"
+                >
+                    <div className="space-y-6">
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-600">
+                            If rewards are hidden, the public profile will not show your reward list or loyalty perks.
+                            Your rewards still work for existing customers; this only affects public visibility.
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowRewards(true);
+                                    setShowRewardsModal(false);
+                                }}
+                                className={`flex-1 h-11 rounded-xl text-xs font-black uppercase tracking-widest transition-colors ${
+                                    showRewards ? 'bg-primary text-white shadow-md shadow-primary/20' : 'bg-white border border-primary text-primary hover:bg-primary/5'
+                                }`}
+                            >
+                                Show rewards
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowRewards(false);
+                                    setShowRewardsModal(false);
+                                }}
+                                className={`flex-1 h-11 rounded-xl text-xs font-black uppercase tracking-widest transition-colors ${
+                                    !showRewards ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                                }`}
+                            >
+                                Hide rewards
+                            </button>
+                        </div>
+                        <p className="text-[11px] text-text-secondary">
+                            Remember to save changes for the update to take effect.
+                        </p>
+                    </div>
+                </Modal>
             </div>
         </div>
     );

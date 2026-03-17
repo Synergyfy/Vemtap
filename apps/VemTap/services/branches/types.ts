@@ -30,6 +30,7 @@ export interface Branch {
     showReview: boolean;
     showSocial: boolean;
     showFeedback: boolean;
+    showRewards?: boolean;
     createdAt?: string;
     updatedAt?: string;
     deletedAt?: string | null;
@@ -75,4 +76,5 @@ export interface UpdateBranchRequest {
     showReview?: boolean;
     showSocial?: boolean;
     showFeedback?: boolean;
+    showRewards?: boolean;
 }
