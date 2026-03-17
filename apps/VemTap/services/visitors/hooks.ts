@@ -95,6 +95,8 @@ export const useVisitors = (branchId?: string, query?: Record<string, any>) => {
             const searchParams = new URLSearchParams(contextParams);
             if (query?.search) searchParams.append('search', query.search);
             if (query?.status) searchParams.append('status', query.status);
+            if (query?.page) searchParams.append('page', String(query.page));
+            if (query?.limit) searchParams.append('limit', String(query.limit));
             return await api.get(`/visitors?${searchParams.toString()}`);
         },
         enabled: isAuthenticated,
@@ -131,6 +133,8 @@ export const useNewVisitors = (branchId?: string, query?: Record<string, any>) =
             const searchParams = new URLSearchParams(contextParams);
             if (query?.search) searchParams.append('search', query.search);
             if (query?.status) searchParams.append('status', query.status);
+            if (query?.page) searchParams.append('page', String(query.page));
+            if (query?.limit) searchParams.append('limit', String(query.limit));
             return await api.get(`/visitors/new?${searchParams.toString()}`);
         },
         enabled: isAuthenticated,
@@ -167,6 +171,8 @@ export const useReturningVisitors = (branchId?: string, query?: Record<string, a
             const searchParams = new URLSearchParams(contextParams);
             if (query?.search) searchParams.append('search', query.search);
             if (query?.status) searchParams.append('status', query.status);
+            if (query?.page) searchParams.append('page', String(query.page));
+            if (query?.limit) searchParams.append('limit', String(query.limit));
             return await api.get(`/visitors/returning?${searchParams.toString()}`);
         },
         enabled: isAuthenticated,
@@ -188,6 +194,25 @@ export const useReturningVisitorStats = (branchId?: string) => {
         },
         enabled: isAuthenticated,
     });
+};
+
+export const useMessagingVisitors = (branchId?: string, query?: Record<string, any>) => {
+    const { data: visitorsData, ...rest } = useVisitors(branchId, query);
+
+    const formattedVisitors = (visitorsData?.data || []).map((v) => ({
+        id: v.id,
+        name: v.name || `${v.firstName || ''} ${v.lastName || ''}`.trim() || 'Anonymous Visitor',
+        phone: v.phone,
+        email: v.email,
+        isOnline: false,
+        status: v.status,
+    }));
+
+    return {
+        ...rest,
+        data: formattedVisitors,
+        total: visitorsData?.total || 0,
+    };
 };
 
 export const useVisitor = (id: string, branchId?: string) => {
