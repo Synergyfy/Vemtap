@@ -196,4 +196,10 @@ new task
 --add a Preview tab in User Experience
 
 =======
-now check the bussiness page and see how the loyalty is created by a business and apply thesame for admin which will allow admins create loyaslty templates that bussinesses can use for the admin please create the mock template and the creation process with propper ui/ux and information where possible then i can paste in the api endpoint if it is available here 
+now check the bussiness page and see how the loyalty is created by a business and apply thesame for admin which will allow admins create loyaslty templates that bussinesses can use for the admin please create the mock template and the creation process with propper ui/ux and information where possible then i can paste in the api endpoint if it is available here
+
+===
+--live messaging
+
+
+

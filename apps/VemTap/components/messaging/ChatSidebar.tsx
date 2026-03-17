@@ -7,18 +7,12 @@ import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useChatThreads } from '@/hooks/useMessaging';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useMessagingVisitors } from '@/services/visitors/hooks';
 import Link from 'next/link';
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
     'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-teal-500',
-];
-
-const MOCK_CUSTOMERS = [
-    { id: 'cust-01', name: 'Amaka Okafor', phone: '+234 802 334 9910', email: 'amaka.okafor@example.com', isOnline: true },
-    { id: 'cust-02', name: 'Chinedu Eze', phone: '+234 806 120 3421', email: 'chinedu.eze@example.com', isOnline: false },
-    { id: 'cust-03', name: 'Aisha Bello', phone: '+234 809 778 1502', email: 'aisha.bello@example.com', isOnline: true },
-    { id: 'cust-04', name: 'Tomi Adebayo', phone: '+234 701 550 8893', email: 'tomi.adebayo@example.com', isOnline: false },
 ];
 
 function getInitials(name: string) {
@@ -60,7 +54,8 @@ export default function ChatSidebar() {
     const isCustomer = user?.role === 'customer';
     const branchId = isCustomer ? undefined : activeBranchId;
     
-    const { data: threads = [], isLoading } = useChatThreads('IN_HOUSE', branchId || undefined);
+    const { data: threads = [], isLoading: threadsLoading } = useChatThreads('IN_HOUSE', branchId || undefined);
+    const { data: visitors = [], isLoading: visitorsLoading } = useMessagingVisitors(branchId || undefined, { search: customerQuery });
 
     const allThreads = useMemo(() => {
         const apiThreads = threads as any[];
@@ -88,15 +83,10 @@ export default function ChatSidebar() {
         );
     }, [allThreads, searchQuery]);
 
-    const availableCustomers = useMemo(() => {
+    const availableVisitors = useMemo(() => {
         const existingContactIds = new Set(allThreads.map(conv => conv.contact?.id).filter(Boolean));
-        const q = customerQuery.trim().toLowerCase();
-        return MOCK_CUSTOMERS.filter(customer => {
-            if (existingContactIds.has(customer.id)) return false;
-            if (!q) return true;
-            return customer.name.toLowerCase().includes(q) || customer.phone?.includes(q) || customer.email?.toLowerCase().includes(q);
-        });
-    }, [allThreads, customerQuery]);
+        return visitors.filter(v => !existingContactIds.has(v.id));
+    }, [allThreads, visitors]);
 
     useEffect(() => {
         if (!showNewChat) return;
@@ -150,27 +140,29 @@ export default function ChatSidebar() {
                                     <div className="max-h-64 overflow-y-auto custom-scrollbar">
                                         {!branchId ? (
                                             <div className="px-4 py-4 text-xs text-amber-600">Select a branch to start a chat.</div>
-                                        ) : availableCustomers.length === 0 ? (
-                                            <div className="px-4 py-4 text-xs text-slate-400">No customer available.</div>
+                                        ) : visitorsLoading ? (
+                                            <div className="px-4 py-4 text-xs text-slate-400">Loading visitors...</div>
+                                        ) : availableVisitors.length === 0 ? (
+                                            <div className="px-4 py-4 text-xs text-slate-400">No visitors available.</div>
                                         ) : (
-                                            availableCustomers.map(customer => (
+                                            availableVisitors.map(visitor => (
                                                 <button
-                                                    key={customer.id}
+                                                    key={visitor.id}
                                                     type="button"
                                                     onClick={() => {
-                                                        const threadId = addMockThread(customer);
+                                                        const threadId = addMockThread(visitor);
                                                         setActiveConversation(threadId);
                                                         setShowNewChat(false);
                                                         setCustomerQuery('');
                                                     }}
                                                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 text-left"
                                                 >
-                                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold ${getAvatarColor(customer.id)}`}>
-                                                        {getInitials(customer.name)}
+                                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold ${getAvatarColor(visitor.id)}`}>
+                                                        {getInitials(visitor.name)}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-semibold text-slate-900 truncate">{customer.name}</p>
-                                                        <p className="text-xs text-slate-400 truncate">{customer.phone || customer.email}</p>
+                                                        <p className="text-sm font-semibold text-slate-900 truncate">{visitor.name}</p>
+                                                        <p className="text-xs text-slate-400 truncate">{visitor.phone || visitor.email}</p>
                                                     </div>
                                                 </button>
                                             ))
@@ -215,7 +207,7 @@ export default function ChatSidebar() {
             <nav className="flex-1 overflow-y-auto custom-scrollbar">
                 {!isCustomer && !branchId ? (
                     <div className="p-8 text-center text-amber-500 text-sm font-medium">Please select a branch first</div>
-                ) : isLoading ? (
+                ) : threadsLoading ? (
                      <div className="p-8 text-center text-slate-400 text-sm">Loading conversations...</div>
                 ) : filtered.length === 0 ? (
                     <div className="p-8 text-center text-slate-400 text-sm">No conversations found.</div>
