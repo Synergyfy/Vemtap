@@ -18,7 +18,7 @@ export default function WhatsAppTopUpPage() {
         refetchInterval: 30000,
     });
 
-    const whatsappCredits = credits?.whatsappBalance ?? 0;
+    const whatsappCredits = credits?.whatsappCredits ?? 0;
 
     return (
         <div className="p-4 md:p-8 space-y-8 max-w-4xl mx-auto">

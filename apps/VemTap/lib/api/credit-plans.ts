@@ -32,8 +32,9 @@ export const fetchCreditPlan = async (id: string): Promise<CreditPlan> => {
     return await api.get(`/credit-plans/${id}`);
 };
 
-export const fetchMyCredits = async (): Promise<BusinessCredit> => {
-    return await api.get('/credit-plans/my-credits');
+export const fetchMyCredits = async (branchId?: string): Promise<BusinessCredit> => {
+    const url = branchId ? `/credit-plans/my-credits?branchId=${branchId}` : '/credit-plans/my-credits';
+    return await api.get(url);
 };
 
 export interface PurchaseCreditPlanRequest {
