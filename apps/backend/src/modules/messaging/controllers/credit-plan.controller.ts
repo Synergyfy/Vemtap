@@ -27,7 +27,7 @@ import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { CreditPlan } from '../entities/credit-plan.entity';
-import { BusinessCredit } from '../entities/business-credit.entity';
+import { BusinessCreditWallet } from '../entities/business-credit-wallet.entity';
 import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
 import { BranchesService } from '../../branches/branches.service';
 
@@ -80,6 +80,7 @@ export class CreditPlanController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a new credit top-up plan (Admin only)' })
+  @ApiBody({ type: CreateCreditPlanDto })
   @ApiResponse({
     status: 201,
     description: 'The credit plan has been successfully created.',
@@ -105,15 +106,17 @@ export class CreditPlanController {
   @ApiOperation({ summary: 'Get current credit balance for the user context' })
   @ApiResponse({
     status: 200,
-    description: 'Returns the credit balance for the resolved branch.',
-    type: BusinessCredit,
+    description: 'Returns the credit balance for the business.',
+    type: BusinessCreditWallet,
   })
   async getMyCredits(
     @Request() req: any,
-    @Query() filter: BranchFilterDto,
-  ): Promise<BusinessCredit> {
-    const branchId = await this.getBranchId(req, filter.branchId);
-    return this.creditPlanService.getMyCredits(branchId);
+  ): Promise<BusinessCreditWallet> {
+    const businessId = (req.user as User).businessId;
+    if (!businessId) {
+      throw new BadRequestException('No business associated with this user');
+    }
+    return this.creditPlanService.getMyCredits(businessId);
   }
 
   @Get(':id')
@@ -136,7 +139,7 @@ export class CreditPlanController {
     status: 200,
     description:
       'The credit plan has been successfully purchased and credits awarded.',
-    type: BusinessCredit,
+    type: BusinessCreditWallet,
   })
   @ApiResponse({
     status: 400,
