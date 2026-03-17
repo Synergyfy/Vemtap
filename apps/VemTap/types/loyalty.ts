@@ -66,6 +66,7 @@ export interface Reward {
   isActive: boolean;
   branchId?: string;
   imageUrls?: string[];
+  imageUrl?: string;
   createdAt: string;
   updatedAt: string;
 }

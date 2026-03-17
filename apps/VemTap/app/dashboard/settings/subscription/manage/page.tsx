@@ -1,17 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Crown, AlertTriangle, ArrowLeft, Building, Mail, Loader2 } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Crown, AlertTriangle, ArrowLeft, Building, Mail, Loader2, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { useActiveSubscription, useCapabilities } from '@/services/subscriptions/hooks';
-import { fetchPricingPlans } from '@/lib/api/pricing';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { usePricingPlans } from '@/services/pricing/hooks';
 import { PricingPlan } from '@/types/pricing';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { useMyBusiness } from '@/services/businesses/hooks';
 
 export default function ManagePlanPage() {
     const { user } = useAuthStore();
@@ -20,13 +20,13 @@ export default function ManagePlanPage() {
 
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
-    const { data: subscription, isLoading: subLoading, refetch: refetchSub } = useActiveSubscription();
-    const { data: capabilities } = useCapabilities();
-    const { data: business } = useQuery({
-        queryKey: ['my-business'],
-        queryFn: async () => await api.get('/businesses/my-business')
-    });
-    const { data: plans = [] } = usePricingPlans();
+    const { activeSubscription: subscription, capabilities, isLoading: subLoading, fetchSubscriptionData } = useSubscriptionStore();
+    const { data: plans = [], isLoading: plansLoading } = usePricingPlans();
+    const { data: business, isLoading: businessLoading } = useMyBusiness();
+
+    useEffect(() => {
+        fetchSubscriptionData();
+    }, [fetchSubscriptionData]);
 
     const cancelMutation = useMutation({
         mutationFn: async () => {
@@ -37,7 +37,7 @@ export default function ManagePlanPage() {
             toast.success('Subscription cancelled successfully');
             queryClient.invalidateQueries({ queryKey: ['subscription', 'active'] });
             setShowCancelConfirm(false);
-            refetchSub();
+            fetchSubscriptionData();
         },
         onError: (error) => toast.error(error instanceof Error ? error.message : 'Failed to cancel subscription')
     });
@@ -46,18 +46,33 @@ export default function ManagePlanPage() {
         return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(price);
     };
 
-    const activePlan = plans.find((p: PricingPlan) => p.id === subscription?.planId);
+    const isLoading = subLoading || plansLoading || businessLoading;
+
+    // Robust active plan detection (matching DashboardPricingPage logic)
+    const freePlan = plans.find((p: PricingPlan) => p.isFree);
+    const activePlanId = subscription?.planId;
+    const activePlanNameFromSub = subscription?.plan?.name?.toLowerCase();
+    
+    const activePlan = plans.find((p: PricingPlan) => 
+        p.id === activePlanId || 
+        (activePlanNameFromSub && p.name.toLowerCase() === activePlanNameFromSub)
+    ) || freePlan;
+
     const isCancelled = subscription?.status === 'cancelled' || subscription?.status === 'expired';
     const isOnTrial = subscription?.status === 'trial' || subscription?.status === 'trialing';
+    
     const periodStart = subscription?.currentPeriodStart || subscription?.startDate || null;
     const periodEnd = subscription?.currentPeriodEnd || subscription?.trialEndDate || subscription?.endDate || null;
+    
     const configuredTrialDays = activePlan?.isFree ? 0 : (activePlan?.trialDurationDays || activePlan?.freeDurationDays || 30);
     const derivedTrialEndFromStart = (isOnTrial && periodStart && configuredTrialDays > 0)
         ? new Date(new Date(periodStart).getTime() + configuredTrialDays * 24 * 60 * 60 * 1000).toISOString()
         : null;
-    const displayPeriodEnd = isOnTrial ? (derivedTrialEndFromStart || periodEnd) : periodEnd;
+    
+    const effectiveTrialEndDate = activePlan?.isFree ? null : (derivedTrialEndFromStart || subscription?.trialEndDate);
+    const displayPeriodEnd = isOnTrial ? effectiveTrialEndDate : periodEnd;
 
-    if (subLoading) {
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center min-h-[400px] text-center">
                 <div>
@@ -87,7 +102,7 @@ export default function ManagePlanPage() {
             {!isOwner && (
                 <div className="mb-8 p-4 rounded-2xl bg-amber-50 border border-amber-100 flex items-center gap-3">
                     <div className="size-8 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
-                        <AlertTriangle size={18} />
+                        <ShieldCheck size={18} />
                     </div>
                     <div>
                         <p className="text-sm font-bold text-amber-900">Read-only Access</p>
@@ -113,7 +128,7 @@ export default function ManagePlanPage() {
                 </div>
 
                 <h2 className="text-3xl md:text-4xl font-black tracking-tight text-text-main mb-2">
-                    {activePlan?.name || 'Free Plan'}
+                    {activePlan?.name || subscription?.plan?.name || 'Free Plan'}
                 </h2>
                 <p className="text-text-secondary font-bold mb-6">
                     {activePlan?.description || 'Your essential start for digital interaction.'}
@@ -130,7 +145,7 @@ export default function ManagePlanPage() {
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Billing Cycle</p>
                         <p className="mt-2 text-lg font-black text-text-main capitalize">
-                            {subscription?.billingPeriod || 'N/A'}
+                            {subscription?.billingPeriod || 'monthly'}
                         </p>
                     </div>
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
@@ -197,7 +212,7 @@ export default function ManagePlanPage() {
                 </div>
             )}
 
-            {business && (
+            {(business || user?.businessName) && (
                 <div className="bg-white rounded-3xl border border-slate-200 p-6 mb-8">
                     <h3 className="text-lg font-black text-slate-900 mb-6">Business Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -207,7 +222,7 @@ export default function ManagePlanPage() {
                             </div>
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Business</p>
-                                <p className="text-sm font-bold text-slate-900">{business.name || user?.businessName || 'N/A'}</p>
+                                <p className="text-sm font-bold text-slate-900">{business?.name || user?.businessName || 'N/A'}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-4">
@@ -246,7 +261,7 @@ export default function ManagePlanPage() {
                 </div>
             </div>
 
-            {isOwner && subscription && !subscription.planId.includes('free') && !isCancelled && (
+            {isOwner && subscription && !subscription.planId.toLowerCase().includes('free') && !isCancelled && (
                 <div className="bg-red-50 rounded-3xl border border-red-100 p-6">
                     <div className="flex items-center justify-between gap-4 flex-wrap">
                         <div className="flex items-center gap-4">
