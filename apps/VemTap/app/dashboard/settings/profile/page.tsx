@@ -425,7 +425,6 @@ export default function BusinessProfilePage() {
         { id: 'schedule', label: 'Schedule', icon: 'calendar_today', branchOnly: true },
         { id: 'socials', label: 'Socials', icon: 'share', branchOnly: true },
         { id: 'rewards', label: 'Rewards', icon: 'auto_awesome', branchOnly: true },
-        { id: 'visibility', label: 'Visibility', icon: 'visibility', branchOnly: true },
         { id: 'qr', label: 'QR Code', icon: 'qr_code_2', branchOnly: true },
         { id: 'documents', label: 'Documents', icon: 'description', bizOnly: true },
     ].filter(tab => {
@@ -975,20 +974,7 @@ export default function BusinessProfilePage() {
                     </div>
                 </Modal>
 
-                {activeTab === 'visibility' && !isAllBranches && (
-                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                        <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Display Settings</h3>
-                        </div>
-                        <div className="p-8 space-y-4">
-                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                                <div><span className="text-sm font-bold text-text-main">Show Reviews</span></div>
-                                <button onClick={() => setShowReview(!showReview)} className={`w-12 h-6 rounded-full transition-all ${showReview ? 'bg-primary' : 'bg-gray-300'}`}><div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${showReview ? 'translate-x-6' : 'translate-x-0.5'}`} /></button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
+            
                 {activeTab === 'qr' && !isAllBranches && (
                     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                         <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">

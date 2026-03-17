@@ -34,7 +34,6 @@ import {
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import PhoneFrame from '@/components/shared/PhoneFrame';
-import { SocialLinksPreview } from '@/components/shared/SocialLinksPreview';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import Spinner from '@/components/ui/Spinner';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -949,7 +948,7 @@ export default function EngagementFormsBuilderPage() {
                           className="w-full h-12 rounded-2xl border border-slate-200 bg-slate-50/50 px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all active:scale-[0.99]"
                           placeholder="e.g. Customer Satisfaction Survey"
                         />
-                        <SocialLinksPreview settings={engagementSettings} />
+  
                       </div>
 
                       <div className="space-y-1.5">
