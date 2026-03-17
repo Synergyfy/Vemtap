@@ -110,9 +110,9 @@ export default function ChatSidebar() {
     }, [showNewChat]);
 
     return (
-        <aside className="w-80 lg:w-96 glass-sidebar flex flex-col h-full min-h-0 border-r border-slate-200 shrink-0">
+        <aside className="w-full md:w-80 lg:w-96 glass-sidebar flex flex-col h-full min-h-0 border-r border-slate-200 shrink-0">
             {/* Header */}
-            <header className="p-4 border-b border-slate-200 flex justify-between items-center bg-white/50">
+            <header className="p-4 border-b border-slate-200 flex justify-between items-center bg-white/90 backdrop-blur sticky top-0 z-20">
                 <div className="flex items-center gap-2">
                     {headerLogo ? (
                         <img src={headerLogo} alt={headerName} className="w-8 h-8 rounded-lg object-cover" />
@@ -198,7 +198,7 @@ export default function ChatSidebar() {
             </header>
 
             {/* Search */}
-            <div className="p-4">
+            <div className="p-4 sticky top-16 z-10 bg-white/90 backdrop-blur">
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                     <input
