@@ -4,10 +4,13 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { DashboardAnalyticsResponse, FootfallAnalyticsResponse, PeakTimesAnalyticsResponse } from './types';
 
+
+
 export const useDashboardAnalytics = (branchId?: string) => {
     const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
     const resolvedBranchId = branchId || urlBranchId;
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
     return useQuery<DashboardAnalyticsResponse, Error>({
         queryKey: ['dashboard-analytics', businessId, resolvedBranchId, isAllBranches],
@@ -21,7 +24,7 @@ export const useDashboardAnalytics = (branchId?: string) => {
             const query = searchParams.toString();
             return await api.get(`/analytics/dashboard${query ? `?${query}` : ''}`);
         },
-        enabled: !!businessId
+        enabled: isAuthenticated
     });
 };
 
@@ -29,6 +32,7 @@ export const useFootfallAnalytics = (branchId?: string) => {
     const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
     const resolvedBranchId = branchId || urlBranchId;
     const businessId = useAuthStore((state) => state.user?.businessId);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
     return useQuery<FootfallAnalyticsResponse, Error>({
         queryKey: ['footfall-analytics', businessId, resolvedBranchId, isAllBranches],
@@ -42,7 +46,7 @@ export const useFootfallAnalytics = (branchId?: string) => {
             const query = searchParams.toString();
             return await api.get(`/analytics/footfall${query ? `?${query}` : ''}`);
         },
-        enabled: !!businessId
+        enabled: isAuthenticated
     });
 };
 
@@ -50,6 +54,8 @@ export const usePeakTimesAnalytics = (branchId?: string) => {
     const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
     const resolvedBranchId = branchId || urlBranchId;
     const businessId = useAuthStore((state) => state.user?.businessId);
+
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
     return useQuery<PeakTimesAnalyticsResponse, Error>({
         queryKey: ['peak-times-analytics', businessId, resolvedBranchId, isAllBranches],
@@ -63,6 +69,6 @@ export const usePeakTimesAnalytics = (branchId?: string) => {
             const query = searchParams.toString();
             return await api.get(`/analytics/peak-times${query ? `?${query}` : ''}`);
         },
-        enabled: !!businessId
+        enabled: isAuthenticated
     });
 };
