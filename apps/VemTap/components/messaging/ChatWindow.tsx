@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
 import { useChatThreads } from '@/hooks/useMessaging';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useBranches } from '@/services/branches/hooks';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
@@ -51,9 +52,18 @@ export default function ChatWindow() {
     const mockThreads = useChatStore(s => s.mockThreads);
     const mockMessages = useChatStore(s => s.mockMessages);
     const user = useAuthStore(s => s.user);
-    const { activeBranchId } = useActiveBranch();
+    const { activeBranchId, setActiveBranch } = useActiveBranch();
+    const { data: branches = [] } = useBranches();
     const isCustomer = user?.role === 'customer';
-    const branchId = isCustomer ? undefined : activeBranchId;
+
+    useEffect(() => {
+        if (!user || user.role === 'customer') return;
+        if (!activeBranchId && branches.length === 1) {
+            setActiveBranch(branches[0].id);
+        }
+    }, [activeBranchId, branches, user, setActiveBranch]);
+
+    const branchId = isCustomer ? undefined : (activeBranchId || (branches.length === 1 ? branches[0]?.id : undefined));
     
     // Fetch all threads to find the active one
     const { data: threads = [] } = useChatThreads('IN_HOUSE', branchId || undefined);
@@ -239,7 +249,7 @@ export default function ChatWindow() {
 
             {/* Profile Panel */}
             <div
-                className={`absolute top-16 right-0 bottom-0 w-80 bg-white border-l border-slate-200 shadow-lg transition-transform duration-300 ${showProfile ? 'translate-x-0' : 'translate-x-full'}`}
+                className={`absolute top-16 right-0 bottom-0 w-full md:w-80 lg:w-96 bg-white border-l border-slate-200 shadow-lg transition-transform duration-300 ${showProfile ? 'translate-x-0' : 'translate-x-full'}`}
             >
                 <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                     <div>

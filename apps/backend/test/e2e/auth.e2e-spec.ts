@@ -21,13 +21,16 @@ describe('Auth & Notifications (e2e)', () => {
   };
 
   beforeAll(async () => {
+    console.log('[AuthE2E] Creating test application...');
     app = await createTestApp((builder) => {
       builder.overrideProvider(MailService).useValue(mockMailService);
     });
 
+    console.log('[AuthE2E] Fetching Otp repository...');
     otpRepository = app.get(getRepositoryToken(Otp));
 
     // Seed a category and subcategory for testing
+    console.log('[AuthE2E] Seeding categories and subcategories...');
     const dataSource = app.get(DataSource);
     const catRepo = dataSource.getRepository(Category);
     const subRepo = dataSource.getRepository(Subcategory);
@@ -36,6 +39,7 @@ describe('Auth & Notifications (e2e)', () => {
     const sub = await subRepo.save(subRepo.create({ name: 'Test Subcategory', categoryId: cat.id }));
     categoryId = cat.id;
     subcategoryId = sub.id;
+    console.log('[AuthE2E] Seeding completed.');
   });
 
   afterAll(async () => {
@@ -120,21 +124,22 @@ describe('Auth & Notifications (e2e)', () => {
   });
 
   it('/auth/login (POST) - phone number', async () => {
-    const phone = '+1234567890';
+    const phone = '+1' + Math.floor(1000000000 + Math.random() * 9000000000).toString();
+    const testEmailPhone = `phone-test-${Date.now()}@example.com`;
     // Create a user with phone
     await request(app.getHttpServer())
       .post('/api/v1/auth/otp/send')
-      .send({ email: 'phone-test@example.com' })
+      .send({ email: testEmailPhone })
       .expect(201);
 
     const otpRecord = await otpRepository.findOne({
-      where: { email: 'phone-test@example.com' },
+      where: { email: testEmailPhone },
       order: { createdAt: 'DESC' },
     });
 
     await request(app.getHttpServer())
       .post('/api/v1/auth/otp/verify')
-      .send({ email: 'phone-test@example.com', code: otpRecord.code })
+      .send({ email: testEmailPhone, code: otpRecord.code })
       .expect(200);
 
     await request(app.getHttpServer())
@@ -142,7 +147,7 @@ describe('Auth & Notifications (e2e)', () => {
       .send({
         firstName: 'Phone',
         lastName: 'Tester',
-        email: 'phone-test@example.com',
+        email: testEmailPhone,
         password: 'Password123!',
         phone: phone,
       })
@@ -162,6 +167,7 @@ describe('Auth & Notifications (e2e)', () => {
 
   it('should allow resuming registration for PENDING users', async () => {
     const resumptionEmail = `resume-${Date.now()}@example.com`;
+    const resumptionPhone = '+1' + Math.floor(1000000000 + Math.random() * 9000000000).toString();
 
     // 1. Request OTP
     await request(app.getHttpServer())
@@ -170,7 +176,7 @@ describe('Auth & Notifications (e2e)', () => {
         firstName: 'Resume',
         lastName: 'User',
         email: resumptionEmail,
-        phone: '+1234567890',
+        phone: resumptionPhone,
         role: 'Owner',
       })
       .expect(200);
@@ -202,7 +208,7 @@ describe('Auth & Notifications (e2e)', () => {
         firstName: 'Resume',
         lastName: 'User',
         email: resumptionEmail,
-        phone: '+1234567890',
+        phone: resumptionPhone,
         role: 'Owner',
       })
       .expect(200);
@@ -230,7 +236,7 @@ describe('Auth & Notifications (e2e)', () => {
         visitors: '100',
         goals: ['Resumption'],
         officialEmail: resumptionEmail,
-        businessNumber: '+1234567890',
+        businessNumber: resumptionPhone,
       })
       .expect(201)
       .expect((res) => {

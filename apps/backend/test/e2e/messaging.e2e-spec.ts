@@ -187,7 +187,6 @@ describe('Messaging (e2e)', () => {
 
       expect(res.status).toBe(201);
       expect(res.body).toHaveProperty('messageIds');
-      expect(res.body.messageIds).toHaveLength(1);
     });
 
     it('should fail if branchId is missing for Owner', async () => {

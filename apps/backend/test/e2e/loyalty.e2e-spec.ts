@@ -27,7 +27,9 @@ describe('Loyalty (E2E)', () => {
         .set('Authorization', `Bearer ${ownerToken}`)
         .expect(200);
 
-      expect(res.body).toHaveProperty('totalMembers');
+      expect(res.body).toHaveProperty('stats');
+      expect(Array.isArray(res.body.stats)).toBe(true);
+      expect(res.body.stats.find((s: any) => s.label === 'Total Members')).toBeDefined();
     });
 
     it('should return loyalty stats for all branches', async () => {
@@ -36,7 +38,7 @@ describe('Loyalty (E2E)', () => {
         .set('Authorization', `Bearer ${ownerToken}`)
         .expect(200);
 
-      expect(res.body).toHaveProperty('totalMembers');
+      expect(res.body).toHaveProperty('stats');
     });
   });
 });
