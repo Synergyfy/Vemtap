@@ -131,6 +131,7 @@ export default function GetStarted() {
 
         const updateData: any = { ...formData };
         if (selectedSocial.id === 'instagram') updateData.instagramUrl = finalUrl;
+        else if (selectedSocial.id === 'facebook') updateData.facebookUrl = finalUrl;
         else if (selectedSocial.id === 'linkedin') updateData.linkedinUrl = finalUrl;
         else if (selectedSocial.id === 'google') updateData.reviewUrl = finalUrl;
         else if (selectedSocial.id === 'trustpilot') updateData.trustpilotUrl = finalUrl;
@@ -144,6 +145,7 @@ export default function GetStarted() {
     const removeSocial = (id: string) => {
         const updateData: any = { ...formData };
         if (id === 'instagram') updateData.instagramUrl = '';
+        else if (id === 'facebook') updateData.facebookUrl = '';
         else if (id === 'linkedin') updateData.linkedinUrl = '';
         else if (id === 'google') updateData.reviewUrl = '';
         else if (id === 'trustpilot') updateData.trustpilotUrl = '';
@@ -371,10 +373,13 @@ export default function GetStarted() {
                     isRegistered: cleanData.isRegistered === 'Yes',
                     state: cleanData.state || undefined,
                     city: cleanData.city || undefined,
-                    instagramUrl: cleanData.instagramUrl || undefined,
-                    linkedinUrl: cleanData.linkedinUrl || undefined,
-                    reviewUrl: cleanData.reviewUrl || undefined,
-                    trustpilotUrl: cleanData.trustpilotUrl || undefined,
+                    engagement: {
+                        instagram: cleanData.instagramUrl || undefined,
+                        facebook: cleanData.facebookUrl || undefined,
+                        linkedin: cleanData.linkedinUrl || undefined,
+                        reviewUrl: cleanData.reviewUrl || undefined,
+                        trustpilot: cleanData.trustpilotUrl || undefined,
+                    },
                 };
 
                 response = await registerOwner(payload as any);
@@ -1346,10 +1351,11 @@ export default function GetStarted() {
                                                         <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Social Links</p>
                                                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                                                             {formData.instagramUrl && <span className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[9px] font-bold text-text-main">Instagram</span>}
+                                                            {formData.facebookUrl && <span className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[9px] font-bold text-text-main">Facebook</span>}
                                                             {formData.linkedinUrl && <span className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[9px] font-bold text-text-main">LinkedIn</span>}
                                                             {formData.reviewUrl && <span className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[9px] font-bold text-text-main">Google</span>}
                                                             {formData.trustpilotUrl && <span className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[9px] font-bold text-text-main">Trustpilot</span>}
-                                                            {!formData.instagramUrl && !formData.linkedinUrl && !formData.reviewUrl && !formData.trustpilotUrl && <span className="text-[10px] text-gray-400 font-medium italic">None provided</span>}
+                                                            {!formData.instagramUrl && !formData.facebookUrl && !formData.linkedinUrl && !formData.reviewUrl && !formData.trustpilotUrl && <span className="text-[10px] text-gray-400 font-medium italic">None provided</span>}
                                                         </div>
                                                     </div>
                                                     <div className="col-span-2">
