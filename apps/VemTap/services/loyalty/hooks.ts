@@ -190,6 +190,26 @@ export const useUpdateReward = (branchId?: string) => {
     });
 };
 
+export const useDeleteReward = (branchId?: string) => {
+    const queryClient = useQueryClient();
+    const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
+
+    return useMutation<void, Error, string>({
+        mutationFn: async (id) => {
+            const params = new URLSearchParams();
+            if (resolvedBranchId) params.append('branchId', resolvedBranchId);
+            return await api.delete(`/loyalty/rewards/${id}?${params.toString()}`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['loyalty', 'rewards'] });
+            notify.success('Reward deleted successfully');
+        },
+        onError: (error) => {
+            notify.error(error.message || 'Failed to delete reward');
+        }
+    });
+};
+
 export const useEarnPoints = () => {
     const queryClient = useQueryClient();
 
