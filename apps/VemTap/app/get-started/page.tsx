@@ -61,6 +61,7 @@ const statesData: Record<string, string[]> = {
 // Social Media Platforms Configuration
 const SOCIAL_PLATFORMS = [
     { id: 'instagram', name: 'Instagram', icon: Instagram, color: 'text-pink-600', bg: 'bg-pink-50', placeholder: 'yourbrand', prefix: 'https://instagram.com/' },
+    { id: 'facebook', name: 'Facebook', icon: Facebook, color: 'text-blue-600', bg: 'bg-blue-50', placeholder: 'yourbrand', prefix: 'https://facebook.com/' },
     { id: 'linkedin', name: 'LinkedIn', icon: Linkedin, color: 'text-blue-700', bg: 'bg-blue-50', placeholder: 'company/yourbrand', prefix: 'https://linkedin.com/' },
     { id: 'google', name: 'Google Review', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50', placeholder: 'https://g.page/r/...' },
     { id: 'trustpilot', name: 'Trustpilot', icon: Star, color: 'text-emerald-600', bg: 'bg-emerald-50', placeholder: 'https://trustpilot.com/review/...' },
@@ -108,6 +109,7 @@ export default function GetStarted() {
         businessId: '',
         otp: '',
         instagramUrl: '',
+        facebookUrl: '',
         linkedinUrl: '',
         reviewUrl: '',
         trustpilotUrl: '',
@@ -149,10 +151,11 @@ export default function GetStarted() {
     };
 
     const activeSocials = [
-        { id: 'instagram', url: formData.instagramUrl, ...SOCIAL_PLATFORMS[0] },
-        { id: 'linkedin', url: formData.linkedinUrl, ...SOCIAL_PLATFORMS[1] },
-        { id: 'google', url: formData.reviewUrl, ...SOCIAL_PLATFORMS[2] },
-        { id: 'trustpilot', url: formData.trustpilotUrl, ...SOCIAL_PLATFORMS[3] },
+        { ...SOCIAL_PLATFORMS[0], url: formData.instagramUrl },
+        { ...SOCIAL_PLATFORMS[1], url: formData.facebookUrl },
+        { ...SOCIAL_PLATFORMS[2], url: formData.linkedinUrl },
+        { ...SOCIAL_PLATFORMS[3], url: formData.reviewUrl },
+        { ...SOCIAL_PLATFORMS[4], url: formData.trustpilotUrl },
     ].filter(s => s.url);
 
     const { data: plans = [] } = useQuery({
