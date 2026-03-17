@@ -26,66 +26,78 @@ const baseConfig = {
 };
 
 async function createDb() {
-  // 1. Try connecting to the target test database to see if it exists
-  const targetClient = new Client({
+  // 1. Terminate other connections to the target test database if it exists
+  // We do this via the maintenance database
+  const maintenanceDb = 'postgres';
+  const maintenanceClient = new Client({
     ...baseConfig,
-    database: dbName,
+    database: maintenanceDb,
   });
 
   try {
-    await targetClient.connect();
-    console.log(`Database ${dbName} already exists.`);
-    await targetClient.end();
-    return;
+    await maintenanceClient.connect();
+    
+    // Check if DB exists
+    const checkRes = await maintenanceClient.query(
+      'SELECT 1 FROM pg_database WHERE datname = $1',
+      [dbName]
+    );
+
+    if (checkRes.rowCount && checkRes.rowCount > 0) {
+      console.log(`Terminating existing connections to ${dbName}...`);
+      await maintenanceClient.query(`
+        SELECT pg_terminate_backend(pid)
+        FROM pg_stat_activity
+        WHERE datname = '${dbName}'
+          AND pid <> pg_backend_pid();
+      `);
+      console.log(`Connections to ${dbName} terminated.`);
+    } else {
+      // Database does not exist, proceed to create it.
+      if (dbName!.includes('test')) {
+        console.log(`Creating database ${dbName}...`);
+        await maintenanceClient.query(`CREATE DATABASE "${dbName}"`);
+        console.log(`Database ${dbName} created.`);
+      } else {
+        console.error(`Could not connect to database "${dbName}" and auto-creation is disabled for non-test names.`);
+        process.exit(1);
+      }
+    }
   } catch (err: any) {
-    if (err.code !== '3D000') { // 3D000 is "database does not exist"
-      console.error(`Error connecting to ${dbName}:`, err);
+    // Fallback logic for 'neondb' or other maintenance DBs
+    if (err.code === '3D000') {
+      console.log(`Maintenance DB '${maintenanceDb}' not found. Trying 'neondb'...`);
+      const fallbackClient = new Client({ ...baseConfig, database: 'neondb' });
+      try {
+        await fallbackClient.connect();
+        // Check if DB exists
+        const checkResFallback = await fallbackClient.query(
+          'SELECT 1 FROM pg_database WHERE datname = $1',
+          [dbName]
+        );
+        if (!checkResFallback.rowCount) {
+          await fallbackClient.query(`CREATE DATABASE "${dbName}"`);
+          console.log(`Database ${dbName} created via 'neondb'.`);
+        } else {
+          console.log(`Database ${dbName} already exists on 'neondb'. Terminating connections...`);
+          await fallbackClient.query(`
+            SELECT pg_terminate_backend(pid)
+            FROM pg_stat_activity
+            WHERE datname = '${dbName}'
+              AND pid <> pg_backend_pid();
+          `);
+        }
+        await fallbackClient.end();
+      } catch (e) {
+        console.error('Failed to manage database:', e);
+        process.exit(1);
+      }
+    } else {
+      console.error('Error managing database:', err);
       process.exit(1);
     }
-    // Database does not exist, proceed to create it.
-  }
-
-  // 2. If we are here, connection failed. Attempt to create it ONLY if it looks like a generated test name
-  // We verified dbName is not null above
-  if (dbName!.includes('test')) {
-      const maintenanceDb = 'postgres';
-      const client = new Client({
-        ...baseConfig,
-        database: maintenanceDb,
-      });
-
-      try {
-        await client.connect();
-        console.log(`Connected to maintenance database '${maintenanceDb}'. Creating ${dbName}...`);
-        await client.query(`CREATE DATABASE "${dbName}"`);
-        console.log(`Database ${dbName} created.`);
-      } catch (err: any) {
-         // Fallback logic
-         if (err.code === '3D000') {
-             console.log(`Maintenance DB '${maintenanceDb}' not found. Trying 'neondb'...`);
-             const fallbackClient = new Client({ ...baseConfig, database: 'neondb' });
-             try {
-                 await fallbackClient.connect();
-                 await fallbackClient.query(`CREATE DATABASE "${dbName}"`);
-                 console.log(`Database ${dbName} created via 'neondb'.`);
-                 await fallbackClient.end();
-             } catch (e) {
-                 console.error('Failed to create database:', e);
-                 // If creation fails, we exit.
-                 process.exit(1);
-             }
-         } else {
-             console.error('Error creating database:', err);
-             process.exit(1);
-         }
-      } finally {
-        await client.end().catch(() => {});
-      }
-  } else {
-      // If not a "test" named DB, we don't try to create it automatically to avoid permission issues or accidents.
-      // We just report the connection failure.
-      console.error(`Could not connect to database "${dbName}" and auto-creation is disabled for non-test names.`);
-      process.exit(1);
+  } finally {
+    await maintenanceClient.end().catch(() => {});
   }
 }
 

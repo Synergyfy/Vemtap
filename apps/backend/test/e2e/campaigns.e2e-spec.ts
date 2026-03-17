@@ -8,6 +8,7 @@ describe('Campaigns (E2E)', () => {
   let app: INestApplication;
   let ownerToken: string;
   let branchId: string;
+  let campaignId: string;
 
   beforeAll(async () => {
     app = await createTestApp();
@@ -20,6 +21,29 @@ describe('Campaigns (E2E)', () => {
     await app.close();
   });
 
+  describe('POST /api/v1/campaigns', () => {
+    it('should create a new campaign', async () => {
+      const payload = {
+        name: 'Summer Sale',
+        type: 'SMS',
+        audience: 'all',
+        message: 'Get 20% off',
+        status: 'Active',
+        branchId: branchId,
+      };
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/campaigns?branchId=${branchId}`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send(payload)
+        .expect(201);
+
+      campaignId = res.body.id;
+      expect(campaignId).toBeDefined();
+      expect(res.body.name).toBe(payload.name);
+    });
+  });
+
   describe('GET /api/v1/campaigns', () => {
     it('should return campaigns for the branch', async () => {
       const res = await request(app.getHttpServer())
@@ -28,6 +52,7 @@ describe('Campaigns (E2E)', () => {
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.length).toBeGreaterThan(0);
     });
   });
 
