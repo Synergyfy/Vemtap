@@ -14,7 +14,7 @@ import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Nfc, Gift, BarChart, Users2, Settings,
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
-    MessageCircle, LucideIcon
+    MessageCircle, LucideIcon, Zap
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';

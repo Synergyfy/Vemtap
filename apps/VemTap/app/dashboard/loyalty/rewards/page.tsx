@@ -29,7 +29,6 @@ export default function RewardManagementPage() {
             usageLimitPerUser: reward.usageLimitPerUser || 1,
             totalAvailable: reward.totalAvailable || 0,
             imageUrls: reward.imageUrls,
-            imageUrl: reward.imageUrl,
             branchId: activeBranchId || undefined,
         };
         await createMutation.mutateAsync(dto);
@@ -46,7 +45,6 @@ export default function RewardManagementPage() {
             totalAvailable: updates.totalAvailable,
             isActive: updates.isActive,
             imageUrls: updates.imageUrls,
-            imageUrl: updates.imageUrl,
             branchId: activeBranchId || undefined,
         };
         await updateMutation.mutateAsync({ id, updates: dto });

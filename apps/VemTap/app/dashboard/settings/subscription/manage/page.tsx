@@ -11,7 +11,7 @@ import { usePricingPlans } from '@/services/pricing/hooks';
 import { PricingPlan } from '@/types/pricing';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
-import { useBusinessStore } from '@/store/useBusinessStore';
+import { useMyBusiness } from '@/services/businesses/hooks';
 
 export default function ManagePlanPage() {
     const { user } = useAuthStore();
@@ -22,7 +22,7 @@ export default function ManagePlanPage() {
 
     const { activeSubscription: subscription, capabilities, isLoading: subLoading, fetchSubscriptionData } = useSubscriptionStore();
     const { data: plans = [], isLoading: plansLoading } = usePricingPlans();
-    const { activeBusiness: business } = useBusinessStore();
+    const { data: business, isLoading: businessLoading } = useMyBusiness();
 
     useEffect(() => {
         fetchSubscriptionData();
@@ -46,7 +46,7 @@ export default function ManagePlanPage() {
         return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(price);
     };
 
-    const isLoading = subLoading || plansLoading;
+    const isLoading = subLoading || plansLoading || businessLoading;
 
     // Robust active plan detection (matching DashboardPricingPage logic)
     const freePlan = plans.find((p: PricingPlan) => p.isFree);
