@@ -49,14 +49,15 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
                     document.cookie = 'vemtap-auth-token=; path=/; max-age=0; SameSite=Lax';
                     
                     // Only redirect to login if we are on a protected route
-                    const protectedRoutes = ['/dashboard', '/admin', '/agent', '/business', '/marketplace', '/customer', '/user-step', '/bussinesss'];
-                    const isProtectedRoute = protectedRoutes.some(route => window.location.pathname.startsWith(route));
+                    if (typeof window !== 'undefined') {
+                        const protectedRoutes = ['/dashboard', '/admin', '/agent', '/business', '/marketplace', '/customer', '/user-step', '/bussinesss'];
+                        const isProtectedRoute = protectedRoutes.some(route => window.location.pathname.startsWith(route));
 
-                    if (isProtectedRoute && window.location.pathname !== '/login') {
-                        window.location.href = '/login';
-                        return Promise.reject(new Error('Session expired. Redirecting to login...'));
-                    }
-                } catch (e) {
+                        if (isProtectedRoute && window.location.pathname !== '/login') {
+                            window.location.href = '/login';
+                            return Promise.reject(new Error('Session expired. Redirecting to login...'));
+                        }
+                    }                } catch (e) {
                     // ignore errors during cleanup
                 }
             }
