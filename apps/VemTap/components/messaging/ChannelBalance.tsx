@@ -14,9 +14,9 @@ export default function ChannelBalance({ channel, onTopUp, compact = false }: Ch
     const { data: credits, isLoading } = useMyCredits();
 
     const balanceMap = {
-        whatsapp: credits?.whatsappBalance ?? 0,
-        sms: credits?.smsBalance ?? 0,
-        email: credits?.emailBalance ?? 0,
+        whatsapp: credits?.whatsappCredits ?? 0,
+        sms: credits?.smsCredits ?? 0,
+        email: credits?.emailCredits ?? 0,
     };
 
     const labelMap = {

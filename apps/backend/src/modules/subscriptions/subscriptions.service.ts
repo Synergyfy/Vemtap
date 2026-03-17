@@ -23,6 +23,7 @@ import {
   PaymentStatus,
 } from '../payments/entities/payment.entity';
 import { SubscriptionCapabilities } from './types/capabilities';
+import { CreditService } from '../messaging/services/credit.service';
 
 @Injectable()
 export class SubscriptionsService {
@@ -41,6 +42,7 @@ export class SubscriptionsService {
     private readonly deviceRepository: Repository<Device>,
     private readonly plansService: PlansService,
     private readonly paymentsService: PaymentsService,
+    private readonly creditService: CreditService,
   ) {}
 
   async activeSubscription(businessId?: string): Promise<Subscription | null> {
@@ -200,6 +202,9 @@ export class SubscriptionsService {
         { id: business.ownerId },
         { status: UserStatus.ACTIVE },
       );
+
+      // Allocate messaging credits as per plan
+      await this.creditService.allocateSubscriptionCredits(business.id, plan);
     }
 
     return savedSub;
@@ -252,7 +257,7 @@ export class SubscriptionsService {
         amount = sub.plan.yearlyPrice;
 
       if (amount <= 0) {
-        this.activateSubscription(sub);
+        await this.activateSubscription(sub);
         await this.subscriptionRepository.save(sub);
         continue;
       }
@@ -280,7 +285,7 @@ export class SubscriptionsService {
           userId: sub.business?.ownerId,
         });
 
-        this.activateSubscription(sub);
+        await this.activateSubscription(sub);
         await this.subscriptionRepository.save(sub);
 
         if (sub.businessId) {
@@ -303,7 +308,7 @@ export class SubscriptionsService {
     }
   }
 
-  private activateSubscription(sub: Subscription) {
+  private async activateSubscription(sub: Subscription) {
     sub.status = SubscriptionStatus.ACTIVE;
     const now = new Date();
     sub.startDate = now;
@@ -315,6 +320,13 @@ export class SubscriptionsService {
       sub.endDate.setMonth(sub.endDate.getMonth() + 3);
     else if (sub.billingPeriod === BillingPeriod.YEARLY)
       sub.endDate.setFullYear(sub.endDate.getFullYear() + 1);
+
+    if (sub.businessId && sub.plan) {
+      await this.creditService.allocateSubscriptionCredits(
+        sub.businessId,
+        sub.plan,
+      );
+    }
   }
 
   async getCapabilities(businessId: string): Promise<SubscriptionCapabilities> {

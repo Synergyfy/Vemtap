@@ -206,6 +206,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             roles: ['owner', 'manager'],
             submenu: [
                 { label: 'Overview', href: '/dashboard/messaging' },
+                { label: 'Messaging Credits', href: '/dashboard/messaging/credits' },
                 {
                     id: 'messaging-hub',
                     label: 'Channels',

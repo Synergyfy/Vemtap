@@ -22,6 +22,8 @@ import { AutomationLog } from './entities/automation-log.entity';
 import { ChatCategory } from './entities/chat-category.entity';
 import { CreditPlan } from './entities/credit-plan.entity';
 import { BusinessCredit } from './entities/business-credit.entity';
+import { BusinessCreditWallet } from './entities/business-credit-wallet.entity';
+import { CreditTransaction } from './entities/credit-transaction.entity';
 import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
 
 import { ContactsModule } from '../contacts/contacts.module';
@@ -53,6 +55,7 @@ import { AdminFlowEngineController } from './controllers/admin-flow-engine.contr
 import { TermiiWebhookController } from './controllers/termii.controller';
 import { AutomationsController } from './controllers/automations.controller';
 import { CreditPlanController } from './controllers/credit-plan.controller';
+import { CreditController } from './controllers/credit.controller';
 
 import { CreditPlanService } from './services/credit-plan.service';
 import { TermiiProvider } from './providers/termii.provider';
@@ -89,6 +92,8 @@ import { TwilioWebhookController } from './controllers/twilio.controller';
       ChatCategory,
       CreditPlan,
       BusinessCredit,
+      BusinessCreditWallet,
+      CreditTransaction,
       LoyaltyProfile,
     ]),
     HttpModule,
@@ -178,6 +183,7 @@ import { TwilioWebhookController } from './controllers/twilio.controller';
     TwilioWebhookController,
     AutomationsController,
     CreditPlanController,
+    CreditController,
   ],
   exports: [
     TypeOrmModule,

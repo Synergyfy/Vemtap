@@ -16,7 +16,7 @@ export default function SMSTopUpPage() {
         refetchInterval: 30000,
     });
 
-    const smsCredits = credits?.smsBalance ?? 0;
+    const smsCredits = credits?.smsCredits ?? 0;
 
     return (
         <div className="p-4 md:p-8 space-y-8 max-w-4xl mx-auto">
