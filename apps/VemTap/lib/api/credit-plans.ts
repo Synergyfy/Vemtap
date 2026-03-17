@@ -17,9 +17,9 @@ export interface CreditPlan {
 export interface BusinessCredit {
     id: string;
     businessId: string;
-    smsBalance: number;
-    emailBalance: number;
-    whatsappBalance: number;
+    smsCredits: number;
+    emailCredits: number;
+    whatsappCredits: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -33,9 +33,8 @@ export const fetchCreditPlan = async (id: string): Promise<CreditPlan> => {
 };
 
 export const fetchMyCredits = async (branchId?: string): Promise<BusinessCredit> => {
-    const params = new URLSearchParams();
-    if (branchId) params.append('branchId', branchId);
-    return await api.get(`/credit-plans/my-credits?${params.toString()}`);
+    const url = branchId ? `/credit-plans/my-credits?branchId=${branchId}` : '/credit-plans/my-credits';
+    return await api.get(url);
 };
 
 export interface PurchaseCreditPlanRequest {

@@ -134,9 +134,6 @@ export class MessagingEngineService {
       throw new BadRequestException('No contacts found for selected audience');
     }
 
-    // 2. Validate Credits
-    // Simplified logic for now
-
     // 3. Compliance Check (Opt-outs)
     const validContacts = await this.contactRepo.find({
       where: {
@@ -152,6 +149,20 @@ export class MessagingEngineService {
         count: 0,
         messageIds: []
       };
+    }
+
+    // 2. Validate Credits
+    const creditsNeeded = validContactIds.length;
+    const wallet = await this.creditService.getOrCreateWallet(effectiveBusinessId);
+    let balance = 0;
+    if (channel === Channel.SMS) balance = wallet.smsCredits;
+    else if (channel === Channel.EMAIL) balance = wallet.emailCredits;
+    else if (channel === Channel.WHATSAPP) balance = wallet.whatsappCredits;
+
+    if (balance < creditsNeeded) {
+      throw new BadRequestException(
+        `Insufficient ${channel} credits. Need ${creditsNeeded}, but you only have ${balance}. Please top up.`,
+      );
     }
 
     // 4. Resolve Content (if template)
@@ -244,6 +255,19 @@ export class MessagingEngineService {
 
     const resolvedContent = await this.resolvePlaceholders(content, contactId, branch);
 
+    // Credit Check (for individual messages like replies that bypass bulk check)
+    if (!campaignId) {
+      const wallet = await this.creditService.getOrCreateWallet(branch.businessId);
+      let balance = 0;
+      if (channel === Channel.SMS) balance = wallet.smsCredits;
+      else if (channel === Channel.EMAIL) balance = wallet.emailCredits;
+      else if (channel === Channel.WHATSAPP) balance = wallet.whatsappCredits;
+
+      if (balance < 1) {
+        throw new BadRequestException(`Insufficient ${channel} credits`);
+      }
+    }
+
     // Find or create conversation thread
     let thread = await this.threadRepo.findOne({
       where: {
@@ -300,6 +324,20 @@ export class MessagingEngineService {
       savedMessage.units = providerResult.units;
       savedMessage.reference = providerResult.reference;
       await this.messageRepo.save(savedMessage);
+
+      // Deduct credits based on units used
+      if (
+        savedMessage.status === MessageStatus.SENT ||
+        savedMessage.status === MessageStatus.PENDING
+      ) {
+        const units = providerResult.units || 1;
+        await this.creditService.deductCredits(
+          branch.businessId,
+          channel,
+          units,
+          `Message to ${savedMessage.to}`,
+        );
+      }
 
       await this.logMessage(savedMessage);
     } catch (err: any) {

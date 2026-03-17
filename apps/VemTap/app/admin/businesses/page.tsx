@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
-import { adminBusinessesApi } from '@/lib/api/admin';
-import { Search, Plus, RefreshCw, Loader2, Trash2, CheckCircle, XCircle, Ban, RotateCcw, Copy, Download, Eye } from 'lucide-react';
+import { adminBusinessesApi, adminCreditsApi } from '@/lib/api/admin';
+import { Search, Plus, RefreshCw, Loader2, Trash2, CheckCircle, XCircle, Ban, RotateCcw, Copy, Download, Eye, CreditCard } from 'lucide-react';
 const PAGE_SIZE = 10;
 
 interface Business {
@@ -111,6 +111,44 @@ export default function AdminBusinessesPage() {
 
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [detailBusiness, setDetailBusiness] = useState<Business | null>(null);
+
+    const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
+    const [creditBusiness, setCreditBusiness] = useState<Business | null>(null);
+    const [creditBalances, setCreditBalances] = useState<any>(null);
+    const [isCreditLoading, setIsCreditLoading] = useState(false);
+    const [adjustForm, setAdjustForm] = useState({ channel: 'SMS', amount: '', action: 'add' });
+
+    const fetchCredits = async (businessId: string) => {
+        setIsCreditLoading(true);
+        try {
+            const data = await adminCreditsApi.getBusinessBalance(businessId);
+            setCreditBalances(data);
+        } catch (err: any) {
+            notify.error('Failed to fetch credits');
+        } finally {
+            setIsCreditLoading(false);
+        }
+    };
+
+    const handleAdjustCredits = async () => {
+        if (!creditBusiness || !adjustForm.amount) return;
+        setIsSubmitting(true);
+        try {
+            await adminCreditsApi.adjustCredits({
+                businessId: creditBusiness.id,
+                channel: adjustForm.channel as any,
+                amount: parseInt(adjustForm.amount),
+                action: adjustForm.action as any
+            });
+            notify.success('Credits adjusted successfully');
+            fetchCredits(creditBusiness.id);
+            setAdjustForm({ ...adjustForm, amount: '' });
+        } catch (err: any) {
+            notify.error(err.message || 'Failed to adjust credits');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     useEffect(() => {
         setCurrentPage(1);
@@ -425,6 +463,18 @@ export default function AdminBusinessesPage() {
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
+                                                            setCreditBusiness(biz);
+                                                            setIsCreditModalOpen(true);
+                                                            fetchCredits(biz.id);
+                                                        }}
+                                                        className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
+                                                        title="Manage Credits"
+                                                    >
+                                                        <CreditCard size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
                                                             setDetailBusiness(biz);
                                                             setIsDetailModalOpen(true);
                                                         }}
@@ -701,6 +751,89 @@ export default function AdminBusinessesPage() {
                                 View Full Analytics
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Credit Management Modal */}
+            {isCreditModalOpen && creditBusiness && (
+                <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsCreditModalOpen(false)} />
+                    <div className="relative w-full max-w-lg bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
+                        <div className="flex items-center justify-between mb-7">
+                            <div>
+                                <h2 className="text-2xl font-display font-bold text-text-main">Manage Credits</h2>
+                                <p className="text-sm text-text-secondary font-medium mt-1">Adjust messaging credits for {creditBusiness.name}</p>
+                            </div>
+                            <button onClick={() => setIsCreditModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><span className="material-icons-round text-gray-400">close</span></button>
+                        </div>
+
+                        {isCreditLoading ? (
+                            <div className="py-12 flex justify-center"><Loader2 className="animate-spin text-primary" /></div>
+                        ) : (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                        <p className="text-[10px] font-black uppercase text-blue-600 mb-1">SMS</p>
+                                        <p className="text-xl font-bold text-slate-900">{creditBalances?.smsCredits?.toLocaleString() || 0}</p>
+                                    </div>
+                                    <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                                        <p className="text-[10px] font-black uppercase text-green-600 mb-1">WhatsApp</p>
+                                        <p className="text-xl font-bold text-slate-900">{creditBalances?.whatsappCredits?.toLocaleString() || 0}</p>
+                                    </div>
+                                    <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
+                                        <p className="text-[10px] font-black uppercase text-purple-600 mb-1">Email</p>
+                                        <p className="text-xl font-bold text-slate-900">{creditBalances?.emailCredits?.toLocaleString() || 0}</p>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 space-y-4">
+                                    <h3 className="text-sm font-bold text-slate-900">Manual Adjustment</h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Channel</label>
+                                            <select 
+                                                value={adjustForm.channel} 
+                                                onChange={(e) => setAdjustForm({ ...adjustForm, channel: e.target.value })}
+                                                className="w-full h-11 px-4 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:outline-none"
+                                            >
+                                                <option value="SMS">SMS</option>
+                                                <option value="WHATSAPP">WhatsApp</option>
+                                                <option value="EMAIL">Email</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Action</label>
+                                            <select 
+                                                value={adjustForm.action} 
+                                                onChange={(e) => setAdjustForm({ ...adjustForm, action: e.target.value })}
+                                                className="w-full h-11 px-4 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:outline-none"
+                                            >
+                                                <option value="add">Add Credits</option>
+                                                <option value="remove">Remove Credits</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Amount</label>
+                                        <input 
+                                            type="number" 
+                                            value={adjustForm.amount}
+                                            onChange={(e) => setAdjustForm({ ...adjustForm, amount: e.target.value })}
+                                            placeholder="Enter credit amount" 
+                                            className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10" 
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={handleAdjustCredits}
+                                        disabled={isSubmitting || !adjustForm.amount}
+                                        className="w-full h-12 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-95"
+                                    >
+                                        {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                                        Apply Adjustment
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

@@ -8,12 +8,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreditPlan } from '../entities/credit-plan.entity';
 import { CreateCreditPlanDto } from '../dto/create-credit-plan.dto';
-import { BusinessCredit } from '../entities/business-credit.entity';
+import { BusinessCreditWallet } from '../entities/business-credit-wallet.entity';
+import { CreditTransaction } from '../entities/credit-transaction.entity';
+import { CreditTransactionType } from '../enums/credit-transaction-type.enum';
+import { Channel } from '../enums/channel.enum';
 import { PaymentsService } from '../../payments/payments.service';
 import {
   PaymentPurpose,
   PaymentStatus,
 } from '../../payments/entities/payment.entity';
+import { CreditService } from './credit.service';
+import { BranchesService } from '../../branches/branches.service';
 
 @Injectable()
 export class CreditPlanService {
@@ -21,16 +26,16 @@ export class CreditPlanService {
   constructor(
     @InjectRepository(CreditPlan)
     private readonly creditPlanRepository: Repository<CreditPlan>,
-    @InjectRepository(BusinessCredit)
-    private readonly businessCreditRepo: Repository<BusinessCredit>,
     private readonly paymentsService: PaymentsService,
+    private readonly creditService: CreditService,
+    private readonly branchesService: BranchesService,
   ) {}
 
   async purchase(
     branchId: string,
     planId: string,
     reference: string,
-  ): Promise<BusinessCredit> {
+  ): Promise<BusinessCreditWallet> {
     const plan = await this.findOne(planId);
 
     const paymentData = await this.paymentsService.verifyTransaction(reference);
@@ -53,48 +58,52 @@ export class CreditPlanService {
       );
     }
 
+    const branch = await this.branchesService.findById(branchId);
+    const businessId = branch.businessId;
+
     await this.paymentsService.recordPayment({
       reference,
       amount: plan.price,
       purpose: 'CREDIT_TOPUP' as PaymentPurpose,
       status: PaymentStatus.SUCCESS,
       branchId,
+      businessId,
       metadata: { planId, ...plan },
     });
 
-    let credits = await this.businessCreditRepo.findOne({
-      where: { branchId },
-    });
-    if (!credits) {
-      credits = this.businessCreditRepo.create({
-        branchId,
-        smsBalance: 0,
-        emailBalance: 0,
-        whatsappBalance: 0,
-      });
+    if (plan.smsAmount > 0) {
+      await this.creditService.addCredits(
+        businessId,
+        Channel.SMS,
+        plan.smsAmount,
+        CreditTransactionType.CREDIT_TOPUP,
+        `Top-up: ${plan.name}`,
+      );
+    }
+    if (plan.emailAmount > 0) {
+      await this.creditService.addCredits(
+        businessId,
+        Channel.EMAIL,
+        plan.emailAmount,
+        CreditTransactionType.CREDIT_TOPUP,
+        `Top-up: ${plan.name}`,
+      );
+    }
+    if (plan.whatsappAmount > 0) {
+      await this.creditService.addCredits(
+        businessId,
+        Channel.WHATSAPP,
+        plan.whatsappAmount,
+        CreditTransactionType.CREDIT_TOPUP,
+        `Top-up: ${plan.name}`,
+      );
     }
 
-    credits.smsBalance += Number(plan.smsAmount);
-    credits.emailBalance += Number(plan.emailAmount);
-    credits.whatsappBalance += Number(plan.whatsappAmount);
-
-    return this.businessCreditRepo.save(credits);
+    return this.creditService.getOrCreateWallet(businessId);
   }
 
-  async getMyCredits(branchId: string): Promise<BusinessCredit> {
-    let credits = await this.businessCreditRepo.findOne({
-      where: { branchId },
-    });
-    if (!credits) {
-      // Return zero balance if no credits record exists yet
-      return {
-        branchId,
-        smsBalance: 0,
-        emailBalance: 0,
-        whatsappBalance: 0,
-      } as BusinessCredit;
-    }
-    return credits;
+  async getMyCredits(businessId: string): Promise<BusinessCreditWallet> {
+    return this.creditService.getOrCreateWallet(businessId);
   }
 
   async create(createCreditPlanDto: CreateCreditPlanDto): Promise<CreditPlan> {

@@ -218,3 +218,13 @@ export const adminAgentsApi = {
         return api.get(`/agent/all?${q.toString()}`);
     }
 };
+
+export const adminCreditsApi = {
+    getBusinessBalance: (businessId: string) => api.get(`/credits/business/${businessId}`),
+    adjustCredits: (data: {
+        businessId: string;
+        channel: 'SMS' | 'WHATSAPP' | 'EMAIL';
+        amount: number;
+        action: 'add' | 'remove';
+    }) => api.post('/credits/adjust', data),
+};
