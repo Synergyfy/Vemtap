@@ -1,32 +1,44 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Smile, Paperclip, Camera, Send, X } from 'lucide-react';
 import { useSendReply } from '@/hooks/useMessaging';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useBranches } from '@/services/branches/hooks';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { useChatStore } from '@/lib/store/useChatStore';
 
 interface ChatInputProps {
     conversationId: string;
+    isMock?: boolean;
 }
 
 const COMMON_EMOJIS = ['😊', '😂', '❤️', '👍', '🙏', '🔥', '✨', '🙌', '😮', '😢', '😍', '🤔', '🎉', '✅', '🚀', '👋'];
 
-export default function ChatInput({ conversationId }: ChatInputProps) {
+export default function ChatInput({ conversationId, isMock }: ChatInputProps) {
     const [text, setText] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const user = useAuthStore(s => s.user);
-    const { activeBranchId } = useActiveBranch();
+    const { activeBranchId, setActiveBranch } = useActiveBranch();
+    const { data: branches = [] } = useBranches();
+    const addMockMessage = useChatStore(s => s.addMockMessage);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const queryClient = useQueryClient();
 
+    useEffect(() => {
+        if (!user || user.role === 'customer') return;
+        if (!activeBranchId && branches.length === 1) {
+            setActiveBranch(branches[0].id);
+        }
+    }, [activeBranchId, branches, user, setActiveBranch]);
+
     const isCustomer = user?.role === 'customer';
-    const branchId = isCustomer ? undefined : activeBranchId;
+    const branchId = isCustomer ? undefined : (activeBranchId || (branches.length === 1 ? branches[0]?.id : undefined));
     
     // Business reply mutation
     const businessReply = useSendReply();
@@ -43,6 +55,24 @@ export default function ChatInput({ conversationId }: ChatInputProps) {
 
     const handleSend = async () => {
         if (!text.trim()) return;
+
+        if (isMock || conversationId.startsWith('mock-')) {
+            addMockMessage(conversationId, {
+                id: `mock-msg-${Date.now()}`,
+                threadId: conversationId,
+                direction: isCustomer ? 'INBOUND' : 'OUTBOUND',
+                type: 'text',
+                content: text.trim(),
+                timestamp: new Date().toISOString(),
+                status: 'SENT',
+            });
+            setText('');
+            setShowEmojiPicker(false);
+            if (textareaRef.current) {
+                textareaRef.current.style.height = '';
+            }
+            return;
+        }
         
         if (!isCustomer && !branchId) {
             toast.error('Please select a branch first');
