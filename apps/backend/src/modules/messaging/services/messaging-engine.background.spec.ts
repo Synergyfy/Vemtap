@@ -10,21 +10,25 @@ import { SettingsService } from '../../settings/settings.service';
 import { ProviderRouterService } from './provider-router.service';
 import { BranchesService } from '../../branches/branches.service';
 import { DataSource } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 
-import { Contact } from '../../contacts/entities/contact.entity';
+import { User } from '../../users/entities/user.entity';
 import { Message } from '../entities/message.entity';
 import { MessageLog } from '../entities/message-log.entity';
 import { ConversationThread } from '../entities/conversation-thread.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { LoyaltyProfile } from '../../campaigns/entities/loyalty-profile.entity';
+import { Visit } from '../../visitors/entities/visit.entity';
 import { Channel } from '../enums/channel.enum';
+import { MessagingGateway } from '../messaging.gateway';
+import { PushNotificationService } from '../../notifications/push-notification.service';
 
 describe('MessagingEngineService (Background Processing)', () => {
   let service: MessagingEngineService;
   let mockBatchQueue: any;
   let mockIndividualQueue: any;
-  let contactRepoMock: any;
+  let userRepoMock: any;
   let branchRepoMock: any;
 
   beforeEach(async () => {
@@ -40,30 +44,39 @@ describe('MessagingEngineService (Background Processing)', () => {
       }),
     };
 
-    contactRepoMock = {
-      find: jest.fn().mockResolvedValue([{ id: 'c1' }, { id: 'c2' }]),
+    userRepoMock = {
+      find: jest.fn().mockResolvedValue([{ id: 'c1', firstName: 'C1' }, { id: 'c2', firstName: 'C2' }]),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MessagingEngineService,
-        { provide: getRepositoryToken(Contact), useValue: contactRepoMock },
+        { provide: getRepositoryToken(User), useValue: userRepoMock },
         { provide: getRepositoryToken(Message), useValue: {} },
         { provide: getRepositoryToken(MessageLog), useValue: {} },
         { provide: getRepositoryToken(ConversationThread), useValue: {} },
         { provide: getRepositoryToken(Business), useValue: {} },
         { provide: getRepositoryToken(Branch), useValue: branchRepoMock },
         { provide: getRepositoryToken(LoyaltyProfile), useValue: {} },
+        { provide: getRepositoryToken(Visit), useValue: {} },
         { provide: getQueueToken('messaging-batch-send'), useValue: mockBatchQueue },
         { provide: getQueueToken('messaging-individual-send'), useValue: mockIndividualQueue },
         { provide: ComplianceService, useValue: {} },
-        { provide: CreditService, useValue: {} },
+        { 
+          provide: CreditService, 
+          useValue: { 
+            getOrCreateWallet: jest.fn().mockResolvedValue({ smsCredits: 1000, emailCredits: 1000, whatsappCredits: 1000 }) 
+          } 
+        },
         { provide: TemplateService, useValue: { findOne: jest.fn() } },
         { provide: CampaignService, useValue: { createCampaign: jest.fn().mockResolvedValue({ id: 'camp1' }) } },
         { provide: SettingsService, useValue: { getSettings: jest.fn().mockResolvedValue({ whatsappNumber: '+1234567890' }) } },
         { provide: ProviderRouterService, useValue: {} },
         { provide: BranchesService, useValue: { checkBranchAccess: jest.fn() } },
         { provide: DataSource, useValue: {} },
+        { provide: ConfigService, useValue: { get: jest.fn() } },
+        { provide: MessagingGateway, useValue: {} },
+        { provide: PushNotificationService, useValue: {} },
       ],
     }).compile();
 
@@ -73,10 +86,10 @@ describe('MessagingEngineService (Background Processing)', () => {
   it('should return immediately and process in background for individual messages', async () => {
     const dto = {
       branchId: 'br1',
-      contactIds: ['c1', 'c2'],
+      customerIds: ['c1', 'c2'],
       content: 'Hello {Name}',
       channel: Channel.WHATSAPP,
-    };
+    } as any;
 
     const result = await service.sendMessage(dto);
 
@@ -84,28 +97,28 @@ describe('MessagingEngineService (Background Processing)', () => {
     expect(result.message).toBe('Messages queued for background processing');
     expect(mockIndividualQueue.add).toHaveBeenCalledTimes(2);
     expect(mockIndividualQueue.add).toHaveBeenCalledWith('send-individual', expect.objectContaining({
-      contactId: 'c1',
+      customerId: 'c1',
       content: 'Hello {Name}',
     }));
   });
 
   it('should use batch queue for more than 50 contacts', async () => {
-    const manyContacts = Array.from({ length: 51 }, (_, i) => ({ id: `c${i}` }));
-    contactRepoMock.find.mockResolvedValueOnce(manyContacts);
+    const manyUsers = Array.from({ length: 51 }, (_, i) => ({ id: `c${i}`, firstName: `User${i}` }));
+    userRepoMock.find.mockResolvedValueOnce(manyUsers);
 
     const dto = {
       branchId: 'br1',
-      contactIds: manyContacts.map(c => c.id),
+      customerIds: manyUsers.map(c => c.id),
       content: 'Hello everyone',
       channel: Channel.WHATSAPP,
-    };
+    } as any;
 
     const result = await service.sendMessage(dto);
 
     expect(result.status).toBe('QUEUED');
     expect(result.message).toBe('Batch campaign queued');
     expect(mockBatchQueue.add).toHaveBeenCalledWith('send-batch', expect.objectContaining({
-      contactIds: manyContacts.map(c => c.id),
+      customerIds: manyUsers.map(c => c.id),
     }));
     expect(mockIndividualQueue.add).not.toHaveBeenCalled();
   });

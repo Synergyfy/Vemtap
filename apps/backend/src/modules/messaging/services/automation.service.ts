@@ -153,7 +153,7 @@ export class AutomationService {
       data: logs.map((log) => ({
         id: log.id,
         ruleName: log.rule?.name,
-        contactId: log.contactId,
+        customerId: log.customerId,
         status: log.status,
         executedAt: log.executedAt,
         errorReason: log.errorReason,
@@ -242,7 +242,7 @@ export class AutomationService {
 
   async trigger(type: TriggerType, dto: AutomationTriggerDto): Promise<void> {
     this.logger.log(
-      `Triggering automation ${type} for contact ${dto.contactId}`,
+      `Triggering automation ${type} for customer ${dto.customerId}`,
     );
 
     const rules = await this.ruleRepo.find({
@@ -284,7 +284,7 @@ export class AutomationService {
     if (!rule || !rule.isActive) return;
 
     this.logger.log(
-      `Executing rule ${rule.id} (${rule.name}) for contact ${triggerDto.contactId}`,
+      `Executing rule ${rule.id} (${rule.name}) for customer ${triggerDto.customerId}`,
     );
 
     try {
@@ -297,7 +297,7 @@ export class AutomationService {
         await this.messagingEngine.sendMessage({
           branchId: rule.branchId,
           channel,
-          contactIds: [triggerDto.contactId],
+          customerIds: [triggerDto.customerId],
           content: rule.actionConfig?.content,
           templateId: rule.actionConfig?.templateId,
         });
@@ -311,25 +311,25 @@ export class AutomationService {
         await this.messagingEngine.sendMessage({
           branchId: rule.branchId,
           channel: Channel.SMS,
-          contactIds: [triggerDto.contactId],
+          customerIds: [triggerDto.customerId],
           content,
         });
       }
 
       const log = this.logRepo.create({
         ruleId: rule.id,
-        contactId: triggerDto.contactId,
+        customerId: triggerDto.customerId,
         status: 'success',
-      });
+      } as any) as unknown as AutomationLog;
       await this.logRepo.save(log);
     } catch (error: any) {
       this.logger.error(`Rule execution failed: ${error.message}`);
       const log = this.logRepo.create({
         ruleId: rule.id,
-        contactId: triggerDto.contactId,
+        customerId: triggerDto.customerId,
         status: 'failed',
         errorReason: error.message,
-      });
+      } as any) as unknown as AutomationLog;
       await this.logRepo.save(log);
     }
   }

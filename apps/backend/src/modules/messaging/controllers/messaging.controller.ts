@@ -17,6 +17,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiBody,
 } from '@nestjs/swagger';
 import { MessagingEngineService } from '../services/messaging-engine.service';
 import { CampaignService } from '../services/campaign.service';
@@ -35,6 +36,8 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { TrialRestrictionGuard } from '../../subscriptions/guards/trial-restriction.guard';
 import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
 import { MessagingAnalyticsFilterDto } from '../dto/messaging-analytics-filter.dto';
+import { MessagingHelperService } from '../services/messaging-helper.service';
+import { BranchesService } from '../../branches/branches.service';
 
 @ApiTags('Messaging')
 @Controller('messaging')
@@ -45,39 +48,15 @@ export class MessagingController {
     private readonly templateService: TemplateService,
     private readonly analyticsService: AnalyticsService,
     private readonly inboxService: InboxService,
-  ) { }
+    private readonly branchesService: BranchesService,
+    private readonly messagingHelperService: MessagingHelperService,
+  ) {}
 
-  private async getBranchId(req: any, queryBranchId?: string): Promise<string> {
-    const user = req.user;
-
-    // For Owner and Admin: branchId MUST be provided in the request
-    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
-      if (!queryBranchId) {
-        throw new BadRequestException(
-          'branchId is required for Owners and Admins',
-        );
-      }
-
-      if (user.role === UserRole.OWNER) {
-        const hasAccess = await this.messagingEngine.checkBranchAccess(
-          user,
-          queryBranchId,
-        );
-        if (!hasAccess) {
-          throw new BadRequestException(
-            'You do not have access to this branch',
-          );
-        }
-      }
-      return queryBranchId;
-    }
-
-    // For Manager and Staff: ignore provided branchId, always use branchId from token
-    if (!user.branchId) {
-      throw new BadRequestException('User is not associated with any branch');
-    }
-
-    return user.branchId;
+  private async getBranchId(
+    req: { user: User },
+    branchId?: string,
+  ): Promise<string> {
+    return this.messagingHelperService.resolveBranchId(req.user, branchId);
   }
 
   @Post('send')
@@ -139,10 +118,7 @@ export class MessagingController {
     @Body() dto: Partial<CreateTemplateDto>,
     @Request() req: { user: User },
   ) {
-    const template = await this.templateService.getTemplate(id, req.user);
-    Object.assign(template, dto);
-    // Directly using the repository from the service (assuming it is exported or we can add an update method)
-    return (this.templateService as any).templateRepo.save(template);
+    return this.templateService.updateTemplate(id, dto, req.user);
   }
 
   @Get('campaigns')
@@ -175,10 +151,12 @@ export class MessagingController {
   @Get('inbox/:channel')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiParam({ name: 'channel', enum: Channel })
   @ApiOperation({
-    summary: 'Get conversation threads by channel for a branch',
+    summary: 'Get conversation threads by channel for a branch (Newest to Oldest)',
   })
+  @ApiResponse({ status: 200, description: 'List of threads sorted by last activity' })
   async getInboxThreads(
     @Param('channel') channel: Channel,
     @Query() filter: BranchFilterDto,
@@ -191,7 +169,9 @@ export class MessagingController {
   @Get('inbox/threads/:threadId')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
-  @ApiOperation({ summary: 'Get messages in a specific thread' })
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get messages in a specific thread (Newest to Oldest)' })
+  @ApiResponse({ status: 200, description: 'List of messages with quoting support' })
   async getThreadMessages(
     @Param('threadId') threadId: string,
     @Query() filter: BranchFilterDto,
@@ -205,7 +185,9 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @ApiOperation({ summary: 'Send a reply to an active thread' })
+  @ApiOperation({ summary: 'Send a reply to an active thread (Supports Quoting)' })
+  @ApiBody({ type: ReplyDto })
+  @ApiResponse({ status: 201, description: 'Reply sent and broadcast via Socket' })
   async replyToThread(
     @Param('threadId') threadId: string,
     @Body() dto: ReplyDto,
@@ -214,7 +196,22 @@ export class MessagingController {
   ) {
     const branchId = await this.getBranchId(req, filter.branchId);
 
-    return this.inboxService.sendReply(threadId, dto.content, branchId);
+    return this.inboxService.sendReply(threadId, dto.content, branchId, dto.replyToId);
+  }
+
+  @Post('inbox/threads/:threadId/read')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Mark a conversation thread as read for the branch' })
+  @ApiResponse({ status: 200, description: 'Thread marked as read' })
+  async markThreadAsRead(
+    @Param('threadId') threadId: string,
+    @Query() filter: BranchFilterDto,
+    @Request() req: { user: User },
+  ) {
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.inboxService.markAsRead(threadId, branchId);
   }
 
   @Delete('templates/:id')
