@@ -22,7 +22,7 @@ export class AutomationProcessor extends WorkerHost {
   async process(job: Job<AutomationJobData, any, string>): Promise<any> {
     const { ruleId, triggerDto } = job.data;
     this.logger.log(
-      `Processing delayed automation rule ${ruleId} for contact ${triggerDto.contactId}`,
+      `Processing delayed automation rule ${ruleId} for customer ${triggerDto.customerId}`,
     );
 
     try {

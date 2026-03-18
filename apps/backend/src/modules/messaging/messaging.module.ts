@@ -6,6 +6,8 @@ import { HttpModule } from '@nestjs/axios';
 import { Business } from '../businesses/entities/business.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Contact } from '../contacts/entities/contact.entity';
+import { User } from '../users/entities/user.entity';
+import { Visit } from '../visitors/entities/visit.entity';
 
 import { MessageTemplate } from './entities/message-template.entity';
 import { MessageCampaign } from './entities/message-campaign.entity';
@@ -33,6 +35,7 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { MailModule } from '../mail/mail.module';
 import { BranchesModule } from '../branches/branches.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 import { MessagingEngineService } from './services/messaging-engine.service';
 import { TemplateService } from './services/template.service';
@@ -71,6 +74,9 @@ import { FlowDelayProcessor } from './processors/flow-delay.processor';
 import { AutomationProcessor } from './processors/automation.processor';
 import { TwilioWebhookController } from './controllers/twilio.controller';
 
+import { MessagingGateway } from './messaging.gateway';
+import { JwtModule } from '@nestjs/jwt';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -87,6 +93,8 @@ import { TwilioWebhookController } from './controllers/twilio.controller';
       Business,
       Branch,
       Contact,
+      User,
+      Visit,
       AutomationRule,
       AutomationLog,
       ChatCategory,
@@ -104,6 +112,17 @@ import { TwilioWebhookController } from './controllers/twilio.controller';
     PaymentsModule,
     MailModule,
     forwardRef(() => BranchesModule),
+    NotificationsModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: configService.get<string>('JWT_EXPIRATION') as any,
+        },
+      }),
+      inject: [ConfigService],
+    }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
@@ -172,6 +191,7 @@ import { TwilioWebhookController } from './controllers/twilio.controller';
     CreditPlanService,
     MessagingFlowService,
     ChatSettingsService,
+    MessagingGateway,
   ],
   controllers: [
     MessagingController,
@@ -205,6 +225,7 @@ import { TwilioWebhookController } from './controllers/twilio.controller';
     InHouseProvider,
     ProviderRouterService,
     MessagingFlowService,
+    MessagingGateway,
   ],
 })
 export class MessagingModule {}

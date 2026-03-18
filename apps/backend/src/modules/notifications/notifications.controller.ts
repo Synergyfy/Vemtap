@@ -6,14 +6,17 @@ import {
   Param,
   UseGuards,
   Request,
+  Body,
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
+import { PushNotificationService } from './push-notification.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
   ApiBearerAuth,
   ApiTags,
   ApiOperation,
   ApiResponse,
+  ApiBody,
 } from '@nestjs/swagger';
 import { NotificationResponseDto } from './dto/notification-response.dto';
 
@@ -22,7 +25,48 @@ import { NotificationResponseDto } from './dto/notification-response.dto';
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+    private readonly pushNotificationService: PushNotificationService,
+  ) {}
+
+  @Post('push-token')
+  @ApiOperation({ summary: 'Register a push token for the current user' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        token: { type: 'string', example: 'fcm-token-abc-123' },
+      },
+      required: ['token'],
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Token registered successfully' })
+  async registerPushToken(
+    @Body('token') token: string,
+    @Request() req,
+  ) {
+    return this.pushNotificationService.registerToken(req.user.id, token, true);
+  }
+
+  @Post('visitor/push-token')
+  @ApiOperation({ summary: 'Register a push token for the current visitor' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        token: { type: 'string', example: 'fcm-token-abc-123' },
+      },
+      required: ['token'],
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Token registered successfully' })
+  async registerVisitorPushToken(
+    @Body('token') token: string,
+    @Request() req,
+  ) {
+    return this.pushNotificationService.registerToken(req.user.id, token, false);
+  }
 
   @Get()
   @ApiOperation({ summary: 'Get all notifications for current user' })

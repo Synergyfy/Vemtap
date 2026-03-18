@@ -5,7 +5,7 @@ import { MessagingEngineService } from '../services/messaging-engine.service';
 import { CampaignService } from '../services/campaign.service';
 import { TemplateService } from '../services/template.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Contact } from '../../contacts/entities/contact.entity';
+import { User, UserRole } from '../../users/entities/user.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { Channel } from '../enums/channel.enum';
@@ -16,7 +16,7 @@ describe('BatchSendProcessor', () => {
   let engineMock: any;
   let campaignMock: any;
   let templateMock: any;
-  let contactRepoMock: any;
+  let userRepoMock: any;
   let branchRepoMock: any;
 
   beforeEach(async () => {
@@ -33,7 +33,7 @@ describe('BatchSendProcessor', () => {
       getTemplate: jest.fn(),
     };
 
-    contactRepoMock = {
+    userRepoMock = {
       findOne: jest.fn(),
     };
 
@@ -47,7 +47,7 @@ describe('BatchSendProcessor', () => {
         { provide: MessagingEngineService, useValue: engineMock },
         { provide: CampaignService, useValue: campaignMock },
         { provide: TemplateService, useValue: templateMock },
-        { provide: getRepositoryToken(Contact), useValue: contactRepoMock },
+        { provide: getRepositoryToken(User), useValue: userRepoMock },
         { provide: getRepositoryToken(Branch), useValue: branchRepoMock },
       ],
     }).compile();
@@ -57,6 +57,7 @@ describe('BatchSendProcessor', () => {
     // Suppress logger to keep test output clean
     jest.spyOn(Logger.prototype, 'log').mockImplementation(() => {});
     jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+    jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => {});
   });
 
   describe('process', () => {
@@ -68,7 +69,7 @@ describe('BatchSendProcessor', () => {
           campaignId: 'c1',
           branchId: 'br1',
           channel: Channel.SMS,
-          contactIds: ['contact1', 'contact2'],
+          customerIds: ['customer1', 'customer2'],
           templateId: 't1',
           content: 'test text',
         },
@@ -84,10 +85,10 @@ describe('BatchSendProcessor', () => {
       expect(branchRepoMock.findOne).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'br1' } }),
       );
-      expect(contactRepoMock.findOne).not.toHaveBeenCalled();
+      expect(userRepoMock.findOne).not.toHaveBeenCalled();
     });
 
-    it('should process contacts and increment success/failure counts accordingly', async () => {
+    it('should process customers and increment success/failure counts accordingly', async () => {
       branchRepoMock.findOne.mockResolvedValue({
         id: 'br1',
         name: 'Test Branch',
@@ -97,10 +98,10 @@ describe('BatchSendProcessor', () => {
         content: 'test text',
       });
 
-      // First contact succeeds, second contact fails
-      contactRepoMock.findOne
-        .mockResolvedValueOnce({ id: 'contact1' })
-        .mockResolvedValueOnce({ id: 'contact2' });
+      // First customer succeeds, second customer fails
+      userRepoMock.findOne
+        .mockResolvedValueOnce({ id: 'customer1', role: UserRole.CUSTOMER })
+        .mockResolvedValueOnce({ id: 'customer2', role: UserRole.CUSTOMER });
 
       engineMock.processSingleSend
         .mockResolvedValueOnce('msg1')

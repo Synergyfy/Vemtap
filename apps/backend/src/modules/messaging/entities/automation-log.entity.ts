@@ -12,7 +12,7 @@ export class AutomationLog extends AbstractBaseEntity {
   ruleId: string;
 
   @Column({ nullable: true })
-  contactId: string;
+  customerId: string;
 
   @Column({ nullable: true })
   status: string;

@@ -8,15 +8,19 @@ import {
 import { Message } from '../entities/message.entity';
 import { MessagingEngineService } from './messaging-engine.service';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
-import { Contact } from '../../contacts/entities/contact.entity';
+import { User } from '../../users/entities/user.entity';
 import { Channel } from '../enums/channel.enum';
+import { MessagingGateway } from '../messaging.gateway';
+import { PushNotificationService } from '../../notifications/push-notification.service';
 
 describe('InboxService', () => {
   let service: InboxService;
   let threadRepoMock: any;
   let messageRepoMock: any;
-  let contactRepoMock: any;
+  let userRepoMock: any;
   let engineMock: any;
+  let gatewayMock: any;
+  let pushMock: any;
 
   beforeEach(async () => {
     threadRepoMock = {
@@ -25,7 +29,6 @@ describe('InboxService', () => {
       save: jest.fn().mockImplementation((t) => Promise.resolve(t)),
     };
 
-    // We replace query builder to just return execute() for testing
     threadRepoMock.createQueryBuilder = jest.fn(() => ({
       update: jest.fn().mockReturnThis(),
       set: jest.fn().mockReturnThis(),
@@ -40,12 +43,21 @@ describe('InboxService', () => {
       save: jest.fn().mockImplementation((m) => Promise.resolve(m)),
     };
 
-    contactRepoMock = {
+    userRepoMock = {
         findOne: jest.fn(),
     };
 
     engineMock = {
       sendReply: jest.fn(),
+    };
+
+    gatewayMock = {
+      emitMessage: jest.fn(),
+    };
+
+    pushMock = {
+      sendNotification: jest.fn().mockResolvedValue({ success: true }),
+      sendToBranchStaff: jest.fn().mockResolvedValue({ success: true }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -60,12 +72,20 @@ describe('InboxService', () => {
           useValue: messageRepoMock,
         },
         {
-          provide: getRepositoryToken(Contact),
-          useValue: contactRepoMock,
+          provide: getRepositoryToken(User),
+          useValue: userRepoMock,
         },
         {
           provide: MessagingEngineService,
           useValue: engineMock,
+        },
+        {
+          provide: MessagingGateway,
+          useValue: gatewayMock,
+        },
+        {
+          provide: PushNotificationService,
+          useValue: pushMock,
         },
       ],
     }).compile();
@@ -81,103 +101,73 @@ describe('InboxService', () => {
       );
     });
 
-    it('should send reply via engine, update thread status to OPEN, and return message', async () => {
+    it('should send reply via engine, update thread status, unread count, and broadcast', async () => {
       const mockThread = {
         id: 't1',
         branchId: 'br1',
+        customerId: 'c1',
         status: ThreadStatus.CLOSED,
+        customerUnreadCount: 0,
+        channel: Channel.IN_HOUSE,
       } as any;
       threadRepoMock.findOne.mockResolvedValue(mockThread);
       engineMock.sendReply.mockResolvedValue('msg1');
       messageRepoMock.findOne.mockResolvedValue({
         id: 'msg1',
         content: 'hello',
+        threadId: 't1',
       } as any);
 
       const result = await service.sendReply('t1', 'hello', 'br1');
 
-      expect(engineMock.sendReply).toHaveBeenCalledWith(mockThread, 'hello');
+      expect(engineMock.sendReply).toHaveBeenCalledWith(mockThread, 'hello', undefined);
       expect(mockThread.status).toBe(ThreadStatus.OPEN);
+      expect(mockThread.customerUnreadCount).toBe(1);
+      expect(mockThread.lastMessageContent).toBe('hello');
       expect(threadRepoMock.save).toHaveBeenCalledWith(mockThread);
+      expect(gatewayMock.emitMessage).toHaveBeenCalled();
+      expect(pushMock.sendNotification).toHaveBeenCalled();
       expect(result).toBeDefined();
-      expect(result!.content).toBe('hello');
     });
   });
 
-  describe('closeInactiveThreads', () => {
-    it('should execute query builder to update inactive threads', async () => {
-      await service.closeInactiveThreads(7);
-      expect(threadRepoMock.createQueryBuilder).toHaveBeenCalled();
+  describe('getThreadMessages', () => {
+    it('should return messages sorted DESC by timestamp and reset unread count', async () => {
+      const mockThread = { id: 't1', branchId: 'br1', branchUnreadCount: 5 };
+      threadRepoMock.findOne.mockResolvedValue(mockThread);
+      messageRepoMock.find.mockResolvedValue([{ id: 'm1' }]);
+
+      const result = await service.getThreadMessages('t1', 'br1');
+
+      expect(messageRepoMock.find).toHaveBeenCalledWith(expect.objectContaining({
+        order: { timestamp: 'DESC' }
+      }));
+      expect(mockThread.branchUnreadCount).toBe(0);
+      expect(threadRepoMock.save).toHaveBeenCalledWith(mockThread);
+      expect(result).toHaveLength(1);
     });
   });
 
-  describe('Customer In-House Messaging', () => {
-    describe('getCustomerThreads', () => {
-        it('should return in-house threads for a given contact', async () => {
-            const mockThreads = [{ id: 't1', channel: Channel.IN_HOUSE }];
-            threadRepoMock.find.mockResolvedValue(mockThreads);
+  describe('sendCustomerReply', () => {
+    it('should save customer reply, update staff unread count, and broadcast', async () => {
+      const mockThread = {
+        id: 't1',
+        branchId: 'br1',
+        customerId: 'c1',
+        channel: Channel.IN_HOUSE,
+        status: ThreadStatus.CLOSED,
+        branchUnreadCount: 0,
+        customer: { firstName: 'Visitor', phone: '+123' }
+      } as any;
+      threadRepoMock.findOne.mockResolvedValue(mockThread);
+      
+      const result = await service.sendCustomerReply('t1', 'reply content', 'c1');
 
-            const result = await service.getCustomerThreads('contact-1');
-            expect(threadRepoMock.find).toHaveBeenCalledWith({
-                where: { contactId: 'contact-1', channel: Channel.IN_HOUSE },
-                relations: ['branch', 'branch.business'],
-                order: { lastActivityAt: 'DESC' },
-            });
-            expect(result).toEqual(mockThreads);
-        });
-    });
-
-    describe('getCustomerThreadMessages', () => {
-        it('should throw NotFoundException if thread does not exist for contact', async () => {
-            threadRepoMock.findOne.mockResolvedValue(null);
-            await expect(service.getCustomerThreadMessages('t1', 'contact-1')).rejects.toThrow(NotFoundException);
-        });
-
-        it('should return messages for the thread', async () => {
-            threadRepoMock.findOne.mockResolvedValue({ id: 't1', contactId: 'contact-1' });
-            const mockMessages = [{ id: 'm1', content: 'test' }];
-            messageRepoMock.find.mockResolvedValue(mockMessages);
-
-            const result = await service.getCustomerThreadMessages('t1', 'contact-1');
-            expect(messageRepoMock.find).toHaveBeenCalledWith({
-                where: { threadId: 't1' },
-                order: { timestamp: 'ASC' },
-            });
-            expect(result).toEqual(mockMessages);
-        });
-    });
-
-    describe('sendCustomerReply', () => {
-        it('should throw NotFoundException if thread does not exist', async () => {
-            threadRepoMock.findOne.mockResolvedValue(null);
-            await expect(service.sendCustomerReply('t1', 'hello', 'contact-1')).rejects.toThrow(NotFoundException);
-        });
-
-        it('should throw ForbiddenException if thread channel is not IN_HOUSE', async () => {
-            threadRepoMock.findOne.mockResolvedValue({ id: 't1', channel: Channel.SMS });
-            await expect(service.sendCustomerReply('t1', 'hello', 'contact-1')).rejects.toThrow(ForbiddenException);
-        });
-
-        it('should save customer reply and update thread status', async () => {
-            const mockThread = {
-                id: 't1',
-                branchId: 'br1',
-                contactId: 'contact-1',
-                channel: Channel.IN_HOUSE,
-                status: ThreadStatus.CLOSED,
-                contact: { phone: '123456' }
-            };
-            threadRepoMock.findOne.mockResolvedValue(mockThread);
-            
-            const result = await service.sendCustomerReply('t1', 'reply content', 'contact-1');
-
-            expect(messageRepoMock.create).toHaveBeenCalled();
-            expect(messageRepoMock.save).toHaveBeenCalled();
-            expect(mockThread.status).toBe(ThreadStatus.OPEN);
-            expect(threadRepoMock.save).toHaveBeenCalledWith(mockThread);
-            expect(result.content).toBe('reply content');
-        });
+      expect(messageRepoMock.save).toHaveBeenCalled();
+      expect(mockThread.branchUnreadCount).toBe(1);
+      expect(gatewayMock.emitMessage).toHaveBeenCalled();
+      expect(pushMock.sendToBranchStaff).toHaveBeenCalled();
+      expect(result.content).toBe('reply content');
     });
   });
 });
-

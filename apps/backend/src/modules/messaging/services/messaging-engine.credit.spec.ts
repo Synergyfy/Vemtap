@@ -10,23 +10,27 @@ import { SettingsService } from '../../settings/settings.service';
 import { ProviderRouterService } from './provider-router.service';
 import { BranchesService } from '../../branches/branches.service';
 import { DataSource } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 
-import { Contact } from '../../contacts/entities/contact.entity';
+import { User, UserRole } from '../../users/entities/user.entity';
 import { Message } from '../entities/message.entity';
 import { MessageLog } from '../entities/message-log.entity';
 import { ConversationThread } from '../entities/conversation-thread.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { LoyaltyProfile } from '../../campaigns/entities/loyalty-profile.entity';
+import { Visit } from '../../visitors/entities/visit.entity';
 import { Channel } from '../enums/channel.enum';
 import { BadRequestException } from '@nestjs/common';
 import { CreditPlanService } from './credit-plan.service';
 import { PaymentsService } from '../../payments/payments.service';
+import { MessagingGateway } from '../messaging.gateway';
+import { PushNotificationService } from '../../notifications/push-notification.service';
 
 describe('MessagingEngineService Credit Logic', () => {
   let service: MessagingEngineService;
   let branchRepoMock: any;
-  let contactRepoMock: any;
+  let userRepoMock: any;
   let creditServiceMock: any;
   let creditPlanService: CreditPlanService;
   let paymentsServiceMock: any;
@@ -45,7 +49,7 @@ describe('MessagingEngineService Credit Logic', () => {
       findOneBy: jest.fn(),
       findById: jest.fn(),
     };
-    contactRepoMock = {
+    userRepoMock = {
       find: jest.fn(),
       findOneBy: jest.fn(),
     };
@@ -54,7 +58,7 @@ describe('MessagingEngineService Credit Logic', () => {
       deductCredits: jest.fn(),
       addCredits: jest.fn(),
       allocateSubscriptionCredits: jest.fn().mockImplementation(async (bizId, plan) => {
-          if (plan.smsCredits > 0) await creditServiceMock.addCredits(bizId, Channel.SMS, plan.smsCredits, 'SUBSCRIPTION' as any);
+          if (plan.smsCredits > 0) await creditServiceMock.addCredits(bizId, Channel.SMS, plan.smsCredits, 'SUBSCRIPTION_ALLOCATION' as any, `Plan: ${plan.name}`);
       }),
     };
     paymentsServiceMock = {
@@ -66,25 +70,29 @@ describe('MessagingEngineService Credit Logic', () => {
       providers: [
         MessagingEngineService,
         CreditPlanService,
-        { provide: getRepositoryToken(Contact), useValue: contactRepoMock },
+        { provide: getRepositoryToken(User), useValue: userRepoMock },
         { provide: getRepositoryToken(Message), useValue: {} },
         { provide: getRepositoryToken(MessageLog), useValue: {} },
         { provide: getRepositoryToken(ConversationThread), useValue: {} },
         { provide: getRepositoryToken(Branch), useValue: branchRepoMock },
         { provide: getRepositoryToken(LoyaltyProfile), useValue: {} },
+        { provide: getRepositoryToken(Visit), useValue: {} },
         { provide: getRepositoryToken(Business), useValue: {} },
         { provide: getQueueToken('messaging-batch-send'), useValue: mockQueue },
         { provide: getQueueToken('messaging-individual-send'), useValue: mockIndividualQueue },
         { provide: ComplianceService, useValue: {} },
         { provide: CreditService, useValue: creditServiceMock },
-        { provide: TemplateService, useValue: {} },
+        { provide: TemplateService, useValue: { findOne: jest.fn() } },
         { provide: CampaignService, useValue: { createCampaign: jest.fn().mockResolvedValue({id: 'c1'}) } },
         { provide: SettingsService, useValue: {} },
         { provide: ProviderRouterService, useValue: {} },
-        { provide: BranchesService, useValue: { findById: jest.fn() } },
+        { provide: BranchesService, useValue: { findById: jest.fn(), checkBranchAccess: jest.fn() } },
         { provide: DataSource, useValue: {} },
+        { provide: ConfigService, useValue: { get: jest.fn() } },
         { provide: PaymentsService, useValue: paymentsServiceMock },
         { provide: 'CreditPlanRepository', useValue: { findOne: jest.fn() } },
+        { provide: MessagingGateway, useValue: {} },
+        { provide: PushNotificationService, useValue: {} },
       ],
     }).compile();
 
@@ -96,15 +104,15 @@ describe('MessagingEngineService Credit Logic', () => {
     it('should cost 1 credit for SMS <= 160 characters', async () => {
       const content = 'A'.repeat(160);
       branchRepoMock.findOne.mockResolvedValue({ id: 'br1', businessId: 'biz1' });
-      contactRepoMock.find.mockResolvedValue([{ id: 'c1' }]);
+      userRepoMock.find.mockResolvedValue([{ id: 'c1', firstName: 'C1', role: UserRole.CUSTOMER }]);
       creditServiceMock.getOrCreateWallet.mockResolvedValue({ smsCredits: 1 });
 
       await service.sendMessage({
         branchId: 'br1',
-        contactIds: ['c1'],
+        customerIds: ['c1'],
         channel: Channel.SMS,
         content,
-      });
+      } as any);
 
       expect(mockIndividualQueue.add).toHaveBeenCalled();
     });
@@ -112,16 +120,16 @@ describe('MessagingEngineService Credit Logic', () => {
     it('should cost 2 credits for SMS > 160 characters', async () => {
       const content = 'A'.repeat(161);
       branchRepoMock.findOne.mockResolvedValue({ id: 'br1', businessId: 'biz1' });
-      contactRepoMock.find.mockResolvedValue([{ id: 'c1' }]);
+      userRepoMock.find.mockResolvedValue([{ id: 'c1', firstName: 'C1', role: UserRole.CUSTOMER }]);
       
       creditServiceMock.getOrCreateWallet.mockResolvedValue({ smsCredits: 1 });
 
       await expect(service.sendMessage({
         branchId: 'br1',
-        contactIds: ['c1'],
+        customerIds: ['c1'],
         channel: Channel.SMS,
         content,
-      })).rejects.toThrow(BadRequestException);
+      } as any)).rejects.toThrow(BadRequestException);
     });
 
     it('should account for placeholders when calculating SMS length', async () => {
@@ -131,19 +139,21 @@ describe('MessagingEngineService Credit Logic', () => {
         businessId: 'biz1',
         business: { name: 'VemTap' }
       });
-      contactRepoMock.find.mockResolvedValue([{ 
+      userRepoMock.find.mockResolvedValue([{ 
         id: 'c1', 
-        name: 'Johnathan Christopher Alexander Smith' // 38 characters
+        firstName: 'Johnathan Christopher',
+        lastName: 'Alexander Smith', // 38 characters combined
+        role: UserRole.CUSTOMER
       }]);
       
       creditServiceMock.getOrCreateWallet.mockResolvedValue({ smsCredits: 1 });
 
       await expect(service.sendMessage({
         branchId: 'br1',
-        contactIds: ['c1'],
+        customerIds: ['c1'],
         channel: Channel.SMS,
         content,
-      })).rejects.toThrow(/Insufficient SMS credits/);
+      } as any)).rejects.toThrow(/Insufficient SMS credits/);
     });
 
     it('should succeed if enough credits for multiple contacts with long names', async () => {
@@ -154,27 +164,27 @@ describe('MessagingEngineService Credit Logic', () => {
           businessId: 'biz1',
           business: { name: 'VemTap' }
         });
-        contactRepoMock.find.mockResolvedValue([
-            { id: 'c1', name: 'Short' }, // 140 + 1 + 5 = 146 (1 unit)
-            { id: 'c2', name: 'Johnathan Christopher Alexander Smith' } // 140 + 1 + 38 = 179 (2 units)
+        userRepoMock.find.mockResolvedValue([
+            { id: 'c1', firstName: 'Short', lastName: '', role: UserRole.CUSTOMER }, // 140 + 1 + 5 = 146 (1 unit)
+            { id: 'c2', firstName: 'Johnathan Christopher', lastName: 'Alexander Smith', role: UserRole.CUSTOMER } // 140 + 1 + 38 = 179 (2 units)
         ]);
 
         creditServiceMock.getOrCreateWallet.mockResolvedValue({ smsCredits: 2 });
 
         await expect(service.sendMessage({
             branchId: 'br1',
-            contactIds: ['c1', 'c2'],
+            customerIds: ['c1', 'c2'],
             channel: Channel.SMS,
             content: longContent,
-        })).rejects.toThrow(/Need 3/);
+        } as any)).rejects.toThrow(/Need 3/);
 
         creditServiceMock.getOrCreateWallet.mockResolvedValue({ smsCredits: 3 });
         const result = await service.sendMessage({
             branchId: 'br1',
-            contactIds: ['c1', 'c2'],
+            customerIds: ['c1', 'c2'],
             channel: Channel.SMS,
             content: longContent,
-        });
+        } as any);
         expect(result.count).toBe(2);
     });
   });
@@ -185,13 +195,14 @@ describe('MessagingEngineService Credit Logic', () => {
         const moduleRef = await Test.createTestingModule({
             providers: [
                 CreditPlanService,
-                { provide: getRepositoryToken(Contact), useValue: {} },
+                { provide: getRepositoryToken(User), useValue: {} },
                 { provide: getRepositoryToken(Message), useValue: {} },
                 { provide: getRepositoryToken(MessageLog), useValue: {} },
                 { provide: getRepositoryToken(ConversationThread), useValue: {} },
                 { provide: getRepositoryToken(Branch), useValue: {} },
                 { provide: getRepositoryToken(Business), useValue: {} },
                 { provide: getRepositoryToken(LoyaltyProfile), useValue: {} },
+                { provide: getRepositoryToken(Visit), useValue: {} },
                 { provide: getQueueToken('messaging-batch-send'), useValue: {} },
                 { provide: getQueueToken('messaging-individual-send'), useValue: {} },
                 { provide: ComplianceService, useValue: {} },
@@ -202,8 +213,11 @@ describe('MessagingEngineService Credit Logic', () => {
                 { provide: ProviderRouterService, useValue: {} },
                 { provide: BranchesService, useValue: { findById: jest.fn().mockResolvedValue({ businessId: 'biz1'}) } },
                 { provide: DataSource, useValue: {} },
+                { provide: ConfigService, useValue: {} },
                 { provide: PaymentsService, useValue: paymentsServiceMock },
                 { provide: getRepositoryToken(require('../entities/credit-plan.entity').CreditPlan), useValue: { findOne: jest.fn().mockResolvedValue(mockPlan) } },
+                { provide: MessagingGateway, useValue: {} },
+                { provide: PushNotificationService, useValue: {} },
             ],
         }).compile();
 
@@ -229,6 +243,7 @@ describe('MessagingEngineService Credit Logic', () => {
             'biz1',
             Channel.SMS,
             500,
+            expect.any(String),
             expect.any(String)
         );
     });

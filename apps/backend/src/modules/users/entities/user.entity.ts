@@ -14,6 +14,8 @@ import { Business } from '../../businesses/entities/business.entity';
 import { Notification } from '../../notifications/entities/notification.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Branch } from '../../branches/entities/branch.entity';
+import { Message } from '../../messaging/entities/message.entity';
+import { ConversationThread } from '../../messaging/entities/conversation-thread.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum UserRole {
@@ -83,6 +85,10 @@ export class User extends AbstractBaseEntity {
   @Column({ type: 'timestamp', nullable: true })
   lastActive: Date;
 
+  @ApiProperty({ example: 'fcm-token-string', nullable: true })
+  @Column({ nullable: true })
+  pushToken: string;
+
   // Relation to branch they belong to
   @ManyToOne(() => Branch, (branch) => branch.staff, {
     nullable: true,
@@ -121,6 +127,20 @@ export class User extends AbstractBaseEntity {
 
   @OneToMany(() => Visit, (visit) => visit.customer)
   visits: Visit[];
+
+  @OneToMany(() => Message, (message) => message.customer)
+  messages: Message[];
+
+  @OneToMany(() => ConversationThread, (thread) => thread.customer)
+  threads: ConversationThread[];
+
+  @ApiProperty({ example: ['SMS', 'WhatsApp'], nullable: true })
+  @Column({ type: 'simple-array', nullable: true })
+  optInChannels: string[];
+
+  @ApiProperty({ example: false })
+  @Column({ default: false })
+  optOut: boolean;
 
   @BeforeInsert()
   @BeforeUpdate()
