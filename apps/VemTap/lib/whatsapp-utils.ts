@@ -12,8 +12,16 @@
  * @returns A formatted phone number string for WhatsApp.
  */
 export function formatPhoneForWhatsApp(phone: string): string {
-    // Remove all non-numeric characters (including +, spaces, -, (, ))
-    return phone.replace(/\D/g, '');
+    // Remove all non-numeric characters
+    let cleaned = phone.replace(/\D/g, '');
+    
+    // If it starts with 0 (e.g., 080...), replace the 0 with 234
+    if (cleaned.startsWith('0')) {
+        cleaned = '234' + cleaned.substring(1);
+    }
+    
+    // Ensure it has at least some digits and isn't just an empty string
+    return cleaned;
 }
 
 /**
@@ -55,20 +63,23 @@ export function processTemplate(template: string, data: { name?: string; busines
 }
 
 /**
- * Generates a Venture Chat Bridge Link for a business.
- * @param businessId The unique ID or code of the business.
+ * Generates a short VemTap Chat Bridge Link.
+ * Uses the /chat/[code] redirect route for clean, short URLs in WhatsApp.
+ * Example: https://vemtap.com/chat/abc123
+ * @param businessCode The unique code of the business.
  * @param visitorId Optional visitor ID to identify the customer.
- * @returns A full URL to the bridge landing page.
+ * @param visitorName Optional visitor name for personalization.
+ * @returns A short URL that redirects to the customer chat page.
  */
-export function generateBridgeLink(businessId: string, visitorId?: string, visitorName?: string): string {
-    // In a real scenario, this would use a public environment variable for the frontend URL
+export function generateBridgeLink(businessCode: string, visitorId?: string, visitorName?: string): string {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vemtap.com';
-    let url = `${baseUrl}/tap/${businessId}`;
+    const url = `${baseUrl}/chat/${businessCode}`;
     
     const params = new URLSearchParams();
     if (visitorId) params.append('v', visitorId);
     if (visitorName) params.append('n', visitorName);
-    params.append('source', 'whatsapp');
     
-    return `${url}?${params.toString()}`;
+    const queryString = params.toString();
+    return queryString ? `${url}?${queryString}` : url;
 }
+

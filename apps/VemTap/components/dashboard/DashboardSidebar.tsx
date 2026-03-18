@@ -230,8 +230,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 { label: 'Settings', href: '/dashboard/loyalty/settings' },
                 { label: 'Customers', href: '/dashboard/loyalty/customers' },
                 { label: 'Verify', href: '/dashboard/loyalty/verify' },
-                { label: 'New User Preview', href: '/dashboard/messaging/preview/new' },
-                { label: 'Returning Preview', href: '/dashboard/messaging/preview/returning' },
             ]
         },
         {

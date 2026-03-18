@@ -6,7 +6,7 @@ import { Search, Maximize2, Minimize2, Check, CheckCheck, FileText, Info, Smartp
 import ChatInput from './ChatInput';
 import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
-import { useChatThreads } from '@/hooks/useMessaging';
+import { useChatThreads, useThreadMessages } from '@/hooks/useMessaging';
 import { useMessagingBranch } from '@/hooks/useMessagingBranch';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -54,7 +54,7 @@ export default function ChatWindow() {
     const { branchId, isCustomer } = useMessagingBranch();
     
     // Fetch all threads to find the active one
-    const { data: threads = [] } = useChatThreads('IN_HOUSE', branchId || undefined);
+    const { data: threads = [] } = useChatThreads('IN_HOUSE', branchId || undefined, isCustomer);
     const allThreads = useMemo(() => {
         const apiThreads = threads as any[];
         const apiIds = new Set(apiThreads.map(t => t.id));
@@ -65,17 +65,7 @@ export default function ChatWindow() {
     const isMockThread = !!activeConversationId && mockThreads.some(t => t.id === activeConversationId);
 
     // Fetch messages for active thread (business or customer endpoint)
-    const { data: messages = [], isLoading } = useQuery({
-        queryKey: ['chat-messages', activeConversationId, branchId],
-        queryFn: () => {
-            const endpoint = isCustomer 
-                ? `/customer/messaging/threads/${activeConversationId}` 
-                : `/messaging/inbox/threads/${activeConversationId}${branchId ? `?branchId=${branchId}` : ''}`;
-            return api.get(endpoint);
-        },
-        enabled: !!activeConversationId && (isCustomer || !!branchId) && !isMockThread,
-        refetchInterval: 5000,
-    });
+    const { data: messages = [], isLoading } = useThreadMessages(activeConversationId || '', branchId || undefined, isCustomer && !isMockThread);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [isFullScreen, setIsFullScreen] = React.useState(false);

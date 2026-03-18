@@ -3,27 +3,41 @@ import { api } from '@/lib/api';
 
 // --- Inbox Hooks ---
 
-export const useChatThreads = (channel: string = 'IN_HOUSE', branchId?: string) => {
+export const useChatThreads = (channel: string = 'IN_HOUSE', branchId?: string, isCustomer: boolean = false) => {
   return useQuery({
-    queryKey: ['chat-threads', channel, branchId],
-    queryFn: () => api.get(`/messaging/inbox/${channel}${branchId ? `?branchId=${branchId}` : ''}`),
-    enabled: !!branchId || channel === 'IN_HOUSE', // In-house might be global for customers but branch-specific for business
+    queryKey: ['chat-threads', channel, branchId, isCustomer],
+    queryFn: () => {
+      const endpoint = isCustomer 
+        ? `/customer/messaging/threads`
+        : `/messaging/inbox/${channel}${branchId ? `?branchId=${branchId}` : ''}`;
+      return api.get(endpoint);
+    },
+    enabled: isCustomer || !!branchId || channel === 'IN_HOUSE',
   });
 };
 
-export const useThreadMessages = (threadId: string, branchId?: string) => {
+export const useThreadMessages = (threadId: string, branchId?: string, isCustomer: boolean = false) => {
   return useQuery({
-    queryKey: ['chat-messages', threadId, branchId],
-    queryFn: () => api.get(`/messaging/inbox/threads/${threadId}${branchId ? `?branchId=${branchId}` : ''}`),
+    queryKey: ['chat-messages', threadId, branchId, isCustomer],
+    queryFn: () => {
+      const endpoint = isCustomer
+        ? `/customer/messaging/threads/${threadId}`
+        : `/messaging/inbox/threads/${threadId}${branchId ? `?branchId=${branchId}` : ''}`;
+      return api.get(endpoint);
+    },
     enabled: !!threadId,
   });
 };
 
-export const useSendReply = () => {
+export const useSendReply = (isCustomer: boolean = false) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ threadId, content, branchId }: { threadId: string; content: string; branchId?: string }) =>
-      api.post(`/messaging/inbox/threads/${threadId}/reply${branchId ? `?branchId=${branchId}` : ''}`, { content, branchId }),
+    mutationFn: ({ threadId, content, branchId }: { threadId: string; content: string; branchId?: string }) => {
+      const endpoint = isCustomer
+        ? `/customer/messaging/threads/${threadId}/reply`
+        : `/messaging/inbox/threads/${threadId}/reply${branchId ? `?branchId=${branchId}` : ''}`;
+      return api.post(endpoint, { content, branchId });
+    },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['chat-messages', variables.threadId] });
       queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
