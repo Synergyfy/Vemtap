@@ -86,7 +86,7 @@ export class User extends AbstractBaseEntity {
   lastActive: Date;
 
   @ApiProperty({ example: 'fcm-token-string', nullable: true })
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   pushToken: string | null;
 
   // Relation to branch they belong to

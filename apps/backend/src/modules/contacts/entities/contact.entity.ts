@@ -34,7 +34,7 @@ export class Contact extends AbstractBaseEntity {
   @Column({ default: false })
   optOut: boolean;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   pushToken: string | null;
 
   @Column({ type: 'simple-array', nullable: true })
