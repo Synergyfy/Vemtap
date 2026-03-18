@@ -6,7 +6,6 @@ import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/dashboard/PageHeader';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import PhoneFrame from '@/components/shared/PhoneFrame';
-import { SocialLinksPreview } from '@/components/shared/SocialLinksPreview';
 import { StepForm } from '@/components/visitor/StepForm';
 import { StepOutcome } from '@/components/visitor/StepOutcome';
 import { StepWelcomeBack } from '@/components/visitor/StepWelcomeBack';

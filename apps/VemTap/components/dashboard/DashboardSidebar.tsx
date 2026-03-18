@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
-import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
-import { useBusinessStore } from '@/store/useBusinessStore';
 const defaultLogo = '/VEMTAP_PNG.png';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
@@ -205,7 +203,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             icon: MessageSquare,
             roles: ['owner', 'manager'],
             submenu: [
-                { label: 'Overview', href: '/dashboard/messaging' },
                 { label: 'Messaging Credits', href: '/dashboard/messaging/credits' },
                 {
                     id: 'messaging-hub',
@@ -217,7 +214,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                     ]
                 },
                 { label: 'History', href: '/dashboard/messaging/history' },
-                { label: 'Message Settings', href: '/dashboard/messaging/settings' },
             ]
         },
         {
