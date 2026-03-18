@@ -3,9 +3,14 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { Channel } from '../enums/channel.enum';
-import { Contact } from '../../contacts/entities/contact.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { User } from '../../users/entities/user.entity';
+
+export interface ThreadNotes {
+  internal?: string;
+  tags?: string[];
+  [key: string]: unknown;
+}
 
 export enum ThreadStatus {
   OPEN = 'OPEN',
@@ -68,5 +73,5 @@ export class ConversationThread extends AbstractBaseEntity {
 
   @ApiPropertyOptional({ example: {} })
   @Column({ type: 'jsonb', nullable: true })
-  notes: any;
+  notes: ThreadNotes;
 }

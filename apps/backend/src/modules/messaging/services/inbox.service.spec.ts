@@ -7,7 +7,7 @@ import {
 } from '../entities/conversation-thread.entity';
 import { Message } from '../entities/message.entity';
 import { MessagingEngineService } from './messaging-engine.service';
-import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { NotFoundException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
 import { User } from '../../users/entities/user.entity';
 import { Channel } from '../enums/channel.enum';
 import { MessagingGateway } from '../messaging.gateway';
@@ -27,6 +27,8 @@ describe('InboxService', () => {
       findOne: jest.fn(),
       find: jest.fn(),
       save: jest.fn().mockImplementation((t) => Promise.resolve(t)),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+      increment: jest.fn().mockResolvedValue({ affected: 1 }),
     };
 
     threadRepoMock.createQueryBuilder = jest.fn(() => ({
@@ -101,6 +103,23 @@ describe('InboxService', () => {
       );
     });
 
+    it('should throw InternalServerErrorException if engine returns null', async () => {
+      const mockThread = {
+        id: 't1',
+        branchId: 'br1',
+        customerId: 'c1',
+        status: ThreadStatus.CLOSED,
+        customerUnreadCount: 0,
+        channel: Channel.IN_HOUSE,
+      } as any;
+      threadRepoMock.findOne.mockResolvedValue(mockThread);
+      engineMock.sendReply.mockResolvedValue(null);
+
+      await expect(service.sendReply('t1', 'hello', 'br1')).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
     it('should send reply via engine, update thread status, unread count, and broadcast', async () => {
       const mockThread = {
         id: 't1',
@@ -121,10 +140,11 @@ describe('InboxService', () => {
       const result = await service.sendReply('t1', 'hello', 'br1');
 
       expect(engineMock.sendReply).toHaveBeenCalledWith(mockThread, 'hello', undefined);
-      expect(mockThread.status).toBe(ThreadStatus.OPEN);
-      expect(mockThread.customerUnreadCount).toBe(1);
-      expect(mockThread.lastMessageContent).toBe('hello');
-      expect(threadRepoMock.save).toHaveBeenCalledWith(mockThread);
+      expect(threadRepoMock.update).toHaveBeenCalledWith('t1', expect.objectContaining({
+        lastMessageContent: 'hello',
+        status: ThreadStatus.OPEN,
+      }));
+      expect(threadRepoMock.increment).toHaveBeenCalledWith({ id: 't1' }, 'customerUnreadCount', 1);
       expect(gatewayMock.emitMessage).toHaveBeenCalled();
       expect(pushMock.sendNotification).toHaveBeenCalled();
       expect(result).toBeDefined();
@@ -164,7 +184,11 @@ describe('InboxService', () => {
       const result = await service.sendCustomerReply('t1', 'reply content', 'c1');
 
       expect(messageRepoMock.save).toHaveBeenCalled();
-      expect(mockThread.branchUnreadCount).toBe(1);
+      expect(threadRepoMock.update).toHaveBeenCalledWith('t1', expect.objectContaining({
+        lastMessageContent: 'reply content',
+        status: ThreadStatus.OPEN,
+      }));
+      expect(threadRepoMock.increment).toHaveBeenCalledWith({ id: 't1' }, 'branchUnreadCount', 1);
       expect(gatewayMock.emitMessage).toHaveBeenCalled();
       expect(pushMock.sendToBranchStaff).toHaveBeenCalled();
       expect(result.content).toBe('reply content');

@@ -49,6 +49,7 @@ import { AdminFlowEngineService } from './services/admin-flow-engine.service';
 import { AutomationService } from './services/automation.service';
 import { MessagingFlowService } from './services/messaging-flow.service';
 import { ChatSettingsService } from './services/chat-settings.service';
+import { MessagingHelperService } from './services/messaging-helper.service';
 
 import { MessagingController } from './controllers/messaging.controller';
 import { CustomerMessagingController } from './controllers/customer-messaging.controller';
@@ -191,6 +192,7 @@ import { JwtModule } from '@nestjs/jwt';
     CreditPlanService,
     MessagingFlowService,
     ChatSettingsService,
+    MessagingHelperService,
     MessagingGateway,
   ],
   controllers: [
@@ -225,6 +227,7 @@ import { JwtModule } from '@nestjs/jwt';
     InHouseProvider,
     ProviderRouterService,
     MessagingFlowService,
+    MessagingHelperService,
     MessagingGateway,
   ],
 })

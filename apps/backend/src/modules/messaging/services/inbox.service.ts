@@ -1,6 +1,7 @@
 import {
   Injectable,
   NotFoundException,
+  InternalServerErrorException,
   forwardRef,
   Inject,
   ForbiddenException,
@@ -103,7 +104,7 @@ export class InboxService {
 
     const messageId = await this.messagingEngine.sendReply(thread, content, replyToId);
     if (!messageId) {
-      return null;
+      throw new InternalServerErrorException('Failed to send reply');
     }
 
     const savedMessage = await this.messageRepo.findOne({ 
@@ -116,11 +117,14 @@ export class InboxService {
       await this.messageRepo.save(savedMessage);
     }
 
-    thread.lastActivityAt = new Date();
-    thread.lastMessageContent = content;
-    thread.status = ThreadStatus.OPEN;
-    thread.customerUnreadCount += 1; // Increment for visitor
-    await this.threadRepo.save(thread);
+    // Update thread metadata
+    await this.threadRepo.update(thread.id, {
+      lastActivityAt: new Date(),
+      lastMessageContent: content,
+      status: ThreadStatus.OPEN,
+    });
+    // Atomic increment to prevent race conditions
+    await this.threadRepo.increment({ id: thread.id }, 'customerUnreadCount', 1);
 
     // Broadcast via socket
     this.messagingGateway.emitMessage(
@@ -211,11 +215,14 @@ export class InboxService {
 
     const savedMessage = await this.messageRepo.save(message);
 
-    thread.lastActivityAt = new Date();
-    thread.lastMessageContent = content;
-    thread.status = ThreadStatus.OPEN;
-    thread.branchUnreadCount += 1; // Increment for staff
-    await this.threadRepo.save(thread);
+    // Update thread metadata
+    await this.threadRepo.update(thread.id, {
+      lastActivityAt: new Date(),
+      lastMessageContent: content,
+      status: ThreadStatus.OPEN,
+    });
+    // Atomic increment to prevent race conditions
+    await this.threadRepo.increment({ id: thread.id }, 'branchUnreadCount', 1);
 
     // Broadcast via socket
     this.messagingGateway.emitMessage(

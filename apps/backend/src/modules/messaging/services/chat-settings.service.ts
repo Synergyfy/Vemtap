@@ -4,7 +4,8 @@ import { Repository } from 'typeorm';
 import { AutomationRule } from '../entities/automation-rule.entity';
 import { ChatCategory } from '../entities/chat-category.entity';
 import { TriggerType, ActionType } from '../enums/automation.enum';
-import { UpdateChatAutomationDto } from '../dto/chat-automation.dto';
+import { UpdateChatAutomationDto, AddFaqKeywordDto, UpdateFaqKeywordDto } from '../dto/chat-automation.dto';
+import { CreateChatCategoryDto, UpdateChatCategoryDto } from '../dto/chat-category.dto';
 
 @Injectable()
 export class ChatSettingsService {
@@ -74,7 +75,7 @@ export class ChatSettingsService {
     return this.getAutomatedReplies(branchId);
   }
 
-  private validateCustomSchedule(schedule: any) {
+  private validateCustomSchedule(schedule: { days?: Record<string, { startTime: string; endTime: string }> }) {
     if (!schedule.days || typeof schedule.days !== 'object') {
       throw new BadRequestException('Invalid custom schedule format: days required');
     }
@@ -87,7 +88,7 @@ export class ChatSettingsService {
         throw new BadRequestException(`Invalid day: ${day}`);
       }
 
-      const { startTime, endTime } = config as any;
+      const { startTime, endTime } = config as { startTime: string; endTime: string };
       if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
         throw new BadRequestException(`Invalid time format for ${day}. Use HH:mm`);
       }
@@ -126,7 +127,7 @@ export class ChatSettingsService {
 
   // --- FAQ Keywords ---
 
-  async addFaqKeyword(branchId: string, dto: any) {
+  async addFaqKeyword(branchId: string, dto: AddFaqKeywordDto) {
     const rule = this.automationRepo.create({
       branchId,
       triggerType: TriggerType.INBOUND_MESSAGE,
@@ -141,7 +142,7 @@ export class ChatSettingsService {
     return this.automationRepo.save(rule);
   }
 
-  async updateFaqKeyword(id: string, branchId: string, dto: any) {
+  async updateFaqKeyword(id: string, branchId: string, dto: UpdateFaqKeywordDto) {
     const rule = await this.automationRepo.findOne({ where: { id, branchId } });
     if (!rule) throw new NotFoundException('FAQ trigger not found');
 
@@ -166,7 +167,7 @@ export class ChatSettingsService {
     return this.categoryRepo.find({ where: { branchId } });
   }
 
-  async createCategory(branchId: string, dto: any) {
+  async createCategory(branchId: string, dto: CreateChatCategoryDto) {
     const category = this.categoryRepo.create({
       branchId,
       ...dto,
@@ -175,7 +176,7 @@ export class ChatSettingsService {
     return this.categoryRepo.save(category);
   }
 
-  async updateCategory(id: string, branchId: string, dto: any) {
+  async updateCategory(id: string, branchId: string, dto: UpdateChatCategoryDto) {
     const category = await this.categoryRepo.findOne({ where: { id, branchId } });
     if (!category) throw new NotFoundException('Category not found');
 

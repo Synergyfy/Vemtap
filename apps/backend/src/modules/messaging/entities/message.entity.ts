@@ -8,6 +8,13 @@ import { MessageCampaign } from './message-campaign.entity';
 import { Channel } from '../enums/channel.enum';
 import { MessageDirection, MessageStatus } from '../enums/message.enum';
 
+export interface MessageMetadata {
+  browser?: string;
+  deviceType?: string;
+  ipAddress?: string;
+  [key: string]: unknown;
+}
+
 @Entity('messages')
 export class Message extends AbstractBaseEntity {
   @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
@@ -89,7 +96,7 @@ export class Message extends AbstractBaseEntity {
 
   @ApiPropertyOptional({ example: { browser: 'Chrome' }, description: 'Channel-specific metadata' })
   @Column({ type: 'jsonb', nullable: true })
-  metadata: any;
+  metadata: MessageMetadata;
 
   @ApiProperty({ example: '2023-10-25T10:00:00.000Z' })
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })

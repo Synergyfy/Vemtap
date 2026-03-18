@@ -572,11 +572,18 @@ export class MessagingEngineService {
       thread.channel,
       from,
     );
-    msg.threadId = thread.id;
-    if (replyToId) {
-      msg.replyToId = replyToId;
+
+    // Only save again if we need to update threadId or replyToId that wasn't
+    // set correctly by sendIndividualMessage
+    const needsUpdate = msg.threadId !== thread.id || (replyToId && msg.replyToId !== replyToId);
+    if (needsUpdate) {
+      msg.threadId = thread.id;
+      if (replyToId) {
+        msg.replyToId = replyToId;
+      }
+      await this.messageRepo.save(msg);
     }
-    await this.messageRepo.save(msg);
+
     return msg.id;
   }
 
