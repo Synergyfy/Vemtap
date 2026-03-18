@@ -96,7 +96,6 @@ export const useVisitors = (branchId?: string, query?: Record<string, any>) => {
             if (query?.search) searchParams.append('search', query.search);
             if (query?.status) searchParams.append('status', query.status);
             if (query?.page) searchParams.append('page', String(query.page));
-            if (query?.limit) searchParams.append('limit', String(query.limit));
             return await api.get(`/visitors?${searchParams.toString()}`);
         },
         enabled: isAuthenticated,
@@ -134,7 +133,6 @@ export const useNewVisitors = (branchId?: string, query?: Record<string, any>) =
             if (query?.search) searchParams.append('search', query.search);
             if (query?.status) searchParams.append('status', query.status);
             if (query?.page) searchParams.append('page', String(query.page));
-            if (query?.limit) searchParams.append('limit', String(query.limit));
             return await api.get(`/visitors/new?${searchParams.toString()}`);
         },
         enabled: isAuthenticated,
@@ -172,7 +170,6 @@ export const useReturningVisitors = (branchId?: string, query?: Record<string, a
             if (query?.search) searchParams.append('search', query.search);
             if (query?.status) searchParams.append('status', query.status);
             if (query?.page) searchParams.append('page', String(query.page));
-            if (query?.limit) searchParams.append('limit', String(query.limit));
             return await api.get(`/visitors/returning?${searchParams.toString()}`);
         },
         enabled: isAuthenticated,
@@ -225,7 +222,6 @@ export const useMessagingVisitorsByBranch = (branchId?: string, query?: Record<s
             if (query?.search) searchParams.append('search', query.search);
             if (query?.status) searchParams.append('status', query.status);
             if (query?.page) searchParams.append('page', String(query.page));
-            if (query?.limit) searchParams.append('limit', String(query.limit));
             if (branchId) searchParams.append('branchId', branchId);
             return await api.get(`/visitors?${searchParams.toString()}`);
         },

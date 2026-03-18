@@ -2,11 +2,11 @@
 
 import React, { useRef, useEffect, useMemo } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
-import { Search, Maximize2, Minimize2, Check, CheckCheck, FileText, Info } from 'lucide-react';
+import { Search, Maximize2, Minimize2, Check, CheckCheck, FileText, Info, Smartphone, MessageSquare } from 'lucide-react';
 import ChatInput from './ChatInput';
 import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
-import { useChatThreads } from '@/hooks/useMessaging';
+import { useChatThreads, useThreadMessages } from '@/hooks/useMessaging';
 import { useMessagingBranch } from '@/hooks/useMessagingBranch';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -54,7 +54,7 @@ export default function ChatWindow() {
     const { branchId, isCustomer } = useMessagingBranch();
     
     // Fetch all threads to find the active one
-    const { data: threads = [] } = useChatThreads('IN_HOUSE', branchId || undefined);
+    const { data: threads = [] } = useChatThreads('IN_HOUSE', branchId || undefined, isCustomer);
     const allThreads = useMemo(() => {
         const apiThreads = threads as any[];
         const apiIds = new Set(apiThreads.map(t => t.id));
@@ -65,17 +65,7 @@ export default function ChatWindow() {
     const isMockThread = !!activeConversationId && mockThreads.some(t => t.id === activeConversationId);
 
     // Fetch messages for active thread (business or customer endpoint)
-    const { data: messages = [], isLoading } = useQuery({
-        queryKey: ['chat-messages', activeConversationId, branchId],
-        queryFn: () => {
-            const endpoint = isCustomer 
-                ? `/customer/messaging/threads/${activeConversationId}` 
-                : `/messaging/inbox/threads/${activeConversationId}${branchId ? `?branchId=${branchId}` : ''}`;
-            return api.get(endpoint);
-        },
-        enabled: !!activeConversationId && (isCustomer || !!branchId) && !isMockThread,
-        refetchInterval: 5000,
-    });
+    const { data: messages = [], isLoading } = useThreadMessages(activeConversationId || '', branchId || undefined, isCustomer && !isMockThread);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [isFullScreen, setIsFullScreen] = React.useState(false);
@@ -282,6 +272,26 @@ export default function ChatWindow() {
                         <div className="rounded-xl border border-slate-100 p-3">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status</p>
                             <p className="text-sm font-semibold text-slate-900">{activeConv?.status || 'Active conversation'}</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-100 p-3 bg-slate-50/50">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Source Channel</p>
+                            <div className="flex items-center gap-2 mt-1">
+                                {contact?.source === 'whatsapp' ? (
+                                    <>
+                                        <div className="size-5 bg-emerald-500 rounded-full flex items-center justify-center text-white">
+                                            <Smartphone size={10} />
+                                        </div>
+                                        <p className="text-sm font-bold text-emerald-600">WhatsApp Bridge</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="size-5 bg-primary rounded-full flex items-center justify-center text-white">
+                                            <MessageSquare size={10} />
+                                        </div>
+                                        <p className="text-sm font-bold text-primary">{contact?.source || 'Direct/NFC'}</p>
+                                    </>
+                                )}
+                            </div>
                         </div>
                         <div className="rounded-xl border border-slate-100 p-3">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Last Activity</p>
