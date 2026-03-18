@@ -38,7 +38,7 @@ export default function MessagingLayout({ children }: MessagingLayoutProps) {
     );
 
     return (
-        <PageLockWrapper feature="messages" featureName="Messaging Center">
+        <PageLockWrapper feature="messages" featureName="Channels">
             {content}
         </PageLockWrapper>
     );

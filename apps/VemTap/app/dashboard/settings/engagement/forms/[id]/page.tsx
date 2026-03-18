@@ -13,6 +13,7 @@ import { useBranches } from '@/services/branches/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { buildBrandCssVars } from '@/lib/brandColor';
 
 function formatDateTime(dateString?: string): string {
     if (!dateString) return '—';
@@ -45,6 +46,10 @@ export default function FormPreviewPage() {
     const user = useAuthStore((state) => state.user);
     const { engagementSettings } = useCustomerFlowStore();
     const brandColor = engagementSettings?.brandColor || '#2563eb';
+    const brandVars = React.useMemo(
+        () => buildBrandCssVars(brandColor),
+        [brandColor]
+    );
     const mainBranch = myBusiness?.branches?.find((b) => b.isMainBranch);
     const branchName = branches.find((b) => b.id === form?.branchId)?.name || 'Unknown Branch';
     const [lastPreviewSubmission, setLastPreviewSubmission] = useState<Record<string, any> | null>(null);
@@ -218,7 +223,7 @@ export default function FormPreviewPage() {
                 </div>
 
                 {/* Phone Preview */}
-                <div className="flex justify-center">
+                <div className="flex justify-center" style={brandVars}>
                     <PhoneFrame title="Live Phone Preview">
                         <div className="min-h-full bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 py-6 px-3 space-y-3">
                             {/* ─── Container 1: Header — Business branding + Form title + Description ─── */}

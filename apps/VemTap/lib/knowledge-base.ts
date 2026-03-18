@@ -12,7 +12,7 @@ export const KNOWLEDGE_BASE = [
       },
       {
         question: "How do I navigate the dashboard?",
-        answer: "The dashboard is divided into key sections: 'Home' for an overview, 'Contacts' for your visitor database, 'Messaging' for communication, 'Devices' for managing hardware, and 'Settings' for account configuration. You can access these from the sidebar menu."
+        answer: "The dashboard is divided into key sections: 'Home' for an overview, 'Contacts' for your visitor database, 'Channels' for communication, 'Devices' for managing hardware, and 'Settings' for account configuration. You can access these from the sidebar menu."
       }
     ]
   },
@@ -21,7 +21,7 @@ export const KNOWLEDGE_BASE = [
     topics: [
       {
         question: "How do I send a broadcast?",
-        answer: "To send a broadcast: 1. Navigate to the 'Messaging Center' tab. 2. Click 'New Message'. 3. Select your audience (e.g., 'All Visitors' or a specific segment). 4. Draft your SMS or Email message. 5. Schedule it for later or send immediately."
+        answer: "To send a broadcast: 1. Navigate to the 'Channels' tab. 2. Click 'New Message'. 3. Select your audience (e.g., 'All Visitors' or a specific segment). 4. Draft your SMS or Email message. 5. Schedule it for later or send immediately."
       },
       {
         question: "How do I manage contacts?",

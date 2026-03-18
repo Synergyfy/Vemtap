@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useMessagingAnalytics, useMessagingCampaigns } from '@/services/messaging/hooks';
+import { useMessagingAnalytics } from '@/services/messaging/hooks';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Send, Users, Activity, BarChart2, MessageSquare, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -15,23 +15,37 @@ const CHANNEL_CONFIG = {
 };
 
 export default function MessagingOverview() {
-    const { data: analytics, isLoading: analyticsLoading } = useMessagingAnalytics();
-    const { data: campaigns, isLoading: campaignsLoading } = useMessagingCampaigns();
+    const { data: globalAnalytics } = useMessagingAnalytics();
+    const { data: whatsappAnalytics, isLoading: whatsappLoading, isError: whatsappError } = useMessagingAnalytics('WHATSAPP');
+    const { data: smsAnalytics, isLoading: smsLoading, isError: smsError } = useMessagingAnalytics('SMS');
+    const { data: emailAnalytics, isLoading: emailLoading, isError: emailError } = useMessagingAnalytics('EMAIL');
     const [isChartMounted, setIsChartMounted] = useState(false);
 
     useEffect(() => {
         setIsChartMounted(true);
     }, []);
 
-    const chartData = analytics?.trafficTrend || [];
+    const chartData = globalAnalytics?.trafficTrend || [];
 
-    const channelStats = analytics?.channelStats || {
-        whatsapp: { totalSent: 0, deliveryRate: 0, growth: 0 },
-        sms: { totalSent: 0, deliveryRate: 0, growth: 0 },
-        email: { totalSent: 0, deliveryRate: 0, growth: 0 },
+    const getChannelStats = (
+        channel: 'whatsapp' | 'sms' | 'email',
+        data?: { channelStats?: Record<string, any>; sent?: number; deliveryRate?: number }
+    ) => {
+        const byChannel = data?.channelStats?.[channel];
+        if (byChannel) return byChannel;
+        if (typeof data?.sent === 'number') {
+            return { totalSent: data.sent, deliveryRate: data.deliveryRate || 0, growth: 0 };
+        }
+        return { totalSent: 0, deliveryRate: 0, growth: 0 };
     };
 
-    const globalStats = analytics?.globalStats || { totalSent: 0, totalDelivered: 0, openRate: 0, clickRate: 0 };
+    const channelQueries = {
+        whatsapp: { data: whatsappAnalytics, isLoading: whatsappLoading, isError: whatsappError },
+        sms: { data: smsAnalytics, isLoading: smsLoading, isError: smsError },
+        email: { data: emailAnalytics, isLoading: emailLoading, isError: emailError },
+    };
+
+    const globalStats = globalAnalytics?.globalStats || { totalSent: 0, totalDelivered: 0, openRate: 0, clickRate: 0 };
 
     return (
         <div className="space-y-6">
@@ -47,8 +61,15 @@ export default function MessagingOverview() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {(['whatsapp', 'sms', 'email'] as const).map((channel) => {
                     const config = CHANNEL_CONFIG[channel];
-                    const chStats = channelStats[channel] || { totalSent: 0, deliveryRate: 0, growth: 0 };
+                    const query = channelQueries[channel];
+                    const chStats = getChannelStats(channel, query.data);
                     const Icon = config.icon;
+                    const statusLabel = query.isError ? 'Unavailable' : query.isLoading ? 'Loading' : 'Active';
+                    const statusClass = query.isError
+                        ? 'text-red-500'
+                        : query.isLoading
+                            ? 'text-slate-400'
+                            : 'text-green-500';
 
                     return (
                         <div key={channel} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative group overflow-hidden">
@@ -59,7 +80,7 @@ export default function MessagingOverview() {
                                     </div>
                                     <div className="text-right">
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{config.label} Status</p>
-                                        <p className="text-xl font-mono font-bold text-green-500">ACTIVE</p>
+                                        <p className={`text-xl font-mono font-bold ${statusClass}`}>{statusLabel}</p>
                                     </div>
                                 </div>
 

@@ -42,7 +42,7 @@ export default function DynamicTapJourneyPage() {
         engagementSettings, surveyQuestions,
         customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton,
         businessId, initializeFromBusiness, recordVisit, isFirstTimeVisit,
-        customSuccessTitle, activeForm, setActiveForm, setVisitSource, visitSource
+        customSuccessTitle, customSuccessTag, customSuccessButton, activeForm, setActiveForm, setVisitSource, visitSource
     } = useCustomerFlowStore();
 
     const searchParams = useSearchParams();
@@ -155,16 +155,52 @@ export default function DynamicTapJourneyPage() {
             try {
                 // If we don't have business info yet, or it's a fresh page load
                 if (!businessId || deviceCode !== useCustomerFlowStore.getState().deviceCode) {
-                    const device = await fetchDeviceByCode(deviceCode);
+                    let device: any = null;
+                    try {
+                        device = await fetchDeviceByCode(deviceCode);
+                    } catch (e) {
+                        console.warn('Device not found, trying business/branch lookup...');
+                    }
+
                     if (device) {
                         initializeFromBusiness(device);
-
                         // If it's a returning visitor according to backend, record visit immediately for analytics
                         if (device.isFirstTimeVisit === false) {
                             recordVisit();
                         }
                     } else {
-                        throw new Error('Device not found');
+                        // TRY BUSINESS LOOKUP
+                        try {
+                            const businessData = await api.get(`/public/businesses/code/${deviceCode}`);
+                            if (businessData) {
+                                // Mock a device object for initialization
+                                initializeFromBusiness({
+                                    business: businessData,
+                                    businessId: businessData.id,
+                                    code: deviceCode,
+                                } as any);
+                            } else {
+                                throw new Error('Business not found');
+                            }
+                        } catch (e3) {
+                             // TRY BRANCH LOOKUP
+                             try {
+                                const branchData = await api.get(`/public/branches/code/${deviceCode}`);
+                                if (branchData) {
+                                    initializeFromBusiness({
+                                        business: branchData.business,
+                                        businessId: branchData.businessId,
+                                        branchId: branchData.id,
+                                        branch: branchData,
+                                        code: deviceCode,
+                                    } as any);
+                                } else {
+                                    throw new Error('Branch not found');
+                                }
+                             } catch (e4) {
+                                throw new Error('Device, Business or Branch not found');
+                             }
+                        }
                     }
                 }
 
@@ -351,8 +387,14 @@ export default function DynamicTapJourneyPage() {
             }
 
             if (isCustomer) {
-                toast.success('Visit recorded! Opening your dashboard...');
-                router.push('/customer/dashboard');
+                const targetRedirect = searchParams.get('redirect');
+                if (targetRedirect) {
+                    toast.success('Identify successful! Continuing to chat...');
+                    router.push(targetRedirect);
+                } else {
+                    toast.success('Visit recorded! Opening your dashboard...');
+                    router.push('/customer/dashboard');
+                }
             } else {
                 setStep('OUTCOME');
             }
@@ -463,6 +505,7 @@ export default function DynamicTapJourneyPage() {
         <VisitorLayout
             onReset={resetFlow}
             onCredentialResponse={handleCredentialResponse}
+            brandColor={engagementSettings?.brandColor}
         >
             <AnimatePresence mode="wait">
                 {currentStep === 'SCANNING' && (
@@ -562,6 +605,7 @@ export default function DynamicTapJourneyPage() {
                 {currentStep === 'BUSINESS_FORM' && activeForm && (
                     <StepBusinessForm
                         form={activeForm}
+                        brandColor={engagementSettings?.brandColor}
                         onSkip={() => setStep('OUTCOME')}
                         onComplete={(answers: any) => {
                             console.log('Additional Form submitted:', answers);
@@ -582,6 +626,7 @@ export default function DynamicTapJourneyPage() {
                     selectedBusinessForm ? (
                         <StepBusinessForm
                             form={selectedBusinessForm}
+                            brandColor={engagementSettings?.brandColor}
                             onComplete={handleSurveyComplete}
                             onSkip={() => {
                                 setSelectedBusinessFormId(null);
@@ -599,14 +644,19 @@ export default function DynamicTapJourneyPage() {
 
                 {currentStep === 'FINAL_SUCCESS' && (
                     <StepFinalSuccess
-                        customSuccessTag={useCustomerFlowStore.getState().customSuccessTag}
-                        customSuccessTitle={useCustomerFlowStore.getState().customSuccessTitle}
-                        finalSuccessMessage={useCustomerFlowStore.getState().customSuccessMessage || config.finalSuccessMessage}
-                        customSuccessButton={useCustomerFlowStore.getState().customSuccessButton}
+                        customSuccessTag={customSuccessTag}
+                        customSuccessTitle={customSuccessTitle}
+                        finalSuccessMessage={customSuccessMessage?.trim() || config.finalSuccessMessage}
+                        customSuccessButton={customSuccessButton}
                         isFormsLoading={formsLoading}
                         onFinish={() => {
                             resetFlow();
-                            router.push(`/${businessSlug}?code=${deviceCode}`);
+                            const targetRedirect = searchParams.get('redirect');
+                            if (targetRedirect) {
+                                router.push(targetRedirect);
+                            } else {
+                                router.push(`/${businessSlug}?code=${deviceCode}`);
+                            }
                         }}
                         onEngagement={handleEngagement}
                         engagementSettings={engagementSettings}
