@@ -52,11 +52,11 @@ export class SendMessageDto {
   from?: string;
 
   @ApiPropertyOptional({
-    description: 'Specific contact IDs for DIRECT send or GROUP send',
+    description: 'Specific customer IDs for DIRECT send or GROUP send',
     type: [String],
   })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  contactIds?: string[];
+  customerIds?: string[];
 }

@@ -41,7 +41,8 @@ export class CampaignService {
     id: string,
     data: Partial<MessageCampaign>,
   ): Promise<MessageCampaign | null> {
-    await this.campaignRepo.update(id, data);
+    const { branch, business, ...plainData } = data as any;
+    await this.campaignRepo.update(id, plainData);
     return this.campaignRepo.findOne({ where: { id } });
   }
 }

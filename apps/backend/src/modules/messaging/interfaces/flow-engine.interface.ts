@@ -63,7 +63,7 @@ export class FlowStructure {
 }
 
 export class FlowTriggerContext {
-  contactId: string;
+  customerId: string;
   businessId: string;
   branchId?: string;
   [key: string]: any;

@@ -332,7 +332,7 @@ export class VisitorsService {
 
     await this.automationService.trigger(triggerType, {
       branchId,
-      contactId: contact.id,
+      customerId: user.id,
     });
 
     const updatedUser = await this.userRepository.findOne({
@@ -409,7 +409,7 @@ export class VisitorsService {
       visitCount === 1 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG,
       {
         branchId,
-        contactId: contact.id,
+        customerId: userId,
       },
     );
 
@@ -784,7 +784,7 @@ export class VisitorsService {
     return this.messagingService.sendMessage({
       branchId,
       channel,
-      contactIds,
+      customerIds: contactIds,
       content,
     });
   }
@@ -796,7 +796,7 @@ export class VisitorsService {
     return this.messagingService.sendMessage({
       branchId,
       channel: Channel.SMS,
-      contactIds,
+      customerIds: contactIds,
       content: 'Welcome to our business! We are glad to have you.',
     });
   }
@@ -810,7 +810,7 @@ export class VisitorsService {
     return this.messagingService.sendMessage({
       branchId,
       channel: channel || Channel.SMS,
-      contactIds: [visitorId],
+      customerIds: [visitorId],
       content: message,
     });
   }

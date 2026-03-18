@@ -1,8 +1,6 @@
-import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Branch } from '../../branches/entities/branch.entity';
-import { Message } from '../../messaging/entities/message.entity';
-import { ConversationThread } from '../../messaging/entities/conversation-thread.entity';
 
 import { Channel } from '../../messaging/enums/channel.enum';
 
@@ -36,12 +34,9 @@ export class Contact extends AbstractBaseEntity {
   @Column({ default: false })
   optOut: boolean;
 
+  @Column({ type: 'varchar', nullable: true })
+  pushToken: string | null;
+
   @Column({ type: 'simple-array', nullable: true })
   tags: string[];
-
-  @OneToMany(() => Message, (message) => message.contact)
-  messages: Message[];
-
-  @OneToMany(() => ConversationThread, (thread) => thread.contact)
-  threads: ConversationThread[];
 }

@@ -89,7 +89,7 @@ describe('AutomationService', () => {
 
       await service.trigger(TriggerType.FIRST_TAG, {
         branchId: 'br1',
-        contactId: 'c1',
+        customerId: 'c1',
       });
 
       expect(executeSpy).toHaveBeenCalledWith('1', expect.anything());
@@ -109,7 +109,7 @@ describe('AutomationService', () => {
 
       await service.trigger(TriggerType.FIRST_TAG, {
         branchId: 'br1',
-        contactId: 'c1',
+        customerId: 'c1',
       });
 
       expect(queue.add).toHaveBeenCalledWith(
@@ -134,7 +134,7 @@ describe('AutomationService', () => {
 
       await service.executeRule('1', {
         branchId: 'br1',
-        contactId: 'c1',
+        customerId: 'c1',
       });
 
       expect(messagingEngine.sendMessage).toHaveBeenCalled();

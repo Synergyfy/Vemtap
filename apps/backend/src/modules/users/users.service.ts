@@ -95,14 +95,16 @@ export class UsersService {
   }
 
   async updateProfile(id: string, updates: Partial<User>): Promise<User> {
-    await this.usersRepository.update(id, updates);
+    const { branch, business, ownedBusiness, notifications, visits, messages, threads, ...plainUpdates } = updates as any;
+    await this.usersRepository.update(id, plainUpdates);
     const user = await this.findOne(id);
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
   async update(id: string, updates: Partial<User>): Promise<User> {
-    await this.usersRepository.update(id, updates);
+    const { branch, business, ownedBusiness, notifications, visits, messages, threads, ...plainUpdates } = updates as any;
+    await this.usersRepository.update(id, plainUpdates);
     const user = await this.findOne(id);
     if (!user) throw new NotFoundException('User not found');
     return user;

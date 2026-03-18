@@ -14,6 +14,7 @@ import { BadRequestException } from '@nestjs/common';
 import { User } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Device } from '../devices/entities/device.entity';
+import { CreditService } from '../messaging/services/credit.service';
 
 describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
@@ -103,6 +104,10 @@ describe('SubscriptionsService', () => {
     chargeAuthorization: jest.fn(),
   };
 
+  const mockCreditService = {
+    allocateSubscriptionCredits: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -117,6 +122,7 @@ describe('SubscriptionsService', () => {
         { provide: getRepositoryToken(Device), useValue: mockDeviceRepo },
         { provide: PlansService, useValue: mockPlansService },
         { provide: PaymentsService, useValue: mockPaymentsService },
+        { provide: CreditService, useValue: mockCreditService },
         {
           provide: 'DataSource',
           useValue: { transaction: jest.fn() },
