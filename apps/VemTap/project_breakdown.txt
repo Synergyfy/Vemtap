@@ -200,6 +200,10 @@ now check the bussiness page and see how the loyalty is created by a business an
 
 ===
 --live messaging
-
-
-
+--change for the brand for default form and internal form
+--it should reflect the style to default form. and additional form when selected from the branding area 
+--allow form rearrangement by dragging the forms
+--date and time
+--remove the message settings from the message 
+--remove message settings
+--the chatbot should be onclick on the chatbot icon

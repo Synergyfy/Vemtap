@@ -10,17 +10,27 @@ import { SocialLinksPreview } from '@/components/shared/SocialLinksPreview';
 import { StepForm } from '@/components/visitor/StepForm';
 import { StepOutcome } from '@/components/visitor/StepOutcome';
 import { StepWelcomeBack } from '@/components/visitor/StepWelcomeBack';
+import { StepFinalSuccess } from '@/components/visitor/StepFinalSuccess';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
+import { buildBrandCssVars } from '@/lib/brandColor';
 
 export default function UserFormSettingsPage() {
     const store = useCustomerFlowStore();
     const { data: business, isLoading } = useMyBusiness();
+    const mainBranch = business?.branches?.find((b) => b.isMainBranch);
     const updateMutation = useUpdateBusiness();
     const [isSaving, setIsSaving] = useState(false);
-    const [previewTab, setPreviewTab] = useState<'form' | 'thank_you' | 'returning'>('form');
+    const [previewTab, setPreviewTab] = useState<'form' | 'thank_you' | 'final_step' | 'returning'>('form');
 
     const config = useMemo(() => store.getBusinessConfig(), [store]);
+    const previewStoreName = mainBranch?.name || business?.name || store.storeName || 'Your Store';
+    const previewLogoUrl = mainBranch?.logoUrl || business?.logoUrl || store.logoUrl;
+    const previewHasRewards = mainBranch?.rewardEnabled ?? business?.rewardEnabled ?? store.hasRewardSetup;
+    const brandVars = useMemo(
+        () => buildBrandCssVars(store.engagementSettings.brandColor),
+        [store.engagementSettings.brandColor]
+    );
     const previewUser = useMemo(
         () => ({
             firstName: 'Jamie',
@@ -258,6 +268,7 @@ export default function UserFormSettingsPage() {
                                 {[
                                     { key: 'form', label: 'Welcome Form' },
                                     { key: 'thank_you', label: 'Thank You' },
+                                    { key: 'final_step', label: 'Final Message' },
                                     { key: 'returning', label: 'Returning User' },
                                 ].map((tab) => (
                                     <button
@@ -273,21 +284,61 @@ export default function UserFormSettingsPage() {
                                     </button>
                                 ))}
                             </div>
-                            <PhoneFrame title="Live User Form Preview">
-                                <div className="p-6">
-                                    <StepForm
-                                        storeName={store.storeName || 'Your Store'}
-                                        logoUrl={store.logoUrl}
-                                        customWelcomeMessage={settings.welcomeMessage}
-                                        customWelcomeTitle={settings.welcomeTitle}
-                                        customWelcomeTag={settings.welcomeTag}
-                                        customPrivacyMessage={settings.privacyMessage}
-                                        submitLabel={settings.submitLabel || 'Submit'}
-                                        onBack={() => { }}
-                                        onSubmit={() => { }}
-                                    />
-                                </div>
-                            </PhoneFrame>
+                            <div style={brandVars}>
+                                <PhoneFrame title="Live User Form Preview">
+                                    <div className="p-6">
+                                        {previewTab === 'form' && (
+                                            <StepForm
+                                                storeName={previewStoreName}
+                                                logoUrl={previewLogoUrl}
+                                                customWelcomeMessage={settings.welcomeMessage}
+                                                customWelcomeTitle={settings.welcomeTitle}
+                                                customWelcomeTag={settings.welcomeTag}
+                                                customPrivacyMessage={settings.privacyMessage}
+                                                submitLabel={settings.submitLabel || 'Submit'}
+                                                onBack={() => { }}
+                                                onSubmit={() => { }}
+                                            />
+                                        )}
+                                    {previewTab === 'thank_you' && (
+                                        <StepOutcome
+                                            config={config}
+                                            hasRewardSetup={previewHasRewards}
+                                                isDownloading={false}
+                                                onDownload={() => { }}
+                                                onFinish={() => { }}
+                                                onRestart={() => { }}
+                                            customSuccessTitle={settings.successTitle}
+                                            customSuccessDescription={settings.successMessage}
+                                        />
+                                    )}
+                                    {previewTab === 'final_step' && (
+                                        <StepFinalSuccess
+                                            customSuccessTitle={settings.successTitle}
+                                            finalSuccessMessage={settings.successMessage}
+                                            customSuccessButton={store.customSuccessButton}
+                                            customSuccessTag={store.customSuccessTag}
+                                            onFinish={() => { }}
+                                            engagementSettings={store.engagementSettings}
+                                        />
+                                    )}
+                                    {previewTab === 'returning' && (
+                                        <StepWelcomeBack
+                                            storeName={previewStoreName}
+                                                logoUrl={previewLogoUrl}
+                                                userData={previewUser}
+                                                visitCount={3}
+                                                rewardVisitThreshold={5}
+                                                hasRewardSetup={previewHasRewards}
+                                                redemptionStatus="none"
+                                                onRedeem={() => { }}
+                                                onContinue={() => { }}
+                                                onClear={() => { }}
+                                            />
+                                        )}
+                                    </div>
+                                </PhoneFrame>
+                            </div>
                         </div>
                     </details>
                 </div>

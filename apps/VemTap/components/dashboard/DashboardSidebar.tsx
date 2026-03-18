@@ -201,7 +201,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         },
         {
             id: 'messaging-center',
-            label: 'Messaging Center',
+            label: 'Channels',
             icon: MessageSquare,
             roles: ['owner', 'manager'],
             submenu: [
@@ -209,7 +209,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 { label: 'Messaging Credits', href: '/dashboard/messaging/credits' },
                 {
                     id: 'messaging-hub',
-                    label: 'Channels',
+                    label: 'Delivery Channels',
                     submenu: [
                         { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp' },
                         { label: 'SMS', href: '/dashboard/messaging/sms' },

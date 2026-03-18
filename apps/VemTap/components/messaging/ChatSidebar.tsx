@@ -6,8 +6,8 @@ import { Search, Plus, MoreVertical, FileText } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useChatThreads } from '@/hooks/useMessaging';
-import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { useMessagingVisitors } from '@/services/visitors/hooks';
+import { useMessagingBranch } from '@/hooks/useMessagingBranch';
+import { useMessagingVisitorsByBranch } from '@/services/visitors/hooks';
 import Link from 'next/link';
 
 const AVATAR_COLORS = [
@@ -46,16 +46,13 @@ export default function ChatSidebar() {
     const isAuthenticated = useAuthStore(s => s.isAuthenticated);
     const { data: business } = useMyBusiness(isAuthenticated);
     const user = useAuthStore(s => s.user);
-    const { activeBranchId } = useActiveBranch();
+    const { branchId, isCustomer } = useMessagingBranch();
     const [showNewChat, setShowNewChat] = useState(false);
     const [customerQuery, setCustomerQuery] = useState('');
     const newChatRef = useRef<HTMLDivElement>(null);
 
-    const isCustomer = user?.role === 'customer';
-    const branchId = isCustomer ? undefined : activeBranchId;
-    
     const { data: threads = [], isLoading: threadsLoading } = useChatThreads('IN_HOUSE', branchId || undefined);
-    const { data: visitors = [], isLoading: visitorsLoading } = useMessagingVisitors(branchId || undefined, { search: customerQuery });
+    const { data: visitors = [], isLoading: visitorsLoading } = useMessagingVisitorsByBranch(branchId || undefined, { search: customerQuery });
 
     const allThreads = useMemo(() => {
         const apiThreads = threads as any[];

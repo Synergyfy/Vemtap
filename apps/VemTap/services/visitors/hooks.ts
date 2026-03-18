@@ -215,6 +215,39 @@ export const useMessagingVisitors = (branchId?: string, query?: Record<string, a
     };
 };
 
+export const useMessagingVisitorsByBranch = (branchId?: string, query?: Record<string, any>) => {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+    const { data: visitorsData, ...rest } = useQuery<PaginatedVisitorResponse, Error>({
+        queryKey: ['visitors', 'messaging', branchId, query],
+        queryFn: async () => {
+            const searchParams = new URLSearchParams();
+            if (query?.search) searchParams.append('search', query.search);
+            if (query?.status) searchParams.append('status', query.status);
+            if (query?.page) searchParams.append('page', String(query.page));
+            if (query?.limit) searchParams.append('limit', String(query.limit));
+            if (branchId) searchParams.append('branchId', branchId);
+            return await api.get(`/visitors?${searchParams.toString()}`);
+        },
+        enabled: isAuthenticated && !!branchId,
+    });
+
+    const formattedVisitors = (visitorsData?.data || []).map((v) => ({
+        id: v.id,
+        name: v.name || `${v.firstName || ''} ${v.lastName || ''}`.trim() || 'Anonymous Visitor',
+        phone: v.phone,
+        email: v.email,
+        isOnline: false,
+        status: v.status,
+    }));
+
+    return {
+        ...rest,
+        data: formattedVisitors,
+        total: visitorsData?.total || 0,
+    };
+};
+
 export const useVisitor = (id: string, branchId?: string) => {
     const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
     const businessId = useAuthStore((state) => state.user?.businessId);
