@@ -128,7 +128,7 @@ export class AdminFlowEngineService implements OnModuleInit {
     const where = this.getWhereClause<FlowExecution>(filter, 'updatedAt');
     return this.executionRepo.find({
       where,
-      relations: ['flow', 'contact', 'branch'],
+      relations: ['flow', 'customer', 'branch'],
       order: { updatedAt: 'DESC' },
       take: filter.limit || 50,
     });

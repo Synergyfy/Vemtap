@@ -121,6 +121,25 @@ export class TemplateService {
     return template;
   }
 
+  async updateTemplate(
+    id: string,
+    dto: Partial<CreateTemplateDto>,
+    user: User,
+  ): Promise<MessageTemplate> {
+    const template = await this.getTemplate(id, user);
+
+    if (dto.content) {
+      this.validateFormat(template.channel, dto.content);
+    }
+
+    if (dto.name !== undefined) template.name = dto.name;
+    if (dto.content !== undefined) template.content = dto.content;
+    if (dto.category !== undefined) template.category = dto.category;
+    if (dto.language !== undefined) template.language = dto.language;
+
+    return this.templateRepo.save(template);
+  }
+
   // --- Admin Methods ---
 
   async findAllAdmin(): Promise<MessageTemplate[]> {

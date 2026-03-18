@@ -14,7 +14,7 @@ export class MessageLog extends AbstractBaseEntity {
   branchId: string;
 
   @Column({ nullable: true })
-  contactId: string;
+  customerId: string;
 
   @Column({ nullable: true })
   campaignId: string;

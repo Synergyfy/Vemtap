@@ -73,6 +73,7 @@ Every backend endpoint MUST be fully documented using `@nestjs/swagger` decorato
 - **Branch Dependency:** Most messaging features (Campaigns, Inbox, Analytics, Automations) are **Branch-Dependent** and must filter data based on the active branch context, except for the credit balance which is global to the business.
 
 ### Backend Development
+- **Mandate:** NEVER delete a migration file. These files are essential for tracking the database schema history and ensuring consistency across environments.
 - **DTOs:** All controllers must use DTOs with `class-validator` decorators for incoming data.
 - **Logic Placement:** Keep controllers lean. All business logic, database queries, and third-party integrations must reside in Services.
 
