@@ -117,7 +117,7 @@ export class User extends AbstractBaseEntity {
     nullable: true,
   })
   @Column({ type: 'jsonb', nullable: true })
-  engagement: Record<string, any>;
+  engagement?: Record<string, any>;
 
   @OneToMany(() => Visit, (visit) => visit.customer)
   visits: Visit[];

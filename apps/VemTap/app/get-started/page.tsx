@@ -13,7 +13,7 @@ import { sanitizeFormData } from '@/lib/utils/sanitize';
 import { useRegisterOwner, useOtp, useRegister } from '@/services/auth/hooks';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPricingPlans } from '@/lib/api/pricing';
-import { CheckCircle2, Loader2, ChevronDown } from 'lucide-react';
+import { CheckCircle2, Loader2, ChevronDown, Instagram, Linkedin, Twitter, Facebook, Globe, Star, Plus, Trash2, X } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { useCategories } from '@/services/categories/hooks';
 
@@ -58,6 +58,16 @@ const statesData: Record<string, string[]> = {
     'Zamfara': ['Gusau', 'Kaura Namoda', 'Talata Mafara', 'Gummi']
 };
 
+// Social Media Platforms Configuration
+const SOCIAL_PLATFORMS = [
+    { id: 'instagram', name: 'Instagram', icon: Instagram, color: 'text-pink-600', bg: 'bg-pink-50', placeholder: 'yourbrand', prefix: 'https://instagram.com/' },
+    { id: 'facebook', name: 'Facebook', icon: Facebook, color: 'text-blue-600', bg: 'bg-blue-50', placeholder: 'yourbrand', prefix: 'https://facebook.com/' },
+    { id: 'linkedin', name: 'LinkedIn', icon: Linkedin, color: 'text-blue-700', bg: 'bg-blue-50', placeholder: 'company/yourbrand', prefix: 'https://linkedin.com/' },
+    { id: 'google', name: 'Google Review', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50', placeholder: 'https://g.page/r/...' },
+    { id: 'trustpilot', name: 'Trustpilot', icon: Star, color: 'text-emerald-600', bg: 'bg-emerald-50', placeholder: 'https://trustpilot.com/review/...' },
+    { id: 'custom', name: 'Custom Link', icon: Globe, color: 'text-slate-600', bg: 'bg-slate-50', placeholder: 'https://...' },
+];
+
 export default function GetStarted() {
     const { registerOwner, requestOwnerOtp, isLoading: isRegistering } = useRegisterOwner();
     const { registerUser, isLoading: isRegisteringGeneric } = useRegister();
@@ -69,11 +79,6 @@ export default function GetStarted() {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
-
-    const { data: plans = [] } = useQuery({
-        queryKey: ['subscription-plans'],
-        queryFn: () => fetchPricingPlans()
-    });
 
     const [formData, setFormData] = useState({
         firstName: '',
@@ -104,10 +109,60 @@ export default function GetStarted() {
         businessId: '',
         otp: '',
         instagramUrl: '',
+        facebookUrl: '',
         linkedinUrl: '',
         reviewUrl: '',
         trustpilotUrl: '',
         agreeToTerms: false
+    });
+
+    // Social Media Selection State
+    const [isSocialDropdownOpen, setIsSocialDropdownOpen] = useState(false);
+    const [selectedSocial, setSelectedSocial] = useState<typeof SOCIAL_PLATFORMS[0] | null>(null);
+    const [socialHandle, setSocialHandle] = useState('');
+
+    const handleAddSocial = () => {
+        if (!selectedSocial || !socialHandle.trim()) return;
+
+        let finalUrl = socialHandle.trim();
+        if (selectedSocial.prefix && !finalUrl.startsWith('http')) {
+            finalUrl = selectedSocial.prefix + finalUrl;
+        }
+
+        const updateData: any = { ...formData };
+        if (selectedSocial.id === 'instagram') updateData.instagramUrl = finalUrl;
+        else if (selectedSocial.id === 'facebook') updateData.facebookUrl = finalUrl;
+        else if (selectedSocial.id === 'linkedin') updateData.linkedinUrl = finalUrl;
+        else if (selectedSocial.id === 'google') updateData.reviewUrl = finalUrl;
+        else if (selectedSocial.id === 'trustpilot') updateData.trustpilotUrl = finalUrl;
+        
+        setFormData(updateData);
+        setSocialHandle('');
+        setSelectedSocial(null);
+        setIsSocialDropdownOpen(false);
+    };
+
+    const removeSocial = (id: string) => {
+        const updateData: any = { ...formData };
+        if (id === 'instagram') updateData.instagramUrl = '';
+        else if (id === 'facebook') updateData.facebookUrl = '';
+        else if (id === 'linkedin') updateData.linkedinUrl = '';
+        else if (id === 'google') updateData.reviewUrl = '';
+        else if (id === 'trustpilot') updateData.trustpilotUrl = '';
+        setFormData(updateData);
+    };
+
+    const activeSocials = [
+        { ...SOCIAL_PLATFORMS[0], url: formData.instagramUrl },
+        { ...SOCIAL_PLATFORMS[1], url: formData.facebookUrl },
+        { ...SOCIAL_PLATFORMS[2], url: formData.linkedinUrl },
+        { ...SOCIAL_PLATFORMS[3], url: formData.reviewUrl },
+        { ...SOCIAL_PLATFORMS[4], url: formData.trustpilotUrl },
+    ].filter(s => s.url);
+
+    const { data: plans = [] } = useQuery({
+        queryKey: ['subscription-plans'],
+        queryFn: () => fetchPricingPlans()
     });
 
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -318,10 +373,13 @@ export default function GetStarted() {
                     isRegistered: cleanData.isRegistered === 'Yes',
                     state: cleanData.state || undefined,
                     city: cleanData.city || undefined,
-                    instagramUrl: cleanData.instagramUrl || undefined,
-                    linkedinUrl: cleanData.linkedinUrl || undefined,
-                    reviewUrl: cleanData.reviewUrl || undefined,
-                    trustpilotUrl: cleanData.trustpilotUrl || undefined,
+                    engagement: {
+                        instagram: cleanData.instagramUrl || undefined,
+                        facebook: cleanData.facebookUrl || undefined,
+                        linkedin: cleanData.linkedinUrl || undefined,
+                        reviewUrl: cleanData.reviewUrl || undefined,
+                        trustpilot: cleanData.trustpilotUrl || undefined,
+                    },
                 };
 
                 response = await registerOwner(payload as any);
@@ -1021,39 +1079,158 @@ export default function GetStarted() {
                                                     <p className="text-[11px] text-text-secondary">Provide your social links to help customers engage with your brand after filling the form.</p>
                                                 </div>
 
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <SanitizedInput
-                                                        label="Instagram URL"
-                                                        value={formData.instagramUrl}
-                                                        onChange={(v) => setFormData({ ...formData, instagramUrl: v })}
-                                                        icon="link"
-                                                        placeholder="https://instagram.com/yourbrand"
-                                                        optional
-                                                    />
-                                                    <SanitizedInput
-                                                        label="LinkedIn URL"
-                                                        value={formData.linkedinUrl}
-                                                        onChange={(v) => setFormData({ ...formData, linkedinUrl: v })}
-                                                        icon="link"
-                                                        placeholder="https://linkedin.com/company/yourbrand"
-                                                        optional
-                                                    />
-                                                    <SanitizedInput
-                                                        label="Google Review URL"
-                                                        value={formData.reviewUrl}
-                                                        onChange={(v) => setFormData({ ...formData, reviewUrl: v })}
-                                                        icon="star"
-                                                        placeholder="https://g.page/r/..."
-                                                        optional
-                                                    />
-                                                    <SanitizedInput
-                                                        label="Trustpilot URL"
-                                                        value={formData.trustpilotUrl}
-                                                        onChange={(v) => setFormData({ ...formData, trustpilotUrl: v })}
-                                                        icon="star_border"
-                                                        placeholder="https://trustpilot.com/review/..."
-                                                        optional
-                                                    />
+                                                <div className="space-y-4">
+                                                    {/* Selection Area */}
+                                                    <div className="relative">
+                                                        <div className="flex gap-3">
+                                                            <div className="relative flex-1">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setIsSocialDropdownOpen(!isSocialDropdownOpen)}
+                                                                    className="w-full h-14 bg-gray-50 border border-gray-100 rounded-xl px-4 flex items-center justify-between text-sm font-bold text-text-main hover:bg-gray-100 transition-all"
+                                                                >
+                                                                    <div className="flex items-center gap-3">
+                                                                        {selectedSocial ? (
+                                                                            <>
+                                                                                <div className={`p-1.5 rounded-lg bg-white shadow-sm ${selectedSocial.color}`}>
+                                                                                    <selectedSocial.icon size={16} />
+                                                                                </div>
+                                                                                <span>{selectedSocial.name}</span>
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <div className="p-1.5 rounded-lg bg-white shadow-sm text-gray-400">
+                                                                                    <Plus size={16} />
+                                                                                </div>
+                                                                                <span className="text-gray-400">Select Platform</span>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                    <ChevronDown size={16} className={`text-gray-400 transition-transform ${isSocialDropdownOpen ? 'rotate-180' : ''}`} />
+                                                                </button>
+
+                                                                <AnimatePresence>
+                                                                    {isSocialDropdownOpen && (
+                                                                        <motion.div
+                                                                            initial={{ opacity: 0, y: 10 }}
+                                                                            animate={{ opacity: 1, y: 0 }}
+                                                                            exit={{ opacity: 0, y: 10 }}
+                                                                            className="absolute left-0 right-0 top-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden py-2"
+                                                                        >
+                                                                            {SOCIAL_PLATFORMS.map((platform) => {
+                                                                                const isAlreadyAdded = activeSocials.some(s => s.id === platform.id);
+                                                                                return (
+                                                                                    <button
+                                                                                        key={platform.id}
+                                                                                        type="button"
+                                                                                        disabled={isAlreadyAdded && platform.id !== 'custom'}
+                                                                                        onClick={() => {
+                                                                                            setSelectedSocial(platform);
+                                                                                            setIsSocialDropdownOpen(false);
+                                                                                        }}
+                                                                                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:grayscale"
+                                                                                    >
+                                                                                        <div className={`p-2 rounded-xl ${platform.bg} ${platform.color}`}>
+                                                                                            <platform.icon size={18} />
+                                                                                        </div>
+                                                                                        <div className="flex-1 text-left text-sm font-bold text-text-main">
+                                                                                            {platform.name}
+                                                                                            {isAlreadyAdded && platform.id !== 'custom' && (
+                                                                                                <span className="ml-2 text-[9px] uppercase tracking-widest text-green-500 font-black">Added</span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </button>
+                                                                                );
+                                                                            })}
+                                                                        </motion.div>
+                                                                    )}
+                                                                </AnimatePresence>
+                                                            </div>
+                                                        </div>
+
+                                                        {selectedSocial && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, height: 0 }}
+                                                                animate={{ opacity: 1, height: 'auto' }}
+                                                                className="mt-4 space-y-3 overflow-hidden"
+                                                            >
+                                                                <div className="flex gap-2">
+                                                                    <div className="flex-1 relative">
+                                                                        <input
+                                                                            type="text"
+                                                                            value={socialHandle}
+                                                                            onChange={(e) => setSocialHandle(e.target.value)}
+                                                                            placeholder={selectedSocial.placeholder}
+                                                                            className="w-full h-12 bg-white border border-gray-200 rounded-xl px-4 text-sm font-bold text-text-main focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                                            autoFocus
+                                                                        />
+                                                                        {selectedSocial.prefix && (
+                                                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-300 uppercase tracking-tighter">
+                                                                                Handle Only
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={handleAddSocial}
+                                                                        disabled={!socialHandle.trim()}
+                                                                        className="h-12 px-6 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-50"
+                                                                    >
+                                                                        Add
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => { setSelectedSocial(null); setSocialHandle(''); }}
+                                                                        className="h-12 w-12 flex items-center justify-center bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100 transition-colors"
+                                                                    >
+                                                                        <X size={18} />
+                                                                    </button>
+                                                                </div>
+                                                                {selectedSocial.prefix && (
+                                                                    <p className="text-[10px] text-gray-400 ml-1">
+                                                                        Your profile link will be: <span className="text-primary font-bold">{selectedSocial.prefix}{socialHandle || 'handle'}</span>
+                                                                    </p>
+                                                                )}
+                                                            </motion.div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Active Links List */}
+                                                    {activeSocials.length > 0 && (
+                                                        <div className="space-y-2 mt-6">
+                                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Active Links</label>
+                                                            <div className="grid grid-cols-1 gap-2">
+                                                                {activeSocials.map((social) => (
+                                                                    <motion.div
+                                                                        layout
+                                                                        key={social.id}
+                                                                        initial={{ opacity: 0, scale: 0.95 }}
+                                                                        animate={{ opacity: 1, scale: 1 }}
+                                                                        className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-2xl shadow-sm"
+                                                                    >
+                                                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                                            <div className={`p-2 rounded-xl ${social.bg} ${social.color} shrink-0`}>
+                                                                                <social.icon size={18} />
+                                                                            </div>
+                                                                            <div className="min-w-0">
+                                                                                <p className="text-[10px] font-black text-text-main uppercase tracking-tighter leading-none">{social.name}</p>
+                                                                                <p className="text-[11px] text-text-secondary font-medium truncate mt-1">
+                                                                                    {social.url}
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => removeSocial(social.id)}
+                                                                            className="p-2 text-gray-300 hover:text-rose-500 transition-colors"
+                                                                        >
+                                                                            <Trash2 size={16} />
+                                                                        </button>
+                                                                    </motion.div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex gap-3">
@@ -1174,10 +1351,11 @@ export default function GetStarted() {
                                                         <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Social Links</p>
                                                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                                                             {formData.instagramUrl && <span className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[9px] font-bold text-text-main">Instagram</span>}
+                                                            {formData.facebookUrl && <span className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[9px] font-bold text-text-main">Facebook</span>}
                                                             {formData.linkedinUrl && <span className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[9px] font-bold text-text-main">LinkedIn</span>}
                                                             {formData.reviewUrl && <span className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[9px] font-bold text-text-main">Google</span>}
                                                             {formData.trustpilotUrl && <span className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[9px] font-bold text-text-main">Trustpilot</span>}
-                                                            {!formData.instagramUrl && !formData.linkedinUrl && !formData.reviewUrl && !formData.trustpilotUrl && <span className="text-[10px] text-gray-400 font-medium italic">None provided</span>}
+                                                            {!formData.instagramUrl && !formData.facebookUrl && !formData.linkedinUrl && !formData.reviewUrl && !formData.trustpilotUrl && <span className="text-[10px] text-gray-400 font-medium italic">None provided</span>}
                                                         </div>
                                                     </div>
                                                     <div className="col-span-2">

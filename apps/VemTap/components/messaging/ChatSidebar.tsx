@@ -52,7 +52,10 @@ export default function ChatSidebar() {
     const newChatRef = useRef<HTMLDivElement>(null);
 
     const { data: threads = [], isLoading: threadsLoading } = useChatThreads('IN_HOUSE', branchId || undefined);
-    const { data: visitors = [], isLoading: visitorsLoading } = useMessagingVisitorsByBranch(branchId || undefined, { search: customerQuery });
+    const { data: visitors = [], isLoading: visitorsLoading } = useMessagingVisitorsByBranch(branchId || undefined, {
+        search: customerQuery,
+        limit: 20,
+    });
 
     const allThreads = useMemo(() => {
         const apiThreads = threads as any[];
@@ -82,7 +85,7 @@ export default function ChatSidebar() {
 
     const availableVisitors = useMemo(() => {
         const existingContactIds = new Set(allThreads.map(conv => conv.contact?.id).filter(Boolean));
-        return visitors.filter(v => !existingContactIds.has(v.id));
+        return (visitors as any[]).filter(v => !existingContactIds.has(v.id));
     }, [allThreads, visitors]);
 
     useEffect(() => {

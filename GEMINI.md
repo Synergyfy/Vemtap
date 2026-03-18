@@ -53,7 +53,24 @@ Every backend endpoint MUST be fully documented using `@nestjs/swagger` decorato
 
 ### API Integration (Frontend)
 - **Mandate:** Never call the `api` utility directly within UI components. Always use or create a custom hook in the appropriate `services/` directory.
-- **Custom Hooks:** Ensure hooks are properly typed with the expected response and error shapes.
+- **Custom Hooks Pattern:**
+  - Hooks MUST reside in `apps/VemTap/services/<feature>/hooks.ts`.
+  - Hooks MUST use **TanStack Query** (`useQuery` or `useMutation`).
+  - The `queryFn` or `mutationFn` SHOULD directly call the `api` utility (e.g., `api.get('/path')`) instead of intermediary API functions, unless complex normalization is required.
+  - **Example:**
+    ```typescript
+    export const useMyFeature = () => {
+      return useQuery({
+        queryKey: ['my-feature'],
+        queryFn: () => api.get('/my-feature-endpoint')
+      });
+    };
+    ```
+
+### Messaging & Credits Architecture
+- **Credit Balance:** Messaging credits (SMS, WhatsApp, Email) are **Business-Wide**. They are tied to the business subscription and top-ups, not individual branches.
+- **Deduction:** Credits are deducted across all branches from the same business pool.
+- **Branch Dependency:** Most messaging features (Campaigns, Inbox, Analytics, Automations) are **Branch-Dependent** and must filter data based on the active branch context, except for the credit balance which is global to the business.
 
 ### Backend Development
 - **DTOs:** All controllers must use DTOs with `class-validator` decorators for incoming data.

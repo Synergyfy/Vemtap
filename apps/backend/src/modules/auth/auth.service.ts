@@ -332,6 +332,7 @@ export class AuthService {
       existingUser.lastName = registrationData.lastName;
       existingUser.password = hashedPassword;
       existingUser.phone = registrationData.phone;
+      existingUser.engagement = dto.engagement;
       user = await this.usersService.create(existingUser);
     } else {
       user = await this.usersService.create({
@@ -342,6 +343,7 @@ export class AuthService {
         role: UserRole.OWNER,
         status: UserStatus.PENDING,
         phone: registrationData.phone,
+        engagement: dto.engagement,
       });
     }
 

@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
 import { Contact } from '../../contacts/entities/contact.entity';
@@ -30,6 +31,7 @@ import {
   InboundMessage,
   DeliveryReport,
 } from '../interfaces/messaging-provider.interface';
+import { formatPhoneNumber } from '../../../common/utils/phone.util';
 
 export interface SendMessageResult {
   message: string;
@@ -68,6 +70,7 @@ export class MessagingEngineService {
     private readonly providerRouter: ProviderRouterService,
     private readonly branchesService: BranchesService,
     private readonly dataSource: DataSource,
+    private readonly configService: ConfigService,
   ) {}
 
   public async checkBranchAccess(
@@ -134,6 +137,20 @@ export class MessagingEngineService {
       throw new BadRequestException('No contacts found for selected audience');
     }
 
+    // 2. Validate Credits
+    const wallet = await this.creditService.getOrCreateWallet(effectiveBusinessId);
+    let balance = 0;
+    if (channel === Channel.SMS) balance = wallet.smsCredits;
+    else if (channel === Channel.EMAIL) balance = wallet.emailCredits;
+    else if (channel === Channel.WHATSAPP) balance = wallet.whatsappCredits;
+
+    // 4. Resolve Content (if template)
+    let baseContent = content || '';
+    if (templateId) {
+      const template = await this.templateService.findOne(templateId);
+      baseContent = template.content;
+    }
+
     // 3. Compliance Check (Opt-outs)
     const validContacts = await this.contactRepo.find({
       where: {
@@ -141,9 +158,8 @@ export class MessagingEngineService {
         optOut: false,
       },
     });
-    const validContactIds = validContacts.map((c) => c.id);
 
-    if (validContactIds.length === 0) {
+    if (validContacts.length === 0) {
       return { 
         message: 'No valid contacts to send to (all opted out)',
         count: 0,
@@ -151,26 +167,23 @@ export class MessagingEngineService {
       };
     }
 
-    // 2. Validate Credits
-    const creditsNeeded = validContactIds.length;
-    const wallet = await this.creditService.getOrCreateWallet(effectiveBusinessId);
-    let balance = 0;
-    if (channel === Channel.SMS) balance = wallet.smsCredits;
-    else if (channel === Channel.EMAIL) balance = wallet.emailCredits;
-    else if (channel === Channel.WHATSAPP) balance = wallet.whatsappCredits;
+    let totalCreditsNeeded = 0;
+    if (channel === Channel.SMS) {
+      for (const contact of validContacts) {
+        const resolved = await this.resolvePlaceholdersSync(baseContent, contact, branch);
+        totalCreditsNeeded += resolved.length > 160 ? 2 : 1;
+      }
+    } else {
+      totalCreditsNeeded = validContacts.length;
+    }
 
-    if (balance < creditsNeeded) {
+    if (balance < totalCreditsNeeded) {
       throw new BadRequestException(
-        `Insufficient ${channel} credits. Need ${creditsNeeded}, but you only have ${balance}. Please top up.`,
+        `Insufficient ${channel} credits. Need ${totalCreditsNeeded}, but you only have ${balance}. Please top up.`,
       );
     }
 
-    // 4. Resolve Content (if template)
-    let finalContent = content || '';
-    if (templateId) {
-      const template = await this.templateService.findOne(templateId);
-      finalContent = template.content;
-    }
+    const validContactIds = validContacts.map((c) => c.id);
 
     // 5. Determine "From" number/id
     let from = dto.from || '';
@@ -179,12 +192,18 @@ export class MessagingEngineService {
     }
     
     if (channel === Channel.WHATSAPP && !from) {
-      from =
-        branch.whatsappNumber || (branch.business as any)?.whatsappNumber || '';
+      // TODO: Restore database fallback (branch/business settings) when ready for production.
+      // Currently forcing .env for WhatsApp Sandbox compatibility.
+      from = this.configService.get<string>('TWILIO_WHATSAPP_NUMBER') || '';
+      
       if (!from) {
-        const settings = await this.settingsService.getSettings();
-        from = (settings as any).whatsappNumber;
+        from = branch.whatsappNumber || (branch.business as any)?.whatsappNumber || '';
+        if (!from) {
+          const settings = await this.settingsService.getSettings();
+          from = (settings as any).whatsappNumber;
+        }
       }
+      from = formatPhoneNumber(from);
     }
 
     // 6. Create Campaign Record if more than one recipient
@@ -197,7 +216,7 @@ export class MessagingEngineService {
         channel,
         audienceType: audienceType || AudienceType.ALL,
         audienceSize: validContactIds.length,
-        content: finalContent,
+        content: baseContent,
         templateId,
       } as any);
       campaignId = campaign.id;
@@ -209,7 +228,7 @@ export class MessagingEngineService {
         ...dto,
         campaignId,
         contactIds: validContactIds,
-        content: finalContent,
+        content: baseContent,
         from,
       });
       return { 
@@ -226,7 +245,7 @@ export class MessagingEngineService {
       await this.individualQueue.add('send-individual', {
         branchId,
         contactId,
-        content: finalContent,
+        content: baseContent,
         channel,
         from,
         campaignId,
@@ -240,6 +259,46 @@ export class MessagingEngineService {
       messageIds: [],
       campaignId,
     };
+  }
+
+  private resolvePlaceholdersSync(
+    content: string,
+    contact: Contact,
+    branch: Branch,
+  ): string {
+    if (!content) return '';
+
+    let resolved = content;
+
+    // --- Contact Placeholders ---
+    const fullName = contact.name || 'Customer';
+    const nameParts = fullName.split(' ');
+    const firstName = nameParts[0] || 'Customer';
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
+    resolved = resolved.replace(/{Name}/g, fullName);
+    resolved = resolved.replace(/{FirstName}/g, firstName);
+    resolved = resolved.replace(/{LastName}/g, lastName || '');
+    resolved = resolved.replace(/{Email}/g, contact.email || '');
+    resolved = resolved.replace(/{Phone}/g, formatPhoneNumber(contact.phone || ''));
+
+    // --- Business/Branch Placeholders ---
+    const bizName = branch.business?.name || branch.name || 'Our Business';
+    resolved = resolved.replace(/{BusinessName}/g, bizName);
+    resolved = resolved.replace(/{BranchName}/g, branch.name || '');
+    resolved = resolved.replace(/{BranchAddress}/g, branch.address || '');
+    resolved = resolved.replace(/{BranchCity}/g, branch.city || '');
+    resolved = resolved.replace(/{BranchPhone}/g, formatPhoneNumber(branch.phone || ''));
+    resolved = resolved.replace(/{Website}/g, branch.website || '');
+    resolved = resolved.replace(/{ReviewLink}/g, branch.reviewUrl || '');
+    resolved = resolved.replace(/{Link}/g, branch.website || branch.reviewUrl || '');
+
+    // Loyalty points placeholder is tricky because it requires DB call.
+    // For credit estimation, we can assume it's a reasonable number (e.g. 4-5 digits max)
+    // or just leave it if we want to be safe. Let's use "0000" as a placeholder for points estimation.
+    resolved = resolved.replace(/{Points}/g, '0000');
+
+    return resolved;
   }
 
   private async sendIndividualMessage(
@@ -299,7 +358,9 @@ export class MessagingEngineService {
       direction: MessageDirection.OUTBOUND,
       status: MessageStatus.PENDING,
       from,
-      to: contact.phone || contact.email || '',
+      to: channel === Channel.EMAIL 
+        ? (contact.email || '') 
+        : formatPhoneNumber(contact.phone || ''),
     } as any) as unknown as Message;
 
     const savedMessageResult = await this.messageRepo.save(message);
@@ -330,7 +391,10 @@ export class MessagingEngineService {
         savedMessage.status === MessageStatus.SENT ||
         savedMessage.status === MessageStatus.PENDING
       ) {
-        const units = providerResult.units || 1;
+        let units = providerResult.units || 1;
+        if (channel === Channel.SMS && savedMessage.content.length > 160) {
+          units = 2; // Business rule: SMS > 160 chars costs 2 units
+        }
         await this.creditService.deductCredits(
           branch.businessId,
           channel,
@@ -373,7 +437,7 @@ export class MessagingEngineService {
     resolved = resolved.replace(/{FirstName}/g, firstName);
     resolved = resolved.replace(/{LastName}/g, lastName || '');
     resolved = resolved.replace(/{Email}/g, contact.email || '');
-    resolved = resolved.replace(/{Phone}/g, contact.phone || '');
+    resolved = resolved.replace(/{Phone}/g, formatPhoneNumber(contact.phone || ''));
 
     // --- Business/Branch Placeholders ---
     const bizName = branch.business?.name || branch.name || 'Our Business';
@@ -381,7 +445,7 @@ export class MessagingEngineService {
     resolved = resolved.replace(/{BranchName}/g, branch.name || '');
     resolved = resolved.replace(/{BranchAddress}/g, branch.address || '');
     resolved = resolved.replace(/{BranchCity}/g, branch.city || '');
-    resolved = resolved.replace(/{BranchPhone}/g, branch.phone || '');
+    resolved = resolved.replace(/{BranchPhone}/g, formatPhoneNumber(branch.phone || ''));
     resolved = resolved.replace(/{Website}/g, branch.website || '');
     resolved = resolved.replace(/{ReviewLink}/g, branch.reviewUrl || '');
     resolved = resolved.replace(/{Link}/g, branch.website || branch.reviewUrl || '');
@@ -476,8 +540,11 @@ export class MessagingEngineService {
     let from = '';
     if (thread.channel === Channel.IN_HOUSE) {
       from = branch.business?.name || branch.name || 'Business';
+    } else if (thread.channel === Channel.WHATSAPP) {
+      // TODO: Restore database fallback when ready for production
+      from = formatPhoneNumber(this.configService.get<string>('TWILIO_WHATSAPP_NUMBER') || branch.whatsappNumber || '');
     } else {
-      from = branch.whatsappNumber || '';
+      from = formatPhoneNumber(branch.whatsappNumber || '');
     }
 
     const msg = await this.sendIndividualMessage(
@@ -495,8 +562,12 @@ export class MessagingEngineService {
   // --- Webhooks & Events ---
 
   async handleInbound(inbound: InboundMessage) {
+    const from = inbound.channel === Channel.EMAIL 
+      ? inbound.from 
+      : formatPhoneNumber(inbound.from);
+      
     const contact = await this.contactRepo.findOne({
-      where: [{ phone: inbound.from }, { email: inbound.from }],
+      where: [{ phone: from }, { email: from }],
     });
 
     if (!contact) {
