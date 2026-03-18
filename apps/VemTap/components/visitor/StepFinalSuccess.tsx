@@ -50,9 +50,9 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
                 <span className="material-symbols-outlined text-white text-4xl">check_circle</span>
             </div>
             {customSuccessTag && <span className={presets.tag + " mb-2 inline-block"}>{customSuccessTag}</span>}
-            <h1 className={presets.title}>{customSuccessTitle || "Successfully Linked!"}</h1>
+            <h1 className={presets.title}>{customSuccessTitle?.trim() || "Thank you!"}</h1>
             <p className={presets.body + " mt-4 mb-8"}>
-                {finalSuccessMessage || "Your profile has been successfully updated."}
+                {finalSuccessMessage?.trim() || "Thank you for visiting our store."}
             </p>
 
             {/* Prominent Google Review CTA */}

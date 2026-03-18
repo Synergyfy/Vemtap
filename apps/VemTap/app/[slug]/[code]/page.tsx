@@ -43,7 +43,7 @@ export default function DynamicTapJourneyPage() {
         engagementSettings, surveyQuestions,
         customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton,
         businessId, initializeFromBusiness, recordVisit, isFirstTimeVisit,
-        customSuccessTitle, activeForm, setActiveForm
+        customSuccessTitle, customSuccessTag, customSuccessButton, activeForm, setActiveForm
     } = useCustomerFlowStore();
 
     const addRedemptionRequest = useMockDashboardStore(state => state.addRedemptionRequest);
@@ -440,6 +440,7 @@ export default function DynamicTapJourneyPage() {
         <VisitorLayout
             onReset={resetFlow}
             onCredentialResponse={handleCredentialResponse}
+            brandColor={engagementSettings?.brandColor}
         >
             <AnimatePresence mode="wait">
                 {currentStep === 'SCANNING' && (
@@ -538,6 +539,7 @@ export default function DynamicTapJourneyPage() {
                 {currentStep === 'BUSINESS_FORM' && activeForm && (
                     <StepBusinessForm
                         form={activeForm}
+                        brandColor={engagementSettings?.brandColor}
                         onSkip={() => setStep('OUTCOME')}
                         onComplete={(answers: any) => {
                             console.log('Additional Form submitted:', answers);
@@ -558,6 +560,7 @@ export default function DynamicTapJourneyPage() {
                     selectedBusinessForm ? (
                         <StepBusinessForm
                             form={selectedBusinessForm}
+                            brandColor={engagementSettings?.brandColor}
                             onComplete={handleSurveyComplete}
                             onSkip={() => {
                                 setSelectedBusinessFormId(null);
@@ -575,10 +578,10 @@ export default function DynamicTapJourneyPage() {
 
                 {currentStep === 'FINAL_SUCCESS' && (
                     <StepFinalSuccess
-                        customSuccessTag={useCustomerFlowStore.getState().customSuccessTag}
-                        customSuccessTitle={useCustomerFlowStore.getState().customSuccessTitle}
-                        finalSuccessMessage={useCustomerFlowStore.getState().customSuccessMessage || config.finalSuccessMessage}
-                        customSuccessButton={useCustomerFlowStore.getState().customSuccessButton}
+                        customSuccessTag={customSuccessTag}
+                        customSuccessTitle={customSuccessTitle}
+                        finalSuccessMessage={customSuccessMessage?.trim() || config.finalSuccessMessage}
+                        customSuccessButton={customSuccessButton}
                         isFormsLoading={formsLoading}
                         onFinish={() => {
                             resetFlow();
