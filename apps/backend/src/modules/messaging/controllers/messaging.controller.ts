@@ -34,6 +34,7 @@ import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { TrialRestrictionGuard } from '../../subscriptions/guards/trial-restriction.guard';
 import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
+import { MessagingAnalyticsFilterDto } from '../dto/messaging-analytics-filter.dto';
 
 @ApiTags('Messaging')
 @Controller('messaging')
@@ -163,13 +164,13 @@ export class MessagingController {
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @ApiOperation({ summary: 'Get messaging analytics by branch' })
   async getAnalytics(
-    @Query('channel') channel: Channel,
-    @Query() filter: BranchFilterDto,
+    @Query() filter: MessagingAnalyticsFilterDto,
     @Request() req: { user: User },
   ) {
     const branchId = await this.getBranchId(req, filter.branchId);
-    return this.analyticsService.getDashboardMetrics(branchId, channel);
+    return this.analyticsService.getDashboardMetrics(branchId, filter.channel);
   }
+
 
   @Get('inbox/:channel')
   @ApiBearerAuth()

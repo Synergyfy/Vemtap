@@ -55,7 +55,12 @@ export default function ChatSidebar() {
     const branchId = isCustomer ? undefined : activeBranchId;
     
     const { data: threads = [], isLoading: threadsLoading } = useChatThreads('IN_HOUSE', branchId || undefined);
-    const { data: visitors = [], isLoading: visitorsLoading } = useMessagingVisitors(branchId || undefined, { search: customerQuery });
+    
+    // Fetch real visitors for new chat search using the specialized messaging hook
+    const { data: visitors = [], isLoading: visitorsLoading } = useMessagingVisitors(branchId || undefined, {
+        search: customerQuery,
+        limit: 20
+    });
 
     const allThreads = useMemo(() => {
         const apiThreads = threads as any[];
@@ -85,7 +90,7 @@ export default function ChatSidebar() {
 
     const availableVisitors = useMemo(() => {
         const existingContactIds = new Set(allThreads.map(conv => conv.contact?.id).filter(Boolean));
-        return visitors.filter(v => !existingContactIds.has(v.id));
+        return (visitors as any[]).filter(v => !existingContactIds.has(v.id));
     }, [allThreads, visitors]);
 
     useEffect(() => {

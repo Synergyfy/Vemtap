@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import type {
   BusinessForm,
   BusinessFormResponseItem,
@@ -32,31 +33,41 @@ type BusinessFormsQuery = {
   allBranches?: boolean;
 };
 
-export const useBusinessForms = (params: BusinessFormsQuery = {}) =>
-  useQuery<BusinessForm[], Error>({
-    queryKey: ['business-forms', params.branchId || 'all', params.allBranches ? 'all-branches' : 'scoped'],
+export const useBusinessForms = (params: BusinessFormsQuery = {}) => {
+  const { activeBranchId, isAllBranches } = useActiveBranch();
+  const resolvedBranchId = params.branchId || activeBranchId;
+  const resolvedAllBranches = params.allBranches !== undefined ? params.allBranches : (params.branchId ? false : isAllBranches);
+
+  return useQuery<BusinessForm[], Error>({
+    queryKey: ['business-forms', resolvedBranchId || 'all', resolvedAllBranches ? 'all-branches' : 'scoped'],
     queryFn: async () => {
       const query = new URLSearchParams();
-      if (params.branchId) query.set('branchId', params.branchId);
-      if (params.allBranches) query.set('allBranches', 'true');
+      if (resolvedBranchId) query.set('branchId', resolvedBranchId);
+      if (resolvedAllBranches) query.set('allBranches', 'true');
       const suffix = query.toString();
       const response = await api.get(`/business-forms${suffix ? `?${suffix}` : ''}`);
       return toList<BusinessForm>(response);
     },
   });
+};
 
-export const useBusinessForm = (id?: string, params: BusinessFormsQuery = {}) =>
-  useQuery<BusinessForm, Error>({
-    queryKey: ['business-forms', id, params.branchId || 'all', params.allBranches ? 'all-branches' : 'scoped'],
+export const useBusinessForm = (id?: string, params: BusinessFormsQuery = {}) => {
+  const { activeBranchId, isAllBranches } = useActiveBranch();
+  const resolvedBranchId = params.branchId || activeBranchId;
+  const resolvedAllBranches = params.allBranches !== undefined ? params.allBranches : (params.branchId ? false : isAllBranches);
+
+  return useQuery<BusinessForm, Error>({
+    queryKey: ['business-forms', id, resolvedBranchId || 'all', resolvedAllBranches ? 'all-branches' : 'scoped'],
     queryFn: async () => {
       const query = new URLSearchParams();
-      if (params.branchId) query.set('branchId', params.branchId);
-      if (params.allBranches) query.set('allBranches', 'true');
+      if (resolvedBranchId) query.set('branchId', resolvedBranchId);
+      if (resolvedAllBranches) query.set('allBranches', 'true');
       const suffix = query.toString();
       return await api.get(`/business-forms/${id}${suffix ? `?${suffix}` : ''}`);
     },
     enabled: !!id,
   });
+};
 
 export const usePublicBusinessForm = (id?: string) =>
   useQuery<BusinessForm, Error>({
@@ -189,14 +200,18 @@ export const useDeleteBusinessForm = () => {
   });
 };
 
-export const useBusinessFormResponses = (id?: string, params: BusinessFormsQuery = {}) =>
-  useQuery<BusinessFormResponseItem[], Error>({
-    queryKey: ['business-forms', id, 'responses', params.branchId || 'any', params.allBranches ? 'all' : 'scoped'],
+export const useBusinessFormResponses = (id?: string, params: BusinessFormsQuery = {}) => {
+  const { activeBranchId, isAllBranches } = useActiveBranch();
+  const resolvedBranchId = params.branchId || activeBranchId;
+  const resolvedAllBranches = params.allBranches !== undefined ? params.allBranches : (params.branchId ? false : isAllBranches);
+
+  return useQuery<BusinessFormResponseItem[], Error>({
+    queryKey: ['business-forms', id, 'responses', resolvedBranchId || 'any', resolvedAllBranches ? 'all' : 'scoped'],
     queryFn: async () => {
       try {
         const query = new URLSearchParams();
-        if (params.branchId) query.set('branchId', params.branchId);
-        if (params.allBranches) query.set('allBranches', 'true');
+        if (resolvedBranchId) query.set('branchId', resolvedBranchId);
+        if (resolvedAllBranches) query.set('allBranches', 'true');
         const suffix = query.toString();
         const response = await api.get(`/business-forms/${id}/responses${suffix ? `?${suffix}` : ''}`);
         return toList<BusinessFormResponseItem>(response);
@@ -221,6 +236,7 @@ export const useBusinessFormResponses = (id?: string, params: BusinessFormsQuery
     },
     enabled: !!id,
   });
+};
 
 export const useSubmitBusinessFormResponse = () => {
   const queryClient = useQueryClient();
