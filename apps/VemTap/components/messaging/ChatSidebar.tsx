@@ -2,18 +2,22 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
-import { Search, Plus, MoreVertical, FileText } from 'lucide-react';
+import { Search, Plus, MoreVertical, FileText, Smartphone, MessageSquare, Check, CheckCircle2 } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useChatThreads } from '@/hooks/useMessaging';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMessagingVisitors } from '@/services/visitors/hooks';
+import { generateWhatsAppLink } from '@/lib/whatsapp-utils';
 import Link from 'next/link';
+import WhatsAppTemplateModal from './WhatsAppTemplateModal';
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
     'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-teal-500',
 ];
+
+type MessagingTab = 'INTERNAL' | 'WHATSAPP';
 
 function getInitials(name: string) {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -49,6 +53,9 @@ export default function ChatSidebar() {
     const { activeBranchId } = useActiveBranch();
     const [showNewChat, setShowNewChat] = useState(false);
     const [customerQuery, setCustomerQuery] = useState('');
+    const [activeTab, setActiveTab] = useState<MessagingTab>('INTERNAL');
+    const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
+    const [whatsappModalVisitors, setWhatsappModalVisitors] = useState<any[]>([]);
     const newChatRef = useRef<HTMLDivElement>(null);
 
     const isCustomer = user?.role === 'customer';
@@ -56,10 +63,9 @@ export default function ChatSidebar() {
     
     const { data: threads = [], isLoading: threadsLoading } = useChatThreads('IN_HOUSE', branchId || undefined);
     
-    // Fetch real visitors for new chat search using the specialized messaging hook
+    // Fetch real visitors for new chat search and for WhatsApp contact list
     const { data: visitors = [], isLoading: visitorsLoading } = useMessagingVisitors(branchId || undefined, {
-        search: customerQuery,
-        limit: 20
+        search: searchQuery
     });
 
     const allThreads = useMemo(() => {
@@ -80,7 +86,7 @@ export default function ChatSidebar() {
         : (business?.logoUrl || user?.businessLogo);
 
 
-    const filtered = useMemo(() => {
+    const filteredThreads = useMemo(() => {
         const q = searchQuery.trim().toLowerCase();
         if (!q) return allThreads;
         return allThreads.filter(c =>
@@ -89,9 +95,13 @@ export default function ChatSidebar() {
     }, [allThreads, searchQuery]);
 
     const availableVisitors = useMemo(() => {
-        const existingContactIds = new Set(allThreads.map(conv => conv.contact?.id).filter(Boolean));
-        return (visitors as any[]).filter(v => !existingContactIds.has(v.id));
-    }, [allThreads, visitors]);
+        // Filter out those who already have an active thread if we are in INTERNAL tab search
+        if (activeTab === 'INTERNAL') {
+            const existingContactIds = new Set(allThreads.map(conv => conv.contact?.id).filter(Boolean));
+            return (visitors as any[]).filter(v => v.name.toLowerCase().includes(customerQuery.toLowerCase()) && !existingContactIds.has(v.id));
+        }
+        return visitors as any[];
+    }, [allThreads, visitors, activeTab, customerQuery]);
 
     useEffect(() => {
         if (!showNewChat) return;
@@ -103,6 +113,23 @@ export default function ChatSidebar() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showNewChat]);
+
+    const toggleContactSelection = (id: string) => {
+        setSelectedContacts(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const handleBulkWhatsApp = () => {
+        const selectedList = visitors.filter((v: any) => selectedContacts.has(v.id));
+        if (selectedList.length > 0) {
+            setWhatsappModalVisitors(selectedList);
+        }
+        setSelectedContacts(new Set());
+    };
 
     return (
         <aside className="w-full md:w-80 lg:w-96 glass-sidebar flex flex-col h-full min-h-0 border-r border-slate-200 shrink-0">
@@ -194,13 +221,31 @@ export default function ChatSidebar() {
                 )}
             </header>
 
+            {/* Tabs */}
+            <div className="flex border-b border-slate-200 bg-slate-50/50">
+                <button
+                    onClick={() => setActiveTab('INTERNAL')}
+                    className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${activeTab === 'INTERNAL' ? 'text-primary border-b-2 border-primary bg-white' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                    <MessageSquare size={14} />
+                    Inbox
+                </button>
+                <button
+                    onClick={() => setActiveTab('WHATSAPP')}
+                    className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${activeTab === 'WHATSAPP' ? 'text-emerald-500 border-b-2 border-emerald-500 bg-white' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                    <Smartphone size={14} />
+                    WhatsApp
+                </button>
+            </div>
+
             {/* Search */}
             <div className="p-4 sticky top-16 z-10 bg-white/90 backdrop-blur">
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                     <input
                         type="text"
-                        placeholder="Search conversations..."
+                        placeholder={activeTab === 'INTERNAL' ? "Search conversations..." : "Search contacts..."}
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         className="block w-full pl-10 pr-3 py-2 border-none bg-slate-200/50 rounded-xl text-sm placeholder-slate-500 focus:ring-2 focus:ring-primary focus:bg-white transition-all outline-none"
@@ -208,25 +253,74 @@ export default function ChatSidebar() {
                 </div>
             </div>
 
-            {/* Conversations */}
+            {/* Bulk Actions for WhatsApp */}
+            {activeTab === 'WHATSAPP' && selectedContacts.size > 0 && (
+                <div className="px-4 py-2 bg-emerald-50 border-y border-emerald-100 flex items-center justify-between animate-in slide-in-from-top-2">
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
+                        {selectedContacts.size} Selected
+                    </span>
+                    <button
+                        onClick={handleBulkWhatsApp}
+                        className="px-3 py-1 bg-emerald-500 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-600 shadow-sm transition-all"
+                    >
+                        Send Bulk WhatsApp
+                    </button>
+                </div>
+            )}
+
+            {/* Conversations / Contacts */}
             <nav className="flex-1 overflow-y-auto custom-scrollbar">
                 {!isCustomer && !branchId ? (
                     <div className="p-8 text-center text-amber-500 text-sm font-medium">Please select a branch first</div>
-                ) : threadsLoading ? (
-                     <div className="p-8 text-center text-slate-400 text-sm">Loading conversations...</div>
-                ) : filtered.length === 0 ? (
-                    <div className="p-8 text-center text-slate-400 text-sm">No conversations found.</div>
+                ) : activeTab === 'INTERNAL' ? (
+                    <>
+                        {threadsLoading ? (
+                             <div className="p-8 text-center text-slate-400 text-sm">Loading conversations...</div>
+                        ) : filteredThreads.length === 0 ? (
+                            <div className="p-8 text-center text-slate-400 text-sm">No conversations found.</div>
+                        ) : (
+                            filteredThreads.map(conv => (
+                                <ConversationItem
+                                    key={conv.id}
+                                    conversation={conv}
+                                    isActive={conv.id === activeConversationId}
+                                    onClick={() => setActiveConversation(conv.id)}
+                                />
+                            ))
+                        )}
+                    </>
                 ) : (
-                    filtered.map(conv => (
-                        <ConversationItem
-                            key={conv.id}
-                            conversation={conv}
-                            isActive={conv.id === activeConversationId}
-                            onClick={() => setActiveConversation(conv.id)}
-                        />
-                    ))
+                    <>
+                        {visitorsLoading ? (
+                            <div className="p-8 text-center text-slate-400 text-sm">Loading contacts...</div>
+                        ) : availableVisitors.length === 0 ? (
+                            <div className="p-8 text-center text-slate-400 text-sm">No contacts found.</div>
+                        ) : (
+                            availableVisitors.map(visitor => (
+                                <WhatsAppContactItem
+                                    key={visitor.id}
+                                    visitor={visitor}
+                                    isSelected={selectedContacts.has(visitor.id)}
+                                    onSelect={() => toggleContactSelection(visitor.id)}
+                                    businessName={business?.name || 'Vemtap'}
+                                    onChat={() => setWhatsappModalVisitors([visitor])}
+                                />
+                            ))
+                        )}
+                    </>
                 )}
             </nav>
+
+            {/* WhatsApp Template Modal */}
+            {whatsappModalVisitors.length > 0 && (
+                <WhatsAppTemplateModal
+                    isOpen={whatsappModalVisitors.length > 0}
+                    onClose={() => setWhatsappModalVisitors([])}
+                    visitors={whatsappModalVisitors}
+                    businessName={business?.name || 'Vemtap'}
+                    businessCode={(business as any)?.branches?.find((b: any) => b.id === activeBranchId)?.uniqueCode || (business as any)?.uniqueCode || activeBranchId || 'business'}
+                />
+            )}
         </aside>
     );
 }
@@ -280,5 +374,71 @@ function ConversationItem({
                 </div>
             </div>
         </button>
+    );
+}
+
+function WhatsAppContactItem({
+    visitor,
+    isSelected,
+    onSelect,
+    onChat,
+    businessName
+}: {
+    visitor: any;
+    isSelected: boolean;
+    onSelect: () => void;
+    onChat: () => void;
+    businessName: string;
+}) {
+    const name = visitor.name || 'Unknown';
+    const hasPhone = !!visitor.phone;
+
+    return (
+        <div className={`w-full flex items-center gap-3 p-4 transition-all border-b border-slate-50 ${isSelected ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect();
+                }}
+                className={`flex-shrink-0 size-5 rounded-lg border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 bg-white'}`}
+            >
+                {isSelected && <Check size={12} strokeWidth={3} />}
+            </button>
+
+            <div className="relative flex-shrink-0">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm ${getAvatarColor(visitor.id)}`}>
+                    {getInitials(name)}
+                </div>
+                {hasPhone && (
+                    <div className="absolute -right-1 -bottom-1 size-5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center text-white">
+                        <Smartphone size={10} />
+                    </div>
+                )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-baseline">
+                    <h3 className="text-sm font-semibold text-slate-900 truncate">
+                        {name}
+                    </h3>
+                </div>
+                <p className="text-xs text-slate-500 truncate">
+                    {visitor.phone || visitor.email || 'No contact info'}
+                </p>
+            </div>
+
+            {hasPhone && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onChat();
+                    }}
+                    className="p-2 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200 transition-colors"
+                    title="Chat on WhatsApp"
+                >
+                    <Smartphone size={16} />
+                </button>
+            )}
+        </div>
     );
 }

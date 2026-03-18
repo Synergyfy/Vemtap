@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { fetchDeviceByCode } from '@/lib/api/devices';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { motion } from 'framer-motion';
@@ -52,8 +52,9 @@ export default function PublicTapPage() {
                     const businessSlug = (device.business?.name || 'business').toLowerCase().replace(/\s+/g, '-');
                     const targetCode = device.code || businessId;
 
-                    // Redirect to the dynamic business/code route
-                    router.push(`/${businessSlug}/${targetCode}`);
+                    // Redirect to the dynamic business/code route with same query params (source, v, n etc.)
+                    const search = typeof window !== 'undefined' ? window.location.search : '';
+                    router.push(`/${businessSlug}/${targetCode}${search}`);
                 } else {
                     console.warn('Device not found for code:', businessId);
                     setError(true);

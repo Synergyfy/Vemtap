@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -33,7 +33,6 @@ export default function DynamicTapJourneyPage() {
     const router = useRouter();
     const deviceCode = params.code as string;
     const businessSlug = params.slug as string;
-
     const {
         currentStep, setStep, storeName, setUserData, resetFlow,
         getBusinessConfig, customWelcomeMessage, customWelcomeTitle, customWelcomeButton, customWelcomeTag, customSuccessMessage,
@@ -43,8 +42,10 @@ export default function DynamicTapJourneyPage() {
         engagementSettings, surveyQuestions,
         customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton,
         businessId, initializeFromBusiness, recordVisit, isFirstTimeVisit,
-        customSuccessTitle, activeForm, setActiveForm
+        customSuccessTitle, activeForm, setActiveForm, setVisitSource, visitSource
     } = useCustomerFlowStore();
+
+    const searchParams = useSearchParams();
 
     const addRedemptionRequest = useMockDashboardStore(state => state.addRedemptionRequest);
     const redemptionRequests = useMockDashboardStore(state => state.redemptionRequests);
@@ -96,6 +97,28 @@ export default function DynamicTapJourneyPage() {
             }
         }
     }, [isAuthenticated, access_token, logout]);
+
+    // 0.1 Handle Bridge Link Initialization (WhatsApp etc.)
+    useEffect(() => {
+        const source = searchParams.get('source');
+        const v = searchParams.get('v');
+        const n = searchParams.get('n');
+
+        if (source && source !== visitSource) {
+            setVisitSource(source);
+        }
+
+        // If we have visitor ID and name from a bridge link, auto-populate user data
+        if (v && n && !userData) {
+            setUserData({ name: n, uniqueId: v });
+            
+            // If coming from WhatsApp bridge, skip straight to the welcome back screen
+            // and show the personalized greeting
+            if (source === 'whatsapp' && currentStep !== 'WELCOME_BACK') {
+                setStep('WELCOME_BACK');
+            }
+        }
+    }, [searchParams, userData, visitSource, setVisitSource, setUserData, setStep, currentStep]);
 
     // Fetch full user details if authenticated
     useEffect(() => {
@@ -484,6 +507,7 @@ export default function DynamicTapJourneyPage() {
                         redemptionStatus={redemptionStatus}
                         showConsent={isCustomer && !hasVisitedBefore}
                         isCustomer={isCustomer}
+                        visitSource={visitSource}
                         onRedeem={handleRedeem}
                         onContinue={() => {
                             if (isCustomer) {
