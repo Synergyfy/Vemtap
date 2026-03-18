@@ -48,7 +48,7 @@ export class PushNotificationService {
     data: any = {},
     isUser: boolean = true,
   ) {
-    let token: string | undefined;
+    let token: string | null | undefined;
 
     if (isUser) {
       const user = await this.userRepo.findOne({ where: { id: targetId }, select: ['pushToken'] });

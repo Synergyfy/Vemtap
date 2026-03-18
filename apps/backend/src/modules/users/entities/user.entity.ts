@@ -87,7 +87,7 @@ export class User extends AbstractBaseEntity {
 
   @ApiProperty({ example: 'fcm-token-string', nullable: true })
   @Column({ nullable: true })
-  pushToken: string;
+  pushToken: string | null;
 
   // Relation to branch they belong to
   @ManyToOne(() => Branch, (branch) => branch.staff, {

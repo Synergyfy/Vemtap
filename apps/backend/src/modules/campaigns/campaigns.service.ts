@@ -446,7 +446,7 @@ export class CampaignsService {
         if (contact) {
           await this.automationService.trigger(TriggerType.REWARD_EARNED, {
             branchId,
-            contactId: contact.id,
+            customerId: dto.userId,
           });
         }
       }
