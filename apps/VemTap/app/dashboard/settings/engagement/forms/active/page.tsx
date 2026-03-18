@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { buildBrandCssVars } from '@/lib/brandColor';
 import type { BusinessForm } from '@/services/business-forms/types';
 
 const Toggle = ({ active, onChange }: { active: boolean; onChange: (val: boolean) => void }) => (
@@ -43,6 +44,10 @@ export default function ActiveFormsPage() {
     const { toggleActiveForm, moveActiveForm, setActiveFormIds, getActiveFormIds } = useFormPreferencesStore();
     const activeFormIdsByBranch = useFormPreferencesStore((state) => state.activeFormIdsByBranch);
     const { engagementSettings, updateEngagementSettings } = useCustomerFlowStore();
+    const brandVars = useMemo(
+        () => buildBrandCssVars(engagementSettings?.brandColor),
+        [engagementSettings?.brandColor]
+    );
     const branchKey = branchScope || userBranchId || 'global';
 
     const availableForms = useMemo(
@@ -430,7 +435,7 @@ export default function ActiveFormsPage() {
                             </div>
                             <div className="p-5">
                                 {selectedForm ? (
-                                    <div className="flex justify-center">
+                                    <div className="flex justify-center" style={brandVars}>
                                         <PhoneFrame title="Active Form Preview">
                                             <div className="min-h-full bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 py-6 px-3 space-y-3">
                                                 {/* ─── Container 1: Header — Business branding + Form title + Description ─── */}

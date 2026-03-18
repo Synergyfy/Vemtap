@@ -52,9 +52,9 @@ const DOCS: Category[] = [
       },
       {
         id: 'messaging',
-        title: 'Messaging',
+        title: 'Channels',
         pages: [
-          { id: 'messaging', title: 'Messaging Center', path: '/dashboard/messaging', summary: 'Campaign command center.' },
+          { id: 'messaging', title: 'Channels', path: '/dashboard/messaging', summary: 'Campaign command center.' },
           { id: 'messaging-compose', title: 'Compose', path: '/dashboard/messaging/compose', summary: 'Create campaigns with form links.' },
           { id: 'messaging-history', title: 'History', path: '/dashboard/messaging/history', summary: 'Sent campaigns and outcomes.' },
           { id: 'messaging-sms', title: 'SMS', path: '/dashboard/messaging/sms', summary: 'SMS flows, templates, settings.' },

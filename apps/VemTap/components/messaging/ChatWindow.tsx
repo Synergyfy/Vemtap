@@ -7,8 +7,7 @@ import ChatInput from './ChatInput';
 import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
 import { useChatThreads } from '@/hooks/useMessaging';
-import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { useBranches } from '@/services/branches/hooks';
+import { useMessagingBranch } from '@/hooks/useMessagingBranch';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
@@ -52,18 +51,7 @@ export default function ChatWindow() {
     const mockThreads = useChatStore(s => s.mockThreads);
     const mockMessages = useChatStore(s => s.mockMessages);
     const user = useAuthStore(s => s.user);
-    const { activeBranchId, setActiveBranch } = useActiveBranch();
-    const { data: branches = [] } = useBranches();
-    const isCustomer = user?.role === 'customer';
-
-    useEffect(() => {
-        if (!user || user.role === 'customer') return;
-        if (!activeBranchId && branches.length === 1) {
-            setActiveBranch(branches[0].id);
-        }
-    }, [activeBranchId, branches, user, setActiveBranch]);
-
-    const branchId = isCustomer ? undefined : (activeBranchId || (branches.length === 1 ? branches[0]?.id : undefined));
+    const { branchId, isCustomer } = useMessagingBranch();
     
     // Fetch all threads to find the active one
     const { data: threads = [] } = useChatThreads('IN_HOUSE', branchId || undefined);

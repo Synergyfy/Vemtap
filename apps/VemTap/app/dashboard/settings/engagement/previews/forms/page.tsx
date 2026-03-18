@@ -16,6 +16,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useBranches } from '@/services/branches/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
+import { buildBrandCssVars } from '@/lib/brandColor';
 
 export default function SelectedFormPreviewPage() {
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
@@ -102,8 +103,12 @@ export default function SelectedFormPreviewPage() {
     }, [selectedForm?.uniqueCode]);
 
     const config = useMemo(() => getBusinessConfig(), [getBusinessConfig]);
-    const previewStoreName = myBusiness?.name || user?.businessName || storeName || 'Your Store';
+    const previewStoreName = myBusiness?.name || mainBranch?.name || user?.businessName || storeName || 'Your Store';
     const previewLogoUrl = myBusiness?.logoUrl || mainBranch?.logoUrl || user?.businessLogo || logoUrl || '';
+    const brandVars = useMemo(
+        () => buildBrandCssVars(engagementSettings.brandColor),
+        [engagementSettings.brandColor]
+    );
     const previewUser = useMemo(
         () => ({
             firstName: 'Jamie',
@@ -239,24 +244,26 @@ export default function SelectedFormPreviewPage() {
                                         </button>
                                     ))}
                                 </div>
-                                <PhoneFrame title="Selected Form Preview">
-                                    <div className="px-5 pb-8 pt-2">
-                                        {selectedForm ? (
-                                            <>
-                                                {activePreviewTab === 'form' && (
-                                                    <>
-                                                        <StepBusinessForm
-                                                            form={{
-                                                                ...selectedForm,
-                                                                businessName: previewStoreName || selectedForm.businessName,
-                                                                businessLogo: previewLogoUrl || selectedForm.businessLogo,
-                                                            }}
-                                                            onComplete={() => setActivePreviewTab('thank_you')}
-                                                            onSkip={() => { }}
-                                                        />
-                                                        <SocialLinksPreview settings={engagementSettings} />
-                                                    </>
-                                                )}
+                                <div style={brandVars}>
+                                    <PhoneFrame title="Selected Form Preview">
+                                        <div className="px-5 pb-8 pt-2">
+                                            {selectedForm ? (
+                                                <>
+                                                    {activePreviewTab === 'form' && (
+                                                        <>
+                                                            <StepBusinessForm
+                                                                form={{
+                                                                    ...selectedForm,
+                                                                    businessName: previewStoreName || selectedForm.businessName,
+                                                                    businessLogo: previewLogoUrl || selectedForm.businessLogo,
+                                                                }}
+                                                                brandColor={engagementSettings.brandColor}
+                                                                onComplete={() => setActivePreviewTab('thank_you')}
+                                                                onSkip={() => { }}
+                                                            />
+                                                            <SocialLinksPreview settings={engagementSettings} />
+                                                        </>
+                                                    )}
 
                                                 {activePreviewTab === 'new_user' && (
                                                     <StepForm
@@ -331,6 +338,7 @@ export default function SelectedFormPreviewPage() {
                                                                     businessName: previewStoreName || selectedForm.businessName,
                                                                     businessLogo: previewLogoUrl || selectedForm.businessLogo,
                                                                 }}
+                                                                brandColor={engagementSettings.brandColor}
                                                                 onComplete={() => setFlowPreviewStep('thank_you')}
                                                                 onSkip={() => setFlowPreviewStep('thank_you')}
                                                             />
@@ -387,13 +395,14 @@ export default function SelectedFormPreviewPage() {
                                                     </>
                                                 )}
                                             </>
-                                        ) : (
-                                            <div className="text-sm text-gray-500 p-6 text-center">
-                                                Select a form to preview.
-                                            </div>
-                                        )}
-                                    </div>
-                                </PhoneFrame>
+                                            ) : (
+                                                <div className="text-sm text-gray-500 p-6 text-center">
+                                                    Select a form to preview.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </PhoneFrame>
+                                </div>
                             </div>
                         </details>
                     </div>

@@ -38,6 +38,7 @@ import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import Spinner from '@/components/ui/Spinner';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { buildBrandCssVars } from '@/lib/brandColor';
 import { useBranches } from '@/services/branches/hooks';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import {
@@ -216,6 +217,10 @@ export default function EngagementFormsBuilderPage() {
 
   const { setDefaultForm, getDefaultFormId, clearDefaultForm } = useFormPreferencesStore();
   const brandColor = engagementSettings?.brandColor || '#2563eb';
+  const brandVars = useMemo(
+    () => buildBrandCssVars(brandColor),
+    [brandColor]
+  );
 
   const [viewMode, setViewMode] = useState<ViewMode>('forms');
   const [formsViewType, setFormsViewType] = useState<FormsViewType>('grid');
@@ -1150,7 +1155,7 @@ export default function EngagementFormsBuilderPage() {
                     <div className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Live Phone Preview</p>
                   </div>
-                  <div className="flex justify-center scale-[0.95] origin-top">
+                  <div className="flex justify-center scale-[0.95] origin-top" style={brandVars}>
                     <PhoneFrame title="Real-time Preview">
                       <div className="min-h-full bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 py-6 px-3 space-y-3">
                         {/* ─── Container 1: Header — Business branding + Form title + Description ─── */}
