@@ -368,9 +368,7 @@ export class MessagingEngineService {
     thread.lastActivityAt = new Date();
     thread.lastMessageContent = content;
     thread.status = ThreadStatus.OPEN;
-    if (channel === Channel.IN_HOUSE) {
-      thread.customerUnreadCount += 1;
-    }
+    // unread count is handled by InboxService for better consistency
     await this.threadRepo.save(thread);
 
     try {

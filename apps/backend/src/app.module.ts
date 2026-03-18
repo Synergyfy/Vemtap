@@ -47,12 +47,17 @@ import { dataSourceOptions } from './database/data-source';
       isGlobal: true,
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => ({
-        store: await redisStore({
-          url: configService.get('REDIS_URL') || 'redis://localhost:6379',
-          ttl: 60 * 60 * 1000, // 1 hour default TTL
-        }),
-      }),
+      useFactory: async (configService: ConfigService) => {
+        if (process.env.NODE_ENV === 'test') {
+          return { ttl: 60 * 60 * 1000 };
+        }
+        return {
+          store: await redisStore({
+            url: configService.get('REDIS_URL') || 'redis://localhost:6379',
+            ttl: 60 * 60 * 1000, // 1 hour default TTL
+          }),
+        };
+      },
     }),
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],

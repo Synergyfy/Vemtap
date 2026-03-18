@@ -23,7 +23,12 @@ export class MessagingHelperService {
 
     if (user.role === UserRole.OWNER || user.role === UserRole.MANAGER) {
       // If no branchId provided, use their primary branchId
-      if (!providedBranchId) return user.branchId;
+      if (!providedBranchId) {
+        if (!user.branchId) {
+          throw new BadRequestException('Branch ID is required');
+        }
+        return user.branchId;
+      }
 
       // If branchId provided, verify they have access to it
       const hasAccess = await this.branchesService.checkBranchAccess(user, providedBranchId);

@@ -144,7 +144,7 @@ describe('Messaging (e2e)', () => {
         lastName: 'One',
         role: UserRole.CUSTOMER,
         status: UserStatus.ACTIVE,
-        phone: '+1234567890',
+        phone: `+123${Math.floor(Math.random() * 10000000)}`,
       } as any),
     );
 
@@ -156,7 +156,7 @@ describe('Messaging (e2e)', () => {
         lastName: 'Two',
         role: UserRole.CUSTOMER,
         status: UserStatus.ACTIVE,
-        phone: '+0987654321',
+        phone: `+098${Math.floor(Math.random() * 10000000)}`,
       } as any),
     );
 
