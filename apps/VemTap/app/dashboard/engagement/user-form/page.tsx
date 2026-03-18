@@ -14,13 +14,23 @@ import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
 import { buildBrandCssVars } from '@/lib/brandColor';
 
-export default function UserFormSettingsPage() {
+type UserFormSettingsMode = 'all' | 'default' | 'success';
+
+interface UserFormSettingsPageProps {
+    mode?: UserFormSettingsMode;
+    defaultPreviewTab?: 'form' | 'thank_you' | 'final_step' | 'returning';
+}
+
+export default function UserFormSettingsPage({
+    mode = 'all',
+    defaultPreviewTab = 'form',
+}: UserFormSettingsPageProps) {
     const store = useCustomerFlowStore();
     const { data: business, isLoading } = useMyBusiness();
     const mainBranch = business?.branches?.find((b) => b.isMainBranch);
     const updateMutation = useUpdateBusiness();
     const [isSaving, setIsSaving] = useState(false);
-    const [previewTab, setPreviewTab] = useState<'form' | 'thank_you' | 'final_step' | 'returning'>('form');
+    const [previewTab, setPreviewTab] = useState<'form' | 'thank_you' | 'final_step' | 'returning'>(defaultPreviewTab);
 
     const config = useMemo(() => store.getBusinessConfig(), [store]);
     const previewStoreName = mainBranch?.name || business?.name || store.storeName || 'Your Store';
@@ -113,8 +123,12 @@ export default function UserFormSettingsPage() {
     return (
         <div className="p-8 space-y-6">
             <PageHeader
-                title="User experience"
-                description="Control the main form visitors fill before any post-submit actions."
+                title={mode === 'success' ? 'Default success' : 'User experience'}
+                description={
+                    mode === 'success'
+                        ? 'Set what visitors see immediately after submitting the default form.'
+                        : 'Control the main form visitors fill before any post-submit actions.'
+                }
             />
             <div className="bg-white rounded-2xl border border-gray-100 p-5 flex items-start gap-3">
                 <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -130,119 +144,123 @@ export default function UserFormSettingsPage() {
 
             <EngagementTabs
                 tabs={[
-                    { label: 'Default Form', active: true },
+                    { label: 'Appearance', href: '/dashboard/engagement/experience/appearance' },
+                    { label: 'Default Form', href: '/dashboard/engagement/experience/default-form', active: mode === 'default' || mode === 'all' },
+                    { label: 'Default Success', href: '/dashboard/engagement/experience/default-success', active: mode === 'success' },
                     { label: 'Additional Forms', href: '/dashboard/engagement/experience/additional-forms' },
                 ]}
             />
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
                 <div className="space-y-6">
-                    <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {mode !== 'success' && (
+                        <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Welcome Tag</label>
+                                    <input
+                                        type="text"
+                                        value={settings.welcomeTag}
+                                        onChange={(e) => setSettings((prev) => ({ ...prev, welcomeTag: e.target.value }))}
+                                        className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                                    />
+                                </div>
+                            </div>
+
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Welcome Tag</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Welcome Title</label>
                                 <input
                                     type="text"
-                                    value={settings.welcomeTag}
-                                    onChange={(e) => setSettings((prev) => ({ ...prev, welcomeTag: e.target.value }))}
+                                    value={settings.welcomeTitle}
+                                    onChange={(e) => setSettings((prev) => ({ ...prev, welcomeTitle: e.target.value }))}
                                     className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
                                 />
                             </div>
-                        </div>
 
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Welcome Title</label>
-                            <input
-                                type="text"
-                                value={settings.welcomeTitle}
-                                onChange={(e) => setSettings((prev) => ({ ...prev, welcomeTitle: e.target.value }))}
-                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
-                            />
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Welcome Message</label>
-                            <textarea
-                                value={settings.welcomeMessage}
-                                onChange={(e) => setSettings((prev) => ({ ...prev, welcomeMessage: e.target.value }))}
-                                className="w-full min-h-[120px] rounded-xl border border-gray-200 px-3 py-2 text-sm"
-                            />
-                        </div>
-
-                        <div className="space-y-4 pt-2 pb-2">
-                            <div className="flex items-center justify-between">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Default Form Fields</label>
-                                <div className="group relative">
-                                    <Info size={14} className="text-gray-400 cursor-help" />
-                                    <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 font-medium">
-                                        These core fields are required for business intelligence and loyalty tracking.
-                                    </div>
-                                </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Welcome Message</label>
+                                <textarea
+                                    value={settings.welcomeMessage}
+                                    onChange={(e) => setSettings((prev) => ({ ...prev, welcomeMessage: e.target.value }))}
+                                    className="w-full min-h-[120px] rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                                />
                             </div>
-                            <div className="grid grid-cols-1 gap-2">
-                                {['Full Name', 'Phone Number', 'Email Address'].map((field) => (
-                                    <div key={field} className="h-11 rounded-xl bg-gray-50 border border-gray-100 px-3 flex items-center justify-between opacity-60">
-                                        <span className="text-xs font-bold text-gray-500">{field}</span>
-                                        <div className="flex items-center gap-1.5 grayscale">
-                                            <div className="size-1.5 rounded-full bg-gray-400"></div>
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Locked</span>
+
+                            <div className="space-y-4 pt-2 pb-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Default Form Fields</label>
+                                    <div className="group relative">
+                                        <Info size={14} className="text-gray-400 cursor-help" />
+                                        <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 font-medium">
+                                            These core fields are required for business intelligence and loyalty tracking.
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="space-y-1">
-                            <div className="flex items-center justify-between mb-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Privacy Message</label>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="size-1.5 rounded-full bg-amber-400"></div>
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-amber-500">Read Only</span>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2">
+                                    {['Full Name', 'Phone Number', 'Email Address'].map((field) => (
+                                        <div key={field} className="h-11 rounded-xl bg-gray-50 border border-gray-100 px-3 flex items-center justify-between opacity-60">
+                                            <span className="text-xs font-bold text-gray-500">{field}</span>
+                                            <div className="flex items-center gap-1.5 grayscale">
+                                                <div className="size-1.5 rounded-full bg-gray-400"></div>
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Locked</span>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                            <textarea
-                                value={settings.privacyMessage}
-                                readOnly
-                                className="w-full min-h-[100px] rounded-xl bg-gray-50 border border-gray-100 px-3 py-2 text-sm text-gray-500 cursor-not-allowed resize-none"
-                            />
-                            <p className="text-[9px] text-gray-400 font-medium italic">Standard GDPR compliance text managed by VemTap.</p>
-                        </div>
 
-                    </div>
-
-                    <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="size-8 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center">
-                                <Save size={16} />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-gray-900">After Submission Content</h3>
-                                <p className="text-[10px] text-gray-500">What visitors see after filling the default form.</p>
+                            <div className="space-y-1">
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Privacy Message</label>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="size-1.5 rounded-full bg-amber-400"></div>
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-amber-500">Read Only</span>
+                                    </div>
+                                </div>
+                                <textarea
+                                    value={settings.privacyMessage}
+                                    readOnly
+                                    className="w-full min-h-[100px] rounded-xl bg-gray-50 border border-gray-100 px-3 py-2 text-sm text-gray-500 cursor-not-allowed resize-none"
+                                />
+                                <p className="text-[9px] text-gray-400 font-medium italic">Standard GDPR compliance text managed by VemTap.</p>
                             </div>
                         </div>
+                    )}
 
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Success Title</label>
-                            <input
-                                type="text"
-                                value={settings.successTitle}
-                                onChange={(e) => setSettings((prev) => ({ ...prev, successTitle: e.target.value }))}
-                                className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
-                                placeholder="e.g., Visit Recorded"
-                            />
+                    {mode !== 'default' && (
+                        <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="size-8 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center">
+                                    <Save size={16} />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-bold text-gray-900">After Submission Content</h3>
+                                    <p className="text-[10px] text-gray-500">What visitors see after filling the default form.</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Success Title</label>
+                                <input
+                                    type="text"
+                                    value={settings.successTitle}
+                                    onChange={(e) => setSettings((prev) => ({ ...prev, successTitle: e.target.value }))}
+                                    className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                                    placeholder="e.g., Visit Recorded"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Success Description</label>
+                                <textarea
+                                    value={settings.successMessage}
+                                    onChange={(e) => setSettings((prev) => ({ ...prev, successMessage: e.target.value }))}
+                                    className="w-full min-h-[80px] rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                                    placeholder="e.g., Thank you for visiting our store"
+                                />
+                            </div>
                         </div>
-
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Success Description</label>
-                            <textarea
-                                value={settings.successMessage}
-                                onChange={(e) => setSettings((prev) => ({ ...prev, successMessage: e.target.value }))}
-                                className="w-full min-h-[80px] rounded-xl border border-gray-200 px-3 py-2 text-sm"
-                                placeholder="e.g., Thank you for visiting our store"
-                            />
-                        </div>
-
-                    </div>
+                    )}
 
                     <div className="flex justify-end">
                         <button
@@ -345,4 +363,3 @@ export default function UserFormSettingsPage() {
         </div>
     );
 }
-

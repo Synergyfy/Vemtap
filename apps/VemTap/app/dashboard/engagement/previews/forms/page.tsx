@@ -134,13 +134,13 @@ export default function SelectedFormPreviewPage() {
 
             <div className="flex flex-wrap items-center gap-2">
                 <Link
-                    href="/dashboard/settings/engagement/previews/default"
+                    href="/dashboard/engagement/previews/default"
                     className="px-3 py-1.5 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50"
                 >
                     Default Form
                 </Link>
                 <Link
-                    href="/dashboard/settings/engagement/previews/socials"
+                    href="/dashboard/engagement/previews/socials"
                     className="px-3 py-1.5 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50"
                 >
                     Socials
@@ -190,7 +190,7 @@ export default function SelectedFormPreviewPage() {
                                     )}
                                     <div className="flex flex-wrap gap-2 pt-2">
                                         <Link
-                                            href={`/dashboard/settings/engagement/forms?edit=${encodeURIComponent(selectedForm.id)}`}
+                                            href={`/dashboard/engagement/forms?edit=${encodeURIComponent(selectedForm.id)}`}
                                             className="h-9 px-4 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest inline-flex items-center"
                                         >
                                             Edit Form
@@ -227,7 +227,6 @@ export default function SelectedFormPreviewPage() {
                                         { key: 'form', label: 'Business Form' },
                                         { key: 'new_user', label: 'New User' },
                                         { key: 'thank_you', label: 'Thank You Page' },
-                                        { key: 'final_step', label: 'Thank You Message' },
                                         { key: 'welcome_back', label: 'Welcome Back' },
                                         { key: 'preview', label: 'Preview' },
                                     ].map((tab) => (
@@ -296,17 +295,7 @@ export default function SelectedFormPreviewPage() {
                                                     />
                                                 )}
 
-                                                {activePreviewTab === 'final_step' && (
-                                                    <StepFinalSuccess
-                                                        customSuccessTag={customSuccessTag}
-                                                        customSuccessTitle={customSuccessTitle}
-                                                        finalSuccessMessage={customSuccessMessage}
-                                                        customSuccessButton={customSuccessButton}
-                                                        onFinish={() => setActivePreviewTab('welcome_back')}
-                                                        engagementSettings={engagementSettings}
-                                                    />
-                                                )}
-
+                                            
                                                 {activePreviewTab === 'welcome_back' && (
                                                     <StepWelcomeBack
                                                         storeName={previewStoreName}
@@ -360,16 +349,7 @@ export default function SelectedFormPreviewPage() {
                                                             />
                                                         )}
 
-                                                        {flowPreviewStep === 'final_step' && (
-                                                            <StepFinalSuccess
-                                                                customSuccessTag={customSuccessTag}
-                                                                customSuccessTitle={customSuccessTitle}
-                                                                finalSuccessMessage={customSuccessMessage}
-                                                                customSuccessButton={customSuccessButton}
-                                                                onFinish={() => setFlowPreviewStep('welcome_back')}
-                                                                engagementSettings={engagementSettings}
-                                                            />
-                                                        )}
+                                                    
 
                                                         {flowPreviewStep === 'welcome_back' && (
                                                             <StepWelcomeBack

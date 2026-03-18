@@ -113,13 +113,13 @@ export default function DefaultFormPreviewPage() {
             <div className="flex flex-wrap items-center gap-2">
                 <span className="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-black uppercase tracking-widest">Default Form</span>
                 <Link
-                    href="/dashboard/settings/engagement/previews/socials"
+                    href="/dashboard/engagement/previews/socials"
                     className="px-3 py-1.5 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50"
                 >
                     Socials
                 </Link>
                 <Link
-                    href="/dashboard/settings/engagement/previews/forms"
+                    href="/dashboard/engagement/previews/forms"
                     className="px-3 py-1.5 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50"
                 >
                     Selected Form
@@ -138,7 +138,7 @@ export default function DefaultFormPreviewPage() {
                                 </p>
                             </div>
                             <Link
-                                href="/dashboard/settings/engagement/user-form"
+                                href="/dashboard/engagement/user-form"
                                 className="px-3 py-1.5 rounded-full border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50"
                             >
                                 Full Settings
