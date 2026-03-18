@@ -15,7 +15,7 @@ export function getBusinessTaskLinks(businessUid: string): TaskLink[] {
     return [
         { label: 'Open Business Dashboard', href: `/dashboard${q}`, description: 'Review business overview and live KPIs.' },
         { label: 'Open Visitors', href: `/dashboard/visitors/all${q}`, description: 'Inspect visitor logs and recent check-ins.' },
-        { label: 'Open Messaging', href: `/dashboard/messaging${q}`, description: 'Manage outbound campaigns and templates.' },
+        { label: 'Open Channels', href: `/dashboard/messaging${q}`, description: 'Manage outbound campaigns and templates.' },
         { label: 'Open Devices', href: `/dashboard/settings/devices${q}`, description: 'Inspect terminals and registration status.' },
         { label: 'Open Loyalty', href: `/dashboard/loyalty${q}`, description: 'Check loyalty settings and reward behavior.' },
     ];

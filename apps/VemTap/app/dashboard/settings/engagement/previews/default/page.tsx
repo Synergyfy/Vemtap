@@ -10,10 +10,12 @@ import { SocialLinksPreview } from '@/components/shared/SocialLinksPreview';
 import { StepForm } from '@/components/visitor/StepForm';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
+import { buildBrandCssVars } from '@/lib/brandColor';
 
 export default function DefaultFormPreviewPage() {
     const store = useCustomerFlowStore();
     const { data: business, isLoading } = useMyBusiness();
+    const mainBranch = business?.branches?.find((b) => b.isMainBranch);
     const updateMutation = useUpdateBusiness();
     const [isSaving, setIsSaving] = useState(false);
     const [submitLabel, setSubmitLabel] = useState(store.customNewUserWelcomeButton || 'Submit');
@@ -22,6 +24,12 @@ export default function DefaultFormPreviewPage() {
         if (!business?.welcomeButton) return;
         setSubmitLabel(business.welcomeButton);
     }, [business?.welcomeButton]);
+
+    const previewStoreName = mainBranch?.name || business?.name || store.storeName || 'Your Store';
+    const brandVars = useMemo(
+        () => buildBrandCssVars(store.engagementSettings.brandColor),
+        [store.engagementSettings.brandColor]
+    );
 
     const previewSettings = useMemo(() => ({
         welcomeTitle: business?.welcomeTitle || store.customNewUserWelcomeTitle || 'Connect with us',
@@ -39,7 +47,7 @@ export default function DefaultFormPreviewPage() {
             business?.welcomeButton ||
             store.customNewUserWelcomeButton ||
             'Submit',
-        logoUrl: business?.logoUrl || store.logoUrl || '',
+        logoUrl: mainBranch?.logoUrl || business?.logoUrl || store.logoUrl || '',
     }), [
         business?.logoUrl,
         business?.privacyMessage,
@@ -47,6 +55,7 @@ export default function DefaultFormPreviewPage() {
         business?.welcomeMessage,
         business?.welcomeTag,
         business?.welcomeTitle,
+        mainBranch?.logoUrl,
         store.customNewUserWelcomeButton,
         store.customNewUserWelcomeMessage,
         store.customNewUserWelcomeTag,
@@ -161,23 +170,25 @@ export default function DefaultFormPreviewPage() {
                             <span className="text-[10px] font-semibold text-gray-400">Default Form</span>
                         </summary>
                         <div className="px-4 pb-4">
-                            <PhoneFrame title="Default Form Preview">
-                                <div className="p-6">
-                                    <StepForm
-                                        storeName={business?.name || store.storeName || 'Your Store'}
-                                        logoUrl={previewSettings.logoUrl}
-                                        customWelcomeMessage={previewSettings.welcomeMessage}
-                                        customWelcomeTitle={previewSettings.welcomeTitle}
-                                        customWelcomeTag={previewSettings.welcomeTag}
-                                        customPrivacyMessage={previewSettings.privacyMessage}
-                                        submitLabel={previewSettings.submitLabel}
-                                        headerVariant="inline"
-                                        onBack={() => { }}
-                                        onSubmit={() => { }}
-                                    />
-                                    <SocialLinksPreview settings={store.engagementSettings} />
-                                </div>
-                            </PhoneFrame>
+                            <div style={brandVars}>
+                                <PhoneFrame title="Default Form Preview">
+                                    <div className="p-6">
+                                        <StepForm
+                                            storeName={previewStoreName}
+                                            logoUrl={previewSettings.logoUrl}
+                                            customWelcomeMessage={previewSettings.welcomeMessage}
+                                            customWelcomeTitle={previewSettings.welcomeTitle}
+                                            customWelcomeTag={previewSettings.welcomeTag}
+                                            customPrivacyMessage={previewSettings.privacyMessage}
+                                            submitLabel={previewSettings.submitLabel}
+                                            headerVariant="inline"
+                                            onBack={() => { }}
+                                            onSubmit={() => { }}
+                                        />
+                                        <SocialLinksPreview settings={store.engagementSettings} />
+                                    </div>
+                                </PhoneFrame>
+                            </div>
                         </div>
                     </details>
                 </div>

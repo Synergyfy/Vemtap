@@ -6,6 +6,7 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import PhoneFrame from '@/components/shared/PhoneFrame';
 import { StepOutcome } from '@/components/visitor/StepOutcome';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { buildBrandCssVars } from '@/lib/brandColor';
 
 export default function SocialsPreviewPage() {
     const {
@@ -17,6 +18,10 @@ export default function SocialsPreviewPage() {
     } = useCustomerFlowStore();
 
     const config = getBusinessConfig();
+    const brandVars = React.useMemo(
+        () => buildBrandCssVars(engagementSettings?.brandColor),
+        [engagementSettings?.brandColor]
+    );
 
     return (
         <div className="p-8 space-y-6">
@@ -69,7 +74,7 @@ export default function SocialsPreviewPage() {
                             Preview
                             <span className="text-[10px] font-semibold text-gray-400">Social Actions</span>
                         </summary>
-                        <div className="px-4 pb-4">
+                        <div className="px-4 pb-4" style={brandVars}>
                             <PhoneFrame title="Socials Preview">
                                 <div className="p-6">
                                     <StepOutcome
