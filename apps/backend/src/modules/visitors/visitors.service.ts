@@ -51,6 +51,9 @@ export class SendCampaignBody {
   message: string;
 }
 
+import { VisitedBranchesQueryDto } from './dto/visited-branches-query.dto';
+import { PaginatedVisitedBranchResponseDto } from './dto/visited-branch-response.dto';
+
 @Injectable()
 export class VisitorsService {
   constructor(
@@ -72,6 +75,71 @@ export class VisitorsService {
     private branchesService: BranchesService,
     private loyaltyService: LoyaltyService,
   ) {}
+
+  async getVisitedBranches(
+    customerId: string,
+    query: VisitedBranchesQueryDto,
+  ): Promise<PaginatedVisitedBranchResponseDto> {
+    const { page = 1, limit = 10, search } = query;
+    const skip = (page - 1) * limit;
+
+    const qb = this.visitRepository
+      .createQueryBuilder('visit')
+      .innerJoinAndSelect('visit.branch', 'branch')
+      .where('visit.customerId = :customerId', { customerId });
+
+    if (search) {
+      qb.andWhere('branch.name ILIKE :search', { search: `%${search}%` });
+    }
+
+    qb.select([
+      'branch.id as id',
+      'branch.name as name',
+      'branch.address as address',
+      'branch.city as city',
+      'branch.logoUrl as "logoUrl"',
+      'branch.businessId as "businessId"',
+      'MAX(visit.createdAt) as "lastVisitedAt"',
+      'COUNT(visit.id) as "visitCount"',
+    ]);
+
+    qb.groupBy('branch.id')
+      .orderBy('"lastVisitedAt"', 'DESC')
+      .offset(skip)
+      .limit(limit);
+
+    const rawData = await qb.getRawMany();
+    
+    // For total count, we need another query to count grouped branches
+    const countQb = this.visitRepository
+      .createQueryBuilder('visit')
+      .innerJoin('visit.branch', 'branch')
+      .where('visit.customerId = :customerId', { customerId });
+
+    if (search) {
+      countQb.andWhere('branch.name ILIKE :search', { search: `%${search}%` });
+    }
+
+    const total = await countQb
+      .select('COUNT(DISTINCT visit.branchId)', 'count')
+      .getRawOne();
+
+    return {
+      data: rawData.map((row) => ({
+        id: row.id,
+        name: row.name,
+        address: row.address,
+        city: row.city,
+        logoUrl: row.logoUrl,
+        businessId: row.businessId,
+        lastVisitedAt: new Date(row.lastVisitedAt),
+        visitCount: parseInt(row.visitCount, 10),
+      })),
+      total: parseInt(total.count, 10),
+      page,
+      limit,
+    };
+  }
 
   async checkBranchAccess(user: User, branchId: string): Promise<boolean> {
     return this.branchesService.checkBranchAccess(user, branchId);
