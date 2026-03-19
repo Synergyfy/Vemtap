@@ -61,38 +61,46 @@ export class BatchSendProcessor extends WorkerHost {
         return { successCount: 0, failureCount: 0 };
       }
 
-      for (const customerId of customerIds) {
-        try {
-          const customer = await this.userRepo.findOne({
-            where: { id: customerId, role: UserRole.CUSTOMER },
-          });
-          if (!customer) {
-            this.logger.warn(`Customer ${customerId} not found or not a customer role`);
-            continue;
-          }
+      // Process in chunks of 20 to avoid overwhelming the database/providers, but faster than sequentially
+      const CHUNK_SIZE = 20;
+      for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
+        const chunk = customerIds.slice(i, i + CHUNK_SIZE);
 
-          let from = jobFrom || '';
-          if (!from) {
-            if (job.data.channel === Channel.SMS) {
-              from = 'VEMTAP';
-            } else if (job.data.channel === Channel.WHATSAPP) {
-              from = branch.whatsappNumber || '';
+        await Promise.all(
+          chunk.map(async (customerId) => {
+            try {
+              const customer = await this.userRepo.findOne({
+                where: { id: customerId, role: UserRole.CUSTOMER },
+              });
+              if (!customer) {
+                this.logger.warn(`Customer ${customerId} not found or not a customer role`);
+                return;
+              }
+
+              let from = jobFrom || '';
+              if (!from) {
+                if (job.data.channel === Channel.SMS) {
+                  from = 'VEMTAP';
+                } else if (job.data.channel === Channel.WHATSAPP) {
+                  from = branch.whatsappNumber || '';
+                }
+              }
+
+              await this.messagingEngine.processSingleSend(
+                branchId,
+                customerId,
+                content || '',
+                job.data.channel,
+                from,
+                campaignId,
+              );
+              successCount++;
+            } catch (err: any) {
+              this.logger.error(`Failed to send message to customer ${customerId} in batch ${campaignId}: ${err.message}`);
+              failureCount++;
             }
-          }
-
-          await this.messagingEngine.processSingleSend(
-            branchId,
-            customerId,
-            content || '',
-            job.data.channel,
-            from,
-            campaignId,
-          );
-          successCount++;
-        } catch (err: any) {
-          this.logger.error(`Failed to send message to customer ${customerId} in batch ${campaignId}: ${err.message}`);
-          failureCount++;
-        }
+          })
+        );
       }
 
       await this.campaignService.updateCampaign(campaignId, {
