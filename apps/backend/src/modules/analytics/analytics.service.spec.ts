@@ -6,9 +6,9 @@ import { User } from '../users/entities/user.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { Device } from '../devices/entities/device.entity';
 import { MessageLog } from '../messaging/entities/message-log.entity';
-import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
-import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
-import { Redemption } from '../campaigns/entities/redemption.entity';
+import { PointTransaction } from '../loyalty/entities/point-transaction.entity';
+import { RedemptionCode } from '../loyalty/entities/redemption-code.entity';
+import { Reward } from '../loyalty/entities/reward.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Message } from '../messaging/entities/message.entity';
 import { DataSource } from 'typeorm';
@@ -61,15 +61,15 @@ describe('AnalyticsService', () => {
           useValue: mockRepository,
         },
         {
-          provide: getRepositoryToken(LoyaltyProfile),
-          useValue: mockRepository,
-        },
-        {
           provide: getRepositoryToken(PointTransaction),
           useValue: mockRepository,
         },
         {
-          provide: getRepositoryToken(Redemption),
+          provide: getRepositoryToken(RedemptionCode),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(Reward),
           useValue: mockRepository,
         },
         {

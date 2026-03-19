@@ -115,7 +115,9 @@ describe('PlansService', () => {
       isFree: true,
     });
     const plan = await service.findFreePlan();
-    expect(plan.isFree).toBe(true);
+    expect(plan).toBeDefined();
+    expect(plan!.isFree).toBe(true);
+
     expect(mockPlanRepository.findOne).toHaveBeenCalledWith({
       where: { isFree: true, isActive: true },
     });

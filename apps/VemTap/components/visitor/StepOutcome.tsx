@@ -52,16 +52,27 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
 
     const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards || attachedForms?.length);
 
+    const normalizeUrl = (value: string | undefined) => {
+        if (!value) return '';
+        const trimmed = value.trim();
+        if (!trimmed) return '';
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        if (trimmed.startsWith('www.')) return `https://${trimmed}`;
+        if (trimmed.startsWith('@')) return `https://instagram.com/${trimmed.slice(1)}`;
+        if (!trimmed.includes('.') && !trimmed.includes('/')) return `https://${trimmed}`;
+        return `https://${trimmed}`;
+    };
+
     const socialItems: Array<{ label: string; url?: string }> = [
-        { label: 'Instagram', url: engagementSettings?.instagram },
-        { label: 'X / Twitter', url: engagementSettings?.twitter },
-        { label: 'Facebook', url: engagementSettings?.facebook },
-        { label: 'LinkedIn', url: engagementSettings?.linkedin },
-        { label: 'Google Review', url: engagementSettings?.reviewUrl },
-        { label: 'Trustpilot', url: engagementSettings?.trustpilotUrl },
+        { label: 'Instagram', url: normalizeUrl(engagementSettings?.instagram) },
+        { label: 'X / Twitter', url: normalizeUrl(engagementSettings?.twitter) },
+        { label: 'Facebook', url: normalizeUrl(engagementSettings?.facebook) },
+        { label: 'LinkedIn', url: normalizeUrl(engagementSettings?.linkedin) },
+        { label: 'Google Review', url: normalizeUrl(engagementSettings?.reviewUrl) },
+        { label: 'Trustpilot', url: normalizeUrl(engagementSettings?.trustpilotUrl) },
     ];
     const hasExplicitSocial = socialItems.some((link) => Boolean(link.url));
-    const fallbackSocialUrl = !hasExplicitSocial ? engagementSettings?.socialUrl : '';
+    const fallbackSocialUrl = !hasExplicitSocial ? normalizeUrl(engagementSettings?.socialUrl) : '';
     const showSocialCard = !!(engagementSettings?.showSocial && (hasExplicitSocial || fallbackSocialUrl));
 
     const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
@@ -118,20 +129,31 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
                 {showSocialCard && (
                     <div className="w-full mt-6 rounded-2xl border border-gray-100 bg-white p-4 text-left">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Social Links</p>
-                        <div className="space-y-2 text-xs text-slate-700">
+                        <div className="grid grid-cols-1 gap-2">
                             {socialItems.map((link) => (
                                 link.url ? (
-                                    <div key={link.label} className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-3 py-2">
-                                        <span className="font-semibold">{link.label}</span>
-                                        <span className="truncate text-slate-500">{link.url}</span>
-                                    </div>
+                                    <a
+                                        key={link.label}
+                                        href={link.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                                    >
+                                        <span className="truncate">{link.label}</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Open</span>
+                                    </a>
                                 ) : null
                             ))}
                             {fallbackSocialUrl && (
-                                <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-3 py-2">
-                                    <span className="font-semibold">Social Link</span>
-                                    <span className="truncate text-slate-500">{fallbackSocialUrl}</span>
-                                </div>
+                                <a
+                                    href={fallbackSocialUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                                >
+                                    <span className="truncate">Social Link</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Open</span>
+                                </a>
                             )}
                         </div>
                     </div>

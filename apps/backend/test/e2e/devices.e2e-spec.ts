@@ -23,14 +23,14 @@ describe('Devices (E2E)', () => {
     deviceRepo = app.get(getRepositoryToken(Device));
 
     // Manually create a device for testing update and delete
-    const device = await deviceRepo.save(
+    const device = (await deviceRepo.save(
       deviceRepo.create({
         name: 'Initial Device',
         code: 'TEST-CODE-123',
         branchId: branchId,
         status: DeviceStatus.ACTIVE,
       } as any),
-    );
+    )) as any;
     deviceId = device.id;
   });
 

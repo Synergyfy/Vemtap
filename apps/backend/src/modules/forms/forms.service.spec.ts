@@ -148,6 +148,38 @@ describe('FormsService', () => {
       expect(mockFormTemplatesRepository.create).toHaveBeenCalled();
       expect(mockFormTemplatesRepository.save).toHaveBeenCalled();
     });
+
+    it('should successfully create a template with DATE_NO_YEAR field type', async () => {
+      const dto: CreateFormTemplateDto = {
+        name: 'Partial Date Template',
+        description: 'Birthday collection',
+        fields: [
+          {
+            type: FormFieldType.DATE_NO_YEAR,
+            question: 'When is your birthday?',
+            isRequired: false,
+            order: 1,
+          },
+        ],
+      };
+
+      const mockField = { id: 'field-birthday', ...dto.fields[0] };
+      const mockTemplate = {
+        id: 'template-2',
+        name: dto.name,
+        description: dto.description,
+        fields: [mockField],
+      };
+
+      mockFormFieldTemplatesRepository.create.mockReturnValue(mockField);
+      mockFormTemplatesRepository.create.mockReturnValue(mockTemplate);
+      mockFormTemplatesRepository.save.mockResolvedValue(mockTemplate);
+
+      const result = await service.createTemplate(dto);
+
+      expect(result).toEqual(mockTemplate);
+      expect(result.fields[0].type).toBe(FormFieldType.DATE_NO_YEAR);
+    });
   });
 
   describe('findAllTemplates', () => {

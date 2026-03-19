@@ -116,13 +116,13 @@ describe('Messaging (e2e)', () => {
     );
 
     // 3. Create Branch
-    const branch = await branchRepo.save(
+    const branch = (await branchRepo.save(
       branchRepo.create({
         name: 'Main Branch',
         businessId: businessId,
         isActive: true,
       } as any),
-    );
+    )) as any;
     branchId = branch.id;
 
     // 3.5 Create Wallet with Credits
@@ -136,7 +136,7 @@ describe('Messaging (e2e)', () => {
     );
 
     // 4. Create Customers and Visits
-    const customer1 = await userRepo.save(
+    const customer1 = (await userRepo.save(
       userRepo.create({
         email: `cust1-${testId}@test.com`,
         password: hashedPassword,
@@ -146,9 +146,9 @@ describe('Messaging (e2e)', () => {
         status: UserStatus.ACTIVE,
         phone: `+123${Math.floor(Math.random() * 10000000)}`,
       } as any),
-    );
+    )) as any;
 
-    const customer2 = await userRepo.save(
+    const customer2 = (await userRepo.save(
       userRepo.create({
         email: `cust2-${testId}@test.com`,
         password: hashedPassword,
@@ -158,19 +158,19 @@ describe('Messaging (e2e)', () => {
         status: UserStatus.ACTIVE,
         phone: `+098${Math.floor(Math.random() * 10000000)}`,
       } as any),
-    );
+    )) as any;
 
     await visitRepo.save([
       visitRepo.create({
         customerId: customer1.id,
         branchId,
         businessId,
-      } as any),
+      } as any) as any,
       visitRepo.create({
         customerId: customer2.id,
         branchId,
         businessId,
-      } as any),
+      } as any) as any,
     ]);
 
     const loginResult = await authService.login({

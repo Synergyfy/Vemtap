@@ -45,7 +45,7 @@ describe('AutomationsController (e2e)', () => {
         loyaltyPoints: 0,
       },
     } as any);
-    const savedRule = await ruleRepo.save(rule);
+    const savedRule = (await ruleRepo.save(rule)) as any;
     ruleId = savedRule.id;
 
     // 3. Create a Log entry for this rule

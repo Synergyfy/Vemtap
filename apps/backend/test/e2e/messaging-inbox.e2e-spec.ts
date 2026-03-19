@@ -47,7 +47,7 @@ describe('Messaging Inbox (e2e)', () => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 1. Create Owner & Business
-    const owner = await userRepo.save(
+    const owner = (await userRepo.save(
       userRepo.create({
         email: `owner-inbox-${testId}@test.com`,
         password: hashedPassword,
@@ -56,29 +56,29 @@ describe('Messaging Inbox (e2e)', () => {
         role: UserRole.OWNER,
         status: UserStatus.ACTIVE,
       } as any),
-    );
+    )) as any;
 
-    const business = await businessRepo.save(
+    const business = (await businessRepo.save(
       businessRepo.create({
         name: 'Inbox Test Biz',
         ownerId: owner.id,
       } as any),
-    );
+    )) as any;
     owner.businessId = business.id;
     await userRepo.save(owner);
 
     // 2. Create Branch
-    const branch = await branchRepo.save(
+    const branch = (await branchRepo.save(
       branchRepo.create({
         name: 'Main Branch',
         businessId: business.id,
         isActive: true,
       } as any),
-    );
+    )) as any;
     branchId = branch.id;
 
     // 3. Create Visitor (as a User with CUSTOMER role)
-    const visitorUser = await userRepo.save(
+    const visitorUser = (await userRepo.save(
       userRepo.create({
         email: `visitor-inbox-${testId}@test.com`,
         password: hashedPassword,
@@ -87,7 +87,7 @@ describe('Messaging Inbox (e2e)', () => {
         role: UserRole.CUSTOMER,
         status: UserStatus.ACTIVE,
       } as any),
-    );
+    )) as any;
     customerId = visitorUser.id;
 
     // Login both
@@ -109,13 +109,13 @@ describe('Messaging Inbox (e2e)', () => {
   });
 
   it('should allow branch to start a conversation (creates a thread)', async () => {
-    const thread = await threadRepo.save(threadRepo.create({
+    const thread = (await threadRepo.save(threadRepo.create({
       branchId,
       businessId: (await branchRepo.findOneBy({id: branchId}))?.businessId,
       customerId,
       channel: Channel.IN_HOUSE,
       status: ThreadStatus.OPEN,
-    } as any));
+    } as any))) as any;
 
     const res = await request(app.getHttpServer())
       .post(`/api/v1/messaging/inbox/threads/${thread.id}/reply?branchId=${branchId}`)

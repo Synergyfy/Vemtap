@@ -45,9 +45,9 @@ const DOCS: Category[] = [
         title: 'Forms',
         pages: [
           { id: 'forms', title: 'Forms Hub', path: '/dashboard/forms', summary: 'Default form and share links.' },
-          { id: 'form-builder', title: 'Form Creator', path: '/dashboard/settings/engagement/forms', summary: 'Build and publish branch forms.' },
-          { id: 'form-responses', title: 'Form Responses', path: '/dashboard/settings/engagement/forms/responses', summary: 'Response metrics by form.' },
-          { id: 'form-response-detail', title: 'Response Detail', path: '/dashboard/settings/engagement/forms/responses/[formId]', summary: 'Deep inspection for one form.' },
+          { id: 'form-builder', title: 'Form Creator', path: '/dashboard/engagement/forms', summary: 'Build and publish branch forms.' },
+          { id: 'form-responses', title: 'Form Responses', path: '/dashboard/engagement/forms/responses', summary: 'Response metrics by form.' },
+          { id: 'form-response-detail', title: 'Response Detail', path: '/dashboard/engagement/forms/responses/[formId]', summary: 'Deep inspection for one form.' },
         ],
       },
       {
@@ -118,8 +118,8 @@ const DOCS: Category[] = [
         id: 'engagement-settings',
         title: 'Engagement Settings',
         pages: [
-          { id: 'settings-engagement', title: 'Engagement', path: '/dashboard/settings/engagement', summary: 'Engagement control center.' },
-          { id: 'settings-socials', title: 'Socials', path: '/dashboard/settings/engagement/socials', summary: 'Social destination links.' },
+          { id: 'settings-engagement', title: 'Engagement', path: '/dashboard/engagement', summary: 'Engagement control center.' },
+          { id: 'settings-socials', title: 'Socials', path: '/dashboard/engagement/socials', summary: 'Social destination links.' },
         ],
       },
       {
@@ -269,3 +269,4 @@ export default function TutorialDocsPage({ title = 'Business Docs' }: { title?: 
     </div>
   );
 }
+

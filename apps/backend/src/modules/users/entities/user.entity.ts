@@ -73,13 +73,17 @@ export class User extends AbstractBaseEntity {
   @Column({ type: 'simple-array', nullable: true })
   permissions: string[];
 
-  @ApiProperty({ enum: UserStatus, example: UserStatus.PENDING })
+  @ApiProperty({ example: 'ACTIVE', enum: UserStatus })
   @Column({
     type: 'simple-enum',
     enum: UserStatus,
     default: UserStatus.PENDING,
   })
   status: UserStatus;
+
+  @ApiProperty({ example: 'CUST-12345', nullable: true })
+  @Column({ unique: true, nullable: true })
+  uniqueCode: string;
 
   @ApiProperty({ example: '2023-10-25T10:00:00.000Z', nullable: true })
   @Column({ type: 'timestamp', nullable: true })

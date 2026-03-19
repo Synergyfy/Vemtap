@@ -52,7 +52,6 @@ interface EngagementTilesProps {
 export const EngagementTiles: React.FC<EngagementTilesProps> = ({
     onAction,
     selectedFormTitle,
-    selectedFormType,
     attachedForms = [],
     completedFormIds = [],
     settings = {}
@@ -60,6 +59,7 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
     const hasSocial = !!(settings.instagram || settings.twitter || settings.facebook || settings.linkedin || settings.socialUrl);
     const hasReview = !!settings.reviewUrl;
     const hasSelectedForm = !!selectedFormTitle;
+    const formButtonBase = "w-full h-11 rounded-xl border px-4 text-left text-sm font-semibold flex items-center justify-between transition-all";
 
     return (
         <div className="w-full space-y-3 mt-8">
@@ -68,29 +68,36 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
             </h3>
 
             {attachedForms.length > 0 ? (
-                attachedForms.map((form) => {
-                    const isCompleted = completedFormIds.includes(form.id);
-                    return (
-                        <EngagementTile
-                            key={form.id}
-                            icon={isCompleted ? "check_circle" : "assignment"}
-                            label={isCompleted ? `${form.title} (Redeemed)` : (form.title || 'Open Form')}
-                            description={isCompleted ? "Thank you for filling this form!" : (form.description || 'Fill this form')}
-                            color={isCompleted ? "bg-emerald-50 text-emerald-500" : "bg-amber-50 text-amber-600"}
-                            onClick={() => !isCompleted && onAction('feedback', form.id)}
-                        />
-                    );
-                })
+                <div className="space-y-2">
+                    {attachedForms.map((form) => {
+                        const isCompleted = completedFormIds.includes(form.id);
+                        return (
+                            <button
+                                key={form.id}
+                                onClick={() => !isCompleted && onAction('feedback', form.id)}
+                                disabled={isCompleted}
+                                className={`${formButtonBase} ${
+                                    isCompleted
+                                        ? 'bg-emerald-50 border-emerald-100 text-emerald-700 cursor-default'
+                                        : 'bg-white border-gray-200 text-slate-900 hover:bg-gray-50'
+                                }`}
+                            >
+                                <span className="truncate">{form.title || 'Open Form'}</span>
+                                <span className="material-symbols-outlined text-base text-slate-300">arrow_forward</span>
+                            </button>
+                        );
+                    })}
+                </div>
             ) : (
                 <>
                     {hasSelectedForm ? (
-                        <EngagementTile
-                            icon="assignment"
-                            label={selectedFormTitle || 'Open Form'}
-                            description={`Fill ${selectedFormType || 'selected'} form`}
-                            color="bg-amber-50 text-amber-600"
+                        <button
                             onClick={() => onAction('feedback')}
-                        />
+                            className={`${formButtonBase} bg-white border-gray-200 text-slate-900 hover:bg-gray-50`}
+                        >
+                            <span className="truncate">{selectedFormTitle || 'Open Form'}</span>
+                            <span className="material-symbols-outlined text-base text-slate-300">arrow_forward</span>
+                        </button>
                     ) : (
                         <>
                             {settings.showReview && hasReview && (

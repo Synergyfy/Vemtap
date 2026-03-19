@@ -168,13 +168,13 @@ export default function BusinessProfilePage() {
             setRewardVisitThreshold(source.rewardVisitThreshold || 5);
 
             setFacebookUrl(business?.facebookUrl || '');
-            setInstagramUrl(business?.instagramUrl || '');
+            setInstagramUrl(source.instagramUrl || business?.instagramUrl || '');
             setTiktokUrl(business?.tiktokUrl || '');
             setXUrl(business?.xUrl || '');
             setYoutubeUrl(business?.youtubeUrl || '');
             setCustomLink(business?.customLink || '');
             
-            setLinkedinUrl(source.linkedinUrl || '');
+            setLinkedinUrl(source.linkedinUrl || business?.linkedinUrl || '');
             setReviewUrl(source.reviewUrl || '');
             setTrustpilotUrl(source.trustpilotUrl || '');
 
@@ -322,7 +322,7 @@ export default function BusinessProfilePage() {
         toast.success(`${reward.name || 'Reward'} ${targetStatus ? 'enabled' : 'disabled'} for public profiles.`);
     };
 
-     const handleSave = async () => {
+    const handleSave = async () => {
         const hasChanged = (current: any, original: any) => {
             const normalizedCurrent = current === '' || current === null ? undefined : current;
             const normalizedOriginal = original === '' || original === null ? undefined : original;
@@ -330,6 +330,11 @@ export default function BusinessProfilePage() {
         };
 
         try {
+            if (!business && !branch) {
+                toast.error('Profile data not loaded yet. Please try again.');
+                return;
+            }
+
             let finalLogoUrl = logo;
             if (logo && logo.startsWith('data:image')) {
                 const uploadToast = toast.loading('Uploading new logo...');
@@ -344,31 +349,35 @@ export default function BusinessProfilePage() {
             if (cacDocument && cacDocument.startsWith('data:image')) finalCacDocument = await uploadToCloudinary(cacDocument);
             if (idDocument && idDocument.startsWith('data:image')) finalIdDocument = await uploadToCloudinary(idDocument);
 
-            if (isAllBranches && business) {
+            let didUpdate = false;
+
+            if (business) {
                 const businessUpdates: any = {};
-                if (hasChanged(name, business.name)) businessUpdates.name = name;
                 if (hasChanged(categoryId, business.categoryId)) businessUpdates.categoryId = categoryId;
                 if (hasChanged(subcategoryId, business.subcategoryId)) businessUpdates.subcategoryId = subcategoryId;
                 if (hasChanged(otherSubcategoryName, business.otherSubcategoryName)) businessUpdates.otherSubcategoryName = otherSubcategoryName;
-                if (hasChanged(state, business.state)) businessUpdates.state = state;
-                if (hasChanged(city, business.city)) businessUpdates.city = city;
                 if (hasChanged(isRegistered, business.isRegistered)) businessUpdates.isRegistered = isRegistered;
                 if (hasChanged(registrationNumber, business.registrationNumber)) businessUpdates.registrationNumber = registrationNumber;
                 if (hasChanged(cacType, business.cacType)) businessUpdates.cacType = cacType;
-                if (hasChanged(finalLogoUrl, business.logoUrl)) businessUpdates.logoUrl = finalLogoUrl;
-                if (hasChanged(showRewards, business.showRewards)) businessUpdates.showRewards = showRewards;
+
+                if (isAllBranches) {
+                    if (hasChanged(name, business.name)) businessUpdates.name = name;
+                    if (hasChanged(state, business.state)) businessUpdates.state = state;
+                    if (hasChanged(city, business.city)) businessUpdates.city = city;
+                    if (hasChanged(finalLogoUrl, business.logoUrl)) businessUpdates.logoUrl = finalLogoUrl;
+                }
 
                 const docs = [finalCacDocument, finalIdDocument].filter(Boolean);
                 if (docs.length > 0) businessUpdates.documents = docs;
 
-                if (Object.keys(businessUpdates).length === 0) {
-                    toast.success('No changes discovered.');
-                    return;
+                if (Object.keys(businessUpdates).length > 0) {
+                    await updateMutation.mutateAsync({ id: business.id, updates: businessUpdates });
+                    toast.success('Business profile updated successfully!');
+                    didUpdate = true;
                 }
+            }
 
-                await updateMutation.mutateAsync({ id: business.id, updates: businessUpdates });
-                toast.success('Business profile updated successfully!');
-            } else if (branch) {
+            if (!isAllBranches && branch) {
                 const branchUpdates: any = {};
                 if (hasChanged(name, branch.name)) branchUpdates.name = name;
                 if (hasChanged(finalLogoUrl, branch.logoUrl)) branchUpdates.logoUrl = finalLogoUrl;
@@ -391,19 +400,23 @@ export default function BusinessProfilePage() {
                 if (hasChanged(rewardEnabled, branch.rewardEnabled)) branchUpdates.rewardEnabled = rewardEnabled;
                 if (hasChanged(rewardVisitThreshold, branch.rewardVisitThreshold)) branchUpdates.rewardVisitThreshold = rewardVisitThreshold;
 
+                if (hasChanged(instagramUrl, branch.instagramUrl)) branchUpdates.instagramUrl = instagramUrl;
+                if (hasChanged(linkedinUrl, branch.linkedinUrl)) branchUpdates.linkedinUrl = linkedinUrl;
                 if (hasChanged(reviewUrl, branch.reviewUrl)) branchUpdates.reviewUrl = reviewUrl;
                 if (hasChanged(trustpilotUrl, branch.trustpilotUrl)) branchUpdates.trustpilotUrl = trustpilotUrl;
                 if (hasChanged(showReview, branch.showReview)) branchUpdates.showReview = showReview;
                 if (hasChanged(showSocial, branch.showSocial)) branchUpdates.showSocial = showSocial;
-                if (hasChanged(showRewards, branch.showRewards)) branchUpdates.showRewards = showRewards;
+                if (hasChanged(showFeedback, branch.showFeedback)) branchUpdates.showFeedback = showFeedback;
 
-                if (Object.keys(branchUpdates).length === 0) {
-                    toast.success('No changes discovered.');
-                    return;
+                if (Object.keys(branchUpdates).length > 0) {
+                    await updateBranchMutation.mutateAsync({ id: branch.id, updates: branchUpdates });
+                    toast.success('Branch profile updated successfully!');
+                    didUpdate = true;
                 }
+            }
 
-                await updateBranchMutation.mutateAsync({ id: branch.id, updates: branchUpdates });
-                toast.success('Branch profile updated successfully!');
+            if (!didUpdate) {
+                toast.success('No changes discovered.');
             }
 
             updateCustomSettings({ logoUrl: finalLogoUrl });
