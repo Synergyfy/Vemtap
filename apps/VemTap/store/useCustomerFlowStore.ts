@@ -304,7 +304,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 set({
                     businessId: b.id || device.businessId,
                     deviceCode: device.code,
-                    branchId: device.branchId || 'head-office',
+                    branchId: device.branchId || branch.id || b.primaryBranchId || (b.branches && b.branches.length > 0 ? b.branches[0].id : '') || '',
                     storeName: branch.name || b.name || device.name,
                     businessType: b.type || 'RETAIL',
                     customWelcomeMessage: branch.welcomeMessage || b.welcomeMessage,

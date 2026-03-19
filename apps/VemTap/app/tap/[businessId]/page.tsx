@@ -20,23 +20,25 @@ export default function PublicTapPage() {
             if (!businessId) return;
 
             try {
-                // Fetch live device details using the public @Get('loyalty/device-info/:code') endpoint
-                const device = await fetchDeviceByCode(businessId as string);
+                // Fetch live device context using the correct /tap/context/:code endpoint
+                const context = await fetchDeviceByCode(businessId as string);
 
-                if (device) {
+                if (context) {
+                    const { business, branch, device } = context;
+
                     // Initialize the customer flow with live data
                     initializeFromBusiness({
-                        id: device.business?.id || device.businessId || 'legacy-id',
-                        name: device.business?.name || device.name,
-                        type: device.business?.type || 'RETAIL',
-                        welcomeMessage: device.business?.welcomeMessage || 'Welcome! Please fill in your details to stay connected.',
-                        welcomeTitle: device.business?.welcomeTitle || 'Welcome',
-                        newUserWelcomeMessage: device.business?.welcomeMessage || 'Welcome! Please fill in your details to stay connected.',
-                        newUserWelcomeTitle: device.business?.welcomeTitle || 'Welcome',
-                        successMessage: device.business?.successMessage || 'Thank you for visiting! We look forward to seeing you again.',
-                        rewardEnabled: device.business?.rewardEnabled ?? false,
-                        logoUrl: device.business?.logoUrl || null,
-                        branchId: device.branchId,
+                        id: business.id,
+                        name: business.name,
+                        type: business.type || 'RETAIL',
+                        welcomeMessage: business.welcomeMessage || 'Welcome! Please fill in your details to stay connected.',
+                        welcomeTitle: business.welcomeTitle || 'Welcome',
+                        newUserWelcomeMessage: business.welcomeMessage || 'Welcome! Please fill in your details to stay connected.',
+                        newUserWelcomeTitle: business.welcomeTitle || 'Welcome',
+                        successMessage: business.successMessage || 'Thank you for visiting! We look forward to seeing you again.',
+                        rewardEnabled: business.rewardEnabled ?? false,
+                        logoUrl: business.logoUrl || null,
+                        branchId: branch.id,
                         currentDeviceId: device.id,
                         deviceCode: device.code,
                         deviceName: device.name,
@@ -49,7 +51,7 @@ export default function PublicTapPage() {
                     }
 
                     // Get the business slug (prefer name for the URL)
-                    const businessSlug = (device.business?.name || 'business').toLowerCase().replace(/\s+/g, '-');
+                    const businessSlug = (business.name || 'business').toLowerCase().replace(/\s+/g, '-');
                     const targetCode = device.code || businessId;
 
                     // Redirect to the dynamic business/code route with same query params (source, v, n etc.)
