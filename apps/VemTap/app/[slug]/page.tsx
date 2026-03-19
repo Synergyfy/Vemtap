@@ -28,7 +28,7 @@ export default function BusinessPublicPage() {
     const isBusinessAccount = isAuthenticated && user?.role?.toLowerCase() !== 'customer';
     const isCustomerAccount = isAuthenticated && user?.role?.toLowerCase() === 'customer';
 
-    const [businessData, setBusinessData] = useState<Device | null>(null);
+    const [businessData, setBusinessData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
