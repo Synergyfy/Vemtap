@@ -12,6 +12,7 @@ import { ContactsModule } from '../contacts/contacts.module';
 import { MailModule } from '../mail/mail.module';
 import { DevicesModule } from '../devices/devices.module';
 import { BranchesModule } from '../branches/branches.module';
+import { LoyaltyModule } from '../loyalty/loyalty.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { BranchesModule } from '../branches/branches.module';
     MailModule,
     forwardRef(() => DevicesModule),
     BranchesModule,
+    LoyaltyModule,
   ],
   controllers: [VisitorsController],
   providers: [VisitorsService],

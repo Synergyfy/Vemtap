@@ -12,6 +12,7 @@ import { AutomationService } from '../messaging/services/automation.service';
 import { MailService } from '../mail/mail.service';
 import { DataSource } from 'typeorm';
 import { BranchesService } from '../branches/branches.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 
 describe('VisitorsService', () => {
   let service: VisitorsService;
@@ -103,6 +104,12 @@ describe('VisitorsService', () => {
           provide: BranchesService,
           useValue: {
             getBusinessId: jest.fn().mockResolvedValue('bus-1'),
+          },
+        },
+        {
+          provide: LoyaltyService,
+          useValue: {
+            getBusinessPoints: jest.fn().mockResolvedValue(0),
           },
         },
       ],

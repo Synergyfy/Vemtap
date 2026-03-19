@@ -11,6 +11,7 @@ export enum FormFieldType {
   RADIO = 'radio',
   CHECKBOX = 'checkbox',
   DATE = 'date',
+  DATE_NO_YEAR = 'date-no-year',
 }
 
 @Entity('form_fields')

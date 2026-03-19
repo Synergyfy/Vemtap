@@ -38,20 +38,20 @@ export async function createAuthenticatedUser(
 
   // If Owner, they NEED a business and a main branch to function in the new architecture
   if (role === UserRole.OWNER && !branchId) {
-    const business = await businessRepo.save(
+    const business = (await businessRepo.save(
       businessRepo.create({
         name: `Test Business ${timestamp}`,
         ownerId: user.id,
       } as any),
-    );
+    )) as any;
 
-    const branch = await branchRepo.save(
+    const branch = (await branchRepo.save(
       branchRepo.create({
         name: 'Main Branch',
         businessId: business.id,
         isMainBranch: true,
       } as any),
-    );
+    )) as any;
 
     user.branchId = branch.id;
     user.businessId = business.id;

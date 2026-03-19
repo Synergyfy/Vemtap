@@ -111,7 +111,7 @@ describe('TwilioProvider', () => {
         Body: 'Hello back',
       };
 
-      const result = await provider.parseWebhook(payload);
+      const result = await provider.parseWebhook(payload as any);
 
       expect(result?.type).toBe('inbound');
       expect(result?.data).toEqual(
@@ -129,7 +129,7 @@ describe('TwilioProvider', () => {
         MessageStatus: 'delivered',
       };
 
-      const result = await provider.parseWebhook(payload);
+      const result = await provider.parseWebhook(payload as any);
 
       expect(result?.type).toBe('delivery');
       expect(result?.data).toEqual(

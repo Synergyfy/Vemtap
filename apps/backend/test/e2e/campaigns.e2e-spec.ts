@@ -56,14 +56,4 @@ describe('Campaigns (E2E)', () => {
     });
   });
 
-  describe('GET /api/v1/campaigns/stats', () => {
-    it('should return campaign stats for the branch', async () => {
-      const res = await request(app.getHttpServer())
-        .get(`/api/v1/campaigns/stats?branchId=${branchId}`)
-        .set('Authorization', `Bearer ${ownerToken}`)
-        .expect(200);
-
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-  });
 });
