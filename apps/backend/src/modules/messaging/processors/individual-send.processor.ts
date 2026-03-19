@@ -28,7 +28,7 @@ export class IndividualSendProcessor extends WorkerHost {
   async process(job: Job<IndividualMessageJobData, any, string>): Promise<any> {
     const { branchId, customerId, content, channel, from, campaignId } = job.data;
     
-    this.logger.log(`Processing background message for customer ${customerId} in branch ${branchId}`);
+    this.logger.log(`📥 Job started for individual message to Customer ID: ${customerId}`);
 
     try {
       await this.messagingEngine.processSingleSend(

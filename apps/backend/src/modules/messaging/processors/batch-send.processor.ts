@@ -72,10 +72,14 @@ export class BatchSendProcessor extends WorkerHost {
               const customer = await this.userRepo.findOne({
                 where: { id: customerId, role: UserRole.CUSTOMER },
               });
+              
               if (!customer) {
                 this.logger.warn(`Customer ${customerId} not found or not a customer role`);
                 return;
               }
+
+              const customerName = `${customer.firstName} ${customer.lastName}`.trim() || 'Customer';
+              this.logger.log(`🚀 Starting batch message for ${customerName} (${customer.phone || customer.email})`);
 
               let from = jobFrom || '';
               if (!from) {
