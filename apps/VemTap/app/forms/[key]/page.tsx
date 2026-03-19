@@ -49,6 +49,12 @@ export default function PublicBusinessFormPage() {
         // 3. Fallback to form data if provided (though form data usually doesn't have it)
         return (form as any)?.branchName || '';
     }, [form?.branchId, businessInfo?.branches, branchInfo?.name, form]);
+    const displayBranchName = resolvedBranchName && resolvedBranchName !== 'Main Branch'
+        ? resolvedBranchName
+        : resolvedBusinessName;
+    const shownBranchName = displayBranchName && displayBranchName !== resolvedBusinessName
+        ? displayBranchName
+        : '';
 
     const buildAnswerPayload = (answersMap: Record<string, any>) => {
         return (form?.fields || [])
@@ -163,11 +169,11 @@ export default function PublicBusinessFormPage() {
                             )}
                             <span className="text-xs font-semibold text-slate-500 truncate">
                                 {resolvedBusinessName || 'Business'}
-                                {resolvedBranchName ? (
+                                {shownBranchName ? (
                                     <span className="text-slate-300 mx-1">·</span>
                                 ) : null}
-                                {resolvedBranchName && (
-                                    <span className="text-slate-400 font-medium">{resolvedBranchName}</span>
+                                {shownBranchName && (
+                                    <span className="text-slate-400 font-medium">{shownBranchName}</span>
                                 )}
                             </span>
                         </div>

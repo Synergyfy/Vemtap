@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Building2, CheckCircle2, ChevronDown, ChevronUp, Eye, GripVertical, Info, Loader2, Palette, Pencil, Share2, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, GripVertical, Info, Loader2, Pencil, X } from 'lucide-react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import PhoneFrame from '@/components/shared/PhoneFrame';
@@ -44,9 +44,10 @@ export default function ActiveFormsPage() {
     const { toggleActiveForm, moveActiveForm, setActiveFormIds, getActiveFormIds } = useFormPreferencesStore();
     const activeFormIdsByBranch = useFormPreferencesStore((state) => state.activeFormIdsByBranch);
     const { engagementSettings, updateEngagementSettings } = useCustomerFlowStore();
+    const brandColor = engagementSettings?.brandColor || '#2563eb';
     const brandVars = useMemo(
-        () => buildBrandCssVars(engagementSettings?.brandColor),
-        [engagementSettings?.brandColor]
+        () => buildBrandCssVars(brandColor),
+        [brandColor]
     );
     const branchKey = branchScope || userBranchId || 'global';
 
@@ -101,6 +102,14 @@ export default function ActiveFormsPage() {
         next.splice(targetIndex, 0, moved);
         setActiveFormIds(branchKey, next);
     };
+
+    const getPublicFormUrl = (form: BusinessForm) => {
+        if (!form?.uniqueCode) return '';
+        if (typeof window === 'undefined') return `/forms/${form.uniqueCode}`;
+        return `${window.location.origin}/forms/${form.uniqueCode}`;
+    };
+
+    const socialsPreviewUrl = '/dashboard/engagement/previews/socials';
 
     return (
         <div className="p-8 space-y-6">
@@ -179,15 +188,23 @@ export default function ActiveFormsPage() {
                                         )}
                                     </div>
                                     {showSocialStep && (
-                                        <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-                                            <div className="size-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                                        <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3">
+                                            <div className="size-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center shrink-0">
                                                 1
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                                <p className="text-sm font-semibold text-emerald-700">Social Media & Reviews</p>
-                                                <p className="text-xs text-emerald-600 truncate">Shown immediately after the Default Form.</p>
+                                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Socials</p>
+                                                <p className="text-sm font-semibold text-gray-900 truncate">Social Media & Reviews</p>
                                             </div>
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Enabled</span>
+                                            <a
+                                                href={socialsPreviewUrl}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="h-9 px-4 rounded-xl text-xs font-black uppercase tracking-widest inline-flex items-center justify-center shadow-sm transition-all"
+                                                style={{ backgroundColor: brandColor, color: '#fff' }}
+                                            >
+                                                Open
+                                            </a>
                                         </div>
                                     )}
 
@@ -217,25 +234,36 @@ export default function ActiveFormsPage() {
                                                         reorderActiveForms(sourceId, form.id);
                                                         setDraggedFormId(null);
                                                     }}
-                                                    className={`flex items-center gap-3 rounded-xl border px-3 py-2 transition-shadow ${draggedFormId === form.id ? 'border-primary/40 shadow-md' : 'border-gray-100 bg-white'} ${previewFormId === form.id ? 'ring-2 ring-primary/20' : ''}`}
+                                                    className={`flex flex-wrap items-center gap-3 rounded-xl border px-3 py-2 transition-shadow ${draggedFormId === form.id ? 'border-primary/40 shadow-md' : 'border-gray-100 bg-white'} ${previewFormId === form.id ? 'ring-2 ring-primary/20' : ''}`}
                                                 >
                                                     <div className="size-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black shrink-0">
                                                         {index + 1}
                                                     </div>
-                                                    <div className="size-7 rounded-lg border border-gray-200 text-gray-400 flex items-center justify-center bg-gray-50">
+                                                    <div className="size-7 rounded-lg border border-gray-200 text-gray-400 flex items-center justify-center bg-gray-50 cursor-grab active:cursor-grabbing">
                                                         <GripVertical size={14} />
                                                     </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setPreviewFormId(form.id)}
-                                                        className={`flex-1 h-10 rounded-lg border px-3 text-left text-sm font-semibold transition-colors ${
-                                                            previewFormId === form.id
-                                                                ? 'border-primary/40 bg-primary/5 text-primary'
-                                                                : 'border-gray-200 bg-white text-slate-900 hover:bg-gray-50'
-                                                        }`}
-                                                    >
-                                                        <span className="truncate block">{form.title || 'Untitled Form'}</span>
-                                                    </button>
+                                                    {getPublicFormUrl(form) ? (
+                                                        <a
+                                                            href={getPublicFormUrl(form)}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            draggable={false}
+                                                            onClick={() => setPreviewFormId(form.id)}
+                                                            className="flex-1 h-10 rounded-xl px-3 text-left text-sm font-semibold inline-flex items-center shadow-sm transition-all"
+                                                            style={{ backgroundColor: brandColor, color: '#fff' }}
+                                                        >
+                                                            <span className="truncate block">{form.title || 'Untitled Form'}</span>
+                                                        </a>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPreviewFormId(form.id)}
+                                                            className="flex-1 h-10 rounded-xl px-3 text-left text-sm font-semibold bg-gray-100 text-gray-400 cursor-not-allowed"
+                                                            disabled
+                                                        >
+                                                            Link unavailable
+                                                        </button>
+                                                    )}
                                                     <div className="flex items-center gap-2">
                                                         <button
                                                             onClick={() => setHelpModal({
@@ -274,31 +302,24 @@ export default function ActiveFormsPage() {
                                             ))}
 
                                             {/* Final Sequence: Social Media */}
-                                            <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 bg-gray-50/50 border-dashed ${isSocialEnabled && hasSocialLinks ? 'border-primary/30 opacity-100' : 'border-gray-200 opacity-60'}`}>
+                                            <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 bg-white ${isSocialEnabled && hasSocialLinks ? 'border-primary/20 opacity-100' : 'border-gray-200 opacity-60'}`}>
                                                 <div className={`size-8 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${isSocialEnabled && hasSocialLinks ? 'bg-primary text-white' : 'bg-gray-200 text-gray-400'}`}>
                                                     {activeForms.length + 1}
                                                 </div>
-                                                <div className="size-8 rounded-lg border border-gray-200 text-gray-300 flex items-center justify-center bg-white/50">
-                                                    <Info size={14} />
-                                                </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="text-sm font-semibold text-gray-900 truncate">Social Media & Reviews</p>
-                                                        {isSocialEnabled && hasSocialLinks ? (
-                                                            <span className="px-1.5 py-0.5 bg-green-50 text-[8px] font-black uppercase tracking-tighter text-green-600 rounded-md border border-green-100">Enabled</span>
-                                                        ) : (
-                                                            <span className="px-1.5 py-0.5 bg-gray-100 text-[8px] font-black uppercase tracking-tighter text-gray-500 rounded-md border border-gray-200">Hidden</span>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-xs text-gray-500 truncate">Automatically appears last in the journey</p>
+                                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Socials</p>
+                                                    <p className="text-sm font-semibold text-gray-900 truncate">Social Media & Reviews</p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <Link
-                                                        href="/dashboard/settings/profile?tab=socials"
-                                                        className="h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest bg-white border border-gray-100 text-text-secondary hover:text-primary hover:border-primary transition-all flex items-center justify-center"
+                                                    <a
+                                                        href={socialsPreviewUrl}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="h-9 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest inline-flex items-center justify-center shadow-sm transition-all"
+                                                        style={{ backgroundColor: brandColor, color: '#fff' }}
                                                     >
-                                                        Customize
-                                                    </Link>
+                                                        Open
+                                                    </a>
                                                 </div>
                                             </div>
                                         </div>
@@ -319,7 +340,7 @@ export default function ActiveFormsPage() {
                                         {inactiveForms.map((form) => (
                                             <div
                                                 key={form.id}
-                                                className="rounded-2xl border p-4 bg-white flex items-center justify-between gap-4 border-gray-100"
+                                                className="rounded-2xl border p-4 bg-white flex flex-wrap items-center justify-between gap-4 border-gray-100"
                                             >
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-semibold text-gray-900 truncate">{form.title}</p>
@@ -327,7 +348,7 @@ export default function ActiveFormsPage() {
                                                         <p className="text-xs text-gray-500 truncate">{form.description}</p>
                                                     )}
                                                 </div>
-                                                <div className="flex items-center gap-2 shrink-0">
+                                                <div className="flex items-center gap-2 shrink-0 flex-wrap">
                                                     <button
                                                         onClick={() => setHelpModal({
                                                             title: 'Add to sequence',
@@ -343,10 +364,27 @@ export default function ActiveFormsPage() {
                                                             toggleActiveForm(branchKey, form.id);
                                                             setPreviewFormId(form.id);
                                                         }}
-                                                        className="h-9 px-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-primary text-white"
+                                                        className="h-9 px-3 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                                                        style={{ backgroundColor: brandColor, color: '#fff' }}
                                                     >
                                                         Add to Sequence
                                                     </button>
+                                                    {getPublicFormUrl(form) ? (
+                                                        <a
+                                                            href={getPublicFormUrl(form)}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            onClick={() => setPreviewFormId(form.id)}
+                                                            className="h-9 px-3 rounded-xl text-[10px] font-black uppercase tracking-widest inline-flex items-center"
+                                                            style={{ backgroundColor: brandColor, color: '#fff' }}
+                                                        >
+                                                            Open Form
+                                                        </a>
+                                                    ) : (
+                                                        <span className="h-9 px-3 rounded-xl text-[10px] font-black uppercase tracking-widest inline-flex items-center bg-gray-100 text-gray-400">
+                                                            Link Unavailable
+                                                        </span>
+                                                    )}
                                                     <button
                                                         onClick={() => setHelpModal({
                                                             title: 'Preview this form',

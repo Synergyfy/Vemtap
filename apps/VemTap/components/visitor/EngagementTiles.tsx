@@ -46,6 +46,7 @@ interface EngagementTilesProps {
         facebook?: string;
         linkedin?: string;
         socialUrl?: string;
+        brandColor?: string;
     };
 }
 
@@ -56,6 +57,7 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
     completedFormIds = [],
     settings = {}
 }) => {
+    const brandColor = settings?.brandColor || '#2563eb';
     const hasSocial = !!(settings.instagram || settings.twitter || settings.facebook || settings.linkedin || settings.socialUrl);
     const hasReview = !!settings.reviewUrl;
     const hasSelectedForm = !!selectedFormTitle;
@@ -79,11 +81,12 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
                                 className={`${formButtonBase} ${
                                     isCompleted
                                         ? 'bg-emerald-50 border-emerald-100 text-emerald-700 cursor-default'
-                                        : 'bg-white border-gray-200 text-slate-900 hover:bg-gray-50'
+                                        : 'border-transparent text-white hover:brightness-95'
                                 }`}
+                                style={!isCompleted ? { backgroundColor: brandColor } : undefined}
                             >
                                 <span className="truncate">{form.title || 'Open Form'}</span>
-                                <span className="material-symbols-outlined text-base text-slate-300">arrow_forward</span>
+                                <span className={`material-symbols-outlined text-base ${isCompleted ? 'text-emerald-400' : 'text-white/80'}`}>arrow_forward</span>
                             </button>
                         );
                     })}
@@ -93,10 +96,11 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
                     {hasSelectedForm ? (
                         <button
                             onClick={() => onAction('feedback')}
-                            className={`${formButtonBase} bg-white border-gray-200 text-slate-900 hover:bg-gray-50`}
+                            className={`${formButtonBase} border-transparent text-white hover:brightness-95`}
+                            style={{ backgroundColor: brandColor }}
                         >
                             <span className="truncate">{selectedFormTitle || 'Open Form'}</span>
-                            <span className="material-symbols-outlined text-base text-slate-300">arrow_forward</span>
+                            <span className="material-symbols-outlined text-base text-white/80">arrow_forward</span>
                         </button>
                     ) : (
                         <>

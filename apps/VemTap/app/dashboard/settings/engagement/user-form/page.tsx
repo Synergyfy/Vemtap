@@ -23,8 +23,8 @@ export default function UserFormSettingsPage() {
     const [previewTab, setPreviewTab] = useState<'form' | 'thank_you' | 'final_step' | 'returning'>('form');
 
     const config = useMemo(() => store.getBusinessConfig(), [store]);
-    const previewStoreName = mainBranch?.name || business?.name || store.storeName || 'Your Store';
-    const previewLogoUrl = mainBranch?.logoUrl || business?.logoUrl || store.logoUrl;
+    const previewStoreName = business?.name || mainBranch?.name || store.storeName || 'Your Store';
+    const previewLogoUrl = business?.logoUrl || mainBranch?.logoUrl || store.logoUrl;
     const previewHasRewards = mainBranch?.rewardEnabled ?? business?.rewardEnabled ?? store.hasRewardSetup;
     const brandVars = useMemo(
         () => buildBrandCssVars(store.engagementSettings.brandColor),

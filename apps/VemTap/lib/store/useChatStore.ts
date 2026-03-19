@@ -23,6 +23,7 @@ export interface ChatMessage {
     direction: 'INBOUND' | 'OUTBOUND';
     type: ChatMessageType;
     content: string;
+    replyTo?: { id?: string; content?: string } | null;
     fileUrl?: string;
     fileName?: string;
     fileSize?: string;
@@ -68,6 +69,7 @@ interface ChatState {
     searchQuery: string;
     mockThreads: ChatConversation[];
     mockMessages: Record<string, ChatMessage[]>;
+    typingByThread: Record<string, boolean>;
 
     // Actions
     setActiveConversation: (id: string | null) => void;
@@ -75,6 +77,7 @@ interface ChatState {
     markAsRead: (conversationId: string) => void;
     addMockThread: (contact: ChatContact) => string;
     addMockMessage: (threadId: string, message: ChatMessage) => void;
+    setTyping: (threadId: string, isTyping: boolean) => void;
 }
 
 // ─── Store ───────────────────────────────────────────────────────────────────
@@ -84,6 +87,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     searchQuery: '',
     mockThreads: [],
     mockMessages: {},
+    typingByThread: {},
 
     setActiveConversation: (id) => {
         set({ activeConversationId: id });
@@ -143,5 +147,13 @@ export const useChatStore = create<ChatState>()((set, get) => ({
                 mockThreads: updatedThreads,
             };
         });
+    },
+    setTyping: (threadId, isTyping) => {
+        set(state => ({
+            typingByThread: {
+                ...state.typingByThread,
+                [threadId]: isTyping,
+            },
+        }));
     },
 }));
