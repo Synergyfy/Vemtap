@@ -26,7 +26,6 @@ import { CreditPlan } from './entities/credit-plan.entity';
 import { BusinessCredit } from './entities/business-credit.entity';
 import { BusinessCreditWallet } from './entities/business-credit-wallet.entity';
 import { CreditTransaction } from './entities/credit-transaction.entity';
-import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
 
 import { ContactsModule } from '../contacts/contacts.module';
 import { BusinessesModule } from '../businesses/businesses.module';
@@ -36,6 +35,7 @@ import { PaymentsModule } from '../payments/payments.module';
 import { MailModule } from '../mail/mail.module';
 import { BranchesModule } from '../branches/branches.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { LoyaltyModule } from '../loyalty/loyalty.module';
 
 import { MessagingEngineService } from './services/messaging-engine.service';
 import { TemplateService } from './services/template.service';
@@ -103,7 +103,6 @@ import { JwtModule } from '@nestjs/jwt';
       BusinessCredit,
       BusinessCreditWallet,
       CreditTransaction,
-      LoyaltyProfile,
     ]),
     HttpModule,
     ContactsModule,
@@ -114,6 +113,7 @@ import { JwtModule } from '@nestjs/jwt';
     MailModule,
     forwardRef(() => BranchesModule),
     NotificationsModule,
+    forwardRef(() => LoyaltyModule),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

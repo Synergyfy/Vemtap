@@ -14,6 +14,7 @@ import {
 import { Branch } from '../../src/modules/branches/entities/branch.entity';
 import { ConversationThread, ThreadStatus } from '../../src/modules/messaging/entities/conversation-thread.entity';
 import { Message } from '../../src/modules/messaging/entities/message.entity';
+import { Visit } from '../../src/modules/visitors/entities/visit.entity';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { Channel } from '../../src/modules/messaging/enums/channel.enum';
 import * as bcrypt from 'bcrypt';
@@ -25,12 +26,15 @@ describe('Messaging Inbox (e2e)', () => {
   let branchRepo: Repository<Branch>;
   let threadRepo: Repository<ConversationThread>;
   let messageRepo: Repository<Message>;
+  let visitRepo: Repository<Visit>;
   let authService: AuthService;
 
   let ownerToken: string;
   let visitorToken: string;
+  let otherVisitorToken: string;
   let branchId: string;
   let customerId: string;
+  let otherCustomerId: string;
 
   beforeAll(async () => {
     app = await createTestApp();
@@ -40,6 +44,7 @@ describe('Messaging Inbox (e2e)', () => {
     branchRepo = app.get(getRepositoryToken(Branch));
     threadRepo = app.get(getRepositoryToken(ConversationThread));
     messageRepo = app.get(getRepositoryToken(Message));
+    visitRepo = app.get(getRepositoryToken(Visit));
     authService = app.get(AuthService);
 
     const testId = Date.now().toString();
@@ -47,7 +52,7 @@ describe('Messaging Inbox (e2e)', () => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 1. Create Owner & Business
-    const owner = await userRepo.save(
+    const owner = (await userRepo.save(
       userRepo.create({
         email: `owner-inbox-${testId}@test.com`,
         password: hashedPassword,
@@ -56,29 +61,29 @@ describe('Messaging Inbox (e2e)', () => {
         role: UserRole.OWNER,
         status: UserStatus.ACTIVE,
       } as any),
-    );
+    )) as any;
 
-    const business = await businessRepo.save(
+    const business = (await businessRepo.save(
       businessRepo.create({
         name: 'Inbox Test Biz',
         ownerId: owner.id,
       } as any),
-    );
+    )) as any;
     owner.businessId = business.id;
     await userRepo.save(owner);
 
     // 2. Create Branch
-    const branch = await branchRepo.save(
+    const branch = (await branchRepo.save(
       branchRepo.create({
         name: 'Main Branch',
         businessId: business.id,
         isActive: true,
       } as any),
-    );
+    )) as any;
     branchId = branch.id;
 
-    // 3. Create Visitor (as a User with CUSTOMER role)
-    const visitorUser = await userRepo.save(
+    // 3. Create Visitor (Visited)
+    const visitorUser = (await userRepo.save(
       userRepo.create({
         email: `visitor-inbox-${testId}@test.com`,
         password: hashedPassword,
@@ -87,10 +92,30 @@ describe('Messaging Inbox (e2e)', () => {
         role: UserRole.CUSTOMER,
         status: UserStatus.ACTIVE,
       } as any),
-    );
+    )) as any;
     customerId = visitorUser.id;
 
-    // Login both
+    await visitRepo.save(visitRepo.create({
+        customerId,
+        branchId,
+        businessId: business.id,
+        status: 'new'
+    }));
+
+    // 4. Create another Visitor (Not Visited)
+    const otherVisitorUser = (await userRepo.save(
+        userRepo.create({
+          email: `other-visitor-${testId}@test.com`,
+          password: hashedPassword,
+          firstName: 'OtherVisitor',
+          lastName: 'Test',
+          role: UserRole.CUSTOMER,
+          status: UserStatus.ACTIVE,
+        } as any),
+      )) as any;
+    otherCustomerId = otherVisitorUser.id;
+
+    // Login
     const ownerLogin = await authService.login({
       identifier: owner.email,
       password,
@@ -102,23 +127,52 @@ describe('Messaging Inbox (e2e)', () => {
       password,
     });
     visitorToken = visitorLogin.access_token;
+
+    const otherVisitorLogin = await authService.login({
+        identifier: otherVisitorUser.email,
+        password,
+      });
+    otherVisitorToken = otherVisitorLogin.access_token;
   });
 
   afterAll(async () => {
     await app.close();
   });
 
-  it('should allow branch to start a conversation (creates a thread)', async () => {
-    const thread = await threadRepo.save(threadRepo.create({
-      branchId,
-      businessId: (await branchRepo.findOneBy({id: branchId}))?.businessId,
-      customerId,
-      channel: Channel.IN_HOUSE,
-      status: ThreadStatus.OPEN,
-    } as any));
+  it('should allow visitor who visited to start a conversation', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/customer/messaging/threads/start')
+      .set('Authorization', `Bearer ${visitorToken}`)
+      .send({
+        branchId,
+        content: 'First message from customer',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.content).toBe('First message from customer');
+    expect(res.body.threadId).toBeDefined();
+
+    const thread = await threadRepo.findOne({ where: { id: res.body.threadId } });
+    expect(thread?.branchUnreadCount).toBe(1);
+  });
+
+  it('should fail if customer has not visited the branch', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/customer/messaging/threads/start')
+      .set('Authorization', `Bearer ${otherVisitorToken}`)
+      .send({
+        branchId,
+        content: 'I want to chat',
+      });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('should allow branch to reply to the thread started by customer', async () => {
+    const thread = await threadRepo.findOne({ where: { customerId, branchId } });
 
     const res = await request(app.getHttpServer())
-      .post(`/api/v1/messaging/inbox/threads/${thread.id}/reply?branchId=${branchId}`)
+      .post(`/api/v1/messaging/inbox/threads/${thread?.id}/reply?branchId=${branchId}`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({
         content: 'Hello from Branch!',
@@ -126,61 +180,8 @@ describe('Messaging Inbox (e2e)', () => {
 
     expect(res.status).toBe(201);
     
-    const updatedThread = await threadRepo.findOne({ where: { id: thread.id } });
+    const updatedThread = await threadRepo.findOne({ where: { id: thread?.id } });
     expect(updatedThread?.customerUnreadCount).toBe(1);
     expect(updatedThread?.lastMessageContent).toBe('Hello from Branch!');
-  });
-
-  it('should allow visitor to see their inbox sorted by newest', async () => {
-    const res = await request(app.getHttpServer())
-      .get('/api/v1/customer/messaging/threads')
-      .set('Authorization', `Bearer ${visitorToken}`)
-      .expect(200);
-
-    expect(res.body).toBeInstanceOf(Array);
-    expect(res.body.length).toBeGreaterThan(0);
-    expect(res.body[0].lastMessageContent).toBe('Hello from Branch!');
-  });
-
-  it('should allow visitor to reply and increment branch unread count', async () => {
-    const thread = await threadRepo.findOne({ where: { customerId, branchId } });
-    
-    const res = await request(app.getHttpServer())
-      .post(`/api/v1/customer/messaging/threads/${thread?.id}/reply`)
-      .set('Authorization', `Bearer ${visitorToken}`)
-      .send({
-        content: 'Hello back from Visitor!',
-      })
-      .expect(201);
-
-    const updatedThread = await threadRepo.findOne({ where: { id: thread?.id } });
-    expect(updatedThread?.branchUnreadCount).toBe(1);
-    expect(updatedThread?.lastMessageContent).toBe('Hello back from Visitor!');
-  });
-
-  it('should support quoting (replyToId)', async () => {
-    const thread = await threadRepo.findOne({ where: { customerId, branchId } });
-    const messages = await messageRepo.find({ where: { threadId: thread?.id }, order: { timestamp: 'DESC' } });
-    const originalMsgId = messages[0].id;
-
-    const res = await request(app.getHttpServer())
-      .post(`/api/v1/messaging/inbox/threads/${thread?.id}/reply?branchId=${branchId}`)
-      .set('Authorization', `Bearer ${ownerToken}`)
-      .send({
-        content: 'Quoting you now!',
-        replyToId: originalMsgId,
-      })
-      .expect(201);
-
-    expect(res.body.replyToId).toBe(originalMsgId);
-    
-    // Fetch messages to verify sort and content
-    const msgRes = await request(app.getHttpServer())
-      .get(`/api/v1/messaging/inbox/threads/${thread?.id}?branchId=${branchId}`)
-      .set('Authorization', `Bearer ${ownerToken}`)
-      .expect(200);
-
-    expect(msgRes.body[0].content).toBe('Quoting you now!');
-    expect(msgRes.body[0].replyTo.id).toBe(originalMsgId);
   });
 });

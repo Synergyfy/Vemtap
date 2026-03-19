@@ -25,7 +25,6 @@ import { ProviderRouterService } from './provider-router.service';
 import { BranchesService } from '../../branches/branches.service';
 import { Branch } from '../../branches/entities/branch.entity';
 import { AudienceType } from '../entities/message-campaign.entity';
-import { LoyaltyProfile } from '../../campaigns/entities/loyalty-profile.entity';
 import {
   InboundMessage,
   DeliveryReport,
@@ -35,6 +34,7 @@ import { MessagingGateway } from '../messaging.gateway';
 import { ThreadStatus } from '../entities/conversation-thread.entity';
 import { PushNotificationService } from '../../notifications/push-notification.service';
 import { Visit } from '../../visitors/entities/visit.entity';
+import { LoyaltyService } from '../../loyalty/loyalty.service';
 
 export interface SendMessageResult {
   message: string;
@@ -61,8 +61,6 @@ export class MessagingEngineService {
     private readonly threadRepo: Repository<ConversationThread>,
     @InjectRepository(Branch)
     private readonly branchRepo: Repository<Branch>,
-    @InjectRepository(LoyaltyProfile)
-    private readonly loyaltyRepo: Repository<LoyaltyProfile>,
     @InjectRepository(Visit)
     private readonly visitRepo: Repository<Visit>,
     @InjectQueue('messaging-batch-send') private readonly batchQueue: Queue,
@@ -78,6 +76,7 @@ export class MessagingEngineService {
     private readonly configService: ConfigService,
     private readonly messagingGateway: MessagingGateway,
     private readonly pushNotificationService: PushNotificationService,
+    private readonly loyaltyService: LoyaltyService,
   ) {}
 
   public async checkBranchAccess(
@@ -239,16 +238,18 @@ export class MessagingEngineService {
     }
 
     // 8. Queue Individual Messages for Background Processing
-    for (const customerId of validUserIds) {
-      await this.individualQueue.add('send-individual', {
+    const jobs = validUserIds.map((customerId) => ({
+      name: 'send-individual',
+      data: {
         branchId,
         customerId,
         content: baseContent,
         channel,
         from,
         campaignId,
-      });
-    }
+      },
+    }));
+    await this.individualQueue.addBulk(jobs);
 
     return {
       message: 'Messages queued for background processing',
@@ -290,7 +291,7 @@ export class MessagingEngineService {
     resolved = resolved.replace(/{ReviewLink}/g, branch.reviewUrl || '');
     resolved = resolved.replace(/{Link}/g, branch.website || branch.reviewUrl || '');
 
-    resolved = resolved.replace(/{Points}/g, '0000');
+    resolved = resolved.replace(/{Points}/g, '9999');
 
     return resolved;
   }
@@ -406,10 +407,12 @@ export class MessagingEngineService {
         savedMessage.reference = providerResult.reference;
         await this.messageRepo.save(savedMessage);
 
-        if (
-          savedMessage.status === MessageStatus.SENT ||
-          savedMessage.status === MessageStatus.PENDING
-        ) {
+        const customerName = `${customer.firstName} ${customer.lastName}`.trim() || 'Customer';
+        if (savedMessage.status === MessageStatus.SENT || savedMessage.status === MessageStatus.DELIVERED || savedMessage.status === MessageStatus.PENDING) {
+          this.logger.log(
+            `✅ SUCCESS: [${channel}] message to ${customerName} (${savedMessage.to}) status: ${savedMessage.status}. Provider Ref: ${savedMessage.reference || 'N/A'}. Response: ${JSON.stringify(providerResult.rawResponse)}`,
+          );
+          
           let units = providerResult.units || 1;
           if (channel === Channel.SMS && savedMessage.content.length > 160) {
             units = 2;
@@ -420,13 +423,19 @@ export class MessagingEngineService {
             units,
             `Message to ${savedMessage.to}`,
           );
+        } else {
+          this.logger.warn(
+            `⚠️ FAILED: [${channel}] message to ${customerName} (${savedMessage.to}). Provider Response: ${JSON.stringify(providerResult.rawResponse)}`,
+          );
         }
       }
 
       await this.logMessage(savedMessage);
     } catch (err: any) {
+      const customerName = (customer as any)?.firstName ? `${customer.firstName} ${customer.lastName}`.trim() : customerId;
       this.logger.error(
-        `Failed to send message ${savedMessage.id}: ${err.message}`,
+        `❌ ERROR: Failed to send [${channel}] message to ${customerName}: ${err.message}`,
+        err.stack
       );
       savedMessage.status = MessageStatus.FAILED;
       await this.messageRepo.save(savedMessage);
@@ -470,10 +479,7 @@ export class MessagingEngineService {
     resolved = resolved.replace(/{Link}/g, branch.website || branch.reviewUrl || '');
 
     try {
-      const profile = await this.loyaltyRepo.findOne({
-        where: { branchId: branch.id, userId: customer.id },
-      });
-      const points = profile?.currentPointsBalance || 0;
+      const points = await this.loyaltyService.getBusinessPoints(customer.id, branch.businessId);
       resolved = resolved.replace(/{Points}/g, points.toString());
     } catch (e) {
       resolved = resolved.replace(/{Points}/g, '0');

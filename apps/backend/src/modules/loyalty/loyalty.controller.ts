@@ -3,261 +3,149 @@ import {
   Get,
   Post,
   Body,
-  Query,
+  Patch,
   Param,
+  Delete,
   UseGuards,
   Request,
-  BadRequestException,
-  Patch,
-  Delete,
+  Query,
 } from '@nestjs/common';
-import { Public } from '../../common/decorators/public.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { User, UserRole } from '../users/entities/user.entity';
-import { LoyaltyService, CustomerAnalyticsResponse, BusinessLoyaltyStatsResponse } from './loyalty.service';
-import {
-  EarnPointsDto,
-  RedeemRewardDto,
-  CreateLoyaltyRewardDto,
-  UpdateLoyaltyRuleDto,
-  BranchQueryDto,
-  GenerateRedemptionCodeDto,
-  ClaimCodeDto,
-  CreateLoyaltyTemplateDto,
-  UpdateLoyaltyTemplateDto,
-} from '../campaigns/dto/loyalty.dto';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { LoyaltyService } from './loyalty.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
-import { CapabilityGuard } from '../subscriptions/guards/capability.guard';
-import { RequireCapability } from '../subscriptions/decorators/capability.decorator';
-import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
-import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
-import { Reward } from '../campaigns/entities/reward.entity';
-import { Redemption } from '../campaigns/entities/redemption.entity';
-import { LoyaltyRule } from '../campaigns/entities/loyalty-rule.entity';
-import { LoyaltyTemplate } from '../campaigns/entities/loyalty-template.entity';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { User, UserRole } from '../users/entities/user.entity';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  CreateRewardTemplateDto,
+  CreateRewardDto,
+  GivePointsDto,
+  GeneratePointCodeDto,
+  UsePointCodeDto,
+  GenerateRedemptionCodeDto,
+  RedeemRewardDto,
+} from './dto/loyalty.dto';
 
-@ApiTags('Loyalty & Rewards')
+@ApiTags('Loyalty, Points & Rewards')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('loyalty')
 export class LoyaltyController {
   constructor(private readonly loyaltyService: LoyaltyService) {}
 
-  private async getBranchId(req: { user: User }, queryBranchId?: string): Promise<string> {
-    const user = req.user;
-
-    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
-      if (!queryBranchId) {
-        throw new BadRequestException('branchId is required for Owners and Admins');
-      }
-      if (user.role === UserRole.OWNER) {
-        const hasAccess = await this.loyaltyService.checkBranchAccess(user, queryBranchId);
-        if (!hasAccess) throw new BadRequestException('Access denied to this branch');
-      }
-      return queryBranchId;
-    }
-
-    if (!user.branchId) throw new BadRequestException('User is not associated with any branch');
-    return user.branchId;
-  }
-
-  private async getResolvedContext(
-    req: { user: User },
-    filter: BranchQueryDto,
-  ): Promise<{ branchId?: string; businessId?: string }> {
-    const user = req.user;
-
-    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
-      if (filter.allBranches || !filter.branchId) {
-        return { businessId: user.businessId };
-      }
-      if (filter.branchId) {
-        if (user.role === UserRole.OWNER) {
-          const hasAccess = await this.loyaltyService.checkBranchAccess(user, filter.branchId);
-          if (!hasAccess) throw new BadRequestException('Access denied to this branch');
-        }
-        return { branchId: filter.branchId };
-      }
-    }
-
-    return { branchId: user.branchId };
-  }
-
-  @Get('analytics')
+  // --- Point Logs ---
+  @Get('points/balance')
   @Roles(UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'Get customer loyalty analytics' })
-  @ApiResponse({ status: 200, description: 'Analytics retrieved' })
-  async getAnalytics(@Request() req: { user: User }): Promise<CustomerAnalyticsResponse> {
-    return this.loyaltyService.getAnalytics(req.user.id);
+  @ApiOperation({ summary: 'Customer fetches their point balance for a business' })
+  async getBalance(@Request() req: { user: User }, @Query('businessId') businessId: string) {
+    return this.loyaltyService.getBusinessPoints(req.user.id, businessId);
   }
 
-  @Get('business-stats')
+  @Get('points/logs')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Customer fetches their point logs' })
+  async getMyLogs(
+    @Request() req: { user: User },
+    @Query('businessId') businessId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.loyaltyService.getPointLogs(req.user.id, businessId, page, limit);
+  }
+
+  @Get('points/business-logs')
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Owner/Admin fetches point logs for business/branch' })
+  async getBusinessLogs(
+    @Request() req: { user: User },
+    @Query('businessId') businessId: string,
+    @Query('branchId') branchId?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    // If owner, ensure businessId matches their business
+    return this.loyaltyService.getBusinessPointLogs(businessId, branchId, page, limit);
+  }
+
+  // --- Point Earning ---
+  @Post('points/give')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @ApiOperation({ summary: 'Get aggregate loyalty stats for branch/business' })
-  @ApiResponse({ status: 200, description: 'Stats retrieved' })
-  async getBusinessStats(@Request() req: { user: User }, @Query() filter: BranchQueryDto): Promise<BusinessLoyaltyStatsResponse> {
-    const context = await this.getResolvedContext(req, filter);
-    return this.loyaltyService.getBusinessLoyaltyStats(context.branchId, context.businessId);
+  @ApiOperation({ summary: 'Staff gives points to customer using unique code' })
+  async givePoints(@Request() req: { user: User }, @Body() dto: GivePointsDto) {
+    return this.loyaltyService.givePoints(req.user, dto);
   }
 
-  @Get('profile')
-  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
-  @ApiOperation({ summary: 'Get loyalty profile for current user' })
-  async getProfile(@Request() req: { user: User }, @Query() filter: BranchQueryDto): Promise<LoyaltyProfile | LoyaltyProfile[]> {
-    if (filter.allBranches || filter.branchId || req.user.branchId) {
-      const context = await this.getResolvedContext(req, filter);
-      return this.loyaltyService.getProfile(req.user.id, context.branchId, context.businessId);
-    }
-    return this.loyaltyService.getAllProfiles(req.user.id);
+  @Post('points/generate-code')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({ summary: 'Staff generates a 9-digit point code' })
+  async generatePointCode(@Request() req: { user: User }, @Body() dto: GeneratePointCodeDto) {
+    return this.loyaltyService.generatePointCode(req.user, dto);
   }
 
-  @Get('history')
-  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
-  @ApiOperation({ summary: 'Get loyalty transaction history' })
-  async getHistory(@Request() req: { user: User }, @Query() filter: BranchQueryDto): Promise<any[]> {
-    const context = await this.getResolvedContext(req, filter);
-    return this.loyaltyService.getHistory(req.user.id, context.branchId, context.businessId);
+  @Post('points/use-code')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Customer uses a 9-digit point code' })
+  async usePointCode(@Request() req: { user: User }, @Body() dto: UsePointCodeDto) {
+    return this.loyaltyService.usePointCode(req.user, dto);
   }
 
-  @Get('rewards')
-  @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
-  @ApiOperation({ summary: 'Get available rewards' })
-  async getRewards(@Request() req: { user: User }, @Query() filter: BranchQueryDto): Promise<Reward[]> {
-    const context = await this.getResolvedContext(req, filter);
-    return this.loyaltyService.getRewards(context.branchId, context.businessId);
+  // --- Reward Templates ---
+  @Post('templates')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin creates a reward template' })
+  async createTemplate(@Request() req: { user: User }, @Body() dto: CreateRewardTemplateDto) {
+    return this.loyaltyService.createTemplate(req.user, dto);
   }
 
   @Get('templates')
-  @SkipSubscriptionCheck()
-  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
-  @ApiOperation({ summary: 'Get loyalty program templates' })
-  async getTemplates(): Promise<LoyaltyTemplate[]> {
-    return this.loyaltyService.getLoyaltyTemplates();
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Fetch all reward templates' })
+  async getTemplates() {
+    return this.loyaltyService.getTemplates();
   }
 
-  @Post('templates')
-  @SkipSubscriptionCheck()
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Create a new loyalty template (System Admin only)' })
-  async createTemplate(@Body() data: CreateLoyaltyTemplateDto): Promise<LoyaltyTemplate> {
-    return this.loyaltyService.createLoyaltyTemplate(data);
+  // --- Rewards ---
+  @Post('rewards')
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Owner creates a reward for a branch' })
+  async createReward(@Request() req: { user: User }, @Body() dto: CreateRewardDto) {
+    return this.loyaltyService.createReward(req.user, dto);
   }
 
-  @Patch('templates/:id')
-  @SkipSubscriptionCheck()
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Update a loyalty template (System Admin only)' })
-  async updateTemplate(@Param('id') id: string, @Body() data: UpdateLoyaltyTemplateDto): Promise<LoyaltyTemplate> {
-    return this.loyaltyService.updateLoyaltyTemplate(id, data);
+  @Get('rewards/branch/:branchId')
+  @ApiOperation({ summary: 'Publicly fetch rewards for a branch' })
+  async getBranchRewards(
+    @Param('branchId') branchId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.loyaltyService.getBranchRewards(branchId, page, limit);
   }
 
-  @Delete('templates/:id')
-  @SkipSubscriptionCheck()
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Delete a loyalty template (System Admin only)' })
-  async deleteTemplate(@Param('id') id: string): Promise<void> {
-    return this.loyaltyService.deleteLoyaltyTemplate(id);
+  @Patch('rewards/:id')
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  async updateReward(@Param('id') id: string, @Body() dto: Partial<CreateRewardDto>) {
+    return this.loyaltyService.updateReward(id, dto);
   }
 
-  @Post('templates/:id/apply')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @ApiOperation({ summary: 'Apply a loyalty template to a branch' })
-  async applyTemplate(
-    @Param('id') id: string,
-    @Request() req: { user: User },
-    @Query('branchId') branchId?: string,
-  ): Promise<{ success: boolean; message: string }> {
-    const targetBranchId = await this.getBranchId(req, branchId);
-    return this.loyaltyService.applyLoyaltyTemplate(targetBranchId, id);
+  @Delete('rewards/:id')
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  async deleteReward(@Param('id') id: string) {
+    return this.loyaltyService.deleteReward(id);
   }
 
-  @Post('generate-code')
-  @Roles(UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
-  @ApiOperation({ summary: 'Staff/Owner generates a 9-digit code for a reward' })
-  async generateCode(@Request() req: { user: User }, @Body() dto: GenerateRedemptionCodeDto): Promise<Redemption> {
-    const branchId = await this.getBranchId(req, dto.branchId);
-    return this.loyaltyService.generateRedemptionCode(branchId, dto, req.user.id);
+  // --- Redemption ---
+  @Post('redemption/generate-code')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({ summary: 'Staff generates a redemption code for a reward' })
+  async generateRedemptionCode(@Request() req: { user: User }, @Body() dto: GenerateRedemptionCodeDto) {
+    return this.loyaltyService.generateRedemptionCode(req.user, dto);
   }
 
-  @Post('claim-code')
+  @Post('redemption/redeem')
   @Roles(UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'Customer claims a reward using a 9-digit code' })
-  async claimCode(@Request() req: { user: User }, @Body() dto: ClaimCodeDto): Promise<{ success: boolean; redemption: Redemption }> {
-    const branchId = await this.getBranchId(req, dto.branchId);
-    return this.loyaltyService.claimRedemptionCode(req.user.id, branchId, dto.code);
-  }
-
-  @Post('redeem')
-  @Roles(UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'Customer-initiated redemption using points' })
-  async redeemReward(@Request() req: { user: User }, @Body() dto: RedeemRewardDto): Promise<Redemption> {
-    const branchId = await this.getBranchId(req, dto.branchId);
-    return this.loyaltyService.redeemReward(req.user.id, branchId, dto.rewardId);
-  }
-
-  @Get('rules')
-  @Roles(UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
-  @ApiOperation({ summary: 'Get loyalty rules' })
-  async getRules(@Request() req: { user: User }, @Query() filter: BranchQueryDto): Promise<LoyaltyRule> {
-    const context = await this.getResolvedContext(req, filter);
-    return this.loyaltyService.getLoyaltyRule(context.branchId, context.businessId);
-  }
-
-  @Patch('rules')
-  @Roles(UserRole.MANAGER, UserRole.OWNER)
-  @ApiOperation({ summary: 'Update loyalty rules' })
-  async updateRules(@Request() req: { user: User }, @Body() dto: UpdateLoyaltyRuleDto, @Query('branchId') branchId?: string): Promise<LoyaltyRule> {
-    const targetBranchId = await this.getBranchId(req, branchId);
-    return this.loyaltyService.updateLoyaltyRule(targetBranchId, dto);
-  }
-
-  @Post('earn')
-  @Roles(UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
-  @ApiOperation({ summary: 'Manually award points to a customer' })
-  async earnPoints(@Request() req: { user: User }, @Body() dto: EarnPointsDto): Promise<{ success: boolean; pointsEarned: number; newBalance: number; message: string }> {
-    const branchId = await this.getBranchId(req, dto.branchId);
-    return this.loyaltyService.earnPoints(branchId, dto);
-  }
-
-  @Post('rewards/create')
-  @Roles(UserRole.MANAGER, UserRole.OWNER)
-  @UseGuards(CapabilityGuard)
-  @RequireCapability('loyaltyPrograms')
-  @ApiOperation({ summary: 'Create a new reward' })
-  async createReward(@Request() req: { user: User }, @Body() dto: CreateLoyaltyRewardDto): Promise<Reward> {
-    const branchId = await this.getBranchId(req, dto.branchId);
-    return this.loyaltyService.createReward(branchId, dto);
-  }
-
-  @Get('rewards/:id/redemptions')
-  @Roles(UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
-  @ApiOperation({ summary: 'Get redemptions for a specific reward' })
-  async getRewardRedemptions(
-    @Param('id') id: string,
-    @Request() req: { user: User },
-    @Query('branchId') branchId?: string,
-  ): Promise<Redemption[]> {
-    const targetBranchId = await this.getBranchId(req, branchId);
-    return this.loyaltyService.getRewardRedemptions(id, targetBranchId);
-  }
-
-  @Public()
-  @Post('tap/:code')
-  @ApiOperation({ summary: 'Process NFC/QR tap' })
-  async tap(@Request() req: { user?: User }, @Param('code') code: string): Promise<any> {
-    return this.loyaltyService.processTap(req.user?.id || '', code);
-  }
-
-  @Public()
-  @Get('device-info/:code')
-  @ApiOperation({ summary: 'Get device/branch info from code' })
-  async getDeviceInfo(@Request() req: { user?: User }, @Param('code') code: string): Promise<any> {
-    return this.loyaltyService.getDeviceByCode(code, req.user?.id);
+  @ApiOperation({ summary: 'Customer redeems a reward using a code' })
+  async redeemReward(@Request() req: { user: User }, @Body() dto: RedeemRewardDto) {
+    return this.loyaltyService.redeemReward(req.user, dto);
   }
 }

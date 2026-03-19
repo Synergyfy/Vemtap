@@ -15,7 +15,7 @@ import { MailService } from '../mail/mail.service';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
 import { DevicesService } from '../devices/devices.service';
-import { Reward } from '../campaigns/entities/reward.entity';
+import { Reward } from '../loyalty/entities/reward.entity';
 
 @Injectable()
 export class BusinessesService {

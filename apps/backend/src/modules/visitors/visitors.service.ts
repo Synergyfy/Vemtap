@@ -28,10 +28,11 @@ import { CampaignsService } from '../campaigns/campaigns.service';
 import * as bcrypt from 'bcrypt';
 import { MailService } from '../mail/mail.service';
 import { MessageLog } from '../messaging/entities/message-log.entity';
-import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
-import { Redemption } from '../campaigns/entities/redemption.entity';
-import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
 import { BranchesService } from '../branches/branches.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
+import { PointTransaction } from '../loyalty/entities/point-transaction.entity';
+import { RedemptionCode } from '../loyalty/entities/redemption-code.entity';
+import { Reward } from '../loyalty/entities/reward.entity';
 
 export class RecordVisitResponse {
   message: string;
@@ -49,6 +50,9 @@ export class SendCampaignBody {
   channel: Channel;
   message: string;
 }
+
+import { VisitedBranchesQueryDto } from './dto/visited-branches-query.dto';
+import { PaginatedVisitedBranchResponseDto } from './dto/visited-branch-response.dto';
 
 @Injectable()
 export class VisitorsService {
@@ -69,7 +73,73 @@ export class VisitorsService {
     private automationService: AutomationService,
     private mailService: MailService,
     private branchesService: BranchesService,
+    private loyaltyService: LoyaltyService,
   ) {}
+
+  async getVisitedBranches(
+    customerId: string,
+    query: VisitedBranchesQueryDto,
+  ): Promise<PaginatedVisitedBranchResponseDto> {
+    const { page = 1, limit = 10, search } = query;
+    const skip = (page - 1) * limit;
+
+    const qb = this.visitRepository
+      .createQueryBuilder('visit')
+      .innerJoinAndSelect('visit.branch', 'branch')
+      .where('visit.customerId = :customerId', { customerId });
+
+    if (search) {
+      qb.andWhere('branch.name ILIKE :search', { search: `%${search}%` });
+    }
+
+    qb.select([
+      'branch.id as id',
+      'branch.name as name',
+      'branch.address as address',
+      'branch.city as city',
+      'branch.logoUrl as "logoUrl"',
+      'branch.businessId as "businessId"',
+      'MAX(visit.createdAt) as "lastVisitedAt"',
+      'COUNT(visit.id) as "visitCount"',
+    ]);
+
+    qb.groupBy('branch.id')
+      .orderBy('"lastVisitedAt"', 'DESC')
+      .offset(skip)
+      .limit(limit);
+
+    const rawData = await qb.getRawMany();
+    
+    // For total count, we need another query to count grouped branches
+    const countQb = this.visitRepository
+      .createQueryBuilder('visit')
+      .innerJoin('visit.branch', 'branch')
+      .where('visit.customerId = :customerId', { customerId });
+
+    if (search) {
+      countQb.andWhere('branch.name ILIKE :search', { search: `%${search}%` });
+    }
+
+    const total = await countQb
+      .select('COUNT(DISTINCT visit.branchId)', 'count')
+      .getRawOne();
+
+    return {
+      data: rawData.map((row) => ({
+        id: row.id,
+        name: row.name,
+        address: row.address,
+        city: row.city,
+        logoUrl: row.logoUrl,
+        businessId: row.businessId,
+        lastVisitedAt: new Date(row.lastVisitedAt),
+        visitCount: parseInt(row.visitCount, 10),
+      })),
+      total: parseInt(total.count, 10),
+      page,
+      limit,
+    };
+  }
 
   async checkBranchAccess(user: User, branchId: string): Promise<boolean> {
     return this.branchesService.checkBranchAccess(user, branchId);
@@ -278,6 +348,7 @@ export class VisitorsService {
         phone: dto.phone,
         password: hashedPassword,
         role: UserRole.CUSTOMER,
+        uniqueCode: `CUST-${Math.floor(100000 + Math.random() * 900000)}`,
       });
       await this.userRepository.save(user);
 
@@ -413,22 +484,11 @@ export class VisitorsService {
       },
     );
 
-    const activeRule = await this.campaignsService.findActiveRule(branchId);
-
-    let loyaltyResult: { success: boolean; pointsEarned: number; newBalance: number; message: string } | null = null;
-    if (activeRule) {
-      const profile = await this.campaignsService.findProfile(
-        user.id,
-        branchId,
-      );
-
-      if (profile) {
-        loyaltyResult = await this.campaignsService.earnPoints(branchId, {
-          userId: user.id,
-          isVisit: true,
-        });
-      }
-    }
+    // Points awarding logic should be moved to a generic "award points on tap" if needed,
+    // but based on requirements, points are given by staff or via code.
+    // However, if we want to keep the "tap to earn points" feature, we can award 1 point.
+    let loyaltyResult: any = null;
+    // For now, points are manual or via code as per the new requirements.
 
     return {
       message: 'Visit recorded successfully',
@@ -825,42 +885,28 @@ export class VisitorsService {
   }
 
   async sendReward(visitorId: string, rewardId: string, branchId: string) {
-    const rewards = await this.campaignsService.getRewards(branchId);
+    const rewards = await this.loyaltyService.getBranchRewards(branchId);
     const reward = rewards.find((r) => r.id === rewardId);
+
+    if (!reward) throw new NotFoundException('Reward not found');
 
     return this.sendMessage(
       visitorId,
-      `You've received a reward! Use code REWARD123 to redeem.`,
+      `You've received a reward: ${reward.name}! Use code REWARD123 to redeem.`,
       Channel.SMS,
       branchId,
     );
   }
 
   async resetBusinessData(branchId: string): Promise<void> {
-    const context: FindOptionsWhere<
-      Visit | MessageLog | Contact | LoyaltyProfile
-    > = { branchId };
-
     await this.dataSource.transaction(async (manager) => {
-      await manager.delete(Visit, context as FindOptionsWhere<Visit>);
-      await manager.delete(MessageLog, context as FindOptionsWhere<MessageLog>);
-
-      const profiles = await manager.find(LoyaltyProfile, {
-        where: context as FindOptionsWhere<LoyaltyProfile>,
-      });
-      const profileIds = profiles.map((p) => p.id);
-
-      if (profileIds.length > 0) {
-        await manager.delete(PointTransaction, {
-          loyaltyProfileId: In(profileIds),
-        } as FindOptionsWhere<PointTransaction>);
-        await manager.delete(Redemption, {
-          loyaltyProfileId: In(profileIds),
-        } as FindOptionsWhere<Redemption>);
-        await manager.delete(LoyaltyProfile, { id: In(profileIds) });
-      }
-
-      await manager.delete(Contact, context as FindOptionsWhere<Contact>);
+      await manager.delete(Visit, { branchId });
+      await manager.delete(MessageLog, { branchId });
+      await manager.delete(Contact, { branchId });
+      await manager.delete(PointTransaction, { branchId });
+      await manager.delete(RedemptionCode, { branchId });
+      // Rewards are not deleted usually, but if needed:
+      // await manager.delete(Reward, { branchId });
     });
   }
 

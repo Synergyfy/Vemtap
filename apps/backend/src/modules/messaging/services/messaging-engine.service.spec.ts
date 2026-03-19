@@ -19,10 +19,10 @@ import { MessageLog } from '../entities/message-log.entity';
 import { ConversationThread } from '../entities/conversation-thread.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
-import { LoyaltyProfile } from '../../campaigns/entities/loyalty-profile.entity';
 import { Channel } from '../enums/channel.enum';
 import { MessagingGateway } from '../messaging.gateway';
 import { PushNotificationService } from '../../notifications/push-notification.service';
+import { LoyaltyService } from '../../loyalty/loyalty.service';
 
 describe('MessagingEngineService', () => {
   let service: MessagingEngineService;
@@ -30,7 +30,7 @@ describe('MessagingEngineService', () => {
   let userRepoMock: any;
   let visitRepoMock: any;
   let messageRepoMock: any;
-  let loyaltyRepoMock: any;
+  let loyaltyServiceMock: any;
 
   const mockQueue = {
     add: jest.fn(),
@@ -38,6 +38,7 @@ describe('MessagingEngineService', () => {
 
   const mockIndividualQueue = {
     add: jest.fn(),
+    addBulk: jest.fn(),
   };
 
   const mockCreditService = {
@@ -100,8 +101,8 @@ describe('MessagingEngineService', () => {
       findOne: jest.fn(),
       findOneBy: jest.fn(),
     };
-    loyaltyRepoMock = {
-      findOne: jest.fn(),
+    loyaltyServiceMock = {
+      getBusinessPoints: jest.fn().mockResolvedValue(500),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -117,7 +118,7 @@ describe('MessagingEngineService', () => {
         },
         { provide: getRepositoryToken(Business), useValue: messageRepoMock },
         { provide: getRepositoryToken(Branch), useValue: branchRepoMock },
-        { provide: getRepositoryToken(LoyaltyProfile), useValue: loyaltyRepoMock },
+        { provide: LoyaltyService, useValue: loyaltyServiceMock },
         { provide: getQueueToken('messaging-batch-send'), useValue: mockQueue },
         { provide: getQueueToken('messaging-individual-send'), useValue: mockIndividualQueue },
         {
@@ -176,7 +177,13 @@ describe('MessagingEngineService', () => {
       });
 
       expect(mockCampaignService.createCampaign).toHaveBeenCalled();
-      expect(mockIndividualQueue.add).toHaveBeenCalledTimes(2);
+      expect(mockIndividualQueue.addBulk).toHaveBeenCalledTimes(1);
+      expect(mockIndividualQueue.addBulk).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'send-individual', data: expect.objectContaining({ customerId: 'u1' }) }),
+          expect.objectContaining({ name: 'send-individual', data: expect.objectContaining({ customerId: 'u2' }) }),
+        ])
+      );
       expect(result.status).toBe('QUEUED');
       expect(result.count).toBe(2);
     });
@@ -214,7 +221,6 @@ describe('MessagingEngineService', () => {
         firstName: 'Tobi',
         lastName: 'Adeyemi',
       });
-      loyaltyRepoMock.findOne.mockResolvedValueOnce({ currentPointsBalance: 500 });
 
       await service.processSingleSend(
         'br1',

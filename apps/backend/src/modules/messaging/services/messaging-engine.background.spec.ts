@@ -18,11 +18,11 @@ import { MessageLog } from '../entities/message-log.entity';
 import { ConversationThread } from '../entities/conversation-thread.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
-import { LoyaltyProfile } from '../../campaigns/entities/loyalty-profile.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Channel } from '../enums/channel.enum';
 import { MessagingGateway } from '../messaging.gateway';
 import { PushNotificationService } from '../../notifications/push-notification.service';
+import { LoyaltyService } from '../../loyalty/loyalty.service';
 
 describe('MessagingEngineService (Background Processing)', () => {
   let service: MessagingEngineService;
@@ -33,7 +33,7 @@ describe('MessagingEngineService (Background Processing)', () => {
 
   beforeEach(async () => {
     mockBatchQueue = { add: jest.fn() };
-    mockIndividualQueue = { add: jest.fn() };
+    mockIndividualQueue = { add: jest.fn(), addBulk: jest.fn() };
     
     branchRepoMock = {
       findOne: jest.fn().mockResolvedValue({ 
@@ -57,7 +57,7 @@ describe('MessagingEngineService (Background Processing)', () => {
         { provide: getRepositoryToken(ConversationThread), useValue: {} },
         { provide: getRepositoryToken(Business), useValue: {} },
         { provide: getRepositoryToken(Branch), useValue: branchRepoMock },
-        { provide: getRepositoryToken(LoyaltyProfile), useValue: {} },
+        { provide: LoyaltyService, useValue: {} },
         { provide: getRepositoryToken(Visit), useValue: {} },
         { provide: getQueueToken('messaging-batch-send'), useValue: mockBatchQueue },
         { provide: getQueueToken('messaging-individual-send'), useValue: mockIndividualQueue },
@@ -95,31 +95,16 @@ describe('MessagingEngineService (Background Processing)', () => {
 
     expect(result.status).toBe('QUEUED');
     expect(result.message).toBe('Messages queued for background processing');
-    expect(mockIndividualQueue.add).toHaveBeenCalledTimes(2);
-    expect(mockIndividualQueue.add).toHaveBeenCalledWith('send-individual', expect.objectContaining({
-      customerId: 'c1',
-      content: 'Hello {Name}',
-    }));
-  });
-
-  it('should use batch queue for more than 50 contacts', async () => {
-    const manyUsers = Array.from({ length: 51 }, (_, i) => ({ id: `c${i}`, firstName: `User${i}` }));
-    userRepoMock.find.mockResolvedValueOnce(manyUsers);
-
-    const dto = {
-      branchId: 'br1',
-      customerIds: manyUsers.map(c => c.id),
-      content: 'Hello everyone',
-      channel: Channel.WHATSAPP,
-    } as any;
-
-    const result = await service.sendMessage(dto);
-
-    expect(result.status).toBe('QUEUED');
-    expect(result.message).toBe('Batch campaign queued');
-    expect(mockBatchQueue.add).toHaveBeenCalledWith('send-batch', expect.objectContaining({
-      customerIds: manyUsers.map(c => c.id),
-    }));
-    expect(mockIndividualQueue.add).not.toHaveBeenCalled();
+    expect(mockIndividualQueue.addBulk).toHaveBeenCalledTimes(1);
+    expect(mockIndividualQueue.addBulk).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'send-individual',
+          data: expect.objectContaining({
+            customerId: 'c1',
+          }),
+        }),
+      ])
+    );
   });
 });

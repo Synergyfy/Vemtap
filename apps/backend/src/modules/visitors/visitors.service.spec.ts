@@ -12,6 +12,7 @@ import { AutomationService } from '../messaging/services/automation.service';
 import { MailService } from '../mail/mail.service';
 import { DataSource } from 'typeorm';
 import { BranchesService } from '../branches/branches.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 
 describe('VisitorsService', () => {
   let service: VisitorsService;
@@ -28,10 +29,13 @@ describe('VisitorsService', () => {
     orderBy: jest.fn().mockReturnThis(),
     skip: jest.fn().mockReturnThis(),
     take: jest.fn().mockReturnThis(),
+    offset: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
     getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
     getMany: jest.fn().mockResolvedValue([]),
     getCount: jest.fn().mockResolvedValue(0),
     getRawMany: jest.fn().mockResolvedValue([]),
+    getRawOne: jest.fn().mockResolvedValue({ count: 0 }),
     clone: jest.fn().mockReturnThis(),
   };
 
@@ -48,6 +52,7 @@ describe('VisitorsService', () => {
   };
 
   const mockVisitRepo = {
+    createQueryBuilder: jest.fn(() => mockQueryBuilder),
     create: jest.fn().mockImplementation((d) => d),
     save: jest
       .fn()
@@ -103,6 +108,14 @@ describe('VisitorsService', () => {
           provide: BranchesService,
           useValue: {
             getBusinessId: jest.fn().mockResolvedValue('bus-1'),
+            checkBranchAccess: jest.fn().mockResolvedValue(true),
+          },
+        },
+        {
+          provide: LoyaltyService,
+          useValue: {
+            getBusinessPoints: jest.fn().mockResolvedValue(0),
+            createReward: jest.fn(),
           },
         },
       ],
@@ -117,6 +130,45 @@ describe('VisitorsService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('getVisitedBranches', () => {
+    it('should return paginated visited branches for a customer', async () => {
+      const mockRawData = [
+        {
+          id: 'branch-1',
+          name: 'Main Branch',
+          address: '123 St',
+          city: 'Lagos',
+          logoUrl: 'logo.png',
+          businessId: 'bus-1',
+          lastVisitedAt: new Date().toISOString(),
+          visitCount: '5',
+        },
+      ];
+
+      mockQueryBuilder.getRawMany.mockResolvedValueOnce(mockRawData);
+      mockQueryBuilder.getRawOne.mockResolvedValueOnce({ count: '1' });
+
+      const result = await service.getVisitedBranches('customer-1', {
+        page: 1,
+        limit: 10,
+        search: 'Main',
+      });
+
+      expect(result.data).toHaveLength(1);
+      expect(result.total).toBe(1);
+      expect(result.data[0].name).toBe('Main Branch');
+      expect(result.data[0].visitCount).toBe(5);
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        'visit.customerId = :customerId',
+        { customerId: 'customer-1' },
+      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'branch.name ILIKE :search',
+        { search: '%Main%' },
+      );
+    });
   });
 
   describe('findAll', () => {
