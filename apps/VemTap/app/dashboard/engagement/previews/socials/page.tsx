@@ -37,14 +37,14 @@ export default function SocialsPreviewPage() {
 
             <div className="flex flex-wrap items-center gap-2">
                 <Link
-                    href="/dashboard/settings/engagement/previews/default"
+                    href="/dashboard/engagement/previews/default"
                     className="px-3 py-1.5 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50"
                 >
                     Default Form
                 </Link>
                 <span className="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-black uppercase tracking-widest">Socials</span>
                 <Link
-                    href="/dashboard/settings/engagement/previews/forms"
+                    href="/dashboard/engagement/previews/forms"
                     className="px-3 py-1.5 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50"
                 >
                     Selected Form
@@ -60,7 +60,7 @@ export default function SocialsPreviewPage() {
                             Update social links, review prompts, and post-submit engagement behavior.
                         </p>
                         <Link
-                            href="/dashboard/settings/engagement/socials"
+                            href="/dashboard/engagement/socials"
                             className="inline-flex items-center justify-center h-10 px-4 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest"
                         >
                             Edit Socials

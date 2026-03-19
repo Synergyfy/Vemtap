@@ -21,7 +21,7 @@ import {
 
 import { usePublicBusiness, usePublicBranch, usePublicRewards } from '@/services/public/hooks';
 import { BusinessHours } from '@/services/public/types';
-import { normalizeBaseUrl } from '@/lib/api';
+
 
 const displayText = (value?: string | null) => (value && value.trim().length > 0 ? value : 'Not provided');
 
@@ -35,47 +35,26 @@ const formatHours = (hours?: BusinessHours) => {
     return `${hours.open} - ${hours.close}`;
 };
 
-const formatExternalUrl = (value?: string) => {
-    if (!value) return '';
-    return value.startsWith('http') ? value : `https://${value}`;
-};
 
-const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
+
+
 
 export default function PublicBusinessProfilePage() {
     const params = useParams();
     const codeParam = params?.code;
     const code = Array.isArray(codeParam) ? codeParam[0] : codeParam || '';
 
-    const [isBranch, setIsBranch] = useState<boolean | null>(null);
-
     // Use React Query hooks for data fetching
-    const { data: branchData, isLoading: branchLoading, error: branchError } = usePublicBranch(code, isBranch === true);
-    const businessCode =
-        isBranch === true ? (branchData?.business?.uniqueCode || '') : code;
-    const shouldFetchBusiness =
-        isBranch === false ? !!code : isBranch === true ? !!branchData?.business?.uniqueCode : false;
-    const { data: businessData, isLoading: businessLoading, error: businessError } = usePublicBusiness(businessCode, shouldFetchBusiness);
-    
-    // Determine if the code corresponds to a branch or a business
-    useEffect(() => {
-        const checkCodeType = async () => {
-            try {
-                const res = await fetch(normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL)+`/public/branches/code/${code}`);
-                if (res.ok) {
-                    setIsBranch(true);
-                } else {
-                    setIsBranch(false);
-                }
-            } catch {
-                setIsBranch(false);
-            }
-        };
-        if(code) checkCodeType();
-    }, [code]);
+    const { data: branchData, isLoading: branchLoading } = usePublicBranch(code, !!code);
+    const { data: businessByCode, isLoading: businessByCodeLoading } = usePublicBusiness(code, !!code);
+    const branchBusinessCode = branchData?.business?.uniqueCode;
+    const { data: businessByBranch, isLoading: businessByBranchLoading } = usePublicBusiness(
+        branchBusinessCode || '',
+        !!branchBusinessCode && branchBusinessCode !== code
+    );
 
-    const branch = isBranch ? branchData : null;
-    const business = businessData;
+    const business = businessByCode?.id ? businessByCode : businessByBranch;
+    const branch = businessByCode?.id ? null : branchData || null;
     const businessSummary = branchData?.business;
 
     const businessId = useMemo(
@@ -154,20 +133,20 @@ export default function PublicBusinessProfilePage() {
         };
     }, [mapCoords, leafletReady]);
 
-    const isLoading = branchLoading || businessLoading || isBranch === null;
+    const isLoading = branchLoading || businessByCodeLoading || businessByBranchLoading;
 
     const useBusinessDetails = !branch || branch.isMainBranch;
     const profileSource = useBusinessDetails ? (business || branch) : branch;
     const locationAddress = useBusinessDetails
         ? formatLocation(business?.address || branch?.address, business?.city || branch?.city, business?.state || branch?.state)
         : formatLocation(branch?.address, branch?.city, branch?.state);
+    const businessLocation = formatLocation(business?.address ||  business?.city ||  business?.state);
+    const resolvedLocation = locationAddress === 'Location not provided' ? businessLocation : locationAddress;
 
     const profileName = useMemo(() => {
-        if (useBusinessDetails) {
-            return business?.name || businessSummary?.name || 'Name not provided';
-        }
-        return branch?.name || 'Name not provided';
-    }, [branch, business, businessSummary, useBusinessDetails]);
+        const businessName = business?.name || businessSummary?.name || branch?.business?.name;
+        return businessName || branch?.name || 'Business';
+    }, [branch, business, businessSummary]);
 
     const profileLogo = useMemo(() => {
         if (useBusinessDetails) {
@@ -175,6 +154,7 @@ export default function PublicBusinessProfilePage() {
         }
         return branch?.logoUrl || '';
     }, [branch, business, businessSummary, useBusinessDetails]);
+    const fallbackLogo = '/VEMTAP_PNG.png';
 
     useEffect(() => {
         setLogoFailed(false);
@@ -184,7 +164,6 @@ export default function PublicBusinessProfilePage() {
     const profileEmail = profileSource?.officialEmail;
     const profilePhone = profileSource?.phone;
     const profileWebsite = profileSource?.website;
-    const profileWhatsapp = profileSource?.whatsappNumber;
     const profileAbout = profileSource?.about;
     const profileWelcome = profileSource?.welcomeMessage;
     const profileHours = profileSource?.businessHours;
@@ -209,12 +188,7 @@ export default function PublicBusinessProfilePage() {
         { key: 'youtube', label: 'YouTube', icon: Youtube, url: profileSocials.youtubeUrl },
     ];
 
-    const categoryLabel = useMemo(() => {
-        if (!useBusinessDetails) return 'Branch Location';
-        const cat = business?.category?.name;
-        const sub = business?.subcategory?.name;
-        return cat && sub ? `${cat} - ${sub}` : cat || sub || 'General Business';
-    }, [business, useBusinessDetails]);
+
 
     if (isLoading) {
         return (
@@ -246,7 +220,11 @@ export default function PublicBusinessProfilePage() {
                                         onError={() => setLogoFailed(true)}
                                     />
                                 ) : (
-                                    <span className="text-sm font-bold text-slate-400">No Logo</span>
+                                    <img
+                                        alt="VemTap"
+                                        className="w-full h-full object-contain opacity-80"
+                                        src={fallbackLogo}
+                                    />
                                 )}
                             </div>
 
@@ -257,7 +235,7 @@ export default function PublicBusinessProfilePage() {
                                 <div className="flex flex-wrap items-center gap-4 text-slate-500 font-medium mt-1 text-sm md:text-base">
                                     <div className="flex items-center gap-1">
                                         <MapPin size={16} />
-                                        <span>{locationAddress?.split(',').slice(-2).join(', ') || "Lagos, Nigeria"}</span>
+                                        <span>{resolvedLocation?.split(',').slice(-2).join(', ') || "Lagos, Nigeria"}</span>
                                     </div>
                                 </div>
                             </div>

@@ -64,9 +64,10 @@ export default function ActiveFormsPage() {
     const activeBranch = branches.find(b => b.id === currentActiveBranchId);
 
     const isSocialEnabled = activeBranch ? activeBranch.showSocial : business?.showSocial;
-    const hasSocialLinks = activeBranch 
+    const hasSocialLinks = activeBranch
         ? (activeBranch.instagramUrl || activeBranch.linkedinUrl || activeBranch.reviewUrl || activeBranch.trustpilotUrl)
         : (business?.instagramUrl || business?.linkedinUrl || business?.reviewUrl || business?.trustpilotUrl);
+    const showSocialStep = !!(engagementSettings?.showSocial && isSocialEnabled && hasSocialLinks);
 
     const activeFormIds = useMemo(
         () => getActiveFormIds(branchKey),
@@ -122,7 +123,9 @@ export default function ActiveFormsPage() {
 
             <EngagementTabs
                 tabs={[
+                    { label: 'Appearance', href: '/dashboard/engagement/experience/appearance' },
                     { label: 'Default Form', href: '/dashboard/engagement/experience/default-form' },
+                    { label: 'Default Success', href: '/dashboard/engagement/experience/default-success' },
                     { label: 'Additional Forms', active: true },
                 ]}
             />
@@ -154,49 +157,6 @@ export default function ActiveFormsPage() {
                             </p>
                         </div>
 
-                        <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-6 shadow-sm">
-                            <div className="flex items-center gap-2 pb-2 border-b border-gray-50">
-                                <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                                    <Palette size={18} />
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-bold text-gray-900">Global Form Appearance</h3>
-                                    <p className="text-[10px] text-gray-500 font-medium">Customize how your forms look across all branches</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50/30">
-                                    <div className="space-y-0.5">
-                                        <p className="text-xs font-bold text-gray-900">Brand Primary Color</p>
-                                        <p className="text-[10px] text-gray-500 font-medium leading-normal">Applied to buttons, accents, and branding elements</p>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-[10px] font-mono font-bold text-gray-400">{(engagementSettings?.brandColor || '#2563eb').toUpperCase()}</span>
-                                        <div className="relative group">
-                                            <input 
-                                                type="color" 
-                                                value={engagementSettings?.brandColor || '#2563eb'}
-                                                onChange={(e) => updateEngagementSettings({ brandColor: e.target.value })}
-                                                className="size-10 rounded-xl border-4 border-white shadow-sm cursor-pointer p-0 overflow-hidden appearance-none"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-5 gap-2">
-                                    {['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'].map((color) => (
-                                        <button
-                                            key={color}
-                                            onClick={() => updateEngagementSettings({ brandColor: color })}
-                                            className={`h-8 rounded-lg transition-all ${engagementSettings?.brandColor === color ? 'ring-2 ring-offset-2 ring-primary scale-95' : 'hover:scale-105'}`}
-                                            style={{ backgroundColor: color }}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
                         {availableForms.length === 0 ? (
                             <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-8 text-center text-sm text-gray-500">
                                 No published forms yet. Create and publish a form to activate it here.
@@ -218,13 +178,13 @@ export default function ActiveFormsPage() {
                                             </button>
                                         )}
                                     </div>
-                                    {engagementSettings?.showSocial && (
+                                    {showSocialStep && (
                                         <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
                                             <div className="size-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                                                <Share2 size={14} />
+                                                1
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                                <p className="text-sm font-semibold text-emerald-700">Social Links Step</p>
+                                                <p className="text-sm font-semibold text-emerald-700">Social Media & Reviews</p>
                                                 <p className="text-xs text-emerald-600 truncate">Shown immediately after the Default Form.</p>
                                             </div>
                                             <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Enabled</span>

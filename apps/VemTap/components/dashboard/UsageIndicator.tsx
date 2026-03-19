@@ -15,7 +15,7 @@ export default function UsageIndicator({ label, usage, icon }: UsageIndicatorPro
   if (!usage) return null;
 
   const { used, limit } = usage;
-  const isUnlimited = limit === 'unlimited';
+  const isUnlimited = limit === 'unlimited' || limit === -1;
   const percentage = isUnlimited ? 0 : Math.min((used / (limit as number)) * 100, 100);
   const isNearLimit = !isUnlimited && percentage > 80;
   const isFull = !isUnlimited && used >= (limit as number);
@@ -28,7 +28,7 @@ export default function UsageIndicator({ label, usage, icon }: UsageIndicatorPro
           <span className="text-sm font-bold text-text-main">{label}</span>
         </div>
         <span className="text-xs font-black text-text-secondary">
-          {used} out of {isUnlimited ? '∞' : limit}
+          {used} out of {isUnlimited ? 'Unlimited' : limit}
         </span>
       </div>
 

@@ -1,0 +1,410 @@
+Phase 1: The Core Experience (MVP)
+Focus: Getting the tap to work and capturing data.
+
+Dynamic NFC Routing Engine:
+
+Develop the "Short URL" redirector ($tap.platform.com/id$) that allows you to link physical hardware to specific business profiles remotely.
+
+The "No-App" Visitor Journey:
+
+Welcome Screen: Business-branded landing page.
+
+Smart Form: High-speed data entry for Name, Phone, and Email (with auto-fill support).
+
+Consent Management: A simple "I Agree" toggle for privacy compliance.
+
+Unique Identity Logic:
+
+System to recognize returning visitors by phone number and increment visit counts instead of creating duplicate profiles.
+
+Basic Business Dashboard:
+
+Secure login/registration.
+
+Visitor list view with search and CSV export.
+
+Essential analytics (Total vs. New vs. Repeat visitors).
+
+Phase 2: Communication & Retention
+Focus: Helping businesses use the data they’ve collected.
+
+Multi-Channel Messaging:
+
+Integration with SMS, WhatsApp, and Email gateways.
+
+Message builder to send promotions to specific groups (e.g., "Only new visitors").
+
+Loyalty Engine:
+
+Points-per-visit tracking.
+
+Digital coupon generation (Success Screen rewards).
+
+Staff verification portal to "mark as used" when a customer redeems a reward.
+
+Advanced Analytics:
+
+Footfall heatmaps (Peak hours/Slow days).
+
+Message conversion tracking (Did they come back after the SMS?).
+
+Phase 3: Hardware & Account Management
+Focus: Scaling the business operations.
+
+Device Management System (DMS):
+
+Centralized portal to track which NFC plate is at which shop.
+
+Remote "Kill Switch" to disable tags if a business stops paying.
+
+Automated Billing & Plans:
+
+Tiered subscription levels (Free/Basic/Premium).
+
+Payment gateway integration for automated renewals and invoicing.
+
+Staff & Role Management:
+
+Allow business owners to invite "Staff" accounts with restricted view-only access.
+
+Phase 4: Optimization & Integration
+Focus: Efficiency and ecosystem growth.
+
+Integration Layer:
+
+Public API to connect with external POS (Point of Sale) or CRM systems.
+
+Performance Tuning:
+
+Aggressive caching and data minimization to ensure the <3 second load time in low-network areas.
+
+Company Super-Admin Panel:
+
+Global dashboard for your team to monitor total platform revenue, active businesses, and support tickets.
+
+
+new task
+
+========================
+
+--only for feedback
+
+--bussiness logo
+
+--shorten name
+
+--fit in the name weither big or small
+
+=======================================
+
+--white label pricing
+
+--showing a bussiness website
+
+--hardware pricing
+
+
+
+New task : 5/2/2026
+===========================
+
+okay addinbg pictures in the hero section
+
+--the dashboard will be real
+
+--animated video to show how it works and under 10 secs
+
+--now add a page to be able to edit the final Message and also for returning coustomers message for a bussiness and add weither there is rewards or not and also there should be a modal explaining the reward rules for a bussiness they can be able to update it in the settings
+
+--before sending message please make sure that there is a modal to see the msg either to edit or confirm the msg
+--change all campaign words in the bussiness dashboard to message eg. send campaign to send message
+--now in the page to set final message and returning msg we should have a preview so that they can see how it looks like
+--now the auth make theb image part 50/50 with the form.
+change store manager to just manager.
+--allow bussi8ness owner to be able to restrict more role based access 
+--change latap yo eliz tap please
+--
+
+============================
+now for enry connect please check that evry page with the welcome show the modal either for the buttons or action all in the bussiness dashboard i eman all do not leave any one and alsp for the reward show an animated rewars set by the bussiness when clicked in the ation an animated modal of the reward please2.now please the pricing for the hardware should also be before the actual service pricing please  check for the white label page please 
+
+========
+
+--invite bussines owner or bussines manger to the platform
+-- they should be able to type the role in the rba.
+--first name,last name
+
+--edit should not works
+--we should be able to add welcome messages 
+--create template 
+--solutions:dropdown for software,hardware
+-- hardware landing page leads to hardware store which leads to our marketplace
+--  the admin will add and populate the store market place.
+--they should be able to coustomize the nfc crds based on the background color,name,brand etc
+
+-- :nfcs 
+
+---Did you know?
+
+NFC identification is 4x faster than QR code scanning. It eliminates the need for camera focus, lighting adjustments, and app interaction, making it the perfect solution for busy store-fronts and clubs.
+--add it strategically to the landing page
+---for the Merchant Plates use images
+--https://store.gototags.com/
+
+--we will have booking section 1.booking multiple 
+
+--add to cart,see,add quote,
+
+--Let's tap into
+your future. - this section background should be like a soft blue like the card with the cta in the main landing page and please make sure you use  there are no to rounded cards anywhere in this application go ahead and also use our dashboard sidebar as a refrnce to create the market place with the product card and major desc about the product  Let's tap into
+your future. 
+
+==========================================
+
+--now for the hardware marketplace please make sure that the product card is like the dashboard sidebar and also the product detail page should be like the dashboard page and also the product detail page should have a section for the product description and also the product images should be in a slider and also the product should have a add to cart button and also the product should have a add to quote button and also the product should have a add to wishlist button and also the product should have a add to compare button and also the product should have a add to share button and also the product should have a add to report button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to review button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add to rating button and also the product should have a add
+
+================================
+
+--admin should be able  to coustomize the pricing section
+--remove pricing from white label
+
+--remove heading for hardware use the sub heading 
+
+--remove filters market place
+--name,price,quote
+--no checkout,no wishlist
+--remove downloads
+--details part of spec and 
+--no need to add to cart
+--if already it should populate the quote form
+--there should be carousels on the details page
+--remove sku,add to compare, replace add to compare with description
+--lower than moq,price per unit
+--remove the table eg:3000 pr 
+--order more than more than 50 units and get quote
+--instead of coustom solution -- talk to agent
+--review
+
+--first name, last name
+
+--enter location for quote 
+
+--once quote is submmited it three dots then products,coustomer details,quote details,date and time,phone number
+--if people requested quote and can update stock,restock,
+
+--be able to pick from my template list in send message and new visitor
+
+-- create a new message or compose from both.
+
+--collect walk in coustomer details fast and simple
+
+--7 out of 10 coustomer dont buy  on first visit
+
+--on tab the dropdown is not clicking for solutions
+
+min-qusntity
+1-100 price:500/unit
+500-999:400/unit
+1000=> :350/unit
+
+===================================
+
+--biuussinessscammers
+--integrations with twilo and sendgrid
+--whatsaap,automayttion --premium integration,
+--lock loyalty and automation only for  premium users and update to use the service
+--admin should be able to give like one month free acess to some 
+--each nfc card is linked  to a particular bussiness
+--the link shoould be generated for all the links ,
+--now create a place for the bussines to generatee links for nfc hardware--also qr code for each link generated
+--bussiness profiles
+--bussiness can put thier profile link ,update logo
+--users should close auto closeb
+--once they submit thier thier  data it will automatically create the account and login eg. send an email link
+
+
+
+==================================
+
+STEP 1: The 5-Second Core Flow (Non-Negotiable)
+
+Customer taps NFC →
+
+Auto-filled form appears →
+
+✔ Consent
+✔ Submit
+
+Done.
+
+- No reviews.
+- No surveys.
+- No social.
+- No distractions.
+
+Target: 3–4 seconds.
+
+That’s your foundation.
+[7:22 PM, 2/12/2026] Oyelakin Tobiloba: STEP 2: After Submission (Micro Decision Screen)
+
+Immediately after successful submission:
+
+Show:
+
+✅ Visit recorded successfully.
+
+Would you like to:
+
+⭐ Leave a review
+📱 Follow us
+📝 Give quick feedback
+🎁 Claim rewards
+
+If customer ignores → no problem.
+They can walk away.
+
+If they tap something → engagement begins.
+
+This keeps friction low.
+[7:23 PM, 2/12/2026] Oyelakin Tobiloba: STEP 3: Automated Post-Visit Engagement
+
+Now here is the powerful part.
+
+Because you already captured:
+
+- Name
+- Phone
+- Email
+
+You can automate everything later.
+
+🟡 A. Review Automation (Later)
+
+System sends:
+
+SMS / WhatsApp / Email:
+
+“Thanks for visiting [Business Name].
+We’d love your feedback.”
+
+With direct Google review link.
+
+This increases reviews without slowing in-store flow.
+
+🟡 B. Social Growth Automation
+
+Message can include:
+
+- Instagram link
+- TikTok link
+- WhatsApp link
+- Website link
+
+Let them engage when relaxed at home.
+
+Higher success rate.
+
+🟡 C. Survey / Feedback System (Very Important)
+
+This is where you build real value.
+
+Businesses need:
+
+- Customer satisfaction data
+- Product feedback
+- Complaint capture
+- Improvement ideas
+
+You create:
+- Surve…TEP 4: Smart Engagement Logic
+
+Inside VemTap backend:
+
+Business sets rules:
+
+After visit:
+☑ Send review link after 2 hours
+☑ Send survey after 24 hours
+☑ Send promo after 7 days
+
+
+Now VemTap becomes:
+- A Customer Growth Engine.
+Not just NFC.
+
+🔥 Advanced Layer
+- Behavior-Based Automation
+
+If customer:
+- Leaves 5-star review → send reward coupon
+- Leaves low rating → trigger private feedback flow
+- Doesn’t respond → resend reminder
+- Visits 3 times → send loyalty 
+
+
+
+
+======================
+when a dropdown c is open others are supposed to close when on load no dropdown is supposed to clopse any sub links in the dropdown clicked should still have the dropdown open unless toggled to close please 
+--please on the bussiness dashboard stanardize only one picing
+
+-- the  reward form  is not descrptive add tooltips
+
+--nfc modal to pop up so that we can edit
+
+-- check why bussiness id is not working on another computer
+
+--make qr code to be pdf instead of png
+
+--increase the width and hieght of the qr code 
+the copy button should be in front of the url and the button should be in front of the download code for nf-manager tab
+--once you change the url update the qr code
+--emails are optional,optional for visitors but mostly use email
+
+-
+--add the emeail list 
+=====================================================
+
+--the top up modal should select Channel
+--layout still misbehaving 
+--when sending message you dont need to select again 
+-- add a button instead of currly braces 
+--add dropdown before dropdown
+--we should be able to edit a message template before sending 
+--add a preview before sending message for each channel
+--create template is not working 
+--bussiness number | whatsaap link, their offcial email and then
+
+--onboarding reviews,onbaoridng process,
+--nfc manager should be inside devices 
+--allow creating message from scratch or choose template and edit and coutomize for that message and then see the preview 
+--let the preview show like the phone for all channels 
+--target audience, template for email
+
+
+==============
+new task 
+note:always send a list of task given to you
+--allow bussiness to search coustomers and message them from the live messaging.
+--
+--push notification ui
+--in the bussiness profile show rewards list allow toogle when toogled show a card modal that say "this is 
+--seprate the messaging,history etc.
+--eg email,whatsaap,
+--change messaging to channels
+--in app chat
+
+--remove the messaging settings from messaging center
+--make the branding affect the default form and addtional forms when selected from the branding tab
+---change the messaging center to channel
+--comes first called it appearance
+
+
+--after submission also as a tab default thank you
+-- first is appearance,default form,default success, additional form 
+--addition 
+ --after submission in form creation should be in step 3 before preview
+ --cant update a form
+ --by default  use the bussiness name
+ --the form should be a button with the title  for the additional form in the preview not a literal form 
+ and then socials will show before them
