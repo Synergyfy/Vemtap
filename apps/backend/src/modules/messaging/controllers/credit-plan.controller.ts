@@ -10,6 +10,7 @@ import {
   Request,
   Query,
   BadRequestException,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -127,7 +128,7 @@ export class CreditPlanController {
     type: CreditPlan,
   })
   @ApiResponse({ status: 404, description: 'Credit plan not found.' })
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.creditPlanService.findOne(id);
   }
 
@@ -146,7 +147,7 @@ export class CreditPlanController {
     description: 'Payment verification failed or insufficient amount.',
   })
   purchase(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() purchaseDto: PurchaseCreditPlanDto,
   ) {
     return this.creditPlanService.purchase(
@@ -166,7 +167,7 @@ export class CreditPlanController {
     type: CreditPlan,
   })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateCreditPlanDto: UpdateCreditPlanDto,
   ) {
     return this.creditPlanService.update(id, updateCreditPlanDto);
@@ -180,7 +181,9 @@ export class CreditPlanController {
     status: 200,
     description: 'The credit plan has been successfully deactivated.',
   })
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.creditPlanService.remove(id);
   }
+}
+
 }

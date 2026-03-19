@@ -10,6 +10,8 @@ import {
   Query,
   Request,
   Patch,
+  ParseUUIDPipe,
+  ParseEnumPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -114,7 +116,7 @@ export class MessagingController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Update a message template' })
   async updateTemplate(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: Partial<CreateTemplateDto>,
     @Request() req: { user: User },
   ) {
@@ -158,7 +160,7 @@ export class MessagingController {
   })
   @ApiResponse({ status: 200, description: 'List of threads sorted by last activity' })
   async getInboxThreads(
-    @Param('channel') channel: Channel,
+    @Param('channel', new ParseEnumPipe(Channel)) channel: Channel,
     @Query() filter: BranchFilterDto,
     @Request() req: { user: User },
   ) {
@@ -173,7 +175,7 @@ export class MessagingController {
   @ApiOperation({ summary: 'Get messages in a specific thread (Newest to Oldest)' })
   @ApiResponse({ status: 200, description: 'List of messages with quoting support' })
   async getThreadMessages(
-    @Param('threadId') threadId: string,
+    @Param('threadId', ParseUUIDPipe) threadId: string,
     @Query() filter: BranchFilterDto,
     @Request() req: { user: User },
   ) {
@@ -189,7 +191,7 @@ export class MessagingController {
   @ApiBody({ type: ReplyDto })
   @ApiResponse({ status: 201, description: 'Reply sent and broadcast via Socket' })
   async replyToThread(
-    @Param('threadId') threadId: string,
+    @Param('threadId', ParseUUIDPipe) threadId: string,
     @Body() dto: ReplyDto,
     @Query() filter: BranchFilterDto,
     @Request() req: { user: User },
@@ -206,7 +208,7 @@ export class MessagingController {
   @ApiOperation({ summary: 'Mark a conversation thread as read for the branch' })
   @ApiResponse({ status: 200, description: 'Thread marked as read' })
   async markThreadAsRead(
-    @Param('threadId') threadId: string,
+    @Param('threadId', ParseUUIDPipe) threadId: string,
     @Query() filter: BranchFilterDto,
     @Request() req: { user: User },
   ) {
@@ -220,9 +222,11 @@ export class MessagingController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Delete a message template' })
   async deleteTemplate(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Request() req: { user: User },
   ) {
     return this.templateService.deleteTemplate(id, req.user);
   }
+}
+
 }

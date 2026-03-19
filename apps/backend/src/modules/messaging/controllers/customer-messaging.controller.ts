@@ -7,6 +7,7 @@ import {
   UseGuards,
   Request,
   NotFoundException,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { InboxService } from '../services/inbox.service';
@@ -50,7 +51,7 @@ export class CustomerMessagingController {
   @ApiOperation({ summary: 'Get messages in a specific in-house thread (Newest to Oldest)' })
   @ApiResponse({ status: 200, description: 'List of messages with quoting support' })
   async getThreadMessages(
-    @Param('threadId') threadId: string,
+    @Param('threadId', ParseUUIDPipe) threadId: string,
     @Request() req: { user: User },
   ) {
     return this.inboxService.getCustomerThreadMessages(threadId, req.user.id);
@@ -63,10 +64,11 @@ export class CustomerMessagingController {
   @ApiBody({ type: ReplyDto })
   @ApiResponse({ status: 201, description: 'Reply sent and broadcast via Socket' })
   async replyToThread(
-    @Param('threadId') threadId: string,
+    @Param('threadId', ParseUUIDPipe) threadId: string,
     @Body() dto: ReplyDto,
     @Request() req: { user: User },
   ) {
     return this.inboxService.sendCustomerReply(threadId, dto.content, req.user.id, dto.replyToId);
   }
 }
+

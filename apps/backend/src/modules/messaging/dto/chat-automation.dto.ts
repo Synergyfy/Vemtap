@@ -1,4 +1,4 @@
-import { IsString, IsBoolean, IsOptional, IsArray, MinLength, IsObject, ValidateNested, IsInt, Min, Max } from 'class-validator';
+import { IsString, IsBoolean, IsOptional, IsArray, MinLength, IsObject, ValidateNested, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -57,7 +57,7 @@ export class UpdateChatAutomationDto {
   @Type(() => CustomScheduleDto)
   customSchedule?: CustomScheduleDto;
   
-  @IsString()
+  @IsUUID()
   @IsOptional()
   branchId?: string;
 }
@@ -74,10 +74,11 @@ export class AddFaqKeywordDto {
   @MinLength(1, { message: 'Response message cannot be empty' })
   response: string;
 
-  @IsString()
+  @IsUUID()
   @IsOptional()
   branchId?: string;
 }
+
 
 export class UpdateFaqKeywordDto {
   @ApiProperty({ required: false })

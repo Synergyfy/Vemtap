@@ -7,6 +7,7 @@ import {
   Request,
   Param,
   BadRequestException,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -21,6 +22,7 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../users/entities/user.entity';
 import { Channel } from '../enums/channel.enum';
 import { CreditTransactionType } from '../enums/credit-transaction-type.enum';
+import { AdjustCreditsDto } from '../dto/adjust-credits.dto';
 
 @ApiTags('Messaging Credits')
 @ApiBearerAuth()
@@ -43,7 +45,7 @@ export class CreditController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get credit balance for a specific business (Admin Dashboard)' })
-  async getBusinessBalance(@Param('businessId') businessId: string) {
+  async getBusinessBalance(@Param('businessId', ParseUUIDPipe) businessId: string) {
     return this.creditService.getOrCreateWallet(businessId);
   }
 
@@ -53,12 +55,7 @@ export class CreditController {
   @ApiOperation({ summary: 'Manually adjust business credits (Admin Dashboard)' })
   async adjustCredits(
     @Body()
-    dto: {
-      businessId: string;
-      channel: Channel;
-      amount: number;
-      action: 'add' | 'remove';
-    },
+    dto: AdjustCreditsDto,
   ) {
     const { businessId, channel, amount, action } = dto;
     
@@ -81,4 +78,6 @@ export class CreditController {
 
     return { success: true };
   }
+}
+
 }
