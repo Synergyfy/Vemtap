@@ -238,16 +238,18 @@ export class MessagingEngineService {
     }
 
     // 8. Queue Individual Messages for Background Processing
-    for (const customerId of validUserIds) {
-      await this.individualQueue.add('send-individual', {
+    const jobs = validUserIds.map((customerId) => ({
+      name: 'send-individual',
+      data: {
         branchId,
         customerId,
         content: baseContent,
         channel,
         from,
         campaignId,
-      });
-    }
+      },
+    }));
+    await this.individualQueue.addBulk(jobs);
 
     return {
       message: 'Messages queued for background processing',
@@ -289,7 +291,7 @@ export class MessagingEngineService {
     resolved = resolved.replace(/{ReviewLink}/g, branch.reviewUrl || '');
     resolved = resolved.replace(/{Link}/g, branch.website || branch.reviewUrl || '');
 
-    resolved = resolved.replace(/{Points}/g, '0');
+    resolved = resolved.replace(/{Points}/g, '9999');
 
     return resolved;
   }

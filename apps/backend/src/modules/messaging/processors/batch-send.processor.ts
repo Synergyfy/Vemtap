@@ -19,6 +19,7 @@ interface BatchJobData {
   customerIds: string[]; // These are user IDs with role CUSTOMER
   templateId?: string;
   content?: string;
+  from?: string;
 }
 
 @Processor('messaging-batch-send', {
@@ -40,7 +41,7 @@ export class BatchSendProcessor extends WorkerHost {
   }
 
   async process(job: Job<BatchJobData, any, string>): Promise<any> {
-    const { campaignId, branchId, customerIds, templateId, content } = job.data;
+    const { campaignId, branchId, customerIds, templateId, content, from: jobFrom } = job.data;
     this.logger.log(
       `Processing batch send for campaign ${campaignId}, targeting ${customerIds.length} customers.`,
     );
@@ -70,11 +71,13 @@ export class BatchSendProcessor extends WorkerHost {
             continue;
           }
 
-          let from = '';
-          if (job.data.channel === Channel.SMS) {
-            from = 'VEMTAP';
-          } else if (job.data.channel === Channel.WHATSAPP) {
-            from = branch.whatsappNumber || '';
+          let from = jobFrom || '';
+          if (!from) {
+            if (job.data.channel === Channel.SMS) {
+              from = 'VEMTAP';
+            } else if (job.data.channel === Channel.WHATSAPP) {
+              from = branch.whatsappNumber || '';
+            }
           }
 
           await this.messagingEngine.processSingleSend(
