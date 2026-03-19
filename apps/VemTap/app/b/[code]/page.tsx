@@ -21,7 +21,7 @@ import {
 
 import { usePublicBusiness, usePublicBranch, usePublicRewards } from '@/services/public/hooks';
 import { BusinessHours } from '@/services/public/types';
-import { normalizeBaseUrl } from '@/lib/api';
+
 
 const displayText = (value?: string | null) => (value && value.trim().length > 0 ? value : 'Not provided');
 
@@ -35,12 +35,9 @@ const formatHours = (hours?: BusinessHours) => {
     return `${hours.open} - ${hours.close}`;
 };
 
-const formatExternalUrl = (value?: string) => {
-    if (!value) return '';
-    return value.startsWith('http') ? value : `https://${value}`;
-};
 
-const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
+
+
 
 export default function PublicBusinessProfilePage() {
     const params = useParams();
@@ -167,7 +164,6 @@ export default function PublicBusinessProfilePage() {
     const profileEmail = profileSource?.officialEmail;
     const profilePhone = profileSource?.phone;
     const profileWebsite = profileSource?.website;
-    const profileWhatsapp = profileSource?.whatsappNumber;
     const profileAbout = profileSource?.about;
     const profileWelcome = profileSource?.welcomeMessage;
     const profileHours = profileSource?.businessHours;
@@ -192,12 +188,7 @@ export default function PublicBusinessProfilePage() {
         { key: 'youtube', label: 'YouTube', icon: Youtube, url: profileSocials.youtubeUrl },
     ];
 
-    const categoryLabel = useMemo(() => {
-        if (!useBusinessDetails) return 'Branch Location';
-        const cat = business?.category?.name;
-        const sub = business?.subcategory?.name;
-        return cat && sub ? `${cat} - ${sub}` : cat || sub || 'General Business';
-    }, [business, useBusinessDetails]);
+
 
     if (isLoading) {
         return (

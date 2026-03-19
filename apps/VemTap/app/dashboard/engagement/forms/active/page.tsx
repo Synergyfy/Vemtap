@@ -217,19 +217,25 @@ export default function ActiveFormsPage() {
                                                         reorderActiveForms(sourceId, form.id);
                                                         setDraggedFormId(null);
                                                     }}
-                                                    onClick={() => setPreviewFormId(form.id)}
-                                                    className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-shadow cursor-pointer ${draggedFormId === form.id ? 'border-primary/40 shadow-md' : 'border-gray-100 bg-white'} ${previewFormId === form.id ? 'ring-2 ring-primary/20' : ''}`}
+                                                    className={`flex items-center gap-3 rounded-xl border px-3 py-2 transition-shadow ${draggedFormId === form.id ? 'border-primary/40 shadow-md' : 'border-gray-100 bg-white'} ${previewFormId === form.id ? 'ring-2 ring-primary/20' : ''}`}
                                                 >
-                                                    <div className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-black shrink-0">
+                                                    <div className="size-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black shrink-0">
                                                         {index + 1}
                                                     </div>
-                                                    <div className="size-8 rounded-lg border border-gray-200 text-gray-400 flex items-center justify-center bg-gray-50">
+                                                    <div className="size-7 rounded-lg border border-gray-200 text-gray-400 flex items-center justify-center bg-gray-50">
                                                         <GripVertical size={14} />
                                                     </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="text-sm font-semibold text-gray-900 truncate">{form.title}</p>
-                                                        <p className="text-xs text-gray-500 truncate">{form.description || 'No description'}</p>
-                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setPreviewFormId(form.id)}
+                                                        className={`flex-1 h-10 rounded-lg border px-3 text-left text-sm font-semibold transition-colors ${
+                                                            previewFormId === form.id
+                                                                ? 'border-primary/40 bg-primary/5 text-primary'
+                                                                : 'border-gray-200 bg-white text-slate-900 hover:bg-gray-50'
+                                                        }`}
+                                                    >
+                                                        <span className="truncate block">{form.title || 'Untitled Form'}</span>
+                                                    </button>
                                                     <div className="flex items-center gap-2">
                                                         <button
                                                             onClick={() => setHelpModal({
