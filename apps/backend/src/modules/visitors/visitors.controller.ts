@@ -42,6 +42,9 @@ import { VisitorStatsResponseDto } from './dto/visitor-stats.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
 import { RecordVisitResponse, SendCampaignBody } from './visitors.service';
 
+import { VisitedBranchesQueryDto } from './dto/visited-branches-query.dto';
+import { PaginatedVisitedBranchResponseDto } from './dto/visited-branch-response.dto';
+
 @ApiTags('Visitors')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -51,6 +54,21 @@ export class VisitorsController {
     private readonly visitorsService: VisitorsService,
     private readonly loyaltyService: LoyaltyService,
   ) {}
+
+  @Get('visited-branches')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Get branches visited by the customer with pagination and search' })
+  @ApiResponse({ 
+    status: 200, 
+    type: PaginatedVisitedBranchResponseDto,
+    description: 'List of branches visited by the customer, ordered from last visited to first visited'
+  })
+  async getVisitedBranches(
+    @Req() req: any,
+    @Query() query: VisitedBranchesQueryDto,
+  ): Promise<PaginatedVisitedBranchResponseDto> {
+    return this.visitorsService.getVisitedBranches(req.user.id, query);
+  }
 
   private async getBranchId(req: any, queryBranchId?: string): Promise<string> {
     const user = req.user;
