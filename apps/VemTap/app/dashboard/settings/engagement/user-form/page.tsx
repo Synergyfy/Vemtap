@@ -131,7 +131,7 @@ export default function UserFormSettingsPage() {
             <EngagementTabs
                 tabs={[
                     { label: 'Default Form', active: true },
-                    { label: 'Additional Forms', href: '/dashboard/settings/engagement/experience/additional-forms' },
+                    { label: 'Additional Forms', href: '/dashboard/engagement/experience/additional-forms' },
                 ]}
             />
 
@@ -345,3 +345,4 @@ export default function UserFormSettingsPage() {
         </div>
     );
 }
+

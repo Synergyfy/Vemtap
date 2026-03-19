@@ -79,8 +79,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const publicProfileCode = activeBranch?.uniqueCode || mainBranch?.uniqueCode || firstBranchWithCode?.uniqueCode || myBusiness?.uniqueCode;
     const publicProfileHref = publicProfileCode ? `/b/${publicProfileCode}` : `/business/${businessSlug}`;
 
-    // eslint-disable-next-line no-console
-    console.log('[DASHBOARD SIDEBAR] 🔍 isAuthenticated:', isAuthenticated, 'path:', pathname);
+
 
     // Auto-expand the menu corresponding to the current path
     const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
@@ -107,11 +106,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const unreadCount = notifications.filter((n: Notification) => !n.read).length;
     const pendingRedemptions = redemptionRequests.filter((r: any) => r.status === 'pending').length;
     const isFreePlan = Boolean(activeSubscription?.plan?.isFree) || String(activeSubscription?.planId || '').toLowerCase().includes('free');
-    const showPlanPill = Boolean(activeSubscription)
-        && activeSubscription?.status !== 'cancelled'
-        && activeSubscription?.status !== 'expired'
-        && activeSubscription?.status !== 'pending';
-    const planPillLabel = activeSubscription?.plan?.name || (isFreePlan ? 'Free Plan' : 'Active Plan');
 
     const readNotificationMutation = useMutation({
         mutationFn: dashboardApi.markNotificationRead,
@@ -182,15 +176,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ]
         },
         {
-            id: 'devices',
-            label: 'NFC Hub',
-            icon: Nfc,
-            roles: ['owner', 'manager', 'staff'],
-            submenu: [
-                { label: 'NFC Asset Hub', href: '/dashboard/nfc-manager' },
-            ]
-        },
-        {
             id: 'live-chat',
             label: 'Live Messaging',
             icon: MessageCircle,
@@ -230,13 +215,20 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 { label: 'Settings', href: '/dashboard/loyalty/settings' },
                 { label: 'Customers', href: '/dashboard/loyalty/customers' },
                 { label: 'Verify', href: '/dashboard/loyalty/verify' },
-                { label: 'New User Preview', href: '/dashboard/messaging/preview/new' },
-                { label: 'Returning Preview', href: '/dashboard/messaging/preview/returning' },
+            ]
+        },
+        {
+            id: 'engagement',
+            label: 'Engagement',
+            icon: Zap,
+            submenu: [
+                { label: 'User Experience', href: '/dashboard/engagement/experience' },
+                { label: 'Form Creator', href: '/dashboard/engagement/forms' },
             ]
         },
         {
             id: 'analytics',
-            label: 'Analytics',
+            label: 'Advanced Analytics ',
             icon: BarChart,
             roles: ['owner', 'manager'],
             submenu: [
@@ -273,6 +265,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             href: '/admin/nfc-grants',
             roles: ['admin']
         },
+        {
+            id: 'devices',
+            label: 'NFC',
+            icon: Nfc,
+            href: '/dashboard/nfc-manager',
+            roles: ['owner', 'manager', 'staff'],
+
+        },
 
         {
             id: 'settings',
@@ -283,14 +283,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             submenu: [
                 { label: 'Profile', href: '/dashboard/settings/profile' },
                 { label: 'Business Locations', href: '/dashboard/settings/branches' },
-                {
-                    id: 'engagement',
-                    label: 'Engagement',
-                    submenu: [
-                        { label: 'User Experience', href: '/dashboard/settings/engagement/experience' },
-                        { label: 'Form Creator', href: '/dashboard/settings/engagement/forms' },
-                    ]
-                },
+
                 { label: 'Notifications', href: '/dashboard/settings/notifications' },
                 { label: 'Integrations', href: '/dashboard/settings/integrations' },
                 { label: 'Subscription', href: '/dashboard/settings/subscription' },
@@ -618,7 +611,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                             const isOnTrial = activeSubscription?.status === 'trial' || activeSubscription?.status === 'trialing';
                             const planId = String(activeSubscription?.planId || '').toLowerCase();
                             const isFree = planId.includes('free') || Boolean(activeSubscription?.plan?.isFree);
-                            
+
                             if (isFree || !activeSubscription) {
                                 return (
                                     <Link
@@ -634,7 +627,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                 const trialEndDate = new Date(activeSubscription.trialEndDate);
                                 const now = new Date();
                                 const daysRemaining = Math.max(0, Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-                                
+
                                 return (
                                     <Link
                                         href="/dashboard/settings/subscription/manage"
@@ -821,10 +814,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             </div>
 
             <DashboardMobileNav />
-            <UpgradeModal 
-                isOpen={upgradeModal.isOpen} 
-                onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })} 
-                featureName={upgradeModal.featureName} 
+            <UpgradeModal
+                isOpen={upgradeModal.isOpen}
+                onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })}
+                featureName={upgradeModal.featureName}
             />
         </div>
     );

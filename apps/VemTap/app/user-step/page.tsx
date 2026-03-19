@@ -33,7 +33,9 @@ function UserStepPageContent() {
         setBusinessType, userData, branchId, logoUrl, visitCount, rewardVisitThreshold,
         redemptionStatus, requestRedemption,
         engagementSettings, surveyQuestions,
-        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton, businessId, deviceCode
+        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton,
+        customSuccessTitle, customSuccessButton, customSuccessTag,
+        businessId, deviceCode
     } = useCustomerFlowStore();
     const searchParams = useSearchParams();
     const preferredFormIdParam = searchParams.get('formId') || searchParams.get('form');
@@ -397,10 +399,10 @@ function UserStepPageContent() {
 
                 {currentStep === 'FINAL_SUCCESS' && (
                     <StepFinalSuccess
-                        customSuccessTag={useCustomerFlowStore.getState().customSuccessTag}
-                        customSuccessTitle={useCustomerFlowStore.getState().customSuccessTitle}
-                        finalSuccessMessage={useCustomerFlowStore.getState().customSuccessMessage || config.finalSuccessMessage}
-                        customSuccessButton={useCustomerFlowStore.getState().customSuccessButton}
+                        customSuccessTag={customSuccessTag}
+                        customSuccessTitle={customSuccessTitle}
+                        finalSuccessMessage={(customSuccessMessage || '').trim() || config.finalSuccessMessage}
+                        customSuccessButton={customSuccessButton}
                         isFormsLoading={formsLoading}
                         onFinish={resetFlow}
                         onEngagement={handleEngagement}

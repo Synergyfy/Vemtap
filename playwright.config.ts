@@ -12,7 +12,7 @@ export default defineConfig({
   },
   reporter: [['html', { open: 'never' }], ['list']],
   use: {
-    baseURL: 'http://localhost:3001',
+    baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
   },
   projects: [
@@ -22,8 +22,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm --filter entryconect exec next dev --webpack --port 3001',
-    port: 3001,
+    command: 'pnpm --filter entryconect exec next dev --webpack --port 3000',
+    port: 3000,
     reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000,
   },
