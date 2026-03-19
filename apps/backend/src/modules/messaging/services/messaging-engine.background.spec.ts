@@ -33,7 +33,7 @@ describe('MessagingEngineService (Background Processing)', () => {
 
   beforeEach(async () => {
     mockBatchQueue = { add: jest.fn() };
-    mockIndividualQueue = { add: jest.fn() };
+    mockIndividualQueue = { add: jest.fn(), addBulk: jest.fn() };
     
     branchRepoMock = {
       findOne: jest.fn().mockResolvedValue({ 
@@ -95,9 +95,16 @@ describe('MessagingEngineService (Background Processing)', () => {
 
     expect(result.status).toBe('QUEUED');
     expect(result.message).toBe('Messages queued for background processing');
-    expect(mockIndividualQueue.add).toHaveBeenCalledTimes(2);
-    expect(mockIndividualQueue.add).toHaveBeenCalledWith('send-individual', expect.objectContaining({
-      customerId: 'c1',
-    }));
+    expect(mockIndividualQueue.addBulk).toHaveBeenCalledTimes(1);
+    expect(mockIndividualQueue.addBulk).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'send-individual',
+          data: expect.objectContaining({
+            customerId: 'c1',
+          }),
+        }),
+      ])
+    );
   });
 });

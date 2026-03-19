@@ -25,6 +25,7 @@ export async function createTestApp(
   // Mock BullMQ Queues to avoid Redis connections in E2E tests
   const mockQueue = {
     add: jest.fn(),
+    addBulk: jest.fn(),
     process: jest.fn(),
     close: jest.fn(),
     on: jest.fn(),
