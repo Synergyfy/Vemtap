@@ -6,8 +6,7 @@ import { Smile, Paperclip, Camera, Send, X } from 'lucide-react';
 import { useSendReply } from '@/hooks/useMessaging';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches } from '@/services/branches/hooks';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/lib/store/useChatStore';
 
@@ -40,18 +39,8 @@ export default function ChatInput({ conversationId, isMock }: ChatInputProps) {
     const isCustomer = user?.role === 'customer';
     const branchId = isCustomer ? undefined : (activeBranchId || (branches.length === 1 ? branches[0]?.id : undefined));
     
-    // Business reply mutation
-    const businessReply = useSendReply();
-    
-    // Customer reply mutation (different endpoint)
-    const customerReply = useMutation({
-        mutationFn: ({ threadId, content }: { threadId: string; content: string }) =>
-          api.post(`/customer/messaging/threads/${threadId}/reply`, { content }),
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ['chat-messages', conversationId] });
-          queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
-        },
-    });
+    // Unified reply mutation (handles both business and customer endpoints)
+    const replyMutation = useSendReply(isCustomer);
 
     const handleSend = async () => {
         if (!text.trim()) return;
@@ -80,11 +69,11 @@ export default function ChatInput({ conversationId, isMock }: ChatInputProps) {
         }
 
         try {
-            if (isCustomer) {
-                await customerReply.mutateAsync({ threadId: conversationId, content: text.trim() });
-            } else {
-                await businessReply.mutateAsync({ threadId: conversationId, content: text.trim(), branchId: branchId! });
-            }
+            await replyMutation.mutateAsync({ 
+                threadId: conversationId, 
+                content: text.trim(), 
+                branchId 
+            });
             setText('');
             setShowEmojiPicker(false);
             if (textareaRef.current) {
@@ -121,7 +110,7 @@ export default function ChatInput({ conversationId, isMock }: ChatInputProps) {
         if (e.target) e.target.value = '';
     };
 
-    const isSending = businessReply.isPending || customerReply.isPending;
+    const isSending = replyMutation.isPending;
 
     return (
         <footer className="p-4 bg-white border-t border-slate-200 shrink-0 relative">

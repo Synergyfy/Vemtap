@@ -13,15 +13,12 @@ import {
   Business,
 } from '../../src/modules/businesses/entities/business.entity';
 import { Branch } from '../../src/modules/branches/entities/branch.entity';
-import { Contact } from '../../src/modules/contacts/entities/contact.entity';
+import { Visit } from '../../src/modules/visitors/entities/visit.entity';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { Channel } from '../../src/modules/messaging/enums/channel.enum';
 import { Plan } from '../../src/modules/subscriptions/entities/plan.entity';
-import {
-  Subscription,
-  SubscriptionStatus,
-  BillingPeriod,
-} from '../../src/modules/subscriptions/entities/subscription.entity';
+import { BillingPeriod, Subscription, SubscriptionStatus } from '../../src/modules/subscriptions/entities/subscription.entity';
+import { BusinessCreditWallet } from '../../src/modules/messaging/entities/business-credit-wallet.entity';
 import { TermiiProvider } from '../../src/modules/messaging/providers/termii.provider';
 import { BestBulkSmsProvider } from '../../src/modules/messaging/providers/bestbulksms.provider';
 import * as bcrypt from 'bcrypt';
@@ -31,9 +28,10 @@ describe('Messaging (e2e)', () => {
   let userRepo: Repository<User>;
   let businessRepo: Repository<Business>;
   let branchRepo: Repository<Branch>;
-  let contactRepo: Repository<Contact>;
+  let visitRepo: Repository<Visit>;
   let planRepo: Repository<Plan>;
   let subRepo: Repository<Subscription>;
+  let walletRepo: Repository<BusinessCreditWallet>;
   let authService: AuthService;
 
   let ownerToken: string;
@@ -61,9 +59,10 @@ describe('Messaging (e2e)', () => {
     userRepo = app.get(getRepositoryToken(User));
     businessRepo = app.get(getRepositoryToken(Business));
     branchRepo = app.get(getRepositoryToken(Branch));
-    contactRepo = app.get(getRepositoryToken(Contact));
+    visitRepo = app.get(getRepositoryToken(Visit));
     planRepo = app.get(getRepositoryToken(Plan));
     subRepo = app.get(getRepositoryToken(Subscription));
+    walletRepo = app.get(getRepositoryToken(BusinessCreditWallet));
     authService = app.get(AuthService);
 
     const testId =
@@ -94,7 +93,7 @@ describe('Messaging (e2e)', () => {
     owner.businessId = businessId;
     await userRepo.save(owner);
 
-    // 2. Create Plan & Subscription (Required by TrialRestrictionGuard)
+    // 2. Create Plan & Subscription
     const plan = await planRepo.save(
       planRepo.create({
         name: 'Test Plan',
@@ -126,23 +125,51 @@ describe('Messaging (e2e)', () => {
     );
     branchId = branch.id;
 
-    // 4. Create Contacts
-    await contactRepo.save([
-      contactRepo.create({
+    // 3.5 Create Wallet with Credits
+    await walletRepo.save(
+      walletRepo.create({
         businessId,
-        branchId,
-        name: 'Contact 1',
-        phone: '+1234567890',
-        optOut: false,
-        optInChannels: [Channel.SMS, Channel.WHATSAPP, Channel.EMAIL],
+        smsCredits: 1000,
+        whatsappCredits: 1000,
+        emailCredits: 1000,
+      }),
+    );
+
+    // 4. Create Customers and Visits
+    const customer1 = await userRepo.save(
+      userRepo.create({
+        email: `cust1-${testId}@test.com`,
+        password: hashedPassword,
+        firstName: 'Customer',
+        lastName: 'One',
+        role: UserRole.CUSTOMER,
+        status: UserStatus.ACTIVE,
+        phone: `+123${Math.floor(Math.random() * 10000000)}`,
       } as any),
-      contactRepo.create({
-        businessId,
+    );
+
+    const customer2 = await userRepo.save(
+      userRepo.create({
+        email: `cust2-${testId}@test.com`,
+        password: hashedPassword,
+        firstName: 'Customer',
+        lastName: 'Two',
+        role: UserRole.CUSTOMER,
+        status: UserStatus.ACTIVE,
+        phone: `+098${Math.floor(Math.random() * 10000000)}`,
+      } as any),
+    );
+
+    await visitRepo.save([
+      visitRepo.create({
+        customerId: customer1.id,
         branchId,
-        name: 'Contact 2',
-        phone: '+0987654321',
-        optOut: false,
-        optInChannels: [Channel.SMS, Channel.WHATSAPP, Channel.EMAIL],
+        businessId,
+      } as any),
+      visitRepo.create({
+        customerId: customer2.id,
+        branchId,
+        businessId,
       } as any),
     ]);
 
@@ -158,7 +185,7 @@ describe('Messaging (e2e)', () => {
   });
 
   describe('POST /api/v1/messaging/send', () => {
-    it('should send a campaign to ALL contacts with branchId', async () => {
+    it('should send a campaign to ALL customers with branchId', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/messaging/send')
         .set('Authorization', `Bearer ${ownerToken}`)
@@ -166,23 +193,23 @@ describe('Messaging (e2e)', () => {
           channel: Channel.SMS,
           audienceType: 'ALL',
           content: 'Hello all!',
-          branchId: branchId, // Mandatory for Owner
+          branchId: branchId,
         });
 
       expect(res.status).toBe(201);
       expect(res.body).toHaveProperty('campaignId');
     });
 
-    it('should send a message to a specific contact with branchId', async () => {
-      const contacts = await contactRepo.find({ where: { branchId } });
+    it('should send a message to a specific customer with branchId', async () => {
+      const customers = await userRepo.find({ where: { role: UserRole.CUSTOMER } });
       const res = await request(app.getHttpServer())
         .post('/api/v1/messaging/send')
         .set('Authorization', `Bearer ${ownerToken}`)
         .send({
           channel: Channel.SMS,
-          contactIds: [contacts[0].id],
+          customerIds: [customers[0].id],
           content: 'Hello individual!',
-          branchId: branchId, // Mandatory for Owner
+          branchId: branchId,
         });
 
       expect(res.status).toBe(201);

@@ -104,6 +104,7 @@ interface CustomerFlowState {
     } | null;
     isReturningUser: boolean;
     isFirstTimeVisit: boolean;
+    visitSource: string | null;
 
     // Dynamic Customization
     businessId: string | null;
@@ -192,6 +193,7 @@ interface CustomerFlowState {
     setRedemptionStatus: (status: CustomerFlowState['redemptionStatus']) => void;
     resetVisitCountAfterRedemption: (threshold: number) => void;
     setRedirect: (id: string, url: string) => void;
+    setVisitSource: (source: string | null) => void;
 }
 
 export const useCustomerFlowStore = create<CustomerFlowState>()(
@@ -208,6 +210,7 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             userData: null,
             isReturningUser: false,
             isFirstTimeVisit: true,
+            visitSource: null,
 
             businessId: null,
             deviceCode: null,
@@ -281,7 +284,8 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
                 customRewardMessage: null,
                 logoUrl: null,
                 redemptionStatus: 'none',
-                lastRedemptionId: null
+                lastRedemptionId: null,
+                visitSource: null
             }),
             toggleFeedback: (show) => set({ showFeedback: show }),
             setRewardSetup: (has) => set({ hasRewardSetup: has }),
@@ -389,4 +393,5 @@ export const useCustomerFlowStore = create<CustomerFlowState>()(
             setRedirect: (id, url) => set((state) => ({
                 redirects: { ...state.redirects, [id]: url }
             })),
+            setVisitSource: (source) => set({ visitSource: source }),
         }), { name: 'customer-flow-storage' }));

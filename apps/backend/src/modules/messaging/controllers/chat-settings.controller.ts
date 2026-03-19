@@ -13,7 +13,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ChatSettingsService } from '../services/chat-settings.service';
+import { MessagingHelperService } from '../services/messaging-helper.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../../common/guards/roles.guard';
+import { Roles } from '../../../common/decorators/roles.decorator';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { MessagingEngineService } from '../services/messaging-engine.service';
 import { 
@@ -29,35 +32,16 @@ import {
 @ApiTags('Chat Settings')
 @Controller('messaging/chat/settings')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
 export class ChatSettingsController {
   constructor(
     private readonly chatSettingsService: ChatSettingsService,
-    private readonly messagingEngine: MessagingEngineService,
+    private readonly messagingHelperService: MessagingHelperService,
   ) {}
 
-  private async getBranchId(req: any, queryBranchId?: string): Promise<string> {
-    const user = req.user;
-
-    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
-      if (!queryBranchId) {
-        throw new BadRequestException('branchId is required for Owners and Admins');
-      }
-
-      if (user.role === UserRole.OWNER) {
-        const hasAccess = await this.messagingEngine.checkBranchAccess(user, queryBranchId);
-        if (!hasAccess) {
-          throw new BadRequestException('You do not have access to this branch');
-        }
-      }
-      return queryBranchId;
-    }
-
-    if (!user.branchId) {
-      throw new BadRequestException('User is not associated with any branch');
-    }
-
-    return user.branchId;
+  private async getBranchId(req: { user: User }, branchId?: string): Promise<string> {
+    return this.messagingHelperService.resolveBranchId(req.user, branchId);
   }
 
   @Get('automation')

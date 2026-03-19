@@ -60,7 +60,6 @@ const DOCS: Category[] = [
           { id: 'messaging-sms', title: 'SMS', path: '/dashboard/messaging/sms', summary: 'SMS flows, templates, settings.' },
           { id: 'messaging-whatsapp', title: 'WhatsApp', path: '/dashboard/messaging/whatsapp', summary: 'WhatsApp campaigns and templates.' },
           { id: 'messaging-email', title: 'Email', path: '/dashboard/messaging/email', summary: 'Email campaigns and templates.' },
-          { id: 'settings-messages', title: 'Engagement Messages', path: '/dashboard/messaging/settings', summary: 'Customer-facing copy and flow text.' },
         ],
       },
       {

@@ -90,7 +90,7 @@ export class UpdateAutomationRuleDto {
 
 export class AutomationTriggerDto {
   branchId: string;
-  contactId: string;
+  customerId: string;
   metadata?: Record<string, any>;
 }
 
@@ -136,7 +136,7 @@ export class AutomationLogResponseDto {
   @ApiProperty({ example: 'Post-Visit Welcome' })
   ruleName: string;
   @ApiProperty({ example: 'uuid-contact' })
-  contactId: string;
+  customerId: string;
   @ApiProperty({ example: 'success' })
   status: string;
   @ApiProperty({ example: '2024-02-27T10:00:00.000Z' })

@@ -33,7 +33,7 @@ describe('IndividualSendProcessor', () => {
       const mockJob = {
         data: {
           branchId: 'branch-1',
-          contactId: 'contact-1',
+          customerId: 'customer-1',
           content: 'Hello {Name}',
           channel: Channel.SMS,
           from: 'VEMTAP',
@@ -48,7 +48,7 @@ describe('IndividualSendProcessor', () => {
       expect(result).toEqual({ success: true });
       expect(engineMock.processSingleSend).toHaveBeenCalledWith(
         'branch-1',
-        'contact-1',
+        'customer-1',
         'Hello {Name}',
         Channel.SMS,
         'VEMTAP',
@@ -60,7 +60,7 @@ describe('IndividualSendProcessor', () => {
       const mockJob = {
         data: {
           branchId: 'branch-1',
-          contactId: 'contact-1',
+          customerId: 'customer-1',
           content: 'Hello {Name}',
           channel: Channel.SMS,
           from: 'VEMTAP',

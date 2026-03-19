@@ -7,7 +7,7 @@ import {
   FlowExecution,
   ExecutionStatus,
 } from '../entities/flow-execution.entity';
-import { Contact } from '../../contacts/entities/contact.entity';
+import { User } from '../../users/entities/user.entity';
 import { MessagingEngineService } from './messaging-engine.service';
 import { Channel } from '../enums/channel.enum';
 
@@ -15,7 +15,7 @@ describe('FlowEngineService', () => {
   let service: FlowEngineService;
   let flowRepoMock: any;
   let executionRepoMock: any;
-  let contactRepoMock: any;
+  let userRepoMock: any;
   let messagingEngineMock: any;
   let delayQueueMock: any;
 
@@ -28,7 +28,7 @@ describe('FlowEngineService', () => {
       create: jest.fn().mockImplementation((dto) => ({ ...dto, id: 'exec-1' })),
       save: jest.fn().mockImplementation((e) => Promise.resolve(e)),
     };
-    contactRepoMock = {
+    userRepoMock = {
       findOne: jest.fn(),
     };
     messagingEngineMock = {
@@ -46,7 +46,7 @@ describe('FlowEngineService', () => {
           provide: getRepositoryToken(FlowExecution),
           useValue: executionRepoMock,
         },
-        { provide: getRepositoryToken(Contact), useValue: contactRepoMock },
+        { provide: getRepositoryToken(User), useValue: userRepoMock },
         { provide: MessagingEngineService, useValue: messagingEngineMock },
         {
           provide: getQueueToken('messaging-flow-delay'),
@@ -60,7 +60,7 @@ describe('FlowEngineService', () => {
 
   describe('triggerFlow', () => {
     const branchId = 'branch-1';
-    const context = { contactId: 'contact-1', businessId: 'biz-1' };
+    const context = { customerId: 'customer-1', businessId: 'biz-1' };
 
     it('should trigger active flow and execute first node', async () => {
       const flow = {
@@ -77,7 +77,7 @@ describe('FlowEngineService', () => {
       };
 
       flowRepoMock.find.mockResolvedValue([flow]);
-      contactRepoMock.findOne.mockResolvedValue({ id: 'contact-1' });
+      userRepoMock.findOne.mockResolvedValue({ id: 'customer-1' });
       executionRepoMock.findOne.mockResolvedValue(null); // No duplicates
 
       // Mock executeNode internal call by ensuring execution fetch returns proper flow
@@ -87,7 +87,7 @@ describe('FlowEngineService', () => {
           // for executeNode
           id: 'exec-1',
           flow,
-          contactId: 'contact-1',
+          customerId: 'customer-1',
           currentNodeId: 'node-1',
           businessId: 'biz-1',
           branchId,

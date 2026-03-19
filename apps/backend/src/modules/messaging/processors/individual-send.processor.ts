@@ -6,7 +6,7 @@ import { Channel } from '../enums/channel.enum';
 
 interface IndividualMessageJobData {
   branchId: string;
-  contactId: string;
+  customerId: string;
   content: string;
   channel: Channel;
   from: string;
@@ -26,14 +26,14 @@ export class IndividualSendProcessor extends WorkerHost {
   }
 
   async process(job: Job<IndividualMessageJobData, any, string>): Promise<any> {
-    const { branchId, contactId, content, channel, from, campaignId } = job.data;
+    const { branchId, customerId, content, channel, from, campaignId } = job.data;
     
-    this.logger.log(`Processing background message for contact ${contactId} in branch ${branchId}`);
+    this.logger.log(`Processing background message for customer ${customerId} in branch ${branchId}`);
 
     try {
       await this.messagingEngine.processSingleSend(
         branchId,
-        contactId,
+        customerId,
         content,
         channel,
         from,
@@ -41,7 +41,7 @@ export class IndividualSendProcessor extends WorkerHost {
       );
       return { success: true };
     } catch (error) {
-      this.logger.error(`Failed to process background message for contact ${contactId}: ${error.message}`, error.stack);
+      this.logger.error(`Failed to process background message for customer ${customerId}: ${error.message}`, error.stack);
       throw error;
     }
   }

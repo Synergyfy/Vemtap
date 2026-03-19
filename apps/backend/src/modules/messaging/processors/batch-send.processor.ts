@@ -7,7 +7,7 @@ import { Repository } from 'typeorm';
 import { MessagingEngineService } from '../services/messaging-engine.service';
 import { CampaignService } from '../services/campaign.service';
 import { CampaignStatus } from '../entities/message-campaign.entity';
-import { Contact } from '../../contacts/entities/contact.entity';
+import { User, UserRole } from '../../users/entities/user.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { TemplateService } from '../services/template.service';
 import { Channel } from '../enums/channel.enum';
@@ -16,7 +16,7 @@ interface BatchJobData {
   campaignId: string;
   branchId: string;
   channel: Channel;
-  contactIds: string[];
+  customerIds: string[]; // These are user IDs with role CUSTOMER
   templateId?: string;
   content?: string;
 }
@@ -31,8 +31,8 @@ export class BatchSendProcessor extends WorkerHost {
     private readonly messagingEngine: MessagingEngineService,
     private readonly campaignService: CampaignService,
     private readonly templateService: TemplateService,
-    @InjectRepository(Contact)
-    private readonly contactRepo: Repository<Contact>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     @InjectRepository(Branch)
     private readonly branchRepo: Repository<Branch>,
   ) {
@@ -40,9 +40,9 @@ export class BatchSendProcessor extends WorkerHost {
   }
 
   async process(job: Job<BatchJobData, any, string>): Promise<any> {
-    const { campaignId, branchId, contactIds, templateId, content } = job.data;
+    const { campaignId, branchId, customerIds, templateId, content } = job.data;
     this.logger.log(
-      `Processing batch send for campaign ${campaignId}, targeting ${contactIds.length} contacts.`,
+      `Processing batch send for campaign ${campaignId}, targeting ${customerIds.length} customers.`,
     );
 
     let successCount = 0;
@@ -60,28 +60,34 @@ export class BatchSendProcessor extends WorkerHost {
         return { successCount: 0, failureCount: 0 };
       }
 
-      let template: any = null;
-      if (templateId) {
-        template = await this.templateService.getTemplate(templateId);
-      }
-
-      for (const contactId of contactIds) {
+      for (const customerId of customerIds) {
         try {
-          const contact = await this.contactRepo.findOne({
-            where: { id: contactId },
+          const customer = await this.userRepo.findOne({
+            where: { id: customerId, role: UserRole.CUSTOMER },
           });
-          if (!contact) continue;
+          if (!customer) {
+            this.logger.warn(`Customer ${customerId} not found or not a customer role`);
+            continue;
+          }
 
-          const from = branch.whatsappNumber || '';
+          let from = '';
+          if (job.data.channel === Channel.SMS) {
+            from = 'VEMTAP';
+          } else if (job.data.channel === Channel.WHATSAPP) {
+            from = branch.whatsappNumber || '';
+          }
+
           await this.messagingEngine.processSingleSend(
             branchId,
-            contactId,
+            customerId,
             content || '',
             job.data.channel,
             from,
+            campaignId,
           );
           successCount++;
-        } catch (err) {
+        } catch (err: any) {
+          this.logger.error(`Failed to send message to customer ${customerId} in batch ${campaignId}: ${err.message}`);
           failureCount++;
         }
       }
@@ -99,7 +105,7 @@ export class BatchSendProcessor extends WorkerHost {
         `Completed batch send for campaign ${campaignId}. Success: ${successCount}, Failed: ${failureCount}`,
       );
       return { successCount, failureCount };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(
         `Batch job failed completely for campaign ${campaignId}`,
         error.stack,

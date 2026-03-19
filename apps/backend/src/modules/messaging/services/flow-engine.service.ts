@@ -7,7 +7,7 @@ import {
   ExecutionStatus,
 } from '../entities/flow-execution.entity';
 import { MessagingEngineService } from './messaging-engine.service';
-import { Contact } from '../../contacts/entities/contact.entity';
+import { User, UserRole } from '../../users/entities/user.entity';
 import { SendMessageDto } from '../dto/send-message.dto';
 import { Channel } from '../enums/channel.enum';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -28,8 +28,8 @@ export class FlowEngineService {
     private readonly flowRepo: Repository<Flow>,
     @InjectRepository(FlowExecution)
     private readonly executionRepo: Repository<FlowExecution>,
-    @InjectRepository(Contact)
-    private readonly contactRepo: Repository<Contact>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     private readonly messagingEngine: MessagingEngineService,
     @InjectQueue('messaging-flow-delay') private readonly delayQueue: Queue,
   ) {}
@@ -52,17 +52,17 @@ export class FlowEngineService {
 
     if (!flows.length) return;
 
-    // 2. Resolve Contact
-    let contact: Contact | null = null;
-    if (context.contactId) {
-      contact = await this.contactRepo.findOne({
-        where: { id: context.contactId },
+    // 2. Resolve Customer
+    let customer: User | null = null;
+    if (context.customerId) {
+      customer = await this.userRepo.findOne({
+        where: { id: context.customerId, role: UserRole.CUSTOMER },
       });
     }
 
-    if (!contact) {
+    if (!customer) {
       this.logger.warn(
-        `No contact found for flow trigger context: ${JSON.stringify(context)}`,
+        `No customer found for flow trigger context: ${JSON.stringify(context)}`,
       );
       return;
     }
@@ -72,26 +72,26 @@ export class FlowEngineService {
       const existing = await this.executionRepo.findOne({
         where: {
           flowId: flow.id,
-          contactId: contact.id,
+          customerId: customer.id,
           status: ExecutionStatus.RUNNING,
         },
       });
       if (existing) {
         this.logger.log(
-          `Skipping duplicate enrollment for contact ${contact.id} in flow ${flow.id}`,
+          `Skipping duplicate enrollment for customer ${customer.id} in flow ${flow.id}`,
         );
         continue;
       }
 
       const execution = this.executionRepo.create({
         flowId: flow.id,
-        contactId: contact.id,
+        customerId: customer.id,
         businessId: flow.businessId,
         branchId: flow.branchId,
         status: ExecutionStatus.RUNNING,
         state: { ...context },
         currentNodeId: this.getStartNodeId(flow.structure),
-      });
+      } as any) as unknown as FlowExecution;
       await this.executionRepo.save(execution);
 
       // Run the first node
@@ -102,7 +102,7 @@ export class FlowEngineService {
   async executeNode(executionId: string, nodeId: string): Promise<void> {
     const execution = await this.executionRepo.findOne({
       where: { id: executionId },
-      relations: ['flow', 'contact'],
+      relations: ['flow', 'customer'],
     });
     if (!execution || !execution.flow) return;
 
@@ -151,7 +151,7 @@ export class FlowEngineService {
       branchId: execution.branchId,
       channel: Channel.WHATSAPP,
       content,
-      contactIds: [execution.contactId],
+      customerIds: [execution.customerId],
     };
 
     const result = await this.messagingEngine.sendMessage(dto);
