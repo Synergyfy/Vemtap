@@ -38,6 +38,7 @@ describe('MessagingEngineService', () => {
 
   const mockIndividualQueue = {
     add: jest.fn(),
+    addBulk: jest.fn(),
   };
 
   const mockCreditService = {
@@ -176,7 +177,13 @@ describe('MessagingEngineService', () => {
       });
 
       expect(mockCampaignService.createCampaign).toHaveBeenCalled();
-      expect(mockIndividualQueue.add).toHaveBeenCalledTimes(2);
+      expect(mockIndividualQueue.addBulk).toHaveBeenCalledTimes(1);
+      expect(mockIndividualQueue.addBulk).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'send-individual', data: expect.objectContaining({ customerId: 'u1' }) }),
+          expect.objectContaining({ name: 'send-individual', data: expect.objectContaining({ customerId: 'u2' }) }),
+        ])
+      );
       expect(result.status).toBe('QUEUED');
       expect(result.count).toBe(2);
     });
