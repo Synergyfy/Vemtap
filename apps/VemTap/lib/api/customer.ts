@@ -15,8 +15,8 @@ export const customerApi = {
     deactivateMe: () => api.delete('/users/me'),
 
     getLoyaltyAnalytics: () => api.get('/loyalty/analytics'),
-    tapDevice: (code: string) => api.post(`/loyalty/tap/${code}`, {}),
-    getDeviceInfo: (code: string) => api.get(`/loyalty/device-info/${code}`),
+    tapDevice: (code: string, payload?: { visitorId?: string; name?: string; email?: string; phone?: string }) => api.post(`/tap/record/${code}`, payload ?? {}),
+    getDeviceInfo: (code: string) => api.get(`/tap/context/${code}`),
     getLoyaltyProfile: (businessId?: string) => api.get(withQuery('/loyalty/profile', { businessId })),   
     getLoyaltyHistory: (businessId?: string) => api.get(withQuery('/loyalty/history', { businessId })),   
     getMyHistory: () => api.get('/loyalty/my-history'),
@@ -31,6 +31,6 @@ export const customerApi = {
     replyToSupportTicket: (id: string, message: string) => api.post(`/support/tickets/${id}/message`, { message }),
 
     visitorSignup: (data: Record<string, any>) => api.post('/visitors/signup', data),
-    recordVisit: (data: { deviceCode: string }) => api.post('/visitors/record-visit', data),
+    recordVisit: (code: string, payload?: { visitorId?: string; name?: string; email?: string; phone?: string }) => api.post(`/tap/record/${code}`, payload ?? {}),
 };
 
