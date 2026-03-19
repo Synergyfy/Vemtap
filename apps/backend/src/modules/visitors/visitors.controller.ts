@@ -31,7 +31,7 @@ import { UserRole } from '../users/entities/user.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
-import { CampaignsService } from '../campaigns/campaigns.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 import {
   VisitorResponseDto,
   PaginatedVisitorResponseDto,
@@ -49,7 +49,7 @@ import { RecordVisitResponse, SendCampaignBody } from './visitors.service';
 export class VisitorsController {
   constructor(
     private readonly visitorsService: VisitorsService,
-    private readonly campaignsService: CampaignsService,
+    private readonly loyaltyService: LoyaltyService,
   ) {}
 
   private async getBranchId(req: any, queryBranchId?: string): Promise<string> {
@@ -283,7 +283,10 @@ export class VisitorsController {
     @Body() body: CreateVisitorRewardDto,
   ): Promise<any> {
     const branchId = await this.getBranchId(req, body.branchId);
-    return this.campaignsService.createReward(branchId, body);
+    return this.loyaltyService.createReward(req.user, {
+      ...body,
+      branchId,
+    } as any);
   }
 
   // --- CRUD & Individual Actions ---

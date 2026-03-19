@@ -6,9 +6,9 @@ import { User } from '../users/entities/user.entity';
 import { Device } from '../devices/entities/device.entity';
 import { MessageLog } from '../messaging/entities/message-log.entity';
 import { MessageStatus } from '../messaging/enums/message.enum';
-import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
-import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
-import { Redemption } from '../campaigns/entities/redemption.entity';
+import { PointTransaction } from '../loyalty/entities/point-transaction.entity';
+import { RedemptionCode } from '../loyalty/entities/redemption-code.entity';
+import { Reward } from '../loyalty/entities/reward.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Message } from '../messaging/entities/message.entity';
@@ -26,12 +26,12 @@ export class AnalyticsService {
     private readonly deviceRepo: Repository<Device>,
     @InjectRepository(MessageLog)
     private readonly logRepo: Repository<MessageLog>,
-    @InjectRepository(LoyaltyProfile)
-    private readonly loyaltyRepo: Repository<LoyaltyProfile>,
     @InjectRepository(PointTransaction)
     private readonly transactionRepo: Repository<PointTransaction>,
-    @InjectRepository(Redemption)
-    private readonly redemptionRepo: Repository<Redemption>,
+    @InjectRepository(RedemptionCode)
+    private readonly redemptionRepo: Repository<RedemptionCode>,
+    @InjectRepository(Reward)
+    private readonly rewardRepo: Repository<Reward>,
     @InjectRepository(Business)
     private readonly businessRepo: Repository<Business>,
     @InjectRepository(Branch)

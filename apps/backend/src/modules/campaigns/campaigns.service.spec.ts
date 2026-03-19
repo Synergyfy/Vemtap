@@ -3,59 +3,69 @@ import { CampaignsService } from './campaigns.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Campaign } from './entities/campaign.entity';
 import { CampaignTemplate } from './entities/campaign-template.entity';
-import { LoyaltyProfile } from './entities/loyalty-profile.entity';
-import { PointTransaction } from './entities/point-transaction.entity';
-import { LoyaltyRule } from './entities/loyalty-rule.entity';
-import { Reward } from './entities/reward.entity';
-import { Redemption } from './entities/redemption.entity';
-import { LoyaltyTemplate } from './entities/loyalty-template.entity';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { BranchesService } from '../branches/branches.service';
-import { AutomationService } from '../messaging/services/automation.service';
-import { CampaignType, CampaignStatus } from './dto/create-campaign.dto';
 import { NotFoundException } from '@nestjs/common';
 
 describe('CampaignsService', () => {
   let service: CampaignsService;
-  let mockRepo: any;
-  let mockBranchesService: any;
-  let mockAutomationService: any;
+
+  const mockCampaignRepository = {
+    create: jest.fn().mockImplementation((dto) => dto),
+    save: jest.fn().mockImplementation((campaign) =>
+      Promise.resolve({ id: 'campaign-1', ...campaign }),
+    ),
+    find: jest.fn().mockResolvedValue([]),
+    findOne: jest.fn().mockResolvedValue(null),
+    remove: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const mockTemplateRepository = {
+    create: jest.fn().mockImplementation((dto) => dto),
+    save: jest.fn().mockImplementation((template) =>
+      Promise.resolve({ id: 'template-1', ...template }),
+    ),
+    find: jest.fn().mockResolvedValue([]),
+    findOne: jest.fn().mockResolvedValue(null),
+  };
+
+  const mockUserRepo = {
+    findOne: jest.fn(),
+  };
+
+  const mockContactRepo = {
+    findOne: jest.fn(),
+  };
+
+  const mockBranchesService = {
+    findById: jest.fn().mockResolvedValue({ id: 'branch-1', businessId: 'biz-1' }),
+  };
 
   beforeEach(async () => {
-    mockRepo = {
-      find: jest.fn(),
-      findOne: jest.fn(),
-      create: jest.fn().mockImplementation((d) => d),
-      save: jest
-        .fn()
-        .mockImplementation((d) => Promise.resolve({ id: '1', ...d })),
-      softDelete: jest.fn(),
-    };
-
-    mockBranchesService = {
-      findById: jest.fn(),
-    };
-
-    mockAutomationService = {
-      trigger: jest.fn(),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CampaignsService,
-        { provide: getRepositoryToken(Campaign), useValue: mockRepo },
-        { provide: getRepositoryToken(CampaignTemplate), useValue: mockRepo },
-        { provide: getRepositoryToken(LoyaltyProfile), useValue: mockRepo },
-        { provide: getRepositoryToken(PointTransaction), useValue: mockRepo },
-        { provide: getRepositoryToken(LoyaltyRule), useValue: mockRepo },
-        { provide: getRepositoryToken(Reward), useValue: mockRepo },
-        { provide: getRepositoryToken(Redemption), useValue: mockRepo },
-        { provide: getRepositoryToken(LoyaltyTemplate), useValue: mockRepo },
-        { provide: getRepositoryToken(User), useValue: mockRepo },
-        { provide: getRepositoryToken(Contact), useValue: mockRepo },
-        { provide: BranchesService, useValue: mockBranchesService },
-        { provide: AutomationService, useValue: mockAutomationService },
+        {
+          provide: getRepositoryToken(Campaign),
+          useValue: mockCampaignRepository,
+        },
+        {
+          provide: getRepositoryToken(CampaignTemplate),
+          useValue: mockTemplateRepository,
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: mockUserRepo,
+        },
+        {
+          provide: getRepositoryToken(Contact),
+          useValue: mockContactRepo,
+        },
+        {
+          provide: BranchesService,
+          useValue: mockBranchesService,
+        },
       ],
     }).compile();
 
@@ -67,144 +77,33 @@ describe('CampaignsService', () => {
   });
 
   describe('create', () => {
-    it('should create a new campaign', async () => {
-      const createDto = {
-        name: 'Test Campaign',
-        type: CampaignType.WHATSAPP,
+    it('should create a campaign', async () => {
+      const dto = { 
+        name: 'Holiday Special', 
+        type: 'SMS' as any, 
         audience: 'all',
-        message: 'Hello',
+        message: 'Hi!' 
       };
-      const branchId = 'branch-123';
-      const expectedCampaign = {
-        ...createDto,
-        branchId,
-        businessId: 'biz-1',
-        id: '1',
-        sent: 0,
-        delivered: '0%',
-        clicks: 0,
-        status: CampaignStatus.DRAFT,
-      };
-
-      mockBranchesService.findById.mockResolvedValue({
-        id: branchId,
-        businessId: 'biz-1',
-      });
-      mockRepo.create.mockReturnValue(expectedCampaign);
-      mockRepo.save.mockResolvedValue(expectedCampaign);
-
-      const result = await service.create(createDto as any, branchId);
-      expect(result).toEqual(expectedCampaign);
-    });
-  });
-  describe('loyalty profiles', () => {
-    const userId = 'user-1';
-    const branchId = 'branch-1';
-    const businessId = 'biz-1';
-    const mockBranch = { id: branchId, businessId };
-
-    it('getLoyaltyProfile should create profile with businessId if not exists', async () => {
-      mockBranchesService.findById.mockResolvedValue(mockBranch);
-      mockRepo.findOne.mockResolvedValue(null); // Profile not found
-
-      const expectedProfile = {
-        userId,
-        businessId,
-        branchId,
-        tierLevel: 'bronze',
-      };
-      mockRepo.create.mockReturnValue(expectedProfile);
-      mockRepo.save.mockResolvedValue({ id: 'prof-1', ...expectedProfile });
-
-      const result = await service.getLoyaltyProfile(userId, branchId);
-
+      const branchId = 'branch-1';
+      const result = await service.create(dto, branchId);
+      expect(result).toBeDefined();
+      expect(result.id).toBe('campaign-1');
       expect(mockBranchesService.findById).toHaveBeenCalledWith(branchId);
-      expect(mockRepo.findOne).toHaveBeenCalledWith({
-        where: { userId, branchId },
-      });
-      expect(mockRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ businessId }),
-      );
-      expect(result.businessId).toBe(businessId);
-    });
-
-    it('getLoyaltyProfile should return existing profile by branchId', async () => {
-      mockBranchesService.findById.mockResolvedValue(mockBranch);
-      const existingProfile = {
-        id: 'prof-1',
-        userId,
-        businessId,
-        branchId,
-      };
-      mockRepo.findOne.mockResolvedValue(existingProfile);
-
-      const result = await service.getLoyaltyProfile(userId, branchId);
-
-      expect(result).toEqual(existingProfile);
-      expect(mockRepo.create).not.toHaveBeenCalled();
-    });
-
-    it('getLoyaltyProfile should throw NotFoundException if branch is invalid', async () => {
-      mockBranchesService.findById.mockImplementation(() => {
-        throw new NotFoundException('Branch not found');
-      });
-      await expect(
-        service.getLoyaltyProfile(userId, 'invalid-branch'),
-      ).rejects.toThrow('Branch not found');
-    });
-
-    it('findProfile should return profile by branchId', async () => {
-      const existingProfile = { id: 'prof-1', userId, businessId, branchId };
-      mockRepo.findOne.mockResolvedValue(existingProfile);
-
-      const result = await service.findProfile(userId, branchId);
-
-      expect(mockRepo.findOne).toHaveBeenCalledWith({
-        where: { userId, branchId },
-      });
-      expect(result).toEqual(existingProfile);
-    });
-
-    it('findProfile should return null if profile not found', async () => {
-      mockRepo.findOne.mockResolvedValue(null);
-      const result = await service.findProfile(userId, 'invalid');
-      expect(result).toBeNull();
+      expect(mockCampaignRepository.save).toHaveBeenCalled();
     });
   });
 
-  describe('verifyRedemption', () => {
-    const branchId = 'branch-1';
-    const code = '123456789';
-    const verifiedByUserId = 'staff-1';
-
-    it('should return error if redemption not found', async () => {
-      mockRepo.findOne.mockResolvedValueOnce(null);
-      const result = await service.verifyRedemption(branchId, code, verifiedByUserId);
-      expect(result).toEqual({ success: false, error: 'Invalid or already used code' });
+  describe('findOne', () => {
+    it('should throw NotFoundException if campaign not found', async () => {
+      mockCampaignRepository.findOne.mockResolvedValue(null);
+      await expect(service.findOne('invalid')).rejects.toThrow(NotFoundException);
     });
 
-    it('should return error if branch mismatch', async () => {
-      mockRepo.findOne.mockResolvedValueOnce({ reward: { branchId: 'other-branch' } });
-      const result = await service.verifyRedemption(branchId, code, verifiedByUserId);
-      expect(result).toEqual({ success: false, error: 'Reward not found for this branch' });
-    });
-
-    it('should mark as verified and save verifiedByUserId', async () => {
-      const mockRedemption = {
-        id: 'red-1',
-        status: 'pending',
-        expiresAt: new Date(Date.now() + 100000), // Future date
-        reward: { branchId },
-      };
-      mockRepo.findOne.mockResolvedValueOnce(mockRedemption);
-      
-      const result = await service.verifyRedemption(branchId, code, verifiedByUserId);
-      
-      expect(result.success).toBe(true);
-      expect(mockRedemption.status).toBe('verified');
-      expect(mockRedemption).toHaveProperty('verifiedAt');
-      expect(mockRedemption).toHaveProperty('verifiedByUserId', verifiedByUserId);
-      expect(mockRepo.save).toHaveBeenCalledWith(mockRedemption);
+    it('should return campaign if found', async () => {
+      const campaign = { id: 'c1', name: 'Test' };
+      mockCampaignRepository.findOne.mockResolvedValue(campaign);
+      const result = await service.findOne('c1');
+      expect(result).toEqual(campaign);
     });
   });
 });

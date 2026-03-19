@@ -10,7 +10,7 @@ import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
 import { DevicesModule } from '../devices/devices.module';
 import { BranchesModule } from '../branches/branches.module';
-import { Reward } from '../campaigns/entities/reward.entity';
+import { Reward } from '../loyalty/entities/reward.entity';
 
 @Module({
   imports: [

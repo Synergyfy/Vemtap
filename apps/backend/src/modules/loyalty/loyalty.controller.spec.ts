@@ -1,58 +1,36 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LoyaltyController } from './loyalty.controller';
 import { LoyaltyService } from './loyalty.service';
-import { User, UserRole } from '../users/entities/user.entity';
-import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { BranchesService } from '../branches/branches.service';
+import { UserRole } from '../users/entities/user.entity';
 
 describe('LoyaltyController', () => {
   let controller: LoyaltyController;
   let service: LoyaltyService;
 
   const mockLoyaltyService = {
-    getProfile: jest.fn(),
-    getAllProfiles: jest.fn(),
-    getHistory: jest.fn(),
-    getRewards: jest.fn(),
-    redeemReward: jest.fn(),
-    earnPoints: jest.fn(),
+    getBusinessPoints: jest.fn(),
+    getPointLogs: jest.fn(),
+    getBusinessPointLogs: jest.fn(),
+    givePoints: jest.fn(),
+    generatePointCode: jest.fn(),
+    usePointCode: jest.fn(),
+    createTemplate: jest.fn(),
+    getTemplates: jest.fn(),
     createReward: jest.fn(),
-    checkBranchAccess: jest.fn(),
-    getBusinessLoyaltyStats: jest.fn(),
+    getBranchRewards: jest.fn(),
+    updateReward: jest.fn(),
+    deleteReward: jest.fn(),
+    generateRedemptionCode: jest.fn(),
+    redeemReward: jest.fn(),
   };
-
-  const mockSubscriptionsService = {
-    getCapabilities: jest.fn(),
-  };
-
-  const mockBranchesService = {
-    findOne: jest.fn(),
-  };
-
-  const mockUser = {
-    id: 'user-1',
-    role: UserRole.OWNER,
-    businessId: 'biz-1',
-    branchId: 'branch-1',
-  } as User;
-  const mockReq = { user: mockUser };
 
   beforeEach(async () => {
-    mockLoyaltyService.checkBranchAccess.mockResolvedValue(true);
     const module: TestingModule = await Test.createTestingModule({
       controllers: [LoyaltyController],
       providers: [
         {
           provide: LoyaltyService,
           useValue: mockLoyaltyService,
-        },
-        {
-          provide: SubscriptionsService,
-          useValue: mockSubscriptionsService,
-        },
-        {
-          provide: BranchesService,
-          useValue: mockBranchesService,
         },
       ],
     }).compile();
@@ -61,69 +39,34 @@ describe('LoyaltyController', () => {
     service = module.get<LoyaltyService>(LoyaltyService);
   });
 
-  it('should get profile', async () => {
-    const result = { id: 'p1' };
-    mockLoyaltyService.getProfile.mockResolvedValue(result);
-    expect(await controller.getProfile(mockReq, { branchId: 'branch-1' })).toBe(
-      result,
-    );
+  it('should be defined', () => {
+    expect(controller).toBeDefined();
   });
 
-  it('should get history', async () => {
-    const result = [];
-    mockLoyaltyService.getHistory.mockResolvedValue(result);
-    expect(await controller.getHistory(mockReq, { branchId: 'branch-1' })).toBe(
-      result,
-    );
+  const mockUser = { id: 'u1', role: UserRole.CUSTOMER };
+  const mockReq = { user: mockUser };
+
+  describe('getBalance', () => {
+    it('should call getBusinessPoints', async () => {
+      const businessId = 'biz-1';
+      await controller.getBalance(mockReq as any, businessId);
+      expect(service.getBusinessPoints).toHaveBeenCalledWith(mockUser.id, businessId);
+    });
   });
 
-  it('should get rewards for a branch', async () => {
-    const result = [];
-    mockLoyaltyService.getRewards.mockResolvedValue(result);
-    expect(await controller.getRewards(mockReq, { branchId: 'branch-1' })).toBe(
-      result,
-    );
-    expect(mockLoyaltyService.getRewards).toHaveBeenCalledWith('branch-1', undefined);
+  describe('getMyLogs', () => {
+    it('should call getPointLogs', async () => {
+      const businessId = 'biz-1';
+      await controller.getMyLogs(mockReq as any, businessId, 1, 10);
+      expect(service.getPointLogs).toHaveBeenCalledWith(mockUser.id, businessId, 1, 10);
+    });
   });
 
-  it('should get all rewards for OWNER if branchId is not provided', async () => {
-    const result = [];
-    mockLoyaltyService.getRewards.mockResolvedValue(result);
-    // OWNER should be able to fetch all rewards without branchId
-    expect(await controller.getRewards(mockReq, { allBranches: true })).toBe(
-      result,
-    );
-    expect(mockLoyaltyService.getRewards).toHaveBeenCalledWith(undefined, 'biz-1');
-
-    // Default to allBranches if neither is provided for OWNER
-    expect(await controller.getRewards(mockReq, {})).toBe(result);
-    expect(mockLoyaltyService.getRewards).toHaveBeenCalledWith(undefined, 'biz-1');
-  });
-
-  it('should redeem reward', async () => {
-    const dto = { rewardId: 'r1', loyaltyProfileId: 'lp1', branchId: 'branch-1' };
-    const result = { id: 'red1' };
-    mockLoyaltyService.redeemReward.mockResolvedValue(result);
-    expect(await controller.redeemReward(mockReq, dto as any)).toBe(
-      result,
-    );
-  });
-
-  it('should earn points', async () => {
-    const dto = { userId: 'u1', points: 100, branchId: 'branch-1' };
-    const result = { success: true };
-    mockLoyaltyService.earnPoints.mockResolvedValue(result);
-    expect(
-      await controller.earnPoints(mockReq, dto as any),
-    ).toBe(result);
-  });
-
-  it('should create reward', async () => {
-    const dto = { name: 'Reward 1', pointsRequired: 100, branchId: 'branch-1' };
-    const result = { id: 'r1' };
-    mockLoyaltyService.createReward.mockResolvedValue(result);
-    expect(
-      await controller.createReward(mockReq, dto as any),
-    ).toBe(result);
+  describe('givePoints', () => {
+    it('should call givePoints', async () => {
+      const dto = { uniqueCode: 'code-1', points: 10, businessId: 'biz-1' };
+      await controller.givePoints(mockReq as any, dto as any);
+      expect(service.givePoints).toHaveBeenCalledWith(mockUser, dto);
+    });
   });
 });

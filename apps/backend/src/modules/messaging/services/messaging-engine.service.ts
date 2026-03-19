@@ -25,7 +25,6 @@ import { ProviderRouterService } from './provider-router.service';
 import { BranchesService } from '../../branches/branches.service';
 import { Branch } from '../../branches/entities/branch.entity';
 import { AudienceType } from '../entities/message-campaign.entity';
-import { LoyaltyProfile } from '../../campaigns/entities/loyalty-profile.entity';
 import {
   InboundMessage,
   DeliveryReport,
@@ -35,6 +34,7 @@ import { MessagingGateway } from '../messaging.gateway';
 import { ThreadStatus } from '../entities/conversation-thread.entity';
 import { PushNotificationService } from '../../notifications/push-notification.service';
 import { Visit } from '../../visitors/entities/visit.entity';
+import { LoyaltyService } from '../../loyalty/loyalty.service';
 
 export interface SendMessageResult {
   message: string;
@@ -61,8 +61,6 @@ export class MessagingEngineService {
     private readonly threadRepo: Repository<ConversationThread>,
     @InjectRepository(Branch)
     private readonly branchRepo: Repository<Branch>,
-    @InjectRepository(LoyaltyProfile)
-    private readonly loyaltyRepo: Repository<LoyaltyProfile>,
     @InjectRepository(Visit)
     private readonly visitRepo: Repository<Visit>,
     @InjectQueue('messaging-batch-send') private readonly batchQueue: Queue,
@@ -78,6 +76,7 @@ export class MessagingEngineService {
     private readonly configService: ConfigService,
     private readonly messagingGateway: MessagingGateway,
     private readonly pushNotificationService: PushNotificationService,
+    private readonly loyaltyService: LoyaltyService,
   ) {}
 
   public async checkBranchAccess(
@@ -290,7 +289,7 @@ export class MessagingEngineService {
     resolved = resolved.replace(/{ReviewLink}/g, branch.reviewUrl || '');
     resolved = resolved.replace(/{Link}/g, branch.website || branch.reviewUrl || '');
 
-    resolved = resolved.replace(/{Points}/g, '0000');
+    resolved = resolved.replace(/{Points}/g, '0');
 
     return resolved;
   }
@@ -470,10 +469,7 @@ export class MessagingEngineService {
     resolved = resolved.replace(/{Link}/g, branch.website || branch.reviewUrl || '');
 
     try {
-      const profile = await this.loyaltyRepo.findOne({
-        where: { branchId: branch.id, userId: customer.id },
-      });
-      const points = profile?.currentPointsBalance || 0;
+      const points = await this.loyaltyService.getBusinessPoints(customer.id, branch.businessId);
       resolved = resolved.replace(/{Points}/g, points.toString());
     } catch (e) {
       resolved = resolved.replace(/{Points}/g, '0');
