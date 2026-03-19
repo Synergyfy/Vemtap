@@ -28,7 +28,7 @@ import { UsersModule } from '../users/users.module';
     forwardRef(() => DevicesModule),
     forwardRef(() => CampaignsModule),
     forwardRef(() => UsersModule),
-    BranchesModule,
+    forwardRef(() => BranchesModule),
   ],
   controllers: [LoyaltyController],
   providers: [LoyaltyService],

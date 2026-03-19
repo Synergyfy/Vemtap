@@ -45,7 +45,7 @@ export class LoyaltyService {
 
   // --- Point Balance ---
   async getBusinessPoints(userId: string, businessId: string): Promise<number> {
-    const result = await this.transactionRepo
+    const result = await this.pointTransactionRepo
       .createQueryBuilder('transaction')
       .select('SUM(transaction.amount)', 'sum')
       .where('transaction.userId = :userId', { userId })
@@ -53,7 +53,6 @@ export class LoyaltyService {
       .getRawOne();
 
     return parseInt(result?.sum || '0', 10);
-
   }
 
   async getPointLogs(userId: string, businessId: string, page = 1, limit = 10) {

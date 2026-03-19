@@ -80,10 +80,11 @@ describe('LoyaltyService', () => {
     it('should return total points for a customer in a business', async () => {
       const qb = pointTransactionRepo.createQueryBuilder();
       qb.getRawOne.mockResolvedValue({ sum: '100' });
+      pointTransactionRepo.createQueryBuilder.mockReturnValue(qb);
 
       const points = await service.getBusinessPoints('user1', 'biz1');
       expect(points).toBe(100);
-      expect(qb.where).toHaveBeenCalledWith('transaction.customerId = :userId', { userId: 'user1' });
+      expect(qb.where).toHaveBeenCalledWith('transaction.userId = :userId', { userId: 'user1' });
       expect(qb.andWhere).toHaveBeenCalledWith('transaction.businessId = :businessId', { businessId: 'biz1' });
     });
   });

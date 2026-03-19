@@ -114,7 +114,7 @@ describe('PlansService', () => {
       ...mockPlan,
       isFree: true,
     });
-    const plan = await service.findOne('plan-1');
+    const plan = await service.findFreePlan();
     expect(plan).toBeDefined();
     expect(plan!.isFree).toBe(true);
 

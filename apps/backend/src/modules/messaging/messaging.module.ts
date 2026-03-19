@@ -113,7 +113,7 @@ import { JwtModule } from '@nestjs/jwt';
     MailModule,
     forwardRef(() => BranchesModule),
     NotificationsModule,
-    LoyaltyModule,
+    forwardRef(() => LoyaltyModule),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
