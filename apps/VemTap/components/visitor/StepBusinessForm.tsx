@@ -43,6 +43,9 @@ interface StepBusinessFormProps {
 export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComplete, onSkip, hideHeader = false, brandColor = '#2563eb' }) => {
     const [answers, setAnswers] = useState<Record<string, any>>({});
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const displayBranchName = form.branchName && form.branchName !== 'Main Branch'
+        ? form.branchName
+        : (form.businessName || 'Business');
 
     const normalizedFields = useMemo(
         () =>
@@ -129,7 +132,7 @@ export const StepBusinessForm: React.FC<StepBusinessFormProps> = ({ form, onComp
                         </div>
                         <div className="text-right shrink-0 max-w-[40%]">
                             <p className="text-[8px] font-bold uppercase tracking-wider text-white/60">Branch</p>
-                            <p className="text-[11px] font-semibold text-white truncate">{form.branchName || 'Main Branch'}</p>
+                            <p className="text-[11px] font-semibold text-white truncate">{displayBranchName}</p>
                         </div>
                     </div>
 

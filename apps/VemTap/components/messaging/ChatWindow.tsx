@@ -2,14 +2,13 @@
 
 import React, { useRef, useEffect, useMemo } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
-import { Search, Maximize2, Minimize2, Check, CheckCheck, FileText, Info, Smartphone, MessageSquare } from 'lucide-react';
+import { Search, Maximize2, Minimize2, Check, CheckCheck, FileText, Info, Smartphone, MessageSquare, CornerUpLeft } from 'lucide-react';
 import ChatInput from './ChatInput';
 import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
-import { useChatThreads, useThreadMessages } from '@/hooks/useMessaging';
+import { useChatThreads, useMarkThreadAsRead, useThreadMessages } from '@/hooks/useMessaging';
 import { useMessagingBranch } from '@/hooks/useMessagingBranch';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { useMessagingRealtime } from '@/hooks/useMessagingRealtime';
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
@@ -27,10 +26,12 @@ function getAvatarColor(id: string) {
 }
 
 function formatMessageTime(timestamp: string | number | Date) {
+    if (!timestamp) return '';
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function formatDateSeparator(timestamp: string | number | Date) {
+    if (!timestamp) return '';
     const today = new Date();
     const msgDate = new Date(timestamp);
     if (today.toDateString() === msgDate.toDateString()) return 'Today';
@@ -50,6 +51,7 @@ export default function ChatWindow() {
     const activeConversationId = useChatStore(s => s.activeConversationId);
     const mockThreads = useChatStore(s => s.mockThreads);
     const mockMessages = useChatStore(s => s.mockMessages);
+    const typingByThread = useChatStore(s => s.typingByThread);
     const user = useAuthStore(s => s.user);
     const { branchId, isCustomer } = useMessagingBranch();
     
@@ -66,10 +68,18 @@ export default function ChatWindow() {
 
     // Fetch messages for active thread (business or customer endpoint)
     const { data: messages = [], isLoading } = useThreadMessages(activeConversationId || '', branchId || undefined, isCustomer && !isMockThread);
+    const markThreadAsRead = useMarkThreadAsRead(isCustomer);
+    const { emitTyping } = useMessagingRealtime({
+        activeThreadId: activeConversationId,
+        branchId: branchId || undefined,
+        isCustomer,
+        isMockThread,
+    });
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [isFullScreen, setIsFullScreen] = React.useState(false);
     const [showProfile, setShowProfile] = React.useState(false);
+    const [replyToMessage, setReplyToMessage] = React.useState<any | null>(null);
 
     useEffect(() => {
         if (messagesEndRef.current) {
@@ -79,7 +89,13 @@ export default function ChatWindow() {
 
     useEffect(() => {
         setShowProfile(false);
+        setReplyToMessage(null);
     }, [activeConversationId]);
+
+    useEffect(() => {
+        if (!activeConversationId || isCustomer || isMockThread || !branchId) return;
+        markThreadAsRead.mutate({ threadId: activeConversationId, branchId });
+    }, [activeConversationId, branchId, isCustomer, isMockThread, markThreadAsRead]);
 
     if (!activeConv) {
         return (
@@ -100,6 +116,7 @@ export default function ChatWindow() {
     const threadMessages = isMockThread ? (mockMessages[activeConversationId as string] || []) : (messages as any[]);
     const contactIsOnline = contact?.isOnline;
     const contactLastSeen = contact?.lastSeen ? new Date(contact.lastSeen).toLocaleString() : null;
+    const isTyping = activeConversationId ? typingByThread[activeConversationId] : false;
 
     const lastActivityLabel = (() => {
         const raw = activeConv?.lastActivityAt || activeConv?.updatedAt;
@@ -135,7 +152,7 @@ export default function ChatWindow() {
                             {contactName}
                         </h2>
                         <p className="text-[11px] text-slate-400 truncate">
-                            {contact?.phone || contact?.email || 'Active now'}
+                            {isTyping ? 'Typing...' : (contact?.phone || contact?.email || 'Active now')}
                         </p>
                     </div>
                 </div>
@@ -198,7 +215,8 @@ export default function ChatWindow() {
                             <p className="text-xs text-slate-400 mt-1">Start the conversation to see messages here.</p>
                         </div>
                     ) : threadMessages.map((msg, i) => {
-                        const msgDate = formatDateSeparator(msg.timestamp);
+                        const msgTimestamp = msg.timestamp || msg.createdAt || msg.sentAt || msg.updatedAt;
+                        const msgDate = formatDateSeparator(msgTimestamp);
                         let showDate = false;
                         if (msgDate !== lastDate) {
                             showDate = true;
@@ -214,7 +232,11 @@ export default function ChatWindow() {
                                         </span>
                                     </div>
                                 )}
-                                <MessageBubble message={msg} isCustomer={isCustomer} />
+                                <MessageBubble
+                                    message={msg}
+                                    isCustomer={isCustomer}
+                                    onReply={() => setReplyToMessage(msg)}
+                                />
                             </React.Fragment>
                         );
                     })}
@@ -222,7 +244,16 @@ export default function ChatWindow() {
                 </div>
 
                 {/* Input */}
-                <ChatInput conversationId={activeConversationId!} isMock={isMockThread} />
+                <ChatInput
+                    conversationId={activeConversationId!}
+                    isMock={isMockThread}
+                    replyTo={replyToMessage}
+                    onCancelReply={() => setReplyToMessage(null)}
+                    onTypingChange={(next) => {
+                        if (!activeConversationId || isMockThread) return;
+                        emitTyping(activeConversationId, next);
+                    }}
+                />
             </div>
 
             {/* Profile Panel */}
@@ -304,24 +335,57 @@ export default function ChatWindow() {
     );
 }
 
-function MessageBubble({ message, isCustomer }: { message: any; isCustomer: boolean }) {
+function MessageBubble({
+    message,
+    isCustomer,
+    onReply,
+}: {
+    message: any;
+    isCustomer: boolean;
+    onReply?: () => void;
+}) {
     const isMine = isCustomer 
         ? message.direction === 'INBOUND'
         : message.direction === 'OUTBOUND';
+    const replyContent = message?.replyTo?.content || '';
 
     return (
         <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} max-w-[80%] ${isMine ? 'ml-auto' : ''}`}>
-            <div className={`p-3 shadow-sm ${
+            <div className={`p-3 shadow-sm relative group ${
                 isMine
                     ? 'bg-primary text-white bubble-right'
                     : 'bg-white border border-slate-200 text-slate-700 bubble-left'
             }`}>
+                {onReply && (
+                    <button
+                        type="button"
+                        onClick={onReply}
+                        className={`absolute -top-3 ${isMine ? 'right-2' : 'left-2'} h-6 px-2 rounded-full text-[10px] font-bold flex items-center gap-1 border shadow-sm opacity-0 group-hover:opacity-100 transition-opacity ${
+                            isMine
+                                ? 'bg-white text-primary border-white/40'
+                                : 'bg-white text-slate-500 border-slate-200'
+                        }`}
+                        title="Reply to message"
+                    >
+                        <CornerUpLeft size={12} />
+                        Reply
+                    </button>
+                )}
+                {replyContent && (
+                    <div className={`mb-2 rounded-lg px-2 py-1 text-[11px] ${
+                        isMine ? 'bg-white/20 text-white' : 'bg-slate-50 text-slate-500 border border-slate-200'
+                    }`}>
+                        <p className="line-clamp-2">{replyContent}</p>
+                    </div>
+                )}
                 <p className="text-sm leading-relaxed">{message.content}</p>
             </div>
 
             {/* Timestamp & Status */}
             <div className={`flex items-center gap-1 mt-1 ${isMine ? 'mr-1' : 'ml-1'}`}>
-                <span className="text-[10px] text-slate-400">{formatMessageTime(message.timestamp)}</span>
+                <span className="text-[10px] text-slate-400">
+                    {formatMessageTime(message.timestamp || message.createdAt || message.sentAt || message.updatedAt)}
+                </span>
                 {isMine && <StatusIcon status={message.status} />}
             </div>
         </div>

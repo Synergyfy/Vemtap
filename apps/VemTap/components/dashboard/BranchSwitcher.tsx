@@ -7,12 +7,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useBranches, useCreateBranch, useDeleteBranch } from '@/services/branches/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function BranchSwitcher() {
     const { activeBranchId, setActiveBranch } = useActiveBranch();
     const { data: branches = [], isLoading } = useBranches();
     const createBranchMutation = useCreateBranch();
     const deleteBranchMutation = useDeleteBranch();
+    const businessName = useAuthStore((state) => state.user?.businessName);
 
     const [isOpen, setIsOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
@@ -22,6 +24,12 @@ export default function BranchSwitcher() {
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const activeBranch = branches.find(b => b.id === activeBranchId);
+    const formatBranchName = (branchName?: string, isMainBranch?: boolean) => {
+        const normalized = (branchName || '').trim();
+        const isDefaultLabel = /^main\s*branch$/i.test(normalized);
+        if (isMainBranch && (isDefaultLabel || !normalized) && businessName) return businessName;
+        return normalized || businessName || 'Main Branch';
+    };
 
     // Auto-resolve single branch if none selected
     useEffect(() => {
@@ -89,7 +97,7 @@ export default function BranchSwitcher() {
                         </p>
                         <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-text-main truncate max-w-[120px]">
-                                Main Location
+                                {formatBranchName(branches[0]?.name, branches[0]?.isMainBranch)}
                             </span>
                         </div>
                     </div>
@@ -107,7 +115,7 @@ export default function BranchSwitcher() {
 
     const displayName = !activeBranchId
         ? 'All Locations'
-        : activeBranch?.name || 'Select Location';
+        : formatBranchName(activeBranch?.name, activeBranch?.isMainBranch) || 'Select Location';
 
     const handleSelectBranch = (branchId: string | null) => {
         setActiveBranch(branchId);
@@ -205,7 +213,7 @@ export default function BranchSwitcher() {
                                             </div>
                                             <div className="text-left flex-1 min-w-0">
                                                 <p className={`text-sm font-bold truncate ${activeBranchId === branch.id ? 'text-white' : 'text-text-main'}`}>
-                                                    {branch.name}
+                                                    {formatBranchName(branch.name, branch.isMainBranch)}
                                                 </p>
                                                 <p className={`text-[10px] truncate ${activeBranchId === branch.id ? 'text-white/80' : 'text-text-secondary'}`}>
                                                     {branch.address || 'No address set'}
@@ -216,7 +224,7 @@ export default function BranchSwitcher() {
                                                     <Check size={16} className="text-white" />
                                                 )}
                                                 <button
-                                                    onClick={(e) => handleDelete(e, branch.id, branch.name)}
+                                                    onClick={(e) => handleDelete(e, branch.id, formatBranchName(branch.name, branch.isMainBranch))}
                                                     title="Delete branch"
                                                     className={`opacity-0 group-hover/item:opacity-100 p-1 rounded-lg transition-all ${activeBranchId === branch.id
                                                         ? 'hover:bg-white/20 text-white'

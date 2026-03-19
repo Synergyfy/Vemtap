@@ -366,6 +366,7 @@ function ConversationItem({
     isActive: boolean;
     onClick: () => void;
 }) {
+    const isTyping = useChatStore(s => s.typingByThread[conversation.id]);
     const { contact } = conversation;
     const name = contact?.name || 'Unknown';
 
@@ -401,7 +402,7 @@ function ConversationItem({
                 </div>
                 <div className="flex items-center gap-2">
                     <p className="text-xs truncate flex-1 text-slate-500">
-                        {conversation.status || 'Active conversation'}
+                        {isTyping ? 'Typing...' : (conversation.status || 'Active conversation')}
                     </p>
                 </div>
             </div>
