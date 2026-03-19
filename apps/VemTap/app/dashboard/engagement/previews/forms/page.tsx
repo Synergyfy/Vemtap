@@ -8,7 +8,6 @@ import { SocialLinksPreview } from '@/components/shared/SocialLinksPreview';
 import { StepBusinessForm } from '@/components/visitor/StepBusinessForm';
 import { StepForm } from '@/components/visitor/StepForm';
 import { StepOutcome } from '@/components/visitor/StepOutcome';
-import { StepFinalSuccess } from '@/components/visitor/StepFinalSuccess';
 import { StepWelcomeBack } from '@/components/visitor/StepWelcomeBack';
 import Spinner from '@/components/ui/Spinner';
 import { useBusinessForms } from '@/services/business-forms/hooks';

@@ -79,7 +79,7 @@ export class FormsService {
 
     const form = await this.formsRepository.findOne({
       where,
-      relations: ['fields'],
+      relations: ['fields', 'branch', 'branch.business'],
     });
 
     if (!form) throw new NotFoundException('Form not found');
