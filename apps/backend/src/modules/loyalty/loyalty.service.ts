@@ -48,7 +48,7 @@ export class LoyaltyService {
     const result = await this.pointTransactionRepo
       .createQueryBuilder('transaction')
       .select('SUM(transaction.amount)', 'sum')
-      .where('transaction.userId = :userId', { userId })
+      .where('transaction.customerId = :userId', { userId })
       .andWhere('transaction.businessId = :businessId', { businessId })
       .getRawOne();
 
@@ -57,7 +57,7 @@ export class LoyaltyService {
 
   async getPointLogs(userId: string, businessId: string, page = 1, limit = 10) {
     return this.pointTransactionRepo.find({
-      where: { userId, businessId },
+      where: { customerId: userId, businessId },
       order: { createdAt: 'DESC' },
       take: limit,
       skip: (page - 1) * limit,
@@ -90,8 +90,8 @@ export class LoyaltyService {
       amount: dto.points,
       type: PointTransactionType.EARNED,
       reason: dto.reason || 'Points given by staff',
-      userId: customer.id,
-      givenBy: staff,
+      customerId: customer.id,
+      givenById: staff.id,
       businessId: branch.businessId,
       branchId: branch.id,
     });
@@ -131,7 +131,7 @@ export class LoyaltyService {
         amount: pointCode.points,
         type: PointTransactionType.EARNED,
         reason: 'Points earned via code',
-        userId: customer.id,
+        customerId: customer.id,
         givenById: pointCode.createdById,
         businessId: pointCode.businessId,
         branchId: customer.branchId, // Optional: where the user is currently at
@@ -255,7 +255,7 @@ export class LoyaltyService {
         amount: -reward.pointsRequired,
         type: PointTransactionType.REDEEMED,
         reason: `Redeemed reward: ${reward.name}`,
-        userId: customer.id,
+        customerId: customer.id,
         givenById: redemptionCode.createdById,
         businessId: reward.businessId,
         branchId: reward.branchId,
