@@ -8,6 +8,7 @@ import { PointCode } from './entities/point-code.entity';
 import { RedemptionCode } from './entities/redemption-code.entity';
 import { User } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { Visit } from '../visitors/entities/visit.entity';
 import { DataSource } from 'typeorm';
 
 describe('LoyaltyService', () => {
@@ -57,6 +58,10 @@ describe('LoyaltyService', () => {
         },
         {
           provide: getRepositoryToken(Branch),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(Visit),
           useValue: mockRepository,
         },
         {

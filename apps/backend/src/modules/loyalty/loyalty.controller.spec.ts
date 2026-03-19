@@ -22,6 +22,7 @@ describe('LoyaltyController', () => {
     deleteReward: jest.fn(),
     generateRedemptionCode: jest.fn(),
     redeemReward: jest.fn(),
+    getCustomerAnalytics: jest.fn(),
   };
 
   beforeEach(async () => {

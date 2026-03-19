@@ -148,4 +148,11 @@ export class LoyaltyController {
   async redeemReward(@Request() req: { user: User }, @Body() dto: RedeemRewardDto) {
     return this.loyaltyService.redeemReward(req.user, dto);
   }
+
+  @Get('analytics')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Fetch overall customer analytics (visits, points, savings)' })
+  async getAnalytics(@Request() req: { user: User }, @Query('days') days?: number) {
+    return this.loyaltyService.getCustomerAnalytics(req.user.id, days);
+  }
 }
