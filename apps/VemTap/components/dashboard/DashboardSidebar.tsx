@@ -285,7 +285,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 { label: 'Business Locations', href: '/dashboard/settings/branches' },
 
                 { label: 'Notifications', href: '/dashboard/settings/notifications' },
-                { label: 'Integrations', href: '/dashboard/settings/integrations' },
                 { label: 'Subscription', href: '/dashboard/settings/subscription' },
                 { label: 'Privacy & Data', href: '/dashboard/settings/privacy' },
             ]

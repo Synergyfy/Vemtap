@@ -207,3 +207,7 @@ now check the bussiness page and see how the loyalty is created by a business an
 --remove the message settings from the message 
 --remove message settings
 --the chatbot should be onclick on the chatbot icon
+--BUSSINESS NAME
+--CHANGE THE form name to use
+
+

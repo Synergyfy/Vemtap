@@ -34,6 +34,7 @@ export default function StaffManagementPage() {
     const router = useRouter();
     const pathname = usePathname();
     const { user, activeBranchId } = useAuthStore();
+    const businessName = user?.businessName || 'Business';
     const { capabilities, isLimitReached } = useSubscriptionStore();
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -156,7 +157,9 @@ export default function StaffManagementPage() {
                 return (
                     <div className="flex items-center gap-2">
                         <Building2 size={14} className="text-gray-400" />
-                        <span className="text-sm font-bold text-text-main leading-none">{branch?.name || 'Main Branch'}</span>
+                        <span className="text-sm font-bold text-text-main leading-none">
+                            {branch?.name && branch?.name !== 'Main Branch' ? branch.name : businessName}
+                        </span>
                     </div>
                 );
             }

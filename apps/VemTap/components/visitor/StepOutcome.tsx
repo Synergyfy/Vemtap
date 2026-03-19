@@ -49,6 +49,7 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
     const hasReview = !!engagementSettings?.reviewUrl;
     const hasFeedback = !!engagementSettings?.showFeedback;
     const hasRewards = !!engagementSettings?.showRewards;
+    const brandColor = engagementSettings?.brandColor || '#2563eb';
 
     const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards || attachedForms?.length);
 
@@ -137,10 +138,11 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
                                         href={link.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                                        className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-95 transition-all"
+                                        style={{ backgroundColor: brandColor }}
                                     >
                                         <span className="truncate">{link.label}</span>
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Open</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-white/80">Open</span>
                                     </a>
                                 ) : null
                             ))}
@@ -149,10 +151,11 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
                                     href={fallbackSocialUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                                    className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-95 transition-all"
+                                    style={{ backgroundColor: brandColor }}
                                 >
                                     <span className="truncate">Social Link</span>
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Open</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-white/80">Open</span>
                                 </a>
                             )}
                         </div>

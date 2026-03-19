@@ -25,7 +25,7 @@ export default function DefaultFormPreviewPage() {
         setSubmitLabel(business.welcomeButton);
     }, [business?.welcomeButton]);
 
-    const previewStoreName = mainBranch?.name || business?.name || store.storeName || 'Your Store';
+    const previewStoreName = business?.name || mainBranch?.name || store.storeName || 'Your Store';
     const brandVars = useMemo(
         () => buildBrandCssVars(store.engagementSettings.brandColor),
         [store.engagementSettings.brandColor]
@@ -47,7 +47,7 @@ export default function DefaultFormPreviewPage() {
             business?.welcomeButton ||
             store.customNewUserWelcomeButton ||
             'Submit',
-        logoUrl: mainBranch?.logoUrl || business?.logoUrl || store.logoUrl || '',
+        logoUrl: business?.logoUrl || mainBranch?.logoUrl || store.logoUrl || '',
     }), [
         business?.logoUrl,
         business?.privacyMessage,

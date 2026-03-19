@@ -16,6 +16,7 @@ import { useUpdateBranch, useBranch, useBranches } from '@/services/branches/hoo
 import { useCategories } from '@/services/categories/hooks';
 import { useRewards } from '@/services/loyalty/hooks';
 import Modal from '@/components/ui/Modal';
+import { api } from '@/lib/api';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
@@ -101,6 +102,11 @@ export default function BusinessProfilePage() {
     const [showRewards, setShowRewards] = useState(true);
     const [activeTab, setActiveTab] = useState('general');
     const [showRewardsModal, setShowRewardsModal] = useState(false);
+    const [pushSupported, setPushSupported] = useState(false);
+    const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
+    const [pushSubscribed, setPushSubscribed] = useState(false);
+    const [pushLoading, setPushLoading] = useState(false);
+    const [pushError, setPushError] = useState<string | null>(null);
 
     const [origin, setOrigin] = useState('https://vemtap.com');
 
@@ -114,6 +120,109 @@ export default function BusinessProfilePage() {
             setOrigin(window.location.origin);
         }
     }, []);
+
+    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
+
+    const urlBase64ToUint8Array = (base64String: string) => {
+        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; i += 1) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    };
+
+    const refreshPushStatus = async () => {
+        if (typeof window === 'undefined') return;
+        if (!('serviceWorker' in navigator)) return;
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (!registration) {
+            setPushSubscribed(false);
+            return;
+        }
+        const subscription = await registration.pushManager.getSubscription();
+        setPushSubscribed(!!subscription);
+    };
+
+    const handleEnablePush = async () => {
+        if (!pushSupported) {
+            toast.error('Push notifications are not supported on this device.');
+            return;
+        }
+        setPushLoading(true);
+        setPushError(null);
+        try {
+            const permission = await Notification.requestPermission();
+            setPushPermission(permission);
+            if (permission !== 'granted') {
+                toast.error('Please allow browser notifications to continue.');
+                return;
+            }
+            if (!vapidPublicKey) {
+                setPushError('Missing VAPID public key. Add NEXT_PUBLIC_VAPID_PUBLIC_KEY to enable push.');
+                toast.error('Push setup is missing a VAPID public key.');
+                return;
+            }
+
+            const registration = await navigator.serviceWorker.register('/sw.js');
+            const existing = await registration.pushManager.getSubscription();
+            const subscription = existing || await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+            });
+
+            await api.post('/notifications/push/register', {
+                token: JSON.stringify(subscription),
+                isUser: user?.role === 'customer',
+            });
+
+            setPushSubscribed(true);
+            toast.success('Push notifications enabled.');
+        } catch (error: any) {
+            const message = error?.message || 'Failed to enable push notifications.';
+            setPushError(message);
+            toast.error(message);
+        } finally {
+            setPushLoading(false);
+        }
+    };
+
+    const handleDisablePush = async () => {
+        setPushLoading(true);
+        setPushError(null);
+        try {
+            const registration = await navigator.serviceWorker.getRegistration();
+            const subscription = await registration?.pushManager.getSubscription();
+            if (subscription) {
+                await subscription.unsubscribe();
+            }
+            setPushSubscribed(false);
+            toast.success('Push notifications disabled.');
+        } catch (error: any) {
+            const message = error?.message || 'Failed to disable push notifications.';
+            setPushError(message);
+            toast.error(message);
+        } finally {
+            setPushLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const supported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+        setPushSupported(supported);
+        if (!supported) return;
+        setPushPermission(Notification.permission);
+        refreshPushStatus();
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'push') {
+            refreshPushStatus();
+        }
+    }, [activeTab]);
 
     const firstBranchWithCode = branches.find((b) => b.uniqueCode);
     const fallbackProfileCode = firstBranchWithCode?.uniqueCode || business?.uniqueCode || '';
@@ -440,6 +549,7 @@ export default function BusinessProfilePage() {
         { id: 'schedule', label: 'Schedule', icon: 'calendar_today', branchOnly: true },
         { id: 'socials', label: 'Socials', icon: 'share', branchOnly: true },
         { id: 'rewards', label: 'Rewards', icon: 'auto_awesome', branchOnly: true },
+        { id: 'push', label: 'Push', icon: 'notifications_active' },
         { id: 'qr', label: 'QR Code', icon: 'qr_code_2' },
         { id: 'documents', label: 'Documents', icon: 'description', bizOnly: true },
     ].filter(tab => {
@@ -872,6 +982,78 @@ export default function BusinessProfilePage() {
                                     </p>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'push' && (
+                    <div className="space-y-6">
+                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                                <div>
+                                    <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Push Notifications</h3>
+                                    <p className="text-xs text-text-secondary mt-1">Enable browser notifications for new messages and alerts.</p>
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                                    pushSupported ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-200'
+                                }`}>
+                                    {pushSupported ? 'Supported' : 'Unsupported'}
+                                </span>
+                            </div>
+                            <div className="p-8 space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="rounded-2xl border border-gray-100 p-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">Permission</p>
+                                        <p className="text-sm font-bold text-text-main capitalize">{pushPermission}</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-gray-100 p-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">Status</p>
+                                        <p className="text-sm font-bold text-text-main">{pushSubscribed ? 'Enabled' : 'Not enabled'}</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-gray-100 p-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">Delivery</p>
+                                        <p className="text-sm font-bold text-text-main">Browser push</p>
+                                    </div>
+                                </div>
+
+                                {pushPermission === 'denied' && (
+                                    <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-xs text-amber-700 font-medium">
+                                        Notifications are blocked in your browser settings. Enable them to receive push alerts.
+                                    </div>
+                                )}
+
+                                {pushError && (
+                                    <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-xs text-red-600 font-medium">
+                                        {pushError}
+                                    </div>
+                                )}
+
+                                <div className="flex flex-wrap gap-3">
+                                    {pushSubscribed ? (
+                                        <button
+                                            onClick={handleDisablePush}
+                                            disabled={pushLoading}
+                                            className="h-11 px-5 rounded-xl border border-gray-200 text-xs font-black uppercase tracking-widest text-text-secondary hover:bg-gray-50 disabled:opacity-60"
+                                        >
+                                            {pushLoading ? 'Updating...' : 'Disable Push'}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={handleEnablePush}
+                                            disabled={pushLoading || !pushSupported}
+                                            className="h-11 px-5 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary-hover disabled:opacity-60"
+                                        >
+                                            {pushLoading ? 'Enabling...' : 'Enable Push'}
+                                        </button>
+                                    )}
+                                </div>
+
+                                {!vapidPublicKey && (
+                                    <p className="text-[11px] text-text-secondary">
+                                        Add `NEXT_PUBLIC_VAPID_PUBLIC_KEY` to enable browser push subscriptions.
+                                    </p>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
