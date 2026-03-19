@@ -407,10 +407,12 @@ export class MessagingEngineService {
         savedMessage.reference = providerResult.reference;
         await this.messageRepo.save(savedMessage);
 
-        if (
-          savedMessage.status === MessageStatus.SENT ||
-          savedMessage.status === MessageStatus.PENDING
-        ) {
+        const customerName = `${customer.firstName} ${customer.lastName}`.trim() || 'Customer';
+        if (savedMessage.status === MessageStatus.SENT || savedMessage.status === MessageStatus.DELIVERED || savedMessage.status === MessageStatus.PENDING) {
+          this.logger.log(
+            `✅ SUCCESS: [${channel}] message to ${customerName} (${savedMessage.to}) status: ${savedMessage.status}. Provider Ref: ${savedMessage.reference || 'N/A'}. Response: ${JSON.stringify(providerResult.rawResponse)}`,
+          );
+          
           let units = providerResult.units || 1;
           if (channel === Channel.SMS && savedMessage.content.length > 160) {
             units = 2;
@@ -421,13 +423,19 @@ export class MessagingEngineService {
             units,
             `Message to ${savedMessage.to}`,
           );
+        } else {
+          this.logger.warn(
+            `⚠️ FAILED: [${channel}] message to ${customerName} (${savedMessage.to}). Provider Response: ${JSON.stringify(providerResult.rawResponse)}`,
+          );
         }
       }
 
       await this.logMessage(savedMessage);
     } catch (err: any) {
+      const customerName = (customer as any)?.firstName ? `${customer.firstName} ${customer.lastName}`.trim() : customerId;
       this.logger.error(
-        `Failed to send message ${savedMessage.id}: ${err.message}`,
+        `❌ ERROR: Failed to send [${channel}] message to ${customerName}: ${err.message}`,
+        err.stack
       );
       savedMessage.status = MessageStatus.FAILED;
       await this.messageRepo.save(savedMessage);
