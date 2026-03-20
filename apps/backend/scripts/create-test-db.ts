@@ -26,6 +26,11 @@ const baseConfig = {
 };
 
 async function createDb() {
+  if (process.env.DB_HOST?.includes('neon.tech')) {
+    console.log('Skipping database creation for Neon DB');
+    return;
+  }
+
   // 1. Terminate other connections to the target test database if it exists
   // We do this via the maintenance database
   const maintenanceDb = 'postgres';
