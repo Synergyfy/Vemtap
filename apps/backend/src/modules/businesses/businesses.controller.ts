@@ -26,6 +26,8 @@ import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
 import { FindBusinessesAdminDto } from './dto/find-businesses-admin.dto';
 import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
 import { ImportCustomersDto } from './dto/import-customers.dto';
+import { ParseUUIDPipe } from '@nestjs/common';
+import { SuspendBusinessDto } from './dto/admin-business-action.dto';
 
 interface RequestWithUser extends Request {
   user: User;
@@ -102,7 +104,6 @@ export class BusinessesController {
     }
     return this.businessesService.importCustomers(businessId, importDto);
   }
-
   @Patch(':id')
   @Roles(UserRole.OWNER)
   @ApiOperation({
@@ -110,7 +111,7 @@ export class BusinessesController {
   })
   @ApiResponse({ status: 200, description: 'Business updated successfully' })
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateBusinessDto: UpdateBusinessDto,
   ) {
     return this.businessesService.update(id, updateBusinessDto);
@@ -157,21 +158,21 @@ export class BusinessesController {
   @Delete('admin/:id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Delete a business permanently' })
-  async adminDelete(@Param('id') id: string) {
+  async adminDelete(@Param('id', ParseUUIDPipe) id: string) {
     return this.businessesService.adminDelete(id);
   }
 
   @Patch('admin/:id/approve')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Approve a pending business application' })
-  async approveBusiness(@Param('id') id: string) {
+  async approveBusiness(@Param('id', ParseUUIDPipe) id: string) {
     return this.businessesService.approve(id);
   }
 
   @Patch('admin/:id/reject')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Reject a pending business application' })
-  async rejectBusiness(@Param('id') id: string) {
+  async rejectBusiness(@Param('id', ParseUUIDPipe) id: string) {
     return this.businessesService.reject(id);
   }
 
@@ -179,16 +180,16 @@ export class BusinessesController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Suspend a business' })
   async suspendBusiness(
-    @Param('id') id: string,
-    @Body('reason') reason: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SuspendBusinessDto,
   ) {
-    return this.businessesService.suspend(id, reason || 'Terms Violation');
+    return this.businessesService.suspend(id, dto.reason);
   }
 
   @Patch('admin/:id/reactivate')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Reactivate a suspended business' })
-  async reactivateBusiness(@Param('id') id: string) {
+  async reactivateBusiness(@Param('id', ParseUUIDPipe) id: string) {
     return this.businessesService.reactivate(id);
   }
 
@@ -216,7 +217,7 @@ export class BusinessesController {
       },
     },
   })
-  async getBusinessStats(@Param('id') id: string) {
+  async getBusinessStats(@Param('id', ParseUUIDPipe) id: string) {
     return this.businessesService.getBusinessStatsForAdmin(id);
   }
 }

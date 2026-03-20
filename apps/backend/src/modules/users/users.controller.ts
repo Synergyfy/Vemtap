@@ -32,6 +32,11 @@ import { FindUsersAdminDto } from './dto/find-users-admin.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
 import { CapabilityGuard } from '../subscriptions/guards/capability.guard';
 import { RequireCapability } from '../subscriptions/decorators/capability.decorator';
+import {
+  AdminCreateUserDto,
+  AdminUpdateUserDto,
+} from './dto/admin-user-management.dto';
+import { ParseUUIDPipe } from '@nestjs/common';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -106,7 +111,7 @@ export class UsersController {
   @ApiResponse({ status: 200, type: User })
   async updateStaff(
     @Request() req,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updates: UpdateStaffDto,
     @Query() filter: BranchFilterDto,
   ) {
@@ -120,7 +125,7 @@ export class UsersController {
   @ApiResponse({ status: 200 })
   async remove(
     @Request() req,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Query() filter: BranchFilterDto,
   ) {
     const branchId = this.getBranchId(req, filter.branchId);
@@ -143,39 +148,41 @@ export class UsersController {
   async adminCreateAgent(@Body() dto: AdminCreateAgentDto) {
     return this.usersService.adminCreateAgent(dto);
   }
-
   @Post('admin')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Create a new user' })
-  async adminCreateUser(@Body() createUserDto: any) {
+  async adminCreateUser(@Body() createUserDto: AdminCreateUserDto) {
     return this.usersService.adminCreateUser(createUserDto);
   }
 
   @Patch('admin/:id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Update user details' })
-  async adminUpdateUser(@Param('id') id: string, @Body() updateUserDto: any) {
+  async adminUpdateUser(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateUserDto: AdminUpdateUserDto,
+  ) {
     return this.usersService.adminUpdateUser(id, updateUserDto);
   }
 
   @Delete('admin/:id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Delete user' })
-  async adminDeleteUser(@Param('id') id: string) {
+  async adminDeleteUser(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.adminDeleteUser(id);
   }
 
   @Post('admin/:id/suspend')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Suspend user account' })
-  async suspendUser(@Param('id') id: string) {
+  async suspendUser(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.suspendUser(id);
   }
 
   @Post('admin/:id/activate')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Reactivate user account' })
-  async activateUser(@Param('id') id: string) {
+  async activateUser(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.activateUser(id);
   }
 
@@ -183,6 +190,8 @@ export class UsersController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Send password reset link to user email' })
   async adminResetPasswordLink(@Param('email') email: string) {
+    // Basic email validation if needed, but the service handles it. 
+    // Usually better to have @IsEmail in a DTO but as a param we could use a custom validator or just let it pass to service.
     return this.usersService.adminResetPasswordLink(email);
   }
 }

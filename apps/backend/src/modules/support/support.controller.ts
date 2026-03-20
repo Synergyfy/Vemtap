@@ -13,6 +13,13 @@ import { CreateTicketDto } from './dto/create-ticket.dto';
 import { FindTicketsAdminDto } from './dto/find-tickets-admin.dto';
 import { TicketStatus, TicketType } from './entities/support-ticket.entity';
 import {
+  UpdateTicketStatusDto,
+  AssignTicketDto,
+  AdminTicketMessageDto,
+} from './dto/update-ticket-admin.dto';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
+import { ParseUUIDPipe } from '@nestjs/common';
+import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
@@ -50,31 +57,31 @@ export class SupportController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   async getTickets(
     @Request() req: AuthRequest,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query() query: PaginationQueryDto,
   ) {
-    return this.supportService.findAll(req.user.id, page, limit);
+    return this.supportService.findAll(req.user.id, query.page, query.limit);
   }
 
   @Get('tickets/:id')
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
   @ApiOperation({ summary: 'Get ticket details with messages' })
-  async getTicket(@Request() req: AuthRequest, @Param('id') id: string) {
+  async getTicket(
+    @Request() req: AuthRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.supportService.findOne(id, req.user.id);
   }
 
   @Post('tickets/:id/message')
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
   @ApiOperation({ summary: 'Reply to a ticket' })
-  @ApiBody({
-    schema: { type: 'object', properties: { message: { type: 'string' } } },
-  })
+  @ApiBody({ type: AdminTicketMessageDto })
   async addMessage(
     @Request() req: AuthRequest,
-    @Param('id') id: string,
-    @Body('message') message: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AdminTicketMessageDto,
   ) {
-    return this.supportService.addMessage(id, req.user.id, message);
+    return this.supportService.addMessage(id, req.user.id, dto.message);
   }
 
   // --- Admin Endpoints ---
@@ -94,55 +101,41 @@ export class SupportController {
   @Get('admin/tickets/:id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Get ticket details with messages' })
-  async getAdminTicket(@Param('id') id: string) {
+  async getAdminTicket(@Param('id', ParseUUIDPipe) id: string) {
     return this.supportService.findOneAdmin(id);
   }
 
   @Post('admin/tickets/:id/status')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Update ticket status' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        status: {
-          type: 'string',
-          enum: ['Pending', 'In Progress', 'Resolved', 'Cancelled'],
-        },
-      },
-    },
-  })
+  @ApiBody({ type: UpdateTicketStatusDto })
   async updateTicketStatus(
-    @Param('id') id: string,
-    @Body('status') status: TicketStatus,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateTicketStatusDto,
   ) {
-    return this.supportService.updateStatus(id, status);
+    return this.supportService.updateStatus(id, dto.status);
   }
 
   @Post('admin/tickets/:id/assign')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Assign ticket to an agent' })
-  @ApiBody({
-    schema: { type: 'object', properties: { agentId: { type: 'string' } } },
-  })
+  @ApiBody({ type: AssignTicketDto })
   async assignTicket(
-    @Param('id') id: string,
-    @Body('agentId') agentId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AssignTicketDto,
   ) {
-    return this.supportService.assignTicket(id, agentId);
+    return this.supportService.assignTicket(id, dto.agentId);
   }
 
   @Post('admin/tickets/:id/message')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Reply to any ticket' })
-  @ApiBody({
-    schema: { type: 'object', properties: { message: { type: 'string' } } },
-  })
+  @ApiBody({ type: AdminTicketMessageDto })
   async addAdminMessage(
     @Request() req: AuthRequest,
-    @Param('id') id: string,
-    @Body('message') message: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AdminTicketMessageDto,
   ) {
-    return this.supportService.addAdminMessage(id, req.user.id, message);
+    return this.supportService.addAdminMessage(id, req.user.id, dto.message);
   }
 }

@@ -42,7 +42,13 @@ import {
 } from './dto/visitor-response.dto';
 import { VisitorStatsResponseDto } from './dto/visitor-stats.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
-import { RecordVisitResponse, SendCampaignBody } from './visitors.service';
+import { RecordVisitResponse } from './visitors.service';
+import {
+  AdminSendMessageDto,
+  AdminSendRewardDto,
+  SendCampaignDto,
+} from './dto/admin-visitor-action.dto';
+import { ParseUUIDPipe } from '@nestjs/common';
 
 import { VisitedBranchesQueryDto } from './dto/visited-branches-query.dto';
 import { PaginatedVisitedBranchResponseDto } from './dto/visited-branch-response.dto';
@@ -264,11 +270,11 @@ export class VisitorsController {
   @ApiOperation({ summary: 'Send campaign to visitors' })
   async sendCampaign(
     @Req() req: any,
-    @Body() body: SendCampaignBody,
+    @Body() body: SendCampaignDto,
     @Query() filter: BranchFilterDto,
   ): Promise<any> {
     const branchId = await this.getBranchId(req, filter.branchId);
-    return this.visitorsService.sendCampaign(branchId, body);
+    return this.visitorsService.sendCampaign(branchId, body as any);
   }
 
   @Post('welcome-campaign')
@@ -362,7 +368,7 @@ export class VisitorsController {
   @Permissions('visitors')
   @ApiOperation({ summary: 'Get a visitor by ID' })
   @ApiResponse({ type: VisitorResponseDto })
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.visitorsService.findOne(id);
   }
 
@@ -372,7 +378,7 @@ export class VisitorsController {
   @ApiOperation({ summary: 'Update a visitor' })
   @ApiResponse({ type: VisitorResponseDto })
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateVisitorDto: Partial<CreateVisitorDto>,
   ) {
     return this.visitorsService.update(id, updateVisitorDto);
@@ -382,7 +388,7 @@ export class VisitorsController {
   @Roles(UserRole.OWNER, UserRole.ADMIN)
   @Permissions('visitors')
   @ApiOperation({ summary: 'Delete a visitor' })
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.visitorsService.remove(id);
   }
 
@@ -392,15 +398,15 @@ export class VisitorsController {
   @ApiOperation({ summary: 'Send a message to a visitor' })
   async sendMessage(
     @Req() req: any,
-    @Param('id') id: string,
-    @Body() body: { message: string; channel: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: AdminSendMessageDto,
     @Query() filter: BranchFilterDto,
   ) {
     const branchId = await this.getBranchId(req, filter.branchId);
     return this.visitorsService.sendMessage(
       id,
       body.message,
-      body.channel as any,
+      body.channel,
       branchId,
     );
   }
@@ -411,7 +417,7 @@ export class VisitorsController {
   @ApiOperation({ summary: 'Send welcome message to a visitor' })
   async sendWelcome(
     @Req() req: any,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Query() filter: BranchFilterDto,
   ) {
     const branchId = await this.getBranchId(req, filter.branchId);
@@ -424,8 +430,8 @@ export class VisitorsController {
   @ApiOperation({ summary: 'Send reward to a visitor' })
   async sendReward(
     @Req() req: any,
-    @Param('id') id: string,
-    @Body() body: { rewardId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: AdminSendRewardDto,
     @Query() filter: BranchFilterDto,
   ) {
     const branchId = await this.getBranchId(req, filter.branchId);
