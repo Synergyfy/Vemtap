@@ -28,6 +28,7 @@ import { InviteStaffDto } from './dto/invite-staff.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateEngagementDto } from './dto/update-engagement.dto';
 import { AdminCreateAgentDto } from './dto/admin-create-agent.dto';
+import { FindUsersAdminDto } from './dto/find-users-admin.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
 import { CapabilityGuard } from '../subscriptions/guards/capability.guard';
 import { RequireCapability } from '../subscriptions/decorators/capability.decorator';
@@ -131,25 +132,8 @@ export class UsersController {
   @Get('admin')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Get all users with filters and stats' })
-  @ApiQuery({ name: 'search', required: false })
-  @ApiQuery({ name: 'role', required: false })
-  @ApiQuery({ name: 'status', required: false })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  async findAllAdmin(
-    @Query('search') search?: string,
-    @Query('role') role?: string,
-    @Query('status') status?: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.usersService.findAllAdmin({
-      search,
-      role,
-      status,
-      page,
-      limit,
-    });
+  async findAllAdmin(@Query() query: FindUsersAdminDto) {
+    return this.usersService.findAllAdmin(query);
   }
 
   @Post('admin/create-agent')
