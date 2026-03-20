@@ -26,6 +26,7 @@ interface ProductFormData {
   category: string;
   tag: string;
   tagColor: string;
+  nfcType: string;
   sku: string;
   description: string;
   productTypeId: string;
@@ -75,6 +76,7 @@ const initialFormData: ProductFormData = {
   category: 'NFC Hardware',
   tag: 'New Arrival',
   tagColor: 'bg-primary',
+  nfcType: 'nfc',
   sku: '',
   description: '',
   productTypeId: '',
@@ -124,6 +126,7 @@ export const useProductFormStore = create<ProductFormState>((set) => ({
       category: product.category || 'NFC Hardware',
       tag: product.tag || 'New Arrival',
       tagColor: product.tagColor || 'bg-primary',
+      nfcType: product.nfcType || 'nfc',
       sku: product.sku || '',
       description: product.description || '',
       productTypeId: product.productTypeId || '',
