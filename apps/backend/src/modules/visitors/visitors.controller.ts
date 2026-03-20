@@ -17,10 +17,12 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { VisitorsService } from './visitors.service';
 import { CreateVisitorDto } from './dto/create-visitor.dto';
 import { VisitorSignupDto } from './dto/visitor-signup.dto';
+import { VisitorSignupQueryDto } from './dto/visitor-signup-query.dto';
 import { CreateVisitorRewardDto } from './dto/create-visitor-reward.dto';
 import { DeviceTapDto } from './dto/device-tap.dto';
 import { VisitorQueryDto } from './dto/visitor-query.dto';
@@ -42,6 +44,9 @@ import { VisitorStatsResponseDto } from './dto/visitor-stats.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
 import { RecordVisitResponse, SendCampaignBody } from './visitors.service';
 
+import { VisitedBranchesQueryDto } from './dto/visited-branches-query.dto';
+import { PaginatedVisitedBranchResponseDto } from './dto/visited-branch-response.dto';
+
 @ApiTags('Visitors')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -51,6 +56,21 @@ export class VisitorsController {
     private readonly visitorsService: VisitorsService,
     private readonly loyaltyService: LoyaltyService,
   ) {}
+
+  @Get('visited-branches')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Get branches visited by the customer with pagination and search' })
+  @ApiResponse({ 
+    status: 200, 
+    type: PaginatedVisitedBranchResponseDto,
+    description: 'List of branches visited by the customer, ordered from last visited to first visited'
+  })
+  async getVisitedBranches(
+    @Req() req: any,
+    @Query() query: VisitedBranchesQueryDto,
+  ): Promise<PaginatedVisitedBranchResponseDto> {
+    return this.visitorsService.getVisitedBranches(req.user.id, query);
+  }
 
   private async getBranchId(req: any, queryBranchId?: string): Promise<string> {
     const user = req.user;
@@ -295,6 +315,7 @@ export class VisitorsController {
   @Post('signup')
   @ApiOperation({ summary: 'Public visitor signup (Customer Only)' })
   @ApiBody({ type: VisitorSignupDto })
+  @ApiQuery({ name: 'branchId', type: String, description: 'The UUID of the branch' })
   @ApiResponse({
     status: 201,
     description: 'Visitor registered successfully',
@@ -302,11 +323,9 @@ export class VisitorsController {
   })
   async publicSignup(
     @Body() dto: VisitorSignupDto,
-    @Query('branchId') branchId: string,
+    @Query() query: VisitorSignupQueryDto,
   ): Promise<VisitorResponseDto> {
-    if (!branchId)
-      throw new BadRequestException('branchId is required for signup');
-    return this.visitorsService.create(dto, branchId);
+    return this.visitorsService.create(dto, query.branchId);
   }
 
   @Post()

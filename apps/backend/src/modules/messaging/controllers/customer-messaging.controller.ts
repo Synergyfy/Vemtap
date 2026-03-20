@@ -13,6 +13,7 @@ import { InboxService } from '../services/inbox.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { User } from '../../users/entities/user.entity';
 import { ReplyDto } from '../dto/reply.dto';
+import { StartConversationDto } from '../dto/start-conversation.dto';
 
 @ApiTags('Customer Messaging')
 @Controller('customer/messaging')
@@ -28,6 +29,19 @@ export class CustomerMessagingController {
   @ApiResponse({ status: 200, description: 'List of business threads for the visitor' })
   async getThreads(@Request() req: { user: User }) {
     return this.inboxService.getCustomerThreads(req.user.id);
+  }
+
+  @Post('threads/start')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Start a new conversation with a branch' })
+  @ApiBody({ type: StartConversationDto })
+  @ApiResponse({ status: 201, description: 'Conversation started and first message sent' })
+  async startConversation(
+    @Body() dto: StartConversationDto,
+    @Request() req: { user: User },
+  ) {
+    return this.inboxService.startCustomerConversation(req.user.id, dto.branchId, dto.content);
   }
 
   @Get('threads/:threadId')

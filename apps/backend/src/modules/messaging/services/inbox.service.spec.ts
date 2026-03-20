@@ -12,12 +12,16 @@ import { User } from '../../users/entities/user.entity';
 import { Channel } from '../enums/channel.enum';
 import { MessagingGateway } from '../messaging.gateway';
 import { PushNotificationService } from '../../notifications/push-notification.service';
+import { Visit } from '../../visitors/entities/visit.entity';
+import { Branch } from '../../branches/entities/branch.entity';
 
 describe('InboxService', () => {
   let service: InboxService;
   let threadRepoMock: any;
   let messageRepoMock: any;
   let userRepoMock: any;
+  let visitRepoMock: any;
+  let branchRepoMock: any;
   let engineMock: any;
   let gatewayMock: any;
   let pushMock: any;
@@ -26,9 +30,10 @@ describe('InboxService', () => {
     threadRepoMock = {
       findOne: jest.fn(),
       find: jest.fn(),
-      save: jest.fn().mockImplementation((t) => Promise.resolve(t)),
+      save: jest.fn().mockImplementation((t) => Promise.resolve({ id: 'new-thread-id', ...t })),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
       increment: jest.fn().mockResolvedValue({ affected: 1 }),
+      create: jest.fn().mockImplementation((t) => t),
     };
 
     threadRepoMock.createQueryBuilder = jest.fn(() => ({
@@ -42,11 +47,19 @@ describe('InboxService', () => {
       find: jest.fn(),
       findOne: jest.fn(),
       create: jest.fn().mockImplementation((m) => m),
-      save: jest.fn().mockImplementation((m) => Promise.resolve(m)),
+      save: jest.fn().mockImplementation((m) => Promise.resolve({ id: 'new-msg-id', ...m })),
     };
 
     userRepoMock = {
         findOne: jest.fn(),
+    };
+
+    visitRepoMock = {
+      findOne: jest.fn(),
+    };
+
+    branchRepoMock = {
+      findOne: jest.fn(),
     };
 
     engineMock = {
@@ -78,6 +91,14 @@ describe('InboxService', () => {
           useValue: userRepoMock,
         },
         {
+          provide: getRepositoryToken(Visit),
+          useValue: visitRepoMock,
+        },
+        {
+          provide: getRepositoryToken(Branch),
+          useValue: branchRepoMock,
+        },
+        {
           provide: MessagingEngineService,
           useValue: engineMock,
         },
@@ -93,6 +114,49 @@ describe('InboxService', () => {
     }).compile();
 
     service = module.get<InboxService>(InboxService);
+  });
+
+  describe('startCustomerConversation', () => {
+    it('should throw ForbiddenException if customer has not visited the branch', async () => {
+      visitRepoMock.findOne.mockResolvedValue(null);
+      await expect(service.startCustomerConversation('c1', 'br1', 'hi')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should create a new thread and message if no thread exists', async () => {
+      visitRepoMock.findOne.mockResolvedValue({ id: 'v1' });
+      threadRepoMock.findOne.mockResolvedValue(null);
+      branchRepoMock.findOne.mockResolvedValue({ id: 'br1', businessId: 'bus1' });
+      userRepoMock.findOne.mockResolvedValue({ id: 'c1', firstName: 'John' });
+
+      const result = await service.startCustomerConversation('c1', 'br1', 'hello branch');
+
+      expect(threadRepoMock.create).toHaveBeenCalledWith(expect.objectContaining({
+        branchId: 'br1',
+        customerId: 'c1',
+        channel: Channel.IN_HOUSE,
+      }));
+      expect(threadRepoMock.save).toHaveBeenCalled();
+      expect(messageRepoMock.save).toHaveBeenCalled();
+      expect(gatewayMock.emitMessage).toHaveBeenCalled();
+      expect(result.content).toBe('hello branch');
+    });
+
+    it('should reuse existing thread if it exists', async () => {
+      visitRepoMock.findOne.mockResolvedValue({ id: 'v1' });
+      const existingThread = { id: 't1', branchId: 'br1', customerId: 'c1', customer: { firstName: 'John' } };
+      threadRepoMock.findOne.mockResolvedValue(existingThread);
+
+      await service.startCustomerConversation('c1', 'br1', 'another message');
+
+      expect(threadRepoMock.create).not.toHaveBeenCalled();
+      expect(threadRepoMock.update).toHaveBeenCalledWith('t1', expect.any(Object));
+      expect(messageRepoMock.save).toHaveBeenCalledWith(expect.objectContaining({
+        threadId: 't1',
+        content: 'another message',
+      }));
+    });
   });
 
   describe('sendReply', () => {

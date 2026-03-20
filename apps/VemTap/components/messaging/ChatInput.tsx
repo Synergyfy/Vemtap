@@ -6,18 +6,20 @@ import { Smile, Paperclip, Camera, Send, X } from 'lucide-react';
 import { useSendReply } from '@/hooks/useMessaging';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches } from '@/services/branches/hooks';
-import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/lib/store/useChatStore';
 
 interface ChatInputProps {
     conversationId: string;
     isMock?: boolean;
+    onTypingChange?: (isTyping: boolean) => void;
+    replyTo?: { id?: string; content?: string };
+    onCancelReply?: () => void;
 }
 
 const COMMON_EMOJIS = ['😊', '😂', '❤️', '👍', '🙏', '🔥', '✨', '🙌', '😮', '😢', '😍', '🤔', '🎉', '✅', '🚀', '👋'];
 
-export default function ChatInput({ conversationId, isMock }: ChatInputProps) {
+export default function ChatInput({ conversationId, isMock, onTypingChange, replyTo, onCancelReply }: ChatInputProps) {
     const [text, setText] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const user = useAuthStore(s => s.user);
@@ -27,7 +29,8 @@ export default function ChatInput({ conversationId, isMock }: ChatInputProps) {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
-    const queryClient = useQueryClient();
+    const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isTypingRef = useRef(false);
 
     useEffect(() => {
         if (!user || user.role === 'customer') return;
@@ -42,6 +45,31 @@ export default function ChatInput({ conversationId, isMock }: ChatInputProps) {
     // Unified reply mutation (handles both business and customer endpoints)
     const replyMutation = useSendReply(isCustomer);
 
+    const emitTyping = (next: boolean) => {
+        if (!onTypingChange) return;
+        if (isTypingRef.current === next) return;
+        isTypingRef.current = next;
+        onTypingChange(next);
+    };
+
+    const handleTypingActivity = (nextValue: string) => {
+        if (!onTypingChange) return;
+        if (!nextValue.trim()) {
+            emitTyping(false);
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+                typingTimeoutRef.current = null;
+            }
+            return;
+        }
+
+        emitTyping(true);
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => {
+            emitTyping(false);
+        }, 1500);
+    };
+
     const handleSend = async () => {
         if (!text.trim()) return;
 
@@ -54,9 +82,12 @@ export default function ChatInput({ conversationId, isMock }: ChatInputProps) {
                 content: text.trim(),
                 timestamp: new Date().toISOString(),
                 status: 'SENT',
+                replyTo: replyTo?.id ? { id: replyTo.id, content: replyTo.content } : undefined,
             });
             setText('');
             setShowEmojiPicker(false);
+            emitTyping(false);
+            onCancelReply?.();
             if (textareaRef.current) {
                 textareaRef.current.style.height = '';
             }
@@ -72,10 +103,13 @@ export default function ChatInput({ conversationId, isMock }: ChatInputProps) {
             await replyMutation.mutateAsync({ 
                 threadId: conversationId, 
                 content: text.trim(), 
-                branchId 
+                branchId,
+                replyToId: replyTo?.id,
             });
             setText('');
             setShowEmojiPicker(false);
+            emitTyping(false);
+            onCancelReply?.();
             if (textareaRef.current) {
                 textareaRef.current.style.height = '';
             }
@@ -99,7 +133,11 @@ export default function ChatInput({ conversationId, isMock }: ChatInputProps) {
     };
 
     const addEmoji = (emoji: string) => {
-        setText(prev => prev + emoji);
+        setText(prev => {
+            const next = prev + emoji;
+            handleTypingActivity(next);
+            return next;
+        });
         textareaRef.current?.focus();
     };
 
@@ -112,8 +150,33 @@ export default function ChatInput({ conversationId, isMock }: ChatInputProps) {
 
     const isSending = replyMutation.isPending;
 
+    useEffect(() => {
+        return () => {
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
+            emitTyping(false);
+        };
+    }, []);
+
     return (
         <footer className="p-4 bg-white border-t border-slate-200 shrink-0 relative">
+            {replyTo?.content && (
+                <div className="mb-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Replying to</p>
+                        <p className="truncate">{replyTo.content}</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onCancelReply}
+                        className="size-7 rounded-lg border border-slate-200 text-slate-400 hover:bg-white flex items-center justify-center"
+                        title="Cancel reply"
+                    >
+                        <X size={14} />
+                    </button>
+                </div>
+            )}
             {/* Emoji Picker Popover */}
             {showEmojiPicker && (
                 <div className="absolute bottom-full left-4 mb-2 p-3 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
@@ -184,7 +247,11 @@ export default function ChatInput({ conversationId, isMock }: ChatInputProps) {
                         ref={textareaRef}
                         rows={1}
                         value={text}
-                        onChange={e => setText(e.target.value)}
+                        onChange={e => {
+                            const nextValue = e.target.value;
+                            setText(nextValue);
+                            handleTypingActivity(nextValue);
+                        }}
                         onInput={handleInput}
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message..."
