@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
@@ -16,6 +18,7 @@ import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
 import { DevicesService } from '../devices/devices.service';
 import { Reward } from '../loyalty/entities/reward.entity';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 @Injectable()
 export class BusinessesService {
@@ -32,6 +35,8 @@ export class BusinessesService {
     private rewardRepository: Repository<Reward>,
     private readonly mailService: MailService,
     private readonly devicesService: DevicesService,
+    @Inject(forwardRef(() => SubscriptionsService))
+    private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
   async create(
@@ -361,76 +366,80 @@ export class BusinessesService {
 
   async adminCreate(dto: AdminCreateBusinessDto): Promise<Business> {
     const existingUser = await this.usersRepository.findOne({
-      where: { email: dto.ownerEmail },
+      where: { email: dto.ownerEmail.toLowerCase() },
     });
 
-    if (existingUser) {
+    if (existingUser && existingUser.status !== UserStatus.PENDING) {
       throw new ConflictException('A user with that email already exists');
     }
 
     const hashedPassword = await bcrypt.hash(dto.ownerPassword, 10);
-    const ownerUser = this.usersRepository.create({
-      firstName: dto.ownerFirstName,
-      lastName: dto.ownerLastName,
-      email: dto.ownerEmail,
-      password: hashedPassword,
-      phone: dto.ownerPhone,
-      role: UserRole.OWNER,
-    });
+    let user: User;
 
-    const savedUser = await this.usersRepository.save(ownerUser);
+    if (existingUser) {
+      existingUser.firstName = dto.ownerFirstName;
+      existingUser.lastName = dto.ownerLastName;
+      existingUser.password = hashedPassword;
+      existingUser.phone = dto.ownerPhone || existingUser.phone;
+      existingUser.engagement = dto.engagement;
+      user = await this.usersRepository.save(existingUser);
+    } else {
+      user = this.usersRepository.create({
+        firstName: dto.ownerFirstName,
+        lastName: dto.ownerLastName,
+        email: dto.ownerEmail.toLowerCase(),
+        password: hashedPassword,
+        role: UserRole.OWNER,
+        status: UserStatus.ACTIVE,
+        phone: dto.ownerPhone,
+        engagement: dto.engagement,
+      });
+      user = await this.usersRepository.save(user);
+    }
 
-    const business = this.businessesRepository.create({
+    const goalString = Array.isArray(dto.goals)
+      ? dto.goals.join(', ')
+      : (dto.goals as any);
+
+    const business = await this.create({
       name: dto.name,
-      ownerId: savedUser.id,
+      ownerId: user.id,
       status: dto.status || BusinessStatus.ACTIVE,
-      officialEmail: dto.officialEmail,
       categoryId: dto.categoryId,
       subcategoryId: dto.subcategoryId,
       otherSubcategoryName: dto.otherSubcategoryName,
-      phone: dto.whatsappNumber || dto.officialEmail,
+      monthlyVisitors: dto.visitors,
+      goal: goalString,
       logoUrl: dto.logoUrl,
       address: dto.address,
       website: dto.website,
       state: dto.state,
       city: dto.city,
-      whatsappNumber: dto.whatsappNumber,
-    } as Partial<Business>);
-
-    const savedBusiness = await this.businessesRepository.save(business);
-
-    // Automatically create Main Branch
-    const mainBranch = this.branchRepository.create({
-      name: 'Main Branch',
-      businessId: savedBusiness.id,
-      isMainBranch: true,
-      logoUrl: dto.logoUrl,
-      address: dto.address,
-      state: dto.state,
-      city: dto.city,
-      website: dto.website,
       whatsappNumber: dto.whatsappNumber,
       officialEmail: dto.officialEmail,
+      phone: dto.businessNumber,
+      isRegistered: dto.isRegistered,
+      registrationNumber: dto.registrationNumber,
+      documents: dto.documents,
     } as any);
-    const savedBranch = (await this.branchRepository.save(
-      mainBranch,
-    )) as unknown as Branch;
 
-    // Link branchId back to user for proper context
-    savedUser.branchId = savedBranch.id;
-    await this.usersRepository.save(savedUser);
+    // Ensure user status is active and linked to branch (linked during this.create)
+    user.status = UserStatus.ACTIVE;
+    await this.usersRepository.save(user);
 
-    // Automatically generate a device for the Main Branch
+    // Automatically generate a device for the Main Branch (already handled in this.create)
+
+    // Auto-subscribe to free plan
     try {
-      await this.devicesService.createAutoDevice(savedBranch.id);
+      await this.subscriptionsService.subscribeToFreePlan(business.id);
     } catch (error) {
       console.error(
-        `Failed to auto-generate device for business ${savedBusiness.id} main branch (admin create):`,
+        'Failed to auto-subscribe to free plan during admin create:',
         error,
       );
     }
 
-    return savedBusiness;
+    return business;
   }
 
   async adminDelete(id: string): Promise<void> {
