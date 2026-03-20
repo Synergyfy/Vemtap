@@ -62,7 +62,13 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
         router.push('/login');
     };
 
-    const menuItems = [
+    const menuItems: Array<{
+        id: string;
+        label: string;
+        icon: typeof LayoutGrid;
+        href: string;
+        external?: boolean;
+    }> = [
         {
             id: 'overview',
             label: 'Dashboard',
@@ -97,8 +103,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
             id: 'messages',
             label: 'Messages',
             icon: MessageSquare,
-            href: '/support-chat/default',
-            external: true,
+            href: '/customer/messaging/chat',
         },
         {
             id: 'support',
