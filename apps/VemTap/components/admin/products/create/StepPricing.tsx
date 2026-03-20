@@ -55,6 +55,7 @@ export default function StepPricing() {
                 name: formData.title,
                 description: formData.description,
                 productTypeId: formData.productTypeId,
+                sku: formData.sku,
                 price: formData.msrp,
                 images: imagesArray,
                 tag: formData.tag,
