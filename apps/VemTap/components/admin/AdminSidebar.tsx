@@ -75,21 +75,23 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             icon: Store,
             submenu: [
                 { label: 'All Businesses', href: '/admin/businesses' },
+                { label: 'Business Owners', href: '/admin/users/business' },
                 { label: 'Business Categories', href: '/admin/categories' },
                 { label: 'Pending Approval', href: '/admin/businesses/pending' },
                 { label: 'Suspended', href: '/admin/businesses/suspended' },
             ]
         },
         {
-            id: 'users',
-            label: 'Users',
+            id: 'customers',
+            label: 'Customers',
             icon: Users,
-            submenu: [
-                { label: 'All Users', href: '/admin/users' },
-                { label: 'Businesses', href: '/admin/users/business' },
-                { label: 'Customers', href: '/admin/users/customers' },
-                { label: 'Agents', href: '/admin/users/agents' },
-            ],
+            href: '/admin/users/customers',
+        },
+        {
+            id: 'agents',
+            label: 'Support Agents',
+            icon: ShieldCheck,
+            href: '/admin/agents',
         },
         {
             id: 'devices',
@@ -188,12 +190,6 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             label: 'System Health',
             icon: Activity,
             href: '/admin/health',
-        },
-        {
-            id: 'agents',
-            label: 'Manage Agents',
-            icon: Shield,
-            href: '/admin/agents',
         },
         {
             id: 'verifications',
