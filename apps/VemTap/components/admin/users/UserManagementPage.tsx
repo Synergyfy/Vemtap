@@ -238,14 +238,6 @@ export default function UserManagementPage({
         return map[s] || 'bg-gray-100 text-gray-500';
     };
 
-    const sectionOptions = [
-        { label: 'All Users', value: '/admin/users' },
-        { label: 'Businesses', value: '/admin/users/business' },
-        { label: 'Customers', value: '/admin/users/customers' },
-        { label: 'Agents', value: '/admin/users/agents' },
-    ];
-
-    const currentSection = sectionOptions.find((opt) => pathname?.startsWith(opt.value))?.value || '/admin/users';
 
     const [isExporting, setIsExporting] = useState(false);
 
@@ -332,15 +324,6 @@ export default function UserManagementPage({
                     <p className="text-text-secondary font-medium text-sm">{description}</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                    <select
-                        value={currentSection}
-                        onChange={(e) => router.push(e.target.value)}
-                        className="h-11 px-4 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    >
-                        {sectionOptions.map((option) => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                    </select>
                     <button
                         onClick={handleExportCSV}
                         disabled={isExporting}

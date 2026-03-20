@@ -36,8 +36,10 @@ export default function ActiveFormsPage() {
         allBranches: !branchScope,
     });
 
-    const { toggleActiveForm, setActiveFormIds, getActiveFormIds } = useFormPreferencesStore();
+    const { toggleActiveForm, setActiveFormIds } = useFormPreferencesStore();
+    const activeFormIdsByBranch = useFormPreferencesStore((state) => state.activeFormIdsByBranch);
     const { engagementSettings, updateEngagementSettings } = useCustomerFlowStore();
+    
     const brandColor = engagementSettings?.brandColor || '#2563eb';
     const brandVars = useMemo(
         () => buildBrandCssVars(brandColor),
@@ -50,7 +52,6 @@ export default function ActiveFormsPage() {
         [forms]
     );
 
-
     const { data: business } = useMyBusiness();
     const { activeBranchId: currentActiveBranchId } = useActiveBranch();
     const activeBranch = branches.find(b => b.id === currentActiveBranchId);
@@ -62,8 +63,8 @@ export default function ActiveFormsPage() {
     const showSocialStep = !!(engagementSettings?.showSocial && isSocialEnabled && hasSocialLinks);
 
     const activeFormIds = useMemo(
-        () => getActiveFormIds(branchKey),
-        [branchKey, getActiveFormIds]
+        () => activeFormIdsByBranch[branchKey] || [],
+        [branchKey, activeFormIdsByBranch]
     );
 
     const activeForms = useMemo(() => {
@@ -83,6 +84,7 @@ export default function ActiveFormsPage() {
         activeForms.find((form) => form.businessLogo)?.businessLogo ||
         availableForms.find((form) => form.businessLogo)?.businessLogo ||
         '';
+        
     const additionalTabLabel = (
         <span className="inline-flex items-center gap-2">
             Additional Forms
@@ -115,7 +117,6 @@ export default function ActiveFormsPage() {
         if (typeof window === 'undefined') return `/forms/${form.uniqueCode}`;
         return `${window.location.origin}/forms/${form.uniqueCode}`;
     };
-
 
     return (
         <div className="p-8 space-y-6">
@@ -215,19 +216,16 @@ export default function ActiveFormsPage() {
                                     ) : (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
                                             {inactiveForms.map((form) => {
-                                                const isAddable = !!form.isActive;
                                                 return (
                                                 <button
                                                     key={form.id}
                                                     type="button"
-                                                    disabled={!isAddable}
                                                     onClick={() => {
-                                                        if (!isAddable) return;
                                                         toggleActiveForm(branchKey, form.id);
                                                     }}
-                                                    className={`h-11 rounded-xl px-4 text-sm font-semibold shadow-sm transition-all text-white flex items-center justify-center text-center ${isAddable ? 'hover:brightness-95' : 'opacity-50 cursor-not-allowed'}`}
+                                                    className="h-11 rounded-xl px-4 text-sm font-semibold shadow-sm transition-all text-white flex items-center justify-center text-center hover:brightness-95"
                                                     style={{ backgroundColor: brandColor }}
-                                                    title={isAddable ? 'Add to sequence' : 'Enable this form to add it'}
+                                                    title="Add to sequence"
                                                 >
                                                     <span className="truncate block">{form.title || 'Untitled Form'}</span>
                                                 </button>
@@ -252,7 +250,7 @@ export default function ActiveFormsPage() {
                             <div className="p-5">
                                 <div className="flex justify-center" style={brandVars}>
                                     <PhoneFrame title="Additional Forms">
-                                        <div className="min-h-full bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 py-6 px-3 space-y-3">
+                                        <div className="min-h-full bg-slate-50 py-6 px-3 space-y-3">
                                             <div className="bg-white border border-gray-200 rounded-2xl p-4 text-left shadow-sm">
                                                 <div className="flex items-center gap-2 mb-2.5">
                                                     <div className="size-8 rounded-lg bg-white border border-gray-100 overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
