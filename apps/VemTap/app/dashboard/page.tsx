@@ -443,15 +443,6 @@ export default function DashboardPage() {
                                                     >
                                                         <Send size={14} />
                                                     </button>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setRewardPreviewVisitor(visitor);
-                                                        }}
-                                                        className="p-1.5 text-text-secondary hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-all"
-                                                    >
-                                                        <Gift size={14} />
-                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -468,6 +459,8 @@ export default function DashboardPage() {
                 onClose={() => setSelectedVisitorForMsg(null)}
                 recipientName={selectedVisitorForMsg?.visitor.name || ''}
                 recipientPhone={selectedVisitorForMsg?.visitor.phone}
+                recipientEmail={selectedVisitorForMsg?.visitor.email}
+                visitorIds={selectedVisitorForMsg?.visitor.id ? [selectedVisitorForMsg.visitor.id] : undefined}
                 type={selectedVisitorForMsg?.type || 'welcome'}
             />
 
