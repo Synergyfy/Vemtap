@@ -337,7 +337,7 @@ export default function DynamicTapJourneyPage() {
                 // Refresh local profile state
                 const { fetchLoyaltyProfile } = useLoyaltyStore.getState();
                 const identifier = identity.email || identity.phone || identity.uniqueId || identity.id;
-                fetchLoyaltyProfile(identifier, branchId || 'head-office');
+                fetchLoyaltyProfile(identifier, branchId || '');
 
                 console.log('Loyalty tap processed:', response);
             }
@@ -431,7 +431,7 @@ export default function DynamicTapJourneyPage() {
             visitorId: userData?.uniqueId || `V-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
             visitorName: name,
             rewardTitle: customRewardMessage || "Free Reward",
-            branchId: businessId || 'head-office'
+            branchId: branchId || businessId || ''
         });
 
         requestRedemption(customRewardMessage || "Free Reward");

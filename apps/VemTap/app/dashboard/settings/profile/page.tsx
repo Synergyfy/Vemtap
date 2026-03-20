@@ -16,6 +16,9 @@ import { useUpdateBranch, useBranch, useBranches } from '@/services/branches/hoo
 import { useCategories } from '@/services/categories/hooks';
 import { useRewards } from '@/services/loyalty/hooks';
 import Modal from '@/components/ui/Modal';
+import { api } from '@/lib/api';
+import ProfileTabs from '@/components/dashboard/settings/profile/ProfileTabs';
+import PushNotificationsTab from '@/components/dashboard/settings/profile/PushNotificationsTab';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
@@ -101,6 +104,11 @@ export default function BusinessProfilePage() {
     const [showRewards, setShowRewards] = useState(true);
     const [activeTab, setActiveTab] = useState('general');
     const [showRewardsModal, setShowRewardsModal] = useState(false);
+    const [pushSupported, setPushSupported] = useState(false);
+    const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
+    const [pushSubscribed, setPushSubscribed] = useState(false);
+    const [pushLoading, setPushLoading] = useState(false);
+    const [pushError, setPushError] = useState<string | null>(null);
 
     const [origin, setOrigin] = useState('https://vemtap.com');
 
@@ -114,6 +122,109 @@ export default function BusinessProfilePage() {
             setOrigin(window.location.origin);
         }
     }, []);
+
+    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
+
+    const urlBase64ToUint8Array = (base64String: string) => {
+        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; i += 1) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    };
+
+    const refreshPushStatus = async () => {
+        if (typeof window === 'undefined') return;
+        if (!('serviceWorker' in navigator)) return;
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (!registration) {
+            setPushSubscribed(false);
+            return;
+        }
+        const subscription = await registration.pushManager.getSubscription();
+        setPushSubscribed(!!subscription);
+    };
+
+    const handleEnablePush = async () => {
+        if (!pushSupported) {
+            toast.error('Push notifications are not supported on this device.');
+            return;
+        }
+        setPushLoading(true);
+        setPushError(null);
+        try {
+            const permission = await Notification.requestPermission();
+            setPushPermission(permission);
+            if (permission !== 'granted') {
+                toast.error('Please allow browser notifications to continue.');
+                return;
+            }
+            if (!vapidPublicKey) {
+                setPushError('Missing VAPID public key. Add NEXT_PUBLIC_VAPID_PUBLIC_KEY to enable push.');
+                toast.error('Push setup is missing a VAPID public key.');
+                return;
+            }
+
+            const registration = await navigator.serviceWorker.register('/sw.js');
+            const existing = await registration.pushManager.getSubscription();
+            const subscription = existing || await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+            });
+
+            await api.post('/notifications/push/register', {
+                token: JSON.stringify(subscription),
+                isUser: user?.role === 'customer',
+            });
+
+            setPushSubscribed(true);
+            toast.success('Push notifications enabled.');
+        } catch (error: any) {
+            const message = error?.message || 'Failed to enable push notifications.';
+            setPushError(message);
+            toast.error(message);
+        } finally {
+            setPushLoading(false);
+        }
+    };
+
+    const handleDisablePush = async () => {
+        setPushLoading(true);
+        setPushError(null);
+        try {
+            const registration = await navigator.serviceWorker.getRegistration();
+            const subscription = await registration?.pushManager.getSubscription();
+            if (subscription) {
+                await subscription.unsubscribe();
+            }
+            setPushSubscribed(false);
+            toast.success('Push notifications disabled.');
+        } catch (error: any) {
+            const message = error?.message || 'Failed to disable push notifications.';
+            setPushError(message);
+            toast.error(message);
+        } finally {
+            setPushLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const supported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+        setPushSupported(supported);
+        if (!supported) return;
+        setPushPermission(Notification.permission);
+        refreshPushStatus();
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'push') {
+            refreshPushStatus();
+        }
+    }, [activeTab]);
 
     const firstBranchWithCode = branches.find((b) => b.uniqueCode);
     const fallbackProfileCode = firstBranchWithCode?.uniqueCode || business?.uniqueCode || '';
@@ -353,12 +464,16 @@ export default function BusinessProfilePage() {
 
             if (business) {
                 const businessUpdates: any = {};
-                if (hasChanged(categoryId, business.categoryId)) businessUpdates.categoryId = categoryId;
-                if (hasChanged(subcategoryId, business.subcategoryId)) businessUpdates.subcategoryId = subcategoryId;
-                if (hasChanged(otherSubcategoryName, business.otherSubcategoryName)) businessUpdates.otherSubcategoryName = otherSubcategoryName;
+                const normalizedSubcategoryId = subcategoryId === 'other' ? null : (subcategoryId || null);
+                const nextOtherSubcategoryName = subcategoryId === 'other' ? otherSubcategoryName : '';
+
+                if (hasChanged(categoryId, business.categoryId)) businessUpdates.categoryId = categoryId || null;
+                if (hasChanged(normalizedSubcategoryId, business.subcategoryId)) businessUpdates.subcategoryId = normalizedSubcategoryId;
+                if (hasChanged(nextOtherSubcategoryName, business.otherSubcategoryName)) {
+                    businessUpdates.otherSubcategoryName = nextOtherSubcategoryName || null;
+                }
                 if (hasChanged(isRegistered, business.isRegistered)) businessUpdates.isRegistered = isRegistered;
                 if (hasChanged(registrationNumber, business.registrationNumber)) businessUpdates.registrationNumber = registrationNumber;
-                if (hasChanged(cacType, business.cacType)) businessUpdates.cacType = cacType;
 
                 if (isAllBranches) {
                     if (hasChanged(name, business.name)) businessUpdates.name = name;
@@ -400,10 +515,8 @@ export default function BusinessProfilePage() {
                 if (hasChanged(rewardEnabled, branch.rewardEnabled)) branchUpdates.rewardEnabled = rewardEnabled;
                 if (hasChanged(rewardVisitThreshold, branch.rewardVisitThreshold)) branchUpdates.rewardVisitThreshold = rewardVisitThreshold;
 
-                if (hasChanged(instagramUrl, branch.instagramUrl)) branchUpdates.instagramUrl = instagramUrl;
                 if (hasChanged(linkedinUrl, branch.linkedinUrl)) branchUpdates.linkedinUrl = linkedinUrl;
                 if (hasChanged(reviewUrl, branch.reviewUrl)) branchUpdates.reviewUrl = reviewUrl;
-                if (hasChanged(trustpilotUrl, branch.trustpilotUrl)) branchUpdates.trustpilotUrl = trustpilotUrl;
                 if (hasChanged(showReview, branch.showReview)) branchUpdates.showReview = showReview;
                 if (hasChanged(showSocial, branch.showSocial)) branchUpdates.showSocial = showSocial;
                 if (hasChanged(showFeedback, branch.showFeedback)) branchUpdates.showFeedback = showFeedback;
@@ -437,12 +550,13 @@ export default function BusinessProfilePage() {
 
     const availableTabs = [
         { id: 'general', label: 'General', icon: 'business' },
+        { id: 'push', label: 'Push', icon: 'notifications_active' },
         { id: 'schedule', label: 'Schedule', icon: 'calendar_today', branchOnly: true },
         { id: 'socials', label: 'Socials', icon: 'share', branchOnly: true },
         { id: 'rewards', label: 'Rewards', icon: 'auto_awesome', branchOnly: true },
         { id: 'qr', label: 'QR Code', icon: 'qr_code_2' },
         { id: 'documents', label: 'Documents', icon: 'description', bizOnly: true },
-    ].filter(tab => {
+    ].filter((tab) => {
         if (isAllBranches) {
             return !tab.branchOnly; 
         }
@@ -481,40 +595,7 @@ export default function BusinessProfilePage() {
                 </div>
             )}
 
-            <div className="relative mb-8">
-                <div className="absolute left-0 top-0 bottom-2 z-10">
-                    <button 
-                        onClick={() => document.getElementById('tabs-container')?.scrollBy({ left: -200, behavior: 'smooth' })}
-                        className="h-full px-2 bg-white border-r border-gray-200 hover:bg-gray-50 flex items-center justify-center"
-                    >
-                        <span className="material-icons-round text-gray-400">chevron_left</span>
-                    </button>
-                </div>
-                <div 
-                    id="tabs-container"
-                    className="flex items-center gap-1 overflow-x-auto scroll-smooth pb-2 border-b border-gray-100 px-10"
-                    style={{ scrollbarWidth: 'thin', scrollbarColor: '#e5e7eb transparent' }}
-                >
-                    {availableTabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-secondary hover:bg-gray-50'}`}
-                        >
-                            <span className="material-icons-round text-lg">{tab.icon}</span>
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-                <div className="absolute right-0 top-0 bottom-2 z-10">
-                    <button 
-                        onClick={() => document.getElementById('tabs-container')?.scrollBy({ left: 200, behavior: 'smooth' })}
-                        className="h-full px-2 bg-white border-l border-gray-200 hover:bg-gray-50 flex items-center justify-center"
-                    >
-                        <span className="material-icons-round text-gray-400">chevron_right</span>
-                    </button>
-                </div>
-            </div>
+            <ProfileTabs tabs={availableTabs} activeTab={activeTab} onChange={setActiveTab} />
 
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {activeTab === 'general' && (
@@ -874,6 +955,19 @@ export default function BusinessProfilePage() {
                             )}
                         </div>
                     </div>
+                )}
+
+                {activeTab === 'push' && (
+                    <PushNotificationsTab
+                        pushSupported={pushSupported}
+                        pushPermission={pushPermission}
+                        pushSubscribed={pushSubscribed}
+                        pushLoading={pushLoading}
+                        pushError={pushError}
+                        vapidPublicKey={vapidPublicKey}
+                        onEnable={handleEnablePush}
+                        onDisable={handleDisablePush}
+                    />
                 )}
 
                 {activeTab === 'rewards' && !isAllBranches && (

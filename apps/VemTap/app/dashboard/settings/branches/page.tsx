@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { useMyBusiness } from '@/services/businesses/hooks';
 
 import { useBranches, useCreateBranch, useDeleteBranch, useUpdateBranch } from '@/services/branches/hooks';
 import { Branch } from '@/services/branches/types';
@@ -21,6 +22,7 @@ import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 function BranchesContent() {
     const pathname = usePathname();
     const { storeName } = useCustomerFlowStore();
+    const { data: business } = useMyBusiness();
     const { data: branchesData, isLoading } = useBranches();
     const { capabilities, isLimitReached } = useSubscriptionStore();
     const createBranchMutation = useCreateBranch();
@@ -28,6 +30,13 @@ function BranchesContent() {
     const deleteBranchMutation = useDeleteBranch();
 
     const branches = branchesData || [];
+    const businessName = business?.name || storeName;
+    const resolveBranchName = (branch: Branch) => {
+        const normalized = (branch.name || '').trim();
+        const isDefaultLabel = /^main\s*branch$/i.test(normalized);
+        if (branch.isMainBranch && (isDefaultLabel || !normalized) && businessName) return businessName;
+        return normalized || businessName || 'Main Branch';
+    };
     const branchLimitReached = isLimitReached('branches');
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -203,7 +212,9 @@ function BranchesContent() {
 
                             <div className="space-y-4">
                                 <div>
-                                    <h3 className="text-xl font-display font-bold text-text-main group-hover:text-primary transition-colors">{branch.name}</h3>
+                                    <h3 className="text-xl font-display font-bold text-text-main group-hover:text-primary transition-colors">
+                                        {resolveBranchName(branch)}
+                                    </h3>
                                     <div className="flex items-center gap-2 mt-2">
                                         <span className={`size-2 rounded-full ${branch.isActive ? 'bg-emerald-500' : 'bg-gray-300'}`} />
                                         <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{branch.isActive ? 'active' : 'inactive'}</span>
@@ -353,7 +364,7 @@ function BranchesContent() {
                     <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm" onClick={() => setIsEditModalOpen(false)} />
                     <div className="relative bg-white rounded-[2.5rem] w-full max-w-xl p-10 shadow-2xl animate-in zoom-in-95 duration-200">
                         <h3 className="text-3xl font-display font-bold text-text-main mb-2">Edit Branch</h3>
-                        <p className="text-text-secondary text-base mb-10 font-medium">Update details for {branchToEdit.name}.</p>
+                        <p className="text-text-secondary text-base mb-10 font-medium">Update details for {resolveBranchName(branchToEdit)}.</p>
 
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 gap-6">
@@ -432,7 +443,7 @@ function BranchesContent() {
                         </div>
                         <h3 className="text-2xl font-display font-bold text-text-main mb-2">Delete Branch?</h3>
                         <p className="text-text-secondary text-sm mb-10 font-medium">
-                            Are you sure you want to delete <strong>{branchToDelete.name}</strong>? This action cannot be undone and all associated data will be lost.
+                            Are you sure you want to delete <strong>{resolveBranchName(branchToDelete)}</strong>? This action cannot be undone and all associated data will be lost.
                         </p>
 
                         <div className="grid grid-cols-2 gap-4">

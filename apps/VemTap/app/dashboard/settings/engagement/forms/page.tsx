@@ -30,7 +30,6 @@ import {
   ArrowLeft,
   Building2,
   LayoutTemplate,
-  Save,
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import PhoneFrame from '@/components/shared/PhoneFrame';
@@ -141,7 +140,7 @@ const SHARE_EXPLAINERS: Record<ShareMethod, { title: string; icon: React.ReactNo
 
 type ViewMode = 'forms' | 'path' | 'templates' | 'builder';
 type FormTab = 'all' | 'active' | 'draft' | 'archived';
-type BuilderStep = 1 | 2 | 3;
+type BuilderStep = 1 | 2 | 3 | 4;
 type FieldDraft = { id: string; question: string; type: ApiFormFieldType; required: boolean; options: string };
 
 const fieldTypes: ApiFormFieldType[] = ['text', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'date-no-year'];
@@ -246,7 +245,12 @@ export default function EngagementFormsBuilderPage() {
   const updateMutation = useUpdateBusinessForm(editing?.id || '');
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
-  const selectedBranchName = branches.find((b) => b.id === branchId)?.name || branchId || 'Main Branch';
+  const selectedBranch = branches.find((b) => b.id === branchId);
+  const selectedBranchName = selectedBranch?.name || branchId || 'Main Branch';
+  const displayBranchName = (selectedBranch?.isMainBranch && selectedBranchName === 'Main Branch')
+    ? businessName
+    : selectedBranchName;
+  const showBranchName = displayBranchName && displayBranchName !== businessName;
   const branchNameById = useMemo(
     () => new Map(branches.map((branch) => [branch.id, branch.name])),
     [branches]
@@ -426,7 +430,7 @@ export default function EngagementFormsBuilderPage() {
         toast.success(publish ? 'Form published' : 'Draft saved');
       }
       resetBuilder();
-      router.push(savedForm?.id ? `/dashboard/forms?focus=${encodeURIComponent(savedForm.id)}` : '/dashboard/forms');
+      router.push(savedForm?.id ? `/dashboard/settings/engagement/forms?focus=${encodeURIComponent(savedForm.id)}` : '/dashboard/settings/engagement/forms');
     } catch (e: any) {
       toast.error(e?.message || 'Failed to save form');
     }
@@ -452,7 +456,7 @@ export default function EngagementFormsBuilderPage() {
       description: description.trim() || 'No description provided yet.',
       businessName,
       businessLogo,
-      branchName: selectedBranchName,
+      branchName: displayBranchName,
       fields: fields.map((f, i) => ({
         id: f.id || `field-${i + 1}`,
         type: f.type,
@@ -462,7 +466,7 @@ export default function EngagementFormsBuilderPage() {
         order: i + 1,
       })),
     }),
-    [businessLogo, businessName, description, editing?.id, fields, selectedBranchName, title]
+    [businessLogo, businessName, description, editing?.id, fields, displayBranchName, title]
   );
 
   return (
@@ -900,19 +904,19 @@ export default function EngagementFormsBuilderPage() {
           <div className="flex flex-wrap justify-between items-center gap-4">
             <div>
               <h2 className="text-3xl font-black text-slate-900">{editing ? 'Edit Form' : 'Create Form'}</h2>
-              <p className="text-sm text-slate-600">Step 1: details, Step 2: fields + live preview, Step 3: publish.</p>
+              <p className="text-sm text-slate-600">Step 1: details, Step 2: questions, Step 3: after submission message, Step 4: preview & publish.</p>
             </div>
             <button onClick={() => { resetBuilder(); setViewMode('forms'); }} className="h-10 px-4 rounded-xl border border-slate-200 text-sm font-bold inline-flex items-center gap-2"><ArrowLeft size={14} /> My Forms</button>
           </div>
 
           {/* ─── Compact Step Indicators ─── */}
-          <div className="flex items-center justify-center gap-4 max-w-xs mx-auto mb-2">
-            {[1, 2, 3].map((step) => (
+          <div className="flex items-center justify-center gap-4 max-w-sm mx-auto mb-2">
+            {[1, 2, 3, 4].map((step) => (
               <React.Fragment key={step}>
                 <button
                   onClick={() => {
-                    if (step === 2 && (!title.trim() || !branchId)) return;
-                    if (step === 3 && invalidFields) return;
+                    if (step >= 2 && (!title.trim() || !branchId)) return;
+                    if (step >= 3 && invalidFields) return;
                     setBuilderStep(step as BuilderStep);
                   }}
                   className={`size-10 rounded-full flex items-center justify-center text-sm font-black transition-all ${
@@ -922,18 +926,18 @@ export default function EngagementFormsBuilderPage() {
                         ? 'bg-emerald-500 text-white shadow-md shadow-emerald-100'
                         : 'bg-white border border-slate-200 text-slate-400 hover:border-slate-300'
                   }`}
-                  title={step === 1 ? 'Details' : step === 2 ? 'Fields' : 'Publish'}
+                  title={step === 1 ? 'Details' : step === 2 ? 'Questions' : step === 3 ? 'Success Message' : 'Preview'}
                 >
                   {builderStep > step ? <CheckCircle2 size={18} /> : step}
                 </button>
-                {step < 3 && (
+                {step < 4 && (
                   <div className={`h-1 w-12 rounded-full transition-colors ${builderStep > step ? 'bg-emerald-200' : 'bg-slate-100'}`} />
                 )}
               </React.Fragment>
             ))}
           </div>
 
-          {(builderStep === 1 || builderStep === 2) && (
+          {(builderStep === 1 || builderStep === 2 || builderStep === 3) && (
             <div className="flex flex-col xl:flex-row gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500">
               {/* Left Column: Form Configuration */}
               <div className="w-full xl:flex-1 space-y-6">
@@ -1000,39 +1004,6 @@ export default function EngagementFormsBuilderPage() {
                         </label>
                       </div>
 
-                      <div className="pt-2 border-t border-slate-100">
-                        <div className="flex items-center gap-2 mb-4">
-                          <div className="size-8 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center">
-                            <Save size={16} />
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-bold text-gray-900">After Submission Content</h3>
-                            <p className="text-[10px] text-gray-500">What visitors see after filling this form.</p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <div className="space-y-1.5">
-                            <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-1">Success Title</label>
-                            <input
-                              value={successTitle}
-                              onChange={(e) => setSuccessTitle(e.target.value)}
-                              className="w-full h-11 rounded-2xl border border-slate-200 bg-slate-50/50 px-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                              placeholder="e.g. Form Submitted Successfully"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-1">Success Description</label>
-                            <textarea
-                              value={successMessage}
-                              onChange={(e) => setSuccessMessage(e.target.value)}
-                              className="w-full min-h-[80px] rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                              placeholder="e.g. Thank you for your feedback!"
-                            />
-                          </div>
-                        </div>
-                      </div>
                     </div>
 
                     <div className="pt-4">
@@ -1048,7 +1019,7 @@ export default function EngagementFormsBuilderPage() {
                       </button>
                     </div>
                   </div>
-                ) : (
+                ) : builderStep === 2 ? (
                   <div className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8 space-y-6 shadow-sm">
                     <div className="border-b border-slate-50 pb-4 flex items-center justify-between">
                       <div>
@@ -1141,7 +1112,51 @@ export default function EngagementFormsBuilderPage() {
                         }}
                         className="flex-[1.5] h-12 rounded-2xl bg-primary text-white text-sm font-black shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
                       >
-                        Continue to Summary
+                        Continue to After Submission
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8 space-y-6 shadow-sm">
+                    <div className="border-b border-slate-50 pb-4">
+                      <h3 className="text-xl font-black text-slate-900">Step 3: After Submission Message</h3>
+                      <p className="text-sm text-slate-500 mt-1">Customize the success screen visitors see after they submit.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-1">Success Title</label>
+                        <input
+                          value={successTitle}
+                          onChange={(e) => setSuccessTitle(e.target.value)}
+                          className="w-full h-11 rounded-2xl border border-slate-200 bg-slate-50/50 px-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                          placeholder="e.g. Form Submitted Successfully"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-1">Success Description</label>
+                        <textarea
+                          value={successMessage}
+                          onChange={(e) => setSuccessMessage(e.target.value)}
+                          className="w-full min-h-[100px] rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                          placeholder="e.g. Thank you for your feedback!"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 pt-2">
+                      <button
+                        onClick={() => setBuilderStep(2)}
+                        className="flex-1 h-12 rounded-2xl border border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 transition-colors"
+                      >
+                        Back to Questions
+                      </button>
+                      <button
+                        onClick={() => setBuilderStep(4)}
+                        className="flex-[1.5] h-12 rounded-2xl bg-primary text-white text-sm font-black shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
+                      >
+                        Continue to Preview
                       </button>
                     </div>
                   </div>
@@ -1157,50 +1172,42 @@ export default function EngagementFormsBuilderPage() {
                   </div>
                   <div className="flex justify-center scale-[0.95] origin-top" style={brandVars}>
                     <PhoneFrame title="Real-time Preview">
-                      <div className="min-h-full bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 py-6 px-3 space-y-3">
-                        {/* ─── Container 1: Header — Business branding + Form title + Description ─── */}
-                        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                          {/* Top accent bar */}
-                          <div 
-                            className="h-1" 
-                            style={{ backgroundColor: brandColor }}
-                          />
-
+                      <div className="min-h-full bg-gradient-to-b from-white via-slate-50 to-slate-100 py-6 px-3 space-y-3">
+                        {/* ─── Header: Business branding + Form title ─── */}
+                        <div className="bg-white/95 border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                          <div className="h-1.5" style={{ backgroundColor: brandColor }} />
                           <div className="px-4 pt-3 pb-4">
-                            {/* Business logo + name + branch — single line, minimal */}
-                            <div className="flex items-center gap-1.5 mb-2.5">
+                            <div className="flex items-center gap-2 mb-2.5">
                               {businessLogo ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
                                   src={businessLogo}
                                   alt={businessName}
-                                  className="size-5 rounded-full object-cover border border-gray-200 shrink-0"
+                                  className="size-6 rounded-full object-cover border border-gray-200 shrink-0"
                                 />
                               ) : (
                                 <div 
-                                  className="size-5 rounded-full flex items-center justify-center shrink-0"
+                                  className="size-6 rounded-full flex items-center justify-center shrink-0"
                                   style={{ backgroundColor: `${brandColor}15` }}
                                 >
-                                  <Building2 size={10} style={{ color: brandColor }} />
+                                  <Building2 size={12} style={{ color: brandColor }} />
                                 </div>
                               )}
                               <span className="text-[10px] font-semibold text-slate-500 truncate">
                                 {businessName}
-                                {selectedBranchName ? (
+                                {showBranchName ? (
                                   <span className="text-slate-300 mx-1">·</span>
                                 ) : null}
-                                {selectedBranchName && selectedBranchName !== 'Main Branch' && (
-                                  <span className="text-slate-400 font-medium">{selectedBranchName}</span>
+                                {showBranchName && (
+                                  <span className="text-slate-400 font-medium">{displayBranchName}</span>
                                 )}
                               </span>
                             </div>
 
-                            {/* Form title — focal point */}
-                            <h1 className="text-base font-display font-black text-slate-900 tracking-tight leading-tight">
+                            <h1 className="text-[15px] font-display font-black text-slate-900 tracking-tight leading-tight">
                               {previewForm.title || 'Untitled Form'}
                             </h1>
 
-                            {/* Form description */}
                             {previewForm.description && (
                               <p className="mt-1 text-[11px] text-slate-500 font-medium leading-relaxed">
                                 {previewForm.description}
@@ -1209,13 +1216,25 @@ export default function EngagementFormsBuilderPage() {
                           </div>
                         </div>
 
-                        {/* ─── Container 2: Form questions ─── */}
-                        <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm min-h-[100px] flex flex-col items-center justify-center text-center">
+                        {/* ─── Body: Form or Success Preview ─── */}
+                        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm min-h-[120px] flex flex-col items-center justify-center text-center">
                           {builderStep === 1 && !fields.some(f => f.question) ? (
                             <div className="space-y-2 py-4">
                               <LayoutTemplate className="size-8 text-slate-200 mx-auto" />
                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-normal">
                                 Fill in details to see<br />form layout
+                              </p>
+                            </div>
+                          ) : builderStep === 3 ? (
+                            <div className="flex flex-col items-center text-center gap-2">
+                              <div className="size-9 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">
+                                <CheckCircle2 size={18} />
+                              </div>
+                              <p className="text-sm font-black text-slate-900">
+                                {successTitle.trim() || 'Thank you!'}
+                              </p>
+                              <p className="text-[11px] text-slate-500">
+                                {successMessage.trim() || 'We appreciate your feedback.'}
                               </p>
                             </div>
                           ) : (
@@ -1229,10 +1248,9 @@ export default function EngagementFormsBuilderPage() {
                           )}
                         </div>
 
-                        {/* Powered-by footer */}
-                        <p className="text-center text-[8px] font-medium text-slate-400">
+                        <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-center text-[8px] font-medium text-slate-400">
                           Powered by <span className="font-bold" style={{ color: brandColor }}>VemTap</span>
-                        </p>
+                        </div>
                       </div>
                     </PhoneFrame>
                   </div>
@@ -1244,22 +1262,106 @@ export default function EngagementFormsBuilderPage() {
             </div>
           )}
 
-          {builderStep === 3 && (
-            <div className="grid grid-cols-1 gap-6">
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 max-w-3xl">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Final Check</p>
+          {builderStep === 4 && (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+              <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Preview & Publish</p>
                 <h3 className="text-2xl font-black text-slate-900">{previewForm.title}</h3>
                 <p className="text-sm text-slate-600">{previewForm.description}</p>
                 <div className="text-sm text-slate-600 space-y-1">
                   <p><span className="font-bold text-slate-900">Business:</span> {businessName}</p>
-                  <p><span className="font-bold text-slate-900">Branch:</span> {selectedBranchName}</p>
+                  <p><span className="font-bold text-slate-900">Branch:</span> {displayBranchName}</p>
                   <p><span className="font-bold text-slate-900">Fields:</span> {previewForm.fields.length}</p>
+                  <p><span className="font-bold text-slate-900">Success Message:</span> {successTitle.trim() || 'Default'}</p>
                 </div>
                 <div className="flex flex-wrap gap-3 pt-2">
-                  <button onClick={() => setBuilderStep(2)} className="h-11 px-4 rounded-xl border border-slate-200 text-sm font-black">Back to Second Step</button>
+                  <button onClick={() => setBuilderStep(3)} className="h-11 px-4 rounded-xl border border-slate-200 text-sm font-black">Back to After Submission</button>
                   <button onClick={() => saveForm(false)} disabled={isSaving} className="h-11 px-4 rounded-xl border border-slate-300 text-sm font-black disabled:opacity-60">{editing ? 'Update as Draft' : 'Save Draft'}</button>
                   <button onClick={() => saveForm(true)} disabled={isSaving} className="h-11 px-4 rounded-xl bg-primary text-white text-sm font-black disabled:opacity-60">{editing ? 'Update & Publish' : 'Publish Form'}</button>
                 </div>
+              </div>
+
+              <div className="bg-white rounded-3xl border border-slate-200 p-5 space-y-4 shadow-sm">
+                <div className="flex items-center justify-center gap-2">
+                  <div className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Final Phone Preview</p>
+                </div>
+                <div className="flex justify-center scale-[0.98] origin-top" style={brandVars}>
+                  <PhoneFrame title="Final Preview">
+                    <div className="min-h-full bg-gradient-to-b from-white via-slate-50 to-slate-100 py-6 px-3 space-y-3">
+                      <div className="bg-white/95 border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                        <div className="h-1.5" style={{ backgroundColor: brandColor }} />
+                        <div className="px-4 pt-3 pb-4">
+                          <div className="flex items-center gap-2 mb-2.5">
+                            {businessLogo ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={businessLogo}
+                                alt={businessName}
+                                className="size-6 rounded-full object-cover border border-gray-200 shrink-0"
+                              />
+                            ) : (
+                              <div 
+                                className="size-6 rounded-full flex items-center justify-center shrink-0"
+                                style={{ backgroundColor: `${brandColor}15` }}
+                              >
+                                <Building2 size={12} style={{ color: brandColor }} />
+                              </div>
+                            )}
+                            <span className="text-[10px] font-semibold text-slate-500 truncate">
+                              {businessName}
+                              {showBranchName ? (
+                                <span className="text-slate-300 mx-1">·</span>
+                              ) : null}
+                              {showBranchName && (
+                                <span className="text-slate-400 font-medium">{displayBranchName}</span>
+                              )}
+                            </span>
+                          </div>
+
+                          <h1 className="text-[15px] font-display font-black text-slate-900 tracking-tight leading-tight">
+                            {previewForm.title || 'Untitled Form'}
+                          </h1>
+
+                          {previewForm.description && (
+                            <p className="mt-1 text-[11px] text-slate-500 font-medium leading-relaxed">
+                              {previewForm.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                        <StepBusinessForm
+                          form={previewForm}
+                          hideHeader
+                          brandColor={brandColor}
+                          onComplete={() => toast.success('Preview submission captured')}
+                          onSkip={() => {}}
+                        />
+                      </div>
+
+                      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm text-center">
+                        <div className="size-9 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mx-auto">
+                          <CheckCircle2 size={18} />
+                        </div>
+                        <p className="mt-2 text-sm font-black text-slate-900">
+                          {successTitle.trim() || 'Thank you!'}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {successMessage.trim() || 'We appreciate your feedback.'}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-center text-[8px] font-medium text-slate-400">
+                        Powered by <span className="font-bold" style={{ color: brandColor }}>VemTap</span>
+                      </div>
+                    </div>
+                  </PhoneFrame>
+                </div>
+                <p className="text-[9px] text-slate-400 text-center px-4 leading-relaxed">
+                  This is the final experience visitors will see on their phone.
+                </p>
               </div>
             </div>
           )}

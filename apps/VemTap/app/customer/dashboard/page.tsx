@@ -37,7 +37,7 @@ export default function CustomerDashboardPage() {
     const [showIdModal, setShowIdModal] = useState(false);
     const [showRewardAnimation, setShowRewardAnimation] = useState(false);
     const [currentReward, setCurrentReward] = useState<{ name: string; points: number; icon?: React.ReactNode } | null>(null);
-    const [businessInfo, setBusinessInfo] = useState<Device | null>(null);
+    const [businessInfo, setBusinessInfo] = useState<any>(null);
     const [isBusinessLoading, setIsBusinessLoading] = useState(false);
 
     const analytics = analyticsResponse?.data || analyticsResponse;

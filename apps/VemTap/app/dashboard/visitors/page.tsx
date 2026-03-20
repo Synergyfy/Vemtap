@@ -130,16 +130,6 @@ export default function VisitorsOverviewPage() {
                     >
                         <Send size={16} />
                     </button>
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedVisitorForMsg({ visitor: item, type: 'reward' });
-                        }}
-                        className="p-2 text-text-secondary hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-all"
-                        title="Issue Reward"
-                    >
-                        <Gift size={16} />
-                    </button>
                 </div>
             )
         }
@@ -152,13 +142,6 @@ export default function VisitorsOverviewPage() {
                 description="Monitor your customer footfall and engagement levels"
                 actions={
                     <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => setSelectedVisitorForMsg({ visitor: {} as Visitor, type: 'general' })}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-lg shadow-primary/20"
-                        >
-                            <Plus size={18} />
-                            Compose
-                        </button>
                         <button
                             onClick={handleExportCSV}
                             className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm shadow-sm"
@@ -218,6 +201,8 @@ export default function VisitorsOverviewPage() {
                 onClose={() => setSelectedVisitorForMsg(null)}
                 recipientName={selectedVisitorForMsg?.visitor ? getVisitorDisplayName(selectedVisitorForMsg.visitor) : ''}
                 recipientPhone={selectedVisitorForMsg?.visitor.phone}
+                recipientEmail={selectedVisitorForMsg?.visitor.email}
+                visitorIds={selectedVisitorForMsg?.visitor.id ? [selectedVisitorForMsg.visitor.id] : undefined}
                 type={selectedVisitorForMsg?.type || 'general'}
             />
 

@@ -255,18 +255,6 @@ export default function AllVisitorsPage() {
                     >
                         <Send size={18} />
                     </button>
-                    {item.status === 'returning' && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setRewardPreviewVisitor(item);
-                            }}
-                            className="p-1.5 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                            title="Preview reward"
-                        >
-                            <Gift size={18} />
-                        </button>
-                    )}
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
@@ -342,6 +330,8 @@ export default function AllVisitorsPage() {
                 onClose={() => setSelectedVisitorForMsg(null)}
                 recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
                 recipientPhone={selectedVisitorForMsg?.phone}
+                recipientEmail={selectedVisitorForMsg?.email}
+                visitorIds={selectedVisitorForMsg?.id ? [selectedVisitorForMsg.id] : undefined}
                 type="welcome"
             />
 

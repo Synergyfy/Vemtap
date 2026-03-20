@@ -20,6 +20,7 @@ import { useMessagingVisitorsByBranch } from '@/services/visitors/hooks';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import WhatsAppTemplateModal from './WhatsAppTemplateModal';
+import toast from 'react-hot-toast';
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
@@ -49,20 +50,19 @@ function formatTime(timestamp: string | number | Date) {
     return new Date(time).toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
-export default function ChatSidebar() {
+export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }) {
     const activeConversationId = useChatStore(s => s.activeConversationId);
     const searchQuery = useChatStore(s => s.searchQuery);
     const setSearchQuery = useChatStore(s => s.setSearchQuery);
     const setActiveConversation = useChatStore(s => s.setActiveConversation);
     const mockThreads = useChatStore(s => s.mockThreads);
-    const addMockThread = useChatStore(s => s.addMockThread);
     const isAuthenticated = useAuthStore(s => s.isAuthenticated);
     const { data: business } = useMyBusiness(isAuthenticated);
     const user = useAuthStore(s => s.user);
     const { branchId, isCustomer } = useMessagingBranch();
     const [showNewChat, setShowNewChat] = useState(false);
     const [customerQuery, setCustomerQuery] = useState('');
-    const [activeTab, setActiveTab] = useState<MessagingTab>('INTERNAL');
+    const [activeTab, setActiveTab] = useState<MessagingTab>(mode || 'INTERNAL');
     const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
     const [whatsappModalVisitors, setWhatsappModalVisitors] = useState<any[]>([]);
     const newChatRef = useRef<HTMLDivElement>(null);
@@ -86,7 +86,7 @@ export default function ChatSidebar() {
     
     const headerName = isCustomer 
         ? (activeConv?.contact?.name || 'Business Chat') 
-        : (business?.name || user?.businessName || 'Vemtap');
+        : (mode === 'WHATSAPP' ? 'WhatsApp' : (business?.name || user?.businessName || 'Vemtap'));
         
     const headerLogo = isCustomer 
         ? (activeConv?.contact?.avatar) 
@@ -131,13 +131,6 @@ export default function ChatSidebar() {
         }
     }, [isCustomer, businessIdFromUrl, allThreads, activeConversationId, setActiveConversation]);
 
-    // Force parent scroll reset on interactions to prevent header "hiding" issue
-    useEffect(() => {
-        const mainElement = document.querySelector('main');
-        if (mainElement) {
-            mainElement.scrollTop = 0;
-        }
-    }, [showNewChat, activeConversationId]);
 
     const toggleContactSelection = (id: string) => {
         setSelectedContacts(prev => {
@@ -209,12 +202,9 @@ export default function ChatSidebar() {
                                                         key={visitor.id}
                                                         type="button"
                                                         onClick={(e) => {
-                                                            const threadId = addMockThread(visitor);
-                                                            setActiveConversation(threadId);
+                                                            toast.error('Customers must start the conversation first.');
                                                             setShowNewChat(false);
                                                             setCustomerQuery('');
-                                                            // Blur to prevent browser auto-scroll issues
-                                                            (e.currentTarget as HTMLElement).blur();
                                                         }}
                                                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 text-left"
                                                     >
@@ -250,23 +240,25 @@ export default function ChatSidebar() {
                     )}
                 </header>
 
-                {/* Tabs */}
-                <div className="flex border-b border-slate-100 bg-slate-50/50">
-                    <button
-                        onClick={() => setActiveTab('INTERNAL')}
-                        className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${activeTab === 'INTERNAL' ? 'text-primary border-b-2 border-primary bg-white' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        <MessageSquare size={14} />
-                        Inbox
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('WHATSAPP')}
-                        className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${activeTab === 'WHATSAPP' ? 'text-emerald-500 border-b-2 border-emerald-500 bg-white' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        <WhatsAppIcon size={14} />
-                        WhatsApp
-                    </button>
-                </div>
+                {/* Tabs - only show if no mode is forced */}
+                {!mode && (
+                    <div className="flex border-b border-slate-100 bg-slate-50/50">
+                        <button
+                            onClick={() => setActiveTab('INTERNAL')}
+                            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${activeTab === 'INTERNAL' ? 'text-primary border-b-2 border-primary bg-white' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            <MessageSquare size={14} />
+                            Inbox
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('WHATSAPP')}
+                            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${activeTab === 'WHATSAPP' ? 'text-emerald-500 border-b-2 border-emerald-500 bg-white' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            <WhatsAppIcon size={14} />
+                            WhatsApp
+                        </button>
+                    </div>
+                )}
 
                 {/* Search */}
                 <div className="p-4 bg-white">
@@ -366,6 +358,7 @@ function ConversationItem({
     isActive: boolean;
     onClick: () => void;
 }) {
+    const isTyping = useChatStore(s => s.typingByThread[conversation.id]);
     const { contact } = conversation;
     const name = contact?.name || 'Unknown';
 
@@ -401,7 +394,7 @@ function ConversationItem({
                 </div>
                 <div className="flex items-center gap-2">
                     <p className="text-xs truncate flex-1 text-slate-500">
-                        {conversation.status || 'Active conversation'}
+                        {isTyping ? 'Typing...' : (conversation.status || 'Active conversation')}
                     </p>
                 </div>
             </div>
