@@ -42,23 +42,28 @@ export default function PublicBusinessProfilePage() {
     const code = Array.isArray(codeParam) ? codeParam[0] : codeParam || '';
 
     // Use React Query hooks for data fetching
-    const { data: branchData, isLoading: branchLoading } = usePublicBranch(code, !!code);
-    const { data: businessByCode, isLoading: businessByCodeLoading } = usePublicBusiness(code, !!code);
+    const { data: branchData, isLoading: branchLoading, isError: branchError } = usePublicBranch(code, !!code);
+    const { data: businessByCode, isLoading: businessByCodeLoading, isError: businessByCodeError } = usePublicBusiness(code, !!code);
     
+    const rawBranchData = (branchData as any)?.data || branchData;
+    const rawBusinessByCode = (businessByCode as any)?.data || businessByCode;
+
     // If the code is a branch code, we might need to fetch the business it belongs to
-    const branchBusinessCode = branchData?.business?.uniqueCode;
-    const { data: businessByBranch, isLoading: businessByBranchLoading } = usePublicBusiness(
+    const branchBusinessCode = rawBranchData?.business?.uniqueCode;
+    const { data: businessByBranch, isLoading: businessByBranchLoading, isError: businessByBranchError } = usePublicBusiness(
         branchBusinessCode || '',
         !!branchBusinessCode && branchBusinessCode !== code
     );
+    
+    const rawBusinessByBranch = (businessByBranch as any)?.data || businessByBranch;
 
-    const business = businessByCode?.id ? businessByCode : businessByBranch;
-    const branch = businessByCode?.id ? null : branchData || null;
-    const businessSummary = branchData?.business;
+    const business = rawBusinessByCode?.id ? rawBusinessByCode : rawBusinessByBranch;
+    const branch = rawBusinessByCode?.id ? null : rawBranchData || null;
+    const businessSummary = rawBranchData?.business;
     
     const branches = useMemo(() => business?.branches || [], [business?.branches]);
     const mainBranch = useMemo(
-        () => branches.find((item) => item.isMainBranch) || branches[0] || null,
+        () => branches.find((item: any) => item.isMainBranch) || branches[0] || null,
         [branches]
     );
     
@@ -149,7 +154,7 @@ export default function PublicBusinessProfilePage() {
         };
     }, [mapCoords, leafletReady]);
 
-    const isLoading = branchLoading || businessByCodeLoading || businessByBranchLoading;
+    const isLoading = branchLoading || businessByCodeLoading || (businessByBranchLoading || false);
 
     // Determine the active display settings
     const activeShowRewards = resolvedBranch?.showRewards ?? business?.showRewards ?? true;
@@ -163,8 +168,8 @@ export default function PublicBusinessProfilePage() {
     const resolvedLocationDisplay = locationAddress === 'Location not provided' ? businessLocation : locationAddress;
 
     const profileName = useMemo(() => {
-        const businessName = business?.name || businessSummary?.name || branch?.business?.name;
-        return businessName || branch?.name || 'Business';
+        const name = business?.name || businessSummary?.name || branch?.business?.name || branch?.name;
+        return name || 'VemTap Business';
     }, [branch, business, businessSummary]);
 
     const profileLogo = useMemo(() => {
@@ -177,11 +182,11 @@ export default function PublicBusinessProfilePage() {
         setLogoLoaded(false);
     }, [profileLogo]);
 
-    const profileEmail = resolvedBranch?.officialEmail || business?.officialEmail;
-    const profilePhone = resolvedBranch?.phone || business?.phone;
+    const profileEmail = resolvedBranch?.officialEmail || business?.officialEmail || (business as any)?.email || (business as any)?.owner?.email;
+    const profilePhone = resolvedBranch?.phone || business?.phone || (business as any)?.owner?.phone;
     const profileWebsite = resolvedBranch?.website || business?.website;
-    const profileAbout = resolvedBranch?.about || business?.about;
-    const profileWelcome = resolvedBranch?.welcomeMessage || business?.welcomeMessage;
+    const profileAbout = resolvedBranch?.about || business?.about || business?.goal || (business as any)?.description;
+    const profileWelcome = resolvedBranch?.welcomeMessage || business?.welcomeMessage || business?.welcomeTitle;
     const profileHours = resolvedBranch?.businessHours || business?.businessHours;
     
     const profileSocials = {
@@ -206,6 +211,26 @@ export default function PublicBusinessProfilePage() {
         return (
             <div className="min-h-screen flex items-center justify-center font-display text-primary animate-pulse bg-white">
                 <span className="text-xl font-bold uppercase tracking-tighter">Vemtap</span>
+            </div>
+        );
+    }
+
+    if (!business && !branch && !isLoading && (branchError || businessByCodeError || businessByBranchError)) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6 text-center">
+                <div className="w-24 h-24 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-6">
+                    <MapPin size={48} />
+                </div>
+                <h1 className="text-3xl font-black text-slate-900 mb-2 uppercase tracking-tight">Business Not Found</h1>
+                <p className="text-slate-500 font-medium max-w-md mb-8">
+                    We couldn't find a business or branch with the code <span className="text-slate-900 font-bold">{code}</span>. It may have been moved, deleted, or the link might be incorrect.
+                </p>
+                <a 
+                    href="/" 
+                    className="px-8 py-3 bg-primary text-white font-black rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary-hover active:scale-95 transition-all text-sm uppercase tracking-widest"
+                >
+                    Back to Home
+                </a>
             </div>
         );
     }
@@ -303,7 +328,7 @@ export default function PublicBusinessProfilePage() {
                                             rewards.map((reward) => (
                                                 <div 
                                                     key={reward.id} 
-                                                    className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary/20 transition-all group cursor-pointer relative overflow-hidden"
+                                                    className="bg-white p-6 rounded-4xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary/20 transition-all group cursor-pointer relative overflow-hidden"
                                                 >
                                                     <div className="absolute top-4 right-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <ChevronRight size={20} />
@@ -336,7 +361,7 @@ export default function PublicBusinessProfilePage() {
                                 <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase tracking-tight font-display">Our Locations</h2>
                                 <div className="space-y-4">
                                     {branches.length > 0 ? (
-                                        branches.map((b) => (
+                                        branches.map((b: any) => (
                                             <div 
                                                 key={b.id} 
                                                 className={`p-6 rounded-3xl border transition-all flex items-center justify-between group ${
@@ -487,7 +512,7 @@ export default function PublicBusinessProfilePage() {
                                 <div className="mt-10 pt-10 border-t border-slate-200/60 flex items-center justify-center gap-3 grayscale opacity-30">
                                     <span className="text-[10px] font-black tracking-widest uppercase">Verified Business</span>
                                     <div className="w-1 h-1 rounded-full bg-slate-400"></div>
-                                    <span className="text-[10px] font-black tracking-widest uppercase tracking-widest">Premium Partner</span>
+                                    <span className="text-[10px] font-black tracking-widest uppercase">Premium Partner</span>
                                 </div>
                             </div>
                             
