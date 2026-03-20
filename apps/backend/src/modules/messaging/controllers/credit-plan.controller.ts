@@ -10,7 +10,6 @@ import {
   Request,
   Query,
   BadRequestException,
-  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -33,6 +32,7 @@ import { CreditPlan } from '../entities/credit-plan.entity';
 import { BusinessCreditWallet } from '../entities/business-credit-wallet.entity';
 import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
 import { BranchesService } from '../../branches/branches.service';
+import { IdDto } from '../dto/id.dto';
 
 @ApiTags('Credit Top-up Plans')
 @ApiBearerAuth()
@@ -143,7 +143,7 @@ export class CreditPlanController {
     type: CreditPlan,
   })
   @ApiResponse({ status: 404, description: 'Credit plan not found.' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
+  findOne(@Param() { id }: IdDto) {
     return this.creditPlanService.findOne(id);
   }
 
@@ -166,7 +166,7 @@ export class CreditPlanController {
     description: 'Payment verification failed or insufficient amount.',
   })
   purchase(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param() { id }: IdDto,
     @Body() purchaseDto: PurchaseCreditPlanDto,
   ) {
     return this.creditPlanService.purchase(
@@ -191,7 +191,7 @@ export class CreditPlanController {
     type: CreditPlan,
   })
   update(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param() { id }: IdDto,
     @Body() updateCreditPlanDto: UpdateCreditPlanDto,
   ) {
     return this.creditPlanService.update(id, updateCreditPlanDto);
@@ -209,7 +209,7 @@ export class CreditPlanController {
     status: 200,
     description: 'The credit plan has been successfully deactivated.',
   })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
+  remove(@Param() { id }: IdDto) {
     return this.creditPlanService.remove(id);
   }
 }
