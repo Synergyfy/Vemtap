@@ -23,6 +23,7 @@ import {
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole, User } from '../users/entities/user.entity';
 import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
+import { FindBusinessesAdminDto } from './dto/find-businesses-admin.dto';
 import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
 import { ImportCustomersDto } from './dto/import-customers.dto';
 
@@ -120,18 +121,8 @@ export class BusinessesController {
   @Get('admin')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Get all businesses with filters and stats' })
-  async findAllAdmin(
-    @Query('search') search?: string,
-    @Query('status') status?: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.businessesService.findAllAdmin({
-      search,
-      status: status as any,
-      page,
-      limit,
-    });
+  async findAllAdmin(@Query() query: FindBusinessesAdminDto) {
+    return this.businessesService.findAllAdmin(query);
   }
 
   @Post('admin')

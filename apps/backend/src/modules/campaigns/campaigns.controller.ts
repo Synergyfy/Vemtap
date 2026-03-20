@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { CampaignsService } from './campaigns.service';
 import { CreateCampaignDto, CampaignStatus } from './dto/create-campaign.dto';
+import { FindCampaignsDto } from './dto/find-campaigns.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
 import { CreateCampaignTemplateDto } from './dto/campaign-template.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -37,18 +38,18 @@ export class CampaignsController {
   ) {
     return this.campaignsService.create(createCampaignDto, branchId);
   }
-
   @Get()
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get all campaigns for a branch or business' })
-  @ApiQuery({ name: 'branchId', required: false })
-  @ApiQuery({ name: 'status', required: false, enum: CampaignStatus })
   async findAll(
     @Request() req: { user: User },
-    @Query('branchId') branchId?: string,
-    @Query('status') status?: CampaignStatus,
+    @Query() query: FindCampaignsDto,
   ) {
-    return this.campaignsService.findAll(branchId, status, req.user.businessId);
+    return this.campaignsService.findAll(
+      query.branchId,
+      query.status,
+      req.user.businessId,
+    );
   }
 
   @Get(':id')

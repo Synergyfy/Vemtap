@@ -25,6 +25,8 @@ import {
   GenerateRedemptionCodeDto,
   RedeemRewardDto,
 } from './dto/loyalty.dto';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
+import { CustomerAnalyticsQueryDto, PointLogsQueryDto } from './dto/loyalty-query.dto';
 
 @ApiTags('Loyalty, Points & Rewards')
 @ApiBearerAuth()
@@ -59,10 +61,14 @@ export class LoyaltyController {
   async getMyLogs(
     @Request() req: { user: User },
     @Query('businessId') businessId: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query() query: PaginationQueryDto,
   ) {
-    return this.loyaltyService.getPointLogs(req.user.id, businessId, page, limit);
+    return this.loyaltyService.getPointLogs(
+      req.user.id,
+      businessId,
+      query.page,
+      query.limit,
+    );
   }
 
   @Get('points/business-logs')
@@ -76,15 +82,13 @@ export class LoyaltyController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiResponse({ status: 200, description: 'Returns business point logs' })
-  async getBusinessLogs(
-    @Request() req: { user: User },
-    @Query('businessId') businessId: string,
-    @Query('branchId') branchId?: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    // If owner, ensure businessId matches their business
-    return this.loyaltyService.getBusinessPointLogs(businessId, branchId, page, limit);
+  async getBusinessLogs(@Query() query: PointLogsQueryDto) {
+    return this.loyaltyService.getBusinessPointLogs(
+      query.businessId,
+      query.branchId,
+      query.page,
+      query.limit,
+    );
   }
 
   // --- Point Earning ---
@@ -172,10 +176,13 @@ export class LoyaltyController {
   @ApiResponse({ status: 200, description: 'Returns list of rewards' })
   async getBranchRewards(
     @Param('branchId') branchId: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query() query: PaginationQueryDto,
   ) {
-    return this.loyaltyService.getBranchRewards(branchId, page, limit);
+    return this.loyaltyService.getBranchRewards(
+      branchId,
+      query.page,
+      query.limit,
+    );
   }
 
   @Patch('rewards/:id')
@@ -263,7 +270,10 @@ export class LoyaltyController {
       }
     }
   })
-  async getAnalytics(@Request() req: { user: User }, @Query('days') days?: number) {
-    return this.loyaltyService.getCustomerAnalytics(req.user.id, days);
+  async getAnalytics(
+    @Request() req: { user: User },
+    @Query() query: CustomerAnalyticsQueryDto,
+  ) {
+    return this.loyaltyService.getCustomerAnalytics(req.user.id, query.days);
   }
 }

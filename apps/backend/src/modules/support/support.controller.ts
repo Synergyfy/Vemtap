@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { SupportService } from './support.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
+import { FindTicketsAdminDto } from './dto/find-tickets-admin.dto';
 import { TicketStatus, TicketType } from './entities/support-ticket.entity';
 import {
   ApiTags,
@@ -81,19 +82,13 @@ export class SupportController {
   @Get('admin/tickets')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Get all support tickets' })
-  @ApiQuery({ name: 'type', enum: TicketType, required: false })
-  @ApiQuery({ name: 'isAssigned', type: Boolean, required: false })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  async getAllTickets(
-    @Query('type') type?: TicketType,
-    @Query('isAssigned') isAssigned?: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    const assigned =
-      isAssigned === 'true' ? true : isAssigned === 'false' ? false : undefined;
-    return this.supportService.findAllAdmin(type, assigned, page, limit);
+  async getAllTickets(@Query() query: FindTicketsAdminDto) {
+    return this.supportService.findAllAdmin(
+      query.type,
+      query.isAssigned,
+      query.page,
+      query.limit,
+    );
   }
 
   @Get('admin/tickets/:id')
