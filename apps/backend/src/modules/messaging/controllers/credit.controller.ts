@@ -14,6 +14,8 @@ import {
   ApiOperation,
   ApiBearerAuth,
   ApiResponse,
+  ApiBody,
+  ApiParam,
 } from '@nestjs/swagger';
 import { CreditService } from '../services/credit.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -32,7 +34,11 @@ export class CreditController {
 
   @Get('balance')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get current messaging credit balance (Business Dashboard)' })
+  @ApiOperation({ 
+    summary: 'Get current messaging credit balance (Business Dashboard)',
+    description: 'Retrieves the total available messaging credits for the authenticated user\'s business. Access: Authenticated users with a business profile'
+  })
+  @ApiResponse({ status: 200, description: 'Credit balance retrieved successfully' })
   async getBalance(@Request() req: any) {
     const businessId = req.user.businessId;
     if (!businessId) {
@@ -44,7 +50,12 @@ export class CreditController {
   @Get('business/:businessId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get credit balance for a specific business (Admin Dashboard)' })
+  @ApiOperation({ 
+    summary: 'Get credit balance for a specific business (Admin Dashboard)',
+    description: 'Retrieves the credit balance for any business. Access: ADMIN'
+  })
+  @ApiParam({ name: 'businessId', description: 'The UUID of the business' })
+  @ApiResponse({ status: 200, description: 'Business credit balance retrieved successfully' })
   async getBusinessBalance(@Param('businessId', ParseUUIDPipe) businessId: string) {
     return this.creditService.getOrCreateWallet(businessId);
   }
@@ -52,7 +63,12 @@ export class CreditController {
   @Post('adjust')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Manually adjust business credits (Admin Dashboard)' })
+  @ApiOperation({ 
+    summary: 'Manually adjust business credits (Admin Dashboard)',
+    description: 'Allows an administrator to manually add or deduct messaging credits from a business wallet. Access: ADMIN'
+  })
+  @ApiBody({ type: AdjustCreditsDto })
+  @ApiResponse({ status: 201, description: 'Credits adjusted successfully' })
   async adjustCredits(
     @Body()
     dto: AdjustCreditsDto,

@@ -18,6 +18,8 @@ import {
   ApiBearerAuth,
   ApiResponse,
   ApiBody,
+  ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { CreditPlanService } from '../services/credit-plan.service';
 import { CreateCreditPlanDto } from '../dto/create-credit-plan.dto';
@@ -80,7 +82,10 @@ export class CreditPlanController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Create a new credit top-up plan (Admin only)' })
+  @ApiOperation({ 
+    summary: 'Create a new credit top-up plan (Admin only)',
+    description: 'Creates a new plan for purchasing messaging credits. Access: ADMIN'
+  })
   @ApiBody({ type: CreateCreditPlanDto })
   @ApiResponse({
     status: 201,
@@ -92,7 +97,10 @@ export class CreditPlanController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all active credit plans' })
+  @ApiOperation({ 
+    summary: 'Get all active credit plans',
+    description: 'Retrieves all available credit top-up plans. Publicly accessible by authenticated users.'
+  })
   @ApiResponse({
     status: 200,
     description: 'Return all active credit plans.',
@@ -104,7 +112,10 @@ export class CreditPlanController {
 
   @Get('my-credits')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get current credit balance for the user context' })
+  @ApiOperation({ 
+    summary: 'Get current credit balance for the user context',
+    description: 'Retrieves the messaging credit balance for the business associated with the current user. Access: Authenticated users'
+  })
   @ApiResponse({
     status: 200,
     description: 'Returns the credit balance for the business.',
@@ -121,7 +132,11 @@ export class CreditPlanController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a specific credit plan detail' })
+  @ApiOperation({ 
+    summary: 'Get a specific credit plan detail',
+    description: 'Fetches details of a single credit top-up plan. Access: Authenticated users'
+  })
+  @ApiParam({ name: 'id', description: 'Credit plan UUID' })
   @ApiResponse({
     status: 200,
     description: 'Return the credit plan details.',
@@ -134,7 +149,11 @@ export class CreditPlanController {
 
   @Post(':id/purchase')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Purchase a credit plan top-up' })
+  @ApiOperation({ 
+    summary: 'Purchase a credit plan top-up',
+    description: 'Confirms a purchase and awards credits to a branch wallet using a payment reference. Access: Authenticated users'
+  })
+  @ApiParam({ name: 'id', description: 'Credit plan UUID' })
   @ApiBody({ type: PurchaseCreditPlanDto })
   @ApiResponse({
     status: 200,
@@ -160,7 +179,12 @@ export class CreditPlanController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Update a credit plan (Admin only)' })
+  @ApiOperation({ 
+    summary: 'Update a credit plan (Admin only)',
+    description: 'Modifies an existing credit top-up plan. Access: ADMIN'
+  })
+  @ApiParam({ name: 'id', description: 'Credit plan UUID' })
+  @ApiBody({ type: UpdateCreditPlanDto })
   @ApiResponse({
     status: 200,
     description: 'The credit plan has been successfully updated.',
@@ -176,7 +200,11 @@ export class CreditPlanController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Deactivate a credit plan (Admin only)' })
+  @ApiOperation({ 
+    summary: 'Deactivate a credit plan (Admin only)',
+    description: 'Permanently removes/deactivates a credit top-up plan. Access: ADMIN'
+  })
+  @ApiParam({ name: 'id', description: 'Credit plan UUID' })
   @ApiResponse({
     status: 200,
     description: 'The credit plan has been successfully deactivated.',
