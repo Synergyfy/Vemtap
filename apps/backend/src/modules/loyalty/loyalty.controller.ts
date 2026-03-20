@@ -15,7 +15,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { User, UserRole } from '../users/entities/user.entity';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
 import {
   CreateRewardTemplateDto,
   CreateRewardDto,
@@ -36,14 +36,26 @@ export class LoyaltyController {
   // --- Point Logs ---
   @Get('points/balance')
   @Roles(UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'Customer fetches their point balance for a business' })
+  @ApiOperation({ 
+    summary: 'Customer fetches their point balance for a business',
+    description: 'Returns the total points balance for the authenticated customer at a specific business. Access: CUSTOMER'
+  })
+  @ApiQuery({ name: 'businessId', required: true, description: 'The ID of the business' })
+  @ApiResponse({ status: 200, description: 'Returns point balance' })
   async getBalance(@Request() req: { user: User }, @Query('businessId') businessId: string) {
     return this.loyaltyService.getBusinessPoints(req.user.id, businessId);
   }
 
   @Get('points/logs')
   @Roles(UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'Customer fetches their point logs' })
+  @ApiOperation({ 
+    summary: 'Customer fetches their point logs',
+    description: 'Retrieves a paginated list of point transactions (earning/spending) for the authenticated customer. Access: CUSTOMER'
+  })
+  @ApiQuery({ name: 'businessId', required: true, description: 'The ID of the business' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Returns list of point logs' })
   async getMyLogs(
     @Request() req: { user: User },
     @Query('businessId') businessId: string,
@@ -55,7 +67,15 @@ export class LoyaltyController {
 
   @Get('points/business-logs')
   @Roles(UserRole.OWNER, UserRole.ADMIN)
-  @ApiOperation({ summary: 'Owner/Admin fetches point logs for business/branch' })
+  @ApiOperation({ 
+    summary: 'Owner/Admin fetches point logs for business/branch',
+    description: 'Retrieves point transaction history for a specific business or branch. Owners can only access their own business. Access: OWNER, ADMIN'
+  })
+  @ApiQuery({ name: 'businessId', required: true })
+  @ApiQuery({ name: 'branchId', required: false })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Returns business point logs' })
   async getBusinessLogs(
     @Request() req: { user: User },
     @Query('businessId') businessId: string,
@@ -70,21 +90,36 @@ export class LoyaltyController {
   // --- Point Earning ---
   @Post('points/give')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @ApiOperation({ summary: 'Staff gives points to customer using unique code' })
+  @ApiOperation({ 
+    summary: 'Staff gives points to customer using unique code',
+    description: 'Manually award points to a customer using their unique customer code. Access: OWNER, MANAGER, STAFF'
+  })
+  @ApiBody({ type: GivePointsDto })
+  @ApiResponse({ status: 201, description: 'Points awarded successfully' })
   async givePoints(@Request() req: { user: User }, @Body() dto: GivePointsDto) {
     return this.loyaltyService.givePoints(req.user, dto);
   }
 
   @Post('points/generate-code')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @ApiOperation({ summary: 'Staff generates a 9-digit point code' })
+  @ApiOperation({ 
+    summary: 'Staff generates a 9-digit point code',
+    description: 'Generates a temporary code that a customer can use to claim points. Access: OWNER, MANAGER, STAFF'
+  })
+  @ApiBody({ type: GeneratePointCodeDto })
+  @ApiResponse({ status: 201, description: 'Code generated successfully', schema: { example: { code: '123-456-789' } } })
   async generatePointCode(@Request() req: { user: User }, @Body() dto: GeneratePointCodeDto) {
     return this.loyaltyService.generatePointCode(req.user, dto);
   }
 
   @Post('points/use-code')
   @Roles(UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'Customer uses a 9-digit point code' })
+  @ApiOperation({ 
+    summary: 'Customer uses a 9-digit point code',
+    description: 'Allows a customer to redeem a 9-digit code to receive points. Access: CUSTOMER'
+  })
+  @ApiBody({ type: UsePointCodeDto })
+  @ApiResponse({ status: 201, description: 'Points claimed successfully' })
   async usePointCode(@Request() req: { user: User }, @Body() dto: UsePointCodeDto) {
     return this.loyaltyService.usePointCode(req.user, dto);
   }
@@ -92,14 +127,23 @@ export class LoyaltyController {
   // --- Reward Templates ---
   @Post('templates')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin creates a reward template' })
+  @ApiOperation({ 
+    summary: 'Admin creates a reward template',
+    description: 'Creates a base template for rewards that owners can use for their branches. Access: ADMIN'
+  })
+  @ApiBody({ type: CreateRewardTemplateDto })
+  @ApiResponse({ status: 201, description: 'Template created successfully' })
   async createTemplate(@Request() req: { user: User }, @Body() dto: CreateRewardTemplateDto) {
     return this.loyaltyService.createTemplate(req.user, dto);
   }
 
   @Get('templates')
   @Roles(UserRole.OWNER, UserRole.ADMIN)
-  @ApiOperation({ summary: 'Fetch all reward templates' })
+  @ApiOperation({ 
+    summary: 'Fetch all reward templates',
+    description: 'Retrieves all available reward templates. Access: OWNER, ADMIN'
+  })
+  @ApiResponse({ status: 200, description: 'Returns list of reward templates' })
   async getTemplates() {
     return this.loyaltyService.getTemplates();
   }
@@ -107,13 +151,25 @@ export class LoyaltyController {
   // --- Rewards ---
   @Post('rewards')
   @Roles(UserRole.OWNER, UserRole.ADMIN)
-  @ApiOperation({ summary: 'Owner creates a reward for a branch' })
+  @ApiOperation({ 
+    summary: 'Owner creates a reward for a branch',
+    description: 'Creates a specific reward instance for a branch, optionally based on a template. Access: OWNER, ADMIN'
+  })
+  @ApiBody({ type: CreateRewardDto })
+  @ApiResponse({ status: 201, description: 'Reward created successfully' })
   async createReward(@Request() req: { user: User }, @Body() dto: CreateRewardDto) {
     return this.loyaltyService.createReward(req.user, dto);
   }
 
   @Get('rewards/branch/:branchId')
-  @ApiOperation({ summary: 'Publicly fetch rewards for a branch' })
+  @ApiOperation({ 
+    summary: 'Publicly fetch rewards for a branch',
+    description: 'Retrieves available rewards for a specific branch. Public access.'
+  })
+  @ApiParam({ name: 'branchId', description: 'The ID of the branch' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Returns list of rewards' })
   async getBranchRewards(
     @Param('branchId') branchId: string,
     @Query('page') page?: number,
@@ -124,12 +180,25 @@ export class LoyaltyController {
 
   @Patch('rewards/:id')
   @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @ApiOperation({ 
+    summary: 'Update a reward',
+    description: 'Updates reward details like quantity or expiry date. Access: OWNER, ADMIN'
+  })
+  @ApiParam({ name: 'id', description: 'The ID of the reward' })
+  @ApiBody({ type: CreateRewardDto, description: 'Partial upgrade of reward' })
+  @ApiResponse({ status: 200, description: 'Reward updated successfully' })
   async updateReward(@Param('id') id: string, @Body() dto: Partial<CreateRewardDto>) {
     return this.loyaltyService.updateReward(id, dto);
   }
 
   @Delete('rewards/:id')
   @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @ApiOperation({ 
+    summary: 'Delete a reward',
+    description: 'Removes a reward from a branch. Access: OWNER, ADMIN'
+  })
+  @ApiParam({ name: 'id', description: 'The ID of the reward' })
+  @ApiResponse({ status: 200, description: 'Reward deleted successfully' })
   async deleteReward(@Param('id') id: string) {
     return this.loyaltyService.deleteReward(id);
   }
@@ -137,15 +206,64 @@ export class LoyaltyController {
   // --- Redemption ---
   @Post('redemption/generate-code')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @ApiOperation({ summary: 'Staff generates a redemption code for a reward' })
+  @ApiOperation({ 
+    summary: 'Staff generates a redemption code for a reward',
+    description: 'Generates a code that a customer can use to redeem a reward at the branch. Access: OWNER, MANAGER, STAFF'
+  })
+  @ApiBody({ type: GenerateRedemptionCodeDto })
+  @ApiResponse({ status: 201, description: 'Redemption code generated successfully' })
   async generateRedemptionCode(@Request() req: { user: User }, @Body() dto: GenerateRedemptionCodeDto) {
     return this.loyaltyService.generateRedemptionCode(req.user, dto);
   }
 
   @Post('redemption/redeem')
   @Roles(UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'Customer redeems a reward using a code' })
+  @ApiOperation({ 
+    summary: 'Customer redeems a reward using a code',
+    description: 'Allows a customer to use a redemption code to claim a reward. Access: CUSTOMER'
+  })
+  @ApiBody({ type: RedeemRewardDto })
+  @ApiResponse({ status: 201, description: 'Reward redeemed successfully' })
   async redeemReward(@Request() req: { user: User }, @Body() dto: RedeemRewardDto) {
     return this.loyaltyService.redeemReward(req.user, dto);
+  }
+
+  @Get('analytics')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({ 
+    summary: 'Fetch overall customer analytics (visits, points, savings)',
+    description: 'Retrieves aggregated loyalty data for the authenticated customer across all businesses. Access: CUSTOMER'
+  })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Number of past days to include in analytics' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Analytics data retrieved successfully',
+    schema: {
+      example: {
+        totalVisits: 12,
+        currentPointsBalance: 450,
+        netSavings: 1500,
+        visitTrends: [
+          { month: 'Jan', visits: 4 },
+          { month: 'Feb', visits: 5 },
+          { month: 'Mar', visits: 3 }
+        ],
+        pointsByVenue: [
+          { venueName: 'Starbucks Downtown', points: 300 },
+          { venueName: 'Burger King Main', points: 150 }
+        ],
+        topVenues: [
+          { venueName: 'Starbucks Downtown', points: 8 },
+          { venueName: 'Burger King Main', points: 4 }
+        ],
+        trends: {
+          totalVisits: '+25%',
+          rewardPoints: '+10%'
+        }
+      }
+    }
+  })
+  async getAnalytics(@Request() req: { user: User }, @Query('days') days?: number) {
+    return this.loyaltyService.getCustomerAnalytics(req.user.id, days);
   }
 }

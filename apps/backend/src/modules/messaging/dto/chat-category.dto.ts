@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsEnum, MinLength, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateChatCategoryDto {
@@ -22,10 +22,11 @@ export class CreateChatCategoryDto {
   @IsOptional()
   icon?: string;
 
-  @IsString()
+  @IsUUID()
   @IsOptional()
   branchId?: string;
 }
+
 
 export class UpdateChatCategoryDto {
   @ApiProperty({ required: false })

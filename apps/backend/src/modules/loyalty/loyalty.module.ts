@@ -14,6 +14,8 @@ import { CampaignsModule } from '../campaigns/campaigns.module';
 import { BranchesModule } from '../branches/branches.module';
 import { UsersModule } from '../users/users.module';
 
+import { Visit } from '../visitors/entities/visit.entity';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -24,6 +26,7 @@ import { UsersModule } from '../users/users.module';
       RedemptionCode,
       User,
       Branch,
+      Visit,
     ]),
     forwardRef(() => DevicesModule),
     forwardRef(() => CampaignsModule),
