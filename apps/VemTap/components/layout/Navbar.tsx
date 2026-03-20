@@ -10,7 +10,7 @@ export default function Navbar() {
     const [isSolutionsOpen, setIsSolutionsOpen] = useState(false);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const user = useAuthStore((state) => state.user);
-    const { data: business } = useMyBusiness(isAuthenticated);
+    const { data: business } = useMyBusiness(isAuthenticated && user?.role?.toLowerCase() !== 'customer');
     const solutionsRef = useRef<HTMLDivElement>(null);
 
     const getInitials = (name?: string) => {
