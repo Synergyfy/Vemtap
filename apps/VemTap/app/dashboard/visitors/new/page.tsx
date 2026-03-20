@@ -172,6 +172,7 @@ export default function NewVisitorsPage() {
                 isOpen={isBulkMsgOpen}
                 onClose={() => setIsBulkMsgOpen(false)}
                 recipientName={`${newVisitors.length} New Visitors`}
+                visitorIds={newVisitors.map(v => v.id)}
                 type="welcome"
             />
 
@@ -180,6 +181,8 @@ export default function NewVisitorsPage() {
                 onClose={() => setSelectedVisitorForMsg(null)}
                 recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
                 recipientPhone={selectedVisitorForMsg?.phone}
+                recipientEmail={selectedVisitorForMsg?.email}
+                visitorIds={selectedVisitorForMsg?.id ? [selectedVisitorForMsg.id] : undefined}
                 type="welcome"
             />
 

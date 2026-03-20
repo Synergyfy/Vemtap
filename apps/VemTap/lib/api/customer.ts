@@ -10,19 +10,19 @@ const withQuery = (endpoint: string, params?: Record<string, string | undefined>
 };
 
 export const customerApi = {
-    getMe: () => api.get('/users/me'),
-    updateMe: (data: { name?: string; phone?: string }) => api.patch('/users/me', data),
-    deactivateMe: () => api.delete('/users/me'),
+    getMe: () => api.get('/users/profile'),
+    updateMe: (data: { name?: string; phone?: string }) => api.patch('/users/profile', data),
+    deactivateMe: () => api.delete('/users/profile'),
 
     getLoyaltyAnalytics: () => api.get('/loyalty/analytics'),
     tapDevice: (code: string, payload?: { visitorId?: string; name?: string; email?: string; phone?: string }) => api.post(`/tap/record/${code}`, payload ?? {}),
     getDeviceInfo: (code: string) => api.get(`/tap/context/${code}`),
-    getLoyaltyProfile: (businessId?: string) => api.get(withQuery('/loyalty/profile', { businessId })),   
-    getLoyaltyHistory: (businessId?: string) => api.get(withQuery('/loyalty/history', { businessId })),   
-    getMyHistory: () => api.get('/loyalty/my-history'),
-    getLoyaltyRewards: (businessId?: string) => api.get(withQuery('/loyalty/rewards', { businessId })),
-    redeemReward: (data: { rewardId: string; businessId?: string }) => api.post('/loyalty/redeem', data),
-    claimCode: (data: { code: string; branchId?: string }) => api.post('/loyalty/claim-code', data),
+    getLoyaltyProfile: (businessId?: string) => api.get(withQuery('/loyalty/points/balance', { businessId })),
+    getLoyaltyHistory: (businessId?: string) => api.get(withQuery('/loyalty/points/logs', { businessId })),   
+    getMyHistory: () => api.get('/loyalty/points/logs'),
+    getLoyaltyRewards: (businessId?: string) => api.get(`/loyalty/rewards/branch/${businessId}`),
+    redeemReward: (data: { rewardId: string; businessId?: string }) => api.post('/loyalty/redemption/redeem', data),
+    claimCode: (data: { code: string; branchId?: string }) => api.post('/loyalty/points/use-code', data),
 
     getSupportTickets: () => api.get('/support/tickets'),
     createSupportTicket: (data: { subject: string; category: string; priority: string; description: string }) =>
