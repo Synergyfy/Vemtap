@@ -11,6 +11,7 @@ import { Visit } from '../visitors/entities/visit.entity';
 import { DevicesModule } from '../devices/devices.module';
 import { BranchesModule } from '../branches/branches.module';
 import { Reward } from '../loyalty/entities/reward.entity';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { Reward } from '../loyalty/entities/reward.entity';
     MailModule,
     DevicesModule,
     forwardRef(() => BranchesModule),
+    forwardRef(() => SubscriptionsModule),
   ],
   providers: [BusinessesService],
   controllers: [BusinessesController, PublicBusinessesController],
