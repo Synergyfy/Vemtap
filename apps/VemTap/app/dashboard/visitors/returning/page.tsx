@@ -161,6 +161,8 @@ export default function ReturningVisitorsPage() {
                 onClose={() => setSelectedVisitorForMsg(null)}
                 recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
                 recipientPhone={selectedVisitorForMsg?.phone}
+                recipientEmail={selectedVisitorForMsg?.email}
+                visitorIds={selectedVisitorForMsg?.id ? [selectedVisitorForMsg.id] : undefined}
                 type="reward"
             />
 

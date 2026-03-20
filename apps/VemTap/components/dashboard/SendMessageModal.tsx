@@ -6,16 +6,19 @@ import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { MessageSquare, Send, Smartphone, Edit3, Check, ChevronDown, Users, Loader2 } from 'lucide-react';
 import { notify } from '@/lib/notify';
 import LogoIcon from '@/components/brand/LogoIcon';
+import { generateWhatsAppLink } from '@/lib/whatsapp-utils';
 
 interface SendMessageModalProps {
     isOpen: boolean;
     onClose: () => void;
     recipientName?: string;
     recipientPhone?: string;
+    recipientEmail?: string;
+    visitorIds?: string[];
     type: 'welcome' | 'general' | 'reward' | 'custom';
 }
 
-export default function SendMessageModal({ isOpen, onClose, recipientName, recipientPhone, type }: SendMessageModalProps) {
+export default function SendMessageModal({ isOpen, onClose, recipientName, recipientPhone, recipientEmail, visitorIds, type }: SendMessageModalProps) {
     const store = useCustomerFlowStore();
     const [selectedChannel, setSelectedChannel] = useState<'WhatsApp' | 'SMS' | 'Email'>('WhatsApp');
     const [selectedType, setSelectedType] = useState(type);
@@ -73,19 +76,62 @@ export default function SendMessageModal({ isOpen, onClose, recipientName, recip
 
     const handleSend = async () => {
         setIsLoading(true);
-        // Simulate sending
-        await new Promise(resolve => setTimeout(resolve, 1500));
 
-        // Update store as requested: "edit from the pop up modal should reflect in the template"
-        if (selectedType === 'welcome') {
-            store.updateCustomSettings({ welcomeMessage: message, welcomeTitle: title });
-        } else if (selectedType === 'reward') {
-            store.updateCustomSettings({ rewardMessage: message });
+        try {
+            const finalMessage = previewMessage;
+            const isBulk = visitorIds && visitorIds.length > 1;
+
+            if (isBulk) {
+                notify.error('Bulk sending via direct links is not supported. Please send to visitors individually or use the Messaging > Send Broadcast tab for bulk campaigns.');
+                setIsLoading(false);
+                return;
+            }
+
+            if (selectedChannel === 'WhatsApp') {
+                if (recipientPhone) {
+                    const link = generateWhatsAppLink(recipientPhone, finalMessage);
+                    window.open(link, '_blank');
+                } else {
+                    notify.error('No phone number available for WhatsApp');
+                    setIsLoading(false);
+                    return;
+                }
+            } else if (selectedChannel === 'SMS') {
+                if (recipientPhone) {
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                    const link = `sms:${recipientPhone}${isIOS ? '&' : '?'}body=${encodeURIComponent(finalMessage)}`;
+                    window.open(link, '_blank');
+                } else {
+                    notify.error('No phone number available for SMS');
+                    setIsLoading(false);
+                    return;
+                }
+            } else if (selectedChannel === 'Email') {
+                if (recipientEmail || recipientPhone?.includes('@')) { // Basic fallback
+                    const email = recipientEmail || recipientPhone;
+                    const link = `mailto:${email}?subject=${encodeURIComponent(title || 'Message from ' + (store.storeName || 'VemTap'))}&body=${encodeURIComponent(finalMessage)}`;
+                    window.open(link, '_blank');
+                } else {
+                    notify.error('No email address available');
+                    setIsLoading(false);
+                    return;
+                }
+            }
+
+            // Update store as requested: "edit from the pop up modal should reflect in the template"
+            if (selectedType === 'welcome') {
+                store.updateCustomSettings({ welcomeMessage: message, welcomeTitle: title });
+            } else if (selectedType === 'reward') {
+                store.updateCustomSettings({ rewardMessage: message });
+            }
+
+            notify.success(`Message prepared via ${selectedChannel}!`);
+            onClose();
+        } catch (error: any) {
+            notify.error(`Failed to prepare ${selectedChannel} message`);
+        } finally {
+            setIsLoading(false);
         }
-
-        setIsLoading(false);
-        notify.success(`Message sent to ${recipientName || name} via ${selectedChannel} successfully!`);
-        onClose();
     };
 
     // Helper to replace tokens for preview
