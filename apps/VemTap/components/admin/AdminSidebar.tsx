@@ -77,7 +77,7 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                 { label: 'All Businesses', href: '/admin/businesses' },
                 { label: 'Business Owners', href: '/admin/users/business' },
                 { label: 'Business Categories', href: '/admin/categories' },
-                { label: 'Pending Approval', href: '/admin/businesses/pending' },
+                { label: 'Badge Approval', href: '/admin/businesses/pending' },
                 { label: 'Suspended', href: '/admin/businesses/suspended' },
             ]
         },
@@ -191,12 +191,7 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             icon: Activity,
             href: '/admin/health',
         },
-        {
-            id: 'verifications',
-            label: 'Verifications',
-            icon: ShieldCheck,
-            href: '/admin/verifications',
-        },
+
         {
             id: 'agent-hub',
             label: 'Support Agent Hub',
