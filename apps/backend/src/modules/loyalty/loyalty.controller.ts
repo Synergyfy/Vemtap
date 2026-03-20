@@ -235,7 +235,34 @@ export class LoyaltyController {
     description: 'Retrieves aggregated loyalty data for the authenticated customer across all businesses. Access: CUSTOMER'
   })
   @ApiQuery({ name: 'days', required: false, type: Number, description: 'Number of past days to include in analytics' })
-  @ApiResponse({ status: 200, description: 'Analytics data retrieved successfully' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Analytics data retrieved successfully',
+    schema: {
+      example: {
+        totalVisits: 12,
+        currentPointsBalance: 450,
+        netSavings: 1500,
+        visitTrends: [
+          { month: 'Jan', visits: 4 },
+          { month: 'Feb', visits: 5 },
+          { month: 'Mar', visits: 3 }
+        ],
+        pointsByVenue: [
+          { venueName: 'Starbucks Downtown', points: 300 },
+          { venueName: 'Burger King Main', points: 150 }
+        ],
+        topVenues: [
+          { venueName: 'Starbucks Downtown', points: 8 },
+          { venueName: 'Burger King Main', points: 4 }
+        ],
+        trends: {
+          totalVisits: '+25%',
+          rewardPoints: '+10%'
+        }
+      }
+    }
+  })
   async getAnalytics(@Request() req: { user: User }, @Query('days') days?: number) {
     return this.loyaltyService.getCustomerAnalytics(req.user.id, days);
   }
