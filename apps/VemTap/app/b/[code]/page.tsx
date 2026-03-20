@@ -56,6 +56,11 @@ export default function PublicBusinessProfilePage() {
     const business = businessByCode?.id ? businessByCode : businessByBranch;
     const branch = businessByCode?.id ? null : branchData || null;
     const businessSummary = branchData?.business;
+    const mainBranch = useMemo(
+        () => business?.branches?.find((item) => item.isMainBranch) || business?.branches?.[0] || null,
+        [business?.branches]
+    );
+    const resolvedBranch = branch || mainBranch;
 
     const businessId = useMemo(
         () => business?.id || branch?.businessId || branchData?.business?.id,
@@ -74,10 +79,11 @@ export default function PublicBusinessProfilePage() {
 
     useEffect(() => {
         let isMounted = true;
-        const useBusinessDetails = !branch || branch.isMainBranch;
-        const address = useBusinessDetails
-            ? formatLocation(business?.address || branch?.address, business?.city || branch?.city, business?.state || branch?.state)
-            : formatLocation(branch?.address, branch?.city, branch?.state);
+        const address = formatLocation(
+            resolvedBranch?.address || business?.address,
+            resolvedBranch?.city || business?.city,
+            resolvedBranch?.state || business?.state
+        );
         if (!address || address === 'Location not provided') {
             setMapCoords(null);
             return;
@@ -101,7 +107,14 @@ export default function PublicBusinessProfilePage() {
         return () => {
             isMounted = false;
         };
-    }, [business?.address, business?.city, business?.state, branch?.address, branch?.city, branch?.state, branch?.isMainBranch]);
+    }, [
+        business?.address,
+        business?.city,
+        business?.state,
+        resolvedBranch?.address,
+        resolvedBranch?.city,
+        resolvedBranch?.state,
+    ]);
 
     useEffect(() => {
         const initMap = () => {
@@ -136,11 +149,12 @@ export default function PublicBusinessProfilePage() {
     const isLoading = branchLoading || businessByCodeLoading || businessByBranchLoading;
 
     const useBusinessDetails = !branch || branch.isMainBranch;
-    const profileSource = useBusinessDetails ? (business || branch) : branch;
-    const locationAddress = useBusinessDetails
-        ? formatLocation(business?.address || branch?.address, business?.city || branch?.city, business?.state || branch?.state)
-        : formatLocation(branch?.address, branch?.city, branch?.state);
-    const businessLocation = formatLocation(business?.address ||  business?.city ||  business?.state);
+    const locationAddress = formatLocation(
+        resolvedBranch?.address || business?.address,
+        resolvedBranch?.city || business?.city,
+        resolvedBranch?.state || business?.state
+    );
+    const businessLocation = formatLocation(business?.address, business?.city, business?.state);
     const resolvedLocation = locationAddress === 'Location not provided' ? businessLocation : locationAddress;
 
     const profileName = useMemo(() => {
@@ -149,11 +163,8 @@ export default function PublicBusinessProfilePage() {
     }, [branch, business, businessSummary]);
 
     const profileLogo = useMemo(() => {
-        if (useBusinessDetails) {
-            return business?.logoUrl || businessSummary?.logoUrl || '';
-        }
-        return branch?.logoUrl || '';
-    }, [branch, business, businessSummary, useBusinessDetails]);
+        return business?.logoUrl || businessSummary?.logoUrl || resolvedBranch?.logoUrl || '';
+    }, [business, businessSummary, resolvedBranch?.logoUrl]);
     const fallbackLogo = '/VEMTAP_PNG.png';
 
     useEffect(() => {
@@ -161,22 +172,20 @@ export default function PublicBusinessProfilePage() {
         setLogoLoaded(false);
     }, [profileLogo]);
 
-    const profileEmail = profileSource?.officialEmail;
-    const profilePhone = profileSource?.phone;
-    const profileWebsite = profileSource?.website;
-    const profileAbout = profileSource?.about;
-    const profileWelcome = profileSource?.welcomeMessage;
-    const profileHours = profileSource?.businessHours;
-    const profileShowRewards = useBusinessDetails
-        ? (business?.showRewards ?? branch?.showRewards ?? true)
-        : (branch?.showRewards ?? true);
+    const profileEmail = resolvedBranch?.officialEmail || business?.officialEmail;
+    const profilePhone = resolvedBranch?.phone || business?.phone;
+    const profileWebsite = resolvedBranch?.website || business?.website;
+    const profileAbout = resolvedBranch?.about || business?.about;
+    const profileWelcome = resolvedBranch?.welcomeMessage || business?.welcomeMessage;
+    const profileHours = resolvedBranch?.businessHours || business?.businessHours;
+    const profileShowRewards = resolvedBranch?.showRewards ?? business?.showRewards ?? true;
     const profileSocials = {
-        facebookUrl: profileSource?.facebookUrl,
-        instagramUrl: profileSource?.instagramUrl,
-        xUrl: profileSource?.xUrl,
-        linkedinUrl: profileSource?.linkedinUrl,
-        tiktokUrl: profileSource?.tiktokUrl,
-        youtubeUrl: profileSource?.youtubeUrl,
+        facebookUrl: resolvedBranch?.facebookUrl || business?.facebookUrl,
+        instagramUrl: resolvedBranch?.instagramUrl || business?.instagramUrl,
+        xUrl: resolvedBranch?.xUrl || business?.xUrl,
+        linkedinUrl: resolvedBranch?.linkedinUrl || business?.linkedinUrl,
+        tiktokUrl: resolvedBranch?.tiktokUrl || business?.tiktokUrl,
+        youtubeUrl: resolvedBranch?.youtubeUrl || business?.youtubeUrl,
     };
 
     const socialItems = [
