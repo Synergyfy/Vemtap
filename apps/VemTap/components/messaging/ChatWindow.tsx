@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
 import { Search, Maximize2, Minimize2, Check, CheckCheck, FileText, Info, Smartphone, MessageSquare, CornerUpLeft } from 'lucide-react';
 import ChatInput from './ChatInput';
@@ -9,6 +9,8 @@ import Link from 'next/link';
 import { useChatThreads, useMarkThreadAsRead, useThreadMessages } from '@/hooks/useMessaging';
 import { useMessagingBranch } from '@/hooks/useMessagingBranch';
 import { useMessagingRealtime } from '@/hooks/useMessagingRealtime';
+import { useSearchParams } from 'next/navigation';
+import { api } from '@/lib/api';
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
@@ -49,14 +51,16 @@ function StatusIcon({ status }: { status: string }) {
 
 export default function ChatWindow() {
     const activeConversationId = useChatStore(s => s.activeConversationId);
+    const setActiveConversation = useChatStore(s => s.setActiveConversation);
     const mockThreads = useChatStore(s => s.mockThreads);
     const mockMessages = useChatStore(s => s.mockMessages);
     const typingByThread = useChatStore(s => s.typingByThread);
     const user = useAuthStore(s => s.user);
     const { branchId, isCustomer } = useMessagingBranch();
+    const searchParams = useSearchParams();
     
     // Fetch all threads to find the active one
-    const { data: threads = [] } = useChatThreads('IN_HOUSE', branchId || undefined, isCustomer);
+    const { data: threads = [], isLoading: threadsLoading } = useChatThreads('IN_HOUSE', branchId || undefined, isCustomer);
     const allThreads = useMemo(() => {
         const apiThreads = threads as any[];
         const apiIds = new Set(apiThreads.map(t => t.id));
@@ -65,6 +69,74 @@ export default function ChatWindow() {
     }, [threads, mockThreads]);
     const activeConv = allThreads.find(c => c.id === activeConversationId);
     const isMockThread = !!activeConversationId && mockThreads.some(t => t.id === activeConversationId);
+
+    const [targetBranchId, setTargetBranchId] = useState<string | null>(null);
+    const [targetBranchName, setTargetBranchName] = useState<string | null>(null);
+    const [targetResolveError, setTargetResolveError] = useState<string | null>(null);
+    const [targetResolving, setTargetResolving] = useState(false);
+    const targetCode =
+        searchParams.get('branchId') ||
+        searchParams.get('businessId') ||
+        searchParams.get('code');
+
+    useEffect(() => {
+        if (!isCustomer || !targetCode || targetBranchId || targetResolving) return;
+        let cancelled = false;
+        const isUuid = (value: string) =>
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
+        const resolveTargetBranch = async () => {
+            setTargetResolving(true);
+            setTargetResolveError(null);
+            try {
+                if (isUuid(targetCode)) {
+                    if (!cancelled) {
+                        setTargetBranchId(targetCode);
+                        setTargetBranchName(null);
+                    }
+                    return;
+                }
+
+                try {
+                    const branch = await api.get(`/public/branches/code/${targetCode}`);
+                    if (branch?.id) {
+                        if (!cancelled) {
+                            setTargetBranchId(branch.id);
+                            setTargetBranchName(branch.name || branch?.business?.name || null);
+                        }
+                        return;
+                    }
+                } catch {
+                    // fall through to business lookup
+                }
+
+                const business = await api.get(`/public/businesses/code/${targetCode}`);
+                const branches = business?.branches || [];
+                const mainBranch = branches.find((b: any) => b.isMainBranch) || branches[0];
+                if (mainBranch?.id) {
+                    if (!cancelled) {
+                        setTargetBranchId(mainBranch.id);
+                        setTargetBranchName(mainBranch.name || business?.name || null);
+                    }
+                } else if (!cancelled) {
+                    setTargetResolveError('Could not resolve a branch for this chat link.');
+                }
+            } catch (error: any) {
+                if (!cancelled) {
+                    setTargetResolveError(error?.message || 'Failed to resolve chat target.');
+                }
+            } finally {
+                if (!cancelled) {
+                    setTargetResolving(false);
+                }
+            }
+        };
+
+        resolveTargetBranch();
+        return () => {
+            cancelled = true;
+        };
+    }, [isCustomer, targetCode, targetBranchId, targetResolving]);
 
     // Fetch messages for active thread (business or customer endpoint)
     const { data: messages = [], isLoading } = useThreadMessages(activeConversationId || '', branchId || undefined, isCustomer && !isMockThread);
@@ -97,7 +169,66 @@ export default function ChatWindow() {
         markThreadAsRead.mutate({ threadId: activeConversationId, branchId });
     }, [activeConversationId, branchId, isCustomer, isMockThread, markThreadAsRead]);
 
+    const handleConversationStarted = useCallback(
+        (threadId: string) => {
+            setActiveConversation(threadId);
+        },
+        [setActiveConversation]
+    );
+
     if (!activeConv) {
+        if (isCustomer && (targetBranchId || targetResolving || targetResolveError)) {
+            return (
+                <div className="flex-1 flex flex-col h-full min-h-0 bg-white">
+                    <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50 px-6 text-center">
+                        <div className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center mb-4">
+                            <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                        </div>
+                        {targetResolving ? (
+                            <>
+                                <p className="font-bold text-slate-500 text-lg">Preparing chat...</p>
+                                <p className="text-sm text-slate-400 mt-1">Resolving the right branch for you.</p>
+                            </>
+                        ) : targetResolveError ? (
+                            <>
+                                <p className="font-bold text-slate-500 text-lg">Unable to start chat</p>
+                                <p className="text-sm text-slate-400 mt-1">{targetResolveError}</p>
+                            </>
+                        ) : (
+                            <>
+                                <p className="font-bold text-slate-500 text-lg">
+                                    Start a conversation{targetBranchName ? ` with ${targetBranchName}` : ''}
+                                </p>
+                                <p className="text-sm text-slate-400 mt-1">Send your first message below.</p>
+                            </>
+                        )}
+                    </div>
+                    {targetBranchId && !targetResolving && !targetResolveError && (
+                        <ChatInput
+                            startBranchId={targetBranchId}
+                            onConversationStarted={handleConversationStarted}
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        if (threadsLoading) {
+            return (
+                <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50">
+                    <div className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center mb-4">
+                        <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                    </div>
+                    <p className="font-bold text-slate-500 text-lg">Loading conversations...</p>
+                    <p className="text-sm text-slate-400 mt-1">Just a moment.</p>
+                </div>
+            );
+        }
+
         return (
             <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50">
                 <div className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center mb-4">
@@ -245,7 +376,7 @@ export default function ChatWindow() {
 
                 {/* Input */}
                 <ChatInput
-                    conversationId={activeConversationId!}
+                    conversationId={activeConversationId || undefined}
                     isMock={isMockThread}
                     replyTo={replyToMessage}
                     onCancelReply={() => setReplyToMessage(null)}
