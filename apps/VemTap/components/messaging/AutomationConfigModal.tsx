@@ -2,9 +2,12 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, MessageSquare, Award, Clock, AlertCircle, Info, Check } from 'lucide-react';
+import { X, MessageSquare, Award, Clock, AlertCircle, Info, Check, FileText, Plus, Loader2 } from 'lucide-react';
 import { useUpdateAutomation } from '@/services/messaging/hooks';
 import { toast } from 'react-hot-toast';
+import { useBusinessForms } from '@/services/business-forms/hooks';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useBranches } from '@/services/branches/hooks';
 
 interface AutomationConfigModalProps {
     template: any;
@@ -17,15 +20,28 @@ const VARIABLES = [
     { label: 'Visitor Name', value: '{{visitor_name}}' },
     { label: 'Loyalty Points', value: '{{loyalty_points}}' },
     { label: 'Branch Name', value: '{{branch_name}}' },
+    { label: 'Form Link', value: '{{form_link}}' },
 ];
 
 export default function AutomationConfigModal({ template, rule, onClose }: AutomationConfigModalProps) {
     const updateMutation = useUpdateAutomation(rule?.id || '');
+    const activeBranchId = useAuthStore((state) => state.activeBranchId);
+    const user = useAuthStore((state) => state.user);
+    const { data: branches = [] } = useBranches();
+    
+    const branchScope = activeBranchId === 'all' ? null : (activeBranchId || user?.branchId || null);
+    const { data: forms = [] } = useBusinessForms({
+        branchId: branchScope || user?.branchId || branches[0]?.id || undefined,
+        allBranches: !branchScope,
+    });
+
+    const publishedForms = forms.filter(f => f.isPublished);
 
     const [config, setConfig] = useState({
         message: rule?.actionConfig?.message || template.defaultMessage || `Hi {{visitor_name}}, welcome to {{business_name}}! 🎉`,
         points: rule?.actionConfig?.points || 50,
         delay: rule?.delaySeconds || 0,
+        formId: rule?.actionConfig?.formId || '',
     });
 
     const handleSave = () => {
@@ -39,6 +55,7 @@ export default function AutomationConfigModal({ template, rule, onClose }: Autom
                 ...rule.actionConfig,
                 message: config.message,
                 points: config.points,
+                formId: config.formId,
             },
             delaySeconds: config.delay,
         }, {
@@ -163,6 +180,39 @@ export default function AutomationConfigModal({ template, rule, onClose }: Autom
                         </div>
                     </div>
 
+                    {/* Form Selection */}
+                    <div className="space-y-4 p-6 bg-primary/5 rounded-[2rem] border border-primary/10">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                <FileText size={14} />
+                                Attach Business Form
+                            </label>
+                            {config.formId && (
+                                <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase">
+                                    Linked
+                                </span>
+                            )}
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <select
+                                value={config.formId}
+                                onChange={(e) => setConfig({ ...config, formId: e.target.value })}
+                                className="w-full h-14 px-6 bg-white border border-gray-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/5 appearance-none font-bold text-sm cursor-pointer shadow-sm"
+                            >
+                                <option value="">No form attached</option>
+                                {publishedForms.map((form) => (
+                                    <option key={form.id} value={form.id}>
+                                        {form.title}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="text-[10px] text-text-secondary italic px-2">
+                                When a form is selected, you can use the <strong className="text-primary font-bold">{"{{form_link}}"}</strong> variable in your message to direct customers to this form.
+                            </p>
+                        </div>
+                    </div>
+
                     {!rule?.id && (
                         <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
                             <AlertCircle className="text-amber-500 shrink-0" size={20} />
@@ -200,5 +250,3 @@ export default function AutomationConfigModal({ template, rule, onClose }: Autom
         </div>
     );
 }
-
-import { Plus, Loader2, Settings } from 'lucide-react';

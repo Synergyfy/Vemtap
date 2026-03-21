@@ -9,6 +9,8 @@ import {
 import { FormsService } from './forms.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { AdminFormQueryDto } from './dto/admin-form.dto';
+import { ParseUUIDPipe } from '@nestjs/common';
 
 @ApiTags('Admin Forms')
 @ApiBearerAuth()
@@ -19,27 +21,8 @@ export class AdminFormsController {
 
   @Get()
   @ApiOperation({ summary: 'Get all forms across the platform' })
-  @ApiQuery({ name: 'branchId', required: false, type: String })
-  @ApiResponse({
-    status: 200,
-    description: 'Return all forms array based on filters.',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string', example: 'uuid-form-1234' },
-          title: { type: 'string', example: 'Customer Feedback' },
-          branchId: { type: 'string', example: 'uuid-branch-1234' },
-          isActive: { type: 'boolean', example: true },
-          isPublished: { type: 'boolean', example: true },
-          adminDisabled: { type: 'boolean', example: false },
-        },
-      },
-    },
-  })
-  findAll(@Query('branchId') branchId?: string) {
-    return this.formsService.findAllForAdmin({ branchId });
+  async findAll(@Query() query: AdminFormQueryDto) {
+    return this.formsService.findAllForAdmin(query);
   }
 
   @Patch(':id/disable')
@@ -48,7 +31,7 @@ export class AdminFormsController {
     status: 200,
     description: 'The form has been successfully disabled.',
   })
-  disableForm(@Param('id') id: string) {
+  disableForm(@Param('id', ParseUUIDPipe) id: string) {
     return this.formsService.setAdminDisabledStatus(id, true);
   }
 
@@ -58,7 +41,7 @@ export class AdminFormsController {
     status: 200,
     description: 'The form has been successfully enabled.',
   })
-  enableForm(@Param('id') id: string) {
+  enableForm(@Param('id', ParseUUIDPipe) id: string) {
     return this.formsService.setAdminDisabledStatus(id, false);
   }
 }

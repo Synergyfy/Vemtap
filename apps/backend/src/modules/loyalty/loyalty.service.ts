@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, Between, MoreThanOrEqual } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import { RewardTemplate } from './entities/reward-template.entity';
 import { Reward } from './entities/reward.entity';
@@ -13,6 +13,7 @@ import { PointTransaction, PointTransactionType } from './entities/point-transac
 import { PointCode } from './entities/point-code.entity';
 import { RedemptionCode } from './entities/redemption-code.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { Visit } from '../visitors/entities/visit.entity';
 import {
   CreateRewardTemplateDto,
   CreateRewardDto,
@@ -40,6 +41,8 @@ export class LoyaltyService {
     private userRepo: Repository<User>,
     @InjectRepository(Branch)
     private branchRepo: Repository<Branch>,
+    @InjectRepository(Visit)
+    private visitRepo: Repository<Visit>,
     private dataSource: DataSource,
   ) {}
 
@@ -271,5 +274,140 @@ export class LoyaltyService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  // --- Analytics ---
+  async getCustomerAnalytics(userId: string, days?: number) {
+    // 1. Total Visits
+    const totalVisitsQuery = this.visitRepo
+      .createQueryBuilder('visit')
+      .where('visit.customerId = :userId', { userId });
+    
+    if (days) {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      totalVisitsQuery.andWhere('visit.createdAt >= :startDate', { startDate });
+    }
+    
+    const totalVisits = await totalVisitsQuery.getCount();
+
+    // 2. Current Points Balance (Total across all businesses)
+    const pointsResult = await this.pointTransactionRepo
+      .createQueryBuilder('t')
+      .select('SUM(t.amount)', 'sum')
+      .where('t.customerId = :userId', { userId })
+      .getRawOne();
+    const currentPointsBalance = parseInt(pointsResult?.sum || '0', 10);
+
+    // 3. Net Savings (Proxy: sum of ABS(amount) for REDEEMED transactions)
+    const savingsResult = await this.pointTransactionRepo
+      .createQueryBuilder('t')
+      .select('SUM(ABS(t.amount))', 'sum')
+      .where('t.customerId = :userId', { userId })
+      .andWhere('t.type = :type', { type: PointTransactionType.REDEEMED })
+      .getRawOne();
+    const netSavings = parseInt(savingsResult?.sum || '0', 10);
+
+    // 4. Visit Trends (Grouped by month)
+    const visitTrendsRaw = await this.visitRepo
+      .createQueryBuilder('visit')
+      .select("TO_CHAR(visit.createdAt, 'Mon')", 'month')
+      .addSelect('COUNT(*)', 'visits')
+      .where('visit.customerId = :userId', { userId })
+      .groupBy("TO_CHAR(visit.createdAt, 'Mon')")
+      .orderBy("MIN(visit.createdAt)", 'ASC')
+      .getRawMany();
+    
+    const visitTrends = visitTrendsRaw.map((r) => ({
+      month: r.month,
+      visits: parseInt(r.visits, 10),
+    }));
+
+    // 5. Points By Venue (Lifetime earned points per branch)
+    const pointsByVenueRaw = await this.pointTransactionRepo
+      .createQueryBuilder('t')
+      .leftJoin('t.branch', 'branch')
+      .select('branch.name', 'venueName')
+      .addSelect('SUM(t.amount)', 'points')
+      .where('t.customerId = :userId', { userId })
+      .andWhere('t.type = :type', { type: PointTransactionType.EARNED })
+      .groupBy('branch.name')
+      .getRawMany();
+    
+    const pointsByVenue = pointsByVenueRaw.map((r) => ({
+      venueName: r.venueName || 'Unknown Venue',
+      points: parseInt(r.points, 10),
+    }));
+
+    // 6. Top Venues (By visit count, but return visits as 'points' to match frontend expected field)
+    const topVenuesRaw = await this.visitRepo
+      .createQueryBuilder('visit')
+      .leftJoin('visit.branch', 'branch')
+      .select('branch.name', 'venueName')
+      .addSelect('COUNT(*)', 'visits')
+      .where('visit.customerId = :userId', { userId })
+      .groupBy('branch.name')
+      .orderBy('visits', 'DESC')
+      .limit(5)
+      .getRawMany();
+    
+    const topVenues = topVenuesRaw.map((r) => ({
+      venueName: r.venueName || 'Unknown Venue',
+      points: parseInt(r.visits, 10),
+    }));
+
+    // 7. Trend Calculations (Month-over-Month)
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    const currentMonthVisits = await this.visitRepo.count({
+      where: { customerId: userId, createdAt: MoreThanOrEqual(currentMonthStart) },
+    });
+    const prevMonthVisits = await this.visitRepo.count({
+      where: {
+        customerId: userId,
+        createdAt: Between(prevMonthStart, currentMonthStart),
+      },
+    });
+
+    const currentMonthPoints = await this.pointTransactionRepo
+      .createQueryBuilder('t')
+      .select('SUM(t.amount)', 'sum')
+      .where('t.customerId = :userId', { userId })
+      .andWhere('t.type = :type', { type: PointTransactionType.EARNED })
+      .andWhere('t.createdAt >= :start', { start: currentMonthStart })
+      .getRawOne();
+    
+    const prevMonthPoints = await this.pointTransactionRepo
+      .createQueryBuilder('t')
+      .select('SUM(t.amount)', 'sum')
+      .where('t.customerId = :userId', { userId })
+      .andWhere('t.type = :type', { type: PointTransactionType.EARNED })
+      .andWhere('t.createdAt >= :start', { start: prevMonthStart })
+      .andWhere('t.createdAt < :end', { end: currentMonthStart })
+      .getRawOne();
+
+    const calculateTrend = (curr: number, prev: number) => {
+      if (prev === 0) return curr > 0 ? `+${curr}` : '0';
+      const diff = ((curr - prev) / prev) * 100;
+      return `${diff > 0 ? '+' : ''}${diff.toFixed(0)}%`;
+    };
+
+    return {
+      totalVisits,
+      currentPointsBalance,
+      netSavings,
+      visitTrends,
+      pointsByVenue,
+      topVenues,
+      trends: {
+        totalVisits: calculateTrend(currentMonthVisits, prevMonthVisits),
+        rewardPoints: calculateTrend(
+          parseInt(currentMonthPoints?.sum || '0', 10),
+          parseInt(prevMonthPoints?.sum || '0', 10),
+        ),
+      },
+    };
   }
 }

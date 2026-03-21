@@ -23,8 +23,11 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiBody,
 } from '@nestjs/swagger';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
+import { GenerateDevicesDto, DeviceQueryDto } from './dto/device-action.dto';
+import { ParseUUIDPipe } from '@nestjs/common';
 
 @ApiTags('devices')
 @ApiBearerAuth()
@@ -149,7 +152,6 @@ export class DevicesController {
     const branchId = await this.getBranchId(req, dto.branchId);
     return this.devicesService.updateAssetNames(branchId, dto);
   }
-
   @Post('generate')
   @ApiOperation({
     summary: 'Generate devices for ready orders (Business Owner)',
@@ -159,11 +161,12 @@ export class DevicesController {
     description: 'Devices generated for pending ready orders.',
     type: [Device],
   })
+  @ApiBody({ type: GenerateDevicesDto })
   async generate(
     @Request() req: { user: User },
-    @Body('branchId') branchId?: string,
+    @Body() dto: GenerateDevicesDto,
   ) {
-    const targetBranchId = await this.getBranchId(req, branchId);
+    const targetBranchId = await this.getBranchId(req, dto.branchId);
     return this.devicesService.generateDevicesForReadyOrders(
       req.user.id,
       targetBranchId,
@@ -175,7 +178,7 @@ export class DevicesController {
   @ApiResponse({ status: 200, description: 'Device updated', type: Device })
   async update(
     @Request() req: { user: User },
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateDeviceDto: UpdateDeviceDto,
   ) {
     const branchId = await this.getBranchId(
@@ -190,10 +193,10 @@ export class DevicesController {
   @ApiResponse({ status: 200, description: 'Device removed' })
   async remove(
     @Request() req: { user: User },
-    @Param('id') id: string,
-    @Query('branchId') queryBranchId?: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: DeviceQueryDto,
   ) {
-    const branchId = await this.getBranchId(req, queryBranchId);
+    const branchId = await this.getBranchId(req, query.branchId);
     return this.devicesService.remove(id, branchId);
   }
 }

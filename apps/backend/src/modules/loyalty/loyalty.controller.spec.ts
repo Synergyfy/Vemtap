@@ -22,6 +22,7 @@ describe('LoyaltyController', () => {
     deleteReward: jest.fn(),
     generateRedemptionCode: jest.fn(),
     redeemReward: jest.fn(),
+    getCustomerAnalytics: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -57,7 +58,7 @@ describe('LoyaltyController', () => {
   describe('getMyLogs', () => {
     it('should call getPointLogs', async () => {
       const businessId = 'biz-1';
-      await controller.getMyLogs(mockReq as any, businessId, 1, 10);
+      await controller.getMyLogs(mockReq as any, businessId, { page: 1, limit: 10 });
       expect(service.getPointLogs).toHaveBeenCalledWith(mockUser.id, businessId, 1, 10);
     });
   });

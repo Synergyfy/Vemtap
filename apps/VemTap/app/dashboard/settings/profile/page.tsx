@@ -17,6 +17,8 @@ import { useCategories } from '@/services/categories/hooks';
 import { useRewards } from '@/services/loyalty/hooks';
 import Modal from '@/components/ui/Modal';
 import { api } from '@/lib/api';
+import ProfileTabs from '@/components/dashboard/settings/profile/ProfileTabs';
+import PushNotificationsTab from '@/components/dashboard/settings/profile/PushNotificationsTab';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
@@ -462,12 +464,16 @@ export default function BusinessProfilePage() {
 
             if (business) {
                 const businessUpdates: any = {};
-                if (hasChanged(categoryId, business.categoryId)) businessUpdates.categoryId = categoryId;
-                if (hasChanged(subcategoryId, business.subcategoryId)) businessUpdates.subcategoryId = subcategoryId;
-                if (hasChanged(otherSubcategoryName, business.otherSubcategoryName)) businessUpdates.otherSubcategoryName = otherSubcategoryName;
+                const normalizedSubcategoryId = subcategoryId === 'other' ? null : (subcategoryId || null);
+                const nextOtherSubcategoryName = subcategoryId === 'other' ? otherSubcategoryName : '';
+
+                if (hasChanged(categoryId, business.categoryId)) businessUpdates.categoryId = categoryId || null;
+                if (hasChanged(normalizedSubcategoryId, business.subcategoryId)) businessUpdates.subcategoryId = normalizedSubcategoryId;
+                if (hasChanged(nextOtherSubcategoryName, business.otherSubcategoryName)) {
+                    businessUpdates.otherSubcategoryName = nextOtherSubcategoryName || null;
+                }
                 if (hasChanged(isRegistered, business.isRegistered)) businessUpdates.isRegistered = isRegistered;
                 if (hasChanged(registrationNumber, business.registrationNumber)) businessUpdates.registrationNumber = registrationNumber;
-                if (hasChanged(cacType, business.cacType)) businessUpdates.cacType = cacType;
 
                 if (isAllBranches) {
                     if (hasChanged(name, business.name)) businessUpdates.name = name;
@@ -509,10 +515,8 @@ export default function BusinessProfilePage() {
                 if (hasChanged(rewardEnabled, branch.rewardEnabled)) branchUpdates.rewardEnabled = rewardEnabled;
                 if (hasChanged(rewardVisitThreshold, branch.rewardVisitThreshold)) branchUpdates.rewardVisitThreshold = rewardVisitThreshold;
 
-                if (hasChanged(instagramUrl, branch.instagramUrl)) branchUpdates.instagramUrl = instagramUrl;
                 if (hasChanged(linkedinUrl, branch.linkedinUrl)) branchUpdates.linkedinUrl = linkedinUrl;
                 if (hasChanged(reviewUrl, branch.reviewUrl)) branchUpdates.reviewUrl = reviewUrl;
-                if (hasChanged(trustpilotUrl, branch.trustpilotUrl)) branchUpdates.trustpilotUrl = trustpilotUrl;
                 if (hasChanged(showReview, branch.showReview)) branchUpdates.showReview = showReview;
                 if (hasChanged(showSocial, branch.showSocial)) branchUpdates.showSocial = showSocial;
                 if (hasChanged(showFeedback, branch.showFeedback)) branchUpdates.showFeedback = showFeedback;
@@ -546,13 +550,13 @@ export default function BusinessProfilePage() {
 
     const availableTabs = [
         { id: 'general', label: 'General', icon: 'business' },
+        { id: 'push', label: 'Push', icon: 'notifications_active' },
         { id: 'schedule', label: 'Schedule', icon: 'calendar_today', branchOnly: true },
         { id: 'socials', label: 'Socials', icon: 'share', branchOnly: true },
         { id: 'rewards', label: 'Rewards', icon: 'auto_awesome', branchOnly: true },
-        { id: 'push', label: 'Push', icon: 'notifications_active' },
         { id: 'qr', label: 'QR Code', icon: 'qr_code_2' },
         { id: 'documents', label: 'Documents', icon: 'description', bizOnly: true },
-    ].filter(tab => {
+    ].filter((tab) => {
         if (isAllBranches) {
             return !tab.branchOnly; 
         }
@@ -591,40 +595,7 @@ export default function BusinessProfilePage() {
                 </div>
             )}
 
-            <div className="relative mb-8">
-                <div className="absolute left-0 top-0 bottom-2 z-10">
-                    <button 
-                        onClick={() => document.getElementById('tabs-container')?.scrollBy({ left: -200, behavior: 'smooth' })}
-                        className="h-full px-2 bg-white border-r border-gray-200 hover:bg-gray-50 flex items-center justify-center"
-                    >
-                        <span className="material-icons-round text-gray-400">chevron_left</span>
-                    </button>
-                </div>
-                <div 
-                    id="tabs-container"
-                    className="flex items-center gap-1 overflow-x-auto scroll-smooth pb-2 border-b border-gray-100 px-10"
-                    style={{ scrollbarWidth: 'thin', scrollbarColor: '#e5e7eb transparent' }}
-                >
-                    {availableTabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-secondary hover:bg-gray-50'}`}
-                        >
-                            <span className="material-icons-round text-lg">{tab.icon}</span>
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-                <div className="absolute right-0 top-0 bottom-2 z-10">
-                    <button 
-                        onClick={() => document.getElementById('tabs-container')?.scrollBy({ left: 200, behavior: 'smooth' })}
-                        className="h-full px-2 bg-white border-l border-gray-200 hover:bg-gray-50 flex items-center justify-center"
-                    >
-                        <span className="material-icons-round text-gray-400">chevron_right</span>
-                    </button>
-                </div>
-            </div>
+            <ProfileTabs tabs={availableTabs} activeTab={activeTab} onChange={setActiveTab} />
 
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {activeTab === 'general' && (
@@ -987,75 +958,16 @@ export default function BusinessProfilePage() {
                 )}
 
                 {activeTab === 'push' && (
-                    <div className="space-y-6">
-                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                                <div>
-                                    <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Push Notifications</h3>
-                                    <p className="text-xs text-text-secondary mt-1">Enable browser notifications for new messages and alerts.</p>
-                                </div>
-                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                                    pushSupported ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-200'
-                                }`}>
-                                    {pushSupported ? 'Supported' : 'Unsupported'}
-                                </span>
-                            </div>
-                            <div className="p-8 space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="rounded-2xl border border-gray-100 p-4">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">Permission</p>
-                                        <p className="text-sm font-bold text-text-main capitalize">{pushPermission}</p>
-                                    </div>
-                                    <div className="rounded-2xl border border-gray-100 p-4">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">Status</p>
-                                        <p className="text-sm font-bold text-text-main">{pushSubscribed ? 'Enabled' : 'Not enabled'}</p>
-                                    </div>
-                                    <div className="rounded-2xl border border-gray-100 p-4">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">Delivery</p>
-                                        <p className="text-sm font-bold text-text-main">Browser push</p>
-                                    </div>
-                                </div>
-
-                                {pushPermission === 'denied' && (
-                                    <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-xs text-amber-700 font-medium">
-                                        Notifications are blocked in your browser settings. Enable them to receive push alerts.
-                                    </div>
-                                )}
-
-                                {pushError && (
-                                    <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-xs text-red-600 font-medium">
-                                        {pushError}
-                                    </div>
-                                )}
-
-                                <div className="flex flex-wrap gap-3">
-                                    {pushSubscribed ? (
-                                        <button
-                                            onClick={handleDisablePush}
-                                            disabled={pushLoading}
-                                            className="h-11 px-5 rounded-xl border border-gray-200 text-xs font-black uppercase tracking-widest text-text-secondary hover:bg-gray-50 disabled:opacity-60"
-                                        >
-                                            {pushLoading ? 'Updating...' : 'Disable Push'}
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={handleEnablePush}
-                                            disabled={pushLoading || !pushSupported}
-                                            className="h-11 px-5 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary-hover disabled:opacity-60"
-                                        >
-                                            {pushLoading ? 'Enabling...' : 'Enable Push'}
-                                        </button>
-                                    )}
-                                </div>
-
-                                {!vapidPublicKey && (
-                                    <p className="text-[11px] text-text-secondary">
-                                        Add `NEXT_PUBLIC_VAPID_PUBLIC_KEY` to enable browser push subscriptions.
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                    </div>
+                    <PushNotificationsTab
+                        pushSupported={pushSupported}
+                        pushPermission={pushPermission}
+                        pushSubscribed={pushSubscribed}
+                        pushLoading={pushLoading}
+                        pushError={pushError}
+                        vapidPublicKey={vapidPublicKey}
+                        onEnable={handleEnablePush}
+                        onDisable={handleDisablePush}
+                    />
                 )}
 
                 {activeTab === 'rewards' && !isAllBranches && (

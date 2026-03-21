@@ -8,6 +8,25 @@ export type BusinessBranchSummary = {
     isActive?: boolean;
     isMainBranch?: boolean;
     address?: string;
+    city?: string;
+    state?: string;
+    phone?: string;
+    logoUrl?: string;
+    website?: string;
+    whatsappNumber?: string;
+    officialEmail?: string;
+    about?: string;
+    welcomeMessage?: string;
+    businessHours?: Record<string, BusinessHours>;
+    showRewards?: boolean;
+    showSocial?: boolean;
+    showFeedback?: boolean;
+    facebookUrl?: string;
+    instagramUrl?: string;
+    xUrl?: string;
+    linkedinUrl?: string;
+    tiktokUrl?: string;
+    youtubeUrl?: string;
 };
 export type PublicBusinessResponse = {
     id?: string;

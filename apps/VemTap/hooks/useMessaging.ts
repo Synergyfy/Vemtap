@@ -71,6 +71,20 @@ export const useSendReply = (isCustomer: boolean = false) => {
   });
 };
 
+export const useStartConversation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ branchId, content }: { branchId: string; content: string }) =>
+      api.post('/customer/messaging/threads/start', { branchId, content }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
+      if (data?.threadId) {
+        queryClient.invalidateQueries({ queryKey: ['chat-messages', data.threadId] });
+      }
+    },
+  });
+};
+
 export const useMarkThreadAsRead = (isCustomer: boolean = false) => {
   const queryClient = useQueryClient();
   return useMutation({

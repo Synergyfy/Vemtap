@@ -62,7 +62,13 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
         router.push('/login');
     };
 
-    const menuItems = [
+    const menuItems: Array<{
+        id: string;
+        label: string;
+        icon: typeof LayoutGrid;
+        href: string;
+        external?: boolean;
+    }> = [
         {
             id: 'overview',
             label: 'Dashboard',

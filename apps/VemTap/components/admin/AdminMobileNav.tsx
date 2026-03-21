@@ -20,9 +20,9 @@ export default function AdminMobileNav() {
             href: '/admin/businesses'
         },
         {
-            label: 'Users',
+            label: 'Customers',
             icon: Users,
-            href: '/admin/users'
+            href: '/admin/users/customers'
         },
         {
             label: 'Devices',
