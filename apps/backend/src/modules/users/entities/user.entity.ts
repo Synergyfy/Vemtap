@@ -146,6 +146,10 @@ export class User extends AbstractBaseEntity {
   @Column({ default: false })
   optOut: boolean;
 
+  @ApiProperty({ example: false, description: 'Whether the user has changed their default password' })
+  @Column({ default: false })
+  isPasswordChanged: boolean;
+
   @BeforeInsert()
   @BeforeUpdate()
   normalizeEmail() {

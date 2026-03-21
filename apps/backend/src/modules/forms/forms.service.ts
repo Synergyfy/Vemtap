@@ -13,8 +13,10 @@ import { SubmitFormResponseDto } from './dto/submit-form-response.dto';
 import { CreateFormTemplateDto } from './dto/create-form-template.dto';
 import { UpdateFormTemplateDto } from './dto/update-form-template.dto';
 import { FormTemplateQueryDto } from './dto/form-template-query.dto';
+import { AdminFormQueryDto } from './dto/admin-form.dto';
 import { BranchesService } from '../branches/branches.service';
 import { DevicesService } from '../devices/devices.service';
+import { FormTemplateStatsDto } from './dto/form-template-stats.dto';
 import { User } from '../users/entities/user.entity';
 
 @Injectable()
@@ -40,12 +42,13 @@ export class FormsService {
     return this.branchesService.checkBranchAccess(user, branchId);
   }
 
-  async createForm(branchId: string, dto: CreateFormDto): Promise<Form> {
+  async createForm(branchId: string, dto: CreateFormDto, creatorId?: string): Promise<Form> {
     const branch = await this.branchesService.findById(branchId);
     const form = this.formsRepository.create({
       ...dto,
       branchId,
       businessId: branch.businessId,
+      creatorId,
     });
     return this.formsRepository.save(form);
   }
@@ -183,7 +186,64 @@ export class FormsService {
     await this.formTemplatesRepository.remove(template);
   }
 
-  async useTemplate(branchId: string, templateId: string): Promise<Form> {
+  async getTemplateStats(templateId: string): Promise<FormTemplateStatsDto> {
+    const template = await this.findTemplateById(templateId);
+
+    const forms = await this.formsRepository.find({
+      where: { templateId },
+      relations: ['branch', 'branch.business'],
+      select: {
+        id: true,
+        responseCount: true,
+        branchId: true,
+        businessId: true,
+        branch: {
+          id: true,
+          name: true,
+          business: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    const usageCount = forms.length;
+    const totalResponses = forms.reduce((sum, form) => sum + (form.responseCount || 0), 0);
+    const uniqueBranchesCount = new Set(forms.map((f) => f.branchId).filter(Boolean)).size;
+    const uniqueBusinessesCount = new Set(forms.map((f) => f.businessId).filter(Boolean)).size;
+
+    const usage = forms.map((form) => ({
+      formId: form.id,
+      branchName: form.branch?.name || 'Unknown Branch',
+      businessName: form.branch?.business?.name || 'Unknown Business',
+      responseCount: form.responseCount || 0,
+    }));
+
+    return {
+      templateId,
+      templateName: template.name,
+      usageCount,
+      totalResponses,
+      uniqueBranchesCount,
+      uniqueBusinessesCount,
+      usage,
+    };
+  }
+
+  async getAllTemplatesStats(): Promise<FormTemplateStatsDto[]> {
+    const templates = await this.formTemplatesRepository.find({
+      select: ['id', 'name'],
+    });
+
+    const stats = await Promise.all(
+      templates.map((template) => this.getTemplateStats(template.id)),
+    );
+
+    return stats;
+  }
+
+  async useTemplate(branchId: string, templateId: string, creatorId?: string): Promise<Form> {
     const template = await this.findTemplateById(templateId);
     const branch = await this.branchesService.findById(branchId);
 
@@ -192,6 +252,8 @@ export class FormsService {
       description: template.description,
       branchId,
       businessId: branch.businessId,
+      templateId,
+      creatorId,
       isActive: true,
       isPublished: false,
     });
@@ -216,10 +278,32 @@ export class FormsService {
   }
 
   // Admin Methods
-  async findAllForAdmin(query: { branchId?: string }) {
-    const where: FindOptionsWhere<Form> = {};
-    if (query.branchId) where.branchId = query.branchId;
-    return this.formsRepository.find({ where, relations: ['branch'] });
+  async findAllForAdmin(query: AdminFormQueryDto): Promise<{ items: Form[]; total: number }> {
+    const { branchId, businessId, search, page = 1, limit = 10 } = query;
+    const skip = (page - 1) * limit;
+
+    const where: FindOptionsWhere<Form>[] = [];
+    
+    const baseWhere: FindOptionsWhere<Form> = {};
+    if (branchId) baseWhere.branchId = branchId;
+    if (businessId) baseWhere.businessId = businessId;
+
+    if (search) {
+      where.push({ ...baseWhere, title: Like(`%${search}%`) });
+      where.push({ ...baseWhere, description: Like(`%${search}%`) });
+    } else {
+      where.push(baseWhere);
+    }
+
+    const [items, total] = await this.formsRepository.findAndCount({
+      where: where.length > 1 ? where : where[0],
+      relations: ['branch', 'branch.business', 'creator'],
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
+    });
+
+    return { items, total };
   }
 
   async setAdminDisabledStatus(id: string, isDisabled: boolean) {
