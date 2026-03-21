@@ -13,7 +13,7 @@ import { CreateTicketDto } from './dto/create-ticket.dto';
 import { FindTicketsAdminDto } from './dto/find-tickets-admin.dto';
 import { TicketStatus, TicketType } from './entities/support-ticket.entity';
 import {
-  UpdateTicketStatusDto,
+  UpdateTicketStatusAdminDto,
   AssignTicketDto,
   AdminTicketMessageDto,
 } from './dto/update-ticket-admin.dto';
@@ -108,10 +108,10 @@ export class SupportController {
   @Post('admin/tickets/:id/status')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Update ticket status' })
-  @ApiBody({ type: UpdateTicketStatusDto })
+  @ApiBody({ type: UpdateTicketStatusAdminDto })
   async updateTicketStatus(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateTicketStatusDto,
+    @Body() dto: UpdateTicketStatusAdminDto,
   ) {
     return this.supportService.updateStatus(id, dto.status);
   }
