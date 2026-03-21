@@ -10,6 +10,7 @@ import {
   UseGuards,
   Request,
   BadRequestException,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -39,8 +40,6 @@ import {
   AutomationPerformanceResponseDto,
 } from '../dto/automation-rule.dto';
 import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
-import { IdDto } from '../dto/id.dto';
-import { SessionIdDto } from '../dto/session-id.dto';
 
 @ApiTags('Messaging Automations')
 @Controller('messaging/automations')
@@ -153,7 +152,7 @@ export class AutomationsController {
   @ApiParam({ name: 'sessionId', description: 'Session UUID from logs' })
   @ApiOkResponse({ type: AutomationLogResponseDto, description: 'Session log details' })
   async getLogDetails(
-    @Param() { sessionId }: SessionIdDto,
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
     @Request() req: { user: User },
   ) {
     const branchId = await this.getBranchId(req);
@@ -218,7 +217,7 @@ export class AutomationsController {
   })
   @ApiParam({ name: 'id', description: 'Automation rule UUID' })
   @ApiOkResponse({ type: AutomationRule, description: 'Automation rule details' })
-  async findOne(@Param() { id }: IdDto, @Request() req: { user: User }) {
+  async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: { user: User }) {
     const branchId = await this.getBranchId(req);
     const rule = await this.automationService.findOne(id);
     if (!rule) throw new BadRequestException('Rule not found');
@@ -237,7 +236,7 @@ export class AutomationsController {
   @ApiBody({ type: UpdateAutomationRuleDto })
   @ApiOkResponse({ type: AutomationRule, description: 'Automation rule updated successfully' })
   async update(
-    @Param() { id }: IdDto,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAutomationRuleDto,
     @Request() req: { user: User },
   ) {
@@ -258,7 +257,7 @@ export class AutomationsController {
   })
   @ApiParam({ name: 'id', description: 'Automation rule UUID' })
   @ApiOkResponse({ description: 'Rule deleted successfully' })
-  async remove(@Param() { id }: IdDto, @Request() req: { user: User }) {
+  async remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: { user: User }) {
     const branchId = await this.getBranchId(req);
     const rule = await this.automationService.findOne(id);
     if (!rule) throw new BadRequestException('Rule not found');
@@ -278,7 +277,7 @@ export class AutomationsController {
   @ApiBody({ type: UpdateAutomationToggleDto })
   @ApiOkResponse({ type: AutomationRule, description: 'Toggle status updated successfully' })
   async toggle(
-    @Param() { id }: IdDto,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAutomationToggleDto,
     @Request() req: { user: User },
   ) {
@@ -301,7 +300,7 @@ export class AutomationsController {
   @ApiBody({ type: UpdateAutomationConfigDto })
   @ApiOkResponse({ type: AutomationRule, description: 'Automation configuration updated successfully' })
   async configure(
-    @Param() { id }: IdDto,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAutomationConfigDto,
     @Request() req: { user: User },
   ) {

@@ -13,7 +13,6 @@ import { BatchSendProcessor } from '../../src/modules/messaging/processors/batch
 import { IndividualSendProcessor } from '../../src/modules/messaging/processors/individual-send.processor';
 import { FlowDelayProcessor } from '../../src/modules/messaging/processors/flow-delay.processor';
 import { AutomationProcessor } from '../../src/modules/messaging/processors/automation.processor';
-import { TestErrorFilter } from '../../src/common/filters/test-error.filter';
 
 export async function createTestApp(
   configureBuilder?: (builder: TestingModuleBuilder) => void,
@@ -22,8 +21,6 @@ export async function createTestApp(
   const builder = Test.createTestingModule({
     imports: [AppModule],
   });
-
-  // ... (rest of the mocking logic)
 
   // Mock BullMQ Queues to avoid Redis connections in E2E tests
   const mockQueue = {
@@ -72,11 +69,7 @@ export async function createTestApp(
   console.log('[TestApp] Configuring application...');
   await configureApp(app);
 
-  // Apply test-only error logger
-  app.useGlobalFilters(new TestErrorFilter());
-
   console.log('[TestApp] Initializing application (app.init())...');
-
   await app.init();
 
   console.log('[TestApp] Application initialized successfully.');

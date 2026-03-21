@@ -10,6 +10,7 @@ import {
   BadRequestException,
   ValidationPipe,
   UsePipes,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -32,7 +33,6 @@ import {
   GetFlowsDto,
 } from '../dto/create-flow.dto';
 import { MessagingFlowService } from '../services/messaging-flow.service';
-import { IdDto } from '../dto/id.dto';
 
 @ApiTags('Flow Builder')
 @Controller('messaging/flows')
@@ -67,7 +67,7 @@ export class FlowController {
   @ApiOperation({ summary: 'Update flow status (active/draft/paused)' })
   @ApiBody({ type: UpdateFlowStatusDto })
   async updateStatus(
-    @Param() { id }: IdDto,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateFlowStatusDto,
     @Request() req: any,
   ) {

@@ -24,7 +24,6 @@ import {
   UsePointCodeDto,
   GenerateRedemptionCodeDto,
   RedeemRewardDto,
-  BranchIdParamDto,
 } from './dto/loyalty.dto';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { CustomerAnalyticsQueryDto, PointLogsQueryDto } from './dto/loyalty-query.dto';
@@ -176,7 +175,7 @@ export class LoyaltyController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiResponse({ status: 200, description: 'Returns list of rewards' })
   async getBranchRewards(
-    @Param() { branchId }: BranchIdParamDto,
+    @Param('branchId') branchId: string,
     @Query() query: PaginationQueryDto,
   ) {
     return this.loyaltyService.getBranchRewards(

@@ -35,13 +35,7 @@ export class TwilioWebhookController {
       throw new UnauthorizedException('Invalid signature');
     }
 
-    if (!payload) {
-      this.logger.warn('Received empty payload from Twilio webhook');
-      return { status: 'ignored' };
-    }
-
     this.logger.log(`Received Twilio webhook: ${payload.SmsSid || payload.MessageSid}`);
-
     
     // 2. Process Webhook
     const parsed = await this.twilioProvider.parseWebhook(payload);
