@@ -30,7 +30,7 @@ export const loyaltyApi = {
 
   // Fetch rewards for a branch
   fetchRewardsByBusiness: async (branchId: string): Promise<Reward[]> => {
-    return api.get(`/loyalty/rewards?branchId=${branchId}`);
+    return api.get(`/loyalty/rewards/branch/${branchId}`);
   },
 
   // Redeem reward
@@ -60,11 +60,15 @@ export const loyaltyApi = {
 
   // Reward Management (Admin)
   createReward: async (branchId: string, reward: Partial<Reward>): Promise<Reward> => {
-    return api.post(`/loyalty/rewards?branchId=${branchId}`, reward);
+    const payload = { ...reward };
+    delete payload.totalAvailable;
+    return api.post(`/visitors/rewards?branchId=${branchId}`, payload);
   },
 
   updateReward: async (branchId: string, rewardId: string, updates: Partial<Reward>): Promise<Reward | null> => {
-    return api.patch(`/loyalty/rewards/${rewardId}?branchId=${branchId}`, updates);
+    const payload = { ...updates };
+    delete payload.totalAvailable;
+    return api.patch(`/loyalty/rewards/${rewardId}?branchId=${branchId}`, payload);
   },
 
   // Fetch customer overall analytics (visits, points, savings)
