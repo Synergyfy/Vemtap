@@ -95,6 +95,14 @@ export class Business extends AbstractBaseEntity {
   @Column({ nullable: true })
   whatsappNumber: string;
 
+  @ApiProperty({ example: false, description: 'Whether the business is verified by admin' })
+  @Column({ default: false })
+  isVerified: boolean;
+
+  @ApiProperty({ example: '2026-03-21T18:00:00Z', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
+  verifiedAt: Date | null;
+
   // Relation to the owner
   @OneToOne(() => User, (user) => user.ownedBusiness, {
     onDelete: 'CASCADE',
