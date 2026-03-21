@@ -600,8 +600,10 @@ function ConversationItem({
     onClick: () => void;
 }) {
     const isTyping = useChatStore(s => s.typingByThread[conversation.id]);
-    const { contact } = conversation;
-    const name = contact?.name || 'Unknown';
+    const customer = conversation.customer;
+    const name = customer?.firstName 
+        ? `${customer.firstName} ${customer.lastName || ''}`.trim() 
+        : (conversation.contact?.name || 'Unknown');
 
     return (
         <div className={`w-full group/item flex items-center transition-colors border-r-4 ${
@@ -628,8 +630,8 @@ function ConversationItem({
             >
                 {/* Avatar */}
                 <div className="relative flex-shrink-0">
-                    {contact?.avatar ? (
-                        <img src={contact.avatar} alt={name} className="w-12 h-12 rounded-full object-cover" />
+                    {customer?.avatar ? (
+                        <img src={customer.avatar} alt={name} className="w-12 h-12 rounded-full object-cover" />
                     ) : (
                         <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm ${getAvatarColor(conversation.id)}`}>
                             {getInitials(name)}
@@ -655,9 +657,9 @@ function ConversationItem({
                                 conversation.lastMessage?.content || conversation.status || 'Active conversation'
                             )}
                         </p>
-                        {Array.isArray(contact?.tags) && contact.tags.length > 0 && (
+                        {Array.isArray(customer?.tags) && customer.tags.length > 0 && (
                             <div className="flex gap-1 shrink-0 ml-1">
-                                {contact.tags.slice(0, 1).map((t: string) => (
+                                {customer.tags.slice(0, 1).map((t: string) => (
                                     <span key={t} className="px-1.5 py-0.5 bg-emerald-100 text-emerald-600 text-[9px] font-bold rounded-md whitespace-nowrap">
                                         {t}
                                     </span>
@@ -684,7 +686,7 @@ function WhatsAppContactItem({
     onChat: () => void;
     businessName: string;
 }) {
-    const name = visitor.name || 'Unknown';
+    const name = visitor.name || (visitor.firstName ? `${visitor.firstName} ${visitor.lastName || ''}`.trim() : 'Unknown');
     const hasPhone = !!visitor.phone;
 
     return (

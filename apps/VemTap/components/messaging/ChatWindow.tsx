@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
-import { Search, Maximize2, Minimize2, Check, CheckCheck, FileText, Info, Smartphone, MessageSquare, CornerUpLeft, Settings } from 'lucide-react';
+import { Search, Maximize2, Minimize2, Check, CheckCheck, FileText, Info, Smartphone, MessageSquare, CornerUpLeft, Settings, ArrowLeft } from 'lucide-react';
 import ChatInput from './ChatInput';
 import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
@@ -259,8 +259,16 @@ export default function ChatWindow() {
     return (
         <div className={`flex-1 flex flex-col h-full min-h-0 bg-white transition-all duration-300 relative ${isFullScreen ? 'fixed inset-0 z-[100] m-0 rounded-none' : ''}`}>
             {/* Header */}
-            <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 z-10 bg-white shrink-0">
+            <header className="h-16 flex items-center justify-between px-4 border-b border-slate-200 z-10 bg-white shrink-0">
                 <div className="flex items-center gap-3 min-w-0">
+                    {/* Mobile Back Button */}
+                    <button
+                        onClick={() => setActiveConversation(null)}
+                        className="md:hidden p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg"
+                    >
+                        <ArrowLeft size={20} />
+                    </button>
+                    
                     <button
                         type="button"
                         onClick={() => setShowProfile(prev => !prev)}
@@ -268,9 +276,9 @@ export default function ChatWindow() {
                         title="View profile"
                     >
                         {contact?.avatar ? (
-                            <img src={contact.avatar} alt={contactName} className="w-10 h-10 rounded-full object-cover" />
+                            <img src={contact.avatar} alt={contactName} className="w-9 h-9 rounded-full object-cover" />
                         ) : (
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs ${getAvatarColor(activeConv.id)}`}>
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs ${getAvatarColor(activeConv.id)}`}>
                                 {getInitials(contactName)}
                             </div>
                         )}
@@ -279,12 +287,12 @@ export default function ChatWindow() {
                         <h2 className="text-sm font-bold text-slate-800 leading-tight truncate" title={contactName}>
                             {contactName}
                         </h2>
-                        <p className="text-[11px] text-slate-400 truncate">
+                        <p className="text-[10px] text-slate-400 truncate font-medium">
                             {isTyping ? 'Typing...' : (contact?.phone || contact?.email || 'Active now')}
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-3 text-slate-400">
+                <div className="flex items-center gap-1 text-slate-400">
                     <button
                         onClick={() => setShowProfile(prev => !prev)}
                         className={`p-2 rounded-lg transition-colors ${showProfile ? 'text-primary bg-primary/10' : 'hover:text-slate-600 hover:bg-slate-50'}`}
@@ -294,25 +302,27 @@ export default function ChatWindow() {
                     </button>
                     <button 
                         onClick={() => setIsFullScreen(!isFullScreen)}
-                        className="p-2 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+                        className="hidden md:block p-2 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
                     >
                         {isFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                     </button>
                     {!isCustomer && (
                         <Link 
                             href={`/dashboard/messaging/chat/settings${branchId ? `?branchId=${branchId}` : ''}`}
-                            className="p-2 text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-all flex items-center gap-2 font-bold text-xs ring-1 ring-primary/20 shadow-sm shadow-primary/5"
+                            className="p-2 text-primary hover:bg-primary/5 rounded-lg transition-all"
                         >
                             <Settings size={18} />
-                            <span>Settings</span>
                         </Link>
                     )}
                 </div>
             </header>
 
             <div className={`flex-1 flex flex-col min-h-0 transition-[padding] duration-300 ${showProfile ? 'pr-80' : ''}`}>
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-3 chat-bg custom-scrollbar">
+                {/* Messages: Add dynamic padding to accommodate keyboard */}
+                <div 
+                    className="flex-1 overflow-y-auto p-6 space-y-3 chat-bg custom-scrollbar"
+                    style={{ paddingBottom: 'env(safe-area-inset-bottom, 1rem)' }}
+                >
                     {isLoading ? (
                         <div className="flex items-center justify-center h-full text-slate-400 text-sm">Loading messages...</div>
                     ) : threadMessages.length === 0 ? (
@@ -352,16 +362,18 @@ export default function ChatWindow() {
                     <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input */}
-                <ChatInput
-                    conversationId={activeConversationId || undefined}
-                    replyTo={replyToMessage}
-                    onCancelReply={() => setReplyToMessage(null)}
-                    onTypingChange={(next) => {
-                        if (!activeConversationId || isMockThread) return;
-                        emitTyping(activeConversationId, next);
-                    }}
-                />
+                {/* Input: Use viewport-height-aware positioning to stay above keyboard */}
+                <div className="shrink-0 bg-white border-t border-slate-200 p-2 safe-area-bottom">
+                    <ChatInput
+                        conversationId={activeConversationId || undefined}
+                        replyTo={replyToMessage}
+                        onCancelReply={() => setReplyToMessage(null)}
+                        onTypingChange={(next) => {
+                            if (!activeConversationId || isMockThread) return;
+                            emitTyping(activeConversationId, next);
+                        }}
+                    />
+                </div>
             </div>
 
             {/* Profile Panel */}

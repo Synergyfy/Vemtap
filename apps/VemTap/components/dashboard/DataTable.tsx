@@ -42,7 +42,7 @@ export default function DataTable<T extends { id: string | number }>({
                             {columns.map((column, index) => (
                                 <th
                                     key={index}
-                                    className={`text-left py-4 px-6 text-[10px] font-black uppercase tracking-widest text-text-secondary ${column.className || ''}`}
+                                    className={`text-left py-3 px-4 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-text-secondary ${column.className || ''}`}
                                 >
                                     {column.header}
                                 </th>
@@ -57,7 +57,7 @@ export default function DataTable<T extends { id: string | number }>({
                                 className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                             >
                                 {columns.map((column, index) => (
-                                    <td key={index} className={`py-4 px-6 text-sm ${column.className || ''}`}>
+                                    <td key={index} className={`py-3 px-4 text-xs md:text-sm ${column.className || ''}`}>
                                         {typeof column.accessor === 'function'
                                             ? column.accessor(item)
                                             : (item[column.accessor] as React.ReactNode)}
