@@ -14,7 +14,7 @@ export const useMyBusiness = (enabled = true) => {
             const data = await api.get('/businesses/my-business');
             return data;
         },
-        enabled: enabled && !isCustomer,
+        enabled: enabled && !!user && !isCustomer,
     });
 };
 

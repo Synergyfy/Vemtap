@@ -1,16 +1,42 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
+// --- Helpers ---
+
+const normalizeThread = (thread: any, isCustomer: boolean) => {
+  if (!thread) return thread;
+  if (thread.contact) return thread; // Already normalized or mock
+
+  const contact = isCustomer
+    ? {
+        id: thread.branch?.id || thread.branchId,
+        name: thread.branch?.business?.name || 'Business',
+        avatar: thread.branch?.business?.logoUrl,
+        isOnline: false,
+      }
+    : {
+        id: thread.customer?.id || thread.customerId,
+        name: thread.customer?.firstName 
+          ? `${thread.customer.firstName} ${thread.customer.lastName || ''}`.trim() 
+          : (thread.customer?.name || 'Customer'),
+        avatar: thread.customer?.avatar,
+        isOnline: false,
+      };
+
+  return { ...thread, contact };
+};
+
 // --- Inbox Hooks ---
 
 export const useChatThreads = (channel: string = 'IN_HOUSE', branchId?: string, isCustomer: boolean = false) => {
   return useQuery({
     queryKey: ['chat-threads', channel, branchId, isCustomer],
-    queryFn: () => {
+    queryFn: async () => {
       const endpoint = isCustomer 
         ? `/customer/messaging/threads`
         : `/messaging/inbox/${channel}${branchId ? `?branchId=${branchId}` : ''}`;
-      return api.get(endpoint);
+      const data = await api.get(endpoint);
+      return (data as any[]).map(t => normalizeThread(t, isCustomer));
     },
     enabled: isCustomer || !!branchId || channel === 'IN_HOUSE',
   });
@@ -25,7 +51,7 @@ export const useThreadMessages = (threadId: string, branchId?: string, isCustome
         : `/messaging/inbox/threads/${threadId}${branchId ? `?branchId=${branchId}` : ''}`;
       return api.get(endpoint);
     },
-    enabled: !!threadId,
+    enabled: !!threadId && threadId !== 'default',
   });
 };
 
@@ -63,7 +89,7 @@ export const useStartBranchConversation = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ branchId, customerId, content, channel = 'IN_HOUSE' }: { branchId: string; customerId: string; content: string; channel?: string }) =>
-            api.post('/messaging/send', { branchId, customerIds: [customerId], content, channel, audienceType: 'DIRECT' }),
+            api.post('/messaging/send', { branchId, customerIds: [customerId], content, channel, audienceType: 'GROUP' }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
         },
@@ -94,6 +120,42 @@ export const useMarkThreadAsRead = (isCustomer: boolean = false) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
+    },
+  });
+};
+
+export const useDeleteThread = (isCustomer: boolean = false) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ threadId, branchId }: { threadId: string; branchId?: string }) => {
+      const endpoint = isCustomer
+        ? `/customer/messaging/threads/${threadId}`
+        : `/messaging/inbox/threads/${threadId}${branchId ? `?branchId=${branchId}` : ''}`;
+      return api.delete(endpoint);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
+    },
+  });
+};
+
+export const useDeleteMessage = (isCustomer: boolean = false) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ messageId, threadId, branchId }: { messageId: string; threadId: string; branchId?: string }) => {
+      // Mock deletion as requested: just delay 300ms to simulate network request
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return { success: true };
+    },
+    onSuccess: (_, variables) => {
+      // Optimistically update the query cache to remove the message from the UI instantly
+      queryClient.setQueryData(
+        ['chat-messages', variables.threadId, variables.branchId, isCustomer], 
+        (oldData: any) => {
+          if (!Array.isArray(oldData)) return oldData;
+          return oldData.filter((msg: any) => msg.id !== variables.messageId);
+        }
+      );
     },
   });
 };

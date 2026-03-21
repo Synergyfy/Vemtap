@@ -89,8 +89,6 @@ export class InboxService {
       thread.branchUnreadCount = 0;
     } else if (customerId) {
       thread.customerUnreadCount = 0;
-    }
-
     await this.threadRepo.save(thread);
   }
 
