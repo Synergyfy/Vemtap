@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { toast } from 'react-hot-toast';
 import DynamicQRCode from '@/components/shared/DynamicQRCode';
@@ -37,6 +38,7 @@ const statesData: Record<string, string[]> = {
 };
 
 export default function BusinessProfilePage() {
+    const searchParams = useSearchParams();
     const { storeName, logoUrl, updateCustomSettings, setRedirect } = useCustomerFlowStore();
     const user = useAuthStore((state) => state.user);
     const { activeBranchId, isAllBranches: rawIsAllBranches } = useActiveBranch();
@@ -86,6 +88,8 @@ export default function BusinessProfilePage() {
     const [registrationNumber, setRegistrationNumber] = useState('');
     const [cacDocument, setCacDocument] = useState('');
     const [idDocument, setIdDocument] = useState('');
+    const [identityNumber, setIdentityNumber] = useState('');
+    const [utilityBill, setUtilityBill] = useState('');
     const [isDocsCollapsed, setIsDocsCollapsed] = useState(false);
 
     const [facebookUrl, setFacebookUrl] = useState('');
@@ -103,6 +107,15 @@ export default function BusinessProfilePage() {
     const [showFeedback, setShowFeedback] = useState(true);
     const [showRewards, setShowRewards] = useState(true);
     const [activeTab, setActiveTab] = useState('general');
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab && ['general', 'push', 'schedule', 'socials', 'rewards', 'qr', 'documents'].includes(tab)) {
+            setActiveTab(tab);
+        }
+    }, [searchParams]);
+
+    const [isEditingGeneral, setIsEditingGeneral] = useState(false);
     const [showRewardsModal, setShowRewardsModal] = useState(false);
     const [pushSupported, setPushSupported] = useState(false);
     const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
@@ -168,7 +181,13 @@ export default function BusinessProfilePage() {
                 return;
             }
 
-            const registration = await navigator.serviceWorker.register('/sw.js');
+            await navigator.serviceWorker.register('/sw.js');
+            const registration = await navigator.serviceWorker.ready;
+
+            if (!registration.active) {
+                throw new Error('Service Worker failed to activate.');
+            }
+
             const existing = await registration.pushManager.getSubscription();
             const subscription = existing || await registration.pushManager.subscribe({
                 userVisibleOnly: true,
@@ -302,6 +321,8 @@ export default function BusinessProfilePage() {
                 if ((business.registrationNumber || '').startsWith('BN')) setCacType('BN');
                 else if ((business.registrationNumber || '').startsWith('IT')) setCacType('IT');
                 else setCacType('RC');
+                setIdentityNumber(business.identityNumber || '');
+                setUtilityBill(business.utilityBill || '');
             }
 
             // Still update the redirect side effect
@@ -344,6 +365,9 @@ export default function BusinessProfilePage() {
             setShowSocial(branch.showSocial ?? true);
             setShowFeedback(branch.showFeedback ?? true);
             setShowRewards(branch.showRewards ?? true);
+            setIdentityNumber(branch.identityNumber || '');
+            setUtilityBill(branch.utilityBill || '');
+
 
             // Still update the redirect side effect
             if (qrId && derivedPublicProfileUrl) {
@@ -457,8 +481,10 @@ export default function BusinessProfilePage() {
 
             let finalCacDocument = cacDocument;
             let finalIdDocument = idDocument;
+            let finalUtilityBill = utilityBill;
             if (cacDocument && cacDocument.startsWith('data:image')) finalCacDocument = await uploadToCloudinary(cacDocument);
             if (idDocument && idDocument.startsWith('data:image')) finalIdDocument = await uploadToCloudinary(idDocument);
+            if (utilityBill && utilityBill.startsWith('data:image')) finalUtilityBill = await uploadToCloudinary(utilityBill);
 
             let didUpdate = false;
 
@@ -474,6 +500,7 @@ export default function BusinessProfilePage() {
                 }
                 if (hasChanged(isRegistered, business.isRegistered)) businessUpdates.isRegistered = isRegistered;
                 if (hasChanged(registrationNumber, business.registrationNumber)) businessUpdates.registrationNumber = registrationNumber;
+                if (hasChanged(identityNumber, business.identityNumber)) businessUpdates.identityNumber = identityNumber;
 
                 if (isAllBranches) {
                     if (hasChanged(name, business.name)) businessUpdates.name = name;
@@ -482,7 +509,7 @@ export default function BusinessProfilePage() {
                     if (hasChanged(finalLogoUrl, business.logoUrl)) businessUpdates.logoUrl = finalLogoUrl;
                 }
 
-                const docs = [finalCacDocument, finalIdDocument].filter(Boolean);
+                const docs = [finalCacDocument, finalIdDocument, finalUtilityBill].filter(Boolean);
                 if (docs.length > 0) businessUpdates.documents = docs;
 
                 if (Object.keys(businessUpdates).length > 0) {
@@ -520,33 +547,36 @@ export default function BusinessProfilePage() {
                 if (hasChanged(showReview, branch.showReview)) branchUpdates.showReview = showReview;
                 if (hasChanged(showSocial, branch.showSocial)) branchUpdates.showSocial = showSocial;
                 if (hasChanged(showFeedback, branch.showFeedback)) branchUpdates.showFeedback = showFeedback;
+                if (hasChanged(identityNumber, branch.identityNumber)) branchUpdates.identityNumber = identityNumber;
+                if (hasChanged(finalUtilityBill, branch.utilityBill)) branchUpdates.utilityBill = finalUtilityBill;
 
                 if (Object.keys(branchUpdates).length > 0) {
                     await updateBranchMutation.mutateAsync({ id: branch.id, updates: branchUpdates });
                     toast.success('Branch profile updated successfully!');
                     didUpdate = true;
                 }
-            }
-
-            if (!didUpdate) {
+                }
+                if (didUpdate) {
+                setIsEditingGeneral(false);
+                } else {
                 toast.success('No changes discovered.');
-            }
+                }
 
-            updateCustomSettings({ logoUrl: finalLogoUrl });
-            useCustomerFlowStore.setState({ storeName: name });
-        } catch (error) {
-            console.error('Save error:', error);
-            toast.error('Failed to update profile.');
-        }
-    };
+                updateCustomSettings({ logoUrl: finalLogoUrl });
+                useCustomerFlowStore.setState({ storeName: name });
+                } catch (error) {
+                console.error('Save error:', error);
+                toast.error('Failed to update profile.');
+                }
+                };
 
-    if (businessLoading || (effectiveBranchId && branchLoading)) {
-        return (
-            <div className="flex h-[calc(100vh-100px)] items-center justify-center">
+                if (businessLoading || (effectiveBranchId && branchLoading)) {
+                return (
+                <div className="flex h-[calc(100vh-100px)] items-center justify-center">
                 <Loader2 className="animate-spin text-primary" size={32} />
-            </div>
-        );
-    }
+                </div>
+                );
+                }
 
     const availableTabs = [
         { id: 'general', label: 'General', icon: 'business' },
@@ -563,6 +593,22 @@ export default function BusinessProfilePage() {
         return true; 
     });
 
+    // Health Check Progress Data
+    const healthTasks = [
+        { label: 'Business Name', completed: !!name, icon: 'business' },
+        { label: 'Business Logo', completed: !!logo, icon: 'image' },
+        { label: 'Category & Sub', completed: !!categoryId && (subcategoryId !== 'other' || !!otherSubcategoryName), icon: 'category' },
+        { label: 'Contact Info', completed: !!supportEmail || !!supportPhone, icon: 'contact_phone' },
+        { label: 'Location Details', completed: !!state && !!city && !!address, icon: 'map' },
+        { label: 'Business Reg.', completed: isRegistered ? !!registrationNumber : true, icon: 'fact_check' },
+        { label: 'CAC Document', completed: isRegistered ? !!cacDocument : true, icon: 'description' },
+        { label: 'Owner Identity', completed: !!idDocument && !!identityNumber, icon: 'person_pin' },
+        { label: 'Utility Bill', completed: !!utilityBill, icon: 'receipt_long' },
+    ];
+    const completedCount = healthTasks.filter(t => t.completed).length;
+    const totalCount = healthTasks.length;
+    const progress = (completedCount / totalCount) * 100;
+
 
     return (
         <div className="p-8 max-w-4xl mx-auto">
@@ -572,7 +618,7 @@ export default function BusinessProfilePage() {
                 actions={
                     <button
                         onClick={handleSave}
-                        disabled={updateMutation.isPending || updateBranchMutation.isPending}
+                        disabled={updateMutation.isPending || updateBranchMutation.isPending || (activeTab === 'general' && !isEditingGeneral)}
                         className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20 disabled:opacity-50"
                     >
                         {updateMutation.isPending || updateBranchMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
@@ -600,24 +646,90 @@ export default function BusinessProfilePage() {
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {activeTab === 'general' && (
                     <div className="space-y-8">
+                        {/* Health Check Progress UI */}
+                        {(isAllBranches || branches.length <= 1) && (
+                            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 overflow-hidden relative">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-10">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="text-xl font-display font-bold text-text-main">Health Check Progress</h3>
+                                            {progress === 100 && (
+                                                <span className="material-icons-round text-green-500 text-xl">verified</span>
+                                            )}
+                                        </div>
+                                        <p className="text-sm text-text-secondary font-normal">Verify your business to establish trust and unlock all features.</p>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <div className="text-2xl font-display font-black text-primary">{Math.round(progress)}% <span className="text-text-secondary text-sm font-normal">Health Score</span></div>
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-text-secondary mt-1">{completedCount} of {totalCount} tasks completed</div>
+                                    </div>
+                                </div>
+                                
+                                <div className="mt-8 flex flex-col gap-6">
+                                    <div className="relative pt-1">
+                                        <div className="overflow-hidden h-3 text-xs flex rounded-full bg-gray-100">
+                                            <div 
+                                                style={{ width: `${progress}%` }}
+                                                className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary transition-all duration-1000 ease-in-out relative"
+                                            >
+                                                <div className="absolute inset-0 bg-white/20 animate-[pulse_2s_infinite]"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                        {healthTasks.map((task, i) => (
+                                            <div key={i} className={`flex flex-col gap-2 p-3 rounded-2xl border transition-all ${
+                                                task.completed 
+                                                ? 'bg-green-50 border-green-100 text-green-700' 
+                                                : 'bg-gray-50/50 border-gray-100 text-text-secondary opacity-60'
+                                            }`}>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="material-icons-round text-lg">{task.icon}</span>
+                                                    {task.completed && <span className="material-icons-round text-xs">check_circle</span>}
+                                                </div>
+                                                <span className="text-[9px] font-black uppercase tracking-tighter truncate">{task.label}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                             <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                                 <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Branding & Identity</h3>
-                                <span className="px-3 py-1 bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-wider rounded-full border border-green-100">Verified Business</span>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => setIsEditingGeneral(!isEditingGeneral)}
+                                        className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                                            isEditingGeneral 
+                                            ? 'bg-amber-50 text-amber-600 border border-amber-100 hover:bg-amber-100' 
+                                            : 'bg-white text-primary border border-primary/20 hover:bg-primary/5'
+                                        }`}
+                                    >
+                                        <span className="material-icons-round text-sm">{isEditingGeneral ? 'close' : 'edit'}</span>
+                                        {isEditingGeneral ? 'Cancel' : 'Edit Profile'}
+                                    </button>
+                                    <span className="px-3 py-1 bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-wider rounded-full border border-green-100">Verified Business</span>
+                                </div>
                             </div>
                             <div className="p-8 space-y-8">
                                 <div className="flex flex-col md:flex-row items-center md:items-start gap-10">
                                     <div className="flex flex-col items-center space-y-4">
-                                        <div className="size-32 rounded-3xl bg-gray-50 flex items-center justify-center border-2 border-dashed border-gray-200 overflow-hidden relative shadow-inner group">
+                                        <div className={`size-32 rounded-3xl bg-gray-50 flex items-center justify-center border-2 border-dashed border-gray-200 overflow-hidden relative shadow-inner group ${!isEditingGeneral ? 'border-transparent bg-transparent shadow-none' : ''}`}>
                                             {logo ? (
                                                 <>
                                                     <img src={logo} alt="Logo" className="w-full h-full object-contain p-4 transition-transform group-hover:scale-110" />
-                                                    <button
-                                                        onClick={() => setLogo('')}
-                                                        className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1.5 rounded-lg shadow-sm text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
-                                                    >
-                                                        <span className="material-icons-round text-sm">delete</span>
-                                                    </button>
+                                                    {isEditingGeneral && (
+                                                        <button
+                                                            onClick={() => setLogo('')}
+                                                            className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1.5 rounded-lg shadow-sm text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                                                        >
+                                                            <span className="material-icons-round text-sm">delete</span>
+                                                        </button>
+                                                    )}
                                                 </>
                                             ) : (
                                                 <div className="flex flex-col items-center gap-2 text-gray-400">
@@ -625,30 +737,34 @@ export default function BusinessProfilePage() {
                                                     <span className="text-[10px] font-black uppercase tracking-widest text-center px-2">No Logo</span>
                                                 </div>
                                             )}
-                                            <input
-                                                type="file"
-                                                id="logo-upload"
-                                                className="hidden"
-                                                accept="image/*"
-                                                onChange={(e) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (file) {
-                                                        const reader = new FileReader();
-                                                        reader.onloadend = () => setLogo(reader.result as string);
-                                                        reader.readAsDataURL(file);
-                                                    }
-                                                }}
-                                            />
+                                            {isEditingGeneral && (
+                                                <input
+                                                    type="file"
+                                                    id="logo-upload"
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => setLogo(reader.result as string);
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }}
+                                                />
+                                            )}
                                         </div>
-                                        <div className="w-full max-w-[200px] space-y-3">
-                                            <button
-                                                onClick={() => document.getElementById('logo-upload')?.click()}
-                                                className="w-full h-10 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2"
-                                            >
-                                                <span className="material-icons-round text-sm">upload</span>
-                                                Upload Logo
-                                            </button>
-                                        </div>
+                                        {isEditingGeneral && (
+                                            <div className="w-full max-w-[200px] space-y-3">
+                                                <button
+                                                    onClick={() => document.getElementById('logo-upload')?.click()}
+                                                    className="w-full h-10 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    <span className="material-icons-round text-sm">upload</span>
+                                                    Upload Logo
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex-1 space-y-6 w-full">
@@ -661,7 +777,12 @@ export default function BusinessProfilePage() {
                                                     type="text"
                                                     value={name}
                                                     onChange={(e) => setName(e.target.value)}
-                                                    className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                    readOnly={!isEditingGeneral}
+                                                    className={`w-full h-12 rounded-xl px-4 text-sm font-bold transition-all outline-none ${
+                                                        isEditingGeneral 
+                                                        ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
+                                                        : 'bg-transparent border-transparent cursor-default px-0'
+                                                    }`}
                                                 />
                                             </div>
                                         </div>
@@ -674,6 +795,10 @@ export default function BusinessProfilePage() {
                                                         {isCategoriesLoading ? (
                                                             <div className="h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 flex items-center">
                                                                 <Loader2 size={16} className="animate-spin text-primary" />
+                                                            </div>
+                                                        ) : !isEditingGeneral ? (
+                                                            <div className="w-full h-12 flex items-center text-sm font-bold">
+                                                                {categories.find(c => c.id === categoryId)?.name || 'Not specified'}
                                                             </div>
                                                         ) : (
                                                             <select
@@ -693,22 +818,28 @@ export default function BusinessProfilePage() {
                                                     </div>
                                                     <div className="space-y-2">
                                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Sub-Category</label>
-                                                        <select
-                                                            value={subcategoryId}
-                                                            onChange={(e) => setSubcategoryId(e.target.value)}
-                                                            className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none cursor-pointer"
-                                                            disabled={!categoryId}
-                                                        >
-                                                            <option value="">Select Sub-Category</option>
-                                                            {subcategories.map((sub: any) => (
-                                                                <option key={sub.id} value={sub.id}>{sub.name}</option>
-                                                            ))}
-                                                            <option value="other">Other</option>
-                                                        </select>
+                                                        {!isEditingGeneral ? (
+                                                            <div className="w-full h-12 flex items-center text-sm font-bold">
+                                                                {subcategoryId === 'other' ? otherSubcategoryName : (subcategories.find(s => s.id === subcategoryId)?.name || 'Not specified')}
+                                                            </div>
+                                                        ) : (
+                                                            <select
+                                                                value={subcategoryId}
+                                                                onChange={(e) => setSubcategoryId(e.target.value)}
+                                                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none cursor-pointer"
+                                                                disabled={!categoryId}
+                                                            >
+                                                                <option value="">Select Sub-Category</option>
+                                                                {subcategories.map((sub: any) => (
+                                                                    <option key={sub.id} value={sub.id}>{sub.name}</option>
+                                                                ))}
+                                                                <option value="other">Other</option>
+                                                            </select>
+                                                        )}
                                                     </div>
                                                 </div>
 
-                                                {subcategoryId === 'other' && (
+                                                {subcategoryId === 'other' && isEditingGeneral && (
                                                     <div className="space-y-2">
                                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Other Subcategory Name</label>
                                                         <input
@@ -726,63 +857,51 @@ export default function BusinessProfilePage() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">State</label>
-                                                <select
-                                                    value={state}
-                                                    onChange={(e) => {
-                                                        setState(e.target.value);
-                                                        setCity('');
-                                                    }}
-                                                    className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                                >
-                                                    <option value="">Select State</option>
-                                                    {Object.keys(statesData).sort().map(s => (
-                                                        <option key={s} value={s}>{s}</option>
-                                                    ))}
-                                                </select>
+                                                {!isEditingGeneral ? (
+                                                    <div className="w-full h-12 flex items-center text-sm font-bold">
+                                                        {state || 'Not specified'}
+                                                    </div>
+                                                ) : (
+                                                    <select
+                                                        value={state}
+                                                        onChange={(e) => {
+                                                            setState(e.target.value);
+                                                            setCity('');
+                                                        }}
+                                                        className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                    >
+                                                        <option value="">Select State</option>
+                                                        {Object.keys(statesData).sort().map(s => (
+                                                            <option key={s} value={s}>{s}</option>
+                                                        ))}
+                                                    </select>
+                                                )}
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">City</label>
-                                                <select
-                                                    value={city}
-                                                    onChange={(e) => setCity(e.target.value)}
-                                                    disabled={!state}
-                                                    className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none disabled:opacity-50"
-                                                >
-                                                    <option value="">Select City</option>
-                                                    {state && statesData[state]?.sort().map(c => (
-                                                        <option key={c} value={c}>{c}</option>
-                                                    ))}
-                                                </select>
+                                                {!isEditingGeneral ? (
+                                                    <div className="w-full h-12 flex items-center text-sm font-bold">
+                                                        {city || 'Not specified'}
+                                                    </div>
+                                                ) : (
+                                                    <select
+                                                        value={city}
+                                                        onChange={(e) => setCity(e.target.value)}
+                                                        disabled={!state}
+                                                        className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none disabled:opacity-50"
+                                                    >
+                                                        <option value="">Select City</option>
+                                                        {state && statesData[state]?.sort().map(c => (
+                                                            <option key={c} value={c}>{c}</option>
+                                                        ))}
+                                                    </select>
+                                                )}
                                             </div>
                                         </div>
 
                                         {(isAllBranches || branches.length <= 1) && (
                                             <>
-                                                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-                                                    <div className="flex-1">
-                                                        <span className="text-sm font-bold text-text-main">Business Registration</span>
-                                                        <p className="text-xs text-text-secondary">Is your business officially registered?</p>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => setIsRegistered(!isRegistered)}
-                                                        className={`w-12 h-6 rounded-full transition-all ${isRegistered ? 'bg-primary' : 'bg-gray-300'}`}
-                                                    >
-                                                        <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${isRegistered ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                                                    </button>
-                                                </div>
-
-                                                {isRegistered && (
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Registration Number (RC / BN)</label>
-                                                        <input
-                                                            type="text"
-                                                            value={registrationNumber}
-                                                            onChange={(e) => setRegistrationNumber(e.target.value)}
-                                                            placeholder="RC1234567"
-                                                            className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                                        />
-                                                    </div>
-                                                )}
+                                                
                                             </>
                                         )}
                                     </div>
@@ -798,15 +917,48 @@ export default function BusinessProfilePage() {
                                 <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Support Email</label>
-                                        <input type="email" value={supportEmail} onChange={e => setSupportEmail(e.target.value)} placeholder="hello@vemtap.com" className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" />
+                                        <input 
+                                            type="email" 
+                                            value={supportEmail} 
+                                            onChange={e => setSupportEmail(e.target.value)} 
+                                            placeholder="hello@vemtap.com" 
+                                            readOnly={!isEditingGeneral}
+                                            className={`w-full h-12 rounded-xl px-4 text-sm font-bold transition-all outline-none ${
+                                                isEditingGeneral 
+                                                ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
+                                                : 'bg-transparent border-transparent cursor-default px-0'
+                                            }`}
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Support Phone</label>
-                                        <input type="tel" value={supportPhone} onChange={e => setSupportPhone(e.target.value)} placeholder="+234 801 234 5678" className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" />
+                                        <input 
+                                            type="tel" 
+                                            value={supportPhone} 
+                                            onChange={e => setSupportPhone(e.target.value)} 
+                                            placeholder="+234 801 234 5678" 
+                                            readOnly={!isEditingGeneral}
+                                            className={`w-full h-12 rounded-xl px-4 text-sm font-bold transition-all outline-none ${
+                                                isEditingGeneral 
+                                                ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
+                                                : 'bg-transparent border-transparent cursor-default px-0'
+                                            }`}
+                                        />
                                     </div>
                                     <div className="col-span-1 md:col-span-2 space-y-2">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Detailed Address</label>
-                                        <textarea value={address} onChange={e => setAddress(e.target.value)} placeholder="Address..." rows={3} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none" />
+                                        <textarea 
+                                            value={address} 
+                                            onChange={e => setAddress(e.target.value)} 
+                                            placeholder="Address..." 
+                                            rows={3} 
+                                            readOnly={!isEditingGeneral}
+                                            className={`w-full rounded-xl p-5 text-sm font-bold transition-all outline-none resize-none ${
+                                                isEditingGeneral 
+                                                ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
+                                                : 'bg-transparent border-transparent cursor-default px-0'
+                                            }`}
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -826,7 +978,12 @@ export default function BusinessProfilePage() {
                                             onChange={(e) => setAbout(e.target.value)}
                                             placeholder="About info..."
                                             rows={4}
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none"
+                                            readOnly={!isEditingGeneral}
+                                            className={`w-full rounded-xl p-5 text-sm font-bold transition-all outline-none resize-none ${
+                                                isEditingGeneral 
+                                                ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
+                                                : 'bg-transparent border-transparent cursor-default px-0'
+                                            }`}
                                         />
                                     </div>
                                 </div>
@@ -834,7 +991,6 @@ export default function BusinessProfilePage() {
                         )}
                     </div>
                 )}
-
                 {activeTab === 'schedule' && !isAllBranches && (
                     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                         <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
@@ -967,6 +1123,7 @@ export default function BusinessProfilePage() {
                         vapidPublicKey={vapidPublicKey}
                         onEnable={handleEnablePush}
                         onDisable={handleDisablePush}
+                        supportEmail={supportEmail}
                     />
                 )}
 
@@ -1131,186 +1288,145 @@ export default function BusinessProfilePage() {
                     </div>
                 )}
 
-                {activeTab === 'documents' && (isAllBranches || branches.length <= 1) && (() => {
-                    const tasks = [
-                        { label: 'Business Name', completed: !!name, icon: 'business' },
-                        { label: 'Business Logo', completed: !!logo, icon: 'image' },
-                        { label: 'Category & Sub', completed: !!categoryId && (subcategoryId !== 'other' || !!otherSubcategoryName), icon: 'category' },
-                        { label: 'Contact Info', completed: !!supportEmail || !!supportPhone, icon: 'contact_phone' },
-                        { label: 'Location Details', completed: !!state && !!city && !!address, icon: 'map' },
-                        { label: 'Business Reg.', completed: !!registrationNumber, icon: 'fact_check' },
-                        { label: 'CAC Document', completed: !!cacDocument, icon: 'description' },
-                        { label: 'Owner Identity', completed: !!idDocument, icon: 'person_pin' },
-                    ];
-                    const completedCount = tasks.filter(t => t.completed).length;
-                    const totalCount = tasks.length;
-                    const progress = (completedCount / totalCount) * 100;
-
-                    return (
-                        <div className="space-y-6">
-                            {/* Health Check Progress UI */}
-                            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 overflow-hidden relative">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-                                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-10">
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="text-xl font-display font-bold text-text-main">Health Check Progress</h3>
-                                            {progress === 100 && (
-                                                <span className="material-icons-round text-green-500 text-xl">verified</span>
-                                            )}
-                                        </div>
-                                        <p className="text-sm text-text-secondary font-normal">Verify your business to establish trust and unlock all features.</p>
+                {activeTab === 'documents' && (isAllBranches || branches.length <= 1) && (
+                    <div className="space-y-6">
+                        {/* Business Identity Section (Redesigned & Collapsible) */}
+                        <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
+                            <button 
+                                onClick={() => setIsDocsCollapsed(!isDocsCollapsed)}
+                                className="w-full px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between group"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="size-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
+                                        <span className="material-icons-round text-2xl">corporate_fare</span>
                                     </div>
-                                    <div className="text-right shrink-0">
-                                        <div className="text-2xl font-display font-black text-primary">{Math.round(progress)}% <span className="text-text-secondary text-sm font-normal">Health Score</span></div>
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-text-secondary mt-1">{completedCount} of {totalCount} tasks completed</div>
+                                    <div className="text-left">
+                                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Business Identity (CAC)</h3>
+                                        <p className="text-xs text-text-secondary font-normal">Official Corporate Affairs Commission details</p>
                                     </div>
                                 </div>
-                                
-                                <div className="mt-8 flex flex-col gap-6">
-                                    <div className="relative pt-1">
-                                        <div className="overflow-hidden h-3 text-xs flex rounded-full bg-gray-100">
-                                            <div 
-                                                style={{ width: `${progress}%` }}
-                                                className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary transition-all duration-1000 ease-in-out relative"
-                                            >
-                                                <div className="absolute inset-0 bg-white/20 animate-[pulse_2s_infinite]"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                        {tasks.map((task, i) => (
-                                            <div key={i} className={`flex flex-col gap-2 p-3 rounded-2xl border transition-all ${
-                                                task.completed 
-                                                ? 'bg-green-50 border-green-100 text-green-700' 
-                                                : 'bg-gray-50/50 border-gray-100 text-text-secondary opacity-60'
-                                            }`}>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="material-icons-round text-lg">{task.icon}</span>
-                                                    {task.completed && <span className="material-icons-round text-xs">check_circle</span>}
-                                                </div>
-                                                <span className="text-[9px] font-black uppercase tracking-tighter truncate">{task.label}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Business Identity Section (Redesigned & Collapsible) */}
-                            <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
-                                <button 
-                                    onClick={() => setIsDocsCollapsed(!isDocsCollapsed)}
-                                    className="w-full px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between group"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="size-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
-                                            <span className="material-icons-round text-2xl">corporate_fare</span>
-                                        </div>
-                                        <div className="text-left">
-                                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Business Identity (CAC)</h3>
-                                            <p className="text-xs text-text-secondary font-normal">Official Corporate Affairs Commission details</p>
-                                        </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-bold text-text-main">Registered?</span>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setIsRegistered(!isRegistered);
+                                            }}
+                                            className={`w-12 h-6 rounded-full transition-all ${isRegistered ? 'bg-primary' : 'bg-gray-300'}`}
+                                        >
+                                            <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${isRegistered ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                                        </button>
                                     </div>
                                     <div className={`size-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center transition-transform duration-300 ${isDocsCollapsed ? 'rotate-180' : ''}`}>
                                         <span className="material-icons-round text-gray-400">expand_more</span>
                                     </div>
-                                </button>
+                                </div>
+                            </button>
 
-                                {!isDocsCollapsed && (
-                                    <div className="p-8 space-y-8 animate-in slide-in-from-top-4 duration-300">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            <div className="space-y-4">
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Registration Type</label>
-                                                    <select
-                                                        value={cacType}
-                                                        onChange={(e) => setCacType(e.target.value)}
-                                                        className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-normal focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
-                                                        style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%239ca3af\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1.25rem center', backgroundSize: '1.25rem' }}
-                                                    >
-                                                        <option value="RC">Limited Liability Company (RC)</option>
-                                                        <option value="BN">Business Name (BN)</option>
-                                                        <option value="IT">Incorporated Trustees (IT)</option>
-                                                        <option value="LLP">Limited Liability Partnership (LLP)</option>
-                                                    </select>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">{cacType} Number</label>
-                                                    <input
-                                                        type="text"
-                                                        value={registrationNumber}
-                                                        onChange={(e) => setRegistrationNumber(e.target.value)}
-                                                        placeholder={`Enter your ${cacType} number`}
-                                                        className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-normal focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                                    />
-                                                </div>
+                            {!isDocsCollapsed && isRegistered && (
+                                <div className="p-8 space-y-8 animate-in slide-in-from-top-4 duration-300">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Registration Type</label>
+                                                <select
+                                                    value={cacType}
+                                                    onChange={(e) => setCacType(e.target.value)}
+                                                    className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-normal focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
+                                                    style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%239ca3af\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1.25rem center', backgroundSize: '1.25rem' }}
+                                                >
+                                                    <option value="RC">Limited Liability Company (RC)</option>
+                                                    <option value="BN">Business Name (BN)</option>
+                                                    <option value="IT">Incorporated Trustees (IT)</option>
+                                                    <option value="LLP">Limited Liability Partnership (LLP)</option>
+                                                </select>
                                             </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">{cacType} Number</label>
+                                                <input
+                                                    type="text"
+                                                    value={registrationNumber}
+                                                    onChange={(e) => setRegistrationNumber(e.target.value)}
+                                                    placeholder={`Enter your ${cacType} number`}
+                                                    className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-normal focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                />
+                                            </div>
+                                        </div>
 
-                                            <div className="space-y-4">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Upload CAC Document / Certificate</label>
-                                                <div className="relative group">
-                                                    {!cacDocument ? (
-                                                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer bg-gray-50 hover:bg-white hover:border-primary/30 transition-all">
-                                                            <div className="flex flex-col items-center justify-center p-6 text-center">
-                                                                <div className="size-10 rounded-full bg-white flex items-center justify-center mb-2 shadow-sm text-gray-400 group-hover:text-primary transition-colors">
-                                                                    <span className="material-icons-round">cloud_upload</span>
-                                                                </div>
-                                                                <p className="text-xs font-normal text-text-main">Click to upload doc</p>
-                                                                <p className="text-[10px] text-text-secondary mt-1 uppercase tracking-tighter">MAX. 10MB</p>
+                                        <div className="space-y-4">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Upload CAC Document / Certificate</label>
+                                            <div className="relative group">
+                                                {!cacDocument ? (
+                                                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer bg-gray-50 hover:bg-white hover:border-primary/30 transition-all">
+                                                        <div className="flex flex-col items-center justify-center p-6 text-center">
+                                                            <div className="size-10 rounded-full bg-white flex items-center justify-center mb-2 shadow-sm text-gray-400 group-hover:text-primary transition-colors">
+                                                                <span className="material-icons-round">cloud_upload</span>
                                                             </div>
-                                                            <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => {
-                                                                const file = e.target.files?.[0];
-                                                                if (file) {
-                                                                    const reader = new FileReader();
-                                                                    reader.onload = (ev) => setCacDocument(ev.target?.result as string);
-                                                                    reader.readAsDataURL(file);
-                                                                }
-                                                            }} />
-                                                        </label>
-                                                    ) : (
-                                                        <div className="flex items-center justify-between bg-green-50 p-5 rounded-2xl border border-green-100">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className="size-12 rounded-xl bg-white flex items-center justify-center text-green-600 shadow-sm">
-                                                                    <span className="material-icons-round">description</span>
-                                                                </div>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <p className="text-sm font-normal text-text-main truncate">CAC Certificate</p>
-                                                                    <p className="text-[10px] text-green-600 font-normal uppercase tracking-widest">Attached</p>
-                                                                </div>
-                                                            </div>
-                                                            <button 
-                                                                onClick={() => setCacDocument('')}
-                                                                className="size-10 rounded-xl bg-white border border-red-100 text-red-500 hover:bg-red-50 transition-all flex items-center justify-center"
-                                                            >
-                                                                <span className="material-icons-round text-lg">delete_outline</span>
-                                                            </button>
+                                                            <p className="text-xs font-normal text-text-main">Click to upload doc</p>
+                                                            <p className="text-[10px] text-text-secondary mt-1 uppercase tracking-tighter">MAX. 10MB</p>
                                                         </div>
-                                                    )}
-                                                </div>
+                                                        <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) {
+                                                                const reader = new FileReader();
+                                                                reader.onload = (ev) => setCacDocument(ev.target?.result as string);
+                                                                reader.readAsDataURL(file);
+                                                            }
+                                                        }} />
+                                                    </label>
+                                                ) : (
+                                                    <div className="flex items-center justify-between bg-green-50 p-5 rounded-2xl border border-green-100">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="size-12 rounded-xl bg-white flex items-center justify-center text-green-600 shadow-sm">
+                                                                <span className="material-icons-round">description</span>
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-normal text-text-main truncate">CAC Certificate</p>
+                                                                <p className="text-[10px] text-green-600 font-normal uppercase tracking-widest">Attached</p>
+                                                            </div>
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => setCacDocument('')}
+                                                            className="size-10 rounded-xl bg-white border border-red-100 text-red-500 hover:bg-red-50 transition-all flex items-center justify-center"
+                                                        >
+                                                            <span className="material-icons-round text-lg">delete_outline</span>
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
-                                )}
+                                </div>
+                            )}
+
+                            {!isDocsCollapsed && !isRegistered && (
+                                <div className="p-8">
+                                    <div className="rounded-2xl border border-amber-100 bg-amber-50 p-6 text-xs text-amber-800 font-medium">
+                                        For unregistered businesses, verification is done via personal identity documents.
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Means of Identity Section (Personal ID) */}
+                        <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
+                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="size-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500">
+                                        <span className="material-icons-round text-2xl">badge</span>
+                                    </div>
+                                    <div className="text-left">
+                                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Means of Identity</h3>
+                                        <p className="text-xs text-text-secondary font-normal">Valid government-issued ID for verification</p>
+                                    </div>
+                                </div>
+                                <span className="px-3 py-1 bg-amber-100/50 text-amber-600 text-[10px] font-normal uppercase tracking-widest rounded-lg border border-amber-200/50">KYC Requirement</span>
                             </div>
 
-                            {/* Means of Identity Section (Personal ID) */}
-                            <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
-                                <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="size-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500">
-                                            <span className="material-icons-round text-2xl">badge</span>
-                                        </div>
-                                        <div className="text-left">
-                                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Means of Identity</h3>
-                                            <p className="text-xs text-text-secondary font-normal">Valid government-issued ID for verification</p>
-                                        </div>
-                                    </div>
-                                    <span className="px-3 py-1 bg-amber-100/50 text-amber-600 text-[10px] font-normal uppercase tracking-widest rounded-lg border border-amber-200/50">KYC Requirement</span>
-                                </div>
-
-                                <div className="p-8 space-y-8">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="p-8 space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-4">
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Identity Type</label>
                                             <select
@@ -1323,54 +1439,123 @@ export default function BusinessProfilePage() {
                                                 <option>Voter's Card</option>
                                             </select>
                                         </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Identity Number</label>
+                                            <input
+                                                type="text"
+                                                value={identityNumber}
+                                                onChange={(e) => setIdentityNumber(e.target.value)}
+                                                placeholder="Enter ID / NIN Number"
+                                                className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-normal focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                            />
+                                        </div>
+                                    </div>
 
-                                        <div className="space-y-4">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Upload Identity Card Photo</label>
-                                            <div className="relative group">
-                                                {!idDocument ? (
-                                                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer bg-gray-50 hover:bg-white hover:border-primary/30 transition-all">
-                                                        <div className="flex flex-col items-center justify-center p-6 text-center">
-                                                            <div className="size-10 rounded-full bg-white flex items-center justify-center mb-2 shadow-sm text-gray-400 group-hover:text-primary transition-colors">
-                                                                <span className="material-icons-round">face</span>
-                                                            </div>
-                                                            <p className="text-xs font-normal text-text-main">Click to upload ID</p>
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Upload Identity Card Photo</label>
+                                        <div className="relative group">
+                                            {!idDocument ? (
+                                                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer bg-gray-50 hover:bg-white hover:border-primary/30 transition-all">
+                                                    <div className="flex flex-col items-center justify-center p-6 text-center">
+                                                        <div className="size-10 rounded-full bg-white flex items-center justify-center mb-2 shadow-sm text-gray-400 group-hover:text-primary transition-colors">
+                                                            <span className="material-icons-round">face</span>
                                                         </div>
-                                                        <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => {
-                                                            const file = e.target.files?.[0];
-                                                            if (file) {
-                                                                const reader = new FileReader();
-                                                                reader.onload = (ev) => setIdDocument(ev.target?.result as string);
-                                                                reader.readAsDataURL(file);
-                                                            }
-                                                        }} />
-                                                    </label>
-                                                ) : (
-                                                    <div className="flex items-center justify-between bg-green-50 p-5 rounded-2xl border border-green-100">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="size-12 rounded-xl bg-white flex items-center justify-center text-green-600 shadow-sm">
-                                                                <span className="material-icons-round">assignment_ind</span>
-                                                            </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="text-sm font-normal text-text-main truncate">Owner ID Document</p>
-                                                                <p className="text-[10px] text-green-600 font-normal uppercase tracking-widest">Attached</p>
-                                                            </div>
-                                                        </div>
-                                                        <button 
-                                                            onClick={() => setIdDocument('')}
-                                                            className="size-10 rounded-xl bg-white border border-red-100 text-red-500 hover:bg-red-50 transition-all flex items-center justify-center"
-                                                        >
-                                                            <span className="material-icons-round text-lg">delete_outline</span>
-                                                        </button>
+                                                        <p className="text-xs font-normal text-text-main">Click to upload ID</p>
                                                     </div>
-                                                )}
-                                            </div>
+                                                    <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onload = (ev) => setIdDocument(ev.target?.result as string);
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }} />
+                                                </label>
+                                            ) : (
+                                                <div className="flex items-center justify-between bg-green-50 p-5 rounded-2xl border border-green-100">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="size-12 rounded-xl bg-white flex items-center justify-center text-green-600 shadow-sm">
+                                                            <span className="material-icons-round">assignment_ind</span>
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-normal text-text-main truncate">Owner ID Document</p>
+                                                            <p className="text-[10px] text-green-600 font-normal uppercase tracking-widest">Attached</p>
+                                                        </div>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => setIdDocument('')}
+                                                        className="size-10 rounded-xl bg-white border border-red-100 text-red-500 hover:bg-red-50 transition-all flex items-center justify-center"
+                                                    >
+                                                        <span className="material-icons-round text-lg">delete_outline</span>
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    );
-                })()}
+
+                        {/* Utility Bill Section */}
+                        <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
+                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="size-12 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-500">
+                                        <span className="material-icons-round text-2xl">receipt_long</span>
+                                    </div>
+                                    <div className="text-left">
+                                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Proof of Address</h3>
+                                        <p className="text-xs text-text-secondary font-normal">Recent utility bill (Electricity, Water, or Waste)</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-8">
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Upload Utility Bill (Last 3 Months)</label>
+                                    <div className="relative group">
+                                        {!utilityBill ? (
+                                            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer bg-gray-50 hover:bg-white hover:border-primary/30 transition-all">
+                                                <div className="flex flex-col items-center justify-center p-6 text-center">
+                                                    <div className="size-10 rounded-full bg-white flex items-center justify-center mb-2 shadow-sm text-gray-400 group-hover:text-primary transition-colors">
+                                                        <span className="material-icons-round">upload_file</span>
+                                                    </div>
+                                                    <p className="text-xs font-normal text-text-main">Click to upload utility bill</p>
+                                                </div>
+                                                <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onload = (ev) => setUtilityBill(ev.target?.result as string);
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }} />
+                                            </label>
+                                        ) : (
+                                            <div className="flex items-center justify-between bg-green-50 p-5 rounded-2xl border border-green-100">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="size-12 rounded-xl bg-white flex items-center justify-center text-green-600 shadow-sm">
+                                                        <span className="material-icons-round">receipt</span>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-normal text-text-main truncate">Utility Bill Document</p>
+                                                        <p className="text-[10px] text-green-600 font-normal uppercase tracking-widest">Attached</p>
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    onClick={() => setUtilityBill('')}
+                                                    className="size-10 rounded-xl bg-white border border-red-100 text-red-500 hover:bg-red-50 transition-all flex items-center justify-center"
+                                                >
+                                                    <span className="material-icons-round text-lg">delete_outline</span>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {activeTab === 'general' && (
                     <div className="pt-4 flex items-center justify-between px-2">

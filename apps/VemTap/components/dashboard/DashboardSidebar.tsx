@@ -43,6 +43,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const router = useRouter();
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -53,9 +57,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const isChatRoute = pathname.includes('/messaging/chat');
     const mainRef = useRef<HTMLElement | null>(null);
 
-    // Close upgrade modal on navigation
+    // Close upgrade modal and mobile sidebar on navigation
     useEffect(() => {
         setUpgradeModal({ isOpen: false, featureName: '' });
+        setIsMobileOpen(false);
     }, [pathname, searchParams]);
 
     useEffect(() => {
@@ -278,7 +283,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 { label: 'Profile', href: '/dashboard/settings/profile' },
                 { label: 'Business Locations', href: '/dashboard/settings/branches' },
 
-                { label: 'Notifications', href: '/dashboard/settings/notifications' },
                 { label: 'Subscription', href: '/dashboard/settings/subscription' },
                 { label: 'Privacy & Data', href: '/dashboard/settings/privacy' },
             ]
@@ -349,7 +353,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 <nav className="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
                     {filteredMenuItems.map((item) => {
                         const IconComponent = item.icon;
-                        const isLocked = item.feature && isFeatureLocked(item.feature);
+                        const isLocked = isMounted && item.feature && isFeatureLocked(item.feature);
                         return (
                             <div key={item.id} className="mb-1">
                                 {item.submenu ? (
@@ -374,7 +378,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                         {expandedMenus.includes(item.id || '') && !isLocked && (
                                             <div className="mt-2 ml-4 space-y-2">
                                                 {item.submenu.map((subItem: any, idx) => {
-                                                    const isSubLocked = subItem.feature && isFeatureLocked(subItem.feature);
+                                                    const isSubLocked = isMounted && subItem.feature && isFeatureLocked(subItem.feature);
                                                     return subItem.submenu ? (
                                                         <div key={subItem.id || idx} className="mb-1">
                                                             <button
@@ -394,7 +398,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                             {expandedMenus.includes(subItem.id) && !isSubLocked && (
                                                                 <div className="mt-2 ml-3 space-y-2">
                                                                     {subItem.submenu.map((nestedItem: any, nIdx: number) => {
-                                                                        const isNestedLocked = nestedItem.feature && isFeatureLocked(nestedItem.feature);
+                                                                        const isNestedLocked = isMounted && nestedItem.feature && isFeatureLocked(nestedItem.feature);
                                                                         return nestedItem.submenu ? (
                                                                             <div key={nestedItem.id || nIdx} className="mb-1">
                                                                                 <button
