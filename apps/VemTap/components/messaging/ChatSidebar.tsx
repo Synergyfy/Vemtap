@@ -5,7 +5,7 @@ import { useChatStore } from '@/lib/store/useChatStore';
 import { Search, Plus, MoreVertical, FileText, MessageSquare, Check, CheckCircle2, Settings, Megaphone, Users, Tag } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useChatThreads } from '@/hooks/useMessaging';
+import { useChatThreads, useInitBranchConversation } from '@/hooks/useMessaging';
 import { useMessagingBranch } from '@/hooks/useMessagingBranch';
 import { useMessagingVisitorsByBranch, useNewVisitors, useReturningVisitors, useUpdateVisitor } from '@/services/visitors/hooks';
 import Link from 'next/link';
@@ -22,15 +22,6 @@ function WhatsAppIcon({ size = 14, className = '' }: { size?: number; className?
         </svg>
     );
 }
-import { useMyBusiness } from '@/services/businesses/hooks';
-import { useAuthStore } from '@/store/useAuthStore';
-import { useChatThreads, useInitBranchConversation } from '@/hooks/useMessaging';
-import { useMessagingBranch } from '@/hooks/useMessagingBranch';
-import { useMessagingVisitorsByBranch } from '@/services/visitors/hooks';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import WhatsAppTemplateModal from './WhatsAppTemplateModal';
-import toast from 'react-hot-toast';
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
