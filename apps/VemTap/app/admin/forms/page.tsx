@@ -68,7 +68,7 @@ export default function AdminFormsPage() {
         e.preventDefault();
 
         // Auto-add pending field if exists
-        let finalFields = [...templateForm.fields];
+        const finalFields = [...templateForm.fields];
         if (newField.label.trim()) {
             finalFields.push({ id: Date.now().toString(), label: newField.label.trim(), type: newField.type as any });
         }

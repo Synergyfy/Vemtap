@@ -41,7 +41,7 @@ function ChatRedirectContent() {
                 try {
                     // 1. Try to fetch as a business first
                     let businessData: any = null;
-                    let targetCode = code;
+                    const targetCode = code;
 
                     try {
                         businessData = await api.get(`/public/businesses/code/${code}`);

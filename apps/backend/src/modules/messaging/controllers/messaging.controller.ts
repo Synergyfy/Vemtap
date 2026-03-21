@@ -259,6 +259,21 @@ export class MessagingController {
     return this.inboxService.markAsRead(threadId, branchId);
   }
 
+  @Post('inbox/threads/init')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({ 
+    summary: 'Initialize an empty conversation thread with a customer',
+  })
+  async initThread(
+    @Body() dto: { branchId?: string, customerId: string },
+    @Request() req: { user: User },
+  ) {
+    const branchId = await this.getBranchId(req, dto.branchId);
+    return this.inboxService.initBranchConversation(branchId, dto.customerId);
+  }
+
   @Delete('templates/:id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)

@@ -102,7 +102,7 @@ export default function StepDetails() {
                 }
 
                 const countPadded = String((categoryProductCount as number) + 1).padStart(3, '0');
-                const generatedSku = `${formData.nfcType}-${categoryName}-${countPadded}`;
+                const generatedSku = `${categoryName}-${formData.nfcType}-${countPadded}`;
                 
                 updateFormData({ sku: generatedSku });
                 setValue('sku', generatedSku, { shouldValidate: true });

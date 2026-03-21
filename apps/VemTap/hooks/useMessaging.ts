@@ -59,6 +59,31 @@ export const useStartConversation = () => {
   });
 };
 
+export const useStartBranchConversation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ branchId, customerId, content, channel = 'IN_HOUSE' }: { branchId: string; customerId: string; content: string; channel?: string }) =>
+            api.post('/messaging/send', { branchId, customerIds: [customerId], content, channel, audienceType: 'DIRECT' }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
+        },
+    });
+};
+
+export const useInitBranchConversation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ branchId, customerId }: { branchId: string; customerId: string }) =>
+            api.post('/messaging/inbox/threads/init', { branchId, customerId }),
+        onSuccess: (data: any) => {
+            queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
+            if (data?.id) {
+                queryClient.invalidateQueries({ queryKey: ['chat-messages', data.id] });
+            }
+        },
+    });
+};
+
 export const useMarkThreadAsRead = (isCustomer: boolean = false) => {
   const queryClient = useQueryClient();
   return useMutation({

@@ -106,7 +106,7 @@ export default function AdminBusinessesPage() {
 
     // Confirmation Modal State
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-    const [confirmAction, setConfirmAction] = useState<'approve' | 'reject' | 'suspend' | 'reactivate' | 'delete' | null>(null);
+    const [confirmAction, setConfirmAction] = useState<'suspend' | 'reactivate' | 'delete' | null>(null);
     const [confirmReason, setConfirmReason] = useState('');
 
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -187,7 +187,7 @@ export default function AdminBusinessesPage() {
         { label: 'Suspended', value: apiStats?.suspended ?? businesses.filter(b => normalizeBusinessStatus(b.status) === 'suspended').length, icon: 'block', color: 'red' },
     ];
 
-    const handleAction = (action: 'approve' | 'reject' | 'suspend' | 'reactivate' | 'delete', business: Business) => {
+    const handleAction = (action: 'suspend' | 'reactivate' | 'delete', business: Business) => {
         setSelectedBusiness(business);
         setConfirmAction(action);
         setConfirmReason('');
@@ -198,12 +198,10 @@ export default function AdminBusinessesPage() {
         if (!selectedBusiness || !confirmAction) return;
 
         setIsSubmitting(true);
-        const labels = { approve: 'Approve', reject: 'Reject', suspend: 'Suspend', reactivate: 'Reactivate', delete: 'Delete' };
+        const labels = { suspend: 'Suspend', reactivate: 'Reactivate', delete: 'Delete' };
 
         try {
-            if (confirmAction === 'approve') await adminBusinessesApi.approve(selectedBusiness.id);
-            else if (confirmAction === 'reject') await adminBusinessesApi.reject(selectedBusiness.id);
-            else if (confirmAction === 'suspend') await adminBusinessesApi.suspend(selectedBusiness.id, confirmReason);
+            if (confirmAction === 'suspend') await adminBusinessesApi.suspend(selectedBusiness.id, confirmReason);
             else if (confirmAction === 'reactivate') await adminBusinessesApi.reactivate(selectedBusiness.id);
             else if (confirmAction === 'delete') await adminBusinessesApi.delete(selectedBusiness.id);
 
@@ -215,6 +213,17 @@ export default function AdminBusinessesPage() {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleUnverifiedClick = (biz: Business) => {
+        // Since `documents` isn't fully typed on Business in this page yet, 
+        // fallback to checking `isRegistered` or just `biz.documents` directly.
+        const docs = (biz as any).documents;
+        if (!docs || (!Array.isArray(docs) && Object.keys(docs).length === 0) || (Array.isArray(docs) && docs.length === 0)) {
+            notify.error('No documents uploaded');
+            return;
+        }
+        router.push('/admin/businesses/pending');
     };
 
     const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -483,10 +492,14 @@ export default function AdminBusinessesPage() {
                                                     >
                                                         <Eye size={16} />
                                                     </button>
-                                                    {normalizeBusinessStatus(biz.status) === 'pending' && <>
-                                                        <button onClick={() => handleAction('approve', biz)} className="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-all" title="Approve"><CheckCircle size={16} /></button>
-                                                        <button onClick={() => handleAction('reject', biz)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Reject"><XCircle size={16} /></button>
-                                                    </>}
+                                                    {normalizeBusinessStatus(biz.status) === 'pending' && (
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); handleUnverifiedClick(biz); }} 
+                                                            className="px-3 py-1.5 bg-orange-50 text-orange-600 rounded-lg text-xs font-bold hover:bg-orange-100 transition-all border border-orange-200 shadow-sm"
+                                                        >
+                                                            Unverified
+                                                        </button>
+                                                    )}
                                                     {normalizeBusinessStatus(biz.status) === 'active' && (
                                                         <button onClick={() => handleAction('suspend', biz)} className="p-2 text-orange-500 hover:bg-orange-50 rounded-lg transition-all" title="Suspend"><Ban size={16} /></button>
                                                     )}
@@ -578,13 +591,12 @@ export default function AdminBusinessesPage() {
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => !isSubmitting && setIsConfirmModalOpen(false)} />
                     <div className="relative w-full max-w-md bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
                         <div className="flex items-center gap-4 mb-6">
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${confirmAction === 'delete' || confirmAction === 'reject' ? 'bg-red-50 text-red-600' :
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${confirmAction === 'delete' ? 'bg-red-50 text-red-600' :
                                 confirmAction === 'suspend' ? 'bg-orange-50 text-orange-600' : 'bg-green-50 text-green-600'
                                 }`}>
                                 {confirmAction === 'delete' ? <Trash2 size={24} /> :
                                     confirmAction === 'suspend' ? <Ban size={24} /> :
-                                        confirmAction === 'approve' ? <CheckCircle size={24} /> :
-                                            confirmAction === 'reject' ? <XCircle size={24} /> : <RotateCcw size={24} />}
+                                        <RotateCcw size={24} />}
                             </div>
                             <div>
                                 <h2 className="text-xl font-display font-bold text-text-main capitalize">{confirmAction} Business</h2>
@@ -598,7 +610,7 @@ export default function AdminBusinessesPage() {
                                 {confirmAction === 'delete' && " This action cannot be undone."}
                             </p>
 
-                            {(confirmAction === 'suspend' || confirmAction === 'delete' || confirmAction === 'reject') && (
+                            {(confirmAction === 'suspend' || confirmAction === 'delete') && (
                                 <div className="mt-6">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">
                                         Reason for {confirmAction}ing
@@ -608,7 +620,7 @@ export default function AdminBusinessesPage() {
                                         onChange={(e) => setConfirmReason(e.target.value)}
                                         placeholder={`Please state why you are ${confirmAction}ing this business...`}
                                         className="w-full h-24 p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all resize-none"
-                                        required={confirmAction === 'suspend' || confirmAction === 'reject'}
+                                        required={confirmAction === 'suspend'}
                                     />
                                 </div>
                             )}
@@ -625,8 +637,8 @@ export default function AdminBusinessesPage() {
                             </button>
                             <button
                                 onClick={executeAction}
-                                disabled={isSubmitting || ((confirmAction === 'suspend' || confirmAction === 'delete' || confirmAction === 'reject') && !confirmReason.trim())}
-                                className={`flex-1 h-12 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm active:scale-95 disabled:opacity-70 ${confirmAction === 'delete' || confirmAction === 'reject' ? 'bg-red-600 hover:bg-red-700 shadow-red-200' :
+                                disabled={isSubmitting || ((confirmAction === 'suspend' || confirmAction === 'delete') && !confirmReason.trim())}
+                                className={`flex-1 h-12 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm active:scale-95 disabled:opacity-70 ${confirmAction === 'delete' ? 'bg-red-600 hover:bg-red-700 shadow-red-200' :
                                     confirmAction === 'suspend' ? 'bg-orange-500 hover:bg-orange-600 shadow-orange-200' : 'bg-primary hover:bg-primary-hover shadow-primary/20'
                                     }`}
                             >
