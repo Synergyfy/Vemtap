@@ -91,7 +91,7 @@ export default function Pricing() {
     };
 
     const formatLimit = (value: number | string | undefined, label: string) => {
-        if (value === undefined || value === null) return null;
+        if (value === undefined || value === null || value === 0 || value === '0') return null;
         if (value === -1 || value === 'unlimited') return `Unlimited ${label}`;
         return `${value} ${label}`;
     };
