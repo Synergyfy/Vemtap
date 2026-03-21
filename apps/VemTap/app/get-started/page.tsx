@@ -233,7 +233,7 @@ export default function GetStarted() {
     };
 
     const calculatePersonalPrice = () => {
-        let base = 15000;
+        const base = 15000;
         const branchNum = parseInt(formData.branchCount) || 1;
         const branchVal = branchNum <= 1 ? 0 :
             branchNum <= 5 ? 5000 :

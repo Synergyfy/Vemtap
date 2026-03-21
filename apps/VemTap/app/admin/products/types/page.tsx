@@ -222,7 +222,15 @@ export default function ProductTypesPage() {
                         <input
                             type="text"
                             value={typeName}
-                            onChange={(e) => setTypeName(e.target.value)}
+                            onChange={(e) => {
+                                const newName = e.target.value;
+                                setTypeName(newName);
+                                let generatedSlug = newName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+                                if (generatedSlug && !generatedSlug.startsWith('nfc-')) {
+                                    generatedSlug = `nfc-${generatedSlug}`;
+                                }
+                                setTypeSlug(generatedSlug);
+                            }}
                             className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-4 focus:ring-primary/5 font-bold transition-all"
                             placeholder="e.g. NFC Readers"
                         />
