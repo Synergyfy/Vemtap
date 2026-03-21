@@ -52,8 +52,7 @@ function StatusIcon({ status }: { status: string }) {
 export default function ChatWindow() {
     const activeConversationId = useChatStore(s => s.activeConversationId);
     const setActiveConversation = useChatStore(s => s.setActiveConversation);
-    const mockThreads = useChatStore(s => s.mockThreads);
-    const mockMessages = useChatStore(s => s.mockMessages);
+    const mockThreads = useChatStore(s => s.mockThreads); // Kept for safety if used elsewhere, but not used here
     const typingByThread = useChatStore(s => s.typingByThread);
     const user = useAuthStore(s => s.user);
     const { branchId, isCustomer } = useMessagingBranch();
@@ -61,14 +60,12 @@ export default function ChatWindow() {
     
     // Fetch all threads to find the active one
     const { data: threads = [], isLoading: threadsLoading } = useChatThreads('IN_HOUSE', branchId || undefined, isCustomer);
-    const allThreads = useMemo(() => {
-        const apiThreads = threads as any[];
-        const apiIds = new Set(apiThreads.map(t => t.id));
-        const mergedMocks = mockThreads.filter(t => !apiIds.has(t.id));
-        return [...mergedMocks, ...apiThreads];
-    }, [threads, mockThreads]);
+    const allThreads: any[] = useMemo(() => {
+        return threads as any[];
+    }, [threads]);
+    
     const activeConv = allThreads.find(c => c.id === activeConversationId);
-    const isMockThread = !!activeConversationId && mockThreads.some(t => t.id === activeConversationId);
+    const isMockThread = false;
 
     const [targetBranchId, setTargetBranchId] = useState<string | null>(null);
     const [targetBranchName, setTargetBranchName] = useState<string | null>(null);
@@ -157,7 +154,7 @@ export default function ChatWindow() {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
-    }, [messages?.length, activeConversationId, mockMessages]);
+    }, [messages?.length, activeConversationId]);
 
     useEffect(() => {
         setShowProfile(false);
@@ -244,7 +241,7 @@ export default function ChatWindow() {
 
     const { contact } = activeConv;
     const contactName = contact?.name || 'Customer';
-    const threadMessages = isMockThread ? (mockMessages[activeConversationId as string] || []) : (messages as any[]);
+    const threadMessages = messages as any[];
     const contactIsOnline = contact?.isOnline;
     const contactLastSeen = contact?.lastSeen ? new Date(contact.lastSeen).toLocaleString() : null;
     const isTyping = activeConversationId ? typingByThread[activeConversationId] : false;
@@ -377,7 +374,6 @@ export default function ChatWindow() {
                 {/* Input */}
                 <ChatInput
                     conversationId={activeConversationId || undefined}
-                    isMock={isMockThread}
                     replyTo={replyToMessage}
                     onCancelReply={() => setReplyToMessage(null)}
                     onTypingChange={(next) => {
