@@ -49,7 +49,14 @@ export const useMessagingRealtime = ({
     const setTyping = useChatStore((state) => state.setTyping);
     const typingTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
+    const lastInvalidateTime = useRef<number>(0);
+
     const invalidateThreads = useCallback(() => {
+        const now = Date.now();
+        // Throttle to once every 2 seconds
+        if (now - lastInvalidateTime.current < 2000) return;
+        lastInvalidateTime.current = now;
+        
         queryClient.invalidateQueries({ queryKey: ['chat-threads', 'IN_HOUSE', branchId, isCustomer] });
     }, [branchId, isCustomer, queryClient]);
 

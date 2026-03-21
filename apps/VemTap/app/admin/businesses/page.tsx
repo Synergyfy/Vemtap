@@ -681,7 +681,7 @@ export default function AdminBusinessesPage() {
                                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-4">Onboarding Details</h3>
                                         <div className="space-y-4">
                                             <DetailItem label="Business Category" value={detailBusiness.category} icon="category" />
-                                            <DetailItem label="Subcategory" value={detailBusiness.subcategory || 'N/A'} icon="subdirectory_arrow_right" />
+                                            <DetailItem label="Subcategory" value={detailBusiness.subcategory} icon="subdirectory_arrow_right" />
                                             <DetailItem label="Monthly Visitors" value={detailBusiness.monthlyVisitors} icon="groups" />
                                             <DetailItem label="Business Goals" value={detailBusiness.goal} icon="flag" />
                                         </div>
@@ -692,7 +692,7 @@ export default function AdminBusinessesPage() {
                                         <div className="space-y-4">
                                             <DetailItem
                                                 label="Registered Business"
-                                                value={detailBusiness.isRegistered !== undefined ? (detailBusiness.isRegistered ? 'Yes - Registered' : 'No - Not Registered') : 'N/A'}
+                                                value={detailBusiness.isRegistered !== undefined ? (detailBusiness.isRegistered ? 'Yes - Registered' : 'No - Not Registered') : undefined}
                                                 icon="verified"
                                             />
                                             {detailBusiness.isRegistered && (
@@ -708,7 +708,7 @@ export default function AdminBusinessesPage() {
                                         <div className="space-y-4">
                                             <DetailItem
                                                 label="Full Name"
-                                                value={detailBusiness.owner ? `${detailBusiness.owner.firstName} ${detailBusiness.owner.lastName}` : 'N/A'}
+                                                value={detailBusiness.owner ? `${detailBusiness.owner.firstName} ${detailBusiness.owner.lastName}` : undefined}
                                                 icon="person"
                                             />
                                             <DetailItem label="Account Email" value={detailBusiness.owner?.email} icon="alternate_email" />

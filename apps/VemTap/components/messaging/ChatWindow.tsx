@@ -2,15 +2,16 @@
 
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
-import { Search, Maximize2, Minimize2, Check, CheckCheck, FileText, Info, Smartphone, MessageSquare, CornerUpLeft } from 'lucide-react';
-import ChatInput from './ChatInput';
 import { useAuthStore } from '@/store/useAuthStore';
+import { Maximize2, Minimize2,Trash2, Check, CheckCheck, FileText, Info, Smartphone, MessageSquare, CornerUpLeft, ArrowLeft } from 'lucide-react';
+import ChatInput from './ChatInput';
 import Link from 'next/link';
-import { useChatThreads, useMarkThreadAsRead, useThreadMessages } from '@/hooks/useMessaging';
+import { useChatThreads, useMarkThreadAsRead, useThreadMessages, useDeleteMessage } from '@/hooks/useMessaging';
 import { useMessagingBranch } from '@/hooks/useMessagingBranch';
 import { useMessagingRealtime } from '@/hooks/useMessagingRealtime';
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
+import Spinner from '../ui/Spinner';
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
@@ -52,20 +53,30 @@ function StatusIcon({ status }: { status: string }) {
 export default function ChatWindow() {
     const activeConversationId = useChatStore(s => s.activeConversationId);
     const setActiveConversation = useChatStore(s => s.setActiveConversation);
-    const mockThreads = useChatStore(s => s.mockThreads); // Kept for safety if used elsewhere, but not used here
     const typingByThread = useChatStore(s => s.typingByThread);
-    const user = useAuthStore(s => s.user);
     const { branchId, isCustomer } = useMessagingBranch();
     const searchParams = useSearchParams();
     
     // Fetch all threads to find the active one
     const { data: threads = [], isLoading: threadsLoading } = useChatThreads('IN_HOUSE', branchId || undefined, isCustomer);
+    const user = useAuthStore((state) => state.user);
+    const pendingThreads = useChatStore(s => s.pendingThreads);
+    
     const allThreads: any[] = useMemo(() => {
-        return threads as any[];
-    }, [threads]);
+        const real = threads as any[];
+        const realIds = new Set(real.map(t => t.id));
+        const realContactIds = new Set(real.map(t => t.contact?.id).filter(Boolean));
+        
+        // Filter pending: hide if its real counterpart is in the list
+        const filteredPending = pendingThreads.filter(t => 
+            !realIds.has(t.linkedThreadId || '') && 
+            !realContactIds.has(t.contact?.id)
+        );
+        return [...filteredPending, ...real];
+    }, [threads, pendingThreads]);
     
     const activeConv = allThreads.find(c => c.id === activeConversationId);
-    const isMockThread = false;
+    const isMockThread = activeConversationId?.startsWith('pending-');
 
     const [targetBranchId, setTargetBranchId] = useState<string | null>(null);
     const [targetBranchName, setTargetBranchName] = useState<string | null>(null);
@@ -136,7 +147,12 @@ export default function ChatWindow() {
     }, [isCustomer, targetCode, targetBranchId, targetResolving]);
 
     // Fetch messages for active thread (business or customer endpoint)
-    const { data: messages = [], isLoading } = useThreadMessages(activeConversationId || '', branchId || undefined, isCustomer && !isMockThread);
+    const { data: messages = [], isLoading } = useThreadMessages(
+        (!isMockThread && activeConversationId) ? activeConversationId : '', 
+        branchId || undefined, 
+        isCustomer && !isMockThread
+    );
+    const deleteMessageMutation = useDeleteMessage(isCustomer);
     const markThreadAsRead = useMarkThreadAsRead(isCustomer);
     const { emitTyping } = useMessagingRealtime({
         activeThreadId: activeConversationId,
@@ -162,9 +178,12 @@ export default function ChatWindow() {
     }, [activeConversationId]);
 
     useEffect(() => {
-        if (!activeConversationId || isCustomer || isMockThread || !branchId) return;
-        markThreadAsRead.mutate({ threadId: activeConversationId, branchId });
-    }, [activeConversationId, branchId, isCustomer, isMockThread, markThreadAsRead]);
+        if (!activeConversationId || isCustomer || isMockThread || !branchId || !activeConv) return;
+        // Only mark as read if there are actually unread messages
+        if ((activeConv as any).unreadCount > 0) {
+            markThreadAsRead.mutate({ threadId: activeConversationId, branchId });
+        }
+    }, [activeConversationId, branchId, isCustomer, isMockThread, (activeConv as any)?.unreadCount, markThreadAsRead]);
 
     const handleConversationStarted = useCallback(
         (threadId: string) => {
@@ -240,8 +259,24 @@ export default function ChatWindow() {
     }
 
     const { contact } = activeConv;
-    const contactName = contact?.name || 'Customer';
-    const threadMessages = messages as any[];
+    
+    // Name Fallback: If name is generic or missing, try to find it in pending threads (local cache)
+    let contactName = contact?.name && contact.name !== 'Unknown' && contact.name !== 'Customer' ? contact.name : 'Unknown';
+    if (contactName === 'Unknown') {
+        const pending = pendingThreads.find(p => p.linkedThreadId === activeConv.id || p.contact?.id === contact?.id);
+        if (pending?.contact?.name) {
+            contactName = pending.contact.name;
+        } else if (contact?.name) {
+            contactName = contact.name; // Use whatever backend gave us if no pending match
+        } else {
+            contactName = 'Customer'; // Final fallback
+        }
+    }
+    const threadMessages = [...messages].sort((a, b) => {
+        const timeA = new Date(a.timestamp || a.createdAt || a.sentAt || a.updatedAt).getTime();
+        const timeB = new Date(b.timestamp || b.createdAt || b.sentAt || b.updatedAt).getTime();
+        return timeA - timeB;
+    }) as any[];
     const contactIsOnline = contact?.isOnline;
     const contactLastSeen = contact?.lastSeen ? new Date(contact.lastSeen).toLocaleString() : null;
     const isTyping = activeConversationId ? typingByThread[activeConversationId] : false;
@@ -261,6 +296,13 @@ export default function ChatWindow() {
             {/* Header */}
             <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 z-10 bg-white shrink-0">
                 <div className="flex items-center gap-3 min-w-0">
+                    <button 
+                        onClick={() => setActiveConversation(null)}
+                        className="md:hidden p-2 -ml-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-colors"
+                        title="Back to chat list"
+                    >
+                        <ArrowLeft size={20} />
+                    </button>
                     <button
                         type="button"
                         onClick={() => setShowProfile(prev => !prev)}
@@ -276,9 +318,16 @@ export default function ChatWindow() {
                         )}
                     </button>
                     <div className="min-w-0">
-                        <h2 className="text-sm font-bold text-slate-800 leading-tight truncate" title={contactName}>
-                            {contactName}
-                        </h2>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-sm font-bold text-slate-800 leading-tight truncate" title={contactName}>
+                                {contactName}
+                            </h2>
+                            {!isCustomer && user?.role === 'owner' && (
+                                <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full border border-primary/20">
+                                    OWNER
+                                </span>
+                            )}
+                        </div>
                         <p className="text-[11px] text-slate-400 truncate">
                             {isTyping ? 'Typing...' : (contact?.phone || contact?.email || 'Active now')}
                         </p>
@@ -333,7 +382,9 @@ export default function ChatWindow() {
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-3 chat-bg custom-scrollbar">
                     {isLoading ? (
-                        <div className="flex items-center justify-center h-full text-slate-400 text-sm">Loading messages...</div>
+                        <div className="flex items-center justify-center h-full">
+                            <Spinner size="lg" color="primary" />
+                        </div>
                     ) : threadMessages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm">
                             <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
@@ -363,7 +414,17 @@ export default function ChatWindow() {
                                 <MessageBubble
                                     message={msg}
                                     isCustomer={isCustomer}
+                                    showOwnerPill={!isCustomer && msg.direction === 'OUTBOUND' && user?.role === 'owner'}
                                     onReply={() => setReplyToMessage(msg)}
+                                    onDelete={() => {
+                                        if (window.confirm('Delete this message?')) {
+                                            deleteMessageMutation.mutate({ 
+                                                messageId: msg.id, 
+                                                threadId: activeConversationId!, 
+                                                branchId: branchId || undefined 
+                                            });
+                                        }
+                                    }}
                                 />
                             </React.Fragment>
                         );
@@ -465,38 +526,61 @@ export default function ChatWindow() {
 function MessageBubble({
     message,
     isCustomer,
+    showOwnerPill,
     onReply,
+    onDelete,
 }: {
     message: any;
     isCustomer: boolean;
+    showOwnerPill?: boolean;
     onReply?: () => void;
+    onDelete?: () => void;
 }) {
     const isMine = isCustomer 
         ? message.direction === 'INBOUND'
         : message.direction === 'OUTBOUND';
     const replyContent = message?.replyTo?.content || '';
+    const [showActionsMobile, setShowActionsMobile] = useState(false);
 
     return (
-        <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} max-w-[80%] ${isMine ? 'ml-auto' : ''}`}>
+        <div 
+            className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} max-w-[80%] ${isMine ? 'ml-auto' : ''}`}
+            onClick={() => setShowActionsMobile(!showActionsMobile)}
+        >
             <div className={`p-3 shadow-sm relative group ${
                 isMine
                     ? 'bg-primary text-white bubble-right'
                     : 'bg-white border border-slate-200 text-slate-700 bubble-left'
             }`}>
-                {onReply && (
-                    <button
-                        type="button"
-                        onClick={onReply}
-                        className={`absolute -top-3 ${isMine ? 'right-2' : 'left-2'} h-6 px-2 rounded-full text-[10px] font-bold flex items-center gap-1 border shadow-sm opacity-0 group-hover:opacity-100 transition-opacity ${
-                            isMine
-                                ? 'bg-white text-primary border-white/40'
-                                : 'bg-white text-slate-500 border-slate-200'
-                        }`}
-                        title="Reply to message"
-                    >
-                        <CornerUpLeft size={12} />
-                        Reply
-                    </button>
+                {(onReply || onDelete) && (
+                    <div className={`absolute -top-3 ${isMine ? 'right-2' : 'left-2'} flex gap-1 transition-opacity ${showActionsMobile ? 'opacity-100' : 'opacity-0 md:group-hover:opacity-100'}`}>
+                        {onReply && (
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onReply(); }}
+                                className={`h-6 px-2 rounded-full text-[10px] font-bold flex items-center gap-1 border shadow-sm ${
+                                    isMine
+                                        ? 'bg-white text-primary border-white/40'
+                                        : 'bg-white text-slate-500 border-slate-200'
+                                }`}
+                                title="Reply to message"
+                            >
+                                <CornerUpLeft size={12} />
+                                Reply
+                            </button>
+                        )}
+                        {onDelete && isMine && (
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                                className="h-6 px-2 rounded-full text-[10px] font-bold flex items-center gap-1 border shadow-sm bg-white text-rose-500 border-rose-200 hover:bg-rose-50"
+                                title="Delete message"
+                            >
+                                <Trash2 size={12} />
+                                Delete
+                            </button>
+                        )}
+                    </div>
                 )}
                 {replyContent && (
                     <div className={`mb-2 rounded-lg px-2 py-1 text-[11px] ${
@@ -509,7 +593,12 @@ function MessageBubble({
             </div>
 
             {/* Timestamp & Status */}
-            <div className={`flex items-center gap-1 mt-1 ${isMine ? 'mr-1' : 'ml-1'}`}>
+            <div className={`flex items-center gap-1.5 mt-1 ${isMine ? 'mr-1' : 'ml-1'}`}>
+                {showOwnerPill && (
+                    <span className="px-1.5 py-0.5 bg-white/20 text-white text-[9px] font-bold rounded-full border border-white/30 mr-1 shadow-sm">
+                        OWNER
+                    </span>
+                )}
                 <span className="text-[10px] text-slate-400">
                     {formatMessageTime(message.timestamp || message.createdAt || message.sentAt || message.updatedAt)}
                 </span>

@@ -3,11 +3,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Smile, Paperclip, Camera, Send, X } from 'lucide-react';
-import { useSendReply, useStartConversation } from '@/hooks/useMessaging';
+import { useSendReply, useStartConversation, useStartBranchConversation, useInitBranchConversation } from '@/hooks/useMessaging';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches } from '@/services/branches/hooks';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/lib/store/useChatStore';
+import Spinner from '../ui/Spinner';
 
 interface ChatInputProps {
     conversationId?: string;
@@ -30,10 +31,16 @@ export default function ChatInput({
 }: ChatInputProps) {
     const [text, setText] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [isStarting, setIsStarting] = useState(false);
     const user = useAuthStore(s => s.user);
     const { activeBranchId, setActiveBranch } = useActiveBranch();
     const { data: branches = [] } = useBranches();
-    const addMockMessage = useChatStore(s => s.addMockMessage);
+    const addPendingMessage = useChatStore(s => s.addPendingMessage);
+    const linkPendingThread = useChatStore(s => s.linkPendingThread);
+    const setActiveConversation = useChatStore(s => s.setActiveConversation);
+    const drafts = useChatStore(s => s.drafts);
+    const setDraft = useChatStore(s => s.setDraft);
+    const clearDraft = useChatStore(s => s.clearDraft);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
@@ -47,14 +54,30 @@ export default function ChatInput({
         }
     }, [activeBranchId, branches, user, setActiveBranch]);
 
+    useEffect(() => {
+        if (conversationId && drafts[conversationId]) {
+            setText(drafts[conversationId]);
+        } else {
+            setText('');
+        }
+        // Small delay to allow value to mount
+        setTimeout(() => {
+            if (textareaRef.current) {
+                textareaRef.current.style.height = '';
+                textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+            }
+        }, 10);
+    }, [conversationId]);
+
     const isCustomer = user?.role === 'customer';
     const branchId = isCustomer ? undefined : (activeBranchId || (branches.length === 1 ? branches[0]?.id : undefined));
     
     // Unified reply mutation (handles both business and customer endpoints)
     const replyMutation = useSendReply(isCustomer);
     const startConversationMutation = useStartConversation();
+    const initBranchConvMutation = useInitBranchConversation();
     const canStartConversation = isCustomer && !!startBranchId && !conversationId;
-    const canBranchStartConversation = !isCustomer && !!conversationId && conversationId.startsWith('mock-');
+    const canBranchStartConversation = !isCustomer && !!conversationId && conversationId.startsWith('pending-');
 
     const emitTyping = (next: boolean) => {
         if (!onTypingChange) return;
@@ -82,34 +105,81 @@ export default function ChatInput({
     };
 
     const handleSend = async () => {
-        if (!text.trim()) return;
-
-
+        if (!text.trim() || isStarting) return;
 
         if (canStartConversation) {
+            setIsStarting(true);
             try {
                 const response: any = await startConversationMutation.mutateAsync({
                     branchId: startBranchId!,
                     content: text.trim(),
                 });
-                const threadId = response?.threadId || response?.thread?.id;
+                const threadId = response?.threadId || response?.thread?.id || response?.id;
                 if (threadId) {
                     onConversationStarted?.(threadId);
                 }
                 setText('');
+                if (conversationId) clearDraft(conversationId);
                 setShowEmojiPicker(false);
                 emitTyping(false);
                 onCancelReply?.();
-                if (textareaRef.current) {
-                    textareaRef.current.style.height = '';
-                }
+                if (textareaRef.current) textareaRef.current.style.height = '';
             } catch (error: any) {
                 toast.error(error.message || 'Failed to start conversation');
+            } finally {
+                setIsStarting(false);
             }
             return;
         }
 
+        // Staff sending first message on a pending (local) thread → create real thread
+        if (canBranchStartConversation && conversationId) {
+            if (!branchId) {
+                toast.error('Please select a branch first');
+                return;
+            }
+            setIsStarting(true);
+            // Extract the visitor ID from the pending thread ID format: pending-{visitorId}
+            const customerId = conversationId.replace('pending-', '');
+            try {
+                // 1. Initialize the thread first to get a 1-on-1 Inbox thread ID
+                const initResponse: any = await initBranchConvMutation.mutateAsync({
+                    branchId,
+                    customerId,
+                });
+                
+                // Get the real thread ID from the response
+                const realThreadId = initResponse?.threadId || initResponse?.thread?.id || initResponse?.id;
+                
+                if (realThreadId) {
+                    // 2. Send the message as a regular reply to this new real thread
+                    await replyMutation.mutateAsync({
+                        threadId: realThreadId,
+                        content: text.trim(),
+                        branchId,
+                    });
 
+                    // 3. Switch to the real thread ID.
+                    setActiveConversation(realThreadId);
+                    linkPendingThread(conversationId, realThreadId); // Link it instead of removing
+                    onConversationStarted?.(realThreadId);
+                } else {
+                    throw new Error('Could not obtain a thread ID');
+                }
+                
+                setText('');
+                if (conversationId) clearDraft(conversationId);
+                setShowEmojiPicker(false);
+                emitTyping(false);
+                onCancelReply?.();
+                if (textareaRef.current) textareaRef.current.style.height = '';
+            } catch (error: any) {
+                toast.error(error.message || 'Failed to start conversation');
+            } finally {
+                setIsStarting(false);
+            }
+            return;
+        }
 
         if (!conversationId) {
             toast.error('Select a conversation first');
@@ -129,12 +199,11 @@ export default function ChatInput({
                 replyToId: replyTo?.id,
             });
             setText('');
+            if (conversationId) clearDraft(conversationId);
             setShowEmojiPicker(false);
             emitTyping(false);
             onCancelReply?.();
-            if (textareaRef.current) {
-                textareaRef.current.style.height = '';
-            }
+            if (textareaRef.current) textareaRef.current.style.height = '';
         } catch (error: any) {
             toast.error(error.message || 'Failed to send message');
         }
@@ -170,7 +239,7 @@ export default function ChatInput({
         if (e.target) e.target.value = '';
     };
 
-    const isSending = replyMutation.isPending || startConversationMutation.isPending;
+    const isSending = replyMutation.isPending || startConversationMutation.isPending || initBranchConvMutation.isPending || isStarting;
 
     useEffect(() => {
         return () => {
@@ -272,6 +341,7 @@ export default function ChatInput({
                         onChange={e => {
                             const nextValue = e.target.value;
                             setText(nextValue);
+                            if (conversationId) setDraft(conversationId, nextValue);
                             handleTypingActivity(nextValue);
                         }}
                         onInput={handleInput}
@@ -287,7 +357,11 @@ export default function ChatInput({
                     disabled={!text.trim() || isSending}
                     className="w-10 h-10 flex items-center justify-center bg-primary text-white rounded-full shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed mb-1"
                 >
-                    <Send size={18} className={`${isSending ? 'animate-pulse' : ''}`} />
+                    {isSending ? (
+                        <Spinner size="sm" color="white" />
+                    ) : (
+                        <Send size={18} />
+                    )}
                 </button>
             </div>
         </footer>
