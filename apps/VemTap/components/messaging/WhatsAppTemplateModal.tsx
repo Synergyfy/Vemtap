@@ -3,9 +3,10 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Search, MessageSquare, Check, UserCircle, Building2, Link as LinkIcon } from 'lucide-react';
-import { useChatTemplates } from '@/hooks/useMessaging';
+import { useMessagingTemplates, useSendMessage } from '@/services/messaging/hooks';
 import { useMessagingBranch } from '@/hooks/useMessagingBranch';
 import { generateWhatsAppLink, processTemplate, generateBridgeLink } from '@/lib/whatsapp-utils';
+import { toast } from 'react-hot-toast';
 
 // Inline WhatsApp SVG icon for consistent branding
 function WhatsAppIcon({ size = 20, className = '' }: { size?: number; className?: string }) {
@@ -31,7 +32,8 @@ const PLACEHOLDERS = [
 
 export default function WhatsAppTemplateModal({ isOpen, onClose, visitors, businessName, businessCode }: WhatsAppTemplateModalProps) {
     const { branchId } = useMessagingBranch();
-    const { data: templates = [], isLoading } = useChatTemplates(branchId || undefined);
+    const { data: templates = [], isLoading } = useMessagingTemplates('WHATSAPP');
+    const sendMessage = useSendMessage();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
     const [customMessage, setCustomMessage] = useState('');
@@ -64,7 +66,7 @@ export default function WhatsAppTemplateModal({ isOpen, onClose, visitors, busin
         previewMessage += getBridgeLabel() + getBridgeUrl(currentVisitor);
     }
 
-    const handleSendNext = (index: number) => {
+    const handleSendNext = async (index: number) => {
         const visitor = visitors[index];
         if (!visitor.phone) return;
         
@@ -75,6 +77,19 @@ export default function WhatsAppTemplateModal({ isOpen, onClose, visitors, busin
         if (includeBridgeLink) {
             finalMessage += getBridgeLabel() + getBridgeUrl(visitor);
         }
+
+        // Log to backend history
+        try {
+            await sendMessage.mutateAsync({
+                channel: 'WHATSAPP',
+                content: finalMessage,
+                customerIds: [visitor.id],
+                audienceType: 'GROUP',
+                from: businessName
+            } as any);
+        } catch (err) {
+            console.warn('[Broadcast] Log ignored:', err);
+        }
             
         const link = generateWhatsAppLink(visitor.phone, finalMessage);
         window.open(link, '_blank');
@@ -83,6 +98,7 @@ export default function WhatsAppTemplateModal({ isOpen, onClose, visitors, busin
             setCurrentIndex(index + 1);
         } else {
             onClose();
+            toast.success('Broadcast loop complete. Check your message history!');
         }
     };
 

@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
-import { Search, Maximize2, Minimize2, Check, CheckCheck, FileText, Info, Smartphone, MessageSquare, CornerUpLeft } from 'lucide-react';
+import { Search, Maximize2, Minimize2, Check, CheckCheck, FileText, Info, Smartphone, MessageSquare, CornerUpLeft, Settings } from 'lucide-react';
 import ChatInput from './ChatInput';
 import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
@@ -52,7 +52,7 @@ function StatusIcon({ status }: { status: string }) {
 export default function ChatWindow() {
     const activeConversationId = useChatStore(s => s.activeConversationId);
     const setActiveConversation = useChatStore(s => s.setActiveConversation);
-    const mockThreads = useChatStore(s => s.mockThreads);
+    const mockThreads = useChatStore(s => s.mockThreads); 
     const mockMessages = useChatStore(s => s.mockMessages);
     const typingByThread = useChatStore(s => s.typingByThread);
     const user = useAuthStore(s => s.user);
@@ -61,14 +61,12 @@ export default function ChatWindow() {
     
     // Fetch all threads to find the active one
     const { data: threads = [], isLoading: threadsLoading } = useChatThreads('IN_HOUSE', branchId || undefined, isCustomer);
-    const allThreads = useMemo(() => {
-        const apiThreads = threads as any[];
-        const apiIds = new Set(apiThreads.map(t => t.id));
-        const mergedMocks = mockThreads.filter(t => !apiIds.has(t.id));
-        return [...mergedMocks, ...apiThreads];
-    }, [threads, mockThreads]);
+    const allThreads: any[] = useMemo(() => {
+        return threads as any[];
+    }, [threads]);
+    
     const activeConv = allThreads.find(c => c.id === activeConversationId);
-    const isMockThread = !!activeConversationId && mockThreads.some(t => t.id === activeConversationId);
+    const isMockThread = activeConversationId?.startsWith('mock-') || false;
 
     const [targetBranchId, setTargetBranchId] = useState<string | null>(null);
     const [targetBranchName, setTargetBranchName] = useState<string | null>(null);
@@ -157,7 +155,7 @@ export default function ChatWindow() {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
-    }, [messages?.length, activeConversationId, mockMessages]);
+    }, [messages?.length, activeConversationId]);
 
     useEffect(() => {
         setShowProfile(false);
@@ -253,8 +251,7 @@ export default function ChatWindow() {
     }
 
     const { contact } = activeConv;
-    const contactName = contact?.name || 'Business';
-    
+    const contactName = contact?.name || 'Customer';
     const contactIsOnline = contact?.isOnline;
     const contactLastSeen = contact?.lastSeen ? new Date(contact.lastSeen).toLocaleString() : null;
     const isTyping = activeConversationId ? typingByThread[activeConversationId] : false;
@@ -312,32 +309,13 @@ export default function ChatWindow() {
                         {isFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                     </button>
                     {!isCustomer && (
-                        <div className="relative group">
-                            <button className="p-2 text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-all flex items-center gap-2 font-bold text-xs ring-1 ring-primary/20 shadow-sm shadow-primary/5">
-                                <span className="material-symbols-outlined text-[20px]">settings</span>
-                                <span>Settings</span>
-                            </button>
-                            
-                            <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all transform scale-95 group-hover:scale-100 origin-top-right z-50">
-                                <div className="px-4 py-2 border-b border-slate-50 mb-1">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Configuration</p>
-                                </div>
-                                <Link 
-                                    href={`/dashboard/messaging/chat/settings?tab=automation${branchId ? `&branchId=${branchId}` : ''}`}
-                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors"
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">smart_toy</span>
-                                    <span>Automated Replies</span>
-                                </Link>
-                                <Link 
-                                    href={`/dashboard/messaging/chat/settings?tab=templates${branchId ? `&branchId=${branchId}` : ''}`}
-                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors"
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">description</span>
-                                    <span>Message Templates</span>
-                                </Link>
-                            </div>
-                        </div>
+                        <Link 
+                            href={`/dashboard/messaging/chat/settings${branchId ? `?branchId=${branchId}` : ''}`}
+                            className="p-2 text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-all flex items-center gap-2 font-bold text-xs ring-1 ring-primary/20 shadow-sm shadow-primary/5"
+                        >
+                            <Settings size={18} />
+                            <span>Settings</span>
+                        </Link>
                     )}
                 </div>
             </header>
@@ -399,7 +377,6 @@ export default function ChatWindow() {
                 {/* Input */}
                 <ChatInput
                     conversationId={activeConversationId || undefined}
-                    isMock={isMockThread}
                     replyTo={replyToMessage}
                     onCancelReply={() => setReplyToMessage(null)}
                     onTypingChange={(next) => {

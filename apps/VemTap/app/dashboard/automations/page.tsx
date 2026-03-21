@@ -163,7 +163,7 @@ export default function AutomationsPage() {
 function TemplateToggle({ rule, template }: { rule?: AutomationRule, template: any }) {
     const { user, activeBranchId } = useAuthStore();
     const createMutation = useCreateAutomation();
-    const updateMutation = useUpdateAutomation(rule?.id || '');
+    const updateMutation = useUpdateAutomation();
 
     const handleToggle = () => {
         if (!rule) {
@@ -180,7 +180,7 @@ function TemplateToggle({ rule, template }: { rule?: AutomationRule, template: a
                 actionConfig: {}
             });
         } else {
-            updateMutation.mutate({ isActive: !rule.isActive });
+            updateMutation.mutate({ id: rule.id, data: { isActive: !rule.isActive } });
         }
     };
 

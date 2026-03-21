@@ -113,6 +113,9 @@ export const useRewards = (branchId?: string) => {
             } else if (allBranches) {
                 params.append('allBranches', 'true');
             }
+            if (resolvedBranchId) {
+                return await api.get(`/loyalty/rewards/branch/${resolvedBranchId}`);
+            }
             return await api.get(`/loyalty/rewards?${params.toString()}`);
         }
     });
@@ -163,7 +166,9 @@ export const useCreateReward = (branchId?: string) => {
             if (bId && bId !== 'all') {
                 params.append('branchId', bId);
             }
-            return await api.post(`/loyalty/rewards/create?${params.toString()}`, dto);
+            const payload = { ...dto };
+            delete payload.totalAvailable;
+            return await api.post(`/visitors/rewards?${params.toString()}`, payload);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'rewards'] });
@@ -182,7 +187,9 @@ export const useUpdateReward = (branchId?: string) => {
             if (bId && bId !== 'all') {
                 params.append('branchId', bId);
             }
-            return await api.patch(`/loyalty/rewards/${id}?${params.toString()}`, updates);
+            const payload = { ...updates };
+            delete payload.totalAvailable;
+            return await api.patch(`/loyalty/rewards/${id}?${params.toString()}`, payload);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'rewards'] });

@@ -295,7 +295,7 @@ export default function LoyaltyPage() {
                                     type="text"
                                     value={claimCodeVal}
                                     onChange={(e) => {
-                                        let val = e.target.value.replace(/\D/g, '').substring(0, 9);
+                                        const val = e.target.value.replace(/\D/g, '').substring(0, 9);
                                         let formatted = val;
                                         if (val.length > 3) formatted = val.slice(0, 3) + '-' + val.slice(3);
                                         if (val.length > 6) formatted = formatted.slice(0, 7) + '-' + val.slice(6);

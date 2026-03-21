@@ -50,24 +50,24 @@ export default function CustomerDashboardPage() {
     const isLoyaltyLoading = isRewardsLoading || isHistoryLoading;
 
     useEffect(() => {
-        // eslint-disable-next-line no-console
+         
         console.log('[CUSTOMER DASHBOARD] 🔍 Auth check', { isAuthenticated, userRole: user?.role });
         
         if (!isAuthenticated) {
-            // eslint-disable-next-line no-console
+             
             console.log('[CUSTOMER DASHBOARD] 🚫 Redirecting to /login');
             router.push('/login');
             return;
         }
 
         if (user?.role?.toLowerCase() !== 'customer') {
-            // eslint-disable-next-line no-console
+             
             console.log('[CUSTOMER DASHBOARD] 🔄 Role not customer, redirecting to /dashboard');
             router.push('/dashboard');
             return;
         }
 
-        // eslint-disable-next-line no-console
+         
         console.log('[CUSTOMER DASHBOARD] ✅ Auth OK');
 
         const initializeDashboard = async () => {

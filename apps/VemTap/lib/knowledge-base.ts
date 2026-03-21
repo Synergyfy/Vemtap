@@ -81,7 +81,7 @@ export const KNOWLEDGE_BASE = [
 
 export function searchKnowledgeBase(query: string): string {
   const lowerQuery = query.toLowerCase();
-  let results: string[] = [];
+  const results: string[] = [];
 
   for (const category of KNOWLEDGE_BASE) {
     for (const topic of category.topics) {
