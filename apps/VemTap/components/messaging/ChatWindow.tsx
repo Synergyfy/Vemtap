@@ -3,7 +3,7 @@
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Maximize2, Minimize2,Trash2, Check, CheckCheck, FileText, Info, Smartphone, MessageSquare, CornerUpLeft, ArrowLeft } from 'lucide-react';
+import { Search, Maximize2, Minimize2, Trash2, Check, CheckCheck, FileText, Info, Smartphone, MessageSquare, CornerUpLeft, ArrowLeft, Settings } from 'lucide-react';
 import ChatInput from './ChatInput';
 import Link from 'next/link';
 import { useChatThreads, useMarkThreadAsRead, useThreadMessages, useDeleteMessage } from '@/hooks/useMessaging';
@@ -60,6 +60,7 @@ export default function ChatWindow() {
     // Fetch all threads to find the active one
     const { data: threads = [], isLoading: threadsLoading } = useChatThreads('IN_HOUSE', branchId || undefined, isCustomer);
     const user = useAuthStore((state) => state.user);
+    const isOwner = user?.role === 'owner';
     const pendingThreads = useChatStore(s => s.pendingThreads);
     
     const allThreads: any[] = useMemo(() => {
@@ -76,7 +77,7 @@ export default function ChatWindow() {
     }, [threads, pendingThreads]);
     
     const activeConv = allThreads.find(c => c.id === activeConversationId);
-    const isMockThread = activeConversationId?.startsWith('pending-');
+    const isPendingThread = activeConversationId?.startsWith('pending-');
 
     const [targetBranchId, setTargetBranchId] = useState<string | null>(null);
     const [targetBranchName, setTargetBranchName] = useState<string | null>(null);
@@ -148,9 +149,9 @@ export default function ChatWindow() {
 
     // Fetch messages for active thread (business or customer endpoint)
     const { data: messages = [], isLoading } = useThreadMessages(
-        (!isMockThread && activeConversationId) ? activeConversationId : '', 
+        (!isPendingThread && activeConversationId) ? activeConversationId : '', 
         branchId || undefined, 
-        isCustomer && !isMockThread
+        isCustomer && !isPendingThread
     );
     const deleteMessageMutation = useDeleteMessage(isCustomer);
     const markThreadAsRead = useMarkThreadAsRead(isCustomer);
@@ -158,7 +159,7 @@ export default function ChatWindow() {
         activeThreadId: activeConversationId,
         branchId: branchId || undefined,
         isCustomer,
-        isMockThread,
+        isPendingThread,
     });
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -178,12 +179,12 @@ export default function ChatWindow() {
     }, [activeConversationId]);
 
     useEffect(() => {
-        if (!activeConversationId || isCustomer || isMockThread || !branchId || !activeConv) return;
+        if (!activeConversationId || isCustomer || isPendingThread || !branchId || !activeConv) return;
         // Only mark as read if there are actually unread messages
         if ((activeConv as any).unreadCount > 0) {
             markThreadAsRead.mutate({ threadId: activeConversationId, branchId });
         }
-    }, [activeConversationId, branchId, isCustomer, isMockThread, (activeConv as any)?.unreadCount, markThreadAsRead]);
+    }, [activeConversationId, branchId, isCustomer, isPendingThread, (activeConv as any)?.unreadCount, markThreadAsRead]);
 
     const handleConversationStarted = useCallback(
         (threadId: string) => {
@@ -292,10 +293,10 @@ export default function ChatWindow() {
     let lastDate = '';
 
     return (
-        <div className={`flex-1 flex flex-col h-full min-h-0 bg-white transition-all duration-300 relative ${isFullScreen ? 'fixed inset-0 z-[100] m-0 rounded-none' : ''}`}>
+        <div className={`flex-1 flex flex-col h-full min-h-0 bg-white transition-all duration-300 relative ${isFullScreen ? 'fixed inset-0 z-100 m-0 rounded-none' : ''}`}>
             {/* Header */}
-            <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 z-10 bg-white shrink-0">
-                <div className="flex items-center gap-3 min-w-0">
+            <header className="h-[72px] shrink-0 bg-white border-b border-slate-100 flex items-center justify-between px-6 z-20">
+                <div className="flex items-center gap-4">
                     <button 
                         onClick={() => setActiveConversation(null)}
                         className="md:hidden p-2 -ml-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-colors"
@@ -303,82 +304,48 @@ export default function ChatWindow() {
                     >
                         <ArrowLeft size={20} />
                     </button>
-                    <button
-                        type="button"
-                        onClick={() => setShowProfile(prev => !prev)}
-                        className="relative"
-                        title="View profile"
-                    >
+                    <div className="relative">
                         {contact?.avatar ? (
-                            <img src={contact.avatar} alt={contactName} className="w-10 h-10 rounded-full object-cover" />
+                            <img src={contact.avatar} alt={contactName} className="w-11 h-11 rounded-full object-cover border-2 border-slate-100" />
                         ) : (
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs ${getAvatarColor(activeConv.id)}`}>
-                                {getInitials(contactName)}
+                            <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-base shadow-sm ${getAvatarColor(activeConv.id || '')}`}>
+                                {contactName[0].toUpperCase()}
                             </div>
                         )}
-                    </button>
-                    <div className="min-w-0">
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white" />
+                    </div>
+                    <div>
                         <div className="flex items-center gap-2">
-                            <h2 className="text-sm font-bold text-slate-800 leading-tight truncate" title={contactName}>
-                                {contactName}
-                            </h2>
-                            {!isCustomer && user?.role === 'owner' && (
-                                <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full border border-primary/20">
+                            <h2 className="font-bold text-slate-800 tracking-tight leading-none">{contactName}</h2>
+                            {isOwner && (
+                                <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full border border-primary/20 tracking-wider">
                                     OWNER
                                 </span>
                             )}
                         </div>
-                        <p className="text-[11px] text-slate-400 truncate">
+                        <p className="text-xs text-slate-400 mt-1 font-medium">
                             {isTyping ? (
-                                <span className="text-primary font-medium animate-pulse">
+                                <span className="text-primary font-bold animate-pulse">
                                     {isCustomer ? 'Business typing...' : 'Customer typing...'}
                                 </span>
                             ) : (contact?.phone || contact?.email || 'Active now')}
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-3 text-slate-400">
-                    <button
-                        onClick={() => setShowProfile(prev => !prev)}
-                        className={`p-2 rounded-lg transition-colors ${showProfile ? 'text-primary bg-primary/10' : 'hover:text-slate-600 hover:bg-slate-50'}`}
-                        title="Contact info"
-                    >
-                        <Info size={18} />
-                    </button>
+
+                <div className="flex items-center gap-2">
                     <button 
                         onClick={() => setIsFullScreen(!isFullScreen)}
                         className="p-2 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
                     >
                         {isFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                     </button>
-                    {!isCustomer && (
-                        <div className="relative group">
-                            <button className="p-2 text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-all flex items-center gap-2 font-bold text-xs ring-1 ring-primary/20 shadow-sm shadow-primary/5">
-                                <span className="material-symbols-outlined text-[20px]">settings</span>
-                                <span>Settings</span>
-                            </button>
-                            
-                            <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all transform scale-95 group-hover:scale-100 origin-top-right z-50">
-                                <div className="px-4 py-2 border-b border-slate-50 mb-1">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Configuration</p>
-                                </div>
-                                <Link 
-                                    href={`/dashboard/messaging/chat/settings?tab=automation${branchId ? `&branchId=${branchId}` : ''}`}
-                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors"
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">smart_toy</span>
-                                    <span>Automated Replies</span>
-                                </Link>
-                                <Link 
-                                    href={`/dashboard/messaging/chat/settings?tab=templates${branchId ? `&branchId=${branchId}` : ''}`}
-                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors"
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">description</span>
-                                    <span>Message Templates</span>
-                                </Link>
-                            </div>
-                        </div>
-                    )}
+                    <Link 
+                        href={`/dashboard/messaging/chat/settings${branchId ? `?branchId=${branchId}` : ''}`}
+                        className="p-2.5 text-slate-400 hover:text-primary hover:bg-slate-50 rounded-xl transition-all"
+                    >
+                        <Settings size={20} />
+                    </Link>
                 </div>
             </header>
 
@@ -442,7 +409,7 @@ export default function ChatWindow() {
                     replyTo={replyToMessage}
                     onCancelReply={() => setReplyToMessage(null)}
                     onTypingChange={(next) => {
-                        if (!activeConversationId || isMockThread) return;
+                        if (!activeConversationId || isPendingThread) return;
                         emitTyping(activeConversationId, next);
                     }}
                 />

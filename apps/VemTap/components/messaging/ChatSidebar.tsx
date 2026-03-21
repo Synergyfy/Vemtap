@@ -3,7 +3,17 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, MoreVertical, FileText, MessageSquare, Check, CheckCircle2, Trash2 } from 'lucide-react';
+import { Search, Plus, MoreVertical, FileText, MessageSquare, Check, CheckCircle2, Trash2, Settings, Megaphone, Users, Tag } from 'lucide-react';
+import { useMyBusiness } from '@/services/businesses/hooks';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useChatThreads, useInitBranchConversation, useDeleteThread } from '@/hooks/useMessaging';
+import { useMessagingBranch } from '@/hooks/useMessagingBranch';
+import { useMessagingVisitorsByBranch, useNewVisitors, useReturningVisitors, useUpdateVisitor } from '@/services/visitors/hooks';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { api } from '@/lib/api';
+import toast from 'react-hot-toast';
+import WhatsAppTemplateModal from './WhatsAppTemplateModal';
 
 // Inline WhatsApp SVG icon for consistent branding
 function WhatsAppIcon({ size = 14, className = '' }: { size?: number; className?: string }) {
@@ -13,14 +23,6 @@ function WhatsAppIcon({ size = 14, className = '' }: { size?: number; className?
         </svg>
     );
 }
-import { useMyBusiness } from '@/services/businesses/hooks';
-import { useAuthStore } from '@/store/useAuthStore';
-import { useChatThreads, useInitBranchConversation, useDeleteThread } from '@/hooks/useMessaging';
-import { useMessagingBranch } from '@/hooks/useMessagingBranch';
-import { useMessagingVisitorsByBranch } from '@/services/visitors/hooks';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import WhatsAppTemplateModal from './WhatsAppTemplateModal';
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
@@ -66,7 +68,11 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
     const [activeTab, setActiveTab] = useState<MessagingTab>(mode || 'INTERNAL');
     const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
     const [whatsappModalVisitors, setWhatsappModalVisitors] = useState<any[]>([]);
+    const [showCampaigns, setShowCampaigns] = useState(false);
     const newChatRef = useRef<HTMLDivElement>(null);
+    const [newTagName, setNewTagName] = useState('');
+    const updateVisitor = useUpdateVisitor();
+    const campaignsRef = useRef<HTMLDivElement>(null);
 
     const searchParams = useSearchParams();
     const businessIdFromUrl = searchParams.get('businessId');
@@ -75,6 +81,9 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
      const { data: visitors = [], isLoading: visitorsLoading } = useMessagingVisitorsByBranch(branchId || undefined, {
          search: customerQuery || searchQuery,
      });
+     
+     const { data: newVisitorsData } = useNewVisitors(branchId || undefined, { limit: 1 });
+     const { data: returningVisitorsData } = useReturningVisitors(branchId || undefined, { limit: 1 });
 
     const allThreads = useMemo(() => {
         const real = threads as any[];
@@ -149,6 +158,120 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
             }
         }
     }, [isCustomer, businessIdFromUrl, allThreads, activeConversationId, setActiveConversation]);
+
+    // Auto-select thread if visitorId is in URL (for Businesses)
+    useEffect(() => {
+        const visitorIdFromUrl = searchParams.get('visitorId');
+        if (!isCustomer && visitorIdFromUrl && visitors.length > 0 && !activeConversationId) {
+            const visitor = (visitors as any[]).find(v => v.id === visitorIdFromUrl);
+            if (visitor) {
+                const threadId = addPendingThread(visitor);
+                setActiveConversation(threadId);
+            }
+        }
+    }, [isCustomer, searchParams, visitors, activeConversationId, setActiveConversation, addPendingThread]);
+
+    const customTagsWithCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        const visitorList = Array.isArray(visitors) ? visitors : [];
+        
+        visitorList.forEach((v: any) => {
+            let itemTags = v.tags || [];
+            if (typeof itemTags === 'string') {
+                try {
+                    itemTags = JSON.parse(itemTags);
+                } catch {
+                    itemTags = [itemTags];
+                }
+            }
+            if (Array.isArray(itemTags)) {
+                itemTags.forEach((tag: string) => {
+                    const normalized = tag.trim();
+                    if (normalized) {
+                        counts[normalized] = (counts[normalized] || 0) + 1;
+                    }
+                });
+            }
+        });
+        return Object.entries(counts).map(([name, count]) => ({ name, count }));
+    }, [visitors]);
+
+    // Handle click outside for campaigns
+    useEffect(() => {
+        if (!showCampaigns) return;
+        const handleClickOutside = (event: MouseEvent) => {
+            if (campaignsRef.current && !campaignsRef.current.contains(event.target as Node)) {
+                setShowCampaigns(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showCampaigns]);
+
+    const handleCreateTag = async () => {
+        if (!newTagName.trim()) return;
+        const selectedList = (visitors as any[]).filter(v => selectedContacts.has(v.id));
+        
+        if (selectedList.length === 0) {
+            toast.error('Select customers from the list first to tag them.');
+            return;
+        }
+
+        const tag = newTagName.trim();
+        const toastId = toast.loading(`Adding tag "${tag}"...`);
+        try {
+            await Promise.all(selectedList.map(v => {
+                const currentTags = Array.isArray(v.tags) ? v.tags : [];
+                if (!currentTags.includes(tag)) {
+                    return updateVisitor.mutateAsync({
+                        id: v.id,
+                        data: { tags: [...currentTags, tag] }
+                    });
+                }
+                return Promise.resolve();
+            }));
+            toast.success(`Tag "${tag}" added to ${selectedList.length} customers`, { id: toastId });
+            setNewTagName('');
+            setSelectedContacts(new Set());
+        } catch (err) {
+            toast.error('Failed to update tags.', { id: toastId });
+        }
+    };
+
+    const handleBroadcastToTag = (tagName: string) => {
+        setShowCampaigns(false);
+        const audience = (visitors as any[]).filter(v => {
+            const tags = Array.isArray(v.tags) ? v.tags : [];
+            return tags.includes(tagName);
+        });
+        
+        if (audience.length > 0) {
+            setWhatsappModalVisitors(audience);
+            toast.success(`Broadcasting to ${audience.length} customers with tag "${tagName}"`);
+        } else {
+            toast.error(`No customers found for tag "${tagName}"`);
+        }
+    };
+
+    const handleBroadcastClick = async (type: 'new' | 'returning') => {
+        setShowCampaigns(false);
+        const toastId = toast.loading(`Fetching ${type} visitors...`);
+        try {
+            const endpoint = type === 'new' ? '/visitors/new' : '/visitors/returning';
+            const response = await api.get(endpoint);
+            const audience = response?.data || [];
+            
+            if (audience.length > 0) {
+                toast.success(`Found ${audience.length} ${type} visitors`, { id: toastId });
+                setWhatsappModalVisitors(audience);
+            } else {
+                toast.error(`No ${type} visitors found in this segment.`, { id: toastId });
+            }
+        } catch (err) {
+            console.error('Broadcast fetch error:', err);
+            toast.error('Failed to fetch audience segment. Please try again.', { id: toastId });
+        }
+    };
 
 
     const toggleContactSelection = (id: string) => {
@@ -255,12 +378,120 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                     </div>
                                 )}
                             </div>
+                            <div className="relative" ref={campaignsRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCampaigns(prev => !prev)}
+                                    className={`p-1.5 rounded-lg transition-colors ${showCampaigns ? 'text-primary bg-primary/10' : 'hover:text-primary hover:bg-slate-100'}`}
+                                    title="Campaigns & Broadcast"
+                                >
+                                    <Megaphone size={18} />
+                                </button>
+
+                                {showCampaigns && (
+                                    <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div className="px-4 pb-2 border-b border-slate-100">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Audience Segments</p>
+                                        </div>
+                                        <div className="p-2 space-y-1">
+                                            <button 
+                                                onClick={() => handleBroadcastClick('new')}
+                                                className="w-full flex items-center justify-between p-3 hover:bg-blue-50 rounded-xl transition-colors group text-left"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="size-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                                                        <Plus size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-slate-700">New Visitors</p>
+                                                        <p className="text-[10px] text-slate-400">Recently joined</p>
+                                                    </div>
+                                                </div>
+                                                <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                    {newVisitorsData?.total || 0}
+                                                </span>
+                                            </button>
+
+                                            <button 
+                                                onClick={() => handleBroadcastClick('returning')}
+                                                className="w-full flex items-center justify-between p-3 hover:bg-purple-50 rounded-xl transition-colors group text-left"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="size-8 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center">
+                                                        <Users size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-slate-700">Returning Visitors</p>
+                                                        <p className="text-[10px] text-slate-400">Visited &gt; 1 time</p>
+                                                    </div>
+                                                </div>
+                                                <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                    {returningVisitorsData?.total || 0}
+                                                </span>
+                                            </button>
+
+                                            {/* Custom Tags */}
+                                            {customTagsWithCounts.map(({ name, count }) => (
+                                                <button 
+                                                    key={name}
+                                                    onClick={() => handleBroadcastToTag(name)}
+                                                    className="w-full flex items-center justify-between p-3 hover:bg-emerald-50 rounded-xl transition-colors group text-left"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="size-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center">
+                                                            <Tag size={16} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-slate-700">{name}</p>
+                                                            <p className="text-[10px] text-slate-400">Custom Category</p>
+                                                        </div>
+                                                    </div>
+                                                    <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                        {count}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {/* Create Tag Flow */}
+                                        <div className="mx-2 mt-2 pt-3 border-t border-slate-50">
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-2">Create New Segment</p>
+                                            <div className="flex items-center gap-2 px-2">
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Tag Name (e.g. VIP)"
+                                                    value={newTagName}
+                                                    onChange={e => setNewTagName(e.target.value)}
+                                                    className="flex-1 h-9 rounded-xl bg-slate-50 border border-slate-100 px-3 text-[11px] font-semibold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+                                                />
+                                                <button 
+                                                    onClick={handleCreateTag}
+                                                    disabled={!newTagName.trim() || selectedContacts.size === 0}
+                                                    className="size-9 bg-primary text-white rounded-xl flex items-center justify-center shadow-md shadow-primary/20 hover:bg-primary/90 disabled:opacity-30 disabled:shadow-none transition-all"
+                                                    title={selectedContacts.size === 0 ? "Select customers first" : "Create tag"}
+                                                >
+                                                    <Plus size={18} />
+                                                </button>
+                                            </div>
+                                            <div className="mt-2 px-2">
+                                                <p className="text-[9px] text-center text-slate-400 italic font-medium leading-relaxed">
+                                                    {selectedContacts.size > 0 
+                                                        ? `Apply tag "${newTagName || '...'}" to ${selectedContacts.size} selected`
+                                                        : "Select customers below to create a tag"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                             <Link 
-                                href={`/dashboard/messaging/chat/settings?tab=templates${branchId ? `&branchId=${branchId}` : ''}`}
+                                href={`/dashboard/messaging/chat/settings${branchId ? `?branchId=${branchId}` : ''}`}
                                 className="p-1.5 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors"
-                                title="Message Templates"
+                                title="Chat Settings"
                             >
-                                <FileText size={18} />
+                                <Settings size={18} />
+
                             </Link>
                         </div>
                     )}
@@ -342,11 +573,16 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                     <ConversationItem
                                         conversation={conv}
                                         isActive={conv.id === activeConversationId}
+                                        isSelected={conv.contact?.id ? selectedContacts.has(conv.contact.id) : false}
+                                        onSelect={() => {
+                                            if (conv.contact?.id) toggleContactSelection(conv.contact.id);
+                                        }}
                                         onClick={() => setActiveConversation(conv.id)}
                                     />
                                 </motion.div>
                             ))}
                         </AnimatePresence>
+
                         )}
                     </>
                 ) : (
@@ -388,10 +624,14 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
 function ConversationItem({
     conversation,
     isActive,
+    isSelected,
+    onSelect,
     onClick,
 }: {
     conversation: any;
     isActive: boolean;
+    isSelected: boolean;
+    onSelect: () => void;
     onClick: () => void;
 }) {
     const isTyping = useChatStore(s => s.typingByThread[conversation.id]);
@@ -431,14 +671,27 @@ function ConversationItem({
     };
 
     return (
-        <div className="group relative">
+        <div className={`w-full group/item flex items-center transition-colors border-r-4 ${
+            isActive ? 'bg-primary/10 border-primary' : 'hover:bg-slate-50 border-transparent'
+        }`}>
+            {/* Selection Checkbox */}
+            <div className="pl-4">
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect();
+                    }}
+                    className={`size-5 rounded-lg border-2 flex items-center justify-center transition-all ${
+                        isSelected ? 'bg-primary border-primary text-white' : 'border-slate-200 bg-white opacity-0 group-hover/item:opacity-100'
+                    } ${isSelected ? 'opacity-100' : ''}`}
+                >
+                    {isSelected && <Check size={12} strokeWidth={3} />}
+                </button>
+            </div>
+
             <button
                 onClick={onClick}
-                className={`w-full flex items-center gap-3 p-4 transition-colors text-left ${
-                    isActive
-                        ? 'bg-primary/10 border-r-4 border-primary'
-                        : 'hover:bg-slate-50 border-r-4 border-transparent'
-                }`}
+                className="flex-1 flex items-center gap-3 p-4 pl-3 transition-colors text-left overflow-hidden relative group"
             >
                 {/* Avatar */}
                 <div className="relative shrink-0">
@@ -480,16 +733,26 @@ function ConversationItem({
                                 conversation.lastMessageContent || conversation.status || 'Active conversation'
                             )}
                         </p>
+                        {Array.isArray(contact?.tags) && contact.tags.length > 0 && (
+                            <div className="flex gap-1 shrink-0 ml-1">
+                                {contact.tags.slice(0, 1).map((t: string) => (
+                                    <span key={t} className="px-1.5 py-0.5 bg-emerald-100 text-emerald-600 text-[9px] font-bold rounded-md whitespace-nowrap">
+                                        {t}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
-            </button>
-            <button
-                onClick={handleDelete}
-                disabled={deleteThreadMutation.isPending}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-rose-500 opacity-40 md:opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
-                title="Delete Conversation"
-            >
-                <Trash2 size={16} />
+
+                <button
+                    onClick={handleDelete}
+                    disabled={deleteThreadMutation.isPending}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-rose-500 opacity-40 md:opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
+                    title="Delete Conversation"
+                >
+                    <Trash2 size={16} />
+                </button>
             </button>
         </div>
     );
@@ -540,9 +803,20 @@ function WhatsAppContactItem({
                         {name}
                     </h3>
                 </div>
-                <p className="text-xs text-slate-500 truncate">
-                    {visitor.phone || visitor.email || 'No contact info'}
-                </p>
+                <div className="flex items-center gap-1.5 overflow-hidden">
+                    <p className="text-xs text-slate-500 truncate flex-1">
+                        {visitor.phone || visitor.email || 'No contact info'}
+                    </p>
+                    {Array.isArray(visitor.tags) && visitor.tags.length > 0 && (
+                        <div className="flex gap-1 shrink-0">
+                            {visitor.tags.slice(0, 1).map((t: string) => (
+                                <span key={t} className="px-1.5 py-0.5 bg-emerald-100 text-emerald-600 text-[9px] font-bold rounded-md">
+                                    {t}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {hasPhone && (

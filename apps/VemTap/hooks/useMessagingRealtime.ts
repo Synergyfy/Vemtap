@@ -9,7 +9,7 @@ type UseMessagingRealtimeProps = {
     activeThreadId?: string | null;
     branchId?: string;
     isCustomer?: boolean;
-    isMockThread?: boolean;
+    isPendingThread?: boolean;
 };
 
 type MessagePayload = {
@@ -42,7 +42,7 @@ export const useMessagingRealtime = ({
     activeThreadId,
     branchId,
     isCustomer = false,
-    isMockThread = false,
+    isPendingThread = false,
 }: UseMessagingRealtimeProps) => {
     const { socket } = useMessagingSocket({ enabled: true });
     const queryClient = useQueryClient();
@@ -116,12 +116,12 @@ export const useMessagingRealtime = ({
     }, [invalidateThreads, setTyping, socket, upsertMessageCache]);
 
     useEffect(() => {
-        if (!socket || !activeThreadId || isMockThread) return;
+        if (!socket || !activeThreadId || isPendingThread) return;
         socket.emit('joinThread', { threadId: activeThreadId });
         return () => {
             socket.emit('leaveThread', { threadId: activeThreadId });
         };
-    }, [activeThreadId, isMockThread, socket]);
+    }, [activeThreadId, isPendingThread, socket]);
 
     const emitTyping = useCallback(
         (threadId: string, isTyping: boolean) => {

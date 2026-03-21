@@ -689,7 +689,7 @@ export default function EngagementFormsBuilderPage() {
                         <button
                           disabled={updateMutation.isPending}
                           onClick={() => {
-                            const isCurrentlyDefault = getDefaultFormId(f.branchId) === f.id;
+                            const isCurrentlyDefault = !!f.showAfterLeadCapture;
                             if (isCurrentlyDefault) {
                               setDisableConfirm({ id: f.id, title: f.title, branchId: f.branchId });
                             } else {
@@ -804,7 +804,7 @@ export default function EngagementFormsBuilderPage() {
                       <button
                         disabled={updateMutation.isPending}
                         onClick={() => {
-                          const isCurrentlyDefault = getDefaultFormId(f.branchId) === f.id;
+                          const isCurrentlyDefault = !!f.showAfterLeadCapture;
                           if (isCurrentlyDefault) {
                             setDisableConfirm({ id: f.id, title: f.title, branchId: f.branchId });
                           } else {
@@ -1500,6 +1500,7 @@ export default function EngagementFormsBuilderPage() {
                         id: defaultFormExplainer.id,
                         payload: { showAfterLeadCapture: true, branchId: defaultFormExplainer.branchId }
                       });
+                      setDefaultForm(defaultFormExplainer.branchId, defaultFormExplainer.id);
                       setDefaultFormExplainer(null);
                       toast.success('Sequence automation enabled!');
                     } catch (e: any) {
@@ -1558,10 +1559,18 @@ export default function EngagementFormsBuilderPage() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
-                    clearDefaultForm(disableConfirm.branchId);
-                    setDisableConfirm(null);
-                    toast.success('Sequence automation disabled');
+                  onClick={async () => {
+                    try {
+                      await updateMutation.mutateAsync({
+                        id: disableConfirm.id,
+                        payload: { showAfterLeadCapture: false, branchId: disableConfirm.branchId }
+                      });
+                      clearDefaultForm(disableConfirm.branchId);
+                      setDisableConfirm(null);
+                      toast.success('Sequence automation disabled');
+                    } catch (e: any) {
+                      toast.error(e?.message || 'Failed to disable automation');
+                    }
                   }}
                   className="flex-3 h-11 rounded-xl bg-gray-900 text-white text-sm font-black hover:bg-gray-800 transition-shadow shadow-md shadow-gray-200"
                 >

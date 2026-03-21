@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsString, IsUUID } from 'class-validator';
 import { TicketStatus } from '../entities/support-ticket.entity';
 
-export class UpdateTicketStatusDto {
+export class UpdateTicketStatusAdminDto {
   @ApiProperty({ enum: TicketStatus, example: TicketStatus.RESOLVED })
   @IsEnum(TicketStatus)
   @IsNotEmpty()

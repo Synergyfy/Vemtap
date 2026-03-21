@@ -1,189 +1,207 @@
 # In-App Messaging & WebSocket Documentation
 
-This document covers the implementation, usage, and integration of the in-app (In-House) messaging system, including REST endpoints and real-time WebSocket communication.
+This document provides a comprehensive guide to the VemTap in-house messaging system. It covers the architecture, REST API endpoints, real-time WebSocket communication, push notifications, and the TypeScript interfaces required for integration.
 
 ---
 
 ## 1. Overview
-VemTap's in-app messaging allows real-time communication between Customers (Visitors) and Business Staff. It supports:
-- **Thread-based conversations** (organized by branch and customer).
-- **Real-time updates** via WebSockets (Socket.io).
-- **Message quoting** (replying to specific messages).
-- **Typing indicators** to show when a user is active.
-- **Push notifications** for offline or background alerts.
+VemTap's in-app messaging provides a seamless, real-time communication channel between **Customers (Visitors)** and **Business Staff (Owners/Managers/Staff)**. 
+
+### Key Features
+- **Thread-Based Conversations**: All messages are organized into unique threads mapped to a Customer, a Branch, and a Channel (`IN_HOUSE`).
+- **Real-Time Updates**: Instant message delivery and UI updates via Socket.io.
+- **Quoting & Replies**: Support for replying to specific messages (quoting) to maintain context.
+- **Typing Indicators**: Real-time feedback when the other party is typing.
+- **Unread Counters**: Automatic tracking of unread messages for both customers and staff.
+- **Push Notifications**: Fallback alerts via Web Push (VAPID) when users are offline or in the background.
+- **Free of Charge**: Unlike SMS or WhatsApp, in-house messaging does not consume credits.
 
 ---
 
-## 2. REST API Endpoints
+## 2. Authentication & Connection
 
-### A. Customer (Visitor) Endpoints
+### WebSocket Connection
+VemTap uses **Socket.io** on the `/messaging` namespace.
+- **Gateway URL**: `wss://[your-domain]/messaging`
+- **Auth**: You must provide a valid JWT in the `auth.token` object or `Authorization` header during the handshake.
+
+**Connection Flow:**
+1. Client initiates connection with JWT.
+2. Server verifies token and identifies the user.
+3. Server automatically joins the client to:
+   - `user_{userId}`: Personal room for targeted notifications.
+   - `branch_{branchId}`: (Staff only) For branch-wide updates and inbox notifications.
+
+---
+
+## 3. How to Start a Chat
+
+### A. From the Customer Side (Visitor)
+Customers can only start a conversation with a branch they have physically visited (verified via `Visit` entity).
+- **Endpoint**: `POST /api/v1/customer/messaging/threads/start`
+- **Logic**: If an active `IN_HOUSE` thread already exists between the customer and branch, it is reused; otherwise, a new one is created.
+- **Payload**: `StartConversationDto`
+
+### B. From the Branch Side (Owner/Staff)
+Staff can initiate a conversation by sending a direct message to a customer or through a campaign.
+- **Endpoint**: `POST /api/v1/messaging/send`
+- **Logic**: The system resolves or creates a thread for the given customer and branch, then delivers the message.
+- **Payload**: `SendMessageDto`
+
+---
+
+## 4. REST API Reference
+
+### Customer (Visitor) Endpoints
 *Base path: `/api/v1/customer/messaging`*
 
-#### 1. Get Threads
-- **Endpoint:** `GET /threads`
-- **Description:** Returns all active in-house conversation threads for the authenticated customer, sorted by last activity (newest first).
-- **Response Data:** `ConversationThread[]`
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/threads` | Get all active in-house threads for the customer. |
+| `POST` | `/threads/start` | Start/Initiate a conversation with a branch. |
+| `GET` | `/threads/:threadId` | Fetch message history for a thread (Newest first). |
+| `POST` | `/threads/:threadId/reply` | Send a reply to an existing thread. |
 
-#### 2. Get Thread Messages
-- **Endpoint:** `GET /threads/:threadId`
-- **Description:** Fetches all messages within a specific thread.
-- **Response Data:** `Message[]` (includes `replyTo` for quoted messages).
-
-#### 3. Send Reply
-- **Endpoint:** `POST /threads/:threadId/reply`
-- **Payload:**
-  ```typescript
-  {
-    "content": "string",     // Required: The message text
-    "replyToId": "uuid"      // Optional: ID of the message being quoted
-  }
-  ```
-- **Response:** The newly created `Message` object.
-
----
-
-### B. Business Staff Endpoints
+### Business Staff Endpoints
 *Base path: `/api/v1/messaging`*
 
-#### 1. Get Inbox Threads
-- **Endpoint:** `GET /inbox/:channel`
-- **Query Params:** `branchId` (Required for Owners/Staff)
-- **Description:** Get all threads for a specific branch and channel (use `IN_HOUSE` for in-app chat).
-- **Response Data:** `ConversationThread[]`
-
-#### 2. Get Thread Messages
-- **Endpoint:** `GET /inbox/threads/:threadId`
-- **Query Params:** `branchId`
-- **Response Data:** `Message[]`
-
-#### 3. Send Reply (Staff)
-- **Endpoint:** `POST /inbox/threads/:threadId/reply`
-- **Query Params:** `branchId`
-- **Payload:** `ReplyDto` (same as Customer reply)
-
-#### 4. Mark as Read
-- **Endpoint:** `POST /inbox/threads/:threadId/read`
-- **Query Params:** `branchId`
-- **Description:** Clears the unread count for the branch on this thread.
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/inbox/:channel` | Get threads for a branch (e.g., `IN_HOUSE`, `SMS`). |
+| `GET` | `/inbox/threads/:threadId` | Fetch message history for a specific thread. |
+| `POST` | `/inbox/threads/:threadId/reply` | Send a reply to a customer. |
+| `POST` | `/inbox/threads/:threadId/read` | Manually mark a thread as read for the branch. |
+| `POST` | `/send` | Send a single message or start a campaign. |
 
 ---
 
-## 3. WebSocket Integration
+## 5. WebSocket Events
 
-VemTap uses **Socket.io** for real-time messaging.
+### Client-to-Server (Subscribers)
+| Event | Payload | Description |
+| :--- | :--- | :--- |
+| `joinThread` | `{ threadId: uuid }` | Joins the room `thread_{threadId}` to receive live messages. |
+| `leaveThread` | `{ threadId: uuid }` | Leaves the room `thread_{threadId}`. |
+| `typing` | `{ threadId: uuid, isTyping: boolean }` | Notifies the server of typing status. |
 
-- **Namespace:** `/messaging`
-- **Authentication:** Must provide a valid JWT in `auth.token` or `Authorization` header.
-
-### A. Connection
-When a client connects, they are automatically joined to:
-- `user_{userId}`: Personal room for notifications.
-- `branch_{branchId}`: (Staff only) For branch-wide updates.
-
-### B. Client-to-Server Events (Subscribers)
-
-#### 1. `joinThread`
-Join a specific thread's room to receive real-time messages for that chat.
-- **Payload:** `{ "threadId": "uuid" }`
-- **Effect:** Joins room `thread_{threadId}`.
-
-#### 2. `leaveThread`
-Leave a thread's room.
-- **Payload:** `{ "threadId": "uuid" }`
-
-#### 3. `typing`
-Inform others in the thread that you are typing.
-- **Payload:** `{ "threadId": "uuid", "isTyping": boolean }`
-
-### C. Server-to-Client Events (Emitters)
-
-#### 1. `newMessage`
-Triggered whenever a new message is saved.
-- **Room:** `thread_{threadId}`
-- **Payload:** `Message` object.
-
-#### 2. `inboxUpdate`
-Updates the list of threads in the sidebar/inbox view.
-- **Room:** `branch_{branchId}`
-- **Payload:**
-  ```json
-  {
-    "type": "new_message",
-    "threadId": "uuid",
-    "message": { ... }
-  }
-  ```
-
-#### 3. `userTyping`
-Broadcasts typing status to others in the thread.
-- **Room:** `thread_{threadId}`
-- **Payload:** `{ "userId": "uuid", "threadId": "uuid", "isTyping": boolean }`
-
-#### 4. `notification`
-General real-time notification for a new message.
-- **Room:** `user_{userId}` or `branch_{branchId}`
-- **Payload:**
-  ```json
-  {
-    "type": "new_message",
-    "title": "New Message",
-    "body": "...",
-    "threadId": "uuid",
-    "message": { ... }
-  }
-  ```
+### Server-to-Client (Listeners)
+| Event | Payload | Description |
+| :--- | :--- | :--- |
+| `newMessage` | `Message` | Broadcast to `thread_{threadId}` when a new message arrives. |
+| `inboxUpdate` | `{ type: string, threadId: uuid, message: Message }` | Sent to `branch_{branchId}` to update the staff inbox list. |
+| `userTyping` | `{ userId: uuid, threadId: uuid, isTyping: boolean }` | Broadcast to others in the thread room. |
+| `notification` | `{ type: string, title: string, body: string, threadId: uuid }` | Sent to `user_{userId}` or `branch_{branchId}` for background alerts. |
 
 ---
 
-## 4. Push Notifications
+## 6. Push Notifications
+Push notifications are sent via **Web Push (VAPID)**.
 
-Push notifications are sent via **Web Push (VAPID)** when a user is not actively connected to the WebSocket or has the app in the background.
+### Registration
+Users must register their browser's push subscription token.
+- **Endpoint (User/Staff)**: `POST /api/v1/notifications/push-token`
+- **Endpoint (Visitor/Customer)**: `POST /api/v1/notifications/visitor-push-token`
+- **Payload**: `{ "token": "JSON_STRING_OF_SUBSCRIPTION" }`
 
-### A. Registration
-- **Endpoint:** `POST /api/v1/notifications/push/register`
-- **Payload:** `{ "token": "string", "isUser": boolean }`
-- **Note:** The `token` is typically the JSON-stringified PushSubscription object from the browser.
-
-### B. Flow
-1. Server attempts to send a real-time WebSocket notification.
-2. Server also triggers `PushNotificationService.sendNotification`.
-3. If a valid `pushToken` exists for the target, a Web Push payload is sent.
+### Delivery Flow
+1. A message is sent via REST or Socket.
+2. The server emits a real-time WebSocket `notification`.
+3. Simultaneously, `PushNotificationService` attempts to send a Web Push notification to the recipient's registered `pushToken`.
 
 ---
 
-## 5. DTOs and Interfaces
+## 7. TypeScript Interfaces & Enums
 
-### ReplyDto
+### Enums
 ```typescript
-export class ReplyDto {
-  content: string;     // Message content
-  replyToId?: string;  // UUID of the message being quoted
+export enum Channel {
+  SMS = 'SMS',
+  WHATSAPP = 'WHATSAPP',
+  EMAIL = 'EMAIL',
+  IN_HOUSE = 'IN_HOUSE',
+}
+
+export enum MessageDirection {
+  INBOUND = 'INBOUND',   // From Customer to Business
+  OUTBOUND = 'OUTBOUND', // From Business to Customer
+}
+
+export enum MessageStatus {
+  PENDING = 'PENDING',
+  SENT = 'SENT',
+  DELIVERED = 'DELIVERED',
+  READ = 'READ',
+  FAILED = 'FAILED',
+}
+
+export enum ThreadStatus {
+  OPEN = 'OPEN',
+  CLOSED = 'CLOSED',
+  RESOLVED = 'RESOLVED',
 }
 ```
 
-### ConversationThread (Simplified)
+### Payloads (DTOs)
 ```typescript
-interface ConversationThread {
-  id: string;
-  channel: 'IN_HOUSE' | 'SMS' | 'WHATSAPP' | 'EMAIL';
-  lastMessageContent: string;
-  lastActivityAt: Date;
-  customerUnreadCount: number;
-  branchUnreadCount: number;
-  customerId: string;
+/** POST /customer/messaging/threads/start */
+export interface StartConversationDto {
   branchId: string;
+  content: string;
+}
+
+/** POST .../reply */
+export interface ReplyDto {
+  content: string;
+  replyToId?: string; // For quoting a specific message
+}
+
+/** POST /messaging/send */
+export interface SendMessageDto {
+  channel: Channel;
+  content?: string;
+  customerIds?: string[]; // Array of UUIDs
+  branchId?: string;
+  templateId?: string;
 }
 ```
 
-### Message (Simplified)
+### Response Data (Entities)
 ```typescript
-interface Message {
+export interface ConversationThread {
   id: string;
+  branchId: string;
+  businessId: string;
+  customerId: string;
+  channel: Channel;
+  status: ThreadStatus;
+  lastActivityAt: Date;
+  lastMessageContent: string;
+  branchUnreadCount: number;
+  customerUnreadCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Message {
+  id: string;
+  threadId: string;
+  branchId: string;
+  customerId: string;
   content: string;
-  direction: 'INBOUND' | 'OUTBOUND';
-  status: 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED';
+  channel: Channel;
+  direction: MessageDirection;
+  status: MessageStatus;
+  from: string; // Phone, Email, or Name
+  to: string;
   replyToId?: string;
-  replyTo?: Message; // Populated if replyToId is present
+  replyTo?: Message; // Populated if quoting
   timestamp: Date;
 }
 ```
+
+---
+
+## 8. Implementation Notes
+- **Marking as Read**: When a staff member fetches `GET /inbox/threads/:threadId`, the `branchUnreadCount` is automatically reset to `0`. Similarly, `getCustomerThreadMessages` resets the `customerUnreadCount`.
+- **System Automation**: Inbound messages can trigger automated replies (Welcome messages, Off-hours alerts, or FAQ keywords) if configured in **Chat Settings**.
+- **Placeholders**: The `content` can contain placeholders like `{FirstName}`, `{BusinessName}`, or `{Points}`, which the server replaces dynamically before delivery.

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { PaginatedVisitorResponse, VisitorStatsResponse } from './types';
+import { PaginatedVisitorResponse, VisitorStatsResponse, Visitor } from './types';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 
@@ -203,6 +203,7 @@ export const useMessagingVisitors = (branchId?: string, query?: Record<string, a
         email: v.email,
         isOnline: false,
         status: v.status,
+        tags: (v as any).tags,
     }));
 
     return {
@@ -235,6 +236,7 @@ export const useMessagingVisitorsByBranch = (branchId?: string, query?: Record<s
         email: v.email,
         isOnline: false,
         status: v.status,
+        tags: (v as any).tags,
     }));
 
     return {
@@ -285,5 +287,17 @@ export const useResetDashboard = () => {
         onSuccess: () => {
             queryClient.invalidateQueries();
         },
+    });
+};
+
+export const useUpdateVisitor = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, data }: { id: string; data: Partial<Visitor> }) => {
+            return await api.patch(`/visitors/${id}`, data);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['visitors'] });
+        }
     });
 };

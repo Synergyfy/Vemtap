@@ -2,13 +2,14 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Smile, Paperclip, Camera, Send, X } from 'lucide-react';
-import { useSendReply, useStartConversation, useStartBranchConversation, useInitBranchConversation } from '@/hooks/useMessaging';
+import { Smile, Paperclip, Camera, Send, X, CornerUpLeft } from 'lucide-react';
+import { useSendReply, useChatTemplates, useStartConversation, useStartBranchConversation, useInitBranchConversation } from '@/hooks/useMessaging';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches } from '@/services/branches/hooks';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/lib/store/useChatStore';
 import Spinner from '../ui/Spinner';
+import { useMemo } from 'react';
 
 interface ChatInputProps {
     conversationId?: string;
@@ -41,11 +42,23 @@ export default function ChatInput({
     const drafts = useChatStore(s => s.drafts);
     const setDraft = useChatStore(s => s.setDraft);
     const clearDraft = useChatStore(s => s.clearDraft);
+
+    // Command selection states
+    const [showTemplates, setShowTemplates] = useState(false);
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const [commandSearch, setCommandSearch] = useState('');
+    const [triggerPosition, setTriggerPosition] = useState<{ top: number; left: number } | null>(null);
+
+    // Fetch templates for the current branch
+    const { data: templates = [] } = useChatTemplates(activeBranchId! || branches[0]?.id);
+
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isTypingRef = useRef(false);
+    const emojiRef = useRef<HTMLDivElement>(null);
+    const templateRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!user || user.role === 'customer') return;
@@ -78,6 +91,71 @@ export default function ChatInput({
     const initBranchConvMutation = useInitBranchConversation();
     const canStartConversation = isCustomer && !!startBranchId && !conversationId;
     const canBranchStartConversation = !isCustomer && !!conversationId && conversationId.startsWith('pending-');
+
+    // Filter templates based on command search
+    const filteredTemplates = useMemo(() => {
+        if (!commandSearch) return templates;
+        return templates.filter((t: any) => 
+            t.name.toLowerCase().includes(commandSearch.toLowerCase()) || 
+            t.content.toLowerCase().includes(commandSearch.toLowerCase())
+        );
+    }, [templates, commandSearch]);
+
+    // Handle slash commands and mentions
+    const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const value = e.target.value;
+        const cursorPosition = e.target.selectionStart;
+        setText(value);
+        if (conversationId) setDraft(conversationId, value);
+        handleTypingActivity(value);
+
+        // Check if cursor is after / or @
+        const textBeforeCursor = value.slice(0, cursorPosition);
+        const match = textBeforeCursor.match(/(?:^|\s)([@\/])(\w*)$/);
+        
+        if (match) {
+            setCommandSearch(match[2]);
+            setShowTemplates(true);
+            setSelectedIndex(0);
+            
+            // Optionally calculate trigger position if you want the popper to follow cursor
+            // For now, we'll keep it simple as in the previous implementation
+        } else {
+            setShowTemplates(false);
+        }
+    };
+
+    const insertTemplate = (template: any) => {
+        const cursorPosition = textareaRef.current?.selectionStart || text.length;
+        const textBeforeCursor = text.slice(0, cursorPosition);
+        const match = textBeforeCursor.match(/(?:^|\s)[@\/]\w*$/);
+
+        if (match) {
+            const startPos = match.index! + (match[0].startsWith(' ') ? 1 : 0);
+            
+            // Replace placeholders in template content if possible
+            let content = template.content;
+            if (user?.name) content = content.replace(/{BusinessName}/g, user.businessName || 'Vemtap');
+            
+            const newValue = text.slice(0, startPos) + content + text.slice(cursorPosition);
+            setText(newValue);
+            if (conversationId) setDraft(conversationId, newValue);
+            setShowTemplates(false);
+            
+            // Focus and adjust height
+            setTimeout(() => {
+                if (textareaRef.current) {
+                    textareaRef.current.focus();
+                    textareaRef.current.style.height = '';
+                    textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+                    
+                    // Set cursor position after the inserted content
+                    const newPos = startPos + content.length;
+                    textareaRef.current.setSelectionRange(newPos, newPos);
+                }
+            }, 0);
+        }
+    };
 
     const emitTyping = (next: boolean) => {
         if (!onTypingChange) return;
@@ -210,6 +288,22 @@ export default function ChatInput({
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (showTemplates && filteredTemplates.length > 0) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setSelectedIndex(prev => (prev + 1) % filteredTemplates.length);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setSelectedIndex(prev => (prev - 1 + filteredTemplates.length) % filteredTemplates.length);
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                insertTemplate(filteredTemplates[selectedIndex]);
+            } else if (e.key === 'Escape') {
+                setShowTemplates(false);
+            }
+            return;
+        }
+
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSend();
@@ -268,6 +362,35 @@ export default function ChatInput({
                     </button>
                 </div>
             )}
+            {/* Template Selection Popper */}
+            {showTemplates && filteredTemplates.length > 0 && (
+                <div 
+                    ref={templateRef}
+                    className="absolute bottom-full left-4 mb-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
+                >
+                    <div className="px-4 py-2 border-b border-slate-50 flex items-center justify-between">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Template</p>
+                        <span className="text-[9px] text-slate-300 font-bold">Use ↑↓ and ↵</span>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto p-1 custom-scrollbar">
+                        {filteredTemplates.map((template: any, index: number) => (
+                            <button
+                                key={template.id}
+                                onClick={() => insertTemplate(template)}
+                                onMouseEnter={() => setSelectedIndex(index)}
+                                className={`w-full flex flex-col items-start px-4 py-3 rounded-xl transition-all ${index === selectedIndex ? 'bg-primary/5 ring-1 ring-primary/10' : 'hover:bg-slate-50'}`}
+                            >
+                                <div className="flex items-center justify-between w-full">
+                                    <span className={`text-sm font-bold ${index === selectedIndex ? 'text-primary' : 'text-slate-700'}`}>{template.name}</span>
+                                    {index === selectedIndex && <CornerUpLeft size={10} className="text-primary opacity-40" />}
+                                </div>
+                                <span className="text-xs text-slate-400 truncate w-full italic">"{template.content}"</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Emoji Picker Popover */}
             {showEmojiPicker && (
                 <div className="absolute bottom-full left-4 mb-2 p-3 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
@@ -338,15 +461,10 @@ export default function ChatInput({
                         ref={textareaRef}
                         rows={1}
                         value={text}
-                        onChange={e => {
-                            const nextValue = e.target.value;
-                            setText(nextValue);
-                            if (conversationId) setDraft(conversationId, nextValue);
-                            handleTypingActivity(nextValue);
-                        }}
+                        onChange={handleTextChange}
                         onInput={handleInput}
                         onKeyDown={handleKeyDown}
-                        placeholder="Type a message..."
+                        placeholder="Type a message... (Use / or @ for templates)"
                         disabled={isSending}
                         className="w-full bg-transparent border-none focus:ring-0 p-0 text-sm max-h-32 resize-none py-1 outline-none"
                     />

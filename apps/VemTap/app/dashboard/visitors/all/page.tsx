@@ -15,10 +15,12 @@ import DataTable, { Column } from '@/components/dashboard/DataTable';
 import EmptyState from '@/components/dashboard/EmptyState';
 import AddVisitorModal, { VisitorFormData } from '@/components/dashboard/AddVisitorModal';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
+import MessagingChannelSelectorModal from '@/components/dashboard/MessagingChannelSelectorModal';
 import DeleteConfirmationModal from '@/components/dashboard/DeleteConfirmationModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import PreviewRewardModal from '@/components/dashboard/PreviewRewardModal';
 import ImportContactsModal from '@/components/dashboard/ImportContactsModal';
+import { useChatStore } from '@/lib/store/useChatStore';
 import {
     Users, UserPlus, Repeat, Star, Download, Search, Edit,
     Trash2, MoreVertical, Send, MessageSquare, Gift,
@@ -119,16 +121,48 @@ export default function AllVisitorsPage() {
         }
     };
 
+    const [showChannelSelector, setShowChannelSelector] = useState(false);
+    const addPendingThread = useChatStore(s => s.addPendingThread);
+    const setActiveConversation = useChatStore(s => s.setActiveConversation);
+
     const handleInviteVisitor = (visitor: Visitor) => {
         setSelectedVisitorForMsg(visitor);
+        setShowChannelSelector(true);
     };
 
     const handleSendMessage = () => {
         if (visitors.length > 0) {
-            setSelectedVisitorForMsg(visitors[0]); // Just for demo, generically opening a message composer
+            setSelectedVisitorForMsg(visitors[0]);
+            setShowChannelSelector(true);
         } else {
             toast('No visitors available to message');
         }
+    };
+
+    const handleSelectInApp = () => {
+        if (selectedVisitorForMsg) {
+            const visitorName = getVisitorDisplayName(selectedVisitorForMsg);
+            const chatContact = {
+                id: selectedVisitorForMsg.id,
+                name: visitorName,
+                phone: selectedVisitorForMsg.phone,
+                email: selectedVisitorForMsg.email,
+                isOnline: false,
+            };
+            
+            // Prepare the thread in the store
+            const threadId = addPendingThread(chatContact);
+            setActiveConversation(threadId);
+            
+            // Redirect to chat page
+            router.push(`/dashboard/messaging/chat?visitorId=${selectedVisitorForMsg.id}`);
+            setShowChannelSelector(false);
+        }
+    };
+
+    const handleSelectExternal = () => {
+        setShowChannelSelector(false);
+        // This will allow SendMessageModal to show (controlled by !!selectedVisitorForMsg && !showChannelSelector)
     };
 
     const stats = statsData?.stats && statsData.stats.length > 0 ? statsData.stats.map(s => ({
@@ -201,34 +235,11 @@ export default function AllVisitorsPage() {
             )
         },
         {
-            header: 'Consent',
+            header: 'Last Seen',
             accessor: (item: Visitor) => (
-                <div className="flex items-center gap-2">
-                    {item.optIn ? (
-                        <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest">
-                            <CheckCircle2 size={10} />
-                            Opt-in
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest">
-                            <Timer size={10} />
-                            24h Purge
-                        </div>
-                    )}
-                </div>
-            )
-        },
-        {
-            header: 'Engagement',
-            accessor: (item: Visitor) => (
-                <div className="flex items-center gap-2">
-                    {item.surveyAnswers ? (
-                        <div className="size-6 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center" title="Has survey responses">
-                            <MessageCircle size={14} />
-                        </div>
-                    ) : (
-                        <span className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">None</span>
-                    )}
+                <div className="space-y-0.5">
+                    <p className="text-sm text-text-main font-bold">{resolveDisplayDate(item)}</p>
+                    <p className="text-[10px] text-text-secondary font-medium uppercase tracking-tighter">Verified Contact</p>
                 </div>
             )
         },
@@ -325,8 +336,19 @@ export default function AllVisitorsPage() {
                 onClose={() => setIsImportModalOpen(false)}
             />
 
+            <MessagingChannelSelectorModal
+                isOpen={showChannelSelector}
+                onClose={() => {
+                    setShowChannelSelector(false);
+                    setSelectedVisitorForMsg(null);
+                }}
+                onSelectInApp={handleSelectInApp}
+                onSelectExternal={handleSelectExternal}
+                recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
+            />
+
             <SendMessageModal
-                isOpen={!!selectedVisitorForMsg}
+                isOpen={!!selectedVisitorForMsg && !showChannelSelector}
                 onClose={() => setSelectedVisitorForMsg(null)}
                 recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
                 recipientPhone={selectedVisitorForMsg?.phone}

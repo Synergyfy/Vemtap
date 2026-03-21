@@ -6,7 +6,8 @@ import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { MessageSquare, Send, Smartphone, Edit3, Check, ChevronDown, Users, Loader2 } from 'lucide-react';
 import { notify } from '@/lib/notify';
 import LogoIcon from '@/components/brand/LogoIcon';
-import { generateWhatsAppLink } from '@/lib/whatsapp-utils';
+import { useSendMessage } from '@/services/messaging/hooks';
+import { Channel } from '@/services/messaging/types';
 
 interface SendMessageModalProps {
     isOpen: boolean;
@@ -25,7 +26,8 @@ export default function SendMessageModal({ isOpen, onClose, recipientName, recip
     const [name, setName] = useState(recipientName || '');
     const [message, setMessage] = useState('');
     const [title, setTitle] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+    const sendMessage = useSendMessage();
+    const isLoading = sendMessage.isPending;
 
     // Get template from store or defaults based on channel
     const getTemplate = (t: string, channel: string) => {
@@ -75,48 +77,32 @@ export default function SendMessageModal({ isOpen, onClose, recipientName, recip
     };
 
     const handleSend = async () => {
-        setIsLoading(true);
-
         try {
-            const finalMessage = previewMessage;
-            const isBulk = visitorIds && visitorIds.length > 1;
+            const activeName = recipientName || name || '{name}';
+            const resolvedMessage = message.replace(/{name}/g, activeName);
+            const resolvedTitle = title.replace(/{name}/g, activeName);
+            
+            const channelMap: Record<string, Channel> = {
+                'WhatsApp': 'WHATSAPP',
+                'SMS': 'SMS',
+                'Email': 'EMAIL'
+            };
 
-            if (isBulk) {
-                notify.error('Bulk sending via direct links is not supported. Please send to visitors individually or use the Messaging > Send Broadcast tab for bulk campaigns.');
-                setIsLoading(false);
-                return;
-            }
+            const selectedChannelApi = channelMap[selectedChannel];
 
-            if (selectedChannel === 'WhatsApp') {
-                if (recipientPhone) {
-                    const link = generateWhatsAppLink(recipientPhone, finalMessage);
-                    window.open(link, '_blank');
-                } else {
-                    notify.error('No phone number available for WhatsApp');
-                    setIsLoading(false);
-                    return;
-                }
-            } else if (selectedChannel === 'SMS') {
-                if (recipientPhone) {
-                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-                    const link = `sms:${recipientPhone}${isIOS ? '&' : '?'}body=${encodeURIComponent(finalMessage)}`;
-                    window.open(link, '_blank');
-                } else {
-                    notify.error('No phone number available for SMS');
-                    setIsLoading(false);
-                    return;
-                }
-            } else if (selectedChannel === 'Email') {
-                if (recipientEmail || recipientPhone?.includes('@')) { // Basic fallback
-                    const email = recipientEmail || recipientPhone;
-                    const link = `mailto:${email}?subject=${encodeURIComponent(title || 'Message from ' + (store.storeName || 'VemTap'))}&body=${encodeURIComponent(finalMessage)}`;
-                    window.open(link, '_blank');
-                } else {
-                    notify.error('No email address available');
-                    setIsLoading(false);
-                    return;
-                }
-            }
+            // For SMS and WhatsApp, we usually want to include the title in the content 
+            // since there is no separate subject field like in Email.
+            const finalContent = selectedChannel === 'Email' 
+                ? resolvedMessage 
+                : (resolvedTitle ? `${resolvedTitle}\n\n${resolvedMessage}` : resolvedMessage);
+
+            await sendMessage.mutateAsync({
+                channel: selectedChannelApi,
+                content: finalContent,
+                customerIds: visitorIds,
+                audienceType: 'GROUP',
+                from: store.storeName || 'VemTap', // Using name as 'from' based on Swagger
+            } as any);
 
             // Update store as requested: "edit from the pop up modal should reflect in the template"
             if (selectedType === 'welcome') {
@@ -125,12 +111,11 @@ export default function SendMessageModal({ isOpen, onClose, recipientName, recip
                 store.updateCustomSettings({ rewardMessage: message });
             }
 
-            notify.success(`Message prepared via ${selectedChannel}!`);
+            notify.success(`Message sent via ${selectedChannel}!`);
             onClose();
         } catch (error: any) {
-            notify.error(`Failed to prepare ${selectedChannel} message`);
-        } finally {
-            setIsLoading(false);
+            console.error('Send error:', error);
+            notify.error(error?.response?.data?.message || `Failed to send ${selectedChannel} message`);
         }
     };
 
