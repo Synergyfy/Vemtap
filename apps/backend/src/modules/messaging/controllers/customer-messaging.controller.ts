@@ -14,7 +14,6 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { User } from '../../users/entities/user.entity';
 import { ReplyDto } from '../dto/reply.dto';
 import { StartConversationDto } from '../dto/start-conversation.dto';
-import { ThreadIdDto } from '../dto/thread-id.dto';
 
 @ApiTags('Customer Messaging')
 @Controller('customer/messaging')
@@ -61,7 +60,7 @@ export class CustomerMessagingController {
   @ApiParam({ name: 'threadId', description: 'Conversation thread UUID' })
   @ApiResponse({ status: 200, description: 'List of messages with quoting support' })
   async getThreadMessages(
-    @Param() { threadId }: ThreadIdDto,
+    @Param('threadId', ParseUUIDPipe) threadId: string,
     @Request() req: { user: User },
   ) {
     return this.inboxService.getCustomerThreadMessages(threadId, req.user.id);
@@ -78,7 +77,7 @@ export class CustomerMessagingController {
   @ApiBody({ type: ReplyDto })
   @ApiResponse({ status: 201, description: 'Reply sent and broadcast via Socket' })
   async replyToThread(
-    @Param() { threadId }: ThreadIdDto,
+    @Param('threadId', ParseUUIDPipe) threadId: string,
     @Body() dto: ReplyDto,
     @Request() req: { user: User },
   ) {
