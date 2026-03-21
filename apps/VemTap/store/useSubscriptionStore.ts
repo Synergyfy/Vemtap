@@ -79,6 +79,8 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           'analytics': 'analytics',
           'analytics_basic': 'analytics', 
           'analytics_advanced': 'analytics',
+          'footfall': 'analytics',
+          'peak-times': 'analytics',
           'visitors': 'analytics',
           'loyalty': 'loyalty_programs',
           'engagement': 'automated_campaigns',

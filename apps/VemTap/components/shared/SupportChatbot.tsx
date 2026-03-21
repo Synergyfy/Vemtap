@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { X, Send, Minimize2, Maximize2, MessageCircle, User, Bot, Loader2, Headset, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Draggable from 'react-draggable';
 import { useChatStore } from '@/store/chatStore';
 
 interface Message {
@@ -171,6 +172,11 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
     }
 
 
+    const nodeRef = useRef<HTMLDivElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
+
+    const windowRef = useRef<HTMLDivElement>(null);
+
     return (
         <div className="font-sans">
             {/* Floating Chat Button */}
@@ -180,34 +186,46 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        className="fixed bottom-24 lg:bottom-6 right-6 z-50 group flex flex-col items-end gap-2"
+                        className="fixed bottom-24 lg:bottom-6 right-6 z-50"
                     >
-                        {/* Remove Button (Small X above the bubble) */}
-                        <button 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setIsVisible(false);
+                        <Draggable 
+                            nodeRef={nodeRef}
+                            onDrag={() => setIsDragging(true)}
+                            onStop={() => {
+                                setTimeout(() => setIsDragging(false), 50);
                             }}
-                            className="bg-white/90 hover:bg-white text-gray-500 p-1 rounded-full shadow-md border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Remove Support Chat"
                         >
-                            <X size={14} />
-                        </button>
+                            <div ref={nodeRef} className="group flex flex-col items-end gap-2 cursor-grab active:cursor-grabbing">
+                                {/* Remove Button (Small X above the bubble) */}
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!isDragging) setIsVisible(false);
+                                    }}
+                                    className="bg-white/90 hover:bg-white text-gray-500 p-1 rounded-full shadow-md border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Remove Support Chat"
+                                >
+                                    <X size={14} />
+                                </button>
 
-                        <button
-                            onClick={() => setIsOpen(true)}
-                            aria-label="Open support chat"
-                        >
-                            <div className="relative">
-                                <div className="absolute inset-0 rounded-full bg-blue-400 opacity-75 animate-pulse blur-md"></div>
-                                <div className="relative w-16 h-16 rounded-full bg-linear-to-br from-blue-600 to-blue-500 shadow-2xl flex items-center justify-center transform transition-all duration-300 group-hover:scale-110 group-active:scale-95">
-                                    <MessageCircle className="text-white" size={28} />
-                                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center border-2 border-white">
-                                        <span className="text-white text-xs font-bold">1</span>
+                                <button
+                                    onClick={() => {
+                                        if (!isDragging) setIsOpen(true);
+                                    }}
+                                    aria-label="Open support chat"
+                                >
+                                    <div className="relative">
+                                        <div className="absolute inset-0 rounded-full bg-blue-400 opacity-75 animate-pulse blur-md pointer-events-none"></div>
+                                        <div className="relative w-16 h-16 rounded-full bg-linear-to-br from-blue-600 to-blue-500 shadow-2xl flex items-center justify-center transform transition-all duration-300 group-hover:scale-110 group-active:scale-95">
+                                            <MessageCircle className="text-white pointer-events-none" size={28} />
+                                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center border-2 border-white pointer-events-none">
+                                                <span className="text-white text-xs font-bold">1</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+                                </button>
                             </div>
-                        </button>
+                        </Draggable>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -219,19 +237,29 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
                         initial={{ opacity: 0, y: 50, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 50, scale: 0.95 }}
-                        className={`fixed z-50 bg-white shadow-2xl overflow-hidden flex flex-col ${isFullScreen
-                            ? 'inset-0 rounded-none'
-                            : 'bottom-24 lg:bottom-6 right-6 w-[400px] h-[600px] rounded-2xl'
+                        className={`fixed z-50 pointer-events-none ${isFullScreen
+                            ? 'inset-0'
+                            : 'bottom-24 lg:bottom-6 right-6 flex items-end justify-end'
                             }`}
-                        style={{
-                            maxWidth: isFullScreen ? '100%' : '100vw',
-                            maxHeight: isFullScreen ? '100%' : 'auto' // Mobile fix
-                        }}
                     >
-                        {/* Header */}
-                        <div className="relative h-16 bg-linear-to-r from-blue-600 to-blue-500 flex items-center justify-between px-4 shrink-0">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center relative">
+                        <Draggable
+                            nodeRef={windowRef}
+                            handle=".chat-header"
+                            disabled={isFullScreen}
+                        >
+                            <div ref={windowRef} className={`bg-white shadow-2xl overflow-hidden flex flex-col pointer-events-auto ${isFullScreen
+                                ? 'w-full h-full rounded-none'
+                                : 'w-[400px] h-[600px] rounded-2xl'
+                                }`}
+                                style={{
+                                    maxWidth: isFullScreen ? '100%' : '100vw',
+                                    maxHeight: isFullScreen ? '100%' : 'auto'
+                                }}
+                            >
+                                {/* Header */}
+                                <div className="chat-header cursor-grab active:cursor-grabbing relative h-16 bg-linear-to-r from-blue-600 to-blue-500 flex items-center justify-between px-4 shrink-0">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center relative">
                                     {handedToAgent ? <Headset className="text-white" size={20} /> : <Bot className="text-white" size={20} />}
                                     <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-blue-600"></div>
                                 </div>
@@ -356,6 +384,8 @@ export default function SupportChatbot({ onRequestConsultation }: SupportChatbot
                                 <p className="text-[10px] text-gray-400">Powered by VemTap AI</p>
                             </div>
                         </div>
+                        </div>
+                        </Draggable>
                     </motion.div>
                 )}
             </AnimatePresence>
