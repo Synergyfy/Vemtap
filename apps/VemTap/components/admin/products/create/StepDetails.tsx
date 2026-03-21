@@ -90,26 +90,19 @@ export default function StepDetails() {
     });
 
     React.useEffect(() => {
-        const selectedType = types?.find((t: any) => t.id === formData.productTypeId);
+        if (!formData.title || !formData.nfcType) return;
         
-        if (categoryProductCount !== undefined && formData.productTypeId && selectedType && formData.nfcType) {
-            const currentDeps = `${formData.productTypeId}-${formData.nfcType}`;
+        const currentDeps = `${formData.title}-${formData.nfcType}`;
+        
+        if (currentDeps !== lastAutoSkuDeps) {
+            const slugifiedTitle = formData.title.trim().toLowerCase().replace(/\s+/g, '-');
+            const generatedSku = `nfc-${formData.nfcType}-${slugifiedTitle}`;
             
-            if (currentDeps !== lastAutoSkuDeps || !formData.sku) {
-                let categoryName = selectedType.slug ? selectedType.slug : selectedType.name.toLowerCase().replace(/\s+/g, '-');
-                if (categoryName.startsWith('nfc-')) {
-                    categoryName = categoryName.substring(4);
-                }
-
-                const countPadded = String((categoryProductCount as number) + 1).padStart(3, '0');
-                const generatedSku = `${categoryName}-${formData.nfcType}-${countPadded}`;
-                
-                updateFormData({ sku: generatedSku });
-                setValue('sku', generatedSku, { shouldValidate: true });
-                setLastAutoSkuDeps(currentDeps);
-            }
+            updateFormData({ sku: generatedSku });
+            setValue('sku', generatedSku, { shouldValidate: true });
+            setLastAutoSkuDeps(currentDeps);
         }
-    }, [categoryProductCount, formData.productTypeId, types, formData.sku, formData.nfcType, updateFormData, setValue, lastAutoSkuDeps]);
+    }, [formData.title, formData.nfcType, updateFormData, setValue, lastAutoSkuDeps]);
 
     const onSubmit = () => {
         nextStep();
@@ -301,7 +294,7 @@ export default function StepDetails() {
                     <ul className="space-y-3 text-sm text-blue-800/80">
                         <li className="flex gap-2">
                             <span className="mt-1 block size-1.5 rounded-full bg-blue-400 shrink-0" />
-                            SKUs automatically combine NFC Type, Category, and Sequence number.
+                            SKUs automatically combine NFC Type and Product Title.
                         </li>
                         <li className="flex gap-2">
                             <span className="mt-1 block size-1.5 rounded-full bg-blue-400 shrink-0" />
