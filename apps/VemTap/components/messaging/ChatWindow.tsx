@@ -2,12 +2,24 @@
 
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
-import { Search, Maximize2, Minimize2, Check, CheckCheck, FileText, Info, Smartphone, MessageSquare, CornerUpLeft, Settings, ArrowLeft } from 'lucide-react';
-import ChatInput from './ChatInput';
-import { useAuthStore } from '@/store/useAuthStore';
-import { Search, Maximize2, Minimize2, Trash2, Check, CheckCheck, FileText, Info, Smartphone, MessageSquare, CornerUpLeft, ArrowLeft, Settings } from 'lucide-react';
+import { 
+    Search, 
+    Maximize2, 
+    Minimize2, 
+    Trash2, 
+    Check, 
+    CheckCheck, 
+    FileText, 
+    Info, 
+    Smartphone, 
+    MessageSquare, 
+    CornerUpLeft, 
+    ArrowLeft, 
+    Settings 
+} from 'lucide-react';
 import ChatInput from './ChatInput';
 import Link from 'next/link';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useChatThreads, useMarkThreadAsRead, useThreadMessages, useDeleteMessage } from '@/hooks/useMessaging';
 import { useMessagingBranch } from '@/hooks/useMessagingBranch';
 import { useMessagingRealtime } from '@/hooks/useMessagingRealtime';
@@ -314,9 +326,6 @@ export default function ChatWindow() {
                         className="relative"
                         title="View profile"
                     >
-                        <ArrowLeft size={20} />
-                    </button>
-                    <div className="relative">
                         {contact?.avatar ? (
                             <img src={contact.avatar} alt={contactName} className="w-9 h-9 rounded-full object-cover" />
                         ) : (
@@ -435,7 +444,7 @@ export default function ChatWindow() {
                         replyTo={replyToMessage}
                         onCancelReply={() => setReplyToMessage(null)}
                         onTypingChange={(next) => {
-                            if (!activeConversationId || isMockThread) return;
+                            if (!activeConversationId) return;
                             emitTyping(activeConversationId, next);
                         }}
                     />

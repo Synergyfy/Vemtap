@@ -98,11 +98,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const [showNotifications, setShowNotifications] = useState(false);
     const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
-    const [isMounted, setIsMounted] = useState(false);
-    
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
 
     const queryClient = useQueryClient();
 

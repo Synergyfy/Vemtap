@@ -1,215 +1,100 @@
+app/dashboard/settings/profile/page.tsx:324:44 - error TS2339: Property 'identityNumber' does not exist on type 'Business'.
 
-admin@vemtap.com
-securePassword123!
+324                 setIdentityNumber(business.identityNumber || '');
+                                               ~~~~~~~~~~~~~~
 
+app/dashboard/settings/profile/page.tsx:325:41 - error TS2339: Property 'utilityBill' does not exist on type 'Business'.
 
-===========
- 
-bussiness login
-frankemesinwa@gmail.com
-password
+325                 setUtilityBill(business.utilityBill || '');
+                                            ~~~~~~~~~~~
 
-===================
-synergyfyglobal@gmail.com
-Oyeniyi100%
+app/dashboard/settings/profile/page.tsx:368:38 - error TS2339: Property 'identityNumber' does not exist on type 'Branch'.
 
-==================================
-new task
-submit button should be under
-logo bussiness logo 
--------
+368             setIdentityNumber(branch.identityNumber || '');
+                                         ~~~~~~~~~~~~~~
 
-add bussiness category and sub categories eg.retail:provision
+app/dashboard/settings/profile/page.tsx:369:35 - error TS2339: Property 'utilityBill' does not exist on type 'Branch'.
 
---- 
-when a user taps it will send the link to them and then the system will check for the first signup and then they can reset thier defaul password eg 123456
---when they click and they try to login first timers will be redirected to a coustomer reset page for password else just login. 
---the system should check if its a new user and then reset the password else just log them in
--- else check if the link has been clicked?
---once they logged they are automatically redirected
+369             setUtilityBill(branch.utilityBill || '');
+                                      ~~~~~~~~~~~
 
-=========
+app/dashboard/settings/profile/page.tsx:503:57 - error TS2339: Property 'identityNumber' does not exist on type 'Business'.
 
-questions 
+503                 if (hasChanged(identityNumber, business.identityNumber)) businessUpdates.identityNumber = identityNumber;
+                                                            ~~~~~~~~~~~~~~
 
-bussinesses can ask for birthdays,anniversery etc 
+app/dashboard/settings/profile/page.tsx:550:55 - error TS2339: Property 'identityNumber' does not exist on type 'Branch'.
 
+550                 if (hasChanged(identityNumber, branch.identityNumber)) branchUpdates.identityNumber = identityNumber;
+                                                          ~~~~~~~~~~~~~~
 
+app/dashboard/settings/profile/page.tsx:551:57 - error TS2339: Property 'utilityBill' does not exist on type 'Branch'.
 
+551                 if (hasChanged(finalUtilityBill, branch.utilityBill)) branchUpdates.utilityBill = finalUtilityBill;
+                                                            ~~~~~~~~~~~
 
-===================
-Implement a FRONTEND-ONLY mock for customer first-login/password flow in the VemTap app, without changing existing backend logic or unrelated app areas.
+app/dashboard/settings/profile/page.tsx:801:82 - error TS7006: Parameter 'c' implicitly has an 'any' type.        
 
-Requirements:
-1. Keep all existing flows intact. Scope this change only to the customer auth mock screens/components.
-2. Default password must be shown as `123456`.
-3. After user details are submitted, show a mock “email sent” state/message that says:
-   - account created
-   - default password is `123456`
-   - user can log in immediately or update password later
-4. Password reset is OPTIONAL, not forced.
-5. Login behavior:
-   - user can log in with `123456`
-   - user can choose “Forgot/Reset Password” to set a new one
-6. After successful login, redirect to Customer Dashboard.
-7. Place Forgot Password / Reset Password UI under the Customer module/route section.
-8. Use environment-relative links (no hardcoded static URL):
-   - Build links from current origin (e.g. `window.location.origin`)
-   - If running on localhost, links must use localhost
-   - If running on live domain, links must use live domain
-9. This is mock behavior only:
-   - no real email sending
-   - no real password update API call
-   - use local/mock state and clear TODO comments where backend integration will go
+801                                                                 {categories.find(c => c.id === categoryId)?.name || 'Not specified'}
+                                                                                     ~
 
-Technical constraints:
-- Do not refactor unrelated files.
-- Do not break current navigation.
-- Keep styling consistent with existing app UI.
-- Add minimal comments only where mock logic is introduced.
+app/dashboard/settings/profile/page.tsx:823:137 - error TS7006: Parameter 's' implicitly has an 'any' type.       
 
-Acceptance criteria:
-- User sees default password notice (`123456`) after submit.
-- User can either log in directly with default password or go to reset flow.
-- Reset flow exists under customer routes/UI.
-- Redirect to Customer Dashboard works after login.
-- Generated links adapt automatically to current domain via relative/origin-based construction.
+823                                                                 {subcategoryId === 'other' ? otherSubcategoryName : (subcategories.find(s => s.id === subcategoryId)?.name || 'Not specified')}
+    
+                          ~
 
---if someone subscribes fir free trail and click current plan and have access to the ull plan
---the 30 days should show well
---count down for free trail for standard plan eg.
---opportunity to be able to pay now plan
---ability to subscribe directly 
---the period should be:
---Start: trial start date
---End: 30 days after trial start date
---This is a 30-day trial window (not a fixed 10-year date range).
+app/dashboard/visitors/new/page.tsx:74:47 - error TS2339: Property 'addMockThread' does not exist on type 'ChatState'.
 
+74     const addMockThread = useChatStore(s => s.addMockThread);
+                                                 ~~~~~~~~~~~~~
 
-=======
+app/dashboard/visitors/returning/page.tsx:35:47 - error TS2339: Property 'addMockThread' does not exist on type 'ChatState'.
 
-give a bussiness the liberty to create thier own unique from
---survey,complain,social media
---any form being created will have approved to the admin side 
+35     const addMockThread = useChatStore(s => s.addMockThread);
+                                                 ~~~~~~~~~~~~~
 
-title--
+components/messaging/ChatSidebar.tsx:696:38 - error TS2552: Cannot find name 'isCustomer'. Did you mean 'customer'?
 
---give them the liberty to create title for social media
---form title form survey etc 
+696                                     {isCustomer ? 'Business typing...' : 'Customer typing...'}
+                                         ~~~~~~~~~~
 
---on the survey create survey users cant add a space bar
+  components/messaging/ChatSidebar.tsx:638:11
+    638     const customer = conversation.customer;
+                  ~~~~~~~~
+    'customer' is declared here.
 
---passenger form with diffrent links to thier form 
---extra step
+components/messaging/ChatSidebar.tsx:698:33 - error TS2304: Cannot find name 'draftText'.
 
-put under enagment settings 
-dropdown socials,form creator
---survey can come under enagagement
---response to forms there should be an interface should see the response and then thier details
---respond to complain:via sms,whatsaap,email
---bot can respond or agent 
---response for the survey
+698                             ) : draftText ? (
+                                    ~~~~~~~~~
 
-===========
+components/messaging/ChatSidebar.tsx:700:90 - error TS2304: Cannot find name 'draftText'.
 
---each branch has thier own dashboard.
---GENERAL SHOULD RECORD TOTAL ANALYTICS
+700                                     Draft: <span className="text-slate-500 font-normal">{draftText}</span>    
+                                                                                             ~~~~~~~~~
+
+components/messaging/ChatSidebar.tsx:719:30 - error TS2304: Cannot find name 'handleDelete'.
+
+719                     onClick={handleDelete}
+                                 ~~~~~~~~~~~~
+
+components/messaging/ChatSidebar.tsx:720:31 - error TS2304: Cannot find name 'deleteThreadMutation'.
+
+720                     disabled={deleteThreadMutation.isPending}
+                                  ~~~~~~~~~~~~~~~~~~~~
+
+components/messaging/ChatWindow.tsx:447:58 - error TS2304: Cannot find name 'isMockThread'.
+
+447                             if (!activeConversationId || isMockThread) return;
+                                                             ~~~~~~~~~~~~
 
 
---automation as tab section tab as tab
---admin can be able to create form templates.
--- template based on branch
+Found 17 errors in 5 files.
 
---when create main branch
---main branch mantains its dashboard/under the bussiness
---each branch should have thier own dashboard 
---bussiness can choose to send list of forms and then load in the messaging and carry the coustomer flow.
---in user step and share
---enagagement 2.tutorial
---choose a template or create 
---description for form create and manage form and use it in threee ways tooltip
---use by link,qr codem,attaching to messaging center,use it after coustomer submit thier data 
-auto redirect to the title please 2.live preview merge the form
---bussiness can determine where thier forms will be linked.
---when messaging is clicked send form link to message please
---explanation under the bussiness 
---configure your bussiness after tapping 
---three ways to utilize the form after subscription
---allow editing for form
---three dots to show actions.
--- three ways  to apply to socials and form creatorss and instructions.
---engagment social can be added to messaging
-
-
----error pnpm outdated lockfile 
-
---immediatley after social media uploads button that say use as link
---use coustom admin template or coustom flow 
---when you come to engagment 
---add the active social links to be shown on the review link please
---remove the tabs in social
---save your config 
---want to decide where sharing 
---allow my socials to allow to show after forms
---allow the socials to be reflected anywhere they are added either in socials or profile
---engagements
---create overview page to handle the info 
---allow to use after default form to capture social media and links
--show all the links 
---we dont need to add toggle and it automatically shows
---form creation create form 
---two cards 
---after creating the form remove the qr and messaging etc
---auto redirect to bussiness profile after redirect
---after form creation they will see three options button to see the form 
-
---after create form see the list of form page
---Add question
-
---under saved as branch template 
---use after default submission
---eg created 5 forms eg. button feedback.
---the main location is the location that created that account
-
-=======
-
-new task 
---actions :popup modal where to use 
---standardize the card across the actives
--- you can use the form as messaging,qrcode, default form, as card
---copy link and download qr code
---explain the  3 steps
---coustomer first vist as new visitor, 
---Business Forms
-
---branchid uses the logo of the branch
---default form settings:submit form button based on what we haveenable social :show default forms shoul show
---i can't see the preview  please
---linking it to branch such that whatever devices scanned would shown 
---live preview of every bussiness first form
-
---allow the socials to
-
-=======
-
-new task
---add a Thank You page after form submit
---welcome page should exist
---add a Preview tab in User Experience
-
-=======
-now check the bussiness page and see how the loyalty is created by a business and apply thesame for admin which will allow admins create loyaslty templates that bussinesses can use for the admin please create the mock template and the creation process with propper ui/ux and information where possible then i can paste in the api endpoint if it is available here
-
-===
---live messaging
---change for the brand for default form and internal form
---it should reflect the style to default form. and additional form when selected from the branding area 
---allow form rearrangement by dragging the forms
---date and time
---remove the message settings from the message 
---remove message settings
---the chatbot should be onclick on the chatbot icon
---BUSSINESS NAME
---CHANGE THE form name to use
-
-
+Errors  Files
+     9  app/dashboard/settings/profile/page.tsx:324
+     1  app/dashboard/visitors/new/page.tsx:74
+     1  app/dashboard/visitors/returning/page.tsx:35
+     5  components/messaging/ChatSidebar.tsx:696
+     1  components/messaging/ChatWindow.tsx:447

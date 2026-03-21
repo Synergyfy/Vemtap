@@ -574,6 +574,7 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                         conversation={conv}
                                         isActive={conv.id === activeConversationId}
                                         isSelected={conv.contact?.id ? selectedContacts.has(conv.contact.id) : false}
+                                        isCustomer={isCustomer}
                                         onSelect={() => {
                                             if (conv.contact?.id) toggleContactSelection(conv.contact.id);
                                         }}
@@ -627,14 +628,27 @@ function ConversationItem({
     isSelected,
     onSelect,
     onClick,
+    isCustomer,
 }: {
     conversation: any;
     isActive: boolean;
     isSelected: boolean;
+    isCustomer: boolean;
     onSelect: () => void;
     onClick: () => void;
 }) {
     const isTyping = useChatStore(s => s.typingByThread[conversation.id]);
+    const draftText = useChatStore(s => s.drafts[conversation.id]);
+    const { mutate: deleteThread, isPending: isDeleting } = useDeleteThread(isCustomer);
+    const { branchId } = useMessagingBranch();
+    
+    const handleDelete = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (window.confirm('Are you sure you want to delete this conversation?')) {
+            deleteThread({ threadId: conversation.id, branchId: branchId || undefined });
+        }
+    };
+
     const customer = conversation.customer;
     const name = customer?.firstName 
         ? `${customer.firstName} ${customer.lastName || ''}`.trim() 
@@ -717,7 +731,7 @@ function ConversationItem({
 
                 <button
                     onClick={handleDelete}
-                    disabled={deleteThreadMutation.isPending}
+                    disabled={isDeleting}
                     className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-rose-500 opacity-40 md:opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
                     title="Delete Conversation"
                 >

@@ -798,7 +798,7 @@ export default function BusinessProfilePage() {
                                                             </div>
                                                         ) : !isEditingGeneral ? (
                                                             <div className="w-full h-12 flex items-center text-sm font-bold">
-                                                                {categories.find(c => c.id === categoryId)?.name || 'Not specified'}
+                                                                {categories.find((c: any) => c.id === categoryId)?.name || 'Not specified'}
                                                             </div>
                                                         ) : (
                                                             <select
@@ -820,7 +820,7 @@ export default function BusinessProfilePage() {
                                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Sub-Category</label>
                                                         {!isEditingGeneral ? (
                                                             <div className="w-full h-12 flex items-center text-sm font-bold">
-                                                                {subcategoryId === 'other' ? otherSubcategoryName : (subcategories.find(s => s.id === subcategoryId)?.name || 'Not specified')}
+                                                                {subcategoryId === 'other' ? otherSubcategoryName : (subcategories.find((s: any) => s.id === subcategoryId)?.name || 'Not specified')}
                                                             </div>
                                                         ) : (
                                                             <select

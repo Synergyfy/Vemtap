@@ -71,7 +71,7 @@ export default function NewVisitorsPage() {
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const { data: paginatedData, isLoading } = useNewVisitors();
     const { data: statsData } = useNewVisitorStats();
-    const addMockThread = useChatStore(s => s.addMockThread);
+    const addPendingThread = useChatStore(s => s.addPendingThread);
     const setActiveConversation = useChatStore(s => s.setActiveConversation);
 
     const newVisitors = paginatedData?.data || [];
@@ -107,7 +107,7 @@ export default function NewVisitorsPage() {
                 isOnline: false,
             };
             
-            const threadId = addMockThread(chatContact);
+            const threadId = addPendingThread(chatContact);
             setActiveConversation(threadId);
             
             router.push(`/dashboard/messaging/chat?visitorId=${selectedVisitorForMsg.id}`);

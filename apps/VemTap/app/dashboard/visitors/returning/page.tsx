@@ -32,7 +32,7 @@ export default function ReturningVisitorsPage() {
 
     const { data: paginatedData, isLoading } = useReturningVisitors();
     const { data: statsData } = useReturningVisitorStats();
-    const addMockThread = useChatStore(s => s.addMockThread);
+    const addPendingThread = useChatStore(s => s.addPendingThread);
     const setActiveConversation = useChatStore(s => s.setActiveConversation);
 
     const returningVisitors = paginatedData?.data || [];
@@ -76,7 +76,7 @@ export default function ReturningVisitorsPage() {
                 isOnline: false,
             };
             
-            const threadId = addMockThread(chatContact);
+            const threadId = addPendingThread(chatContact);
             setActiveConversation(threadId);
             
             router.push(`/dashboard/messaging/chat?visitorId=${selectedVisitorForMsg.id}`);
