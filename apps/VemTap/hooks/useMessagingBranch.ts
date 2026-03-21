@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 
 export const useMessagingBranch = () => {
     const user = useAuthStore((state) => state.user);
-    const isCustomer = user?.role === 'customer';
+    const isCustomer = user?.role?.toLowerCase() === 'customer';
     const { activeBranchId, setActiveBranch } = useActiveBranch();
     const { data: branches = [] } = useBranches();
 
