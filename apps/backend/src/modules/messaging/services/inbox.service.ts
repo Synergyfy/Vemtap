@@ -153,6 +153,39 @@ export class InboxService {
     return savedMessage;
   }
 
+  async initBranchConversation(
+    branchId: string,
+    customerId: string,
+  ): Promise<ConversationThread> {
+    let thread = await this.threadRepo.findOne({
+      where: { branchId, customerId, channel: Channel.IN_HOUSE },
+      relations: ['customer'],
+    });
+
+    if (!thread) {
+      const branch = await this.branchRepo.findOne({ where: { id: branchId } });
+      if (!branch) throw new NotFoundException('Branch not found');
+
+      const customer = await this.userRepo.findOne({ where: { id: customerId } });
+      if (!customer) throw new NotFoundException('Customer not found');
+
+      thread = this.threadRepo.create({
+        branchId,
+        businessId: branch.businessId,
+        customerId,
+        channel: Channel.IN_HOUSE,
+        status: ThreadStatus.OPEN,
+        lastActivityAt: new Date(),
+        branchUnreadCount: 0,
+        customerUnreadCount: 0,
+      });
+      thread = await this.threadRepo.save(thread);
+      thread.customer = customer;
+    }
+
+    return thread;
+  }
+
   // --- Customer Facing Methods ---
 
   async getCustomerThreads(customerId: string): Promise<ConversationThread[]> {

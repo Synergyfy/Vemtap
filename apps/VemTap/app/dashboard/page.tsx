@@ -28,7 +28,7 @@ export default function DashboardPage() {
     const user = useAuthStore((state) => state.user);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
-    // eslint-disable-next-line no-console
+     
     console.log('[DASHBOARD PAGE] 🔍 isAuthenticated:', isAuthenticated, 'planId:', user?.planId);
 
 
