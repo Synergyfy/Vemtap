@@ -188,16 +188,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             icon: MessageSquare,
             roles: ['owner', 'manager'],
             submenu: [
+                { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp' },
+                { label: 'SMS', href: '/dashboard/messaging/sms' },
+                { label: 'Email', href: '/dashboard/messaging/email' },
                 { label: 'Messaging Credits', href: '/dashboard/messaging/credits' },
-                {
-                    id: 'messaging-hub',
-                    label: 'Delivery Channels',
-                    submenu: [
-                        { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp' },
-                        { label: 'SMS', href: '/dashboard/messaging/sms' },
-                        { label: 'Email', href: '/dashboard/messaging/email' },
-                    ]
-                },
                 { label: 'History', href: '/dashboard/messaging/history' },
             ]
         },

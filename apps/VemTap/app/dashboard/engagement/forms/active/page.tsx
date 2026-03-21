@@ -192,14 +192,26 @@ export default function ActiveFormsPage() {
                                     ) : (
                                         <DraggableButtonList
                                             forms={activeForms}
-                                            brandColor={brandColor}
                                             onReorder={reorderActiveFormsByIndex}
+                                            onRemove={(id) => toggleActiveForm(branchKey, id)}
                                         />
                                     )}
 
                                     {showSocialStep && (
-                                        <div className="h-11 w-full rounded-xl px-4 text-sm font-semibold shadow-sm transition-all flex items-center justify-center text-center bg-emerald-500 text-white">
-                                            Social Media & Reviews
+                                        <div className="h-16 w-full rounded-xl bg-white border border-emerald-200 shadow-sm flex items-center px-4 gap-3 relative z-0 mt-2">
+                                            <div className="flex-shrink-0 size-7 rounded-full bg-emerald-100 flex items-center justify-center border border-emerald-200">
+                                                <span className="text-xs font-black text-emerald-600">★</span>
+                                            </div>
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                <span className="text-sm font-bold text-gray-900 truncate block">
+                                                    Social Media & Reviews
+                                                </span>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 block truncate">
+                                                        Final Step (Locked)
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -223,11 +235,18 @@ export default function ActiveFormsPage() {
                                                     onClick={() => {
                                                         toggleActiveForm(branchKey, form.id);
                                                     }}
-                                                    className="h-11 rounded-xl px-4 text-sm font-semibold shadow-sm transition-all text-white flex items-center justify-center text-center hover:brightness-95"
-                                                    style={{ backgroundColor: brandColor }}
+                                                    className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-primary/50 hover:bg-slate-50 transition-all text-left shadow-sm group"
                                                     title="Add to sequence"
                                                 >
-                                                    <span className="truncate block">{form.title || 'Untitled Form'}</span>
+                                                    <div className="flex-shrink-0 size-8 rounded-lg flex items-center justify-center bg-gray-50 text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                                        <span className="text-sm font-black">+</span>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <span className="text-sm font-bold text-gray-900 truncate block group-hover:text-primary transition-colors">{form.title || 'Untitled Form'}</span>
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block truncate">
+                                                            Form Step
+                                                        </span>
+                                                    </div>
                                                 </button>
                                                 );
                                             })}

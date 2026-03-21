@@ -232,8 +232,8 @@ export default function ActiveFormsPage() {
                                     ) : (
                                         <DraggableButtonList
                                             forms={activeForms}
-                                            brandColor={brandColor}
                                             onReorder={reorderActiveFormsByIndex}
+                                            onRemove={(id) => toggleActiveForm(branchKey, id)}
                                         />
                                     )}
 

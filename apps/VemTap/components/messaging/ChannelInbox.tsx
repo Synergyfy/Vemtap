@@ -6,6 +6,7 @@ import { Channel } from '@/services/messaging/types';
 import { Search, Send, Paperclip, MoreVertical, Phone, Video, User, MessageSquare, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
+import Link from 'next/link';
 
 interface ChannelInboxProps {
     channel: 'SMS' | 'WhatsApp' | 'Email';

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Smile, Paperclip, Camera, Send, X, CornerUpLeft } from 'lucide-react';
-import { useSendReply, useChatTemplates } from '@/hooks/useMessaging';
+import { useSendReply, useChatTemplates, useStartConversation } from '@/hooks/useMessaging';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches } from '@/services/branches/hooks';
 import toast from 'react-hot-toast';

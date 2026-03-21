@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Search, MessageSquare, Check, UserCircle, Building2, Link as LinkIcon } from 'lucide-react';
-import { useChatTemplates, useSendMessage } from '@/services/messaging/hooks';
+import { useMessagingTemplates, useSendMessage } from '@/services/messaging/hooks';
 import { useMessagingBranch } from '@/hooks/useMessagingBranch';
 import { generateWhatsAppLink, processTemplate, generateBridgeLink } from '@/lib/whatsapp-utils';
 import { toast } from 'react-hot-toast';
@@ -32,7 +32,7 @@ const PLACEHOLDERS = [
 
 export default function WhatsAppTemplateModal({ isOpen, onClose, visitors, businessName, businessCode }: WhatsAppTemplateModalProps) {
     const { branchId } = useMessagingBranch();
-    const { data: templates = [], isLoading } = useChatTemplates(branchId || undefined);
+    const { data: templates = [], isLoading } = useMessagingTemplates('WHATSAPP');
     const sendMessage = useSendMessage();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);

@@ -5,7 +5,7 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import { useVisitors } from '@/services/visitors/hooks';
 import { Visitor } from '@/services/visitors/types';
-import { User, Search, Filter, Phone, Mail, Calendar, CreditCard, Repeat, Loader2 } from 'lucide-react';
+import { User, Search, Filter, Phone, Mail, Calendar, CreditCard, Gift, Repeat, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/utils/date';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -71,11 +71,11 @@ export default function LoyaltyCustomersPage() {
             )
         },
         {
-            header: 'Total Spent',
-            accessor: (item: Visitor) => (
+            header: 'Points Earned',
+            accessor: (item: any) => (
                 <div className="flex items-center gap-2 font-black text-slate-900">
-                    <CreditCard size={14} className="text-emerald-500" />
-                    {item.totalSpent || '₦0'}
+                    <Gift size={14} className="text-secondary" />
+                    {item.totalPointsEarned || item.pointsBalance || item.points || item.loyaltyProfile?.totalPointsEarned || '0'} pts
                 </div>
             )
         },
