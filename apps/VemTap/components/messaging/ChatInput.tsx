@@ -61,7 +61,7 @@ export default function ChatInput({
     const templateRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (!user || user.role === 'customer') return;
+        if (!user || user?.role?.toLowerCase() === 'customer') return;
         if (!activeBranchId && branches.length === 1) {
             setActiveBranch(branches[0].id);
         }

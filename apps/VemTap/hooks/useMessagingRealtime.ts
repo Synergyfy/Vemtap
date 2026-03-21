@@ -87,8 +87,8 @@ export const useMessagingRealtime = ({
             invalidateThreads();
         };
 
-        const handleUserTyping = (payload: { threadId?: string; isTyping?: boolean }) => {
-            const threadId = payload?.threadId;
+        const handleUserTyping = (payload: any) => {
+            const threadId = resolveThreadId(payload);
             if (!threadId) return;
             const next = Boolean(payload?.isTyping);
             setTyping(threadId, next);

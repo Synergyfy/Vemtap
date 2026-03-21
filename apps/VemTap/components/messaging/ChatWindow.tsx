@@ -193,6 +193,7 @@ export default function ChatWindow() {
         [setActiveConversation]
     );
 
+
     if (!activeConv) {
         if (isCustomer && (targetBranchId || targetResolving || targetResolveError)) {
             return (
@@ -400,6 +401,18 @@ export default function ChatWindow() {
                             </React.Fragment>
                         );
                     })}
+                    {isTyping && (
+                        <div className="flex items-center gap-2 mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[10px] ${getAvatarColor(activeConv.id)}`}>
+                                {getInitials(contactName)}
+                            </div>
+                            <div className="bg-slate-100 border border-slate-200 p-3 rounded-2xl rounded-bl-none flex items-center gap-1">
+                                <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                                <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" />
+                            </div>
+                        </div>
+                    )}
                     <div ref={messagesEndRef} />
                 </div>
 
