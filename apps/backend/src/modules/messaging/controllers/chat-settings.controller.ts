@@ -10,7 +10,6 @@ import {
   Request,
   Query,
   BadRequestException,
-  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ChatSettingsService } from '../services/chat-settings.service';
@@ -30,6 +29,7 @@ import {
   UpdateChatCategoryDto 
 } from '../dto/chat-category.dto';
 import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
+import { IdDto } from '../dto/id.dto';
 
 @ApiTags('Chat Settings')
 @Controller('messaging/chat/settings')
@@ -78,7 +78,7 @@ export class ChatSettingsController {
   @Patch('automation/faq/:id')
   @ApiOperation({ summary: 'Update an FAQ keyword trigger' })
   async updateFaq(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param() { id }: IdDto,
     @Request() req: { user: User },
     @Body() dto: UpdateFaqKeywordDto,
     @Query() filter: BranchFilterDto
@@ -90,7 +90,7 @@ export class ChatSettingsController {
   @Delete('automation/faq/:id')
   @ApiOperation({ summary: 'Delete an FAQ keyword trigger' })
   async deleteFaq(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param() { id }: IdDto, 
     @Request() req: { user: User },
     @Query() filter: BranchFilterDto
   ) {
@@ -119,7 +119,7 @@ export class ChatSettingsController {
   @Patch('categories/:id')
   @ApiOperation({ summary: 'Update a ticket category' })
   async updateCategory(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param() { id }: IdDto,
     @Request() req: { user: User },
     @Body() dto: UpdateChatCategoryDto,
     @Query() filter: BranchFilterDto
@@ -131,7 +131,7 @@ export class ChatSettingsController {
   @Delete('categories/:id')
   @ApiOperation({ summary: 'Delete a ticket category' })
   async deleteCategory(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param() { id }: IdDto, 
     @Request() req: { user: User },
     @Query() filter: BranchFilterDto
   ) {

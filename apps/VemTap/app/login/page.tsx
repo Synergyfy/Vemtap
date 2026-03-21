@@ -23,7 +23,7 @@ export default function LoginPage() {
         rememberMe: false,
     });
 
-    // eslint-disable-next-line no-console
+     
     console.log('[LOGIN PAGE] 🔍 isAuthenticated:', isAuthenticated);
 
     const handleLogin = async (e: React.FormEvent) => {

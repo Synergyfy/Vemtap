@@ -17,7 +17,7 @@ const getSocketInstance = (token?: string | null) => {
     const baseUrl = resolveSocketBaseUrl();
     socketSingleton = io(`${baseUrl}/messaging`, {
         autoConnect: false,
-        transports: ['websocket'],
+        transports: ['polling', 'websocket'],
         auth: {
             token,
             Authorization: token ? `Bearer ${token}` : undefined,

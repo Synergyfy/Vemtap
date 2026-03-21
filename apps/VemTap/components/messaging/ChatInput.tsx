@@ -12,7 +12,6 @@ import { useMemo } from 'react';
 
 interface ChatInputProps {
     conversationId?: string;
-    isMock?: boolean;
     onTypingChange?: (isTyping: boolean) => void;
     replyTo?: { id?: string; content?: string };
     onCancelReply?: () => void;
@@ -24,7 +23,6 @@ const COMMON_EMOJIS = ['😊', '😂', '❤️', '👍', '🙏', '🔥', '✨', 
 
 export default function ChatInput({
     conversationId,
-    isMock,
     onTypingChange,
     replyTo,
     onCancelReply,
@@ -64,6 +62,7 @@ export default function ChatInput({
     const replyMutation = useSendReply(isCustomer);
     const startConversationMutation = useStartConversation();
     const canStartConversation = isCustomer && !!startBranchId && !conversationId;
+    const canBranchStartConversation = !isCustomer && !!conversationId && conversationId.startsWith('mock-');
 
     // Filter templates based on search string (text after / or @)
     const filteredTemplates = useMemo(() => {
@@ -154,26 +153,7 @@ export default function ChatInput({
     const handleSend = async () => {
         if (!text.trim()) return;
 
-        if (conversationId && (isMock || conversationId.startsWith('mock-'))) {
-            addMockMessage(conversationId, {
-                id: `mock-msg-${Date.now()}`,
-                threadId: conversationId,
-                direction: isCustomer ? 'INBOUND' : 'OUTBOUND',
-                type: 'text',
-                content: text.trim(),
-                timestamp: new Date().toISOString(),
-                status: 'SENT',
-                replyTo: replyTo?.id ? { id: replyTo.id, content: replyTo.content } : undefined,
-            });
-            setText('');
-            setShowEmojiPicker(false);
-            emitTyping(false);
-            onCancelReply?.();
-            if (textareaRef.current) {
-                textareaRef.current.style.height = '';
-            }
-            return;
-        }
+
 
         if (canStartConversation) {
             try {
@@ -197,6 +177,8 @@ export default function ChatInput({
             }
             return;
         }
+
+
 
         if (!conversationId) {
             toast.error('Select a conversation first');

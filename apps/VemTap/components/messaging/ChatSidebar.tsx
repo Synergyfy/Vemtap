@@ -22,6 +22,15 @@ function WhatsAppIcon({ size = 14, className = '' }: { size?: number; className?
         </svg>
     );
 }
+import { useMyBusiness } from '@/services/businesses/hooks';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useChatThreads, useInitBranchConversation } from '@/hooks/useMessaging';
+import { useMessagingBranch } from '@/hooks/useMessagingBranch';
+import { useMessagingVisitorsByBranch } from '@/services/visitors/hooks';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import WhatsAppTemplateModal from './WhatsAppTemplateModal';
+import toast from 'react-hot-toast';
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
@@ -75,6 +84,7 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
 
     const searchParams = useSearchParams();
     const businessIdFromUrl = searchParams.get('businessId');
+    const initBranchConversationMutation = useInitBranchConversation();
 
     const { data: threads = [], isLoading: threadsLoading } = useChatThreads('IN_HOUSE', branchId || undefined, isCustomer);
      const { data: visitors = [], isLoading: visitorsLoading } = useMessagingVisitorsByBranch(branchId || undefined, {
@@ -85,11 +95,8 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
      const { data: returningVisitorsData } = useReturningVisitors(branchId || undefined, { limit: 1 });
 
     const allThreads = useMemo(() => {
-        const apiThreads = threads as any[];
-        const apiIds = new Set(apiThreads.map(t => t.id));
-        const mergedMocks = mockThreads.filter(t => !apiIds.has(t.id));
-        return [...mergedMocks, ...apiThreads];
-    }, [threads, mockThreads]);
+        return threads as any[];
+    }, [threads]);
 
     const activeConv = allThreads.find(c => c.id === activeConversationId);
     
@@ -324,10 +331,21 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                                     <button
                                                         key={visitor.id}
                                                         type="button"
-                                                        onClick={(e) => {
-                                                            toast.error('Customers must start the conversation first.');
-                                                            setShowNewChat(false);
-                                                            setCustomerQuery('');
+                                                        onClick={async (e) => {
+                                                            e.preventDefault();
+                                                            try {
+                                                                const response: any = await initBranchConversationMutation.mutateAsync({
+                                                                    branchId: branchId!,
+                                                                    customerId: visitor.id,
+                                                                });
+                                                                if (response?.id) {
+                                                                    setActiveConversation(response.id);
+                                                                }
+                                                                setShowNewChat(false);
+                                                                setCustomerQuery('');
+                                                            } catch (error: any) {
+                                                                toast.error('Failed to start conversation');
+                                                            }
                                                         }}
                                                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 text-left"
                                                     >

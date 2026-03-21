@@ -45,7 +45,7 @@ export default function MultiDeviceTapPage() {
             });
 
             // 2. Identify user
-            let identity = userDataStore || storedIdentity;
+            const identity = userDataStore || storedIdentity;
             
             // 3. Record visit on backend
             try {
