@@ -54,7 +54,7 @@ describe('CustomerMessagingController', () => {
 
   describe('getThreadMessages', () => {
     it('should call inboxService.getCustomerThreadMessages', async () => {
-      await controller.getThreadMessages('t-1', { user: mockUser });
+      await controller.getThreadMessages({ threadId: 't-1' }, { user: mockUser });
       expect(inboxService.getCustomerThreadMessages).toHaveBeenCalledWith('t-1', mockUser.id);
     });
   });
@@ -62,7 +62,7 @@ describe('CustomerMessagingController', () => {
   describe('replyToThread', () => {
     it('should call inboxService.sendCustomerReply', async () => {
       const dto: ReplyDto = { content: 'reply', replyToId: 'm-1' };
-      await controller.replyToThread('t-1', dto, { user: mockUser });
+      await controller.replyToThread({ threadId: 't-1' }, dto, { user: mockUser });
       expect(inboxService.sendCustomerReply).toHaveBeenCalledWith('t-1', dto.content, mockUser.id, dto.replyToId);
     });
   });
