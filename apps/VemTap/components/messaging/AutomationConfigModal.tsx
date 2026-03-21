@@ -24,7 +24,7 @@ const VARIABLES = [
 ];
 
 export default function AutomationConfigModal({ template, rule, onClose }: AutomationConfigModalProps) {
-    const updateMutation = useUpdateAutomation(rule?.id || '');
+    const updateMutation = useUpdateAutomation();
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const user = useAuthStore((state) => state.user);
     const { data: branches = [] } = useBranches();
@@ -49,21 +49,25 @@ export default function AutomationConfigModal({ template, rule, onClose }: Autom
             toast.error('Please activate the automation first.');
             return;
         }
-
-        updateMutation.mutate({
-            actionConfig: {
-                ...rule.actionConfig,
-                message: config.message,
-                points: config.points,
-                formId: config.formId,
-            },
-            delaySeconds: config.delay,
-        }, {
-            onSuccess: () => {
-                toast.success('Configuration saved!');
-                onClose();
-            }
-        });
+        if (rule) {
+            updateMutation.mutate({
+                id: rule.id,
+                data: {
+                    actionConfig: {
+                        ...rule.actionConfig,
+                        message: config.message,
+                        points: config.points,
+                        formId: config.formId,
+                    },
+                    delaySeconds: config.delay,
+                }
+            }, {
+                onSuccess: () => {
+                    toast.success('Configuration saved!');
+                    onClose();
+                }
+            });
+        };
     };
 
     const insertVariable = (variable: string) => {

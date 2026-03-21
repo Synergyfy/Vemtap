@@ -2,12 +2,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Smile, Paperclip, Camera, Send, X } from 'lucide-react';
-import { useSendReply, useStartConversation } from '@/hooks/useMessaging';
+import { Smile, Paperclip, Camera, Send, X, CornerUpLeft } from 'lucide-react';
+import { useSendReply, useChatTemplates, useStartConversation } from '@/hooks/useMessaging';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches } from '@/services/branches/hooks';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/lib/store/useChatStore';
+import { useMemo } from 'react';
 
 interface ChatInputProps {
     conversationId?: string;
@@ -30,9 +31,16 @@ export default function ChatInput({
 }: ChatInputProps) {
     const [text, setText] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+    const [templateSearch, setTemplateSearch] = useState('');
+    const [selectedTemplateIndex, setSelectedTemplateIndex] = useState(0);
+
     const user = useAuthStore(s => s.user);
     const { activeBranchId, setActiveBranch } = useActiveBranch();
     const { data: branches = [] } = useBranches();
+    
+    // Fetch templates for the current branch
+    const { data: templates = [] } = useChatTemplates(activeBranchId! || branches[0]?.id);
     const addMockMessage = useChatStore(s => s.addMockMessage);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,6 +63,67 @@ export default function ChatInput({
     const startConversationMutation = useStartConversation();
     const canStartConversation = isCustomer && !!startBranchId && !conversationId;
     const canBranchStartConversation = !isCustomer && !!conversationId && conversationId.startsWith('mock-');
+
+    // Filter templates based on search string (text after / or @)
+    const filteredTemplates = useMemo(() => {
+        if (!templateSearch) return templates;
+        return templates.filter((t: any) => 
+            t.name.toLowerCase().includes(templateSearch.toLowerCase()) || 
+            t.content.toLowerCase().includes(templateSearch.toLowerCase())
+        );
+    }, [templates, templateSearch]);
+
+    // Handle slash commands and mentions
+    const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const value = e.target.value;
+        const cursorPosition = e.target.selectionStart;
+        setText(value);
+        handleTypingActivity(value);
+
+        // Check if cursor is after / or @
+        const lastTrigger = value.lastIndexOf('/', cursorPosition - 1);
+        const lastMention = value.lastIndexOf('@', cursorPosition - 1);
+        const trigger = lastTrigger > lastMention ? lastTrigger : lastMention;
+
+        if (trigger !== -1 && (trigger === 0 || value[trigger - 1] === ' ')) {
+            const searchStr = value.substring(trigger + 1, cursorPosition);
+            // Don't show if there's a space after the trigger
+            if (!searchStr.includes(' ')) {
+                setTemplateSearch(searchStr);
+                setShowTemplatePicker(true);
+                setSelectedTemplateIndex(0);
+                return;
+            }
+        }
+        setShowTemplatePicker(false);
+    };
+
+    const insertTemplate = (template: any) => {
+        const cursorPosition = textareaRef.current?.selectionStart || text.length;
+        const lastTrigger = text.lastIndexOf('/', cursorPosition - 1);
+        const lastMention = text.lastIndexOf('@', cursorPosition - 1);
+        const trigger = lastTrigger > lastMention ? lastTrigger : lastMention;
+
+        if (trigger !== -1) {
+            const before = text.substring(0, trigger);
+            const after = text.substring(cursorPosition);
+            
+            // Replace placeholders in template content if possible
+            let content = template.content;
+            if (user?.name) content = content.replace(/{BusinessName}/g, user.businessName || 'Vemtap');
+            
+            setText(before + content + after);
+            setShowTemplatePicker(false);
+            
+            // Focus and adjust height
+            setTimeout(() => {
+                if (textareaRef.current) {
+                    textareaRef.current.focus();
+                    handleInput();
+                }
+            }, 0);
+        }
+    };
 
     const emitTyping = (next: boolean) => {
         if (!onTypingChange) return;
@@ -141,6 +210,22 @@ export default function ChatInput({
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (showTemplatePicker && filteredTemplates.length > 0) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setSelectedTemplateIndex(prev => (prev + 1) % filteredTemplates.length);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setSelectedTemplateIndex(prev => (prev - 1 + filteredTemplates.length) % filteredTemplates.length);
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                insertTemplate(filteredTemplates[selectedTemplateIndex]);
+            } else if (e.key === 'Escape') {
+                setShowTemplatePicker(false);
+            }
+            return;
+        }
+
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSend();
@@ -199,6 +284,38 @@ export default function ChatInput({
                     </button>
                 </div>
             )}
+            {/* Template Picker Popover */}
+            {showTemplatePicker && filteredTemplates.length > 0 && (
+                <div className="absolute bottom-full left-4 mb-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
+                    <div className="px-4 py-2 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Insert Template</span>
+                        <span className="text-[9px] text-slate-300 font-bold">Use ↑↓ and ↵</span>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto p-1 custom-scrollbar">
+                        {filteredTemplates.map((template: any, idx: number) => (
+                            <button
+                                key={template.id}
+                                onClick={() => insertTemplate(template)}
+                                onMouseEnter={() => setSelectedTemplateIndex(idx)}
+                                className={`w-full text-left p-3 rounded-xl transition-all flex flex-col gap-1 ${
+                                    idx === selectedTemplateIndex ? 'bg-primary/5 ring-1 ring-primary/10' : 'hover:bg-slate-50'
+                                }`}
+                            >
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className={`text-[11px] font-bold ${idx === selectedTemplateIndex ? 'text-primary' : 'text-slate-700'}`}>
+                                        {template.name}
+                                    </span>
+                                    {idx === selectedTemplateIndex && <CornerUpLeft size={10} className="text-primary opacity-40" />}
+                                </div>
+                                <p className="text-[10px] text-slate-400 line-clamp-1 italic">
+                                    {template.content}
+                                </p>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Emoji Picker Popover */}
             {showEmojiPicker && (
                 <div className="absolute bottom-full left-4 mb-2 p-3 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
@@ -269,14 +386,10 @@ export default function ChatInput({
                         ref={textareaRef}
                         rows={1}
                         value={text}
-                        onChange={e => {
-                            const nextValue = e.target.value;
-                            setText(nextValue);
-                            handleTypingActivity(nextValue);
-                        }}
+                        onChange={handleTextChange}
                         onInput={handleInput}
                         onKeyDown={handleKeyDown}
-                        placeholder="Type a message..."
+                        placeholder="Type a message... (Use / or @ for templates)"
                         disabled={isSending}
                         className="w-full bg-transparent border-none focus:ring-0 p-0 text-sm max-h-32 resize-none py-1 outline-none"
                     />

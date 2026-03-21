@@ -247,6 +247,7 @@ export default function MessageBuilder({ defaultChannel }: MessageBuilderProps) 
                 audienceType,
                 templateId: selectedTemplate || undefined,
                 content: selectedTemplate ? contentWithFormLink || undefined : contentWithFormLink,
+                from: businessName, // Include sender from based on backend field name
             });
 
             const costInfo = response.totalCost ? ` (Cost: ${response.totalCost} units)` : '';

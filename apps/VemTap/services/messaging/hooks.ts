@@ -377,10 +377,10 @@ export const useCreateAutomation = () => {
     });
 };
 
-export const useUpdateAutomation = (id: string) => {
+export const useUpdateAutomation = () => {
     const queryClient = useQueryClient();
-    return useMutation<AutomationRule, Error, UpdateAutomationRequest>({
-        mutationFn: async (dto) => await api.patch(`/automations/${id}`, dto),
+    return useMutation<AutomationRule, Error, { id: string; data: UpdateAutomationRequest }>({
+        mutationFn: async ({ id, data }) => await api.patch(`/automations/${id}`, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['messaging', 'automations'] });
         },
