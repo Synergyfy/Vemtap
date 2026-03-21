@@ -348,7 +348,7 @@ export default function AdminAgentsPage() {
 
             {/* Confirmation Modal */}
             {confirmModal.isOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))} />
                     <div className="relative w-full max-w-sm bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in slide-in-from-bottom-4 duration-300 text-center">
                         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">

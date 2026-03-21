@@ -19,7 +19,7 @@ export default function PhoneFrame({ children, title }: PhoneFrameProps) {
                 </div>
             )}
 
-            <div className="relative w-[320px] h-[650px] bg-slate-900 rounded-[3.5rem] p-3 border-[8px] border-slate-900 shadow-2xl overflow-hidden ring-1 ring-slate-800">
+            <div className="relative w-[320px] h-[650px] bg-slate-900 rounded-[3.5rem] p-3 border-8 border-slate-900 shadow-2xl overflow-hidden ring-1 ring-slate-800">
                 {/* Notch */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-slate-900 rounded-b-3xl z-30" />
 
@@ -36,7 +36,7 @@ export default function PhoneFrame({ children, title }: PhoneFrameProps) {
                         <span className="text-[10px] font-black text-slate-900">9:41</span>
                         <div className="flex items-center gap-1.5">
                             <div className="w-3.5 h-2 rounded-[2px] border border-slate-900/20 relative">
-                                <div className="absolute inset-[1px] bg-slate-900 rounded-[1px]" />
+                                <div className="absolute inset-px bg-slate-900 rounded-[1px]" />
                             </div>
                         </div>
                     </div>
