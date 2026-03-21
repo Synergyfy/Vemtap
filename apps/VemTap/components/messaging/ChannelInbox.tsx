@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useInboxThreads, useReplyToThread, useThreadMessages } from '@/services/messaging/hooks';
 import { Channel } from '@/services/messaging/types';
-import { Search, Send, Paperclip, MoreVertical, Phone, Video, User, MessageSquare } from 'lucide-react';
+import { Search, Send, Paperclip, MoreVertical, Phone, Video, User, MessageSquare, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 
@@ -143,9 +143,12 @@ export default function ChannelInbox({ channel }: ChannelInboxProps) {
                                 <button className="p-2 text-text-secondary hover:bg-gray-100 rounded-lg">
                                     <Video size={18} />
                                 </button>
-                                <button className="p-2 text-text-secondary hover:bg-gray-100 rounded-lg">
-                                    <MoreVertical size={18} />
-                                </button>
+                                <Link 
+                                    href="/dashboard/messaging/chat/settings"
+                                    className="p-2 text-text-secondary hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    <Settings size={18} />
+                                </Link>
                             </div>
                         </div>
 

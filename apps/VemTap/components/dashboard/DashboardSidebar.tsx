@@ -177,7 +177,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         },
         {
             id: 'live-chat',
-            label: 'Live Messaging',
+            label: 'In-App Chat',
             icon: MessageCircle,
             href: '/dashboard/messaging/chat',
             roles: ['owner', 'manager', 'staff'],

@@ -21,20 +21,29 @@ import { notify } from '@/lib/notify';
 import { usePaystackPayment } from 'react-paystack';
 import { useAuthStore } from '@/store/useAuthStore';
 
-const CreditCardComponent = ({ title, amount, icon: Icon, color, subtitle }: any) => (
-  <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+const CreditCardComponent = ({ title, amount, icon: Icon, color, subtitle, unavailable }: any) => (
+  <div className={`bg-white p-6 rounded-2xl border border-slate-100 shadow-sm transition-all ${unavailable ? 'opacity-60 grayscale cursor-not-allowed border-slate-200 bg-slate-50' : 'hover:shadow-md'}`}>
     <div className="flex justify-between items-start mb-4">
       <div className={`p-3 rounded-xl ${color}`}>
         <Icon size={24} className="text-white" />
       </div>
-      <div className="flex items-center gap-1 text-green-500 font-bold text-xs bg-green-50 px-2 py-1 rounded-full">
-        <TrendingUp size={12} />
-        <span>Active</span>
-      </div>
+      {unavailable ? (
+        <div className="flex items-center gap-1 text-slate-500 font-bold text-xs bg-slate-200 px-2 py-1 rounded-full">
+          <ShieldCheck size={12} />
+          <span>Unavailable</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1 text-green-500 font-bold text-xs bg-green-50 px-2 py-1 rounded-full">
+          <TrendingUp size={12} />
+          <span>Active</span>
+        </div>
+      )}
     </div>
     <h3 className="text-slate-500 font-bold text-sm mb-1">{title}</h3>
     <div className="flex items-baseline gap-2">
-      <span className="text-3xl font-display font-black text-slate-900">{amount.toLocaleString()}</span>
+      <span className="text-3xl font-display font-black text-slate-900">
+        {unavailable ? '---' : amount.toLocaleString()}
+      </span>
       <span className="text-slate-400 font-bold text-xs uppercase tracking-widest">Credits</span>
     </div>
     <p className="mt-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{subtitle}</p>
@@ -129,7 +138,8 @@ export default function MessagingCreditsPage() {
           amount={credits?.whatsappCredits || 0} 
           icon={Zap} 
           color="bg-green-500"
-          subtitle="Automated WA Notifications"
+          subtitle="Messaging API (Disabled)"
+          unavailable
         />
         <CreditCardComponent 
           title="Email Credits" 
@@ -168,11 +178,11 @@ export default function MessagingCreditsPage() {
                   </li>
                 )}
                 {plan.whatsappAmount > 0 && (
-                  <li className="flex items-center gap-3 text-slate-300 text-sm font-medium">
-                    <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                  <li className="flex items-center gap-3 text-slate-400/60 text-sm font-medium">
+                    <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
                     </div>
-                    {plan.whatsappAmount.toLocaleString()} WA Credits
+                    WhatsApp Supported (Coming Soon)
                   </li>
                 )}
                 {plan.emailAmount > 0 && (
