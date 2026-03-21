@@ -5,10 +5,10 @@ import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { 
     Moon, BookOpen, Plus, Trash2, 
-    Bolt, Handshake, 
+    Bolt, 
     SearchCheck, ArrowLeft, X, Save, AlertTriangle, FileText,
     UserCircle, Building2, Link as LinkIcon, Star, Coins, Clock, Copy,
-    Zap, Target, Mail, MessageSquare
+    Zap, Target, MessageSquare
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -23,10 +23,6 @@ import {
     useCreateTemplate,
     useUpdateTemplate,
     useDeleteTemplate,
-    useChatCategories,
-    useCreateChatCategory,
-    useUpdateChatCategory,
-    useDeleteChatCategory
 } from '@/hooks/useMessaging';
 import { 
     useAutomations, 
@@ -35,7 +31,6 @@ import {
     useDeleteAutomation 
 } from '@/services/messaging/hooks';
 import { TriggerType, TargetType, ActionType } from '@/services/messaging/types';
-import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 const TEMPLATE_CATEGORIES = ['MARKETING', 'UTILITY', 'AUTHENTICATION'];
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -284,13 +279,11 @@ export default function ChatSettingsPanel() {
     const activeTab = searchParams.get('tab') || 'automation';
     
     const user = useAuthStore(s => s.user);
-    const { activeBranchId } = useActiveBranch();
-    const branchId = searchParams.get('branchId') || activeBranchId;
+    const branchId = searchParams.get('branchId');
 
     // Queries
     const { data: automation = {} as any, isLoading: autoLoading } = useChatAutomation(branchId || undefined);
     const { data: templates = [], isLoading: templatesLoading } = useChatTemplates(branchId || undefined);
-    const { data: categories = [], isLoading: categoriesLoading } = useChatCategories(branchId || undefined);
 
     // Mutations
     const updateWelcome = useUpdateChatAutomation(branchId || undefined);
@@ -304,10 +297,6 @@ export default function ChatSettingsPanel() {
     const updateTmpl = useUpdateTemplate();
     const deleteTmpl = useDeleteTemplate();
     
-    const createCat = useCreateChatCategory(branchId || undefined);
-    const updateCat = useUpdateChatCategory(branchId || undefined);
-    const deleteCat = useDeleteChatCategory(branchId || undefined);
-
     const { data: advancedRules = [], isLoading: rulesLoading } = useAutomations(branchId || undefined);
     const createRule = useCreateAutomation();
     const updateRuleFull = useUpdateAutomation(); 
@@ -321,13 +310,10 @@ export default function ChatSettingsPanel() {
 
     // Local UI State
     const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
-    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     
-    const [categoryToDelete, setCategoryToDelete] = useState<any | null>(null);
     const [templateToDelete, setTemplateToDelete] = useState<any | null>(null);
     
-    const [newCategoryData, setNewCategoryData] = useState({ name: '', routeTo: '', urgency: 'Medium' });
     const [newTemplateData, setNewTemplateData] = useState({ name: '', category: 'MARKETING', content: '' });
 
     // Local Automation state for manual submission
@@ -544,33 +530,6 @@ export default function ChatSettingsPanel() {
         });
     };
 
-    const handleCreateCategory = () => {
-        if (!newCategoryData.name.trim()) {
-            toast.error('Category name is required');
-            return;
-        }
-        createCat.mutate({
-            ...newCategoryData,
-            branchId,
-        }, {
-            onSuccess: () => {
-                setIsCategoryModalOpen(false);
-                setNewCategoryData({ name: '', routeTo: '', urgency: 'Medium' });
-                toast.success('Category created');
-            }
-        });
-    };
-
-    const handleDeleteCategory = () => {
-        if (!categoryToDelete) return;
-        deleteCat.mutate(categoryToDelete.id, {
-            onSuccess: () => {
-                setCategoryToDelete(null);
-                toast.success('Category deleted');
-            }
-        });
-    };
-
     if (!branchId && user?.role !== 'customer') {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -697,97 +656,6 @@ export default function ChatSettingsPanel() {
                     </div>
                 </div>
             )}
-
-            {isCategoryModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-slate-900">Create New Category</h3>
-                            <button onClick={() => setIsCategoryModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category Name</label>
-                                <input 
-                                    type="text"
-                                    value={newCategoryData.name}
-                                    onChange={e => setNewCategoryData(prev => ({ ...prev, name: e.target.value }))}
-                                    placeholder="e.g. Technical Support"
-                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Route To (Team/Queue)</label>
-                                <input 
-                                    type="text"
-                                    value={newCategoryData.routeTo}
-                                    onChange={e => setNewCategoryData(prev => ({ ...prev, routeTo: e.target.value }))}
-                                    placeholder="e.g. Engineering Team"
-                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Urgency Level</label>
-                                <select 
-                                    value={newCategoryData.urgency}
-                                    onChange={e => setNewCategoryData(prev => ({ ...prev, urgency: e.target.value }))}
-                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                >
-                                    <option value="Low">Low</option>
-                                    <option value="Medium">Medium</option>
-                                    <option value="High">High</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div className="p-6 bg-slate-50 flex gap-3">
-                            <button 
-                                onClick={() => setIsCategoryModalOpen(false)}
-                                className="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                onClick={handleCreateCategory}
-                                disabled={createCat.isPending}
-                                className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary-dark shadow-lg shadow-primary/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                            >
-                                {createCat.isPending ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={18} />}
-                                Create Category
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {categoryToDelete && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 text-center p-8">
-                        <div className="size-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <AlertTriangle size={32} />
-                        </div>
-                        <h3 className="text-xl font-bold text-slate-900 mb-2">Delete Category?</h3>
-                        <p className="text-slate-500 mb-8 text-sm">Are you sure you want to delete <b>{categoryToDelete.name}</b>? This action cannot be undone.</p>
-                        <div className="flex gap-3">
-                            <button 
-                                onClick={() => setCategoryToDelete(null)}
-                                className="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all"
-                            >
-                                No, Keep it
-                            </button>
-                            <button 
-                                onClick={handleDeleteCategory}
-                                disabled={deleteCat.isPending}
-                                className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-red-500 rounded-xl hover:bg-red-600 shadow-lg shadow-red-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                            >
-                                {deleteCat.isPending ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Trash2 size={18} />}
-                                Yes, Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
             {/* Top Navigation Bar */}
             <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md px-6 md:px-10 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -802,7 +670,7 @@ export default function ChatSettingsPanel() {
                     </div>
                     <div>
                         <h2 className="text-slate-900 text-lg font-bold leading-tight">
-                            {activeTab === 'automation' ? 'Basic Settings' : activeTab === 'rules' ? 'Automation Rules' : activeTab === 'templates' ? 'Message Templates' : 'Ticket Categories'}
+                            {activeTab === 'automation' ? 'Basic Settings' : activeTab === 'rules' ? 'Automation Rules' : 'Message Templates'}
                         </h2>
                         <p className="text-xs text-slate-500">Manage your business communication workflow</p>
                     </div>
@@ -813,8 +681,7 @@ export default function ChatSettingsPanel() {
                         {[
                             { id: 'automation', label: 'Basic' },
                             { id: 'rules', label: 'Rules' },
-                            { id: 'templates', label: 'Templates' },
-                            { id: 'categories', label: 'Categories' }
+                            { id: 'templates', label: 'Templates' }
                         ].map(t => (
                             <button 
                                 key={t.id}
@@ -873,7 +740,7 @@ export default function ChatSettingsPanel() {
                     availableTags={['New Visitors', 'Returning', 'VIP', 'High Intent', 'Potential Sales']}
                 />
 
-                {(autoLoading || templatesLoading || categoriesLoading || rulesLoading) && (
+                {(autoLoading || templatesLoading || rulesLoading) && (
                     <div className="flex flex-col items-center justify-center p-24 animate-pulse">
                          <div className="size-16 border-4 border-slate-200 border-t-primary rounded-full animate-spin mb-4" />
                          <p className="text-slate-400 font-medium">Synchronizing settings...</p>
@@ -1440,87 +1307,6 @@ export default function ChatSettingsPanel() {
                                     <p className="font-bold">Select a template to edit</p>
                                 </div>
                             )}
-                        </div>
-                    </div>
-                )}
-
-                {activeTab === 'categories' && !categoriesLoading && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="flex justify-between items-end">
-                            <h1 className="text-3xl font-bold text-slate-900">Ticket Categories</h1>
-                            <button 
-                                onClick={() => setIsCategoryModalOpen(true)}
-                                className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-4 py-2.5 rounded-xl font-semibold shadow-lg shadow-primary/20 transition-all"
-                            >
-                                <Plus size={20} /> New Category
-                            </button>
-                        </div>
-
-                        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                            <table className="w-full text-left">
-                                <thead className="bg-slate-50 border-b border-slate-200">
-                                    <tr>
-                                        <th className="px-6 py-4 text-sm font-semibold text-slate-600">Category Name</th>
-                                        <th className="px-6 py-4 text-sm font-semibold text-slate-600">Route To</th>
-                                        <th className="px-6 py-4 text-sm font-semibold text-slate-600">Urgency</th>
-                                        <th className="px-6 py-4 text-sm font-semibold text-slate-600 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-200">
-                                    {(categories as any[]).map(cat => (
-                                        <tr key={cat.id} className="hover:bg-slate-50 transition-colors group text-sm">
-                                            <td className="px-6 py-4">
-                                                <input 
-                                                    defaultValue={cat.name} 
-                                                    disabled={updateCat.isPending}
-                                                    className="bg-transparent border-none p-0 font-semibold focus:ring-0 disabled:opacity-50" 
-                                                    onBlur={e => {
-                                                        if (e.target.value.trim()) {
-                                                            updateCat.mutate({ id: cat.id, data: { name: e.target.value } });
-                                                        } else {
-                                                            toast.error('Category name cannot be empty');
-                                                            e.target.value = cat.name;
-                                                        }
-                                                    }}
-                                                />
-                                            </td>
-                                            <td className="px-6 py-4 text-slate-600">
-                                                <input 
-                                                    defaultValue={cat.routeTo} 
-                                                    disabled={updateCat.isPending}
-                                                    className="bg-transparent border-none p-0 focus:ring-0 disabled:opacity-50" 
-                                                    onBlur={e => updateCat.mutate({ id: cat.id, data: { routeTo: e.target.value } })}
-                                                />
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <select 
-                                                    defaultValue={cat.urgency}
-                                                    disabled={updateCat.isPending}
-                                                    onChange={e => updateCat.mutate({ id: cat.id, data: { urgency: e.target.value } })}
-                                                    className="bg-transparent border-none p-0 focus:ring-0 text-xs font-bold disabled:opacity-50"
-                                                >
-                                                    <option value="Low">Low</option>
-                                                    <option value="Medium">Medium</option>
-                                                    <option value="High">High</option>
-                                                </select>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <button 
-                                                    onClick={() => setCategoryToDelete(cat)} 
-                                                    className="text-slate-400 hover:text-red-500 transition-colors"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {(categories as any[]).length === 0 && (
-                                        <tr>
-                                            <td colSpan={4} className="px-6 py-12 text-center text-slate-400 italic">No categories defined for this branch.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
                         </div>
                     </div>
                 )}

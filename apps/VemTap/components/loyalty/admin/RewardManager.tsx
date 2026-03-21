@@ -501,7 +501,8 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                         r.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                         r.description.toLowerCase().includes(searchQuery.toLowerCase())
                     ).map((reward) => {
-                        const Icon = REWARD_TYPE_DETAILS[reward.rewardType].icon;
+                        const typeDetails = REWARD_TYPE_DETAILS[reward.rewardType] || REWARD_TYPE_DETAILS['free_item'];
+                        const Icon = typeDetails.icon;
                         const redemptionsCount = reward.totalRedeemed || 0;
                         const pointsSpent = redemptionsCount * reward.pointCost;
 
@@ -565,12 +566,12 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                             <div className="p-3 bg-primary/5 rounded-2xl text-center border border-primary/10 h-full flex flex-col justify-center">
                                                 <div className="flex items-center justify-center gap-1.5 text-primary">
                                                     <Star className="w-5 h-5 fill-primary/20" />
-                                                    <span className="text-2xl font-black">{reward.pointCost.toLocaleString()}</span>
+                                                    <span className="text-2xl font-black">{(reward.pointCost ?? 0).toLocaleString()}</span>
                                                 </div>
                                                 <p className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mt-1">Pts Required</p>
                                             </div>
                                         </Tooltip>
-                                        <Tooltip content={`Category: ${REWARD_TYPE_DETAILS[reward.rewardType].label}`}>
+                                        <Tooltip content={`Category: ${(REWARD_TYPE_DETAILS[reward.rewardType] || REWARD_TYPE_DETAILS['free_item']).label}`}>
                                             <div className="p-3 bg-slate-50 rounded-2xl text-center border border-slate-100 h-full flex flex-col justify-center">
                                                 <div className="flex justify-center mb-1">
                                                     <Icon className="w-5 h-5 text-slate-400" />
@@ -864,10 +865,11 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                     >
                                                         <div className="flex items-center gap-3">
                                                             {(() => {
-                                                                const MetaIcon = REWARD_TYPE_DETAILS[formData.rewardType as RewardType].icon;
+                                                                const MetaDetails = REWARD_TYPE_DETAILS[formData.rewardType as RewardType] || REWARD_TYPE_DETAILS['free_item'];
+                                                                const MetaIcon = MetaDetails.icon;
                                                                 return <MetaIcon size={16} className="text-primary" />;
                                                             })()}
-                                                            <span>{REWARD_TYPE_DETAILS[formData.rewardType as RewardType].label}</span>
+                                                            <span>{(REWARD_TYPE_DETAILS[formData.rewardType as RewardType] || REWARD_TYPE_DETAILS['free_item']).label}</span>
                                                         </div>
                                                         <ChevronDown size={16} className={cn("text-slate-400 transition-transform", isTypeOpen && "rotate-180")} />
                                                     </button>

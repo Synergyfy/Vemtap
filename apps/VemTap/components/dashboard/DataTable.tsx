@@ -34,39 +34,64 @@ export default function DataTable<T extends { id: string | number }>({
     }
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-                <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-200">
-                        <tr>
-                            {columns.map((column, index) => (
-                                <th
-                                    key={index}
-                                    className={`text-left py-4 px-6 text-[10px] font-black uppercase tracking-widest text-text-secondary ${column.className || ''}`}
-                                >
-                                    {column.header}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {data.map((item) => (
-                            <tr
-                                key={item.id}
-                                onClick={() => onRowClick?.(item)}
-                                className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
-                            >
+        <div className="w-full">
+            {/* Desktop Table View */}
+            <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-gray-50 border-b border-gray-200">
+                            <tr>
                                 {columns.map((column, index) => (
-                                    <td key={index} className={`py-4 px-6 text-sm ${column.className || ''}`}>
-                                        {typeof column.accessor === 'function'
-                                            ? column.accessor(item)
-                                            : (item[column.accessor] as React.ReactNode)}
-                                    </td>
+                                    <th
+                                        key={index}
+                                        className={`text-left py-4 px-6 text-[10px] font-black uppercase tracking-widest text-text-secondary ${column.className || ''}`}
+                                    >
+                                        {column.header}
+                                    </th>
                                 ))}
                             </tr>
+                        </thead>
+                        <tbody>
+                            {data.map((item) => (
+                                <tr
+                                    key={item.id}
+                                    onClick={() => onRowClick?.(item)}
+                                    className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                                >
+                                    {columns.map((column, index) => (
+                                        <td key={index} className={`py-4 px-6 text-sm ${column.className || ''}`}>
+                                            {typeof column.accessor === 'function'
+                                                ? column.accessor(item)
+                                                : (item[column.accessor] as React.ReactNode)}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
+                {data.map((item) => (
+                    <div 
+                        key={item.id}
+                        onClick={() => onRowClick?.(item)}
+                        className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3"
+                    >
+                        {columns.map((column, index) => (
+                            <div key={index} className="flex justify-between items-center border-b border-gray-50 pb-2 last:border-0 last:pb-0">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{column.header}</span>
+                                <span className="text-sm font-semibold text-gray-800">
+                                    {typeof column.accessor === 'function'
+                                        ? column.accessor(item)
+                                        : (item[column.accessor] as React.ReactNode)}
+                                </span>
+                            </div>
                         ))}
-                    </tbody>
-                </table>
+                    </div>
+                ))}
             </div>
         </div>
     );
