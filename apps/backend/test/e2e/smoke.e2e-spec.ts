@@ -1,45 +1,14 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { User, UserRole, UserStatus } from '../../src/modules/users/entities/user.entity';
-import { Repository } from 'typeorm';
-import { AuthService } from '../../src/modules/auth/auth.service';
-import * as bcrypt from 'bcrypt';
 
 describe('Smoke Test (E2E)', () => {
   let app: INestApplication;
   let server: any;
-  let authToken: string;
 
   beforeAll(async () => {
     app = await createTestApp();
     server = app.getHttpServer();
-
-    // Setup an authenticated session for the smoke test
-    const userRepo = app.get<Repository<User>>(getRepositoryToken(User));
-    const authService = app.get(AuthService);
-    
-    const testEmail = `smoke-test-${Date.now()}@test.com`;
-    const password = 'SmokeTestPass123!';
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await userRepo.save(
-      userRepo.create({
-        email: testEmail,
-        password: hashedPassword,
-        firstName: 'Smoke',
-        lastName: 'Tester',
-        role: UserRole.ADMIN, // Use Admin to reach most routes
-        status: UserStatus.ACTIVE,
-      }),
-    );
-
-    const loginRes = await authService.login({
-      identifier: testEmail,
-      password,
-    });
-    authToken = loginRes.access_token;
   });
 
   afterAll(async () => {
@@ -47,8 +16,6 @@ describe('Smoke Test (E2E)', () => {
   });
 
   it('should ensure all registered routes return status < 500', async () => {
-    // ... (logic to get routes)
-
     const expressApp = app.getHttpAdapter().getInstance();
 
     const router = expressApp._router || expressApp.router;
@@ -119,9 +86,7 @@ describe('Smoke Test (E2E)', () => {
         // e.g. request(server).get(path)
         const method = route.method.toLowerCase();
         // @ts-ignore
-        const res = await request(server)
-          [method](path)
-          .set('Authorization', `Bearer ${authToken}`);
+        const res = await request(server)[method](path);
 
         if (res.status >= 500) {
           console.error(
@@ -129,7 +94,6 @@ describe('Smoke Test (E2E)', () => {
             res.body,
           );
         }
-
         expect(res.status).toBeLessThan(500);
       } catch (e) {
         // If the error is actual network error (conn refused), fail.

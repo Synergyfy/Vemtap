@@ -77,14 +77,14 @@ describe('AdminFlowEngineController', () => {
       const dto: UpdateFlowTemplateDto = { name: 'Updated' };
       const result: FlowTemplate = { id: '1', name: 'Updated' } as any;
       service.updateTemplate.mockResolvedValue(result);
-      expect(await controller.updateTemplate({ id: '1' }, dto)).toBe(result);
+      expect(await controller.updateTemplate('1', dto)).toBe(result);
     });
   });
 
   describe('deleteTemplate', () => {
     it('should delete a template', async () => {
       service.deleteTemplate.mockResolvedValue({} as any);
-      await controller.deleteTemplate({ id: '1' });
+      await controller.deleteTemplate('1');
       expect(service.deleteTemplate).toHaveBeenCalledWith('1');
     });
   });
