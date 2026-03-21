@@ -97,8 +97,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
             id: 'messages',
             label: 'Messages',
             icon: MessageSquare,
-            href: '/support-chat/default',
-            external: true,
+            href: '/customer/messaging/chat',
         },
         {
             id: 'support',

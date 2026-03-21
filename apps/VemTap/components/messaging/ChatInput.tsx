@@ -33,13 +33,13 @@ export default function ChatInput({ conversationId, isMock, onTypingChange, repl
     const isTypingRef = useRef(false);
 
     useEffect(() => {
-        if (!user || user.role === 'customer') return;
+        if (!user || user?.role?.toLowerCase() === 'customer') return;
         if (!activeBranchId && branches.length === 1) {
             setActiveBranch(branches[0].id);
         }
     }, [activeBranchId, branches, user, setActiveBranch]);
 
-    const isCustomer = user?.role === 'customer';
+    const isCustomer = user?.role?.toLowerCase() === 'customer';
     const branchId = isCustomer ? undefined : (activeBranchId || (branches.length === 1 ? branches[0]?.id : undefined));
     
     // Unified reply mutation (handles both business and customer endpoints)

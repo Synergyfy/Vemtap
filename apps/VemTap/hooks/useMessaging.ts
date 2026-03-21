@@ -1,16 +1,42 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
+// --- Helpers ---
+
+const normalizeThread = (thread: any, isCustomer: boolean) => {
+  if (!thread) return thread;
+  if (thread.contact) return thread; // Already normalized or mock
+
+  const contact = isCustomer
+    ? {
+        id: thread.branch?.id || thread.branchId,
+        name: thread.branch?.business?.name || 'Business',
+        avatar: thread.branch?.business?.logoUrl,
+        isOnline: false,
+      }
+    : {
+        id: thread.customer?.id || thread.customerId,
+        name: thread.customer?.firstName 
+          ? `${thread.customer.firstName} ${thread.customer.lastName || ''}`.trim() 
+          : (thread.customer?.name || 'Customer'),
+        avatar: thread.customer?.avatar,
+        isOnline: false,
+      };
+
+  return { ...thread, contact };
+};
+
 // --- Inbox Hooks ---
 
 export const useChatThreads = (channel: string = 'IN_HOUSE', branchId?: string, isCustomer: boolean = false) => {
   return useQuery({
     queryKey: ['chat-threads', channel, branchId, isCustomer],
-    queryFn: () => {
+    queryFn: async () => {
       const endpoint = isCustomer 
         ? `/customer/messaging/threads`
         : `/messaging/inbox/${channel}${branchId ? `?branchId=${branchId}` : ''}`;
-      return api.get(endpoint);
+      const data = await api.get(endpoint);
+      return (data as any[]).map(t => normalizeThread(t, isCustomer));
     },
     enabled: isCustomer || !!branchId || channel === 'IN_HOUSE',
   });
@@ -25,7 +51,7 @@ export const useThreadMessages = (threadId: string, branchId?: string, isCustome
         : `/messaging/inbox/threads/${threadId}${branchId ? `?branchId=${branchId}` : ''}`;
       return api.get(endpoint);
     },
-    enabled: !!threadId,
+    enabled: !!threadId && threadId !== 'default',
   });
 };
 
@@ -35,7 +61,7 @@ export const useSendReply = (isCustomer: boolean = false) => {
     mutationFn: ({ threadId, content, branchId, replyToId }: { threadId: string; content: string; branchId?: string; replyToId?: string }) => {
       const endpoint = isCustomer
         ? `/customer/messaging/threads/${threadId}/reply`
-        : `/messaging/inbox/threads/${threadId}/reply${branchId ? `?branchId=${branchId}` : ''}`;
+        : `/messaging/inbox/reply/${threadId}${branchId ? `?branchId=${branchId}` : ''}`;
       return api.post(endpoint, { content, replyToId });
     },
     onSuccess: (_, variables) => {
