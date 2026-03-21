@@ -196,9 +196,20 @@ export class UsersService {
     passwordHash: string,
     meta?: { ipAddress?: string; userAgent?: string },
   ): Promise<boolean> {
-    await this.usersRepository.update(userId, {
+    const user = await this.findOne(userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    const updates: Partial<User> = {
       password: passwordHash,
-    });
+      isPasswordChanged: true,
+    };
+
+    if (user.status === UserStatus.PENDING) {
+      updates.status = UserStatus.ACTIVE;
+    }
+
+    const { branch, business, ownedBusiness, notifications, visits, messages, threads, ...plainUpdates } = updates as any;
+    await this.usersRepository.update(userId, plainUpdates);
 
     const history = this.passwordResetHistoryRepository.create({
       userId,

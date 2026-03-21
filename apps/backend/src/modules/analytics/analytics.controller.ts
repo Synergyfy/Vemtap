@@ -14,6 +14,7 @@ import { User, UserRole } from '../users/entities/user.entity';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
 import { AnalyticsLevelGuard } from '../subscriptions/guards/analytics-level.guard';
 import { RequireAnalyticsLevel } from '../subscriptions/decorators/analytics-level.decorator';
+import { BusinessSummaryResponseDto } from './dto/analytics-responses.dto';
 
 @ApiTags('Analytics')
 @ApiBearerAuth()
@@ -69,5 +70,17 @@ export class AnalyticsController {
   @ApiOperation({ summary: 'Global platform summary for super admins' })
   async getAdminSummary() {
     return this.analyticsService.getAdminSummary();
+  }
+
+  @Get('admin/business-summary')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Detailed business status summary for super admins' })
+  @ApiResponse({
+    status: 200,
+    description: 'Business summary data',
+    type: BusinessSummaryResponseDto,
+  })
+  async getBusinessSummary() {
+    return this.analyticsService.getBusinessSummary();
   }
 }

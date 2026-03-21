@@ -122,8 +122,88 @@ export class BusinessesController {
   @Get('admin')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Get all businesses with filters and stats' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return list of businesses with pagination and stats.',
+    schema: {
+      example: {
+        data: [
+          {
+            id: 'uuid-business-1',
+            name: 'The Azure Bistro',
+            status: 'active',
+            isVerified: true,
+            owner: { email: 'owner@example.com' },
+          },
+        ],
+        meta: { total: 1, page: 1, lastPage: 1 },
+        stats: {
+          total: 50,
+          active: 40,
+          pending: 5,
+          suspended: 5,
+          approvedToday: 2,
+          avgWaitTime: '1.5',
+        },
+      },
+    },
+  })
   async findAllAdmin(@Query() query: FindBusinessesAdminDto) {
     return this.businessesService.findAllAdmin(query);
+  }
+
+  @Get('admin/suspended')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get all suspended businesses (newest to oldest)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return list of suspended businesses.',
+    schema: {
+      example: {
+        data: [
+          {
+            id: 'uuid-business-1',
+            name: 'Suspended Shop',
+            status: 'suspended',
+            suspendedAt: '2026-03-21T10:00:00Z',
+            suspensionReason: 'Policy violation',
+          },
+        ],
+        meta: { total: 1, page: 1, lastPage: 1 },
+      },
+    },
+  })
+  async findSuspendedAdmin(@Query() query: FindBusinessesAdminDto) {
+    return this.businessesService.findSuspendedAdmin(query);
+  }
+
+  @Get('admin/pending-verification')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get businesses pending verification with stats' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return list of businesses pending verification.',
+    schema: {
+      example: {
+        data: [
+          {
+            id: 'uuid-business-1',
+            name: 'New Shop',
+            isVerified: false,
+            createdAt: '2026-03-21T08:00:00Z',
+          },
+        ],
+        meta: { total: 1, page: 1, lastPage: 1 },
+        stats: {
+          totalPending: 15,
+          verifiedToday: 3,
+          avgWaitTime: '2.4',
+        },
+      },
+    },
+  })
+  async findPendingVerificationAdmin(@Query() query: FindBusinessesAdminDto) {
+    return this.businessesService.findPendingVerificationAdmin(query);
   }
 
   @Post('admin')
@@ -191,6 +271,20 @@ export class BusinessesController {
   @ApiOperation({ summary: 'Admin: Reactivate a suspended business' })
   async reactivateBusiness(@Param('id', ParseUUIDPipe) id: string) {
     return this.businessesService.reactivate(id);
+  }
+
+  @Patch('admin/:id/verify')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Verify a business' })
+  async verifyBusiness(@Param('id', ParseUUIDPipe) id: string) {
+    return this.businessesService.verify(id);
+  }
+
+  @Patch('admin/:id/unverify')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Unverify a business' })
+  async unverifyBusiness(@Param('id', ParseUUIDPipe) id: string) {
+    return this.businessesService.unverify(id);
   }
 
   @Get('admin/:id/stats')
