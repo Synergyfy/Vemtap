@@ -1,5 +1,55 @@
-export type Channel = 'WHATSAPP' | 'SMS' | 'EMAIL';
+export type Channel = 'WHATSAPP' | 'SMS' | 'EMAIL' | 'IN_HOUSE';
 export type AudienceType = 'ALL' | 'GROUP' | 'TAGGED' | 'RECENT';
+
+export enum MessageDirection {
+    INBOUND = 'INBOUND',   // From Customer to Business
+    OUTBOUND = 'OUTBOUND', // From Business to Customer
+}
+
+export enum MessageStatus {
+    PENDING = 'PENDING',
+    SENT = 'SENT',
+    DELIVERED = 'DELIVERED',
+    READ = 'READ',
+    FAILED = 'FAILED',
+}
+
+export enum ThreadStatus {
+    OPEN = 'OPEN',
+    CLOSED = 'CLOSED',
+    RESOLVED = 'RESOLVED',
+}
+
+export interface ConversationThread {
+    id: string;
+    branchId: string;
+    businessId: string;
+    customerId: string;
+    channel: Channel;
+    status: ThreadStatus;
+    lastActivityAt: string | Date;
+    lastMessageContent: string;
+    branchUnreadCount: number;
+    customerUnreadCount: number;
+    createdAt: string | Date;
+    updatedAt: string | Date;
+}
+
+export interface Message {
+    id: string;
+    threadId: string;
+    branchId: string;
+    customerId: string;
+    content: string;
+    channel: Channel;
+    direction: MessageDirection;
+    status: MessageStatus;
+    from: string; // Phone, Email, or Name
+    to: string;
+    replyToId?: string;
+    replyTo?: Message; // Populated if quoting
+    timestamp: string | Date;
+}
 
 export interface SendMessageRequest {
     channel: Channel;
@@ -10,10 +60,31 @@ export interface SendMessageRequest {
     branchId?: string;
 }
 
+// Keep legacy interfaces for compatibility
+export interface InboxThread {
+    id: string;
+    contactName: string;
+    contactPhone?: string;
+    contactEmail?: string;
+    lastMessage: string;
+    channel: Channel | string;
+    unread: number;
+    updatedAt: string | Date;
+}
+
+export interface ThreadMessage {
+    id: string;
+    threadId: string;
+    content: string;
+    direction: MessageDirection | 'INBOUND' | 'OUTBOUND';
+    createdAt: string | Date;
+    replyTo?: Message;
+}
+
 export interface Template {
     id: string;
     name: string;
-    channel: string;
+    channel: Channel | string;
     content: string;
     status?: 'pending' | 'approved' | 'rejected';
     isSystem?: boolean;
@@ -35,7 +106,7 @@ export interface CreateTemplateRequest {
 export interface Campaign {
     id: string;
     name: string;
-    channel: string;
+    channel: Channel | string;
     audienceSize: number;
     status: 'Completed' | 'Scheduled' | 'Draft' | 'Running';
     sentAt?: string;
@@ -68,25 +139,6 @@ export interface ChannelStat {
     totalSent: number;
     deliveryRate: number;
     growth: number;
-}
-
-export interface InboxThread {
-    id: string;
-    contactName: string;
-    contactPhone?: string;
-    contactEmail?: string;
-    lastMessage: string;
-    channel: string;
-    unread: number;
-    updatedAt: string;
-}
-
-export interface ThreadMessage {
-    id: string;
-    threadId: string;
-    content: string;
-    direction: 'INBOUND' | 'OUTBOUND';
-    createdAt: string;
 }
 
 // ─── Automations ─────────────────────────────────────────────────────────────

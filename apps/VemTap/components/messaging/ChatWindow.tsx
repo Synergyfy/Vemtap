@@ -176,6 +176,16 @@ export default function ChatWindow() {
         [setActiveConversation]
     );
 
+    // Sort messages: backend returns DESC, we need ASC for chat window
+    const threadMessages = useMemo(() => {
+        const raw = isMockThread ? (mockMessages[activeConversationId as string] || []) : (messages as any[]);
+        return [...raw].sort((a, b) => {
+            const timeA = new Date(a.timestamp || a.createdAt || a.sentAt || 0).getTime();
+            const timeB = new Date(b.timestamp || b.createdAt || b.sentAt || 0).getTime();
+            return timeA - timeB;
+        });
+    }, [isMockThread, mockMessages, activeConversationId, messages]);
+
     if (!activeConv) {
         if (isCustomer && (targetBranchId || targetResolving || targetResolveError)) {
             return (
@@ -243,8 +253,8 @@ export default function ChatWindow() {
     }
 
     const { contact } = activeConv;
-    const contactName = contact?.name || 'Customer';
-    const threadMessages = isMockThread ? (mockMessages[activeConversationId as string] || []) : (messages as any[]);
+    const contactName = contact?.name || 'Business';
+    
     const contactIsOnline = contact?.isOnline;
     const contactLastSeen = contact?.lastSeen ? new Date(contact.lastSeen).toLocaleString() : null;
     const isTyping = activeConversationId ? typingByThread[activeConversationId] : false;
@@ -371,6 +381,18 @@ export default function ChatWindow() {
                             </React.Fragment>
                         );
                     })}
+                    {isTyping && (
+                        <div className="flex items-center gap-2 mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[10px] ${getAvatarColor(activeConv.id)}`}>
+                                {getInitials(contactName)}
+                            </div>
+                            <div className="bg-slate-100 border border-slate-200 p-3 rounded-2xl rounded-bl-none flex items-center gap-1">
+                                <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                                <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" />
+                            </div>
+                        </div>
+                    )}
                     <div ref={messagesEndRef} />
                 </div>
 

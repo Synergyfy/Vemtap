@@ -31,10 +31,11 @@ export const useCustomerGlobalHistory = () =>
         queryFn: () => customerApi.getMyHistory(),
     });
 
-export const useCustomerLoyaltyRewards = (businessId?: string) =>
+export const useCustomerLoyaltyRewards = (branchId?: string | null) =>
     useQuery({
-        queryKey: ['customer', 'loyalty', 'rewards', businessId],
-        queryFn: () => customerApi.getLoyaltyRewards(businessId),
+        queryKey: ['customer', 'loyalty', 'rewards', branchId],
+        queryFn: () => customerApi.getLoyaltyRewards(branchId as string),
+        enabled: !!branchId && branchId !== 'null' && branchId !== 'undefined' && branchId !== '',
     });
 
 export const useRedeemCustomerReward = () => {

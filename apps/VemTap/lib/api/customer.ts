@@ -20,7 +20,7 @@ export const customerApi = {
     getLoyaltyProfile: (businessId?: string) => api.get(withQuery('/loyalty/points/balance', { businessId })),
     getLoyaltyHistory: (businessId?: string) => api.get(withQuery('/loyalty/points/logs', { businessId })),   
     getMyHistory: () => api.get('/loyalty/points/logs'),
-    getLoyaltyRewards: (businessId?: string) => api.get(`/loyalty/rewards/branch/${businessId}`),
+    getLoyaltyRewards: (branchId?: string) => api.get(`/loyalty/rewards/branch/${branchId}`),
     redeemReward: (data: { rewardId: string; businessId?: string }) => api.post('/loyalty/redemption/redeem', data),
     claimCode: (data: { code: string; branchId?: string }) => api.post('/loyalty/points/use-code', data),
 

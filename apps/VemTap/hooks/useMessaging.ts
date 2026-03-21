@@ -61,7 +61,7 @@ export const useSendReply = (isCustomer: boolean = false) => {
     mutationFn: ({ threadId, content, branchId, replyToId }: { threadId: string; content: string; branchId?: string; replyToId?: string }) => {
       const endpoint = isCustomer
         ? `/customer/messaging/threads/${threadId}/reply`
-        : `/messaging/inbox/reply/${threadId}${branchId ? `?branchId=${branchId}` : ''}`;
+        : `/messaging/inbox/threads/${threadId}/reply${branchId ? `?branchId=${branchId}` : ''}`;
       return api.post(endpoint, { content, replyToId });
     },
     onSuccess: (_, variables) => {
