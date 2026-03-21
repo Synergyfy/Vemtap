@@ -5,17 +5,19 @@ import {
   Business,
   BusinessStatus,
 } from './entities/business.entity';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
 import { Reward } from '../loyalty/entities/reward.entity';
 import { MailService } from '../mail/mail.service';
 import { DevicesService } from '../devices/devices.service';
-import { NotFoundException } from '@nestjs/common';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { NotFoundException, ConflictException } from '@nestjs/common';
 
 describe('BusinessesService', () => {
   let service: BusinessesService;
   let repository: any;
+  let usersRepository: any;
 
   const mockBusiness = {
     id: 'biz-1',
@@ -31,8 +33,8 @@ describe('BusinessesService', () => {
     findOneBy: jest.fn().mockResolvedValue(mockBusiness),
     create: jest
       .fn()
-      .mockImplementation((dto) => ({ ...dto, save: jest.fn() })),
-    save: jest.fn().mockImplementation((biz) => Promise.resolve(biz)),
+      .mockImplementation((dto) => ({ ...dto, id: 'biz-1', save: jest.fn() })),
+    save: jest.fn().mockImplementation((biz) => Promise.resolve({ id: 'biz-1', ...biz })),
     findOne: jest.fn().mockResolvedValue(mockBusiness),
     createQueryBuilder: jest.fn(() => ({
       leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -45,6 +47,7 @@ describe('BusinessesService', () => {
       where: jest.fn().mockReturnThis(),
       getRawOne: jest.fn().mockResolvedValue({ avgSeconds: 0 }),
       getCount: jest.fn().mockResolvedValue(0),
+      loadRelationCountAndMap: jest.fn().mockReturnThis(),
     })),
     count: jest.fn().mockResolvedValue(0),
     remove: jest.fn(),
@@ -52,8 +55,8 @@ describe('BusinessesService', () => {
 
   const mockUsersRepository = {
     findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
+    create: jest.fn().mockImplementation((dto) => ({ ...dto, id: 'user-1' })),
+    save: jest.fn().mockImplementation((user) => Promise.resolve({ id: 'user-1', ...user })),
     update: jest.fn(),
   };
 
@@ -70,6 +73,11 @@ describe('BusinessesService', () => {
   const mockVisitRepository = {
     count: jest.fn().mockResolvedValue(0),
     find: jest.fn().mockResolvedValue([]),
+    createQueryBuilder: jest.fn(() => ({
+      where: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      getRawOne: jest.fn().mockResolvedValue({ count: '0' }),
+    })),
   };
 
   const mockRewardRepository = {
@@ -83,6 +91,10 @@ describe('BusinessesService', () => {
 
   const mockDevicesService = {
     createAutoDevice: jest.fn().mockResolvedValue({}),
+  };
+
+  const mockSubscriptionsService = {
+    subscribeToFreePlan: jest.fn().mockResolvedValue({}),
   };
 
   beforeEach(async () => {
@@ -117,11 +129,16 @@ describe('BusinessesService', () => {
           provide: DevicesService,
           useValue: mockDevicesService,
         },
+        {
+          provide: SubscriptionsService,
+          useValue: mockSubscriptionsService,
+        },
       ],
     }).compile();
 
     service = module.get<BusinessesService>(BusinessesService);
     repository = module.get(getRepositoryToken(Business));
+    usersRepository = module.get(getRepositoryToken(User));
   });
 
   it('should be defined', () => {
@@ -149,6 +166,49 @@ describe('BusinessesService', () => {
       repository.findOne.mockResolvedValue(null);
       await expect(service.update('invalid-id', {})).rejects.toThrow(
         NotFoundException,
+      );
+    });
+  });
+
+  describe('adminCreate', () => {
+    it('should create a new user and business successfully', async () => {
+      const dto = {
+        name: 'New Admin Business',
+        ownerFirstName: 'Admin',
+        ownerLastName: 'User',
+        ownerEmail: 'admin@newbiz.com',
+        ownerPassword: 'Password123!',
+        ownerPhone: '1234567890',
+        businessNumber: '0987654321',
+      };
+
+      usersRepository.findOne.mockResolvedValue(null);
+      mockRepository.findOne.mockResolvedValue(null); // findByOwner
+
+      const result = await service.adminCreate(dto as any);
+
+      expect(usersRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: dto.ownerEmail,
+          role: UserRole.OWNER,
+        }),
+      );
+      expect(usersRepository.save).toHaveBeenCalled();
+      expect(repository.save).toHaveBeenCalled();
+      expect(mockSubscriptionsService.subscribeToFreePlan).toHaveBeenCalled();
+      expect(result.name).toBe(dto.name);
+    });
+
+    it('should throw ConflictException if user email already exists', async () => {
+      const dto = {
+        ownerEmail: 'existing@user.com',
+        ownerPassword: 'Password123!',
+      };
+
+      usersRepository.findOne.mockResolvedValue({ id: 'existing', status: UserStatus.ACTIVE });
+
+      await expect(service.adminCreate(dto as any)).rejects.toThrow(
+        ConflictException,
       );
     });
   });

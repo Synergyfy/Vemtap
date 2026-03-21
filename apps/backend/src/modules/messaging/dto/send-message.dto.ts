@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   IsArray,
+  IsUUID,
 } from 'class-validator';
 import { Channel } from '../enums/channel.enum';
 import { AudienceType } from '../entities/message-campaign.entity';
@@ -14,7 +15,7 @@ export class SendMessageDto {
     description: 'Business ID (resolved from token if not provided)',
   })
   @IsOptional()
-  @IsString()
+  @IsUUID()
   businessId?: string;
 
   @ApiPropertyOptional({
@@ -22,7 +23,7 @@ export class SendMessageDto {
       'Branch ID (required for campaign creation; derived from business if not provided)',
   })
   @IsOptional()
-  @IsString()
+  @IsUUID()
   branchId?: string;
 
   @ApiProperty({ enum: Channel })
@@ -36,7 +37,7 @@ export class SendMessageDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsString()
+  @IsUUID()
   templateId?: string;
 
   @ApiPropertyOptional()
@@ -57,6 +58,7 @@ export class SendMessageDto {
   })
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
+  @IsUUID('all', { each: true })
   customerIds?: string[];
 }
+

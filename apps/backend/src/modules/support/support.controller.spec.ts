@@ -53,13 +53,16 @@ describe('SupportController', () => {
   describe('getTickets', () => {
     it('should return all tickets', async () => {
       const result = [{ id: 'ticket-1' }];
+      const query = { page: 1, limit: 10 };
       mockSupportService.findAll.mockResolvedValue(result);
 
-      expect(await controller.getTickets(mockReq as any)).toBe(result);
+      expect(await controller.getTickets(mockReq as any, query as any)).toBe(
+        result,
+      );
       expect(mockSupportService.findAll).toHaveBeenCalledWith(
         mockUser.id,
-        undefined,
-        undefined,
+        query.page,
+        query.limit,
       );
     });
   });
@@ -81,17 +84,17 @@ describe('SupportController', () => {
   describe('addMessage', () => {
     it('should add a message to ticket', async () => {
       const ticketId = 'ticket-1';
-      const message = 'Reply';
-      const result = { id: 'msg-1', message };
+      const dto = { message: 'Reply' };
+      const result = { id: 'msg-1', message: dto.message };
       mockSupportService.addMessage.mockResolvedValue(result);
 
       expect(
-        await controller.addMessage(mockReq as any, ticketId, message),
+        await controller.addMessage(mockReq as any, ticketId, dto as any),
       ).toBe(result);
       expect(mockSupportService.addMessage).toHaveBeenCalledWith(
         ticketId,
         mockUser.id,
-        message,
+        dto.message,
       );
     });
   });

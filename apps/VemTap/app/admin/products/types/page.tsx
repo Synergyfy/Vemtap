@@ -82,9 +82,14 @@ export default function ProductTypesPage() {
             return;
         }
 
+        let finalSlug = typeSlug || typeName.toLowerCase().replace(/\s+/g, '-');
+        if (!finalSlug.startsWith('nfc-')) {
+            finalSlug = `nfc-${finalSlug}`;
+        }
+
         const data = {
             name: typeName,
-            slug: typeSlug || typeName.toLowerCase().replace(/\s+/g, '-'),
+            slug: finalSlug,
             description: typeDescription
         };
 

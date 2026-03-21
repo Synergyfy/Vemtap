@@ -8,6 +8,7 @@ import { PointCode } from '../entities/point-code.entity';
 import { RedemptionCode } from '../entities/redemption-code.entity';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { Branch } from '../../branches/entities/branch.entity';
+import { Visit } from '../../visitors/entities/visit.entity';
 import { DataSource } from 'typeorm';
 
 describe('LoyaltyService', () => {
@@ -19,6 +20,7 @@ describe('LoyaltyService', () => {
   let redemptionCodeRepo: any;
   let userRepo: any;
   let branchRepo: any;
+  let visitRepo: any;
 
   const mockRepo = () => ({
     find: jest.fn(),
@@ -26,11 +28,19 @@ describe('LoyaltyService', () => {
     create: jest.fn(),
     save: jest.fn(),
     delete: jest.fn(),
+    count: jest.fn(),
     createQueryBuilder: jest.fn(() => ({
       select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
       getRawOne: jest.fn(),
+      getRawMany: jest.fn(),
+      getCount: jest.fn(),
     })),
   });
 
@@ -58,6 +68,7 @@ describe('LoyaltyService', () => {
         { provide: getRepositoryToken(RedemptionCode), useFactory: mockRepo },
         { provide: getRepositoryToken(User), useFactory: mockRepo },
         { provide: getRepositoryToken(Branch), useFactory: mockRepo },
+        { provide: getRepositoryToken(Visit), useFactory: mockRepo },
         { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
@@ -70,6 +81,7 @@ describe('LoyaltyService', () => {
     redemptionCodeRepo = module.get(getRepositoryToken(RedemptionCode));
     userRepo = module.get(getRepositoryToken(User));
     branchRepo = module.get(getRepositoryToken(Branch));
+    visitRepo = module.get(getRepositoryToken(Visit));
   });
 
   it('should be defined', () => {

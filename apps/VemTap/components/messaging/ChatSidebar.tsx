@@ -22,6 +22,7 @@ import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import WhatsAppTemplateModal from './WhatsAppTemplateModal';
+import toast from 'react-hot-toast';
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
@@ -57,7 +58,6 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
     const setSearchQuery = useChatStore(s => s.setSearchQuery);
     const setActiveConversation = useChatStore(s => s.setActiveConversation);
     const mockThreads = useChatStore(s => s.mockThreads);
-    const addMockThread = useChatStore(s => s.addMockThread);
     const isAuthenticated = useAuthStore(s => s.isAuthenticated);
     const { data: business } = useMyBusiness(isAuthenticated);
     const user = useAuthStore(s => s.user);
@@ -325,8 +325,7 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                                         key={visitor.id}
                                                         type="button"
                                                         onClick={(e) => {
-                                                            const threadId = addMockThread(visitor);
-                                                            setActiveConversation(threadId);
+                                                            toast.error('Customers must start the conversation first.');
                                                             setShowNewChat(false);
                                                             setCustomerQuery('');
                                                         }}

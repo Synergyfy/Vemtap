@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -65,7 +66,7 @@ export class AdminFlowEngineController {
   @ApiBody({ type: UpdateFlowTemplateDto })
   @ApiResponse({ status: 200, type: FlowTemplate })
   async updateTemplate(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() data: UpdateFlowTemplateDto,
   ): Promise<FlowTemplate | null> {
     return this.adminFlowService.updateTemplate(id, data);
@@ -74,9 +75,10 @@ export class AdminFlowEngineController {
   @Delete('templates/:id')
   @ApiOperation({ summary: 'Delete a global flow template' })
   @ApiResponse({ status: 200, description: 'Template deleted successfully' })
-  async deleteTemplate(@Param('id') id: string): Promise<void> {
+  async deleteTemplate(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     await this.adminFlowService.deleteTemplate(id);
   }
+
 
   @Get('triggers')
   @ApiOperation({ summary: 'Get all flow trigger configurations' })

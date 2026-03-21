@@ -1,4 +1,3 @@
-﻿
 'use client';
 
 import Script from 'next/script';
@@ -17,6 +16,7 @@ import {
     Youtube,
     Music2,
     Gift,
+    ChevronRight,
 } from 'lucide-react';
 
 import { usePublicBusiness, usePublicBranch, usePublicRewards } from '@/services/public/hooks';
@@ -36,26 +36,38 @@ const formatHours = (hours?: BusinessHours) => {
 };
 
 
-
-
-
 export default function PublicBusinessProfilePage() {
     const params = useParams();
     const codeParam = params?.code;
     const code = Array.isArray(codeParam) ? codeParam[0] : codeParam || '';
 
     // Use React Query hooks for data fetching
-    const { data: branchData, isLoading: branchLoading } = usePublicBranch(code, !!code);
-    const { data: businessByCode, isLoading: businessByCodeLoading } = usePublicBusiness(code, !!code);
-    const branchBusinessCode = branchData?.business?.uniqueCode;
-    const { data: businessByBranch, isLoading: businessByBranchLoading } = usePublicBusiness(
+    const { data: branchData, isLoading: branchLoading, isError: branchError } = usePublicBranch(code, !!code);
+    const { data: businessByCode, isLoading: businessByCodeLoading, isError: businessByCodeError } = usePublicBusiness(code, !!code);
+    
+    const rawBranchData = (branchData as any)?.data || branchData;
+    const rawBusinessByCode = (businessByCode as any)?.data || businessByCode;
+
+    // If the code is a branch code, we might need to fetch the business it belongs to
+    const branchBusinessCode = rawBranchData?.business?.uniqueCode;
+    const { data: businessByBranch, isLoading: businessByBranchLoading, isError: businessByBranchError } = usePublicBusiness(
         branchBusinessCode || '',
         !!branchBusinessCode && branchBusinessCode !== code
     );
+    
+    const rawBusinessByBranch = (businessByBranch as any)?.data || businessByBranch;
 
-    const business = businessByCode?.id ? businessByCode : businessByBranch;
-    const branch = businessByCode?.id ? null : branchData || null;
-    const businessSummary = branchData?.business;
+    const business = rawBusinessByCode?.id ? rawBusinessByCode : rawBusinessByBranch;
+    const branch = rawBusinessByCode?.id ? null : rawBranchData || null;
+    const businessSummary = rawBranchData?.business;
+    
+    const branches = useMemo(() => business?.branches || [], [business?.branches]);
+    const mainBranch = useMemo(
+        () => branches.find((item: any) => item.isMainBranch) || branches[0] || null,
+        [branches]
+    );
+    
+    const resolvedBranch = branch || mainBranch;
 
     const businessId = useMemo(
         () => business?.id || branch?.businessId || branchData?.business?.id,
@@ -72,12 +84,14 @@ export default function PublicBusinessProfilePage() {
     const mapInstanceRef = useRef<any>(null);
     const markerRef = useRef<any>(null);
 
+    // Effect to geocode the resolved branch location and show on map
     useEffect(() => {
         let isMounted = true;
-        const useBusinessDetails = !branch || branch.isMainBranch;
-        const address = useBusinessDetails
-            ? formatLocation(business?.address || branch?.address, business?.city || branch?.city, business?.state || branch?.state)
-            : formatLocation(branch?.address, branch?.city, branch?.state);
+        const address = formatLocation(
+            resolvedBranch?.address || business?.address,
+            resolvedBranch?.city || business?.city,
+            resolvedBranch?.state || business?.state
+        );
         if (!address || address === 'Location not provided') {
             setMapCoords(null);
             return;
@@ -101,7 +115,14 @@ export default function PublicBusinessProfilePage() {
         return () => {
             isMounted = false;
         };
-    }, [business?.address, business?.city, business?.state, branch?.address, branch?.city, branch?.state, branch?.isMainBranch]);
+    }, [
+        business?.address,
+        business?.city,
+        business?.state,
+        resolvedBranch?.address,
+        resolvedBranch?.city,
+        resolvedBranch?.state,
+    ]);
 
     useEffect(() => {
         const initMap = () => {
@@ -133,27 +154,27 @@ export default function PublicBusinessProfilePage() {
         };
     }, [mapCoords, leafletReady]);
 
-    const isLoading = branchLoading || businessByCodeLoading || businessByBranchLoading;
+    const isLoading = branchLoading || businessByCodeLoading || (businessByBranchLoading || false);
 
-    const useBusinessDetails = !branch || branch.isMainBranch;
-    const profileSource = useBusinessDetails ? (business || branch) : branch;
-    const locationAddress = useBusinessDetails
-        ? formatLocation(business?.address || branch?.address, business?.city || branch?.city, business?.state || branch?.state)
-        : formatLocation(branch?.address, branch?.city, branch?.state);
-    const businessLocation = formatLocation(business?.address ||  business?.city ||  business?.state);
-    const resolvedLocation = locationAddress === 'Location not provided' ? businessLocation : locationAddress;
+    // Determine the active display settings
+    const activeShowRewards = resolvedBranch?.showRewards ?? business?.showRewards ?? true;
+    
+    const locationAddress = formatLocation(
+        resolvedBranch?.address || business?.address,
+        resolvedBranch?.city || business?.city,
+        resolvedBranch?.state || business?.state
+    );
+    const businessLocation = formatLocation(business?.address, business?.city, business?.state);
+    const resolvedLocationDisplay = locationAddress === 'Location not provided' ? businessLocation : locationAddress;
 
     const profileName = useMemo(() => {
-        const businessName = business?.name || businessSummary?.name || branch?.business?.name;
-        return businessName || branch?.name || 'Business';
+        const name = business?.name || businessSummary?.name || branch?.business?.name || branch?.name;
+        return name || 'VemTap Business';
     }, [branch, business, businessSummary]);
 
     const profileLogo = useMemo(() => {
-        if (useBusinessDetails) {
-            return business?.logoUrl || businessSummary?.logoUrl || '';
-        }
-        return branch?.logoUrl || '';
-    }, [branch, business, businessSummary, useBusinessDetails]);
+        return business?.logoUrl || businessSummary?.logoUrl || resolvedBranch?.logoUrl || '';
+    }, [business, businessSummary, resolvedBranch?.logoUrl]);
     const fallbackLogo = '/VEMTAP_PNG.png';
 
     useEffect(() => {
@@ -161,22 +182,20 @@ export default function PublicBusinessProfilePage() {
         setLogoLoaded(false);
     }, [profileLogo]);
 
-    const profileEmail = profileSource?.officialEmail;
-    const profilePhone = profileSource?.phone;
-    const profileWebsite = profileSource?.website;
-    const profileAbout = profileSource?.about;
-    const profileWelcome = profileSource?.welcomeMessage;
-    const profileHours = profileSource?.businessHours;
-    const profileShowRewards = useBusinessDetails
-        ? (business?.showRewards ?? branch?.showRewards ?? true)
-        : (branch?.showRewards ?? true);
+    const profileEmail = resolvedBranch?.officialEmail || business?.officialEmail || (business as any)?.email || (business as any)?.owner?.email;
+    const profilePhone = resolvedBranch?.phone || business?.phone || (business as any)?.owner?.phone;
+    const profileWebsite = resolvedBranch?.website || business?.website;
+    const profileAbout = resolvedBranch?.about || business?.about || business?.goal || (business as any)?.description;
+    const profileWelcome = resolvedBranch?.welcomeMessage || business?.welcomeMessage || business?.welcomeTitle;
+    const profileHours = resolvedBranch?.businessHours || business?.businessHours;
+    
     const profileSocials = {
-        facebookUrl: profileSource?.facebookUrl,
-        instagramUrl: profileSource?.instagramUrl,
-        xUrl: profileSource?.xUrl,
-        linkedinUrl: profileSource?.linkedinUrl,
-        tiktokUrl: profileSource?.tiktokUrl,
-        youtubeUrl: profileSource?.youtubeUrl,
+        facebookUrl: resolvedBranch?.facebookUrl || business?.facebookUrl,
+        instagramUrl: resolvedBranch?.instagramUrl || business?.instagramUrl,
+        xUrl: resolvedBranch?.xUrl || business?.xUrl,
+        linkedinUrl: resolvedBranch?.linkedinUrl || business?.linkedinUrl,
+        tiktokUrl: resolvedBranch?.tiktokUrl || business?.tiktokUrl,
+        youtubeUrl: resolvedBranch?.youtubeUrl || business?.youtubeUrl,
     };
 
     const socialItems = [
@@ -188,12 +207,30 @@ export default function PublicBusinessProfilePage() {
         { key: 'youtube', label: 'YouTube', icon: Youtube, url: profileSocials.youtubeUrl },
     ];
 
-
-
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center font-display text-primary animate-pulse bg-white">
                 <span className="text-xl font-bold uppercase tracking-tighter">Vemtap</span>
+            </div>
+        );
+    }
+
+    if (!business && !branch && !isLoading && (branchError || businessByCodeError || businessByBranchError)) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6 text-center">
+                <div className="w-24 h-24 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-6">
+                    <MapPin size={48} />
+                </div>
+                <h1 className="text-3xl font-black text-slate-900 mb-2 uppercase tracking-tight">Business Not Found</h1>
+                <p className="text-slate-500 font-medium max-w-md mb-8">
+                    We couldn't find a business or branch with the code <span className="text-slate-900 font-bold">{code}</span>. It may have been moved, deleted, or the link might be incorrect.
+                </p>
+                <a 
+                    href="/" 
+                    className="px-8 py-3 bg-primary text-white font-black rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary-hover active:scale-95 transition-all text-sm uppercase tracking-widest"
+                >
+                    Back to Home
+                </a>
             </div>
         );
     }
@@ -208,9 +245,10 @@ export default function PublicBusinessProfilePage() {
 
             <main className="min-h-screen bg-white text-slate-900 font-body">
                 <div className="max-w-7xl mx-auto px-6 pt-12 pb-8">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+                    {/* Hero Section */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
                         <div className="flex items-center gap-6">
-                            <div className="w-24 h-24 md:w-32 md:h-32 bg-slate-100 rounded-full shadow-lg p-2 border border-slate-200 flex items-center justify-center overflow-hidden">
+                            <div className="w-24 h-24 md:w-32 md:h-32 bg-slate-100 rounded-full shadow-lg p-2 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
                                 {profileLogo && !logoFailed ? (
                                     <img
                                         alt="Logo"
@@ -227,144 +265,291 @@ export default function PublicBusinessProfilePage() {
                                     />
                                 )}
                             </div>
-
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <h1 className="text-4xl font-bold text-slate-900 lowercase tracking-tight">{profileName}</h1>
+                                    <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight lowercase">
+                                        {profileName}
+                                    </h1>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-4 text-slate-500 font-medium mt-1 text-sm md:text-base">
-                                    <div className="flex items-center gap-1">
+                                <div className="flex flex-wrap items-center gap-4 text-slate-500 font-medium mt-2 text-sm md:text-base">
+                                    <div className="flex items-center gap-1.5 grayscale opacity-70">
                                         <MapPin size={16} />
-                                        <span>{resolvedLocation?.split(',').slice(-2).join(', ') || "Lagos, Nigeria"}</span>
+                                        <span>{resolvedLocationDisplay || "Lagos, Nigeria"}</span>
                                     </div>
+                                    {(business?.category?.name || business?.subcategory?.name) && (
+                                        <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-600">
+                                            <span>{business?.category?.name}</span>
+                                            {business?.subcategory?.name && (
+                                                <>
+                                                    <span className="opacity-30">•</span>
+                                                    <span>{business?.subcategory?.name}</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
 
-                        <button className="bg-slate-100 text-slate-600 p-3 rounded-xl hover:bg-slate-200 transition-colors border border-slate-200">
-                            <Share2 size={20} />
-                        </button>
+                        <div className="flex gap-2">
+                            <button className="bg-slate-100 text-slate-600 p-3 rounded-2xl hover:bg-slate-200 transition-all border border-slate-200 active:scale-95 shadow-sm">
+                                <Share2 size={20} />
+                            </button>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-                        
+                        {/* Left Column */}
                         <div className="lg:col-span-7 flex flex-col gap-12">
+                            {/* About Section */}
                             <section>
-                                <h2 className="text-2xl font-bold text-slate-900 mb-4 font-display">About Us</h2>
-                                <p className="text-slate-600 leading-relaxed text-lg">
+                                <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase tracking-tight font-display">About the Business</h2>
+                                <p className="text-slate-600 leading-relaxed text-lg font-medium">
                                     {displayText(profileAbout)}
                                 </p>
                                 {profileWelcome && (
-                                    <p className="text-slate-500 mt-4 italic">
-                                        {profileWelcome}
-                                    </p>
+                                    <div className="mt-8 p-6 bg-blue-50/50 rounded-2xl border border-blue-100/50 italic text-slate-700">
+                                        "{profileWelcome}"
+                                    </div>
                                 )}
                             </section>
 
-                            {useBusinessDetails && profileShowRewards && (
+                            {/* Rewards Section */}
+                            {activeShowRewards && (
                                 <section>
-                                    <h2 className="text-2xl font-bold text-slate-900 mb-6 font-display">Active Rewards</h2>
-                                    <div className="space-y-4">
-                                        {rewards && rewards.length > 0 ? rewards.map((reward) => (
-                                            <div key={reward.id} className="bg-slate-50 p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between group hover:border-blue-500/30 transition-all cursor-pointer">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-xl bg-white border flex items-center justify-center text-2xl">
-                                                        <Gift className="text-blue-500" />
+                                    <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase tracking-tight font-display flex items-center gap-3">
+                                        Active Rewards
+                                        {rewards && rewards.length > 0 && (
+                                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{rewards.length}</span>
+                                        )}
+                                    </h2>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {rewards && rewards.length > 0 ? (
+                                            rewards.map((reward) => (
+                                                <div 
+                                                    key={reward.id} 
+                                                    className="bg-white p-6 rounded-4xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary/20 transition-all group cursor-pointer relative overflow-hidden"
+                                                >
+                                                    <div className="absolute top-4 right-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <ChevronRight size={20} />
                                                     </div>
-                                                    <div>
-                                                        <h3 className="font-bold text-lg text-slate-800">{reward.name}</h3>
-                                                        <p className="text-slate-500 text-sm">{reward.description}</p>
+                                                    <div className="flex flex-col gap-4">
+                                                        <div className="w-14 h-14 rounded-2xl bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                                                            <Gift size={28} />
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-black text-lg text-slate-900 leading-tight mb-1 lowercase">{reward.name}</h3>
+                                                            <p className="text-slate-500 text-sm font-medium line-clamp-2">{reward.description}</p>
+                                                        </div>
+                                                        <div className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary bg-primary/10 self-start px-3 py-1.5 rounded-full">
+                                                            {reward.pointCost} points requirement
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-4">
-                                                    <span className="bg-blue-100 text-blue-600 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                                                        {reward.pointCost} pts
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        )) : (
-                                            <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-2xl text-slate-400">
-                                                No active rewards available.
+                                            ))
+                                        ) : (
+                                            <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-100 rounded-3xl text-slate-400 font-medium">
+                                                No specific rewards are listed for this location yet.
                                             </div>
                                         )}
                                     </div>
                                 </section>
                             )}
 
+                            {/* Branches/Locations Section */}
                             <section>
-                                <h2 className="text-2xl font-bold text-slate-900 mb-6 font-display">Locations</h2>
+                                <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase tracking-tight font-display">Our Locations</h2>
                                 <div className="space-y-4">
-                                    <div className="bg-slate-50 p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between group">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
+                                    {branches.length > 0 ? (
+                                        branches.map((b: any) => (
+                                            <div 
+                                                key={b.id} 
+                                                className={`p-6 rounded-3xl border transition-all flex items-center justify-between group ${
+                                                    b.id === resolvedBranch?.id 
+                                                        ? 'bg-primary/5 border-primary/20 ring-1 ring-primary/10' 
+                                                        : 'bg-slate-50 border-slate-100 hover:border-slate-300'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-5">
+                                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
+                                                        b.id === resolvedBranch?.id ? 'bg-primary text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-200'
+                                                    }`}>
+                                                        <MapPin size={24} />
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="font-black text-lg text-slate-900 lowercase">{b.name || "Branch Location"}</h4>
+                                                            {b.isMainBranch && (
+                                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-200/50 px-1.5 py-0.5 rounded">Main</span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-slate-500 font-medium text-sm mt-0.5">
+                                                            {formatLocation(b.address, b.city, b.state)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                {b.uniqueCode && b.uniqueCode !== code && (
+                                                    <a 
+                                                        href={`/b/${b.uniqueCode}`}
+                                                        className="p-3 rounded-full bg-white border border-slate-100 text-slate-400 hover:text-primary hover:border-primary transition-all shadow-sm active:scale-90"
+                                                    >
+                                                        <ChevronRight size={20} />
+                                                    </a>
+                                                )}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex items-center gap-5">
+                                            <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-300">
                                                 <MapPin size={24} />
                                             </div>
                                             <div>
-                                                <h4 className="font-bold text-lg text-slate-800">Main Office</h4>
-                                                <p className="text-slate-500 text-sm">{locationAddress}</p>
+                                                <h4 className="font-black text-lg text-slate-900 lowercase">Main Office</h4>
+                                                <p className="text-slate-500 font-medium text-sm mt-0.5">{resolvedLocationDisplay}</p>
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                             </section>
+
+                            {/* Map Section */}
+                            {mapCoords && (
+                                <section>
+                                    <div className="relative group">
+                                        <div 
+                                            ref={mapRef} 
+                                            className="w-full h-[450px] rounded-[3rem] border-8 border-white shadow-2xl z-0 overflow-hidden"
+                                        />
+                                        <div className="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md p-4 rounded-2xl border border-white/50 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-300">
+                                            <p className="text-xs font-black uppercase tracking-widest text-primary mb-1">Interactive Map</p>
+                                            <p className="text-sm font-bold text-slate-800">{resolvedLocationDisplay}</p>
+                                        </div>
+                                    </div>
+                                </section>
+                            )}
                         </div>
 
+                        {/* Right Column (Sidebar) */}
                         <div className="lg:col-span-5 flex flex-col gap-8">
-                            <div className="bg-slate-50 border border-slate-100 text-slate-800 p-8 rounded-2xl shadow-lg flex flex-col gap-8">
-                                <h3 className="text-xl font-bold font-display text-slate-900">Connect with us</h3>
-                                <div className="space-y-6">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-blue-600">
-                                            <Phone size={18} />
+                            {/* Contact Info Card */}
+                            <div className="bg-slate-900 text-white p-10 rounded-[3rem] shadow-2xl flex flex-col gap-10 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-[80px] rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                                
+                                <h3 className="text-xl font-black uppercase tracking-tight text-white/50 font-display">Contact Info</h3>
+                                
+                                <div className="space-y-8">
+                                    <div className="flex items-center gap-6 group">
+                                        <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                                            <Phone size={20} />
                                         </div>
-                                        <span className="font-medium">{displayText(profilePhone)}</span>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Phone Number</span>
+                                            <span className="text-lg font-bold">{displayText(profilePhone)}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-blue-600">
-                                            <Mail size={18} />
+                                    <div className="flex items-center gap-6 group">
+                                        <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                                            <Mail size={20} />
                                         </div>
-                                        <span className="font-medium break-all">{displayText(profileEmail)}</span>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Email Address</span>
+                                            <span className="text-lg font-bold break-all lowercase">{displayText(profileEmail)}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-blue-600">
-                                            <Globe size={18} />
+                                    <div className="flex items-center gap-6 group">
+                                        <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                                            <Globe size={20} />
                                         </div>
-                                        <span className="font-medium">{displayText(profileWebsite)}</span>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Website</span>
+                                            <span className="text-lg font-bold">{displayText(profileWebsite)}</span>
+                                        </div>
                                     </div>
                                 </div>
                                 
-                                <div className="pt-8 border-t border-slate-200 flex gap-4">
-                                    {socialItems.map((social) => (
-                                        <a key={social.key} href={social.url} className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center hover:bg-slate-300 transition-colors text-slate-600">
-                                            {React.createElement(social.icon, { size: 18 })}
+                                <div className="pt-10 border-t border-white/10 flex flex-wrap gap-4">
+                                    {socialItems.filter(s => s.url).map((social) => (
+                                        <a 
+                                            key={social.key} 
+                                            href={social.url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary hover:border-primary transition-all text-white/60 hover:text-white active:scale-90"
+                                            title={social.label}
+                                        >
+                                            {React.createElement(social.icon, { size: 20 })}
                                         </a>
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="bg-slate-50 border border-slate-100 p-8 rounded-2xl shadow-lg">
-                                <h3 className="text-sm font-black mb-8 uppercase tracking-[0.2em] text-slate-500 font-display">Business Hours</h3>
+                            {/* Business Hours Card */}
+                            <div className="bg-slate-50 border border-slate-100 p-10 rounded-[3rem] shadow-sm relative group overflow-hidden">
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 blur-[60px] rounded-full translate-x-1/2 -translate-y-1/2"></div>
+                                
+                                <h3 className="text-[10px] font-black mb-10 uppercase tracking-[0.3em] text-slate-400 font-display">Opening Hours</h3>
+                                
                                 <div className="space-y-6">
                                     {profileHours && Object.entries(profileHours).map(([day, hours]) => {
                                         const dayHours = hours as BusinessHours | undefined;
+                                        const isClosed = !dayHours || dayHours.closed;
                                         return (
-                                            <div key={day} className="flex justify-between items-center">
-                                                <span className="text-slate-600 font-medium capitalize">{day.slice(0,3)}</span>
+                                            <div key={day} className="flex justify-between items-center group/row">
+                                                <span className="text-slate-500 font-black uppercase text-[11px] tracking-widest group-hover/row:text-primary transition-colors">{day.slice(0,3)}</span>
                                                 <div className="text-right">
-                                                    <div className="font-bold text-slate-900">{formatHours(dayHours)}</div>
-                                                    {dayHours && !dayHours.closed && (
-                                                        <div className="text-green-500 text-[10px] font-black uppercase tracking-widest mt-1">Open</div>
+                                                    <div className={`font-black text-sm tracking-tight ${isClosed ? 'text-slate-400' : 'text-slate-900'} lowercase`}>
+                                                        {formatHours(dayHours)}
+                                                    </div>
+                                                    {!isClosed && (
+                                                        <div className="text-primary text-[8px] font-black uppercase tracking-widest mt-1 opacity-60">Currently Open</div>
                                                     )}
                                                 </div>
                                             </div>
                                         );
                                     })}
                                 </div>
+
+                                <div className="mt-10 pt-10 border-t border-slate-200/60 flex items-center justify-center gap-3 grayscale opacity-30">
+                                    <span className="text-[10px] font-black tracking-widest uppercase">Verified Business</span>
+                                    <div className="w-1 h-1 rounded-full bg-slate-400"></div>
+                                    <span className="text-[10px] font-black tracking-widest uppercase">Premium Partner</span>
+                                </div>
+                            </div>
+                            
+                            {/* Brand Footer */}
+                            <div className="flex flex-col items-center gap-4 py-8">
+                                <div className="flex items-center gap-2 grayscale opacity-20">
+                                    <span className="text-xs font-black tracking-tighter uppercase">VemTap</span>
+                                    <div className="w-1 h-1 rounded-full bg-slate-900"></div>
+                                    <span className="text-[10px] font-bold">2026</span>
+                                </div>
+                                <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-300">Sustainable Customer Experience</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </main>
+            
+            {/* Global Styles for Leaflet */}
+            <style jsx global>{`
+                .leaflet-container {
+                    font-family: inherit;
+                    cursor: default !important;
+                }
+                .leaflet-bar {
+                    border: none !important;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+                }
+                .leaflet-bar a {
+                    background-color: white !important;
+                    color: #0f172a !important;
+                    border: 1px solid #f1f5f9 !important;
+                }
+                .leaflet-bar a:hover {
+                    background-color: #f8fafc !important;
+                    color: #2563eb !important;
+                }
+            `}</style>
         </div>
     );
 }

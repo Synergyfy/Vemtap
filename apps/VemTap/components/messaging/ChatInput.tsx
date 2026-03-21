@@ -11,16 +11,26 @@ import { useChatStore } from '@/lib/store/useChatStore';
 import { useMemo } from 'react';
 
 interface ChatInputProps {
-    conversationId: string;
+    conversationId?: string;
     isMock?: boolean;
     onTypingChange?: (isTyping: boolean) => void;
     replyTo?: { id?: string; content?: string };
     onCancelReply?: () => void;
+    startBranchId?: string;
+    onConversationStarted?: (threadId: string) => void;
 }
 
 const COMMON_EMOJIS = ['😊', '😂', '❤️', '👍', '🙏', '🔥', '✨', '🙌', '😮', '😢', '😍', '🤔', '🎉', '✅', '🚀', '👋'];
 
-export default function ChatInput({ conversationId, isMock, onTypingChange, replyTo, onCancelReply }: ChatInputProps) {
+export default function ChatInput({
+    conversationId,
+    isMock,
+    onTypingChange,
+    replyTo,
+    onCancelReply,
+    startBranchId,
+    onConversationStarted,
+}: ChatInputProps) {
     const [text, setText] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [showTemplatePicker, setShowTemplatePicker] = useState(false);
@@ -52,6 +62,8 @@ export default function ChatInput({ conversationId, isMock, onTypingChange, repl
     
     // Unified reply mutation (handles both business and customer endpoints)
     const replyMutation = useSendReply(isCustomer);
+    const startConversationMutation = useStartConversation();
+    const canStartConversation = isCustomer && !!startBranchId && !conversationId;
 
     // Filter templates based on search string (text after / or @)
     const filteredTemplates = useMemo(() => {
@@ -142,7 +154,7 @@ export default function ChatInput({ conversationId, isMock, onTypingChange, repl
     const handleSend = async () => {
         if (!text.trim()) return;
 
-        if (isMock || conversationId.startsWith('mock-')) {
+        if (conversationId && (isMock || conversationId.startsWith('mock-'))) {
             addMockMessage(conversationId, {
                 id: `mock-msg-${Date.now()}`,
                 threadId: conversationId,
@@ -162,7 +174,35 @@ export default function ChatInput({ conversationId, isMock, onTypingChange, repl
             }
             return;
         }
-        
+
+        if (canStartConversation) {
+            try {
+                const response: any = await startConversationMutation.mutateAsync({
+                    branchId: startBranchId!,
+                    content: text.trim(),
+                });
+                const threadId = response?.threadId || response?.thread?.id;
+                if (threadId) {
+                    onConversationStarted?.(threadId);
+                }
+                setText('');
+                setShowEmojiPicker(false);
+                emitTyping(false);
+                onCancelReply?.();
+                if (textareaRef.current) {
+                    textareaRef.current.style.height = '';
+                }
+            } catch (error: any) {
+                toast.error(error.message || 'Failed to start conversation');
+            }
+            return;
+        }
+
+        if (!conversationId) {
+            toast.error('Select a conversation first');
+            return;
+        }
+
         if (!isCustomer && !branchId) {
             toast.error('Please select a branch first');
             return;
@@ -233,7 +273,7 @@ export default function ChatInput({ conversationId, isMock, onTypingChange, repl
         if (e.target) e.target.value = '';
     };
 
-    const isSending = replyMutation.isPending;
+    const isSending = replyMutation.isPending || startConversationMutation.isPending;
 
     useEffect(() => {
         return () => {
