@@ -469,7 +469,9 @@ function ConversationItem({
                     <div className="flex items-center gap-2">
                         <p className="text-xs truncate flex-1 text-slate-500">
                             {isTyping ? (
-                                <span className="text-primary font-medium animate-pulse">Typing...</span>
+                                <span className="text-primary font-medium animate-pulse">
+                                    {isCustomer ? 'Business typing...' : 'Customer typing...'}
+                                </span>
                             ) : draftText ? (
                                 <span className="text-amber-500 font-medium truncate">
                                     Draft: <span className="text-slate-500 font-normal">{draftText}</span>

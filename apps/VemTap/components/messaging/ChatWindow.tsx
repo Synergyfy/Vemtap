@@ -329,7 +329,11 @@ export default function ChatWindow() {
                             )}
                         </div>
                         <p className="text-[11px] text-slate-400 truncate">
-                            {isTyping ? 'Typing...' : (contact?.phone || contact?.email || 'Active now')}
+                            {isTyping ? (
+                                <span className="text-primary font-medium animate-pulse">
+                                    {isCustomer ? 'Business typing...' : 'Customer typing...'}
+                                </span>
+                            ) : (contact?.phone || contact?.email || 'Active now')}
                         </p>
                     </div>
                 </div>
