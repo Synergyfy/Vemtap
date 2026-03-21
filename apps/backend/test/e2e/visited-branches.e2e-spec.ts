@@ -37,7 +37,7 @@ describe('Visited Branches (E2E)', () => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 1. Create Owner & Business
-    const owner = await userRepo.save(
+    const owner = (await userRepo.save(
       userRepo.create({
         email: `owner-vb-${testId}@test.com`,
         password: hashedPassword,
@@ -46,36 +46,36 @@ describe('Visited Branches (E2E)', () => {
         role: UserRole.OWNER,
         status: UserStatus.ACTIVE,
       } as any),
-    );
+    )) as unknown as User;
 
-    const business = await businessRepo.save(
+    const business = (await businessRepo.save(
       businessRepo.create({
         name: 'VB Test Biz',
         ownerId: owner.id,
       } as any),
-    );
+    )) as unknown as Business;
 
     // 2. Create Branches
-    const branch1 = await branchRepo.save(
+    const branch1 = (await branchRepo.save(
       branchRepo.create({
         name: 'Branch Alpha',
         businessId: business.id,
         isActive: true,
       } as any),
-    );
+    )) as unknown as Branch;
     branch1Id = branch1.id;
 
-    const branch2 = await branchRepo.save(
+    const branch2 = (await branchRepo.save(
       branchRepo.create({
         name: 'Branch Beta',
         businessId: business.id,
         isActive: true,
       } as any),
-    );
+    )) as unknown as Branch;
     branch2Id = branch2.id;
 
     // 3. Create Customer
-    const customer = await userRepo.save(
+    const customer = (await userRepo.save(
       userRepo.create({
         email: `cust-vb-${testId}@test.com`,
         password: hashedPassword,
@@ -84,13 +84,15 @@ describe('Visited Branches (E2E)', () => {
         role: UserRole.CUSTOMER,
         status: UserStatus.ACTIVE,
       } as any),
-    );
+    )) as unknown as User;
     customerId = customer.id;
+
 
     const loginRes = await authService.login({
       identifier: customer.email,
       password,
     });
+
     customerToken = loginRes.access_token;
 
     // 4. Create Visits

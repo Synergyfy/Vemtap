@@ -104,3 +104,9 @@ export class RedeemRewardDto {
   @IsString()
   code: string;
 }
+
+export class BranchIdParamDto {
+  @ApiProperty()
+  @IsUUID()
+  branchId: string;
+}
