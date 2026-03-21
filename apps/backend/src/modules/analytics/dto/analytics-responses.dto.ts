@@ -196,3 +196,18 @@ export class AdminSummaryResponseDto {
   @ApiProperty({ type: [SecurityAlertDto] })
   securityAlerts: SecurityAlertDto[];
 }
+
+export class BusinessSummaryResponseDto {
+  @ApiProperty({ example: 150 })
+  totalActiveBusiness: number;
+
+  @ApiProperty({ example: 25 })
+  totalPendingBusiness: number;
+
+  @ApiProperty({ example: 10 })
+  totalSuspendedBusiness: number;
+
+  @ApiProperty({ example: 5000 })
+  totalPlatformUsers: number;
+}
+
