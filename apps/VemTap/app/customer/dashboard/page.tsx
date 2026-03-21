@@ -14,6 +14,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { fetchDeviceByCode, Device } from '@/lib/api/devices';
 import { notify } from '@/lib/notify';
+import Tooltip2 from '@/components/ui/Tooltip2';
 import {
     useCustomerLoyaltyAnalytics,
     useCustomerGlobalHistory,
@@ -26,19 +27,21 @@ export default function CustomerDashboardPage() {
     const user = useAuthStore((state) => state.user);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const { businessId: flowBusinessId, branchId: flowBranchId, deviceCode } = useCustomerFlowStore();
+
+    const [businessInfo, setBusinessInfo] = useState<any>(null);
+    const [isBusinessLoading, setIsBusinessLoading] = useState(false);
+    const [showIdModal, setShowIdModal] = useState(false);
+    const [showRewardAnimation, setShowRewardAnimation] = useState(false);
+    const [currentReward, setCurrentReward] = useState<{ name: string; points: number; icon?: React.ReactNode } | null>(null);
+
     const businessId = flowBusinessId || user?.businessId;
     const { data: analyticsResponse } = useCustomerLoyaltyAnalytics();
     const { data: profileResponse } = useCustomerLoyaltyProfile(businessId);
-    const { data: availableRewardsData = [], isLoading: isRewardsLoading } = useCustomerLoyaltyRewards(businessId);
+    const { data: availableRewardsData = [], isLoading: isRewardsLoading } = useCustomerLoyaltyRewards(flowBranchId || businessInfo?.branch?.id || businessInfo?.device?.branchId || user?.branchId || businessId);
     const { data: recentTransactionsData = [], isLoading: isHistoryLoading } = useCustomerGlobalHistory();
     const redeemMutation = useRedeemCustomerReward();
 
     const router = useRouter();
-    const [showIdModal, setShowIdModal] = useState(false);
-    const [showRewardAnimation, setShowRewardAnimation] = useState(false);
-    const [currentReward, setCurrentReward] = useState<{ name: string; points: number; icon?: React.ReactNode } | null>(null);
-    const [businessInfo, setBusinessInfo] = useState<any>(null);
-    const [isBusinessLoading, setIsBusinessLoading] = useState(false);
 
     const analytics = analyticsResponse?.data || analyticsResponse;
     const profile = profileResponse?.data || profileResponse;
@@ -186,9 +189,27 @@ export default function CustomerDashboardPage() {
                 {/* Quick Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {[
-                        { label: 'Total Visits', value: totalVisitsCount || '0', icon: History, color: 'blue' },
-                        { label: 'Reward Points', value: userPoints.toLocaleString(), icon: Star, color: 'orange' },
-                        { label: 'Net Savings', value: `₦${netSavingsValue.toLocaleString()}`, icon: PiggyBank, color: 'green' },
+                        { 
+                            label: 'Total Visits', 
+                            value: totalVisitsCount || '0', 
+                            icon: History, 
+                            color: 'blue',
+                            tooltip: 'The total number of times you\'ve visited and tapped at any VemTap enabled business location.'
+                        },
+                        { 
+                            label: 'Reward Points', 
+                            value: userPoints.toLocaleString(), 
+                            icon: Star, 
+                            color: 'orange',
+                            tooltip: 'Your current balance of points earned from visits and activities, ready to be redeemed for rewards.'
+                        },
+                        { 
+                            label: 'Net Savings', 
+                            value: `₦${netSavingsValue.toLocaleString()}`, 
+                            icon: PiggyBank, 
+                            color: 'green',
+                            tooltip: 'The total monetary value you\'ve saved through redeemed rewards, exclusive discounts, and point-based offers.'
+                        },
                     ].map((stat, index) => {
                         const IconComponent = stat.icon;
                         return (
@@ -201,7 +222,12 @@ export default function CustomerDashboardPage() {
                                         <IconComponent size={24} />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="text-[10px] font-black uppercase text-text-secondary tracking-[0.15em] mb-1">{stat.label}</p>
+                                        <Tooltip2 content={stat.tooltip} side="top">
+                                            <p className="text-[10px] font-black uppercase text-text-secondary tracking-[0.15em] mb-1 flex items-center gap-1 cursor-help">
+                                                {stat.label}
+                                                <span className="opacity-40"><Star size={8} /></span>
+                                            </p>
+                                        </Tooltip2>
                                         <p className="text-2xl font-display font-bold text-text-main">{stat.value}</p>
                                     </div>
                                 </div>

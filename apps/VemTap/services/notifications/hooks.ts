@@ -43,3 +43,11 @@ export const useMarkAllAsRead = () => {
         },
     });
 };
+
+export const useRegisterVisitorPushToken = () => {
+    return useMutation<void, Error, { pushToken: string }>({
+        mutationFn: async ({ pushToken }) => {
+            await api.post('/notifications/visitor-push-token', { pushToken });
+        },
+    });
+};

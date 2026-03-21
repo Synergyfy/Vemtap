@@ -9,7 +9,7 @@ type UseMessagingRealtimeProps = {
     activeThreadId?: string | null;
     branchId?: string;
     isCustomer?: boolean;
-    isMockThread?: boolean;
+    isPendingThread?: boolean;
 };
 
 type MessagePayload = {
@@ -42,14 +42,21 @@ export const useMessagingRealtime = ({
     activeThreadId,
     branchId,
     isCustomer = false,
-    isMockThread = false,
+    isPendingThread = false,
 }: UseMessagingRealtimeProps) => {
     const { socket } = useMessagingSocket({ enabled: true });
     const queryClient = useQueryClient();
     const setTyping = useChatStore((state) => state.setTyping);
     const typingTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
+    const lastInvalidateTime = useRef<number>(0);
+
     const invalidateThreads = useCallback(() => {
+        const now = Date.now();
+        // Throttle to once every 2 seconds
+        if (now - lastInvalidateTime.current < 2000) return;
+        lastInvalidateTime.current = now;
+        
         queryClient.invalidateQueries({ queryKey: ['chat-threads', 'IN_HOUSE', branchId, isCustomer] });
     }, [branchId, isCustomer, queryClient]);
 
@@ -80,8 +87,8 @@ export const useMessagingRealtime = ({
             invalidateThreads();
         };
 
-        const handleUserTyping = (payload: { threadId?: string; isTyping?: boolean }) => {
-            const threadId = payload?.threadId;
+        const handleUserTyping = (payload: any) => {
+            const threadId = resolveThreadId(payload);
             if (!threadId) return;
             const next = Boolean(payload?.isTyping);
             setTyping(threadId, next);
@@ -109,12 +116,12 @@ export const useMessagingRealtime = ({
     }, [invalidateThreads, setTyping, socket, upsertMessageCache]);
 
     useEffect(() => {
-        if (!socket || !activeThreadId || isMockThread) return;
+        if (!socket || !activeThreadId || isPendingThread) return;
         socket.emit('joinThread', { threadId: activeThreadId });
         return () => {
             socket.emit('leaveThread', { threadId: activeThreadId });
         };
-    }, [activeThreadId, isMockThread, socket]);
+    }, [activeThreadId, isPendingThread, socket]);
 
     const emitTyping = useCallback(
         (threadId: string, isTyping: boolean) => {

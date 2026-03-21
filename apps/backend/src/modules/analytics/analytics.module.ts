@@ -6,6 +6,7 @@ import { User } from '../users/entities/user.entity';
 import { Visit } from '../visitors/entities/visit.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { Device } from '../devices/entities/device.entity';
+import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { MessageLog } from '../messaging/entities/message-log.entity';
 import { Message } from '../messaging/entities/message.entity';
 import { PointTransaction } from '../loyalty/entities/point-transaction.entity';
@@ -21,6 +22,7 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
       Visit,
       Business,
       Device,
+      Subscription,
       MessageLog,
       Message,
       PointTransaction,

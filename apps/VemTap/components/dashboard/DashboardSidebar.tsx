@@ -98,6 +98,12 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const [showNotifications, setShowNotifications] = useState(false);
     const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
+    
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
     const queryClient = useQueryClient();
 
     const { data } = useQuery({
@@ -351,7 +357,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
-                    {filteredMenuItems.map((item) => {
+                    {isMounted && filteredMenuItems.map((item) => {
                         const IconComponent = item.icon;
                         const isLocked = isMounted && item.feature && isFeatureLocked(item.feature);
                         return (

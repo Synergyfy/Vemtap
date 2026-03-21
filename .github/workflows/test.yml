@@ -46,6 +46,20 @@ jobs:
     - name: Install dependencies
       run: pnpm install
 
+    - name: Run Build (Strict Type Check)
+      run: pnpm --filter @vemtap/backend build
+
+    - name: Verify Schema Sync
+      run: pnpm --filter @vemtap/backend typeorm schema:log
+      env:
+        NODE_ENV: test
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_USERNAME: neondb_owner
+        DB_PASSWORD: npg_wvh5gMYp6oFk
+        DB_NAME: neondb_test
+        DB_SSL: false
+
     - name: Run Unit Tests
       run: pnpm --filter @vemtap/backend test
 

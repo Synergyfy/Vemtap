@@ -14,6 +14,11 @@ export class FindBusinessesAdminDto {
   @IsEnum(BusinessStatus)
   status?: BusinessStatus;
 
+  @ApiPropertyOptional({ description: 'Filter by verification status' })
+  @IsOptional()
+  @Type(() => Boolean)
+  isVerified?: boolean;
+
   @ApiPropertyOptional({ description: 'Page number', default: 1 })
   @IsOptional()
   @Type(() => Number)

@@ -83,33 +83,31 @@ export default function StepDetails() {
         queryFn: () => adminProductsApi.getAllTypes(),
     });
 
-    const { data: categoryProductCount, refetch: refetchCount } = useQuery({
+    const { data: categoryProductCount } = useQuery({
         queryKey: ['category-product-count', formData.productTypeId],
         queryFn: () => adminProductsApi.getCountByType(formData.productTypeId),
         enabled: !!formData.productTypeId,
     });
 
     React.useEffect(() => {
-        const selectedType = types?.find((t: any) => t.id === formData.productTypeId);
-        
-        if (categoryProductCount !== undefined && formData.productTypeId && selectedType && formData.nfcType) {
-            const currentDeps = `${formData.productTypeId}-${formData.nfcType}`;
-            
-            if (currentDeps !== lastAutoSkuDeps || !formData.sku) {
-                let categoryName = selectedType.slug ? selectedType.slug : selectedType.name.toLowerCase().replace(/\s+/g, '-');
-                if (categoryName.startsWith('nfc-')) {
-                    categoryName = categoryName.substring(4);
-                }
+        if (!formData.productTypeId || !formData.nfcType) return;
 
-                const countPadded = String((categoryProductCount as number) + 1).padStart(3, '0');
-                const generatedSku = `${categoryName}-${formData.nfcType}-${countPadded}`;
-                
-                updateFormData({ sku: generatedSku });
-                setValue('sku', generatedSku, { shouldValidate: true });
-                setLastAutoSkuDeps(currentDeps);
-            }
+        const selectedType = types?.find((t: any) => t.id === formData.productTypeId);
+        if (!selectedType) return;
+
+        const currentDeps = `${formData.productTypeId}-${formData.nfcType}-${categoryProductCount}`;
+
+        if (currentDeps !== lastAutoSkuDeps) {
+            const categorySlug = selectedType.name.trim().toLowerCase().replace(/\s+/g, '-');
+            const count = typeof categoryProductCount === 'number' ? categoryProductCount : (categoryProductCount?.count ?? 0);
+            const sequence = String(count + 1).padStart(3, '0');
+            const generatedSku = `nfc-${categorySlug}-${sequence}`;
+
+            updateFormData({ sku: generatedSku });
+            setValue('sku', generatedSku, { shouldValidate: true });
+            setLastAutoSkuDeps(currentDeps);
         }
-    }, [categoryProductCount, formData.productTypeId, types, formData.sku, formData.nfcType, updateFormData, setValue, lastAutoSkuDeps]);
+    }, [formData.productTypeId, formData.nfcType, types, categoryProductCount, updateFormData, setValue, lastAutoSkuDeps]);
 
     const onSubmit = () => {
         nextStep();
@@ -301,7 +299,7 @@ export default function StepDetails() {
                     <ul className="space-y-3 text-sm text-blue-800/80">
                         <li className="flex gap-2">
                             <span className="mt-1 block size-1.5 rounded-full bg-blue-400 shrink-0" />
-                            SKUs automatically combine NFC Type, Category, and Sequence number.
+                            SKUs are auto-generated as <code>{'nfc-category-001'}</code> (e.g. <code>nfc-plates-001</code>, <code>nfc-plates-002</code>).
                         </li>
                         <li className="flex gap-2">
                             <span className="mt-1 block size-1.5 rounded-full bg-blue-400 shrink-0" />

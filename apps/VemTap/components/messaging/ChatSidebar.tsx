@@ -2,10 +2,11 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
-import { Search, Plus, MoreVertical, FileText, MessageSquare, Check, CheckCircle2, Settings, Megaphone, Users, Tag } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, Plus, MoreVertical, FileText, MessageSquare, Check, CheckCircle2, Trash2, Settings, Megaphone, Users, Tag } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useChatThreads, useInitBranchConversation } from '@/hooks/useMessaging';
+import { useChatThreads, useInitBranchConversation, useDeleteThread } from '@/hooks/useMessaging';
 import { useMessagingBranch } from '@/hooks/useMessagingBranch';
 import { useMessagingVisitorsByBranch, useNewVisitors, useReturningVisitors, useUpdateVisitor } from '@/services/visitors/hooks';
 import Link from 'next/link';
@@ -56,8 +57,8 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
     const searchQuery = useChatStore(s => s.searchQuery);
     const setSearchQuery = useChatStore(s => s.setSearchQuery);
     const setActiveConversation = useChatStore(s => s.setActiveConversation);
-    const mockThreads = useChatStore(s => s.mockThreads);
-    const addMockThread = useChatStore(s => s.addMockThread);
+    const pendingThreads = useChatStore(s => s.pendingThreads);
+    const addPendingThread = useChatStore(s => s.addPendingThread);
     const isAuthenticated = useAuthStore(s => s.isAuthenticated);
     const { data: business } = useMyBusiness(isAuthenticated);
     const user = useAuthStore(s => s.user);
@@ -75,7 +76,6 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
 
     const searchParams = useSearchParams();
     const businessIdFromUrl = searchParams.get('businessId');
-    const initBranchConversationMutation = useInitBranchConversation();
 
     const { data: threads = [], isLoading: threadsLoading } = useChatThreads('IN_HOUSE', branchId || undefined, isCustomer);
      const { data: visitors = [], isLoading: visitorsLoading } = useMessagingVisitorsByBranch(branchId || undefined, {
@@ -86,8 +86,34 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
      const { data: returningVisitorsData } = useReturningVisitors(branchId || undefined, { limit: 1 });
 
     const allThreads = useMemo(() => {
-        return threads as any[];
-    }, [threads]);
+        const real = threads as any[];
+        
+        // Filter out real threads that are "Unknown" and not matched by a pending thread (local cache)
+        const visibleReal = real.filter(t => {
+            const hasName = t.contact?.name && t.contact.name !== 'Unknown' && t.contact.name !== 'Customer';
+            if (hasName) return true;
+            // If no name, check if it's linked to a pending thread which might have a name
+            return pendingThreads.some(p => (p.linkedThreadId === t.id || (p.contact?.id === t.contact?.id && !!t.contact?.id)) && p.contact?.name);
+        });
+
+        const realIds = new Set(visibleReal.map(t => t.id));
+        const realContactIds = new Set(visibleReal.map(t => t.contact?.id).filter(Boolean));
+        
+        // Filter pending: hide if its real counterpart is in the list
+        const filteredPending = pendingThreads.filter(t => 
+            !realIds.has(t.linkedThreadId || '') && 
+            !realContactIds.has(t.contact?.id)
+        );
+        
+        const combined = [...filteredPending, ...visibleReal];
+        
+        // Sort by most recent activity
+        return combined.sort((a, b) => {
+            const timeA = new Date(a.lastActivityAt || a.updatedAt || 0).getTime();
+            const timeB = new Date(b.lastActivityAt || b.updatedAt || 0).getTime();
+            return timeB - timeA; // Newest first (Standard for sidebar)
+        });
+    }, [threads, pendingThreads]);
 
     const activeConv = allThreads.find(c => c.id === activeConversationId);
     
@@ -109,13 +135,8 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
     }, [allThreads, searchQuery]);
 
     const availableVisitors = useMemo(() => {
-        // Filter out those who already have an active thread if we are in INTERNAL tab search
-        if (activeTab === 'INTERNAL') {
-            const existingContactIds = new Set(allThreads.map(conv => conv.contact?.id).filter(Boolean));
-            return (visitors as any[]).filter(v => v.name.toLowerCase().includes(customerQuery.toLowerCase()) && !existingContactIds.has(v.id));
-        }
-        return visitors as any[];
-    }, [allThreads, visitors, activeTab, customerQuery]);
+        return (visitors as any[]).filter(v => v.name.toLowerCase().includes(customerQuery.toLowerCase()));
+    }, [visitors, customerQuery]);
 
     useEffect(() => {
         if (!showNewChat) return;
@@ -144,11 +165,11 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
         if (!isCustomer && visitorIdFromUrl && visitors.length > 0 && !activeConversationId) {
             const visitor = (visitors as any[]).find(v => v.id === visitorIdFromUrl);
             if (visitor) {
-                const threadId = addMockThread(visitor);
+                const threadId = addPendingThread(visitor);
                 setActiveConversation(threadId);
             }
         }
-    }, [isCustomer, searchParams, visitors, activeConversationId, setActiveConversation, addMockThread]);
+    }, [isCustomer, searchParams, visitors, activeConversationId, setActiveConversation, addPendingThread]);
 
     const customTagsWithCounts = useMemo(() => {
         const counts: Record<string, number> = {};
@@ -271,11 +292,11 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
     };
 
     return (
-        <aside className="w-full md:w-80 lg:w-96 h-full glass-sidebar flex flex-col border-r border-slate-200 shrink-0 overflow-hidden">
+        <aside className="w-full md:w-80 lg:w-96 h-full glass-sidebar flex flex-col border-r border-slate-200 shrink-0 overflow-hidden pt-[env(safe-area-inset-top)]">
             {/* Top Fixed Section: Header, Tabs, Search */}
-            <div className="flex flex-col shrink-0 bg-white z-[30] relative border-b border-slate-200">
+            <div className="flex flex-col shrink-0 bg-white z-30 relative border-b border-slate-200">
                 {/* Header */}
-                <header className="p-4 flex justify-between items-center bg-white/95 backdrop-blur-sm z-20">
+                <header className="p-4 flex justify-between items-center bg-white/95 backdrop-blur-sm z-40 sticky top-0 border-b border-slate-100">
                     <div className="flex items-center gap-2">
                         {headerLogo ? (
                             <img src={headerLogo} alt={headerName} className="w-8 h-8 rounded-lg object-cover" />
@@ -322,21 +343,23 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                                     <button
                                                         key={visitor.id}
                                                         type="button"
-                                                        onClick={async (e) => {
+                                                        onClick={(e) => {
                                                             e.preventDefault();
-                                                            try {
-                                                                const response: any = await initBranchConversationMutation.mutateAsync({
-                                                                    branchId: branchId!,
-                                                                    customerId: visitor.id,
+                                                            // Check if we already have a conversation with this visitor
+                                                            const existingConv = allThreads.find(t => t.contact?.id === visitor.id);
+                                                            if (existingConv) {
+                                                                setActiveConversation(existingConv.id);
+                                                            } else {
+                                                                addPendingThread({
+                                                                    id: visitor.id,
+                                                                    name: visitor.name,
+                                                                    phone: visitor.phone,
+                                                                    email: visitor.email,
+                                                                    isOnline: false,
                                                                 });
-                                                                if (response?.id) {
-                                                                    setActiveConversation(response.id);
-                                                                }
-                                                                setShowNewChat(false);
-                                                                setCustomerQuery('');
-                                                            } catch (error: any) {
-                                                                toast.error('Failed to start conversation');
                                                             }
+                                                            setShowNewChat(false);
+                                                            setCustomerQuery('');
                                                         }}
                                                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 text-left"
                                                     >
@@ -350,11 +373,11 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                                     </button>
                                                 ))
                                             )}
+                                            
                                         </div>
                                     </div>
                                 )}
                             </div>
-
                             <div className="relative" ref={campaignsRef}>
                                 <button
                                     type="button"
@@ -468,6 +491,7 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                 title="Chat Settings"
                             >
                                 <Settings size={18} />
+
                             </Link>
                         </div>
                     )}
@@ -536,18 +560,29 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                         ) : filteredThreads.length === 0 ? (
                             <div className="p-8 text-center text-slate-400 text-sm">No conversations found.</div>
                         ) : (
-                            filteredThreads.map(conv => (
-                                <ConversationItem
+                        <AnimatePresence initial={false} mode="popLayout">
+                            {filteredThreads.map(conv => (
+                                <motion.div
                                     key={conv.id}
-                                    conversation={conv}
-                                    isActive={conv.id === activeConversationId}
-                                    isSelected={conv.contact?.id ? selectedContacts.has(conv.contact.id) : false}
-                                    onSelect={() => {
-                                        if (conv.contact?.id) toggleContactSelection(conv.contact.id);
-                                    }}
-                                    onClick={() => setActiveConversation(conv.id)}
-                                />
-                            ))
+                                    layout
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{ type: "spring", stiffness: 500, damping: 30, mass: 1 }}
+                                >
+                                    <ConversationItem
+                                        conversation={conv}
+                                        isActive={conv.id === activeConversationId}
+                                        isSelected={conv.contact?.id ? selectedContacts.has(conv.contact.id) : false}
+                                        onSelect={() => {
+                                            if (conv.contact?.id) toggleContactSelection(conv.contact.id);
+                                        }}
+                                        onClick={() => setActiveConversation(conv.id)}
+                                    />
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
+
                         )}
                     </>
                 ) : (
@@ -626,7 +661,7 @@ function ConversationItem({
 
             <button
                 onClick={onClick}
-                className="flex-1 flex items-center gap-3 p-4 pl-3 transition-colors text-left overflow-hidden"
+                className="flex-1 flex items-center gap-3 p-4 pl-3 transition-colors text-left overflow-hidden relative group"
             >
                 {/* Avatar */}
                 <div className="relative flex-shrink-0">
@@ -637,10 +672,15 @@ function ConversationItem({
                             {getInitials(name)}
                         </div>
                     )}
+                    {conversation.unreadCount > 0 && (
+                        <div className="absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-sm ring-2 ring-white animate-in zoom-in">
+                            {conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}
+                        </div>
+                    )}
                 </div>
 
                 {/* Info */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 pr-6">
                     <div className="flex justify-between items-baseline">
                         <h3 className={`text-sm truncate ${isActive ? 'font-semibold text-slate-900' : 'font-medium text-slate-900'}`}>
                             {name}
@@ -652,9 +692,15 @@ function ConversationItem({
                     <div className="flex items-center gap-2">
                         <p className="text-xs truncate flex-1 text-slate-500">
                             {isTyping ? (
-                                <span className="text-primary font-bold animate-pulse">Typing...</span>
+                                <span className="text-primary font-medium animate-pulse">
+                                    {isCustomer ? 'Business typing...' : 'Customer typing...'}
+                                </span>
+                            ) : draftText ? (
+                                <span className="text-amber-500 font-medium truncate">
+                                    Draft: <span className="text-slate-500 font-normal">{draftText}</span>
+                                </span>
                             ) : (
-                                conversation.lastMessage?.content || conversation.status || 'Active conversation'
+                                conversation.lastMessageContent || conversation.status || 'Active conversation'
                             )}
                         </p>
                         {Array.isArray(customer?.tags) && customer.tags.length > 0 && (
@@ -668,6 +714,15 @@ function ConversationItem({
                         )}
                     </div>
                 </div>
+
+                <button
+                    onClick={handleDelete}
+                    disabled={deleteThreadMutation.isPending}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-rose-500 opacity-40 md:opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
+                    title="Delete Conversation"
+                >
+                    <Trash2 size={16} />
+                </button>
             </button>
         </div>
     );
@@ -696,12 +751,12 @@ function WhatsAppContactItem({
                     e.stopPropagation();
                     onSelect();
                 }}
-                className={`flex-shrink-0 size-5 rounded-lg border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 bg-white'}`}
+                className={`shrink-0 size-5 rounded-lg border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 bg-white'}`}
             >
                 {isSelected && <Check size={12} strokeWidth={3} />}
             </button>
 
-            <div className="relative flex-shrink-0">
+            <div className="relative shrink-0">
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm ${getAvatarColor(visitor.id)}`}>
                     {getInitials(name)}
                 </div>

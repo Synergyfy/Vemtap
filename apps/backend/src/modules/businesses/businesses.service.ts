@@ -243,7 +243,8 @@ export class BusinessesService {
           phone: customerData.phone,
           password: hashedPassword,
           role: UserRole.CUSTOMER,
-          status: UserStatus.ACTIVE,
+          status: UserStatus.PENDING,
+          isPasswordChanged: false,
           branchId,
         });
 
@@ -276,6 +277,7 @@ export class BusinessesService {
   async findAllAdmin(query: {
     search?: string;
     status?: BusinessStatus;
+    isVerified?: boolean;
     page?: number;
     limit?: number;
   }) {
@@ -295,6 +297,10 @@ export class BusinessesService {
         query.status,
       ).toLowerCase() as BusinessStatus;
       qb.andWhere('business.status = :status', { status: normalizedStatus });
+    }
+
+    if (query.isVerified !== undefined) {
+      qb.andWhere('business.isVerified = :isVerified', { isVerified: query.isVerified });
     }
 
     if (query.search) {
@@ -359,6 +365,81 @@ export class BusinessesService {
         pending: pendingCount,
         suspended: suspendedCount,
         approvedToday,
+        avgWaitTime: avgWaitHours,
+      },
+    };
+  }
+
+  async findSuspendedAdmin(query: { page?: number; limit?: number }) {
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+
+    const [businesses, total] = await this.businessesRepository.findAndCount({
+      where: { status: BusinessStatus.SUSPENDED },
+      relations: ['owner'],
+      order: { suspendedAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return {
+      data: businesses,
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async findPendingVerificationAdmin(query: { page?: number; limit?: number }) {
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+
+    // 1. Get businesses that are NOT verified
+    const [items, total] = await this.businessesRepository.findAndCount({
+      where: { isVerified: false },
+      relations: ['owner'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    // 2. Stats for verification
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const verifiedToday = await this.businessesRepository
+      .createQueryBuilder('business')
+      .where('business.isVerified = :verified', { verified: true })
+      .andWhere('business.verifiedAt >= :today', { today: todayStart })
+      .getCount();
+
+    // 3. Average Wait Time for verification (from creation to verifiedAt)
+    const waitTimeData = await this.businessesRepository
+      .createQueryBuilder('business')
+      .select(
+        'AVG(EXTRACT(EPOCH FROM (business.verifiedAt - business.createdAt)))',
+        'avgSeconds',
+      )
+      .where('business.isVerified = :verified', { verified: true })
+      .andWhere('business.verifiedAt >= :today', { today: todayStart })
+      .getRawOne<{ avgSeconds: string | null }>();
+
+    const avgWaitHours = waitTimeData?.avgSeconds
+      ? (parseFloat(waitTimeData.avgSeconds) / 3600).toFixed(1)
+      : '0.0';
+
+    return {
+      data: items,
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+      },
+      stats: {
+        totalPending: total,
+        verifiedToday,
         avgWaitTime: avgWaitHours,
       },
     };
@@ -452,6 +533,21 @@ export class BusinessesService {
     business.status = BusinessStatus.ACTIVE;
     return this.businessesRepository.save(business);
   }
+
+  async verify(id: string): Promise<Business> {
+    const business = await this.findById(id);
+    business.isVerified = true;
+    business.verifiedAt = new Date();
+    return this.businessesRepository.save(business);
+  }
+
+  async unverify(id: string): Promise<Business> {
+    const business = await this.findById(id);
+    business.isVerified = false;
+    business.verifiedAt = null;
+    return this.businessesRepository.save(business);
+  }
+
 
   async reject(id: string): Promise<void> {
     const business = await this.findById(id);

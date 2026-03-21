@@ -122,7 +122,7 @@ export default function AllVisitorsPage() {
     };
 
     const [showChannelSelector, setShowChannelSelector] = useState(false);
-    const addMockThread = useChatStore(s => s.addMockThread);
+    const addPendingThread = useChatStore(s => s.addPendingThread);
     const setActiveConversation = useChatStore(s => s.setActiveConversation);
 
     const handleInviteVisitor = (visitor: Visitor) => {
@@ -151,7 +151,7 @@ export default function AllVisitorsPage() {
             };
             
             // Prepare the thread in the store
-            const threadId = addMockThread(chatContact);
+            const threadId = addPendingThread(chatContact);
             setActiveConversation(threadId);
             
             // Redirect to chat page
