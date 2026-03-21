@@ -7,7 +7,6 @@ import {
   Request,
   Param,
   BadRequestException,
-  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -25,6 +24,7 @@ import { UserRole } from '../../users/entities/user.entity';
 import { Channel } from '../enums/channel.enum';
 import { CreditTransactionType } from '../enums/credit-transaction-type.enum';
 import { AdjustCreditsDto } from '../dto/adjust-credits.dto';
+import { BusinessIdDto } from '../dto/business-id.dto';
 
 @ApiTags('Messaging Credits')
 @ApiBearerAuth()
@@ -56,7 +56,7 @@ export class CreditController {
   })
   @ApiParam({ name: 'businessId', description: 'The UUID of the business' })
   @ApiResponse({ status: 200, description: 'Business credit balance retrieved successfully' })
-  async getBusinessBalance(@Param('businessId', ParseUUIDPipe) businessId: string) {
+  async getBusinessBalance(@Param() { businessId }: BusinessIdDto) {
     return this.creditService.getOrCreateWallet(businessId);
   }
 

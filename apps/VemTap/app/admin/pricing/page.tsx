@@ -498,9 +498,12 @@ export default function AdminPricingPage() {
                                             <div className="space-y-2">
                                                 <p className="font-bold text-text-main">Credits</p>
                                                 <div className="flex gap-4 text-text-secondary">
-                                                    <p>SMS: {formatCredit(plan.smsCredits)}</p>
-                                                    <p>WA: {formatCredit(plan.whatsappCredits)}</p>
-                                                    <p>Email: {formatCredit(plan.emailCredits)}</p>
+                                                    {Number(plan.smsCredits) !== 0 && <p>SMS: {formatCredit(plan.smsCredits)}</p>}
+                                                    {Number(plan.whatsappCredits) !== 0 && <p>WA: {formatCredit(plan.whatsappCredits)}</p>}
+                                                    {Number(plan.emailCredits) !== 0 && <p>Email: {formatCredit(plan.emailCredits)}</p>}
+                                                    {Number(plan.smsCredits) === 0 && Number(plan.whatsappCredits) === 0 && Number(plan.emailCredits) === 0 && (
+                                                        <p className="italic opacity-50">No credits included</p>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
