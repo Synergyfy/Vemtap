@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Smile, Paperclip, Camera, Send, X, CornerUpLeft } from 'lucide-react';
 import { useSendReply, useChatTemplates, useStartConversation } from '@/hooks/useMessaging';
@@ -8,7 +8,7 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches } from '@/services/branches/hooks';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/lib/store/useChatStore';
-import { useMemo } from 'react';
+
 
 interface ChatInputProps {
     conversationId?: string;
@@ -73,6 +73,65 @@ export default function ChatInput({
         );
     }, [templates, templateSearch]);
 
+    const handleInput = useCallback(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = '';
+            textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+        }
+    }, []);
+
+    const insertTemplate = useCallback((template: any) => {
+        const cursorPosition = textareaRef.current?.selectionStart || text.length;
+        const lastTrigger = text.lastIndexOf('/', cursorPosition - 1);
+        const lastMention = text.lastIndexOf('@', cursorPosition - 1);
+        const trigger = lastTrigger > lastMention ? lastTrigger : lastMention;
+
+        if (trigger !== -1) {
+            const before = text.substring(0, trigger);
+            const after = text.substring(cursorPosition);
+            
+            // Replace placeholders in template content if possible
+            let content = template.content;
+            if (user?.name) content = content.replace(/{BusinessName}/g, (user as any).businessName || 'Vemtap');
+            
+            setText(before + content + after);
+            setShowTemplatePicker(false);
+            
+            // Focus and adjust height
+            setTimeout(() => {
+                if (textareaRef.current) {
+                    textareaRef.current.focus();
+                    handleInput();
+                }
+            }, 0);
+        }
+    }, [text, user, handleInput]);
+
+    const emitTyping = useCallback((next: boolean) => {
+        if (!onTypingChange) return;
+        if (isTypingRef.current === next) return;
+        isTypingRef.current = next;
+        onTypingChange(next);
+    }, [onTypingChange]);
+
+    const handleTypingActivity = useCallback((nextValue: string) => {
+        if (!onTypingChange) return;
+        if (!nextValue.trim()) {
+            emitTyping(false);
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+                typingTimeoutRef.current = null;
+            }
+            return;
+        }
+
+        emitTyping(true);
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => {
+            emitTyping(false);
+        }, 1500);
+    }, [onTypingChange, emitTyping]);
+
     // Handle slash commands and mentions
     const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const value = e.target.value;
@@ -98,62 +157,8 @@ export default function ChatInput({
         setShowTemplatePicker(false);
     };
 
-    const insertTemplate = (template: any) => {
-        const cursorPosition = textareaRef.current?.selectionStart || text.length;
-        const lastTrigger = text.lastIndexOf('/', cursorPosition - 1);
-        const lastMention = text.lastIndexOf('@', cursorPosition - 1);
-        const trigger = lastTrigger > lastMention ? lastTrigger : lastMention;
-
-        if (trigger !== -1) {
-            const before = text.substring(0, trigger);
-            const after = text.substring(cursorPosition);
-            
-            // Replace placeholders in template content if possible
-            let content = template.content;
-            if (user?.name) content = content.replace(/{BusinessName}/g, user.businessName || 'Vemtap');
-            
-            setText(before + content + after);
-            setShowTemplatePicker(false);
-            
-            // Focus and adjust height
-            setTimeout(() => {
-                if (textareaRef.current) {
-                    textareaRef.current.focus();
-                    handleInput();
-                }
-            }, 0);
-        }
-    };
-
-    const emitTyping = (next: boolean) => {
-        if (!onTypingChange) return;
-        if (isTypingRef.current === next) return;
-        isTypingRef.current = next;
-        onTypingChange(next);
-    };
-
-    const handleTypingActivity = (nextValue: string) => {
-        if (!onTypingChange) return;
-        if (!nextValue.trim()) {
-            emitTyping(false);
-            if (typingTimeoutRef.current) {
-                clearTimeout(typingTimeoutRef.current);
-                typingTimeoutRef.current = null;
-            }
-            return;
-        }
-
-        emitTyping(true);
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = setTimeout(() => {
-            emitTyping(false);
-        }, 1500);
-    };
-
-    const handleSend = async () => {
+    const handleAsyncSend = useCallback(async () => {
         if (!text.trim()) return;
-
-
 
         if (canStartConversation) {
             try {
@@ -177,8 +182,6 @@ export default function ChatInput({
             }
             return;
         }
-
-
 
         if (!conversationId) {
             toast.error('Select a conversation first');
@@ -207,7 +210,20 @@ export default function ChatInput({
         } catch (error: any) {
             toast.error(error.message || 'Failed to send message');
         }
-    };
+    }, [
+        text, 
+        canStartConversation, 
+        startConversationMutation, 
+        startBranchId, 
+        onConversationStarted, 
+        conversationId, 
+        isCustomer, 
+        branchId, 
+        replyMutation, 
+        replyTo?.id, 
+        onCancelReply, 
+        emitTyping
+    ]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (showTemplatePicker && filteredTemplates.length > 0) {
@@ -228,16 +244,10 @@ export default function ChatInput({
 
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            handleSend();
+            handleAsyncSend();
         }
     };
 
-    const handleInput = () => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = '';
-            textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-        }
-    };
 
     const addEmoji = (emoji: string) => {
         setText(prev => {
@@ -396,7 +406,8 @@ export default function ChatInput({
                 </div>
 
                 <button
-                    onClick={handleSend}
+                    type="button"
+                    onClick={handleAsyncSend}
                     disabled={!text.trim() || isSending}
                     className="w-10 h-10 flex items-center justify-center bg-primary text-white rounded-full shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed mb-1"
                 >
