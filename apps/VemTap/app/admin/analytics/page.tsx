@@ -12,12 +12,20 @@ function AnalyticsContent() {
     const [dateRange, setDateRange] = useState('30days');
 
     // Fetch live Admin Analytics from backend
-    const { data: adminSummaryResponse, isLoading } = useQuery({
+    const { data: adminSummaryResponse, isLoading: isLoadingAdmin } = useQuery({
         queryKey: ['admin-summary'],
         queryFn: () => adminAnalyticsApi.getAdminSummary(),
     });
 
+    const { data: businessSummaryResponse, isLoading: isLoadingBusiness } = useQuery({
+        queryKey: ['business-summary'],
+        queryFn: () => adminAnalyticsApi.getBusinessSummary(),
+    });
+
+    const isLoading = isLoadingAdmin || isLoadingBusiness;
+
     const summaryData = adminSummaryResponse?.data || adminSummaryResponse;
+    const businessData = businessSummaryResponse?.data || businessSummaryResponse;
 
     if (isLoading) {
         return (
@@ -35,6 +43,13 @@ function AnalyticsContent() {
     const monthlyData = summaryData?.monthlyData || [];
     const securityAlerts = summaryData?.securityAlerts || [];
     const sectorSplit = summaryData?.sectorSplit || [];
+
+    const businessStats = [
+        { label: 'Total Businesses', value: businessData?.totalBusinesses || 0, icon: 'storefront', color: 'bg-blue-50 text-blue-600' },
+        { label: 'Active', value: businessData?.activeBusinesses || 0, icon: 'check_circle', color: 'bg-emerald-50 text-emerald-600' },
+        { label: 'Pending', value: businessData?.pendingBusinesses || 0, icon: 'pending', color: 'bg-amber-50 text-amber-600' },
+        { label: 'Suspended', value: businessData?.suspendedBusinesses || 0, icon: 'block', color: 'bg-red-50 text-red-600' },
+    ];
 
     return (
         <div className="p-8">
@@ -62,8 +77,8 @@ function AnalyticsContent() {
                 </div>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Global Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                 {stats.map((stat: any, index: number) => (
                     <div key={index} className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-all">
                         <div className="flex items-center justify-between mb-4">
@@ -84,6 +99,27 @@ function AnalyticsContent() {
                         <p className="text-3xl font-display font-black text-text-main">{stat.value}</p>
                     </div>
                 ))}
+            </div>
+
+            {/* Business Ecosystem Section */}
+            <div className="mb-12">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="w-1.5 h-6 bg-primary rounded-full" />
+                    <h2 className="text-xl font-display font-bold text-text-main">Business Ecosystem</h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {businessStats.map((stat, index) => (
+                        <div key={index} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color}`}>
+                                <span className="material-icons-round text-2xl">{stat.icon}</span>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{stat.label}</p>
+                                <p className="text-xl font-bold text-text-main">{stat.value}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             {/* Main Content Grid */}

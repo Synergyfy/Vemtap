@@ -249,14 +249,26 @@ export default function ChatWindow() {
 
         if (threadsLoading) {
             return (
-                <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50">
-                    <div className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center mb-4">
-                        <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
+                <div className="flex-1 flex flex-col h-full bg-slate-50 animate-pulse">
+                    <div className="h-16 border-b border-slate-200 bg-white flex items-center px-4 justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 bg-slate-100 rounded-full" />
+                            <div className="space-y-1.5">
+                                <div className="h-2.5 w-24 bg-slate-100 rounded" />
+                                <div className="h-2 w-16 bg-slate-100 rounded" />
+                            </div>
+                        </div>
                     </div>
-                    <p className="font-bold text-slate-500 text-lg">Loading conversations...</p>
-                    <p className="text-sm text-slate-400 mt-1">Just a moment.</p>
+                    <div className="flex-1 p-6 space-y-4">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`h-12 w-2/3 rounded-2xl ${i % 2 === 0 ? 'bg-primary/10' : 'bg-slate-200/50'}`} />
+                            </div>
+                        ))}
+                    </div>
+                    <div className="h-16 bg-white border-t border-slate-200 p-2">
+                        <div className="h-full bg-slate-50 rounded-xl" />
+                    </div>
                 </div>
             );
         }
@@ -264,9 +276,7 @@ export default function ChatWindow() {
         return (
             <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50">
                 <div className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center mb-4">
-                    <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
+                    <MessageSquare className="w-10 h-10 text-slate-300" />
                 </div>
                 <p className="font-bold text-slate-500 text-lg">Select a conversation</p>
                 <p className="text-sm text-slate-400 mt-1">Choose a chat from the sidebar to start messaging</p>
@@ -374,8 +384,12 @@ export default function ChatWindow() {
                     className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 chat-bg custom-scrollbar pb-24 md:pb-6"
                 >
                     {isLoading ? (
-                        <div className="flex items-center justify-center h-full">
-                            <Spinner size="lg" color="primary" />
+                        <div className="flex-1 space-y-4 animate-pulse">
+                            {[1, 2, 3, 4].map(i => (
+                                <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`h-10 w-2/3 rounded-xl ${i % 2 === 0 ? 'bg-primary/10' : 'bg-slate-100'}`} />
+                                </div>
+                            ))}
                         </div>
                     ) : threadMessages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm">

@@ -51,6 +51,19 @@ function formatTime(timestamp: string | number | Date) {
     if (hours < 48) return 'Yesterday';
     return new Date(time).toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
+const SidebarSkeleton = () => (
+    <div className="space-y-1 p-2">
+        {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="flex items-center gap-3 p-3 rounded-2xl animate-pulse">
+                <div className="size-12 bg-slate-100 rounded-full" />
+                <div className="flex-1 space-y-2">
+                    <div className="h-3 bg-slate-100 rounded-full w-24" />
+                    <div className="h-2 bg-slate-50 rounded-full w-32" />
+                </div>
+            </div>
+        ))}
+    </div>
+);
 
 export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }) {
     const activeConversationId = useChatStore(s => s.activeConversationId);
@@ -297,18 +310,18 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
             <div className="flex flex-col shrink-0 bg-white z-30 relative border-b border-slate-200">
                 {/* Header */}
                 <header className="p-4 flex justify-between items-center bg-white/95 backdrop-blur-sm z-40 sticky top-0 border-b border-slate-100">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                         {headerLogo ? (
-                            <img src={headerLogo} alt={headerName} className="w-8 h-8 rounded-lg object-cover" />
+                            <img src={headerLogo} alt={headerName} className="w-8 h-8 rounded-lg object-cover shrink-0" />
                         ) : (
-                            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0">
                                 {headerName.charAt(0)}
                             </div>
                         )}
-                        <h1 className="font-bold text-lg text-slate-800 tracking-tight">{headerName}</h1>
+                        <h1 className="font-bold text-lg text-slate-800 tracking-tight truncate">{headerName}</h1>
                     </div>
                     {!isCustomer && activeTab === 'INTERNAL' && (
-                        <div className="flex gap-2 text-slate-400">
+                        <div className="flex gap-2 text-slate-400 shrink-0 ml-2">
                             <div className="relative" ref={newChatRef}>
                                 <button
                                     type="button"
@@ -320,7 +333,7 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                 </button>
 
                                 {showNewChat && (
-                                    <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 py-3 z-50">
+                                    <div className="absolute right-[-1rem] sm:right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-72 bg-white rounded-2xl shadow-xl border border-slate-100 py-3 z-50">
                                         <div className="px-4 pb-2 border-b border-slate-100">
                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Start new chat</p>
                                             <input
@@ -363,7 +376,7 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                                         }}
                                                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 text-left"
                                                     >
-                                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold ${getAvatarColor(visitor.id)}`}>
+                                                        <div className={`w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0 text-white text-xs font-bold ${getAvatarColor(visitor.id)}`}>
                                                             {getInitials(visitor.name)}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
@@ -389,7 +402,7 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                 </button>
 
                                 {showCampaigns && (
-                                    <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="absolute right-[-1rem] sm:right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-72 bg-white rounded-2xl shadow-xl border border-slate-100 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                         <div className="px-4 pb-2 border-b border-slate-100">
                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Audience Segments</p>
                                         </div>
@@ -556,7 +569,7 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                 ) : activeTab === 'INTERNAL' ? (
                     <>
                         {threadsLoading ? (
-                             <div className="p-8 text-center text-slate-400 text-sm">Loading conversations...</div>
+                            <SidebarSkeleton />
                         ) : filteredThreads.length === 0 ? (
                             <div className="p-8 text-center text-slate-400 text-sm">No conversations found.</div>
                         ) : (
@@ -588,9 +601,9 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                     </>
                 ) : (
                     <>
-                        {visitorsLoading ? (
-                            <div className="p-8 text-center text-slate-400 text-sm">Loading contacts...</div>
-                        ) : availableVisitors.length === 0 ? (
+                         {visitorsLoading ? (
+                             <SidebarSkeleton />
+                         ) : availableVisitors.length === 0 ? (
                             <div className="p-8 text-center text-slate-400 text-sm">No contacts found.</div>
                         ) : (
                             availableVisitors.map(visitor => (
