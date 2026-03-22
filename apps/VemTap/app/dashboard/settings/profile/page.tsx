@@ -23,14 +23,17 @@ import PushNotificationsTab from '@/components/dashboard/settings/profile/PushNo
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Loader2, Instagram, Linkedin, Twitter, Facebook, Globe, Star, Plus, Trash2, X,
-    ChevronDown
+    ChevronDown, Youtube, Music2
 } from 'lucide-react';
 
 // Social Media Platforms Configuration
 const SOCIAL_PLATFORMS = [
     { id: 'instagram', name: 'Instagram', icon: Instagram, color: 'text-pink-600', bg: 'bg-pink-50', placeholder: 'yourbrand', prefix: 'https://instagram.com/' },
     { id: 'facebook', name: 'Facebook', icon: Facebook, color: 'text-blue-600', bg: 'bg-blue-50', placeholder: 'yourbrand', prefix: 'https://facebook.com/' },
+    { id: 'x', name: 'X / Twitter', icon: Twitter, color: 'text-slate-900', bg: 'bg-slate-50', placeholder: 'yourhandle', prefix: 'https://x.com/' },
     { id: 'linkedin', name: 'LinkedIn', icon: Linkedin, color: 'text-blue-700', bg: 'bg-blue-50', placeholder: 'company/yourbrand', prefix: 'https://linkedin.com/' },
+    { id: 'tiktok', name: 'TikTok', icon: Music2, color: 'text-slate-900', bg: 'bg-slate-50', placeholder: 'yourbrand', prefix: 'https://tiktok.com/@' },
+    { id: 'youtube', name: 'YouTube', icon: Youtube, color: 'text-red-600', bg: 'bg-red-50', placeholder: 'channel/yourid', prefix: 'https://youtube.com/' },
     { id: 'google', name: 'Google Review', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50', placeholder: 'https://g.page/r/...' },
     { id: 'trustpilot', name: 'Trustpilot', icon: Star, color: 'text-emerald-600', bg: 'bg-emerald-50', placeholder: 'https://trustpilot.com/review/...' },
     { id: 'custom', name: 'Custom Link', icon: Globe, color: 'text-slate-600', bg: 'bg-slate-50', placeholder: 'https://...' },
@@ -138,7 +141,10 @@ export default function BusinessProfilePage() {
 
         if (selectedSocial.id === 'instagram') setInstagramUrl(finalUrl);
         else if (selectedSocial.id === 'facebook') setFacebookUrl(finalUrl);
+        else if (selectedSocial.id === 'x') setXUrl(finalUrl);
         else if (selectedSocial.id === 'linkedin') setLinkedinUrl(finalUrl);
+        else if (selectedSocial.id === 'tiktok') setTiktokUrl(finalUrl);
+        else if (selectedSocial.id === 'youtube') setYoutubeUrl(finalUrl);
         else if (selectedSocial.id === 'google') setReviewUrl(finalUrl);
         else if (selectedSocial.id === 'trustpilot') setTrustpilotUrl(finalUrl);
         else if (selectedSocial.id === 'custom') setCustomLink(finalUrl);
@@ -151,19 +157,25 @@ export default function BusinessProfilePage() {
     const removeSocial = (id: string) => {
         if (id === 'instagram') setInstagramUrl('');
         else if (id === 'facebook') setFacebookUrl('');
+        else if (id === 'x') setXUrl('');
         else if (id === 'linkedin') setLinkedinUrl('');
+        else if (id === 'tiktok') setTiktokUrl('');
+        else if (id === 'youtube') setYoutubeUrl('');
         else if (id === 'google') setReviewUrl('');
         else if (id === 'trustpilot') setTrustpilotUrl('');
         else if (id === 'custom') setCustomLink('');
     };
 
     const activeSocials = [
-        { ...SOCIAL_PLATFORMS[0], url: instagramUrl },
-        { ...SOCIAL_PLATFORMS[1], url: facebookUrl },
-        { ...SOCIAL_PLATFORMS[2], url: linkedinUrl },
-        { ...SOCIAL_PLATFORMS[3], url: reviewUrl },
-        { ...SOCIAL_PLATFORMS[4], url: trustpilotUrl },
-        { ...SOCIAL_PLATFORMS[5], url: customLink },
+        { ...SOCIAL_PLATFORMS.find(p => p.id === 'instagram')!, url: instagramUrl },
+        { ...SOCIAL_PLATFORMS.find(p => p.id === 'facebook')!, url: facebookUrl },
+        { ...SOCIAL_PLATFORMS.find(p => p.id === 'x')!, url: xUrl },
+        { ...SOCIAL_PLATFORMS.find(p => p.id === 'linkedin')!, url: linkedinUrl },
+        { ...SOCIAL_PLATFORMS.find(p => p.id === 'tiktok')!, url: tiktokUrl },
+        { ...SOCIAL_PLATFORMS.find(p => p.id === 'youtube')!, url: youtubeUrl },
+        { ...SOCIAL_PLATFORMS.find(p => p.id === 'google')!, url: reviewUrl },
+        { ...SOCIAL_PLATFORMS.find(p => p.id === 'trustpilot')!, url: trustpilotUrl },
+        { ...SOCIAL_PLATFORMS.find(p => p.id === 'custom')!, url: customLink },
     ].filter(s => s.url);
 
     useEffect(() => {
@@ -553,7 +565,10 @@ export default function BusinessProfilePage() {
 
                 if (hasChanged(instagramUrl, business.instagramUrl)) businessUpdates.instagramUrl = instagramUrl;
                 if (hasChanged(facebookUrl, business.facebookUrl)) businessUpdates.facebookUrl = facebookUrl;
+                if (hasChanged(xUrl, business.xUrl)) businessUpdates.xUrl = xUrl;
                 if (hasChanged(linkedinUrl, business.linkedinUrl)) businessUpdates.linkedinUrl = linkedinUrl;
+                if (hasChanged(tiktokUrl, business.tiktokUrl)) businessUpdates.tiktokUrl = tiktokUrl;
+                if (hasChanged(youtubeUrl, business.youtubeUrl)) businessUpdates.youtubeUrl = youtubeUrl;
                 if (hasChanged(reviewUrl, business.reviewUrl)) businessUpdates.reviewUrl = reviewUrl;
                 if (hasChanged(trustpilotUrl, business.trustpilotUrl)) businessUpdates.trustpilotUrl = trustpilotUrl;
                 if (hasChanged(customLink, business.customLink)) businessUpdates.customLink = customLink;
@@ -591,9 +606,13 @@ export default function BusinessProfilePage() {
 
                 if (hasChanged(instagramUrl, branch.instagramUrl)) branchUpdates.instagramUrl = instagramUrl;
                 if (hasChanged(facebookUrl, branch.facebookUrl)) branchUpdates.facebookUrl = facebookUrl;
+                if (hasChanged(xUrl, branch.xUrl)) branchUpdates.xUrl = xUrl;
                 if (hasChanged(linkedinUrl, branch.linkedinUrl)) branchUpdates.linkedinUrl = linkedinUrl;
+                if (hasChanged(tiktokUrl, branch.tiktokUrl)) branchUpdates.tiktokUrl = tiktokUrl;
+                if (hasChanged(youtubeUrl, branch.youtubeUrl)) branchUpdates.youtubeUrl = youtubeUrl;
                 if (hasChanged(reviewUrl, branch.reviewUrl)) branchUpdates.reviewUrl = reviewUrl;
                 if (hasChanged(trustpilotUrl, branch.trustpilotUrl)) branchUpdates.trustpilotUrl = trustpilotUrl;
+                if (hasChanged(customLink, branch.customLink)) branchUpdates.customLink = customLink;
 
                 if (hasChanged(supportEmail, branch.officialEmail)) branchUpdates.officialEmail = supportEmail;
                 if (hasChanged(supportPhone, branch.phone)) branchUpdates.phone = supportPhone;
