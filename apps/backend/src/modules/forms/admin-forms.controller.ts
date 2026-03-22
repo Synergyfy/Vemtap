@@ -21,6 +21,24 @@ export class AdminFormsController {
 
   @Get()
   @ApiOperation({ summary: 'Get all forms across the platform' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return list of forms with pagination and relations.',
+    schema: {
+      example: {
+        items: [
+          {
+            id: 'uuid-form-1',
+            title: 'Customer Feedback',
+            responseCount: 15,
+            branch: { name: 'Main Branch' },
+            creator: { firstName: 'John', lastName: 'Doe' },
+          },
+        ],
+        total: 1,
+      },
+    },
+  })
   async findAll(@Query() query: AdminFormQueryDto) {
     return this.formsService.findAllForAdmin(query);
   }
@@ -30,6 +48,13 @@ export class AdminFormsController {
   @ApiResponse({
     status: 200,
     description: 'The form has been successfully disabled.',
+    schema: {
+      example: {
+        id: 'uuid-form-1',
+        title: 'Customer Feedback',
+        adminDisabled: true,
+      },
+    },
   })
   disableForm(@Param('id', ParseUUIDPipe) id: string) {
     return this.formsService.setAdminDisabledStatus(id, true);
@@ -40,6 +65,13 @@ export class AdminFormsController {
   @ApiResponse({
     status: 200,
     description: 'The form has been successfully enabled.',
+    schema: {
+      example: {
+        id: 'uuid-form-1',
+        title: 'Customer Feedback',
+        adminDisabled: false,
+      },
+    },
   })
   enableForm(@Param('id', ParseUUIDPipe) id: string) {
     return this.formsService.setAdminDisabledStatus(id, false);

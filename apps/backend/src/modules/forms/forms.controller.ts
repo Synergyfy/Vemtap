@@ -146,7 +146,7 @@ export class FormsController {
     @Body() createFormDto: CreateFormDto,
   ) {
     const branchId = await this.getBranchId(req.user, createFormDto.branchId);
-    return this.formsService.createForm(branchId, createFormDto);
+    return this.formsService.createForm(branchId, createFormDto, req.user.id);
   }
 
   @Get()

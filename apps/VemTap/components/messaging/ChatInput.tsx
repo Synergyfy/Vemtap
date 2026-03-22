@@ -3,12 +3,12 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Smile, Paperclip, Camera, Send, X, CornerUpLeft } from 'lucide-react';
-import { useSendReply, useChatTemplates, useStartConversation } from '@/hooks/useMessaging';
+import { useSendReply, useChatTemplates, useStartConversation, useStartBranchConversation, useInitBranchConversation } from '@/hooks/useMessaging';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches } from '@/services/branches/hooks';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/lib/store/useChatStore';
-
+import Spinner from '../ui/Spinner';
 
 interface ChatInputProps {
     conversationId?: string;
@@ -31,22 +31,33 @@ export default function ChatInput({
 }: ChatInputProps) {
     const [text, setText] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-    const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-    const [templateSearch, setTemplateSearch] = useState('');
-    const [selectedTemplateIndex, setSelectedTemplateIndex] = useState(0);
-
+    const [isStarting, setIsStarting] = useState(false);
     const user = useAuthStore(s => s.user);
     const { activeBranchId, setActiveBranch } = useActiveBranch();
     const { data: branches = [] } = useBranches();
-    
+    const addPendingMessage = useChatStore(s => s.addPendingMessage);
+    const linkPendingThread = useChatStore(s => s.linkPendingThread);
+    const setActiveConversation = useChatStore(s => s.setActiveConversation);
+    const drafts = useChatStore(s => s.drafts);
+    const setDraft = useChatStore(s => s.setDraft);
+    const clearDraft = useChatStore(s => s.clearDraft);
+
+    // Command selection states
+    const [showTemplates, setShowTemplates] = useState(false);
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const [commandSearch, setCommandSearch] = useState('');
+    const [triggerPosition, setTriggerPosition] = useState<{ top: number; left: number } | null>(null);
+
     // Fetch templates for the current branch
     const { data: templates = [] } = useChatTemplates(activeBranchId! || branches[0]?.id);
-    const addMockMessage = useChatStore(s => s.addMockMessage);
+
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isTypingRef = useRef(false);
+    const emojiRef = useRef<HTMLDivElement>(null);
+    const templateRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!user || user?.role?.toLowerCase() === 'customer') return;
@@ -55,23 +66,39 @@ export default function ChatInput({
         }
     }, [activeBranchId, branches, user, setActiveBranch]);
 
-    const isCustomer = user?.role?.toLowerCase() === 'customer';
+    useEffect(() => {
+        if (conversationId && drafts[conversationId]) {
+            setText(drafts[conversationId]);
+        } else {
+            setText('');
+        }
+        // Small delay to allow value to mount
+        setTimeout(() => {
+            if (textareaRef.current) {
+                textareaRef.current.style.height = '';
+                textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+            }
+        }, 10);
+    }, [conversationId]);
+
+    const isCustomer = user?.role === 'customer';
     const branchId = isCustomer ? undefined : (activeBranchId || (branches.length === 1 ? branches[0]?.id : undefined));
     
     // Unified reply mutation (handles both business and customer endpoints)
     const replyMutation = useSendReply(isCustomer);
     const startConversationMutation = useStartConversation();
+    const initBranchConvMutation = useInitBranchConversation();
     const canStartConversation = isCustomer && !!startBranchId && !conversationId;
-    const canBranchStartConversation = !isCustomer && !!conversationId && conversationId.startsWith('mock-');
+    const canBranchStartConversation = !isCustomer && !!conversationId && conversationId.startsWith('pending-');
 
-    // Filter templates based on search string (text after / or @)
+    // Filter templates based on command search
     const filteredTemplates = useMemo(() => {
-        if (!templateSearch) return templates;
+        if (!commandSearch) return templates;
         return templates.filter((t: any) => 
-            t.name.toLowerCase().includes(templateSearch.toLowerCase()) || 
-            t.content.toLowerCase().includes(templateSearch.toLowerCase())
+            t.name.toLowerCase().includes(commandSearch.toLowerCase()) || 
+            t.content.toLowerCase().includes(commandSearch.toLowerCase())
         );
-    }, [templates, templateSearch]);
+    }, [templates, commandSearch]);
 
     const handleInput = useCallback(() => {
         if (textareaRef.current) {
@@ -79,33 +106,6 @@ export default function ChatInput({
             textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
         }
     }, []);
-
-    const insertTemplate = useCallback((template: any) => {
-        const cursorPosition = textareaRef.current?.selectionStart || text.length;
-        const lastTrigger = text.lastIndexOf('/', cursorPosition - 1);
-        const lastMention = text.lastIndexOf('@', cursorPosition - 1);
-        const trigger = lastTrigger > lastMention ? lastTrigger : lastMention;
-
-        if (trigger !== -1) {
-            const before = text.substring(0, trigger);
-            const after = text.substring(cursorPosition);
-            
-            // Replace placeholders in template content if possible
-            let content = template.content;
-            if (user?.name) content = content.replace(/{BusinessName}/g, (user as any).businessName || 'Vemtap');
-            
-            setText(before + content + after);
-            setShowTemplatePicker(false);
-            
-            // Focus and adjust height
-            setTimeout(() => {
-                if (textareaRef.current) {
-                    textareaRef.current.focus();
-                    handleInput();
-                }
-            }, 0);
-        }
-    }, [text, user, handleInput]);
 
     const emitTyping = useCallback((next: boolean) => {
         if (!onTypingChange) return;
@@ -132,53 +132,132 @@ export default function ChatInput({
         }, 1500);
     }, [onTypingChange, emitTyping]);
 
+    const insertTemplate = useCallback((template: any) => {
+        const cursorPosition = textareaRef.current?.selectionStart || text.length;
+        const textBeforeCursor = text.slice(0, cursorPosition);
+        const match = textBeforeCursor.match(/(?:^|\s)[@\/]\w*$/);
+
+        if (match) {
+            const startPos = match.index! + (match[0].startsWith(' ') ? 1 : 0);
+            
+            // Replace placeholders in template content if possible
+            let content = template.content;
+            if (user?.name) content = content.replace(/{BusinessName}/g, (user as any).businessName || 'Vemtap');
+            
+            const newValue = text.slice(0, startPos) + content + text.slice(cursorPosition);
+            setText(newValue);
+            if (conversationId) setDraft(conversationId, newValue);
+            setShowTemplates(false);
+            
+            // Focus and adjust height
+            setTimeout(() => {
+                if (textareaRef.current) {
+                    textareaRef.current.focus();
+                    textareaRef.current.style.height = '';
+                    textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+                    
+                    // Set cursor position after the inserted content
+                    const newPos = startPos + content.length;
+                    textareaRef.current.setSelectionRange(newPos, newPos);
+                }
+            }, 0);
+        }
+    }, [text, user, conversationId, setDraft, handleInput]);
+
     // Handle slash commands and mentions
     const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const value = e.target.value;
         const cursorPosition = e.target.selectionStart;
         setText(value);
+        if (conversationId) setDraft(conversationId, value);
         handleTypingActivity(value);
 
         // Check if cursor is after / or @
-        const lastTrigger = value.lastIndexOf('/', cursorPosition - 1);
-        const lastMention = value.lastIndexOf('@', cursorPosition - 1);
-        const trigger = lastTrigger > lastMention ? lastTrigger : lastMention;
-
-        if (trigger !== -1 && (trigger === 0 || value[trigger - 1] === ' ')) {
-            const searchStr = value.substring(trigger + 1, cursorPosition);
-            // Don't show if there's a space after the trigger
-            if (!searchStr.includes(' ')) {
-                setTemplateSearch(searchStr);
-                setShowTemplatePicker(true);
-                setSelectedTemplateIndex(0);
-                return;
-            }
+        const textBeforeCursor = value.slice(0, cursorPosition);
+        const match = textBeforeCursor.match(/(?:^|\s)([@\/])(\w*)$/);
+        
+        if (match) {
+            setCommandSearch(match[2]);
+            setShowTemplates(true);
+            setSelectedIndex(0);
+        } else {
+            setShowTemplates(false);
         }
-        setShowTemplatePicker(false);
     };
 
     const handleAsyncSend = useCallback(async () => {
-        if (!text.trim()) return;
+        if (!text.trim() || isStarting) return;
 
         if (canStartConversation) {
+            setIsStarting(true);
             try {
                 const response: any = await startConversationMutation.mutateAsync({
                     branchId: startBranchId!,
                     content: text.trim(),
                 });
-                const threadId = response?.threadId || response?.thread?.id;
+                const threadId = response?.threadId || response?.thread?.id || response?.id;
                 if (threadId) {
                     onConversationStarted?.(threadId);
                 }
+                if (conversationId) clearDraft(conversationId);
                 setText('');
                 setShowEmojiPicker(false);
                 emitTyping(false);
                 onCancelReply?.();
-                if (textareaRef.current) {
-                    textareaRef.current.style.height = '';
-                }
+                if (textareaRef.current) textareaRef.current.style.height = '';
             } catch (error: any) {
                 toast.error(error.message || 'Failed to start conversation');
+            } finally {
+                setIsStarting(false);
+            }
+            return;
+        }
+
+        // Staff sending first message on a pending (local) thread → create real thread
+        if (canBranchStartConversation && conversationId) {
+            if (!branchId) {
+                toast.error('Please select a branch first');
+                return;
+            }
+            setIsStarting(true);
+            // Extract the visitor ID from the pending thread ID format: pending-{visitorId}
+            const customerId = conversationId.replace('pending-', '');
+            try {
+                // 1. Initialize the thread first to get a 1-on-1 Inbox thread ID
+                const initResponse: any = await initBranchConvMutation.mutateAsync({
+                    branchId,
+                    customerId,
+                });
+                
+                // Get the real thread ID from the response
+                const realThreadId = initResponse?.threadId || initResponse?.thread?.id || initResponse?.id;
+                
+                if (realThreadId) {
+                    // 2. Send the message as a regular reply to this new real thread
+                    await replyMutation.mutateAsync({
+                        threadId: realThreadId,
+                        content: text.trim(),
+                        branchId,
+                    });
+
+                    // 3. Switch to the real thread ID.
+                    setActiveConversation(realThreadId);
+                    linkPendingThread(conversationId, realThreadId); // Link it instead of removing
+                    onConversationStarted?.(realThreadId);
+                } else {
+                    throw new Error('Could not obtain a thread ID');
+                }
+                
+                setText('');
+                if (conversationId) clearDraft(conversationId);
+                setShowEmojiPicker(false);
+                emitTyping(false);
+                onCancelReply?.();
+                if (textareaRef.current) textareaRef.current.style.height = '';
+            } catch (error: any) {
+                toast.error(error.message || 'Failed to start conversation');
+            } finally {
+                setIsStarting(false);
             }
             return;
         }
@@ -201,43 +280,48 @@ export default function ChatInput({
                 replyToId: replyTo?.id,
             });
             setText('');
+            if (conversationId) clearDraft(conversationId);
             setShowEmojiPicker(false);
             emitTyping(false);
             onCancelReply?.();
-            if (textareaRef.current) {
-                textareaRef.current.style.height = '';
-            }
+            if (textareaRef.current) textareaRef.current.style.height = '';
         } catch (error: any) {
             toast.error(error.message || 'Failed to send message');
         }
     }, [
-        text, 
-        canStartConversation, 
-        startConversationMutation, 
-        startBranchId, 
-        onConversationStarted, 
-        conversationId, 
-        isCustomer, 
-        branchId, 
-        replyMutation, 
-        replyTo?.id, 
-        onCancelReply, 
-        emitTyping
+        text,
+        isStarting,
+        canStartConversation,
+        startConversationMutation,
+        startBranchId,
+        onConversationStarted,
+        conversationId,
+        clearDraft,
+        emitTyping,
+        onCancelReply,
+        canBranchStartConversation,
+        branchId,
+        initBranchConvMutation,
+        replyMutation,
+        setActiveConversation,
+        linkPendingThread,
+        isCustomer,
+        replyTo?.id
     ]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (showTemplatePicker && filteredTemplates.length > 0) {
+        if (showTemplates && filteredTemplates.length > 0) {
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                setSelectedTemplateIndex(prev => (prev + 1) % filteredTemplates.length);
+                setSelectedIndex(prev => (prev + 1) % filteredTemplates.length);
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                setSelectedTemplateIndex(prev => (prev - 1 + filteredTemplates.length) % filteredTemplates.length);
+                setSelectedIndex(prev => (prev - 1 + filteredTemplates.length) % filteredTemplates.length);
             } else if (e.key === 'Enter' || e.key === 'Tab') {
                 e.preventDefault();
-                insertTemplate(filteredTemplates[selectedTemplateIndex]);
+                insertTemplate(filteredTemplates[selectedIndex]);
             } else if (e.key === 'Escape') {
-                setShowTemplatePicker(false);
+                setShowTemplates(false);
             }
             return;
         }
@@ -265,7 +349,7 @@ export default function ChatInput({
         if (e.target) e.target.value = '';
     };
 
-    const isSending = replyMutation.isPending || startConversationMutation.isPending;
+    const isSending = replyMutation.isPending || startConversationMutation.isPending || initBranchConvMutation.isPending || isStarting;
 
     useEffect(() => {
         return () => {
@@ -294,32 +378,29 @@ export default function ChatInput({
                     </button>
                 </div>
             )}
-            {/* Template Picker Popover */}
-            {showTemplatePicker && filteredTemplates.length > 0 && (
-                <div className="absolute bottom-full left-4 mb-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
-                    <div className="px-4 py-2 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Insert Template</span>
+            {/* Template Selection Popper */}
+            {showTemplates && filteredTemplates.length > 0 && (
+                <div 
+                    ref={templateRef}
+                    className="absolute bottom-full left-4 mb-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
+                >
+                    <div className="px-4 py-2 border-b border-slate-50 flex items-center justify-between">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Template</p>
                         <span className="text-[9px] text-slate-300 font-bold">Use ↑↓ and ↵</span>
                     </div>
                     <div className="max-h-64 overflow-y-auto p-1 custom-scrollbar">
-                        {filteredTemplates.map((template: any, idx: number) => (
+                        {filteredTemplates.map((template: any, index: number) => (
                             <button
                                 key={template.id}
                                 onClick={() => insertTemplate(template)}
-                                onMouseEnter={() => setSelectedTemplateIndex(idx)}
-                                className={`w-full text-left p-3 rounded-xl transition-all flex flex-col gap-1 ${
-                                    idx === selectedTemplateIndex ? 'bg-primary/5 ring-1 ring-primary/10' : 'hover:bg-slate-50'
-                                }`}
+                                onMouseEnter={() => setSelectedIndex(index)}
+                                className={`w-full flex flex-col items-start px-4 py-3 rounded-xl transition-all ${index === selectedIndex ? 'bg-primary/5 ring-1 ring-primary/10' : 'hover:bg-slate-50'}`}
                             >
-                                <div className="flex items-center justify-between gap-2">
-                                    <span className={`text-[11px] font-bold ${idx === selectedTemplateIndex ? 'text-primary' : 'text-slate-700'}`}>
-                                        {template.name}
-                                    </span>
-                                    {idx === selectedTemplateIndex && <CornerUpLeft size={10} className="text-primary opacity-40" />}
+                                <div className="flex items-center justify-between w-full">
+                                    <span className={`text-sm font-bold ${index === selectedIndex ? 'text-primary' : 'text-slate-700'}`}>{template.name}</span>
+                                    {index === selectedIndex && <CornerUpLeft size={10} className="text-primary opacity-40" />}
                                 </div>
-                                <p className="text-[10px] text-slate-400 line-clamp-1 italic">
-                                    {template.content}
-                                </p>
+                                <span className="text-xs text-slate-400 truncate w-full italic">"{template.content}"</span>
                             </button>
                         ))}
                     </div>
@@ -411,7 +492,11 @@ export default function ChatInput({
                     disabled={!text.trim() || isSending}
                     className="w-10 h-10 flex items-center justify-center bg-primary text-white rounded-full shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed mb-1"
                 >
-                    <Send size={18} className={`${isSending ? 'animate-pulse' : ''}`} />
+                    {isSending ? (
+                        <Spinner size="sm" color="white" />
+                    ) : (
+                        <Send size={18} />
+                    )}
                 </button>
             </div>
         </footer>

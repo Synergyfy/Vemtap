@@ -48,7 +48,7 @@ export default function ActiveFormsPage() {
     const branchKey = branchScope || userBranchId || 'global';
 
     const availableForms = useMemo(
-        () => forms.filter((form) => form.isPublished),
+        () => forms.filter((form) => form.isPublished && form.isActive),
         [forms]
     );
 

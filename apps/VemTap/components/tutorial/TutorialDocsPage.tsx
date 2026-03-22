@@ -96,7 +96,6 @@ const DOCS: Category[] = [
         pages: [
           { id: 'staff', title: 'Staff', path: '/dashboard/staff', summary: 'Users, roles, and permissions.' },
           { id: 'support', title: 'Support', path: '/dashboard/support', summary: 'Support operations and responses.' },
-          { id: 'notifications', title: 'Notifications', path: '/dashboard/notifications', summary: 'Internal alerts and updates.' },
         ],
       },
     ],
@@ -128,7 +127,6 @@ const DOCS: Category[] = [
         pages: [
           { id: 'settings-devices', title: 'Device Settings', path: '/dashboard/settings/devices', summary: 'Global device behavior defaults.' },
           { id: 'settings-integrations', title: 'Integrations', path: '/dashboard/settings/integrations', summary: 'Third-party connections.' },
-          { id: 'settings-notifications', title: 'Notification Settings', path: '/dashboard/settings/notifications', summary: 'Alert preferences.' },
           { id: 'settings-privacy', title: 'Privacy', path: '/dashboard/settings/privacy', summary: 'Consent and privacy controls.' },
           { id: 'settings-subscription', title: 'Subscription', path: '/dashboard/settings/subscription', summary: 'Plan and billing management.' },
         ],

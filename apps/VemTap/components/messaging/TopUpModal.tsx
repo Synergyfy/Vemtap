@@ -58,10 +58,10 @@ export default function TopUpModal({ isOpen, onClose, onSuccess }: TopUpModalPro
         const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
 
         if (!publicKey || publicKey.includes('placeholder')) {
-            console.warn('Paystack public key not configured. Using mock success.');
+            console.warn('Paystack public key not configured. Using simulation success.');
             purchaseMutation.mutate({
                 planId: plan.id,
-                reference: `mock-ref-${Date.now()}`
+                reference: `sim-ref-${Date.now()}`
             });
             return;
         }

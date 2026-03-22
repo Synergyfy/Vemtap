@@ -15,18 +15,25 @@ import { useAuthStore } from '@/store/useAuthStore';
 import toast from 'react-hot-toast';
 import { formatDate } from '@/lib/utils/date';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
+import MessagingChannelSelectorModal from '@/components/dashboard/MessagingChannelSelectorModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import { Repeat, Users, Star, AlertTriangle, Gift, Award, Send } from 'lucide-react';
+import { useChatStore } from '@/lib/store/useChatStore';
+import { useRouter } from 'next/navigation';
 
 export default function ReturningVisitorsPage() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<Visitor | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
+    const [showChannelSelector, setShowChannelSelector] = useState(false);
     const queryClient = useQueryClient();
     const { user, activeBranchId } = useAuthStore();
+    const router = useRouter();
 
     const { data: paginatedData, isLoading } = useReturningVisitors();
     const { data: statsData } = useReturningVisitorStats();
+    const addPendingThread = useChatStore(s => s.addPendingThread);
+    const setActiveConversation = useChatStore(s => s.setActiveConversation);
 
     const returningVisitors = paginatedData?.data || [];
 
@@ -55,6 +62,30 @@ export default function ReturningVisitorsPage() {
 
     const handleRewardVisitor = (visitor: Visitor) => {
         setSelectedVisitorForMsg(visitor);
+        setShowChannelSelector(true);
+    };
+
+    const handleSelectInApp = () => {
+        if (selectedVisitorForMsg) {
+            const visitorName = getVisitorDisplayName(selectedVisitorForMsg);
+            const chatContact = {
+                id: selectedVisitorForMsg.id,
+                name: visitorName,
+                phone: selectedVisitorForMsg.phone,
+                email: selectedVisitorForMsg.email,
+                isOnline: false,
+            };
+            
+            const threadId = addPendingThread(chatContact);
+            setActiveConversation(threadId);
+            
+            router.push(`/dashboard/messaging/chat?visitorId=${selectedVisitorForMsg.id}`);
+            setShowChannelSelector(false);
+        }
+    };
+
+    const handleSelectExternal = () => {
+        setShowChannelSelector(false);
     };
 
     const stats = statsData?.stats && statsData.stats.length > 0 ? statsData.stats.map(s => ({
@@ -156,8 +187,19 @@ export default function ReturningVisitorsPage() {
                 isLoading={createRewardMutation.isPending}
             />
 
+            <MessagingChannelSelectorModal
+                isOpen={showChannelSelector}
+                onClose={() => {
+                    setShowChannelSelector(false);
+                    setSelectedVisitorForMsg(null);
+                }}
+                onSelectInApp={handleSelectInApp}
+                onSelectExternal={handleSelectExternal}
+                recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
+            />
+
             <SendMessageModal
-                isOpen={!!selectedVisitorForMsg}
+                isOpen={!!selectedVisitorForMsg && !showChannelSelector}
                 onClose={() => setSelectedVisitorForMsg(null)}
                 recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
                 recipientPhone={selectedVisitorForMsg?.phone}

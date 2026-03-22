@@ -1,8 +1,10 @@
 import { Entity, Column, ManyToOne, OneToMany, JoinColumn, BeforeInsert } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Branch } from '../../branches/entities/branch.entity';
+import { User } from '../../users/entities/user.entity';
 import { FormResponse } from './form-response.entity';
 import { FormField } from './form-field.entity';
+import { FormTemplate } from './form-template.entity';
 import { generateUniqueCode } from '../../../common/utils/random.util';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -40,6 +42,13 @@ export class Form extends AbstractBaseEntity {
   @Column({ default: 0 })
   responseCount: number;
 
+  @ManyToOne(() => FormTemplate, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'templateId' })
+  template: FormTemplate;
+
+  @Column({ nullable: true })
+  templateId: string;
+
   @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'branchId' })
   branch: Branch;
@@ -49,6 +58,14 @@ export class Form extends AbstractBaseEntity {
 
   @Column({ type: 'uuid', nullable: true })
   businessId: string;
+
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'creatorId' })
+  creator: User;
+
+  @ApiProperty({ example: 'uuid-string', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
+  creatorId: string;
 
   @OneToMany(() => FormField, (field) => field.form, { cascade: true })
   fields: FormField[];
