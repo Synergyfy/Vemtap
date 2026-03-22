@@ -308,7 +308,7 @@ export default function ChatWindow() {
     let lastDate = '';
 
     return (
-        <div className={`flex-1 flex flex-col h-full min-h-0 bg-white transition-all duration-300 relative ${isFullScreen ? 'fixed inset-0 z-100 m-0 rounded-none' : ''}`}>
+        <div className={`flex-1 flex flex-col h-full min-h-0 bg-white transition-all duration-300 relative overflow-hidden ${isFullScreen ? 'fixed inset-0 z-100 m-0 rounded-none' : ''}`}>
             {/* Header */}
             <header className="h-16 flex items-center justify-between px-4 border-b border-slate-200 z-10 bg-white shrink-0">
                 <div className="flex items-center gap-3 min-w-0">
@@ -368,11 +368,10 @@ export default function ChatWindow() {
                 </div>
             </header>
 
-            <div className={`flex-1 flex flex-col min-h-0 transition-[padding] duration-300 ${showProfile ? 'pr-80' : ''}`}>
+            <div className={`flex-1 flex flex-col min-h-0 transition-[padding] duration-300 ${showProfile ? 'md:pr-80' : ''}`}>
                 {/* Messages: Add dynamic padding to accommodate keyboard */}
                 <div 
-                    className="flex-1 overflow-y-auto p-6 space-y-3 chat-bg custom-scrollbar"
-                    style={{ paddingBottom: 'env(safe-area-inset-bottom, 1rem)' }}
+                    className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 chat-bg custom-scrollbar pb-24 md:pb-6"
                 >
                     {isLoading ? (
                         <div className="flex items-center justify-center h-full">
@@ -438,7 +437,7 @@ export default function ChatWindow() {
                 </div>
 
                 {/* Input: Use viewport-height-aware positioning to stay above keyboard */}
-                <div className="shrink-0 bg-white border-t border-slate-200 p-2 safe-area-bottom">
+                <div className="md:shrink-0 bg-white fixed md:relative bottom-0 left-0 right-0 w-full z-20 md:z-10 safe-area-bottom border-t border-slate-200">
                     <ChatInput
                         conversationId={activeConversationId || undefined}
                         replyTo={replyToMessage}
