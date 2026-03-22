@@ -679,8 +679,8 @@ function ConversationItem({
             >
                 {/* Avatar */}
                 <div className="relative flex-shrink-0">
-                    {customer?.avatar ? (
-                        <img src={customer.avatar} alt={name} className="w-12 h-12 rounded-full object-cover" />
+                    {(customer?.avatar || conversation.contact?.avatar) ? (
+                        <img src={customer?.avatar || conversation.contact?.avatar} alt={name} className="w-12 h-12 rounded-full object-cover" />
                     ) : (
                         <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm ${getAvatarColor(conversation.id)}`}>
                             {getInitials(name)}

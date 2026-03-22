@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Smile, Paperclip, Camera, Send, X, CornerUpLeft } from 'lucide-react';
 import { useSendReply, useChatTemplates, useStartConversation, useStartBranchConversation, useInitBranchConversation } from '@/hooks/useMessaging';
@@ -9,7 +9,6 @@ import { useBranches } from '@/services/branches/hooks';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/lib/store/useChatStore';
 import Spinner from '../ui/Spinner';
-import { useMemo } from 'react';
 
 interface ChatInputProps {
     conversationId?: string;
@@ -82,7 +81,7 @@ export default function ChatInput({
         }, 10);
     }, [conversationId]);
 
-    const isCustomer = user?.role === 'customer';
+    const isCustomer = user?.role?.toLowerCase() === 'customer';
     const branchId = isCustomer ? undefined : (activeBranchId || (branches.length === 1 ? branches[0]?.id : undefined));
     
     // Unified reply mutation (handles both business and customer endpoints)
@@ -101,31 +100,39 @@ export default function ChatInput({
         );
     }, [templates, commandSearch]);
 
-    // Handle slash commands and mentions
-    const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const value = e.target.value;
-        const cursorPosition = e.target.selectionStart;
-        setText(value);
-        if (conversationId) setDraft(conversationId, value);
-        handleTypingActivity(value);
-
-        // Check if cursor is after / or @
-        const textBeforeCursor = value.slice(0, cursorPosition);
-        const match = textBeforeCursor.match(/(?:^|\s)([@\/])(\w*)$/);
-        
-        if (match) {
-            setCommandSearch(match[2]);
-            setShowTemplates(true);
-            setSelectedIndex(0);
-            
-            // Optionally calculate trigger position if you want the popper to follow cursor
-            // For now, we'll keep it simple as in the previous implementation
-        } else {
-            setShowTemplates(false);
+    const handleInput = useCallback(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = '';
+            textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
         }
-    };
+    }, []);
 
-    const insertTemplate = (template: any) => {
+    const emitTyping = useCallback((next: boolean) => {
+        if (!onTypingChange) return;
+        if (isTypingRef.current === next) return;
+        isTypingRef.current = next;
+        onTypingChange(next);
+    }, [onTypingChange]);
+
+    const handleTypingActivity = useCallback((nextValue: string) => {
+        if (!onTypingChange) return;
+        if (!nextValue.trim()) {
+            emitTyping(false);
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+                typingTimeoutRef.current = null;
+            }
+            return;
+        }
+
+        emitTyping(true);
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => {
+            emitTyping(false);
+        }, 1500);
+    }, [onTypingChange, emitTyping]);
+
+    const insertTemplate = useCallback((template: any) => {
         const cursorPosition = textareaRef.current?.selectionStart || text.length;
         const textBeforeCursor = text.slice(0, cursorPosition);
         const match = textBeforeCursor.match(/(?:^|\s)[@\/]\w*$/);
@@ -135,7 +142,7 @@ export default function ChatInput({
             
             // Replace placeholders in template content if possible
             let content = template.content;
-            if (user?.name) content = content.replace(/{BusinessName}/g, user.businessName || 'Vemtap');
+            if (user?.name) content = content.replace(/{BusinessName}/g, (user as any).businessName || 'Vemtap');
             
             const newValue = text.slice(0, startPos) + content + text.slice(cursorPosition);
             setText(newValue);
@@ -155,34 +162,30 @@ export default function ChatInput({
                 }
             }, 0);
         }
-    };
+    }, [text, user, conversationId, setDraft, handleInput]);
 
-    const emitTyping = (next: boolean) => {
-        if (!onTypingChange) return;
-        if (isTypingRef.current === next) return;
-        isTypingRef.current = next;
-        onTypingChange(next);
-    };
+    // Handle slash commands and mentions
+    const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const value = e.target.value;
+        const cursorPosition = e.target.selectionStart;
+        setText(value);
+        if (conversationId) setDraft(conversationId, value);
+        handleTypingActivity(value);
 
-    const handleTypingActivity = (nextValue: string) => {
-        if (!onTypingChange) return;
-        if (!nextValue.trim()) {
-            emitTyping(false);
-            if (typingTimeoutRef.current) {
-                clearTimeout(typingTimeoutRef.current);
-                typingTimeoutRef.current = null;
-            }
-            return;
+        // Check if cursor is after / or @
+        const textBeforeCursor = value.slice(0, cursorPosition);
+        const match = textBeforeCursor.match(/(?:^|\s)([@\/])(\w*)$/);
+        
+        if (match) {
+            setCommandSearch(match[2]);
+            setShowTemplates(true);
+            setSelectedIndex(0);
+        } else {
+            setShowTemplates(false);
         }
-
-        emitTyping(true);
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = setTimeout(() => {
-            emitTyping(false);
-        }, 1500);
     };
 
-    const handleSend = async () => {
+    const handleAsyncSend = useCallback(async () => {
         if (!text.trim() || isStarting) return;
 
         if (canStartConversation) {
@@ -196,8 +199,8 @@ export default function ChatInput({
                 if (threadId) {
                     onConversationStarted?.(threadId);
                 }
-                setText('');
                 if (conversationId) clearDraft(conversationId);
+                setText('');
                 setShowEmojiPicker(false);
                 emitTyping(false);
                 onCancelReply?.();
@@ -285,7 +288,26 @@ export default function ChatInput({
         } catch (error: any) {
             toast.error(error.message || 'Failed to send message');
         }
-    };
+    }, [
+        text,
+        isStarting,
+        canStartConversation,
+        startConversationMutation,
+        startBranchId,
+        onConversationStarted,
+        conversationId,
+        clearDraft,
+        emitTyping,
+        onCancelReply,
+        canBranchStartConversation,
+        branchId,
+        initBranchConvMutation,
+        replyMutation,
+        setActiveConversation,
+        linkPendingThread,
+        isCustomer,
+        replyTo?.id
+    ]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (showTemplates && filteredTemplates.length > 0) {
@@ -306,16 +328,10 @@ export default function ChatInput({
 
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            handleSend();
+            handleAsyncSend();
         }
     };
 
-    const handleInput = () => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = '';
-            textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-        }
-    };
 
     const addEmoji = (emoji: string) => {
         setText(prev => {
@@ -471,7 +487,8 @@ export default function ChatInput({
                 </div>
 
                 <button
-                    onClick={handleSend}
+                    type="button"
+                    onClick={handleAsyncSend}
                     disabled={!text.trim() || isSending}
                     className="w-10 h-10 flex items-center justify-center bg-primary text-white rounded-full shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed mb-1"
                 >
