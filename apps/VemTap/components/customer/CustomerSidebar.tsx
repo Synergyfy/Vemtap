@@ -4,14 +4,14 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dashboardApi } from '@/lib/api/dashboard';
-import { Notification } from '@/lib/store/mockDashboardStore';
+import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '@/services/notifications/hooks';
+import { Notification } from '@/services/notifications/types';
 import {
     LayoutGrid, History, Gift, User, Nfc, Bell,
     LogOut, Menu, Star, BarChart3, LifeBuoy, X, MessageSquare, Search
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface CustomerSidebarProps {
     children: React.ReactNode;
@@ -32,28 +32,11 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
         setIsMobileMenuOpen(false);
     }, [pathname]);
 
-    const { data } = useQuery({
-        queryKey: ['dashboard'],
-        queryFn: dashboardApi.fetchDashboardData,
-        refetchInterval: 5000,
-    });
-
-    const notifications = data?.notifications || [];
+    const { data: notifications = [] } = useNotifications();
     const unreadCount = notifications.filter((n: Notification) => !n.read).length;
 
-    const readNotificationMutation = useMutation({
-        mutationFn: dashboardApi.markNotificationRead,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-        }
-    });
-
-    const readAllMutation = useMutation({
-        mutationFn: dashboardApi.markAllNotificationsRead,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-        }
-    });
+    const readNotificationMutation = useMarkAsRead();
+    const readAllMutation = useMarkAllAsRead();
 
     const toggleMenu = (menu: string) => {
         setExpandedMenus(prev =>

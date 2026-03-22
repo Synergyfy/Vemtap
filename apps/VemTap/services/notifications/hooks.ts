@@ -5,14 +5,30 @@ import { Notification, UnreadCountResponse } from './types';
 export const useNotifications = () => {
     return useQuery<Notification[], Error>({
         queryKey: ['notifications'],
-        queryFn: async () => await api.get('/notifications'),
+        queryFn: async () => {
+            const res = await api.get('/notifications');
+            const data = Array.isArray(res) ? res : (res.data || []);
+            return data.map((n: any) => ({
+                id: n.id,
+                title: n.title,
+                message: n.message,
+                type: n.type || 'info',
+                read: n.isRead,
+                timestamp: n.createdAt,
+                actionUrl: n.actionUrl
+            }));
+        },
     });
 };
 
 export const useUnreadCount = () => {
     return useQuery<UnreadCountResponse, Error>({
         queryKey: ['notifications', 'unread-count'],
-        queryFn: async () => await api.get('/notifications/unread-count'),
+        queryFn: async () => {
+            const res = await api.get('/notifications/unread-count');
+            if (typeof res === 'number') return { count: res };
+            return { count: parseInt(res?.count || res || 0, 10) };
+        },
     });
 };
 
