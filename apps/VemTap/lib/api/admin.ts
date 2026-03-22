@@ -101,6 +101,30 @@ export const adminSubscriptionsApi = {
 // =====================
 export const adminAnalyticsApi = {
     getAdminSummary: () => api.get('/analytics/admin/summary'),
+    getBusinessSummary: () => api.get('/analytics/admin/business-summary'),
+};
+
+export const adminFormsApi = {
+    getTemplates: (params?: { search?: string; page?: number; limit?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.search) q.set('search', params.search);
+        if (params?.page) q.set('page', String(params.page));
+        if (params?.limit) q.set('limit', String(params.limit));
+        return api.get(`/form-templates?${q.toString()}`);
+    },
+    getTemplatesStats: () => api.get('/form-templates/stats'),
+    getTemplateStats: (id: string) => api.get(`/form-templates/${id}/stats`),
+    
+    // Business Forms Management
+    getBusinessForms: (params?: { search?: string; page?: number; limit?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.search) q.set('search', params.search);
+        if (params?.page) q.set('page', String(params.page));
+        if (params?.limit) q.set('limit', String(params.limit));
+        return api.get(`/admin-forms?${q.toString()}`);
+    },
+    disableBusinessForm: (id: string) => api.patch(`/admin-forms/${id}/disable`, {}),
+    enableBusinessForm: (id: string) => api.patch(`/admin-forms/${id}/enable`, {}),
 };
 
 export const adminSupportApi = {

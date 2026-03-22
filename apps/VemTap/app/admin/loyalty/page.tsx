@@ -68,8 +68,8 @@ const DeleteConfirmModal: React.FC<{
     onConfirm: () => void;
 }> = ({ open, templateName, onCancel, onConfirm }) =>
     open ? (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onCancel} />
+        <div className="fixed inset-0 z-110 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-110" onClick={onCancel} />
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -124,7 +124,7 @@ const CropperModal: React.FC<{
     };
 
     return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -138,11 +138,13 @@ const CropperModal: React.FC<{
                 className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden relative shadow-2xl"
             >
                 <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                    <div>
-                        <h3 className="text-xl font-display font-black text-slate-900">Crop Reward Hero</h3>
-                        <p className="text-xs text-slate-500 font-medium">Position your image for the best view on the card</p>
+                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                        <div>
+                            <h3 className="text-xl font-display font-black text-slate-900">Crop Reward Hero</h3>
+                            <p className="text-xs text-slate-500 font-medium">Position your image for the best view on the card</p>
+                        </div>
+                        <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-all"><X size={20} /></button>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-all"><X size={20} /></button>
                 </div>
                 
                 <div className="relative h-[400px] w-full bg-slate-200">
@@ -422,7 +424,7 @@ export default function AdminLoyaltyPage() {
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-3 bg-gradient-to-br from-primary to-primary-hover rounded-2xl shadow-lg shadow-primary/25">
+                            <div className="p-3 bg-linear-to-br from-primary to-primary-hover rounded-2xl shadow-lg shadow-primary/25">
                                 <Gift className="h-7 w-7 text-white" />
                             </div>
                             <div>
@@ -538,17 +540,17 @@ export default function AdminLoyaltyPage() {
                                     layout
                                     key={template.id}
                                     className={cn(
-                                        "group relative flex flex-col hover:shadow-2xl transition-all duration-300 rounded-2xl border bg-gradient-to-br from-white to-primary/5",
+                                        "group relative flex flex-col hover:shadow-2xl transition-all duration-300 rounded-2xl border bg-linear-to-br from-white to-primary/5",
                                         template.status === 'published' ? "border-primary/20 hover:border-primary/40" : "border-slate-200 bg-slate-50 opacity-90"
                                     )}
                                 >
                                     {/* Top accent bar */}
                                     <div className={cn(
                                         "absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl",
-                                        template.status === 'published' ? "bg-gradient-to-r from-primary via-primary-hover to-primary" : "bg-slate-300"
+                                        template.status === 'published' ? "bg-linear-to-r from-primary via-primary-hover to-primary" : "bg-slate-300"
                                     )} />
 
-                                    <div className="p-6 flex flex-col flex-grow">
+                                    <div className="p-6 flex flex-col grow">
                                         <div className="flex items-start justify-between mb-5">
                                             <div className="flex items-center space-x-4">
                                                 <div className="relative w-full h-full overflow-hidden rounded-2xl">
@@ -565,6 +567,12 @@ export default function AdminLoyaltyPage() {
                                                             template.status === 'published' ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"
                                                         )}>
                                                             {template.status === 'published' ? 'Published' : 'Draft'}
+                                                        </span>
+                                                        <span className={cn(
+                                                            "px-2.5 py-1 rounded-full text-[9px] uppercase tracking-widest font-black",
+                                                            template.rewards[0]?.isActive !== false ? "bg-blue-100 text-blue-600" : "bg-rose-100 text-rose-600"
+                                                        )}>
+                                                            {template.rewards[0]?.isActive !== false ? 'Active' : 'Inactive'}
                                                         </span>
                                                         <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[9px] uppercase tracking-widest font-black border border-primary/20 flex items-center gap-1">
                                                             <Gift className="w-3 h-3" />
@@ -671,7 +679,7 @@ export default function AdminLoyaltyPage() {
 
             <AnimatePresence>
                 {isModalOpen && (
-                    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 md:p-8">
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4 overflow-y-auto">
                         {/* Backdrop */}
                         <motion.div
                             initial={{ opacity: 0 }}
@@ -875,6 +883,33 @@ export default function AdminLoyaltyPage() {
                                                     />
                                                 </div>
                                             </div>
+
+                                            <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-sm font-bold text-slate-900 uppercase tracking-tight">Active Status</p>
+                                                    <p className="text-[10px] text-slate-500 font-medium">Enable or disable this reward template across the platform</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        setDraft(prev => {
+                                                            const newDraft = { ...prev };
+                                                            if (newDraft.rewards[0]) {
+                                                                newDraft.rewards[0].isActive = !newDraft.rewards[0].isActive;
+                                                            }
+                                                            return newDraft;
+                                                        });
+                                                    }}
+                                                    className={cn(
+                                                        "w-12 h-6 rounded-full transition-all relative flex items-center px-1",
+                                                        draft.rewards[0]?.isActive !== false ? "bg-primary" : "bg-slate-300"
+                                                    )}
+                                                >
+                                                    <div className={cn(
+                                                        "w-4 h-4 bg-white rounded-full transition-all shadow-sm",
+                                                        draft.rewards[0]?.isActive !== false ? "translate-x-6" : "translate-x-0"
+                                                    )} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -996,7 +1031,7 @@ export default function AdminLoyaltyPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[200] bg-white/80 backdrop-blur-md flex flex-col items-center justify-center space-y-4"
+                        className="fixed inset-0 z-200 bg-white/80 backdrop-blur-md flex flex-col items-center justify-center space-y-4"
                     >
                         <div className="relative">
                             <div className="size-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
