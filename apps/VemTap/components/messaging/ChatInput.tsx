@@ -185,7 +185,7 @@ export default function ChatInput({
         }
     };
 
-    const handleSend = async () => {
+    const handleSend = useCallback(async () => {
         if (!text.trim() || isSending || isStarting) return;
 
         if (canStartConversation) {
