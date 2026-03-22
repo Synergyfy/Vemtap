@@ -345,7 +345,7 @@ export default function ChatInput({
     }, []);
 
     return (
-        <footer className="p-4 bg-white border-t border-slate-200 shrink-0 relative">
+        <footer className="p-4 bg-white md:border-t md:border-slate-200 shrink-0 relative">
             {replyTo?.content && (
                 <div className="mb-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 flex items-center justify-between gap-2">
                     <div className="min-w-0">
