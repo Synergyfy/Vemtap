@@ -26,6 +26,12 @@ export interface Branch {
     rewardEnabled: boolean;
     rewardVisitThreshold: number;
     linkedinUrl?: string;
+    facebookUrl?: string;
+    instagramUrl?: string;
+    tiktokUrl?: string;
+    xUrl?: string;
+    youtubeUrl?: string;
+    customLink?: string;
     reviewUrl?: string;
     trustpilotUrl?: string;
     showReview: boolean;

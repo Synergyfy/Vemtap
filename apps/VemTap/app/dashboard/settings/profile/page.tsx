@@ -11,7 +11,6 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { BusinessHours } from '@/services/businesses/types';
-import { Loader2 } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { useUpdateBranch, useBranch, useBranches } from '@/services/branches/hooks';
 import { useCategories } from '@/services/categories/hooks';
@@ -1125,7 +1124,7 @@ export default function BusinessProfilePage() {
                 )}
 
                 {activeTab === 'socials' && !isAllBranches && (
-                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
                         <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                             <div>
                                 <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Social Media & Reviews</h3>
@@ -1184,7 +1183,7 @@ export default function BusinessProfilePage() {
                                                             initial={{ opacity: 0, y: 10 }}
                                                             animate={{ opacity: 1, y: 0 }}
                                                             exit={{ opacity: 0, y: 10 }}
-                                                            className="absolute left-0 right-0 top-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden py-2"
+                                                            className="absolute left-0 right-0 top-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-[9999] overflow-hidden py-2"
                                                         >
                                                             {SOCIAL_PLATFORMS.map((platform) => {
                                                                 const isAlreadyAdded = activeSocials.some(s => s.id === platform.id);
