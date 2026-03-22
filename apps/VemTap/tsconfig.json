@@ -6,7 +6,7 @@
       "dom",
       "dom.iterable",
       "esnext",
-      "webworker",  
+      "webworker",
       "webworker.iterable"
     ],
     "allowJs": true,
@@ -36,7 +36,6 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "**/*.mts",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
