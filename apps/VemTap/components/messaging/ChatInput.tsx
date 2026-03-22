@@ -81,7 +81,7 @@ export default function ChatInput({
         }, 10);
     }, [conversationId]);
 
-    const isCustomer = user?.role === 'customer';
+    const isCustomer = user?.role?.toLowerCase() === 'customer';
     const branchId = isCustomer ? undefined : (activeBranchId || (branches.length === 1 ? branches[0]?.id : undefined));
     
     // Unified reply mutation (handles both business and customer endpoints)

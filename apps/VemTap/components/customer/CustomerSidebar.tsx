@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -26,6 +26,11 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
     const [showNotifications, setShowNotifications] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const queryClient = useQueryClient();
+
+    // Close mobile sidebar on navigation
+    useEffect(() => {
+        setIsMobileMenuOpen(false);
+    }, [pathname]);
 
     const { data } = useQuery({
         queryKey: ['dashboard'],
