@@ -12,7 +12,8 @@ import toast from 'react-hot-toast';
 import { 
     UserPlus, Shield, Edit3, Trash2, Eye, MessageSquare, 
     BarChart3, Users as UsersIcon, Settings as SettingsIcon, 
-    Building2, Loader2, Lock 
+    Building2, Loader2, Lock, Home, MessageCircle, Gift, Zap, Nfc, HelpCircle,
+    Cpu, Bell, BookOpen, Wand2, Smartphone
 } from 'lucide-react';
 import { useBranches } from '@/services/branches/hooks';
 import Modal from '@/components/ui/Modal';
@@ -22,11 +23,21 @@ import UpgradeModal from '@/components/dashboard/UpgradeModal';
 import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 
 const PERMISSIONS = [
-    { id: 'dashboard', label: 'Dashboard', icon: Eye },
+    { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'visitors', label: 'Visitors', icon: UsersIcon },
-    { id: 'messages', label: 'Messages', icon: MessageSquare },
+    { id: 'chat', label: 'In-App Chat', icon: MessageCircle },
+    { id: 'messages', label: 'Channels', icon: MessageSquare },
+    { id: 'loyalty', label: 'Loyalty', icon: Gift },
+    { id: 'engagement', label: 'Engagement', icon: Zap },
+    { id: 'automations', label: 'Automations', icon: Wand2 },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'staff', label: 'Team', icon: UsersIcon },
+    { id: 'nfc', label: 'NFC Manager', icon: Nfc },
+    { id: 'devices', label: 'Devices', icon: Smartphone },
+    { id: 'hardware', label: 'Hardware', icon: Cpu },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'support', label: 'Support', icon: HelpCircle },
+    { id: 'tutorial', label: 'Tutorial', icon: BookOpen },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
 
