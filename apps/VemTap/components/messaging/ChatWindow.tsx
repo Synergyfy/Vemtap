@@ -2,10 +2,24 @@
 
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
-import { useAuthStore } from '@/store/useAuthStore';
-import { Search, Maximize2, Minimize2, Trash2, Check, CheckCheck, FileText, Info, Smartphone, MessageSquare, CornerUpLeft, ArrowLeft, Settings } from 'lucide-react';
+import { 
+    Search, 
+    Maximize2, 
+    Minimize2, 
+    Trash2, 
+    Check, 
+    CheckCheck, 
+    FileText, 
+    Info, 
+    Smartphone, 
+    MessageSquare, 
+    CornerUpLeft, 
+    ArrowLeft, 
+    Settings 
+} from 'lucide-react';
 import ChatInput from './ChatInput';
 import Link from 'next/link';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useChatThreads, useMarkThreadAsRead, useThreadMessages, useDeleteMessage } from '@/hooks/useMessaging';
 import { useMessagingBranch } from '@/hooks/useMessagingBranch';
 import { useMessagingRealtime } from '@/hooks/useMessagingRealtime';
@@ -296,63 +310,70 @@ export default function ChatWindow() {
     return (
         <div className={`flex-1 flex flex-col h-full min-h-0 bg-white transition-all duration-300 relative ${isFullScreen ? 'fixed inset-0 z-100 m-0 rounded-none' : ''}`}>
             {/* Header */}
-            <header className="h-[72px] shrink-0 bg-white border-b border-slate-100 flex items-center justify-between px-6 z-20">
-                <div className="flex items-center gap-4">
-                    <button 
+            <header className="h-16 flex items-center justify-between px-4 border-b border-slate-200 z-10 bg-white shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                    {/* Mobile Back Button */}
+                    <button
                         onClick={() => setActiveConversation(null)}
-                        className="md:hidden p-2 -ml-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-colors"
-                        title="Back to chat list"
+                        className="md:hidden p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg"
                     >
                         <ArrowLeft size={20} />
                     </button>
-                    <div className="relative">
+                    
+                    <button
+                        type="button"
+                        onClick={() => setShowProfile(prev => !prev)}
+                        className="relative"
+                        title="View profile"
+                    >
                         {contact?.avatar ? (
-                            <img src={contact.avatar} alt={contactName} className="w-11 h-11 rounded-full object-cover border-2 border-slate-100" />
+                            <img src={contact.avatar} alt={contactName} className="w-9 h-9 rounded-full object-cover" />
                         ) : (
-                            <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-base shadow-sm ${getAvatarColor(activeConv.id || '')}`}>
-                                {contactName[0].toUpperCase()}
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs ${getAvatarColor(activeConv.id)}`}>
+                                {getInitials(contactName)}
                             </div>
                         )}
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white" />
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h2 className="font-bold text-slate-800 tracking-tight leading-none">{contactName}</h2>
-                            {isOwner && (
-                                <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full border border-primary/20 tracking-wider">
-                                    OWNER
-                                </span>
-                            )}
-                        </div>
-                        <p className="text-xs text-slate-400 mt-1 font-medium">
-                            {isTyping ? (
-                                <span className="text-primary font-bold animate-pulse">
-                                    {isCustomer ? 'Business typing...' : 'Customer typing...'}
-                                </span>
-                            ) : (contact?.phone || contact?.email || 'Active now')}
+                    </button>
+                    <div className="min-w-0">
+                        <h2 className="text-sm font-bold text-slate-800 leading-tight truncate" title={contactName}>
+                            {contactName}
+                        </h2>
+                        <p className="text-[10px] text-slate-400 truncate font-medium">
+                            {isTyping ? 'Typing...' : (contact?.phone || contact?.email || 'Active now')}
                         </p>
                     </div>
                 </div>
-
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 text-slate-400">
+                    <button
+                        onClick={() => setShowProfile(prev => !prev)}
+                        className={`p-2 rounded-lg transition-colors ${showProfile ? 'text-primary bg-primary/10' : 'hover:text-slate-600 hover:bg-slate-50'}`}
+                        title="Contact info"
+                    >
+                        <Info size={18} />
+                    </button>
                     <button 
                         onClick={() => setIsFullScreen(!isFullScreen)}
-                        className="p-2 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+                        className="hidden md:block p-2 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
                     >
                         {isFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                     </button>
-                    <Link 
-                        href={`/dashboard/messaging/chat/settings${branchId ? `?branchId=${branchId}` : ''}`}
-                        className="p-2.5 text-slate-400 hover:text-primary hover:bg-slate-50 rounded-xl transition-all"
-                    >
-                        <Settings size={20} />
-                    </Link>
+                    {!isCustomer && (
+                        <Link 
+                            href={`/dashboard/messaging/chat/settings${branchId ? `?branchId=${branchId}` : ''}`}
+                            className="p-2 text-primary hover:bg-primary/5 rounded-lg transition-all"
+                        >
+                            <Settings size={18} />
+                        </Link>
+                    )}
                 </div>
             </header>
 
             <div className={`flex-1 flex flex-col min-h-0 transition-[padding] duration-300 ${showProfile ? 'pr-80' : ''}`}>
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-3 chat-bg custom-scrollbar">
+                {/* Messages: Add dynamic padding to accommodate keyboard */}
+                <div 
+                    className="flex-1 overflow-y-auto p-6 space-y-3 chat-bg custom-scrollbar"
+                    style={{ paddingBottom: 'env(safe-area-inset-bottom, 1rem)' }}
+                >
                     {isLoading ? (
                         <div className="flex items-center justify-center h-full">
                             <Spinner size="lg" color="primary" />
@@ -416,16 +437,18 @@ export default function ChatWindow() {
                     <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input */}
-                <ChatInput
-                    conversationId={activeConversationId || undefined}
-                    replyTo={replyToMessage}
-                    onCancelReply={() => setReplyToMessage(null)}
-                    onTypingChange={(next) => {
-                        if (!activeConversationId || isPendingThread) return;
-                        emitTyping(activeConversationId, next);
-                    }}
-                />
+                {/* Input: Use viewport-height-aware positioning to stay above keyboard */}
+                <div className="shrink-0 bg-white border-t border-slate-200 p-2 safe-area-bottom">
+                    <ChatInput
+                        conversationId={activeConversationId || undefined}
+                        replyTo={replyToMessage}
+                        onCancelReply={() => setReplyToMessage(null)}
+                        onTypingChange={(next) => {
+                            if (!activeConversationId) return;
+                            emitTyping(activeConversationId, next);
+                        }}
+                    />
+                </div>
             </div>
 
             {/* Profile Panel */}

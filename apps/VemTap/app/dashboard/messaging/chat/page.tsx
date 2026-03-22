@@ -10,14 +10,20 @@ export default function ChatPage() {
 
     return (
         <Suspense fallback={<div className="flex h-screen items-center justify-center bg-white">Loading Chat...</div>}>
-            <div className="w-full h-full flex flex-col md:flex-row bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-h-0 relative">
-                {/* Sidebar - hidden on mobile when a chat is active */}
-                <div className={`w-full md:w-80 lg:w-96 flex flex-col h-full shrink-0 border-r border-gray-100 ${activeConversationId ? 'hidden md:flex' : 'flex'}`}>
+            <div className="w-full h-full flex flex-col md:flex-row bg-white overflow-hidden min-h-0 relative">
+                {/* Chat Sidebar: Hidden on mobile when a chat is active */}
+                <div className={`
+                    w-full md:w-80 lg:w-96 flex flex-col h-full shrink-0 border-r border-gray-100
+                    ${activeConversationId ? 'hidden md:flex' : 'flex'}
+                `}>
                     <ChatSidebar mode="INTERNAL" />
                 </div>
-                
-                {/* Chat Window - hidden on mobile when no chat is active */}
-                <div className={`flex-1 min-w-0 h-full flex flex-col ${!activeConversationId ? 'hidden md:flex' : 'flex'}`}>
+
+                {/* Chat Window: Full screen on mobile, hidden when no chat is active */}
+                <div className={`
+                    flex-1 min-w-0 h-full flex flex-col
+                    ${activeConversationId ? 'flex' : 'hidden md:flex'}
+                `}>
                     <ChatWindow />
                 </div>
             </div>

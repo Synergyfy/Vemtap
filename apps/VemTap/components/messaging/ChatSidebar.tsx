@@ -574,6 +574,7 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                         conversation={conv}
                                         isActive={conv.id === activeConversationId}
                                         isSelected={conv.contact?.id ? selectedContacts.has(conv.contact.id) : false}
+                                        isCustomer={isCustomer}
                                         onSelect={() => {
                                             if (conv.contact?.id) toggleContactSelection(conv.contact.id);
                                         }}
@@ -627,48 +628,31 @@ function ConversationItem({
     isSelected,
     onSelect,
     onClick,
+    isCustomer,
 }: {
     conversation: any;
     isActive: boolean;
     isSelected: boolean;
+    isCustomer: boolean;
     onSelect: () => void;
     onClick: () => void;
 }) {
     const isTyping = useChatStore(s => s.typingByThread[conversation.id]);
-    const pendingThreads = useChatStore(s => s.pendingThreads);
-    const removePendingThread = useChatStore(s => s.removePendingThread);
-    const { branchId, isCustomer } = useMessagingBranch();
-    const deleteThreadMutation = useDeleteThread(isCustomer);
-    const drafts = useChatStore(s => s.drafts);
-    const draftText = drafts[conversation.id];
-    const { contact } = conversation;
+    const draftText = useChatStore(s => s.drafts[conversation.id]);
+    const { mutate: deleteThread, isPending: isDeleting } = useDeleteThread(isCustomer);
+    const { branchId } = useMessagingBranch();
     
-    // Name Fallback: If unknown, try to find it in pending threads (local cache)
-    let name = contact?.name && contact.name !== 'Unknown' ? contact.name : 'Unknown';
-    if (name === 'Unknown') {
-        const pending = pendingThreads.find(p => p.linkedThreadId === conversation.id || p.contact?.id === contact?.id);
-        if (pending?.contact?.name) {
-            name = pending.contact.name;
-        }
-    }
-
-    const handleDelete = async (e: React.MouseEvent) => {
+    const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (window.confirm('Are you sure you want to delete this conversation?')) {
-            if (conversation.id.startsWith('pending-')) {
-                removePendingThread(conversation.id);
-            } else {
-                try {
-                    await deleteThreadMutation.mutateAsync({ 
-                        threadId: conversation.id,
-                        branchId: branchId || undefined
-                    });
-                } catch (err) {
-                    console.error('Delete failed:', err);
-                }
-            }
+            deleteThread({ threadId: conversation.id, branchId: branchId || undefined });
         }
     };
+
+    const customer = conversation.customer;
+    const name = customer?.firstName 
+        ? `${customer.firstName} ${customer.lastName || ''}`.trim() 
+        : (conversation.contact?.name || 'Unknown');
 
     return (
         <div className={`w-full group/item flex items-center transition-colors border-r-4 ${
@@ -694,9 +678,9 @@ function ConversationItem({
                 className="flex-1 flex items-center gap-3 p-4 pl-3 transition-colors text-left overflow-hidden relative group"
             >
                 {/* Avatar */}
-                <div className="relative shrink-0">
-                    {contact?.avatar ? (
-                        <img src={contact.avatar} alt={name} className="w-12 h-12 rounded-full object-cover" />
+                <div className="relative flex-shrink-0">
+                    {customer?.avatar ? (
+                        <img src={customer.avatar} alt={name} className="w-12 h-12 rounded-full object-cover" />
                     ) : (
                         <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm ${getAvatarColor(conversation.id)}`}>
                             {getInitials(name)}
@@ -733,9 +717,9 @@ function ConversationItem({
                                 conversation.lastMessageContent || conversation.status || 'Active conversation'
                             )}
                         </p>
-                        {Array.isArray(contact?.tags) && contact.tags.length > 0 && (
+                        {Array.isArray(customer?.tags) && customer.tags.length > 0 && (
                             <div className="flex gap-1 shrink-0 ml-1">
-                                {contact.tags.slice(0, 1).map((t: string) => (
+                                {customer.tags.slice(0, 1).map((t: string) => (
                                     <span key={t} className="px-1.5 py-0.5 bg-emerald-100 text-emerald-600 text-[9px] font-bold rounded-md whitespace-nowrap">
                                         {t}
                                     </span>
@@ -747,7 +731,7 @@ function ConversationItem({
 
                 <button
                     onClick={handleDelete}
-                    disabled={deleteThreadMutation.isPending}
+                    disabled={isDeleting}
                     className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-rose-500 opacity-40 md:opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
                     title="Delete Conversation"
                 >
@@ -771,7 +755,7 @@ function WhatsAppContactItem({
     onChat: () => void;
     businessName: string;
 }) {
-    const name = visitor.name || 'Unknown';
+    const name = visitor.name || (visitor.firstName ? `${visitor.firstName} ${visitor.lastName || ''}`.trim() : 'Unknown');
     const hasPhone = !!visitor.phone;
 
     return (

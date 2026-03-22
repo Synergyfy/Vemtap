@@ -1,0 +1,19 @@
+./components/dashboard/DashboardSidebar.tsx
+Module parse failed: Identifier 'isMounted' has already been declared (21:11)
+File was processed with these loaders:
+ * ../../node_modules/.pnpm/next@16.1.6_@babel+core@7.2_df661473d78f94c0a572716d8c081a79/node_modules/next/dist/build/webpack/loaders/next-flight-client-module-loader.js
+ * ../../node_modules/.pnpm/next@16.1.6_@babel+core@7.2_df661473d78f94c0a572716d8c081a79/node_modules/next/dist/build/webpack/loaders/next-swc-loader.js
+You may need an additional loader to handle the result of these loaders.
+|         setIsMounted(true);
+|     }, []);
+>     const [isMounted, setIsMounted] = useState(false);
+|     process.env.__NEXT_PRIVATE_MINIMIZE_MACRO_FALSE && useEffect(()=>{
+|         setIsMounted(true);
+
+Import trace for requested module:
+./components/dashboard/DashboardSidebar.tsx
+./app/dashboard/layout.tsx
+
+
+> Build failed because of webpack errors
+ ELIFECYCLE  Command failed with exit code 1.
