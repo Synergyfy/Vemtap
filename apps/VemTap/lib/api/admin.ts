@@ -63,10 +63,12 @@ export const adminBusinessesApi = {
 // DEVICES (Admin)
 // =====================
 export const adminDevicesApi = {
-    getAll: (params?: { search?: string; status?: string; page?: number; limit?: number }) => {
+    getAll: (params?: { search?: string; status?: string; branchId?: string; businessId?: string; page?: number; limit?: number }) => {
         const q = new URLSearchParams();
         if (params?.search) q.set('search', params.search);
         if (params?.status) q.set('status', params.status);
+        if (params?.branchId) q.set('branchId', params.branchId);
+        if (params?.businessId) q.set('businessId', params.businessId);
         if (params?.page) q.set('page', String(params.page));
         if (params?.limit) q.set('limit', String(params.limit));
         return api.get(`/devices/admin?${q.toString()}`);
@@ -105,7 +107,15 @@ export const adminProductsApi = {
 // SUBSCRIPTIONS (Admin)
 // =====================
 export const adminSubscriptionsApi = {
-    getAll: () => api.get('/subscriptions/admin'),
+    getAll: (params?: { search?: string; status?: string; range?: string; page?: number; limit?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.search) q.set('search', params.search);
+        if (params?.status) q.set('status', params.status);
+        if (params?.range) q.set('range', params.range);
+        if (params?.page) q.set('page', String(params.page));
+        if (params?.limit) q.set('limit', String(params.limit));
+        return api.get(`/subscriptions/admin?${q.toString()}`);
+    },
     getStats: () => api.get('/subscriptions/admin/stats'),
     subscribe: (data: { planId: string; businessId: string; billingPeriod: 'monthly' | 'yearly'; paymentReference?: string; isTrial?: boolean }) =>
         api.post('/subscriptions/subscribe', data),
@@ -203,6 +213,7 @@ export const adminFlowApi = {
 
 export const adminHealthApi = {
     getSystemHealth: () => api.get('/admin/system/health'),
+    getPublicHealth: () => api.get('/health'),
 };
 
 // =====================

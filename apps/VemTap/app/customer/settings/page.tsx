@@ -53,8 +53,8 @@ export default function CustomerSettingsPage() {
         router.push('/login');
     };
 
-    const joinedDate = user?.createdAt
-        ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }).toUpperCase()
+    const joinedDate = user?.joined
+        ? new Date(user.joined).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }).toUpperCase()
         : 'JAN 24';
 
     return (

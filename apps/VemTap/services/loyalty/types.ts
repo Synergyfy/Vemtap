@@ -87,7 +87,7 @@ export interface VerifyRedemptionResponse {
 export interface CreateRewardRequest {
     name: string;
     description: string;
-    rewardType: 'discount' | 'free_item' | 'service' | 'cashback' | 'gift';
+    rewardType: RewardType;
     pointCost: number;
     value: number;
     validityDays: number;

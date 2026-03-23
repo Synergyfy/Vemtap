@@ -4,8 +4,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
 import { adminBusinessesApi, adminCreditsApi } from '@/lib/api/admin';
-import { Search, Plus, RefreshCw, Loader2, Trash2, CheckCircle, XCircle, Ban, RotateCcw, Copy, Download, Eye, CreditCard } from 'lucide-react';
+import { CheckCircle, XCircle, Search, Trash2, Edit, MoreVertical, Plus, Download, Filter, Eye, EyeOff, CreditCard, Ban, RotateCcw, Loader2, Check, RefreshCw, Copy } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import PasswordValidation from '@/components/shared/PasswordValidation';
+
 const PAGE_SIZE = 10;
+
 
 interface Business {
     id: string;
@@ -71,6 +75,10 @@ const extractBusinesses = (payload: any): { items: Business[]; total?: number; s
 
 const DetailItem = ({ label, value, icon, link }: { label: string, value?: string | number | null, icon: string, link?: boolean }) => {
     if (!value && value !== 0) value = 'Not provided';
+    const displayValue = (typeof value === 'object' && value !== null && 'name' in (value as any)) 
+        ? (value as any).name 
+        : value;
+
     return (
         <div className="flex gap-4">
             <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 shrink-0 border border-gray-100">
@@ -78,12 +86,12 @@ const DetailItem = ({ label, value, icon, link }: { label: string, value?: strin
             </div>
             <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-0.5">{label}</p>
-                {link && value !== 'Not provided' ? (
-                    <a href={String(value).startsWith('http') ? String(value) : `https://${value}`} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-primary hover:underline break-all truncate block">
-                        {value}
+                {link && displayValue !== 'Not provided' ? (
+                    <a href={String(displayValue).startsWith('http') ? String(displayValue) : `https://${displayValue}`} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-primary hover:underline break-all truncate block">
+                        {displayValue}
                     </a>
                 ) : (
-                    <p className="text-sm font-bold text-text-main break-all">{value}</p>
+                    <p className="text-sm font-bold text-text-main break-all">{displayValue}</p>
                 )}
             </div>
         </div>
@@ -111,6 +119,12 @@ export default function AdminBusinessesPage() {
 
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [detailBusiness, setDetailBusiness] = useState<Business | null>(null);
+    const [passwordValue, setPasswordValue] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showPasswordValidation, setShowPasswordValidation] = useState(false);
+
+
+    const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
     const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
     const [creditBusiness, setCreditBusiness] = useState<Business | null>(null);
@@ -180,6 +194,14 @@ export default function AdminBusinessesPage() {
         return () => clearTimeout(t);
     }, [fetchBusinesses]);
 
+    // Close menu on click outside
+    useEffect(() => {
+        if (!activeMenuId) return;
+        const handleClick = () => setActiveMenuId(null);
+        window.addEventListener('click', handleClick);
+        return () => window.removeEventListener('click', handleClick);
+    }, [activeMenuId]);
+
     const stats = [
         { label: 'Total', value: metaTotal ?? businesses.length, icon: 'store', color: 'blue' },
         { label: 'Verified', value: apiStats?.active ?? businesses.filter(b => normalizeBusinessStatus(b.status) === 'active' || (b as any).isVerified).length, icon: 'check_circle', color: 'green' },
@@ -229,13 +251,23 @@ export default function AdminBusinessesPage() {
         e.preventDefault();
         setIsSubmitting(true);
         const fd = new FormData(e.currentTarget);
+        const ownerPassword = fd.get('ownerPassword') as string;
+
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+        if (!passwordRegex.test(ownerPassword)) {
+            notify.error('Password must meet all security requirements');
+            setIsSubmitting(false);
+            return;
+        }
+
         const payload = {
             name: fd.get('name') as string,
             ownerEmail: fd.get('ownerEmail') as string,
             ownerFirstName: fd.get('ownerFirstName') as string,
             ownerLastName: fd.get('ownerLastName') as string,
-            ownerPassword: fd.get('ownerPassword') as string,
-            phone: fd.get('phone') as string,
+            ownerPassword: ownerPassword,
+            ownerPhone: fd.get('phone') as string,
+            businessNumber: fd.get('phone') as string,
             address: fd.get('address') as string,
         };
         try {
@@ -255,12 +287,12 @@ export default function AdminBusinessesPage() {
         const isVerified = (biz as any).isVerified;
 
         if (isVerified || normalized === 'active') {
-            return { label: 'Verified', classes: 'bg-green-50 text-green-600' };
+            return { label: 'Verified', classes: 'bg-green-50 text-green-600', icon: <CheckCircle size={12} /> };
         }
         if (normalized === 'suspended') {
-            return { label: 'Suspended', classes: 'bg-red-50 text-red-600' };
+            return { label: 'Suspended', classes: 'bg-red-50 text-red-600', icon: <XCircle size={12} /> };
         }
-        return { label: 'Unverified', classes: 'bg-yellow-50 text-yellow-700' };
+        return { label: 'Unverified', classes: 'bg-yellow-50 text-yellow-700', icon: <Search size={12} /> };
     };
 
     const [isExporting, setIsExporting] = useState(false);
@@ -323,27 +355,27 @@ export default function AdminBusinessesPage() {
     return (
         <div className="p-4 md:p-8 space-y-8">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-3xl font-display font-bold text-text-main mb-1">Business Management</h1>
+                    <h1 className="text-2xl md:text-3xl font-display font-bold text-text-main mb-1">Business Management</h1>
                     <p className="text-text-secondary font-medium text-sm">Manage all registered businesses on the platform</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <button
                         onClick={handleExportCSV}
                         disabled={isExporting}
-                        className="px-5 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all flex items-center gap-2 font-bold text-text-secondary active:scale-95 disabled:opacity-50"
+                        className="flex-1 md:flex-none px-4 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2 font-bold text-text-secondary active:scale-95 disabled:opacity-50 text-sm"
                         title="Export CSV"
                     >
-                        {isExporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                        {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
                         {isExporting ? 'Exporting...' : 'Export'}
                     </button>
-                    <button onClick={fetchBusinesses} className="p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors" title="Refresh">
+                    <button onClick={fetchBusinesses} className="p-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors" title="Refresh">
                         <RefreshCw size={18} className="text-text-secondary" />
                     </button>
                     <button
                         onClick={() => { setSelectedBusiness(null); setIsModalOpen(true); }}
-                        className="px-5 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all flex items-center gap-2 shadow-lg shadow-primary/20 active:scale-95"
+                        className="flex-1 md:flex-none px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 active:scale-95 text-sm"
                     >
                         <Plus size={18} />
                         Add Business
@@ -378,8 +410,16 @@ export default function AdminBusinessesPage() {
                             placeholder="Search by name, owner or email..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full h-11 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                            className="w-full h-11 pl-10 pr-10 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
                         />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full text-gray-400 transition-colors"
+                            >
+                                <XCircle size={16} />
+                            </button>
+                        )}
                     </div>
                     <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20">
                         <option value="">All Status</option>
@@ -467,7 +507,8 @@ export default function AdminBusinessesPage() {
                                                 {(() => {
                                                     const badge = getStatusBadge(biz);
                                                     return (
-                                                        <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${badge.classes}`}>
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${badge.classes}`}>
+                                                            {badge.icon}
                                                             {badge.label}
                                                         </span>
                                                     );
@@ -477,45 +518,89 @@ export default function AdminBusinessesPage() {
                                                 {new Date(biz.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                             </td>
                                             <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
-                                                <div className="flex items-center justify-end gap-1">
+                                                <div className="relative inline-block text-left">
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            setCreditBusiness(biz);
-                                                            setIsCreditModalOpen(true);
-                                                            fetchCredits(biz.id);
+                                                            setActiveMenuId(activeMenuId === biz.id ? null : biz.id);
                                                         }}
-                                                        className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
-                                                        title="Manage Credits"
+                                                        className="p-2 hover:bg-gray-100 rounded-lg transition-all text-gray-400 hover:text-text-main"
                                                     >
-                                                        <CreditCard size={16} />
+                                                        <MoreVertical size={20} />
                                                     </button>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setDetailBusiness(biz);
-                                                            setIsDetailModalOpen(true);
-                                                        }}
-                                                        className="p-2 text-primary hover:bg-primary/5 rounded-lg transition-all"
-                                                        title="View Onboarding Details"
-                                                    >
-                                                        <Eye size={16} />
-                                                    </button>
-                                                    {normalizeBusinessStatus(biz.status) === 'pending' && (
-                                                        <button 
-                                                            onClick={(e) => { e.stopPropagation(); handleUnverifiedClick(biz); }} 
-                                                            className="px-3 py-1.5 bg-orange-50 text-orange-600 rounded-lg text-xs font-bold hover:bg-orange-100 transition-all border border-orange-200 shadow-sm"
-                                                        >
-                                                            Unverified
-                                                        </button>
-                                                    )}
-                                                    {normalizeBusinessStatus(biz.status) === 'active' && (
-                                                        <button onClick={() => handleAction('suspend', biz)} className="p-2 text-orange-500 hover:bg-orange-50 rounded-lg transition-all" title="Suspend"><Ban size={16} /></button>
-                                                    )}
-                                                    {normalizeBusinessStatus(biz.status) === 'suspended' && (
-                                                        <button onClick={() => handleAction('reactivate', biz)} className="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-all" title="Reactivate"><RotateCcw size={16} /></button>
-                                                    )}
-                                                    <button onClick={() => handleAction('delete', biz)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete"><Trash2 size={16} /></button>
+
+                                                    <AnimatePresence>
+                                                        {activeMenuId === biz.id && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                                className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 z-50 py-2"
+                                                            >
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setCreditBusiness(biz);
+                                                                        setIsCreditModalOpen(true);
+                                                                        fetchCredits(biz.id);
+                                                                        setActiveMenuId(null);
+                                                                    }}
+                                                                    className="w-full px-4 py-2.5 text-left text-sm font-bold text-blue-600 hover:bg-blue-50 flex items-center gap-3 transition-colors"
+                                                                >
+                                                                    <CreditCard size={16} />
+                                                                    Manage Credits
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setDetailBusiness(biz);
+                                                                        setIsDetailModalOpen(true);
+                                                                        setActiveMenuId(null);
+                                                                    }}
+                                                                    className="w-full px-4 py-2.5 text-left text-sm font-bold text-primary hover:bg-primary/5 flex items-center gap-3 transition-colors"
+                                                                >
+                                                                    <Eye size={16} />
+                                                                    View Details
+                                                                </button>
+
+                                                                {normalizeBusinessStatus(biz.status) === 'pending' && (
+                                                                    <button
+                                                                        onClick={() => { handleUnverifiedClick(biz); setActiveMenuId(null); }}
+                                                                        className="w-full px-4 py-2.5 text-left text-sm font-bold text-orange-600 hover:bg-orange-50 flex items-center gap-3 transition-colors border-t border-gray-50"
+                                                                    >
+                                                                        <CheckCircle size={16} />
+                                                                        Review Documents
+                                                                    </button>
+                                                                )}
+
+                                                                <div className="border-t border-gray-50 my-1" />
+
+                                                                {normalizeBusinessStatus(biz.status) === 'active' && (
+                                                                    <button
+                                                                        onClick={() => { handleAction('suspend', biz); setActiveMenuId(null); }}
+                                                                        className="w-full px-4 py-2.5 text-left text-sm font-bold text-orange-500 hover:bg-orange-50 flex items-center gap-3 transition-colors"
+                                                                    >
+                                                                        <Ban size={16} />
+                                                                        Suspend
+                                                                    </button>
+                                                                )}
+                                                                {normalizeBusinessStatus(biz.status) === 'suspended' && (
+                                                                    <button
+                                                                        onClick={() => { handleAction('reactivate', biz); setActiveMenuId(null); }}
+                                                                        className="w-full px-4 py-2.5 text-left text-sm font-bold text-green-500 hover:bg-green-50 flex items-center gap-3 transition-colors"
+                                                                    >
+                                                                        <RotateCcw size={16} />
+                                                                        Reactivate
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    onClick={() => { handleAction('delete', biz); setActiveMenuId(null); }}
+                                                                    className="w-full px-4 py-2.5 text-left text-sm font-bold text-gray-400 hover:text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                    Delete Business
+                                                                </button>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
                                                 </div>
                                             </td>
                                         </tr>
@@ -588,12 +673,37 @@ export default function AdminBusinessesPage() {
 
                             <div>
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Owner Password</label>
-                                <input name="ownerPassword" type="password" required placeholder="••••••••" className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                <div className="relative">
+                                    <input 
+                                        name="ownerPassword" 
+                                        type={showPassword ? "text" : "password"} 
+                                        required 
+                                        placeholder="••••••••" 
+                                        className="w-full h-11 pl-4 pr-11 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" 
+                                        onChange={(e) => setPasswordValue(e.target.value)}
+                                        onFocus={() => setShowPasswordValidation(true)}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-text-main transition-colors p-1"
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+                                <div className="mt-2">
+                                    <PasswordValidation 
+                                        password={passwordValue}
+                                        onSuggest={(p) => setPasswordValue(p)}
+                                        showAlways={showPasswordValidation}
+                                    />
+                                </div>
                             </div>
+
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Phone (Optional)</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Phone</label>
                                     <input name="phone" type="tel" placeholder="+234..." className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
                                 </div>
                                 <div>
@@ -776,6 +886,38 @@ export default function AdminBusinessesPage() {
                                         <DetailItem label="Total Business Locations" value={detailBusiness.totalBranches !== undefined ? detailBusiness.totalBranches : detailBusiness.branches?.length} icon="account_tree" />
                                     </div>
                                 </div>
+                            </div>
+
+                            <div className="border-t border-gray-100 pt-8 mt-4">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Linked Devices</h3>
+                                    <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-lg text-[10px] font-bold">
+                                        {detailBusiness.devices?.length ?? 0} Devices
+                                    </span>
+                                </div>
+                                {detailBusiness.devices && detailBusiness.devices.length > 0 ? (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {detailBusiness.devices.map((dev: any) => (
+                                            <div key={dev.id} className="p-4 bg-gray-50 border border-gray-100 rounded-2xl flex items-center gap-4 group hover:border-primary/20 transition-all">
+                                                <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-gray-400 group-hover:text-primary transition-colors">
+                                                    <span className="material-icons-round">smartphone</span>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-xs font-black text-text-main truncate">{dev.name || dev.serialNumber || 'NFC Device'}</p>
+                                                        <span className={`size-1.5 rounded-full ${dev.status === 'active' ? 'bg-green-500' : 'bg-gray-300'}`} />
+                                                    </div>
+                                                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mt-0.5">{dev.type || 'Standard'}</p>
+                                                </div>
+                                                <p className="text-[9px] font-black text-primary/40 group-hover:text-primary transition-colors">#{dev.id.slice(-6)}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="p-6 bg-gray-50 border border-dashed border-gray-200 rounded-2xl text-center">
+                                        <p className="text-xs font-bold text-text-secondary italic">No devices linked to this business yet.</p>
+                                    </div>
+                                )}
                             </div>
 
                             {(detailBusiness as any).documents && (detailBusiness as any).documents.length > 0 && (

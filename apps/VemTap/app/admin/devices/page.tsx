@@ -7,6 +7,7 @@ import { notify } from '@/lib/notify';
 import { Plus, Search, Filter, Download, MoreVertical, Trash2, Cpu, Battery, Activity, Link as LinkIcon, Edit3, Copy } from 'lucide-react';
 import EditDeviceModal from '@/components/dashboard/EditDeviceModal';
 import { Device } from '@/services/devices/types';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 const PAGE_SIZE = 10;
 
@@ -31,13 +32,19 @@ const extractDevices = (payload: any): { items: any[]; total: number; page: numb
 
 export default function AdminDevicesPage() {
     const queryClient = useQueryClient();
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const statusParam = searchParams.get('status') || 'all';
+
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterStatus, setFilterStatus] = useState('all');
+    const [filterStatus, setFilterStatus] = useState(statusParam);
+    const [filterBusiness, setFilterBusiness] = useState('');
     const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
     const [editingDevice, setEditingDevice] = useState<any>(null);
     const [origin, setOrigin] = useState('https://vemtap.com');
     const [currentPage, setCurrentPage] = useState(1);
     const [businessesList, setBusinessesList] = useState<any[]>([]);
+    const [filterBusinessesList, setFilterBusinessesList] = useState<any[]>([]);
     const [isBusinessesLoading, setIsBusinessesLoading] = useState(false);
 
     useEffect(() => {
@@ -47,14 +54,29 @@ export default function AdminDevicesPage() {
     }, []);
 
     useEffect(() => {
+        setFilterStatus(statusParam);
+    }, [statusParam]);
+
+    useEffect(() => {
         setCurrentPage(1);
-    }, [searchQuery, filterStatus]);
+    }, [searchQuery, filterStatus, filterBusiness]);
+
+    const handleStatusChange = (newStatus: string) => {
+        setFilterStatus(newStatus);
+        const params = new URLSearchParams(searchParams.toString());
+        if (newStatus === 'all') {
+            params.delete('status');
+        } else {
+            params.set('status', newStatus);
+        }
+        router.push(`/admin/devices?${params.toString()}`);
+    };
 
     useEffect(() => {
         const fetchAllBusinesses = async () => {
             setIsBusinessesLoading(true);
             try {
-                // Fetch first 100 businesses for the dropdown
+                // Fetch first 100 businesses for the dropdowns
                 const data = await adminBusinessesApi.getAll({ limit: 100, status: 'active' });
                 const roots = [data, data?.data, data?.data?.data, data?.result, data?.payload];
                 let items = [];
@@ -66,6 +88,7 @@ export default function AdminDevicesPage() {
                     if (key) { items = root[key]; break; }
                 }
                 setBusinessesList(items);
+                setFilterBusinessesList(items);
             } catch (err: any) {
                 console.error('Failed to fetch businesses for dropdown', err);
             } finally {
@@ -73,18 +96,17 @@ export default function AdminDevicesPage() {
             }
         };
 
-        if (isRegisterModalOpen) {
-            fetchAllBusinesses();
-        }
-    }, [isRegisterModalOpen]);
+        fetchAllBusinesses();
+    }, []);
 
     // Fetch Devices from live API
     const { data: devicesData, isLoading: isDevicesLoading } = useQuery({
-        queryKey: ['admin-devices', searchQuery, filterStatus, currentPage],
+        queryKey: ['admin-devices', searchQuery, filterStatus, filterBusiness, currentPage],
         queryFn: () =>
             adminDevicesApi.getAll({
                 search: searchQuery || undefined,
                 status: filterStatus === 'all' ? undefined : filterStatus,
+                businessId: filterBusiness || undefined,
                 page: currentPage,
                 limit: PAGE_SIZE,
             }),
@@ -113,7 +135,7 @@ export default function AdminDevicesPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-devices'] });
             setIsRegisterModalOpen(false);
-            notify.success('NFC Device registered and provisioned successfully');
+            notify.success('Device registered and provisioned successfully');
         },
         onError: (err: any) => {
             notify.error(err.message || 'Failed to register device. Please check the Serial ID.');
@@ -272,12 +294,22 @@ export default function AdminDevicesPage() {
                         <div className="flex gap-2">
                             <select
                                 value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
+                                onChange={(e) => handleStatusChange(e.target.value)}
                                 className="h-12 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
                             >
                                 <option value="all">All Status</option>
                                 <option value="active">Active/Linked</option>
                                 <option value="inactive">Available</option>
+                            </select>
+                            <select
+                                value={filterBusiness}
+                                onChange={(e) => setFilterBusiness(e.target.value)}
+                                className="h-12 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            >
+                                <option value="">All Businesses</option>
+                                {filterBusinessesList.map((biz: any) => (
+                                    <option key={biz.id} value={biz.id}>{biz.name}</option>
+                                ))}
                             </select>
                             <button
                                 onClick={handleExportCSV}
@@ -450,7 +482,7 @@ export default function AdminDevicesPage() {
                             <div className="flex items-center justify-between mb-8">
                                 <div>
                                     <h2 className="text-2xl font-display font-bold text-text-main">Device Provisioning</h2>
-                                    <p className="text-sm text-text-secondary font-medium">Add new NFC hardware to the global fleet</p>
+                                    <p className="text-sm text-text-secondary font-medium">Add new hardware to the global fleet</p>
                                 </div>
                                 <button onClick={() => setIsRegisterModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                                     <Plus size={24} className="rotate-45 text-text-secondary" />
@@ -475,7 +507,7 @@ export default function AdminDevicesPage() {
                                         <input
                                             name="code"
                                             required
-                                            placeholder="NFC-XXXX-XXXX"
+                                            placeholder="Serial Number (e.g. SN-XXXX-XXXX)"
                                             className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 focus:bg-white transition-all font-mono text-sm font-bold"
                                         />
                                     </div>

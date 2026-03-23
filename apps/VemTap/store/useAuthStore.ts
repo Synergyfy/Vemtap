@@ -53,7 +53,7 @@ export interface User {
   status?: string;
   lastLogin?: string;
   joined?: string;
-  createdAt?: string;
+  permissions?: string[];
   engagement?: UserEngagement;
 }
 

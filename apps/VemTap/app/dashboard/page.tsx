@@ -8,7 +8,8 @@ import {
     ChevronDown, Send, Download, Gift, ArrowRight, MessageSquare, Zap
 } from 'lucide-react';
 import LogoIcon from '@/components/brand/LogoIcon';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import AdminViewerBanner from '@/components/admin/control-tower/AdminViewerBanner';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import PreviewRewardModal from '@/components/dashboard/PreviewRewardModal';
@@ -24,6 +25,9 @@ export default function DashboardPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' } | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
     const [rewardPreviewVisitor, setRewardPreviewVisitor] = useState<Visitor | null>(null);
+    const searchParams = useSearchParams();
+    const isAdminMode = searchParams.get('admin_mode') === '1';
+    const businessUid = searchParams.get('business_uid');
 
     const user = useAuthStore((state) => state.user);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -150,6 +154,7 @@ export default function DashboardPage() {
 
     return (
         <div className="p-4 md:p-8 space-y-6">
+            {isAdminMode && <AdminViewerBanner subjectId={businessUid} type="business" />}
             {/* Page Header */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex-1">

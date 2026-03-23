@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import { useQueryClient } from '@tanstack/react-query';
+import { useUrlPersistence } from '@/hooks/useUrlPersistence';
 
 interface CustomerSidebarProps {
     children: React.ReactNode;
@@ -23,6 +24,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
     const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+    const { getPersistedLink } = useUrlPersistence();
     const [showNotifications, setShowNotifications] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const queryClient = useQueryClient();
@@ -142,7 +144,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                             return (
                                 <Link
                                     key={item.id}
-                                    href={item.href}
+                                    href={getPersistedLink(item.href)}
                                     onClick={() => setIsMobileMenuOpen(false)}
                                     target={item.external ? '_blank' : undefined}
                                     rel={item.external ? 'noopener noreferrer' : undefined}
@@ -164,7 +166,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                         <Star className="text-white mb-2 bg-white/20 p-2 rounded-lg backdrop-blur-sm" size={32} />
                         <h3 className="font-bold text-sm mb-1">Earn more points!</h3>
                         <p className="text-xs text-white/80 mb-3">Visit our partner stores to unlock exclusive rewards.</p>
-                        <Link href="/customer/loyalty" onClick={() => setIsMobileMenuOpen(false)} className="inline-block text-xs font-bold bg-white text-primary px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+                        <Link href={getPersistedLink("/customer/loyalty")} onClick={() => setIsMobileMenuOpen(false)} className="inline-block text-xs font-bold bg-white text-primary px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
                             View Rewards
                         </Link>
                     </div>
@@ -297,7 +299,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                                     </div>
                                     <div className="p-3 border-t border-gray-100 text-center">
                                         <Link
-                                            href="/customer/notifications"
+                                            href={getPersistedLink("/customer/notifications")}
                                             className="text-xs font-bold text-primary hover:text-primary-hover"
                                             onClick={() => setShowNotifications(false)}
                                         >

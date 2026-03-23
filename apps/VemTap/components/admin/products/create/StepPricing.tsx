@@ -55,9 +55,13 @@ export default function StepPricing() {
                 name: formData.title,
                 description: formData.description,
                 productTypeId: formData.productTypeId,
-                sku: formData.sku,
+                category: formData.category,
                 price: formData.msrp,
+                originalPrice: formData.originalPrice,
+                costPrice: formData.costPrice,
+                customizationFee: formData.customizationFee,
                 images: imagesArray,
+                image: imagesArray[0] || 'https://placehold.co/600x400/png?text=Hardware+Product',
                 tag: formData.tag,
                 tagColor: formData.tagColor,
                 moq: formData.volumeDiscounts[0]?.minQty || 1,
@@ -75,13 +79,15 @@ export default function StepPricing() {
                     return acc;
                 }, {} as Record<string, string>),
                 videos: videoUrl ? [videoUrl] : [],
-                howToSteps: formData.howToSteps.map(step => ({
+                howToUse: formData.howToSteps.map(step => ({
                     title: step.title,
                     description: step.description
                 })),
                 rating: 5, // Default rating
                 requestQuoteThreshold: formData.bulkQuotesEnabled ? 100 : null
             };
+
+
 
             if (editingProductId) {
                 return adminProductsApi.update(editingProductId, payload);

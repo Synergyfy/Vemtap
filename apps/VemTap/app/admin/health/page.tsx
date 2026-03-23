@@ -19,10 +19,16 @@ export default function SystemHealthPage() {
         refetchInterval: 30000, // Auto refresh every 30s
     });
 
+    const { data: publicHealth } = useQuery({
+        queryKey: ['public-health'],
+        queryFn: () => adminHealthApi.getPublicHealth(),
+        refetchInterval: 60000,
+    });
+
     const METRICS = [
         { label: 'CPU Usage', value: health ? `${health.metrics.cpu}%` : '...', icon: Cpu, color: 'text-blue-500' },
         { label: 'Memory Usage', value: health ? `${health.metrics.memory}%` : '...', icon: Activity, color: 'text-purple-500' },
-        { label: 'Disk Space', value: health ? `${health.metrics.disk}%` : '...', icon: HardDrive, color: 'text-emerald-500' },
+        { label: 'Database', value: publicHealth?.status === 'ok' ? 'Online' : 'Check', icon: Database, color: publicHealth?.status === 'ok' ? 'text-emerald-500' : 'text-amber-500' },
         { label: 'System Uptime', value: health ? `${Math.floor(health.metrics.uptime / 3600)}h ${Math.floor((health.metrics.uptime % 3600) / 60)}m` : '...', icon: Zap, color: 'text-primary' },
     ];
 

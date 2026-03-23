@@ -8,6 +8,7 @@ export default function AdminCustomerUsersPage() {
             title="Customers"
             description="Manage all customer accounts"
             roleFilter="Customer"
+            allowedCreationRoles={["Customer"]}
             hideRoleFilter
         />
     );

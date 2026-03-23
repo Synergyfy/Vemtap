@@ -9,7 +9,8 @@ import {
     QrCode, Scan, X, ExternalLink, ArrowRight, ChevronRight,
     Loader2
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import AdminViewerBanner from '@/components/admin/control-tower/AdminViewerBanner';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { fetchDeviceByCode, Device } from '@/lib/api/devices';
@@ -42,6 +43,9 @@ export default function CustomerDashboardPage() {
     const redeemMutation = useRedeemCustomerReward();
 
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const isAdminMode = searchParams.get('admin_mode') === '1';
+    const customerUid = searchParams.get('customer_uid');
 
     const analytics = analyticsResponse?.data || analyticsResponse;
     const profile = profileResponse?.data || profileResponse;
@@ -139,6 +143,7 @@ export default function CustomerDashboardPage() {
     return (
         <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
             <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-8">
+                {isAdminMode && <AdminViewerBanner subjectId={customerUid} type="customer" />}
                 {/* ID Card / Quick Scan - Hero Section */}
                 <div className="bg-linear-to-br from-primary via-blue-600 to-indigo-700 rounded-2xl p-8 md:p-12 text-white relative overflow-hidden shadow-2xl shadow-primary/30 group">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full translate-x-32 -translate-y-32 blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
