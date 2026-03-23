@@ -139,7 +139,7 @@ export class BusinessesService {
   async findById(id: string): Promise<Business> {
     const business = await this.businessesRepository.findOne({
       where: { id },
-      relations: ['branches'],
+      relations: ['branches', 'category', 'subcategory'],
     });
     if (!business) {
       throw new NotFoundException('Business not found');
@@ -290,6 +290,8 @@ export class BusinessesService {
         'mainBranch.isMainBranch = :isMain',
         { isMain: true },
       )
+      .leftJoinAndSelect('business.category', 'category')
+      .leftJoinAndSelect('business.subcategory', 'subcategory')
       .loadRelationCountAndMap('business.totalBranches', 'business.branches');
 
     if (query.status) {
@@ -376,7 +378,7 @@ export class BusinessesService {
 
     const [businesses, total] = await this.businessesRepository.findAndCount({
       where: { status: BusinessStatus.SUSPENDED },
-      relations: ['owner'],
+      relations: ['owner', 'category', 'subcategory'],
       order: { suspendedAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -399,7 +401,7 @@ export class BusinessesService {
     // 1. Get businesses that are NOT verified
     const [items, total] = await this.businessesRepository.findAndCount({
       where: { isVerified: false },
-      relations: ['owner'],
+      relations: ['owner', 'category', 'subcategory'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,

@@ -13,6 +13,10 @@ import {
 import { FormsService } from './forms.service';
 import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
+import { UpdateBranchFormSettingsDto } from './dto/update-branch-form-settings.dto';
+import { BranchIdParamDto } from './dto/branch-id-param.dto';
+
+
 import {
   ApiTags,
   ApiOperation,
@@ -316,4 +320,22 @@ export class FormsController {
     const branchId = await this.getBranchId(req.user, filter.branchId);
     return this.formsService.getFormResponses(branchId, id);
   }
+
+  @Patch('branch-settings/:branchId')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Update branch-specific form settings (appearance, messages)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Branch settings have been successfully updated.',
+  })
+  async updateBranchSettings(
+    @Request() req: RequestWithUser,
+    @Param() params: BranchIdParamDto,
+    @Body() dto: UpdateBranchFormSettingsDto,
+  ) {
+    const branchId = await this.getBranchId(req.user, params.branchId);
+    return this.formsService.updateBranchSettings(branchId, dto);
+  }
 }
+
+

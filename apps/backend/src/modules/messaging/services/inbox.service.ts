@@ -45,12 +45,24 @@ export class InboxService {
   async getThreads(
     branchId: string,
     channel: Channel,
+    segmentId?: string,
   ): Promise<ConversationThread[]> {
-    return this.threadRepo.find({
-      where: { branchId, channel },
-      relations: ['customer'],
-      order: { lastActivityAt: 'DESC' },
-    });
+    const query = this.threadRepo
+      .createQueryBuilder('thread')
+      .leftJoinAndSelect('thread.customer', 'customer')
+      .where('thread.branchId = :branchId', { branchId })
+      .andWhere('thread.channel = :channel', { channel });
+
+    if (segmentId) {
+      query.innerJoin(
+        'segment_users',
+        'su',
+        'su.userId = customer.id AND su.segmentId = :segmentId',
+        { segmentId },
+      );
+    }
+
+    return query.orderBy('thread.lastActivityAt', 'DESC').getMany();
   }
 
   async getThreadMessages(
@@ -184,6 +196,85 @@ export class InboxService {
     }
 
     return thread;
+  }
+
+  async editMessage(
+    messageId: string,
+    content: string,
+    userId: string, // Initiator (User UUID)
+    branchId?: string, // If calling from branch context
+  ): Promise<Message> {
+    const message = await this.messageRepo.findOne({
+      where: { id: messageId },
+      relations: ['thread'],
+    });
+
+    if (!message) throw new NotFoundException('Message not found');
+
+    // Simple permission check: must be sender
+    // Note: if branchId is provided, we check if it matches the message branchId (staff context)
+    // but we should still ideally check if it was OUTBOUND (staff) or INBOUND (customer)
+    if (branchId) {
+      if (message.direction !== MessageDirection.OUTBOUND || message.branchId !== branchId) {
+        throw new ForbiddenException('Cannot edit this message');
+      }
+    } else {
+      if (message.direction !== MessageDirection.INBOUND || message.customerId !== userId) {
+        throw new ForbiddenException('Cannot edit this message');
+      }
+    }
+
+    if (message.isDeleted) {
+      throw new BadRequestException('Cannot edit a deleted message');
+    }
+
+    message.content = content;
+    message.isEdited = true;
+    const saved = await this.messageRepo.save(message);
+
+    // Broadcast update
+    this.messagingGateway.emitMessageUpdate(message.threadId, message.branchId, message.customerId, {
+      id: message.id,
+      content: message.content,
+      isEdited: true,
+      type: 'EDIT',
+    });
+
+    return saved;
+  }
+
+  async deleteMessage(
+    messageId: string,
+    userId: string,
+    branchId?: string,
+  ): Promise<void> {
+    const message = await this.messageRepo.findOne({
+      where: { id: messageId },
+      relations: ['thread'],
+    });
+
+    if (!message) throw new NotFoundException('Message not found');
+
+    if (branchId) {
+      if (message.direction !== MessageDirection.OUTBOUND || message.branchId !== branchId) {
+        throw new ForbiddenException('Cannot delete this message');
+      }
+    } else {
+      if (message.direction !== MessageDirection.INBOUND || message.customerId !== userId) {
+        throw new ForbiddenException('Cannot delete this message');
+      }
+    }
+
+    message.isDeleted = true;
+    message.content = 'Message deleted'; // Clear content for privacy, but keep entity
+    await this.messageRepo.save(message);
+
+    // Broadcast update
+    this.messagingGateway.emitMessageUpdate(message.threadId, message.branchId, message.customerId, {
+      id: message.id,
+      isDeleted: true,
+      type: 'DELETE',
+    });
   }
 
   // --- Customer Facing Methods ---

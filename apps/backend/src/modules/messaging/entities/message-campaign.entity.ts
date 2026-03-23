@@ -16,6 +16,7 @@ export enum AudienceType {
   GROUP = 'GROUP',
   TAGGED = 'TAGGED',
   RECENT = 'RECENT',
+  SEGMENT = 'SEGMENT',
 }
 
 @Entity('message_campaigns')
@@ -41,6 +42,9 @@ export class MessageCampaign extends AbstractBaseEntity {
 
   @Column({ type: 'enum', enum: AudienceType })
   audienceType: AudienceType;
+
+  @Column({ type: 'uuid', nullable: true })
+  segmentId: string;
 
   @Column({ type: 'int', default: 0 })
   audienceSize: number;

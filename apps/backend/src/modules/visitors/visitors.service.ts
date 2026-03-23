@@ -53,6 +53,8 @@ export class SendCampaignBody {
 
 import { VisitedBranchesQueryDto } from './dto/visited-branches-query.dto';
 import { PaginatedVisitedBranchResponseDto } from './dto/visited-branch-response.dto';
+import { AdminVisitorActivitiesQueryDto } from './dto/admin-visitor-activities-query.dto';
+import { PaginatedVisitResponseDto } from './dto/visit-response.dto';
 
 @Injectable()
 export class VisitorsService {
@@ -275,9 +277,9 @@ export class VisitorsService {
       vipCountQb.andWhere('visit.businessId = :businessId', { businessId });
     }
 
-    const vipCount = await vipCountQb
+    const returningCount = await vipCountQb
       .groupBy('user.id')
-      .having('COUNT(visit.id) > 10')
+      .having('COUNT(visit.id) > 1')
       .getCount();
 
     return {
@@ -304,10 +306,10 @@ export class VisitorsService {
           trend: { value: '0', isUp: true },
         },
         {
-          label: 'VIP Guests',
-          value: vipCount.toLocaleString(),
-          icon: 'star',
-          color: 'yellow',
+          label: 'Returning Visitors',
+          value: returningCount.toLocaleString(),
+          icon: 'refresh-cw',
+          color: 'orange',
           trend: { value: '0', isUp: true },
         },
       ],
@@ -409,6 +411,11 @@ export class VisitorsService {
     const updatedUser = await this.userRepository.findOne({
       where: { id: user.id },
       relations: ['visits'],
+      order: {
+        visits: {
+          createdAt: 'DESC',
+        },
+      },
     });
 
     return this.mapToVisitorDto(updatedUser!);
@@ -503,12 +510,31 @@ export class VisitorsService {
     };
   }
 
-  async findOne(id: string): Promise<VisitorResponseDto> {
-    const user = await this.userRepository.findOne({
-      where: { id },
-      relations: ['visits'],
-    });
-    if (!user) throw new NotFoundException('Visitor not found');
+  async findOne(
+    id: string,
+    branchId?: string,
+    businessId?: string,
+  ): Promise<VisitorResponseDto> {
+    const qb = this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.visits', 'visit')
+      .where('user.id = :id', { id });
+
+    if (branchId) {
+      qb.andWhere('visit.branchId = :branchId', { branchId });
+    } else if (businessId) {
+      qb.andWhere('visit.businessId = :businessId', { businessId });
+    }
+
+    const user = await qb.orderBy('visit.createdAt', 'DESC').getOne();
+
+    if (!user) {
+      // If user exists but has no visits in this context, we still return the user if they exist globally
+      const baseUser = await this.userRepository.findOne({ where: { id } });
+      if (!baseUser) throw new NotFoundException('Visitor not found');
+      return this.mapToVisitorDto(baseUser);
+    }
+
     return this.mapToVisitorDto(user);
   }
 
@@ -525,6 +551,8 @@ export class VisitorsService {
     if (updateData.phone) user.phone = updateData.phone;
 
     await this.userRepository.save(user);
+    // Note: We return findOne without context here as update is generally global, 
+    // but the controller will call findOne with context if needed next time.
     return this.findOne(id);
   }
 
@@ -912,8 +940,8 @@ export class VisitorsService {
 
   private mapToVisitorDto(user: User): VisitorResponseDto {
     const visits = user.visits || [];
-    const lastVisit =
-      visits.length > 0 ? visits[visits.length - 1].createdAt : new Date();
+    // Assuming visits are ordered DESC (latest first) from query
+    const lastVisit = visits.length > 0 ? visits[0].createdAt : user.createdAt;
     const visitCount = visits.length;
 
     let status = 'New';
@@ -932,6 +960,66 @@ export class VisitorsService {
       lastVisit: lastVisit,
       status: status,
       totalSpent: '₦0',
+    };
+  }
+
+  async findAdminVisitorActivities(
+    query: AdminVisitorActivitiesQueryDto,
+  ): Promise<PaginatedVisitResponseDto> {
+    const { page = 1, limit = 10, search, branchId, businessId } = query;
+    const skip = (page - 1) * limit;
+
+    const qb = this.visitRepository
+      .createQueryBuilder('visit')
+      .leftJoinAndSelect('visit.customer', 'customer')
+      .leftJoinAndSelect('visit.branch', 'branch')
+      .leftJoinAndSelect('branch.business', 'business');
+
+    if (branchId) {
+      qb.andWhere('visit.branchId = :branchId', { branchId });
+    }
+
+    if (businessId) {
+      qb.andWhere('visit.businessId = :businessId', { businessId });
+    }
+
+    if (search) {
+      qb.andWhere(
+        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR customer.email ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    const [visits, total] = await qb
+      .orderBy('visit.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data: visits.map((visit) => ({
+        id: visit.id,
+        createdAt: visit.createdAt,
+        status: visit.status,
+        customer: {
+          id: visit.customer?.id,
+          firstName: visit.customer?.firstName,
+          lastName: visit.customer?.lastName,
+          email: visit.customer?.email,
+          phone: visit.customer?.phone,
+        },
+        branch: {
+          id: visit.branch?.id,
+          name: visit.branch?.name,
+        },
+        business: {
+          id: visit.branch?.business?.id,
+          name: visit.branch?.business?.name,
+        },
+      })),
+      total,
+      page,
+      limit,
     };
   }
 }
