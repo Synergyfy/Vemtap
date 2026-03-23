@@ -14,7 +14,7 @@ import ChatWindow from '@/components/messaging/ChatWindow';
 export default function WhatsAppOverviewPage() {
     const { data: analytics } = useMessagingAnalytics('WHATSAPP');
     const [isTopUpOpen, setIsTopUpOpen] = React.useState(false);
-    const [activeTab, setActiveTab] = React.useState<'inbox' | 'promotional'>('inbox');
+    const [activeTab, setActiveTab] = React.useState<'promotional'>('promotional');
 
     const channelStats = [
         { label: 'Messages Sent', value: analytics?.sent?.toLocaleString() ?? '—', icon: Send, color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -34,18 +34,6 @@ export default function WhatsAppOverviewPage() {
                 </div>
 
                 <div className="flex gap-8">
-                    <button
-                        onClick={() => setActiveTab('inbox')}
-                        className={`pb-4 px-2 text-sm font-bold transition-all relative ${activeTab === 'inbox' ? 'text-primary' : 'text-text-secondary hover:text-text-main'}`}
-                    >
-                        <div className="flex items-center gap-2">
-                            <Inbox size={18} />
-                            WhatsApp Inbox
-                        </div>
-                        {activeTab === 'inbox' && (
-                            <motion.div layoutId="wa-tab" className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />
-                        )}
-                    </button>
                     <button
                         onClick={() => setActiveTab('promotional')}
                         className={`pb-4 px-2 text-sm font-bold transition-all relative ${activeTab === 'promotional' ? 'text-primary' : 'text-text-secondary hover:text-text-main'}`}
@@ -68,24 +56,6 @@ export default function WhatsAppOverviewPage() {
             {/* Tab Content */}
             <div className="flex-1 overflow-hidden relative">
                 <AnimatePresence mode="wait">
-                    {activeTab === 'inbox' ? (
-                        <motion.div
-                            key="inbox"
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            className="w-full h-full p-4 md:p-8 pt-6 overflow-hidden"
-                        >
-                            <div className="w-full h-full flex flex-col md:flex-row bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden min-h-0 relative">
-                                <div className="w-full md:w-80 lg:w-96 flex flex-col h-[45vh] md:h-full shrink-0 border-r border-gray-100">
-                                    <ChatSidebar mode="WHATSAPP" />
-                                </div>
-                                <div className="flex-1 min-w-0 h-full flex flex-col">
-                                    <ChatWindow />
-                                </div>
-                            </div>
-                        </motion.div>
-                    ) : (
                         <motion.div
                             key="promotional"
                             initial={{ opacity: 0, x: 20 }}
@@ -155,7 +125,6 @@ export default function WhatsAppOverviewPage() {
                                 </div>
                             </div>
                         </motion.div>
-                    )}
                 </AnimatePresence>
             </div>
 

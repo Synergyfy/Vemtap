@@ -64,6 +64,7 @@ export interface Reward {
   totalAvailable?: number;
   totalRedeemed: number;
   isActive: boolean;
+  audienceTarget?: 'all' | 'new' | 'returning';
   branchId?: string;
   imageUrls?: string[];
   imageUrl?: string;
