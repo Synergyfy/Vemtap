@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { Info, Loader2 } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Info, Loader2, AlertTriangle, X } from 'lucide-react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
 import DraggableButtonList from '@/components/dashboard/engagement/DraggableButtonList';
@@ -48,9 +48,12 @@ export default function ActiveFormsPage() {
     const branchKey = branchScope || userBranchId || 'global';
 
     const availableForms = useMemo(
-        () => forms.filter((form) => form.isPublished && form.isActive),
+        () => forms.filter((form) => form.isPublished && form.isActive && form.showAfterLeadCapture),
         [forms]
     );
+
+    // State for the "form is in sequence" warning modal
+    const [sequenceWarning, setSequenceWarning] = useState<{ formId: string; formTitle: string } | null>(null);
 
     const { data: business } = useMyBusiness();
     const { activeBranchId: currentActiveBranchId } = useActiveBranch();
@@ -193,7 +196,14 @@ export default function ActiveFormsPage() {
                                         <DraggableButtonList
                                             forms={activeForms}
                                             onReorder={reorderActiveFormsByIndex}
-                                            onRemove={(id) => toggleActiveForm(branchKey, id)}
+                                            onRemove={(id) => {
+                                                const form = activeForms.find(f => f.id === id);
+                                                if (form) {
+                                                    setSequenceWarning({ formId: id, formTitle: form.title || 'Untitled Form' });
+                                                } else {
+                                                    toggleActiveForm(branchKey, id);
+                                                }
+                                            }}
                                         />
                                     )}
 
@@ -339,6 +349,63 @@ export default function ActiveFormsPage() {
                                         </div>
                                     </PhoneFrame>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Sequence Warning Modal */}
+            {sequenceWarning && (
+                <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={() => setSequenceWarning(null)}>
+                    <div
+                        className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="h-1.5 bg-amber-500" />
+                        <div className="p-6 space-y-5">
+                            <div className="flex items-start justify-between">
+                                <div className="size-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                                    <AlertTriangle size={24} />
+                                </div>
+                                <button
+                                    onClick={() => setSequenceWarning(null)}
+                                    className="size-8 rounded-lg text-gray-400 hover:bg-gray-100 flex items-center justify-center"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <div>
+                                <h3 className="text-lg font-black text-gray-900 leading-tight">Remove from sequence?</h3>
+                                <p className="text-sm text-gray-500 mt-2">
+                                    <strong>&quot;{sequenceWarning.formTitle}&quot;</strong> is currently active in the post-submission sequence. Removing it means visitors will no longer see this form after the Default Form.
+                                </p>
+                            </div>
+
+                            <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex gap-3">
+                                <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                                <div className="text-xs text-amber-700/80 leading-relaxed">
+                                    This form will stay published and can be re-added any time. It will only be removed from the active sequence order.
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setSequenceWarning(null)}
+                                    className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+                                >
+                                    Keep in Sequence
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        toggleActiveForm(branchKey, sequenceWarning.formId);
+                                        setSequenceWarning(null);
+                                    }}
+                                    className="flex-1 h-11 rounded-xl bg-amber-600 text-white text-sm font-black hover:bg-amber-700 transition-shadow shadow-md"
+                                >
+                                    Remove
+                                </button>
                             </div>
                         </div>
                     </div>

@@ -1,221 +1,56 @@
-## SUPPORT SYSTEM — FULL IMPLEMENTATION PROMPT
+for updating the business socials
+Endpoint: `/api/v1/users/engagement`
+Method: PATCH
+Body: {
+  {
+  "engagement": {
+    "instagram": {
+      "profile": "johndoe",
+      "link": "https://instagr.am/johndoe"
+    },
+    "facebook": {
+      "page": "John Doe Page",
+      "link": "https://fb.com/johndoe"
+    }
+  }
+}
+
+}
+
+
+for fetching the user profile 
+Endpoint: /users/profile
+Method: GET
+Body: {
+  {
+  "email": "user@example.com",
+  "firstName": "John",
+  "lastName": "Doe",
+  "role": "Owner",
+  "phone": "+2348012345678",
+  "jobTitle": "Store Manager",
+  "permissions": [
+    "view_reports",
+    "manage_staff"
+  ],
+  "status": "ACTIVE",
+  "uniqueCode": "CUST-12345",
+  "lastActive": "2023-10-25T10:00:00.000Z",
+  "pushToken": "fcm-token-string",
+  "branchId": "uuid-string",
+  "businessId": "uuid-string",
+  "engagement": {
+    "instagram": {
+      "profile": "johndoe",
+      "link": "https://instagr.am/johndoe"
+    }
+  },
+  "optInChannels": [
+    "SMS",
+    "WhatsApp"
+  ],
+  "optOut": false,
+  "isPasswordChanged": false
+}
+}
 
-### 🎯 Objective
-
-Redesign and implement the support system so that it correctly represents:
-
-* **Business owners contacting the platform (admin team)**
-  NOT
-* Customers contacting the business
-
-The current implementation is conceptually wrong and must be corrected.
-
----
-
-## 🧠 CORE CONCEPT (CRITICAL)
-
-The support system should follow this model:
-
-* **Business User → creates support ticket → Admin Team**
-* Admin team receives and responds to tickets
-
-Remove any logic that assumes:
-
-* Customers are contacting the business via this support page
-
----
-
-## ❌ REMOVE / FIX WRONG LOGIC
-
-* Remove all customer-facing support categories such as:
-
-  * Technical Support (for customers)
-  * Billing (for customers)
-  * Account Access (for customers)
-  * General Inquiry (customer-facing)
-
-These are NOT the responsibility of the business user.
-
----
-
-## 🧩 NEW SUPPORT SYSTEM STRUCTURE
-
-### 1. Support Page Purpose
-
-This page should:
-
-* Allow business users to **contact the platform (admin team)**
-* Not manage customer conversations
-
----
-
-### 2. Create Ticket Flow
-
-#### UI Behavior:
-
-* Add a **“New Ticket” button**
-* On click → open ticket creation form
-
----
-
-### 3. Ticket Creation Form
-
-Fields required:
-
-* **Category (Dropdown)**
-
-  * Categories are NOT hardcoded
-  * Must be fetched from admin-configured categories
-
-* **Message Input (Textarea)**
-
-  * User describes the issue
-
-* **Submit Button**
-
----
-
-### 4. Ticket Categories (Admin-Controlled)
-
-Categories should be created from the **Admin panel**, such as:
-
-* Technical Issue
-* Billing & Payments
-* Account Access
-* General Inquiry
-* Feature Request
-
----
-
-### 5. Ticket Submission Logic
-
-On submit:
-
-* Create ticket with:
-
-  * user_id
-  * category_id
-  * message
-  * status = "open"
-  * timestamp
-
----
-
-### 6. Ticket List (User Side)
-
-After submission:
-
-* Show list of tickets created by the user
-
-Each ticket should display:
-
-* Category
-* Status (Open / Closed / Pending)
-* Last updated time
-* Preview of message
-
----
-
-### 7. Ticket Detail View
-
-When user clicks a ticket:
-
-* Show full conversation thread
-
-Structure:
-
-* User message
-* Admin replies
-
----
-
-### 8. Admin Side (IMPORTANT)
-
-Admin dashboard should:
-
-* View all tickets
-* Filter by:
-
-  * status
-  * category
-* Reply to tickets
-* Update status:
-
-  * Open
-  * In Progress
-  * Resolved
-
----
-
-## 🧠 UX CLARITY FIX (VERY IMPORTANT)
-
-Add a short description at the top of the support page:
-
-Example:
-
-> “Reach out to the admin team for help with your account, billing, or technical issues.”
-
-This ensures users understand:
-👉 they are contacting the platform, not their customers
-
----
-
-## ❌ REMOVE CONFUSION WITH CHAT SYSTEM
-
-* Do NOT mix support with:
-
-  * chat system
-  * messaging channels
-  * customer communication
-
-Support is:
-👉 strictly business → admin communication
-
----
-
-## 🧩 OPTIONAL (FUTURE IMPROVEMENT)
-
-* Add file attachment support to tickets
-* Add priority level (low, medium, high)
-* Add email notification when admin replies
-
----
-
-## 🧪 EDGE CASES TO HANDLE
-
-* “New Ticket” button currently not working → FIX
-* Empty category list → handle gracefully
-* Submission failure → show error message
-* No tickets → show empty state UI
-
----
-
-## ✅ FINAL EXPECTED RESULT
-
-A clean support system where:
-
-* Business users can:
-
-  * create tickets
-  * track tickets
-  * view responses
-
-* Admin can:
-
-  * manage tickets
-  * respond efficiently
-
-WITHOUT any confusion with customer messaging system.
-
----
-
-## ⚠️ IMPORTANT ARCHITECTURAL NOTE
-
-This support system must be treated as:
-
-👉 A **ticketing system (like Zendesk / Discord tickets)**
-
-NOT:
-👉 A chat or CRM feature
-
-Keep it logically separate from messaging features.

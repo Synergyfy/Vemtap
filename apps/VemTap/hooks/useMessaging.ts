@@ -12,6 +12,7 @@ const normalizeThread = (thread: any, isCustomer: boolean) => {
         id: thread.branch?.id || thread.branchId,
         name: thread.branch?.business?.name || 'Business',
         avatar: thread.branch?.business?.logoUrl,
+        phone: thread.branch?.phone || thread.branch?.business?.phone || thread.metadata?.phone,
         isOnline: false,
       }
     : {
@@ -20,6 +21,7 @@ const normalizeThread = (thread: any, isCustomer: boolean) => {
           ? `${thread.customer.firstName} ${thread.customer.lastName || ''}`.trim() 
           : (thread.customer?.name || 'Customer'),
         avatar: thread.customer?.avatar,
+        phone: thread.customer?.phone || thread.customer?.phoneNumber || thread.metadata?.phone,
         isOnline: false,
       };
 

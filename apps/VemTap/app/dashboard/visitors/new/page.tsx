@@ -67,6 +67,7 @@ export default function NewVisitorsPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<Visitor | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
     const [showChannelSelector, setShowChannelSelector] = useState(false);
+    const [isBulkChannelSelector, setIsBulkChannelSelector] = useState(false);
 
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const { data: paginatedData, isLoading } = useNewVisitors();
@@ -85,19 +86,24 @@ export default function NewVisitorsPage() {
     
     const handleWelcomeVisitor = (visitor: Visitor) => {
         setSelectedVisitorForMsg(visitor);
+        setIsBulkChannelSelector(false);
         setShowChannelSelector(true);
     };
 
     const handleSendWelcomeMessage = () => {
         if (newVisitors.length > 0) {
-            setIsBulkMsgOpen(true);
+            setIsBulkChannelSelector(true);
+            setShowChannelSelector(true);
         } else {
             toast.error('No new visitors to send welcome message to');
         }
     };
 
     const handleSelectInApp = () => {
-        if (selectedVisitorForMsg) {
+        if (isBulkChannelSelector) {
+            // Bulk in-app logic: redirect to chat and trigger the segment-based broadcast
+            router.push(`/dashboard/messaging/chat?segment=new-visitors`);
+        } else if (selectedVisitorForMsg) {
             const visitorName = getVisitorDisplayName(selectedVisitorForMsg);
             const chatContact = {
                 id: selectedVisitorForMsg.id,
@@ -111,11 +117,16 @@ export default function NewVisitorsPage() {
             setActiveConversation(threadId);
             
             router.push(`/dashboard/messaging/chat?visitorId=${selectedVisitorForMsg.id}`);
-            setShowChannelSelector(false);
         }
+        setShowChannelSelector(false);
     };
 
     const handleSelectExternal = () => {
+        if (isBulkChannelSelector) {
+            setIsBulkMsgOpen(true);
+        } else {
+            // Individual external logic handled by SendMessageModal
+        }
         setShowChannelSelector(false);
     };
 
