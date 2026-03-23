@@ -45,12 +45,24 @@ export class InboxService {
   async getThreads(
     branchId: string,
     channel: Channel,
+    segmentId?: string,
   ): Promise<ConversationThread[]> {
-    return this.threadRepo.find({
-      where: { branchId, channel },
-      relations: ['customer'],
-      order: { lastActivityAt: 'DESC' },
-    });
+    const query = this.threadRepo
+      .createQueryBuilder('thread')
+      .leftJoinAndSelect('thread.customer', 'customer')
+      .where('thread.branchId = :branchId', { branchId })
+      .andWhere('thread.channel = :channel', { channel });
+
+    if (segmentId) {
+      query.innerJoin(
+        'segment_users',
+        'su',
+        'su.userId = customer.id AND su.segmentId = :segmentId',
+        { segmentId },
+      );
+    }
+
+    return query.orderBy('thread.lastActivityAt', 'DESC').getMany();
   }
 
   async getThreadMessages(

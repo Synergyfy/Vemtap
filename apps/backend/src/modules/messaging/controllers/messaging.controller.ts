@@ -42,6 +42,7 @@ import { MessagingHelperService } from '../services/messaging-helper.service';
 import { BranchesService } from '../../branches/branches.service';
 import { IdDto } from '../dto/id.dto';
 import { ThreadIdDto } from '../dto/thread-id.dto';
+import { MessagingThreadFilterDto } from '../dto/thread-filter.dto';
 
 @ApiTags('Messaging')
 @Controller('messaging')
@@ -190,11 +191,11 @@ export class MessagingController {
   @ApiResponse({ status: 200, description: 'List of threads sorted by last activity' })
   async getInboxThreads(
     @Param('channel', new ParseEnumPipe(Channel)) channel: Channel,
-    @Query() filter: BranchFilterDto,
+    @Query() filter: MessagingThreadFilterDto,
     @Request() req: { user: User },
   ) {
     const branchId = await this.getBranchId(req, filter.branchId);
-    return this.inboxService.getThreads(branchId, channel);
+    return this.inboxService.getThreads(branchId, channel, filter.segmentId);
   }
 
   @Get('inbox/threads/:threadId')

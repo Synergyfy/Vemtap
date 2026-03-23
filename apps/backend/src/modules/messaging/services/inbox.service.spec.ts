@@ -116,6 +116,56 @@ describe('InboxService', () => {
     service = module.get<InboxService>(InboxService);
   });
 
+  describe('getThreads', () => {
+    it('should return threads for a branch and channel', async () => {
+      const branchId = 'br1';
+      const channel = Channel.IN_HOUSE;
+      const mockThreads = [{ id: 't1' }, { id: 't2' }];
+
+      const queryBuilder: any = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(mockThreads),
+      };
+      threadRepoMock.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.getThreads(branchId, channel);
+
+      expect(result).toEqual(mockThreads);
+      expect(queryBuilder.where).toHaveBeenCalledWith('thread.branchId = :branchId', { branchId });
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('thread.channel = :channel', { channel });
+      expect(queryBuilder.innerJoin).not.toHaveBeenCalled();
+    });
+
+    it('should filter by segmentId if provided', async () => {
+      const branchId = 'br1';
+      const channel = Channel.IN_HOUSE;
+      const segmentId = 'seg-1';
+
+      const queryBuilder: any = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      };
+      threadRepoMock.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      await service.getThreads(branchId, channel, segmentId);
+
+      expect(queryBuilder.innerJoin).toHaveBeenCalledWith(
+        'segment_users',
+        'su',
+        'su.userId = customer.id AND su.segmentId = :segmentId',
+        { segmentId },
+      );
+    });
+  });
+
   describe('startCustomerConversation', () => {
     it('should throw ForbiddenException if customer has not visited the branch', async () => {
       visitRepoMock.findOne.mockResolvedValue(null);
