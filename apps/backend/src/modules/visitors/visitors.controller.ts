@@ -250,6 +250,24 @@ export class VisitorsController {
     );
   }
 
+  @Get(':id')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @Permissions('visitors')
+  @ApiOperation({ summary: 'Get a visitor by ID' })
+  @ApiResponse({ type: VisitorResponseDto })
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: any,
+    @Query() filter: BranchFilterDto,
+  ) {
+    const context = await this.getResolvedContext(req, filter);
+    return this.visitorsService.findOne(
+      id,
+      context.branchId,
+      context.businessId,
+    );
+  }
+
   // --- Actions (Bulk) ---
 
   @Post('export')
@@ -363,14 +381,7 @@ export class VisitorsController {
     return this.visitorsService.recordVisit(req.user.id, dto.deviceCode);
   }
 
-  @Get(':id')
-  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
-  @Permissions('visitors')
-  @ApiOperation({ summary: 'Get a visitor by ID' })
-  @ApiResponse({ type: VisitorResponseDto })
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.visitorsService.findOne(id);
-  }
+
 
   @Patch(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
