@@ -69,6 +69,7 @@ describe('InboxService', () => {
 
     gatewayMock = {
       emitMessage: jest.fn(),
+      emitMessageUpdate: jest.fn(),
     };
 
     pushMock = {

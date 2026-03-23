@@ -226,61 +226,47 @@ export class VisitorsService {
     branchId?: string,
     businessId?: string,
   ): Promise<VisitorStatsResponseDto> {
-    const totalVisitorsQb = this.userRepository
-      .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-      .where('user.role = :role', { role: UserRole.CUSTOMER });
+    const contextWhere: any = {};
+    if (branchId) contextWhere.branchId = branchId;
+    else if (businessId) contextWhere.businessId = businessId;
 
-    if (branchId) {
-      totalVisitorsQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else if (businessId) {
-      totalVisitorsQb.andWhere('visit.businessId = :businessId', {
-        businessId,
-      });
-    }
+    // Total unique visitors in this context
+    const totalVisitorsRaw = await this.visitRepository
+      .createQueryBuilder('visit')
+      .where(contextWhere)
+      .select('COUNT(DISTINCT visit.customerId)', 'count')
+      .getRawOne();
+    const totalVisitors = parseInt(totalVisitorsRaw?.count || '0', 10);
 
-    const totalVisitors = await totalVisitorsQb.getCount();
+    // Total visits in this context
+    const totalVisitsCount = await this.visitRepository.count({ where: contextWhere });
 
+    // New Visitors in this context: Customers whose FIRST visit in this branch/business was this month
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const newThisMonthQb = this.userRepository
-      .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-      .andWhere('user.role = :role', { role: UserRole.CUSTOMER })
-      .andWhere('user.createdAt >= :startOfMonth', { startOfMonth });
+    const newVisitorsRaw = await this.visitRepository
+      .createQueryBuilder('visit')
+      .select('visit.customerId')
+      .where(contextWhere)
+      .groupBy('visit.customerId')
+      .having('MIN(visit.createdAt) >= :startOfMonth', { startOfMonth })
+      .getRawMany();
+    const newVisitorsCount = newVisitorsRaw.length;
 
-    if (branchId) {
-      newThisMonthQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else if (businessId) {
-      newThisMonthQb.andWhere('visit.businessId = :businessId', { businessId });
-    }
+    // Returning Visitors: Customers with more than 1 visit in this context
+    const returningVisitorsRaw = await this.visitRepository
+      .createQueryBuilder('visit')
+      .select('visit.customerId')
+      .where(contextWhere)
+      .groupBy('visit.customerId')
+      .having('COUNT(visit.id) > 1')
+      .getRawMany();
+    const returningCount = returningVisitorsRaw.length;
 
-    const newThisMonth = await newThisMonthQb.getCount();
-
-    const visitsCountQuery: any = branchId
-      ? { where: { branchId } }
-      : { where: { businessId } };
-    const totalVisitsCount = await this.visitRepository.count(visitsCountQuery);
     const avgFrequency =
       totalVisitors > 0 ? (totalVisitsCount / totalVisitors).toFixed(1) : '0';
-
-    const vipCountQb = this.userRepository
-      .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-      .where('user.role = :role', { role: UserRole.CUSTOMER });
-
-    if (branchId) {
-      vipCountQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else if (businessId) {
-      vipCountQb.andWhere('visit.businessId = :businessId', { businessId });
-    }
-
-    const returningCount = await vipCountQb
-      .groupBy('user.id')
-      .having('COUNT(visit.id) > 1')
-      .getCount();
 
     return {
       stats: [
@@ -293,7 +279,7 @@ export class VisitorsService {
         },
         {
           label: 'New This Month',
-          value: newThisMonth.toLocaleString(),
+          value: newVisitorsCount.toLocaleString(),
           icon: 'user-plus',
           color: 'green',
           trend: { value: '+0%', isUp: true },
