@@ -17,9 +17,10 @@ export const adminUsersApi = {
     create: (data: any) => api.post('/users/admin', data),
     update: (id: string, data: any) => api.patch(`/users/admin/${id}`, data),
     delete: (id: string) => api.delete(`/users/admin/${id}`),
-    suspend: (id: string) => api.patch(`/users/admin/${id}/suspend`, {}),
-    activate: (id: string) => api.patch(`/users/admin/${id}/activate`, {}),
+    suspend: (id: string) => api.post(`/users/admin/${id}/suspend`, {}),
+    activate: (id: string) => api.post(`/users/admin/${id}/activate`, {}),
     resetPassword: (email: string) => api.post(`/users/admin/reset-password-link/${email}`, {}),
+    createAgent: (data: any) => api.post('/users/admin/create-agent', data),
 };
 
 // =====================
@@ -40,6 +41,20 @@ export const adminBusinessesApi = {
     reject: (id: string) => api.patch(`/businesses/admin/${id}/reject`, {}),
     suspend: (id: string, reason?: string) => api.patch(`/businesses/admin/${id}/suspend`, { reason }),
     reactivate: (id: string) => api.patch(`/businesses/admin/${id}/reactivate`, {}),
+    verify: (id: string) => api.patch(`/businesses/admin/${id}/verify`, {}),
+    unverify: (id: string) => api.patch(`/businesses/admin/${id}/unverify`, {}),
+    getSuspended: (params?: { page?: number; limit?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.page) q.set('page', String(params.page));
+        if (params?.limit) q.set('limit', String(params.limit));
+        return api.get(`/businesses/admin/suspended?${q.toString()}`);
+    },
+    getPendingVerification: (params?: { page?: number; limit?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.page) q.set('page', String(params.page));
+        if (params?.limit) q.set('limit', String(params.limit));
+        return api.get(`/businesses/admin/pending-verification?${q.toString()}`);
+    },
     update: (id: string, data: any) => api.patch(`/businesses/${id}`, data),
     getStats: (id: string) => api.get(`/businesses/admin/${id}/stats`),
 };
@@ -125,6 +140,13 @@ export const adminFormsApi = {
     },
     disableBusinessForm: (id: string) => api.patch(`/admin-forms/${id}/disable`, {}),
     enableBusinessForm: (id: string) => api.patch(`/admin-forms/${id}/enable`, {}),
+
+    // Template Management
+    createTemplate: (data: any) => api.post('/form-templates', data),
+    updateTemplate: (id: string, data: any) => api.patch(`/form-templates/${id}`, data),
+    deleteTemplate: (id: string) => api.delete(`/form-templates/${id}`),
+    getTemplate: (id: string) => api.get(`/form-templates/${id}`),
+    useTemplate: (templateId: string, branchId: string) => api.post(`/form-templates/${templateId}/use?branchId=${branchId}`, {}),
 };
 
 export const adminSupportApi = {
@@ -133,6 +155,7 @@ export const adminSupportApi = {
     updateTicketStatus: (id: string, status: 'Open' | 'In Progress' | 'Closed') =>
         api.post(`/support/admin/tickets/${id}/status`, { status }),
     replyToTicket: (id: string, message: string) => api.post(`/support/admin/tickets/${id}/message`, { message }),
+    assignTicket: (id: string, agentId: string) => api.post(`/support/admin/tickets/${id}/assign`, { agentId }),
     resolveTicket: (id: string) => adminSupportApi.updateTicketStatus(id, 'Closed'),
 };
 
@@ -175,6 +198,7 @@ export const adminFlowApi = {
     }) => api.post('/messaging/flows', data),
     updateStatus: (id: string, status: 'draft' | 'active' | 'paused') =>
         api.post(`/messaging/flows/${id}/status`, { status }),
+    updateTemplate: (id: string, data: any) => api.put(`/admin/flow-engine/templates/${id}`, data),
 };
 
 export const adminHealthApi = {
@@ -251,4 +275,29 @@ export const adminCreditsApi = {
         amount: number;
         action: 'add' | 'remove';
     }) => api.post('/credits/adjust', data),
+};
+
+// =====================
+// LOYALTY (Admin)
+// =====================
+export const adminLoyaltyApi = {
+    getTemplates: () => api.get('/loyalty/templates'),
+    createTemplate: (data: any) => api.post('/loyalty/templates', data),
+    getBusinessLogs: (params: { businessId: string; branchId?: string; page?: number; limit?: number }) => {
+        const q = new URLSearchParams();
+        q.set('businessId', params.businessId);
+        if (params.branchId) q.set('branchId', params.branchId);
+        if (params.page) q.set('page', String(params.page));
+        if (params.limit) q.set('limit', String(params.limit));
+        return api.get(`/loyalty/points/business-logs?${q.toString()}`);
+    },
+};
+
+// =====================
+// CREDIT PLANS (Admin)
+// =====================
+export const adminCreditPlansApi = {
+    create: (data: any) => api.post('/credit-plans', data),
+    update: (id: string, data: any) => api.patch(`/credit-plans/${id}`, data),
+    delete: (id: string) => api.delete(`/credit-plans/${id}`),
 };
