@@ -18,6 +18,7 @@ import { UpdateAssetNamesDto } from './dto/update-asset-names.dto';
 import { Device } from './entities/device.entity';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { User, UserRole } from '../users/entities/user.entity';
+import { AdminDeviceQueryDto } from './dto/admin-device-query.dto';
 import {
   ApiTags,
   ApiOperation,
@@ -32,7 +33,7 @@ import { ParseUUIDPipe } from '@nestjs/common';
 @ApiTags('devices')
 @ApiBearerAuth()
 @Controller('devices')
-@Roles(UserRole.OWNER, UserRole.MANAGER) // Only Owners and Managers can manage devices
+@Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
 export class DevicesController {
   constructor(private readonly devicesService: DevicesService) {}
 
@@ -109,7 +110,45 @@ export class DevicesController {
     return { branchId: user.branchId };
   }
 
-  // ... (admin methods omitted for brevity as they are handled in the full file)
+  // --- Admin Endpoints ---
+  @Get('admin')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get all devices with filters and pagination' })
+  @ApiResponse({ status: 200, description: 'Return list of devices with pagination' })
+  async findAllAdmin(@Query() query: AdminDeviceQueryDto) {
+    return this.devicesService.findAllAdmin(query);
+  }
+
+  @Get('admin/stats')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get overall device statistics' })
+  async getAdminStats() {
+    return this.devicesService.getAdminStats();
+  }
+
+  @Post('admin')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Manually create/register a device code' })
+  async adminCreate(@Body() dto: AdminCreateDeviceDto) {
+    return this.devicesService.adminCreate(dto);
+  }
+
+  @Patch('admin/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Update device details' })
+  async adminUpdate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AdminUpdateDeviceDto,
+  ) {
+    return this.devicesService.adminUpdate(id, dto);
+  }
+
+  @Delete('admin/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Delete a device' })
+  async adminDelete(@Param('id', ParseUUIDPipe) id: string) {
+    return this.devicesService.adminDelete(id);
+  }
 
   @Get()
   @ApiOperation({ summary: 'Get all devices for the branch or business' })

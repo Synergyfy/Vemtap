@@ -11,7 +11,9 @@ import { FormResponse } from './entities/form-response.entity';
 import { FormAnswer } from './entities/form-answer.entity';
 import { FormTemplate } from './entities/form-template.entity';
 import { FormFieldTemplate } from './entities/form-field-template.entity';
+import { Branch } from '../branches/entities/branch.entity';
 import { BranchesModule } from '../branches/branches.module';
+
 import { DevicesModule } from '../devices/devices.module';
 
 @Module({
@@ -23,7 +25,9 @@ import { DevicesModule } from '../devices/devices.module';
       FormAnswer,
       FormTemplate,
       FormFieldTemplate,
+      Branch,
     ]),
+
     BranchesModule,
     DevicesModule,
   ],
