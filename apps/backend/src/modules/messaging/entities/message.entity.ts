@@ -101,4 +101,12 @@ export class Message extends AbstractBaseEntity {
   @ApiProperty({ example: '2023-10-25T10:00:00.000Z' })
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   timestamp: Date;
+
+  @ApiProperty({ example: false })
+  @Column({ default: false })
+  isEdited: boolean;
+
+  @ApiProperty({ example: false })
+  @Column({ default: false })
+  isDeleted: boolean;
 }

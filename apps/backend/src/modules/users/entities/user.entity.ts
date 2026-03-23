@@ -3,6 +3,7 @@ import {
   Column,
   ManyToOne,
   OneToMany,
+  ManyToMany,
   JoinColumn,
   OneToOne,
   BeforeInsert,
@@ -16,6 +17,7 @@ import { Visit } from '../../visitors/entities/visit.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { Message } from '../../messaging/entities/message.entity';
 import { ConversationThread } from '../../messaging/entities/conversation-thread.entity';
+import { Segment } from '../../contacts/entities/segment.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum UserRole {
@@ -137,6 +139,9 @@ export class User extends AbstractBaseEntity {
 
   @OneToMany(() => ConversationThread, (thread) => thread.customer)
   threads: ConversationThread[];
+
+  @ManyToMany(() => Segment, (segment) => segment.users)
+  segments: Segment[];
 
   @ApiProperty({ example: ['SMS', 'WhatsApp'], nullable: true })
   @Column({ type: 'simple-array', nullable: true })
