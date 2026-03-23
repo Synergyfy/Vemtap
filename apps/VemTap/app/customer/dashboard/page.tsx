@@ -50,24 +50,24 @@ export default function CustomerDashboardPage() {
     const isLoyaltyLoading = isRewardsLoading || isHistoryLoading;
 
     useEffect(() => {
-         
+
         console.log('[CUSTOMER DASHBOARD] 🔍 Auth check', { isAuthenticated, userRole: user?.role });
-        
+
         if (!isAuthenticated) {
-             
+
             console.log('[CUSTOMER DASHBOARD] 🚫 Redirecting to /login');
             router.push('/login');
             return;
         }
 
         if (user?.role?.toLowerCase() !== 'customer') {
-             
+
             console.log('[CUSTOMER DASHBOARD] 🔄 Role not customer, redirecting to /dashboard');
             router.push('/dashboard');
             return;
         }
 
-         
+
         console.log('[CUSTOMER DASHBOARD] ✅ Auth OK');
 
         const initializeDashboard = async () => {
@@ -133,7 +133,7 @@ export default function CustomerDashboardPage() {
 
     // Calculate dynamic stats
     // Calculate dynamic stats from global analytics or fallback to current profile
-    const totalVisitsCount = analytics?.totalVisits ?? profile?.totalVisits ?? 0;
+    const totalVisitsCount = (recentTransactions.length || analytics?.totalVisits) ?? profile?.totalVisits ?? 0;
     const netSavingsValue = analytics?.netSavings ?? profile?.totalSavings ?? 0;
 
     return (
@@ -152,7 +152,7 @@ export default function CustomerDashboardPage() {
                             </span>
                             <h1 className="text-4xl md:text-5xl font-display font-bold mb-4 tracking-tight leading-tight">
                                 Welcome back, <br />
-                                {user?.name?.split(' ')[0] || 'Customer'}!
+                                {user?.firstName || user?.name?.split(' ')[0] || profile?.visitor?.name?.split(' ')[0] || 'Customer'}!
                             </h1>
                             <p className="text-blue-50 text-base md:text-lg max-w-lg mb-8 font-medium leading-relaxed opacity-90">
                                 Visit {businessName} {businessAddress ? `at ${businessAddress}` : ''} and tap your phone at the VemTap terminal to earn rewards instantly.
@@ -189,24 +189,24 @@ export default function CustomerDashboardPage() {
                 {/* Quick Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {[
-                        { 
-                            label: 'Total Visits', 
-                            value: totalVisitsCount || '0', 
-                            icon: History, 
+                        {
+                            label: 'Total Visits',
+                            value: totalVisitsCount || '0',
+                            icon: History,
                             color: 'blue',
                             tooltip: 'The total number of times you\'ve visited and tapped at any VemTap enabled business location.'
                         },
-                        { 
-                            label: 'Reward Points', 
-                            value: userPoints.toLocaleString(), 
-                            icon: Star, 
+                        {
+                            label: 'Reward Points',
+                            value: userPoints.toLocaleString(),
+                            icon: Star,
                             color: 'orange',
                             tooltip: 'Your current balance of points earned from visits and activities, ready to be redeemed for rewards.'
                         },
-                        { 
-                            label: 'Net Savings', 
-                            value: `₦${netSavingsValue.toLocaleString()}`, 
-                            icon: PiggyBank, 
+                        {
+                            label: 'Net Savings',
+                            value: `₦${netSavingsValue.toLocaleString()}`,
+                            icon: PiggyBank,
                             color: 'green',
                             tooltip: 'The total monetary value you\'ve saved through redeemed rewards, exclusive discounts, and point-based offers.'
                         },
@@ -275,9 +275,9 @@ export default function CustomerDashboardPage() {
                                                 </div>
                                             </div>
                                             <span className={`font-black text-sm ${tx.pointsAmount > 0 ? 'text-green-600' : tx.pointsAmount < 0 ? 'text-orange-600' : 'text-gray-400'}`}>
-                                                {tx.pointsAmount > 0 ? '+' : ''}{tx.pointsAmount} pts     
+                                                {tx.pointsAmount > 0 ? '+' : ''}{tx.pointsAmount} pts
                                             </span>
-                                        </div>                                    );
+                                        </div>);
                                 })
                             ) : (
                                 <div className="p-12 text-center text-text-secondary">
@@ -341,26 +341,9 @@ export default function CustomerDashboardPage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <button className="h-14 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all text-xs uppercase tracking-widest active:scale-95 flex items-center justify-center gap-2">
-                            Add to Apple Wallet
-                        </button>
-                        <button className="h-14 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-xs uppercase tracking-widest shadow-xl shadow-primary/20 active:scale-95 flex items-center justify-center gap-2">
-                            Save to G-Pay
-                        </button>
-                    </div>
-
-                    <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
-                        <div className="text-left">
-                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Points Balance</p>
-                            <p className="text-lg font-display font-bold text-primary">{userPoints.toLocaleString()} pts</p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Membership</p>
-                            <p className="text-lg font-display font-bold text-slate-900 flex items-center gap-1 justify-end capitalize">
-                                {profile?.tierLevel || 'Bronze'}
-                            </p>
-                        </div>
+                    <div className="pt-6 border-t border-slate-100">
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Points Balance</p>
+                        <p className="text-lg font-display font-bold text-primary">{userPoints.toLocaleString()} pts</p>
                     </div>
                 </div>
             </Modal>
