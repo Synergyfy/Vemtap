@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Visitor } from '@/lib/store/mockDashboardStore';
 import toast from 'react-hot-toast';
 import {
@@ -26,10 +26,18 @@ export default function DashboardPage() {
     const [rewardPreviewVisitor, setRewardPreviewVisitor] = useState<Visitor | null>(null);
 
     const user = useAuthStore((state) => state.user);
-    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
-     
-    console.log('[DASHBOARD PAGE] 🔍 isAuthenticated:', isAuthenticated, 'planId:', user?.planId);
+    const isNewUser = useMemo(() => {
+        if (!user) return false;
+        const createdAt = user.createdAt || user.joined;
+        if (!createdAt) return true;
+
+        const createdDate = new Date(createdAt);
+        const now = new Date();
+        const diffInHours = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60);
+
+        return diffInHours < 24;
+    }, [user]);
 
 
 
@@ -153,8 +161,14 @@ export default function DashboardPage() {
             {/* Page Header */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex-1">
-                    <h1 className="text-2xl font-display font-bold text-text-main mb-1">Dashboard</h1>
-                    <p className="text-sm text-text-secondary font-medium">Welcome back! Here's what's happening today.</p>
+                    <h1 className="text-2xl font-display font-bold text-text-main mb-1">
+                        {isNewUser ? `Welcome to VemTap, ${user?.firstName || 'there'}!` : 'Dashboard'}
+                    </h1>
+                    <p className="text-sm text-text-secondary font-medium">
+                        {isNewUser
+                            ? "We're excited to have you here. Let's get your business started."
+                            : "Welcome back! Here's what's happening today."}
+                    </p>
                 </div>
 
                 <div className="flex items-center gap-3">
