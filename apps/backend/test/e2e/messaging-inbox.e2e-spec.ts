@@ -17,6 +17,7 @@ import { Message } from '../../src/modules/messaging/entities/message.entity';
 import { Visit } from '../../src/modules/visitors/entities/visit.entity';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { Channel } from '../../src/modules/messaging/enums/channel.enum';
+import { MessageDirection } from '../../src/modules/messaging/enums/message.enum';
 import * as bcrypt from 'bcrypt';
 
 describe('Messaging Inbox (e2e)', () => {
@@ -187,7 +188,7 @@ describe('Messaging Inbox (e2e)', () => {
 
   it('should allow staff to edit their own message', async () => {
     const lastMsg = await messageRepo.findOne({ 
-      where: { direction: Channel.IN_HOUSE as any }, // Just getting the last one
+      where: { direction: MessageDirection.OUTBOUND }, 
       order: { timestamp: 'DESC' } 
     });
     
