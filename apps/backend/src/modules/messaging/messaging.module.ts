@@ -26,6 +26,7 @@ import { CreditPlan } from './entities/credit-plan.entity';
 import { BusinessCredit } from './entities/business-credit.entity';
 import { BusinessCreditWallet } from './entities/business-credit-wallet.entity';
 import { CreditTransaction } from './entities/credit-transaction.entity';
+import { Segment } from '../contacts/entities/segment.entity';
 
 import { ContactsModule } from '../contacts/contacts.module';
 import { BusinessesModule } from '../businesses/businesses.module';
@@ -103,6 +104,7 @@ import { JwtModule } from '@nestjs/jwt';
       BusinessCredit,
       BusinessCreditWallet,
       CreditTransaction,
+      Segment,
     ]),
     HttpModule,
     ContactsModule,
