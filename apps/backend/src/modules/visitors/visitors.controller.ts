@@ -54,6 +54,7 @@ import { VisitedBranchesQueryDto } from './dto/visited-branches-query.dto';
 import { PaginatedVisitedBranchResponseDto } from './dto/visited-branch-response.dto';
 import { AdminVisitorActivitiesQueryDto } from './dto/admin-visitor-activities-query.dto';
 import { PaginatedVisitResponseDto } from './dto/visit-response.dto';
+import { RewardCategory } from '../loyalty/entities/reward-template.entity';
 
 @ApiTags('Visitors')
 @ApiBearerAuth()
@@ -337,12 +338,21 @@ export class VisitorsController {
   async createReward(
     @Req() req: any,
     @Body() body: CreateVisitorRewardDto,
+    @Query() filter: BranchFilterDto,
   ): Promise<any> {
-    const branchId = await this.getBranchId(req, body.branchId);
-    return this.loyaltyService.createReward(req.user, {
+    const branchId = await this.getBranchId(req, body.branchId || filter.branchId);
+    
+    // Map simplified DTO to the more comprehensive CreateRewardDto used by loyaltyService
+    const rewardDto = {
       ...body,
+      pointsRequired: body.pointCost, // Map pointCost to pointsRequired
       branchId,
-    } as any);
+      category: (body as any).category || RewardCategory.FREE_PRODUCT,
+      totalQuantity: (body as any).totalQuantity || 100, // Defaul quantity if not provided
+      expiryDate: new Date(Date.now() + (body.validityDays || 30) * 24 * 60 * 60 * 1000).toISOString(),
+    };
+
+    return this.loyaltyService.createReward(req.user, rewardDto as any);
   }
 
   // --- CRUD & Individual Actions ---
