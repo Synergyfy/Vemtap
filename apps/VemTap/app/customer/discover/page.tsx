@@ -8,7 +8,8 @@ import {
     MapPin, 
     ChevronRight,
     Filter,
-    ArrowLeft
+    ArrowLeft,
+    Lock
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useChatStore } from '@/store/chatStore';
@@ -56,8 +57,23 @@ export default function BusinessDiscoveryPage() {
     );
 
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-8">
-            {/* Header */}
+        <div className="relative min-h-[calc(100vh-6rem)]">
+            {/* Coming Soon Overlay */}
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm bg-white/20 m-4 rounded-3xl">
+                <div className="bg-white p-8 rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-slate-100 flex flex-col items-center text-center max-w-sm mx-4 transform transition-all hover:scale-105 duration-300">
+                    <div className="w-20 h-20 bg-slate-50 flex items-center justify-center rounded-2xl mb-6 shadow-inner">
+                        <Lock className="text-slate-400" size={32} />
+                    </div>
+                    <h2 className="text-2xl font-display font-black text-slate-900 mb-3 tracking-tight">Coming Soon</h2>
+                    <p className="text-slate-500 text-sm leading-relaxed font-medium">
+                        Find and message local businesses on VemTap.
+                    </p>
+                </div>
+            </div>
+
+            {/* Background Content */}
+            <div className="p-8 max-w-6xl mx-auto space-y-8 pointer-events-none select-none opacity-80">
+                {/* Header */}
             <div className="flex items-center gap-4">
                 <button 
                     onClick={() => router.back()}
@@ -155,6 +171,7 @@ export default function BusinessDiscoveryPage() {
                     </div>
                 </div>
             )}
+            </div>
         </div>
     );
 }
