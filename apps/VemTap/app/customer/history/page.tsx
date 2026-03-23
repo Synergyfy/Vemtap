@@ -5,11 +5,11 @@ import { Search, Filter, Download, ExternalLink, Calendar, Clock, MapPin, Receip
 import { useAuthStore } from '@/store/useAuthStore';
 import { PointTransaction } from '@/types/loyalty';
 import { cn } from '@/lib/utils';
-import { useCustomerLoyaltyHistory } from '@/services/customer/hooks';
+import { useCustomerGlobalHistory } from '@/services/customer/hooks';
 
 export default function CustomerHistoryPage() {
     const { user } = useAuthStore();
-    const { data: historyResponse = [], isLoading } = useCustomerLoyaltyHistory(user?.businessId);
+    const { data: historyResponse = [], isLoading } = useCustomerGlobalHistory();
     const recentTransactions = Array.isArray(historyResponse) ? historyResponse : (historyResponse?.data || []);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedVisit, setSelectedVisit] = useState<PointTransaction | null>(null);
@@ -34,7 +34,7 @@ export default function CustomerHistoryPage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
                     <h1 className="text-3xl font-display font-bold text-text-main mb-2">Check-in Ledger</h1>
-                    <p className="text-text-secondary font-medium text-base">You've had <span className="text-primary font-black">{recentTransactions.length} activities</span> in this branch.</p>
+                    <p className="text-text-secondary font-medium text-base">You've had <span className="text-primary font-black">{recentTransactions.length} activities</span> across all locations.</p>
                 </div>
                 <div className="flex gap-3 w-full md:w-auto">
                     <div className="relative flex-1 md:w-64">
@@ -53,19 +53,19 @@ export default function CustomerHistoryPage() {
             {/* Visits Timeline */}
             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-gray-50/50 border-b border-gray-100">
-                            <tr>
-                                <th className="text-left py-6 px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Venue & Identity</th>
-                                <th className="text-left py-6 px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Date & Time</th>
-                                <th className="text-right py-6 px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Points</th>
-                                <th className="text-center py-6 px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary">Actions</th>
+                    <table className="w-full flex flex-row md:table">
+                        <thead className="bg-gray-50/50 border-r border-gray-100 md:border-r-0 md:border-b flex flex-col md:table-header-group min-w-[140px] shrink-0">
+                            <tr className="flex flex-col md:table-row h-full">
+                                <th className="text-left py-4 md:py-6 px-4 md:px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary flex flex-1 items-center border-b border-gray-200 md:border-none">Venue & Identity</th>
+                                <th className="text-left py-4 md:py-6 px-4 md:px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary flex flex-1 items-center border-b border-gray-200 md:border-none">Date & Time</th>
+                                <th className="text-left md:text-right py-4 md:py-6 px-4 md:px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary flex flex-1 items-center border-b border-gray-200 md:border-none">Points</th>
+                                <th className="text-left md:text-center py-4 md:py-6 px-4 md:px-8 text-[10px] font-black uppercase tracking-widest text-text-secondary flex flex-1 items-center">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody className="divide-x md:divide-x-0 md:divide-y divide-gray-50 flex flex-row overflow-x-auto md:table-row-group flex-1">
                             {isLoading && filteredTransactions.length === 0 ? (
-                                <tr>
-                                    <td colSpan={4} className="py-20 text-center">
+                                <tr className="flex flex-col md:table-row w-full flex-1">
+                                    <td colSpan={4} className="py-20 text-center flex-1 flex flex-col justify-center">
                                         <Loader2 className="animate-spin mx-auto text-primary" size={32} />
                                         <p className="text-sm text-text-secondary mt-4 font-bold">Retrieving your activity log...</p>
                                     </td>
@@ -77,13 +77,13 @@ export default function CustomerHistoryPage() {
                                     return (
                                         <tr
                                             key={tx.id}
-                                            className="hover:bg-gray-50/50 transition-all group cursor-pointer"
+                                            className="hover:bg-gray-50/50 transition-all group cursor-pointer flex flex-col md:table-row min-w-[260px] md:min-w-0"
                                             onClick={() => setSelectedVisit(tx)}
                                         >
-                                            <td className="py-6 px-8">
+                                            <td className="py-4 md:py-6 px-4 md:px-8 flex flex-1 items-center md:table-cell border-b border-gray-100 md:border-none">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center text-text-secondary group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                                                        <Icon size={24} />
+                                                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-gray-50 flex items-center justify-center text-text-secondary group-hover:bg-primary group-hover:text-white transition-all duration-300">
+                                                        <Icon size={20} />
                                                     </div>
                                                     <div>
                                                         <p className="font-bold text-sm text-text-main group-hover:text-primary transition-colors">{tx.reason}</p>
@@ -91,7 +91,7 @@ export default function CustomerHistoryPage() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-6 px-8">
+                                            <td className="py-4 md:py-6 px-4 md:px-8 flex flex-1 items-center md:table-cell border-b border-gray-100 md:border-none">
                                                 <div className="space-y-1">
                                                     <div className="flex items-center gap-1.5 text-xs text-text-main font-bold">
                                                         <Calendar size={12} className="text-primary" />
@@ -103,7 +103,7 @@ export default function CustomerHistoryPage() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-6 px-8 text-right">
+                                            <td className="py-4 md:py-6 px-4 md:px-8 flex flex-1 items-center md:table-cell md:text-right border-b border-gray-100 md:border-none">
                                                 <p className={cn(
                                                     "font-display font-bold text-sm",
                                                     tx.pointsAmount > 0 ? "text-green-600" : "text-orange-600"
@@ -111,19 +111,17 @@ export default function CustomerHistoryPage() {
                                                     {tx.pointsAmount > 0 ? '+' : ''}{tx.pointsAmount.toLocaleString()} pts
                                                 </p>
                                             </td>
-                                            <td className="py-6 px-8">
-                                                <div className="flex justify-center">
-                                                    <button className="p-2 text-gray-300 hover:text-text-main hover:bg-white hover:shadow-sm rounded-lg transition-all">
-                                                        <MoreVertical size={18} />
-                                                    </button>
-                                                </div>
+                                            <td className="py-4 md:py-6 px-4 md:px-8 flex flex-1 items-center md:table-cell">
+                                                <button className="p-2 text-gray-300 hover:text-text-main hover:bg-white hover:shadow-sm rounded-lg transition-all">
+                                                    <MoreVertical size={18} />
+                                                </button>
                                             </td>
                                         </tr>
                                     );
                                 })
                             ) : (
-                                <tr>
-                                    <td colSpan={4} className="py-20 text-center text-text-secondary">
+                                <tr className="flex flex-col md:table-row w-full flex-1">
+                                    <td colSpan={4} className="py-20 text-center flex flex-1 flex-col justify-center items-center text-text-secondary">
                                         <p className="text-sm font-medium">No recent activity found.</p>
                                     </td>
                                 </tr>

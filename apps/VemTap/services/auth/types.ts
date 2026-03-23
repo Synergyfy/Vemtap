@@ -49,3 +49,8 @@ export interface RegisterRequest {
     goal?: string;
     businessId?: string; // For joining an existing business (Manager flow)
 }
+
+export interface ChangePasswordRequest {
+    currentPassword: string;
+    newPassword: string;
+}
