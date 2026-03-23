@@ -40,6 +40,10 @@ export class Reward extends AbstractBaseEntity {
   remainingQuantity: number;
 
   @ApiProperty()
+  @Column({ default: 0 })
+  redemptionCount: number;
+
+  @ApiProperty()
   @Column({ default: true })
   isActive: boolean;
 

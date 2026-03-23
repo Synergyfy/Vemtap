@@ -211,6 +211,29 @@ export class LoyaltyController {
     return this.loyaltyService.deleteReward(req.user, id);
   }
 
+  @Get('rewards/:id/redemptions')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({ 
+    summary: 'Fetch customers who redeemed a reward',
+    description: 'Retrieves a paginated list of customers who have successfully redeemed a specific reward. Access: OWNER, MANAGER, STAFF'
+  })
+  @ApiParam({ name: 'id', description: 'The ID of the reward' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Returns list of redemptions' })
+  async getRewardRedemptions(
+    @Request() req: { user: User },
+    @Param('id') id: string,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.loyaltyService.getRewardRedemptions(
+      req.user,
+      id,
+      query.page,
+      query.limit,
+    );
+  }
+
   // --- Redemption ---
   @Post('redemption/generate-code')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)

@@ -221,6 +221,41 @@ export class LoyaltyService {
     });
   }
 
+  async getRewardRedemptions(user: User, rewardId: string, page = 1, limit = 10) {
+    const reward = await this.rewardRepo.findOne({ where: { id: rewardId } });
+    if (!reward) throw new NotFoundException('Reward not found');
+
+    const hasAccess = await this.branchesService.checkBranchAccess(user, reward.branchId);
+    if (!hasAccess) {
+      throw new ForbiddenException('You do not have access to this reward redemptions');
+    }
+
+    const [items, total] = await this.redemptionCodeRepo.findAndCount({
+      where: { rewardId, isUsed: true },
+      relations: ['usedBy'],
+      order: { usedAt: 'DESC' },
+      take: limit,
+      skip: (page - 1) * limit,
+    });
+
+    return {
+      data: items.map(redemption => ({
+        id: redemption.id,
+        usedAt: redemption.usedAt,
+        customer: redemption.usedBy ? {
+          id: redemption.usedBy.id,
+          firstName: redemption.usedBy.firstName,
+          lastName: redemption.usedBy.lastName,
+          email: redemption.usedBy.email,
+          phone: redemption.usedBy.phone,
+        } : null,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
   // --- Redemption ---
   async generateRedemptionCode(staff: User, dto: GenerateRedemptionCodeDto) {
     const reward = await this.rewardRepo.findOne({ where: { id: dto.rewardId, branchId: dto.branchId } });
@@ -273,6 +308,7 @@ export class LoyaltyService {
       await queryRunner.manager.save(redemptionCode);
 
       reward.remainingQuantity -= 1;
+      reward.redemptionCount += 1;
       await queryRunner.manager.save(reward);
 
       const transaction = this.pointTransactionRepo.create({
