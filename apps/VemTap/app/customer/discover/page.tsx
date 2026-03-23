@@ -59,7 +59,7 @@ export default function BusinessDiscoveryPage() {
     return (
         <div className="relative min-h-[calc(100vh-6rem)]">
             {/* Coming Soon Overlay */}
-            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm bg-white/20 m-4 rounded-3xl">
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-start pt-32 md:justify-center md:pt-0 backdrop-blur-sm bg-white/20 m-4 rounded-3xl">
                 <div className="bg-white p-8 rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-slate-100 flex flex-col items-center text-center max-w-sm mx-4 transform transition-all hover:scale-105 duration-300">
                     <div className="w-20 h-20 bg-slate-50 flex items-center justify-center rounded-2xl mb-6 shadow-inner">
                         <Lock className="text-slate-400" size={32} />

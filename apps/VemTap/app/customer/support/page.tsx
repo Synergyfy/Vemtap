@@ -110,7 +110,10 @@ export default function CustomerSupportPage() {
                                     </div>
                                 ))}
                             </div>
-                            <button className="w-full mt-8 py-3 bg-gray-50 text-primary font-black uppercase tracking-widest text-[10px] rounded-lg hover:bg-primary/5 transition-all">
+                            <button 
+                                onClick={() => notify.info('Our dedicated Help Center is coming soon! For now, please use the New Support Request form.')}
+                                className="w-full mt-8 py-3 bg-gray-50 text-primary font-black uppercase tracking-widest text-[10px] rounded-lg hover:bg-primary/5 transition-all"
+                            >
                                 Visit Help Center
                             </button>
                         </div>

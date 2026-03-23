@@ -211,7 +211,7 @@ export default function CustomerAnalyticsPage() {
                                             </div>
                                             <div className="flex-1">
                                                 <p className="text-xs font-bold text-text-main">{venue.venueName}</p>
-                                                <p className="text-[10px] text-text-secondary font-medium">{venue.points} total points earned</p>
+                                                <p className="text-[10px] text-text-secondary font-medium">{venue.points} {venue.points === 1 ? 'visit' : 'visits'}</p>
                                             </div>
                                         </div>
                                     );

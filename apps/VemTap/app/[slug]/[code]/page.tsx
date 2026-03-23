@@ -392,8 +392,8 @@ export default function DynamicTapJourneyPage() {
                     toast.success('Identify successful! Continuing to chat...');
                     router.push(targetRedirect);
                 } else {
-                    toast.success('Visit recorded! Opening your dashboard...');
-                    router.push('/customer/dashboard');
+                    toast.success('Visit recorded! Opening your settings...');
+                    router.push('/customer/settings?tab=security');
                 }
             } else {
                 setStep('OUTCOME');
@@ -655,7 +655,7 @@ export default function DynamicTapJourneyPage() {
                             if (targetRedirect) {
                                 router.push(targetRedirect);
                             } else {
-                                router.push(`/${businessSlug}?code=${deviceCode}`);
+                                router.push('/customer/settings?tab=security');
                             }
                         }}
                         onEngagement={handleEngagement}
