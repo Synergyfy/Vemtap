@@ -453,7 +453,31 @@ export class BusinessesService {
     });
 
     if (existingUser && existingUser.status !== UserStatus.PENDING) {
-      throw new ConflictException('A user with that email already exists');
+      throw new BadRequestException('A user with that email already exists');
+    }
+
+    if (dto.ownerPhone) {
+      const existingUserByPhone = await this.usersRepository.findOne({
+        where: { phone: dto.ownerPhone },
+      });
+
+      if (
+        existingUserByPhone &&
+        (!existingUser || existingUserByPhone.id !== existingUser.id)
+      ) {
+        throw new BadRequestException(
+          'A user with that phone number already exists',
+        );
+      }
+    }
+
+    if (dto.businessNumber) {
+      const existingBusinessByPhone = await this.findByPhone(dto.businessNumber);
+      if (existingBusinessByPhone) {
+        throw new BadRequestException(
+          'A business with this phone number already exists',
+        );
+      }
     }
 
     const hashedPassword = await bcrypt.hash(dto.ownerPassword, 10);
