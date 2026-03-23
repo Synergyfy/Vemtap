@@ -87,6 +87,6 @@ export const api = {
         apiCall(endpoint, { ...options, method: 'PUT', body: JSON.stringify(data) }),
     patch: (endpoint: string, data: any, options: RequestInit = {}) =>
         apiCall(endpoint, { ...options, method: 'PATCH', body: JSON.stringify(data) }),
-    delete: (endpoint: string, options: RequestInit = {}) =>
-        apiCall(endpoint, { ...options, method: 'DELETE' }),
+    delete: (endpoint: string, data?: any, options: RequestInit = {}) =>
+        apiCall(endpoint, { ...options, method: 'DELETE', body: data ? JSON.stringify(data) : undefined }),
 };

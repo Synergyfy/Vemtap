@@ -6,7 +6,7 @@ import PageHeader from '@/components/dashboard/PageHeader';
 import StatsCard from '@/components/dashboard/StatsCard';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import EmptyState from '@/components/dashboard/EmptyState';
-import CreateRewardModal from '@/components/dashboard/CreateRewardModal';
+import { RewardCreationModal } from '@/components/loyalty/admin/RewardCreationModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Reward, Visitor } from '@/services/visitors/types';
@@ -56,8 +56,8 @@ export default function ReturningVisitorsPage() {
         }
     });
 
-    const handleCreateReward = (rewardData: any) => {
-        createRewardMutation.mutate(rewardData);
+    const handleCreateReward = async (rewardData: any) => {
+        await createRewardMutation.mutateAsync(rewardData);
     };
 
     const handleRewardVisitor = (visitor: Visitor) => {
@@ -180,11 +180,11 @@ export default function ReturningVisitorsPage() {
                 }
             />
 
-            <CreateRewardModal
+            <RewardCreationModal
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
-                onSubmit={handleCreateReward}
-                isLoading={createRewardMutation.isPending}
+                onCreate={handleCreateReward}
+                defaultAudience="returning"
             />
 
             <MessagingChannelSelectorModal

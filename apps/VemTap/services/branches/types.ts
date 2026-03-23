@@ -15,7 +15,13 @@ export interface Branch {
     website?: string;
     whatsappNumber?: string;
     officialEmail?: string;
+    formAppearanceColor?: string;
+    welcomeTag?: string;
+    welcomeTitle?: string;
     welcomeMessage?: string;
+    welcomeButton?: string;
+    successTitle?: string;
+    successDescription?: string;
     successMessage?: string;
     privacyMessage?: string;
     rewardMessage?: string;
@@ -64,7 +70,13 @@ export interface UpdateBranchRequest {
     officialEmail?: string;
     whatsappNumber?: string;
     about?: string;
+    formAppearanceColor?: string;
+    welcomeTag?: string;
+    welcomeTitle?: string;
     welcomeMessage?: string;
+    welcomeButton?: string;
+    successTitle?: string;
+    successDescription?: string;
     successMessage?: string;
     privacyMessage?: string;
     rewardMessage?: string;

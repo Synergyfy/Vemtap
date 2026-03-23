@@ -53,7 +53,26 @@ export const useRemoveStaff = () => {
         },
     });
 };
+
+export const useUpdateSocials = () => {
+    const queryClient = useQueryClient();
+    return useMutation<any, Error, any>({
+        mutationFn: async (engagement) => await api.patch('/users/engagement', { engagement }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['my-business'] });
+            queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+        },
+    });
+};
+
 // --- Admin Hooks ---
+
+export const useUserProfile = () => {
+    return useQuery<any, Error>({
+        queryKey: ['user-profile'],
+        queryFn: async () => await api.get('/users/profile'),
+    });
+};
 
 export const useAdminUsers = (query?: { search?: string; role?: string; status?: string; page?: number; limit?: number }) => {
     return useQuery<AdminUsersResponse, Error>({
