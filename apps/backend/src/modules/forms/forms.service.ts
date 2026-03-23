@@ -18,6 +18,9 @@ import { BranchesService } from '../branches/branches.service';
 import { DevicesService } from '../devices/devices.service';
 import { FormTemplateStatsDto } from './dto/form-template-stats.dto';
 import { User } from '../users/entities/user.entity';
+import { Branch } from '../branches/entities/branch.entity';
+import { UpdateBranchFormSettingsDto } from './dto/update-branch-form-settings.dto';
+
 
 @Injectable()
 export class FormsService {
@@ -34,7 +37,10 @@ export class FormsService {
     private readonly formTemplatesRepository: Repository<FormTemplate>,
     @InjectRepository(FormFieldTemplate)
     private readonly formFieldTemplatesRepository: Repository<FormFieldTemplate>,
+    @InjectRepository(Branch)
+    private readonly branchesRepository: Repository<Branch>,
     private readonly branchesService: BranchesService,
+
     private readonly devicesService: DevicesService,
   ) { }
 
@@ -322,7 +328,9 @@ export class FormsService {
         isActive: true,
         adminDisabled: false,
       },
+      relations: ['branch'],
     });
+
   }
 
   async getFormsByDeviceCode(deviceCode: string): Promise<Form[]> {
@@ -338,7 +346,8 @@ export class FormsService {
         adminDisabled: false,
         showAfterLeadCapture: true,
       },
-      relations: ['fields'],
+      relations: ['fields', 'branch'],
+
       order: { createdAt: 'DESC' },
     });
   }
@@ -386,4 +395,15 @@ export class FormsService {
 
     return savedResponse;
   }
+
+  async updateBranchSettings(branchId: string, dto: UpdateBranchFormSettingsDto): Promise<Branch> {
+    const branch = await this.branchesRepository.findOneBy({ id: branchId });
+    if (!branch) throw new NotFoundException('Branch not found');
+
+    const updateFields = { ...dto };
+
+    Object.assign(branch, updateFields);
+    return this.branchesRepository.save(branch);
+  }
 }
+
