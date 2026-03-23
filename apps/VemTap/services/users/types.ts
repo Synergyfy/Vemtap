@@ -3,6 +3,7 @@ export type UserRole = 'Owner' | 'Manager' | 'Staff' | 'Customer' | 'Admin';
 export interface StaffMember {
     id: string;
     email: string;
+    phone?: string;
     firstName: string;
     lastName: string;
     role: UserRole;
@@ -16,6 +17,7 @@ export interface StaffMember {
 
 export interface InviteStaffRequest {
     email: string;
+    phone?: string;
     firstName: string;
     lastName: string;
     role: UserRole;

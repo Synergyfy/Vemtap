@@ -17,6 +17,9 @@ import {
     Music2,
     Gift,
     ChevronRight,
+    Star,
+    CheckCircle2,
+    Building2,
 } from 'lucide-react';
 
 import { usePublicBusiness, usePublicBranch, usePublicRewards } from '@/services/public/hooks';
@@ -236,318 +239,295 @@ export default function PublicBusinessProfilePage() {
     }
 
     return (
-        <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-white font-body text-slate-900 antialiased">
+        <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-[#F8FAFC] font-sans text-slate-900 antialiased">
             <Script
                 src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
                 strategy="afterInteractive"
                 onLoad={() => setLeafletReady(true)}
             />
 
-            <main className="min-h-screen bg-white text-slate-900 font-body">
-                <div className="max-w-7xl mx-auto px-6 pt-12 pb-8">
-                    {/* Hero Section */}
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-                        <div className="flex items-center gap-6">
-                            <div className="w-24 h-24 md:w-32 md:h-32 bg-slate-100 rounded-full shadow-lg p-2 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
-                                {profileLogo && !logoFailed ? (
-                                    <img
-                                        alt="Logo"
-                                        className={`w-full h-full object-contain transition-opacity duration-300 ${logoLoaded ? 'opacity-100' : 'opacity-0'}`}
-                                        src={profileLogo}
-                                        onLoad={() => setLogoLoaded(true)}
-                                        onError={() => setLogoFailed(true)}
-                                    />
-                                ) : (
-                                    <img
-                                        alt="VemTap"
-                                        className="w-full h-full object-contain opacity-80"
-                                        src={fallbackLogo}
-                                    />
-                                )}
-                            </div>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight lowercase">
-                                        {profileName}
-                                    </h1>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-4 text-slate-500 font-medium mt-2 text-sm md:text-base">
-                                    <div className="flex items-center gap-1.5 grayscale opacity-70">
-                                        <MapPin size={16} />
-                                        <span>{resolvedLocationDisplay || "Lagos, Nigeria"}</span>
-                                    </div>
-                                    {(business?.category?.name || business?.subcategory?.name) && (
-                                        <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-600">
-                                            <span>{business?.category?.name}</span>
-                                            {business?.subcategory?.name && (
-                                                <>
-                                                    <span className="opacity-30">•</span>
-                                                    <span>{business?.subcategory?.name}</span>
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+            {/* Header Background */}
+            <div className="h-44 bg-[#4238DA] rounded-b-[3.5rem] relative" />
 
-                        <div className="flex gap-2">
-                            <button className="bg-slate-100 text-slate-600 p-3 rounded-2xl hover:bg-slate-200 transition-all border border-slate-200 active:scale-95 shadow-sm">
-                                <Share2 size={20} />
-                            </button>
+            <div className="max-w-6xl mx-auto px-4 -mt-24 pb-20 relative z-10">
+                {/* Header Card */}
+                <div className="bg-white rounded-[2.5rem] p-8 shadow-sm flex flex-col md:flex-row items-end justify-between gap-6 mb-12 border border-slate-50">
+                    <div className="flex flex-col md:flex-row items-start gap-6 w-full md:w-auto">
+                        <div className="w-32 h-32 bg-[#2563EB] rounded-[1.8rem] flex items-center justify-center text-white text-7xl font-black italic shadow-2xl -mt-20 border-[6px] border-white shrink-0 overflow-hidden">
+                            {profileLogo && !logoFailed ? (
+                                <img
+                                    alt="Logo"
+                                    className={`w-full h-full object-contain p-2 transition-opacity duration-300 ${logoLoaded ? 'opacity-100' : 'opacity-0'}`}
+                                    src={profileLogo}
+                                    onLoad={() => setLogoLoaded(true)}
+                                    onError={() => setLogoFailed(true)}
+                                />
+                            ) : (
+                                <span className="pt-2">{profileName.charAt(0).toLowerCase()}</span>
+                            )}
+                        </div>
+                        <div className="pt-2">
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight lowercase">
+                                    {profileName}
+                                </h1>
+                                <div className="w-6 h-6 rounded-full bg-[#10B981] flex items-center justify-center text-white shadow-sm border-2 border-white">
+                                    <CheckCircle2 size={12} strokeWidth={4} />
+                                </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2">
+                                <div className="flex items-center gap-1.5 grayscale-0">
+                                    <Star className="text-[#F59E0B] fill-[#F59E0B] w-4 h-4" />
+                                    <span className="font-bold text-slate-900 text-sm">4.9</span>
+                                    <span className="text-[#94A3B8] font-semibold text-xs">(1,240 Reviews)</span>
+                                </div>
+                                <div className="w-1 h-1 rounded-full bg-slate-200 hidden sm:block" />
+                                <div className="flex items-center gap-1.5 text-[#94A3B8]">
+                                    <MapPin size={16} />
+                                    <span className="font-semibold text-xs tracking-tight">{resolvedLocationDisplay || "VemTap HQ, Victoria Island, Lagos"}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                    <button className="bg-[#2563EB] text-white px-10 py-4 rounded-xl font-bold uppercase tracking-widest text-xs shadow-[0_10px_20px_-5px_rgba(37,99,235,0.4)] hover:scale-[1.02] active:scale-95 transition-all w-full md:w-auto whitespace-nowrap">
+                        FOLLOW BUSINESS
+                    </button>
+                </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-                        {/* Left Column */}
-                        <div className="lg:col-span-7 flex flex-col gap-12">
-                            {/* About Section */}
-                            <section>
-                                <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase tracking-tight font-display">About the Business</h2>
-                                <p className="text-slate-600 leading-relaxed text-lg font-medium">
-                                    {displayText(profileAbout)}
-                                </p>
-                                {profileWelcome && (
-                                    <div className="mt-8 p-6 bg-blue-50/50 rounded-2xl border border-blue-100/50 italic text-slate-700">
-                                        "{profileWelcome}"
-                                    </div>
-                                )}
-                            </section>
-
-                            {/* Rewards Section */}
-                            {activeShowRewards && (
-                                <section>
-                                    <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase tracking-tight font-display flex items-center gap-3">
-                                        Active Rewards
-                                        {rewards && rewards.length > 0 && (
-                                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{rewards.length}</span>
-                                        )}
-                                    </h2>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {rewards && rewards.length > 0 ? (
-                                            rewards.map((reward) => (
-                                                <div 
-                                                    key={reward.id} 
-                                                    className="bg-white p-6 rounded-4xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary/20 transition-all group cursor-pointer relative overflow-hidden"
-                                                >
-                                                    <div className="absolute top-4 right-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <ChevronRight size={20} />
-                                                    </div>
-                                                    <div className="flex flex-col gap-4">
-                                                        <div className="w-14 h-14 rounded-2xl bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                                                            <Gift size={28} />
-                                                        </div>
-                                                        <div>
-                                                            <h3 className="font-black text-lg text-slate-900 leading-tight mb-1 lowercase">{reward.name}</h3>
-                                                            <p className="text-slate-500 text-sm font-medium line-clamp-2">{reward.description}</p>
-                                                        </div>
-                                                        <div className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary bg-primary/10 self-start px-3 py-1.5 rounded-full">
-                                                            {reward.pointCost} points requirement
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-100 rounded-3xl text-slate-400 font-medium">
-                                                No specific rewards are listed for this location yet.
-                                            </div>
-                                        )}
-                                    </div>
-                                </section>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+                    {/* Left Column */}
+                    <div className="lg:col-span-8 flex flex-col gap-12">
+                        {/* About Us Section */}
+                        <section>
+                            <h2 className="text-2xl font-black text-slate-900 mb-6 font-display">About Us</h2>
+                            <p className="text-[#64748B] leading-relaxed text-lg font-medium">
+                                {profileAbout || `Welcome to ${profileName.toLowerCase()}! We are dedicated to providing the best experience to our customers through innovation and quality service. Join our loyalty program to earn points on every visit and unlock exclusive rewards.`}
+                            </p>
+                            {profileWelcome && (
+                                <div className="mt-8 p-6 bg-blue-50/50 rounded-2xl border border-blue-100/50 italic text-slate-700">
+                                    "{profileWelcome}"
+                                </div>
                             )}
+                        </section>
 
-                            {/* Branches/Locations Section */}
+                        {/* Active Rewards Section */}
+                        {activeShowRewards && (
                             <section>
-                                <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase tracking-tight font-display">Our Locations</h2>
-                                <div className="space-y-4">
-                                    {branches.length > 0 ? (
-                                        branches.map((b: any) => (
+                                <h2 className="text-2xl font-black text-slate-900 mb-6 font-display">Active Rewards</h2>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    {rewards && rewards.length > 0 ? (
+                                        rewards.slice(0, 2).map((reward, idx) => (
                                             <div 
-                                                key={b.id} 
-                                                className={`p-6 rounded-3xl border transition-all flex items-center justify-between group ${
-                                                    b.id === resolvedBranch?.id 
-                                                        ? 'bg-primary/5 border-primary/20 ring-1 ring-primary/10' 
-                                                        : 'bg-slate-50 border-slate-100 hover:border-slate-300'
-                                                }`}
+                                                key={reward.id} 
+                                                className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm relative group cursor-pointer overflow-hidden transition-all hover:shadow-md h-full flex flex-col"
                                             >
-                                                <div className="flex items-center gap-5">
-                                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
-                                                        b.id === resolvedBranch?.id ? 'bg-primary text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-200'
-                                                    }`}>
-                                                        <MapPin size={24} />
+                                                <div className="flex justify-between items-start mb-6">
+                                                    <div className="w-14 h-14 bg-white shadow-inner border border-slate-50 flex items-center justify-center rounded-2xl text-3xl">
+                                                        {idx === 0 ? "☕" : "🏷️"}
                                                     </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <h4 className="font-black text-lg text-slate-900 lowercase">{b.name || "Branch Location"}</h4>
-                                                            {b.isMainBranch && (
-                                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-200/50 px-1.5 py-0.5 rounded">Main</span>
-                                                            )}
-                                                        </div>
-                                                        <p className="text-slate-500 font-medium text-sm mt-0.5">
-                                                            {formatLocation(b.address, b.city, b.state)}
-                                                        </p>
+                                                    <div className="bg-[#E0E7FF] text-[#2563EB] px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
+                                                        {reward.pointCost} POINTS
                                                     </div>
                                                 </div>
-                                                {b.uniqueCode && b.uniqueCode !== code && (
-                                                    <a 
-                                                        href={`/b/${b.uniqueCode}`}
-                                                        className="p-3 rounded-full bg-white border border-slate-100 text-slate-400 hover:text-primary hover:border-primary transition-all shadow-sm active:scale-90"
-                                                    >
-                                                        <ChevronRight size={20} />
-                                                    </a>
-                                                )}
+                                                <div>
+                                                    <h3 className="font-black text-xl text-slate-900 mb-1">{reward.name}</h3>
+                                                    <p className="text-[#94A3B8] text-sm font-semibold">Tap to see details</p>
+                                                </div>
                                             </div>
                                         ))
                                     ) : (
-                                        <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex items-center gap-5">
-                                            <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-300">
-                                                <MapPin size={24} />
+                                        <>
+                                            {/* Fallback items to match design image looks if no rewards */}
+                                            <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden">
+                                                <div className="flex justify-between items-start mb-6">
+                                                    <div className="w-14 h-14 bg-white shadow-inner border border-slate-50 flex items-center justify-center rounded-2xl text-3xl">☕</div>
+                                                    <div className="bg-[#E0E7FF] text-[#2563EB] px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">100 POINTS</div>
+                                                </div>
+                                                <h3 className="font-black text-xl text-slate-900 mb-1 text-nowrap">Free Coffee</h3>
+                                                <p className="text-[#94A3B8] text-sm font-semibold">Tap to see details</p>
                                             </div>
-                                            <div>
-                                                <h4 className="font-black text-lg text-slate-900 lowercase">Main Office</h4>
-                                                <p className="text-slate-500 font-medium text-sm mt-0.5">{resolvedLocationDisplay}</p>
+                                            <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden">
+                                                <div className="flex justify-between items-start mb-6">
+                                                    <div className="w-14 h-14 bg-white shadow-inner border border-slate-50 flex items-center justify-center rounded-2xl text-3xl">🏷️</div>
+                                                    <div className="bg-[#E0E7FF] text-[#2563EB] px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">250 POINTS</div>
+                                                </div>
+                                                <h3 className="font-black text-xl text-slate-900 mb-1 text-nowrap">15% Discount</h3>
+                                                <p className="text-[#94A3B8] text-sm font-semibold">Tap to see details</p>
                                             </div>
-                                        </div>
+                                        </>
                                     )}
                                 </div>
                             </section>
+                        )}
 
-                            {/* Map Section */}
-                            {mapCoords && (
-                                <section>
-                                    <div className="relative group">
+                        {/* Locations & Branches Section */}
+                        <section>
+                            <h2 className="text-2xl font-black text-slate-900 mb-6 font-display">Locations & Branches</h2>
+                            <div className="flex flex-col gap-5">
+                                {branches.length > 0 ? (
+                                    branches.map((b: any) => (
                                         <div 
-                                            ref={mapRef} 
-                                            className="w-full h-[450px] rounded-[3rem] border-8 border-white shadow-2xl z-0 overflow-hidden"
-                                        />
-                                        <div className="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md p-4 rounded-2xl border border-white/50 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-300">
-                                            <p className="text-xs font-black uppercase tracking-widest text-primary mb-1">Interactive Map</p>
-                                            <p className="text-sm font-bold text-slate-800">{resolvedLocationDisplay}</p>
-                                        </div>
-                                    </div>
-                                </section>
-                            )}
-                        </div>
-
-                        {/* Right Column (Sidebar) */}
-                        <div className="lg:col-span-5 flex flex-col gap-8">
-                            {/* Contact Info Card */}
-                            <div className="bg-slate-900 text-white p-10 rounded-[3rem] shadow-2xl flex flex-col gap-10 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-[80px] rounded-full -translate-y-1/2 translate-x-1/2"></div>
-                                
-                                <h3 className="text-xl font-black uppercase tracking-tight text-white/50 font-display">Contact Info</h3>
-                                
-                                <div className="space-y-8">
-                                    <div className="flex items-center gap-6 group">
-                                        <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                                            <Phone size={20} />
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Phone Number</span>
-                                            <span className="text-lg font-bold">{displayText(profilePhone)}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-6 group">
-                                        <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                                            <Mail size={20} />
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Email Address</span>
-                                            <span className="text-lg font-bold break-all lowercase">{displayText(profileEmail)}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-6 group">
-                                        <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                                            <Globe size={20} />
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Website</span>
-                                            <span className="text-lg font-bold">{displayText(profileWebsite)}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div className="pt-10 border-t border-white/10 flex flex-wrap gap-4">
-                                    {socialItems.filter(s => s.url).map((social) => (
-                                        <a 
-                                            key={social.key} 
-                                            href={social.url} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer" 
-                                            className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary hover:border-primary transition-all text-white/60 hover:text-white active:scale-90"
-                                            title={social.label}
+                                            key={b.id} 
+                                            className="bg-white p-5 pr-8 rounded-[1.8rem] border border-slate-100 shadow-sm flex items-center justify-between group cursor-pointer transition-all hover:border-slate-300"
                                         >
-                                            {React.createElement(social.icon, { size: 20 })}
-                                        </a>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Business Hours Card */}
-                            <div className="bg-slate-50 border border-slate-100 p-10 rounded-[3rem] shadow-sm relative group overflow-hidden">
-                                <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 blur-[60px] rounded-full translate-x-1/2 -translate-y-1/2"></div>
-                                
-                                <h3 className="text-[10px] font-black mb-10 uppercase tracking-[0.3em] text-slate-400 font-display">Opening Hours</h3>
-                                
-                                <div className="space-y-6">
-                                    {profileHours && Object.entries(profileHours).map(([day, hours]) => {
-                                        const dayHours = hours as BusinessHours | undefined;
-                                        const isClosed = !dayHours || dayHours.closed;
-                                        return (
-                                            <div key={day} className="flex justify-between items-center group/row">
-                                                <span className="text-slate-500 font-black uppercase text-[11px] tracking-widest group-hover/row:text-primary transition-colors">{day.slice(0,3)}</span>
-                                                <div className="text-right">
-                                                    <div className={`font-black text-sm tracking-tight ${isClosed ? 'text-slate-400' : 'text-slate-900'} lowercase`}>
-                                                        {formatHours(dayHours)}
-                                                    </div>
-                                                    {!isClosed && (
-                                                        <div className="text-primary text-[8px] font-black uppercase tracking-widest mt-1 opacity-60">Currently Open</div>
-                                                    )}
+                                            <div className="flex items-center gap-5">
+                                                <div className="w-16 h-16 bg-[#F0F4FF] rounded-2xl flex items-center justify-center text-[#2563EB]">
+                                                   <Building2 size={24} strokeWidth={2.5} />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-black text-lg text-slate-900 leading-tight">
+                                                        {b.name || (b.isMainBranch ? "Head Office" : "Branch Location")}
+                                                    </h4>
+                                                    <p className="text-[#94A3B8] text-sm font-semibold mt-0.5">
+                                                        {formatLocation(b.address, b.city, b.state)}
+                                                    </p>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
+                                            <ChevronRight className="text-slate-300 transition-transform group-hover:translate-x-1" size={24} />
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="bg-white p-5 pr-8 rounded-[1.8rem] border border-slate-100 shadow-sm flex items-center justify-between group transition-all">
+                                        <div className="flex items-center gap-5">
+                                            <div className="w-16 h-16 bg-[#F0F4FF] rounded-2xl flex items-center justify-center text-[#2563EB]">
+                                               <Building2 size={24} strokeWidth={2.5} />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-black text-lg text-slate-900">Head Office</h4>
+                                                <p className="text-[#94A3B8] text-sm font-semibold mt-0.5">{resolvedLocationDisplay}</p>
+                                            </div>
+                                        </div>
+                                        <ChevronRight className="text-slate-300" size={24} />
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+                        
+                        {/* Map Preview (Optional matching of design though figma didn't show it as main, but good to keep) */}
+                        {mapCoords && (
+                            <section className="mt-4">
+                                <div className="relative group">
+                                    <div 
+                                        ref={mapRef} 
+                                        className="w-full h-80 rounded-[2.5rem] border-4 border-white shadow-lg overflow-hidden"
+                                    />
                                 </div>
+                            </section>
+                        )}
+                    </div>
 
-                                <div className="mt-10 pt-10 border-t border-slate-200/60 flex items-center justify-center gap-3 grayscale opacity-30">
-                                    <span className="text-[10px] font-black tracking-widest uppercase">Verified Business</span>
-                                    <div className="w-1 h-1 rounded-full bg-slate-400"></div>
-                                    <span className="text-[10px] font-black tracking-widest uppercase">Premium Partner</span>
+                    {/* Right Column (Sidebar) */}
+                    <div className="lg:col-span-4 flex flex-col gap-10">
+                        {/* Connect With Us Card */}
+                        <div className="bg-[#0F172A] text-white p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col h-full">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                            
+                            <h3 className="text-2xl font-black italic text-white mb-10 tracking-tight">Connect with us</h3>
+                            
+                            <div className="space-y-8 flex-grow">
+                                <div className="flex items-center gap-5 group">
+                                    <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/70 group-hover:bg-blue-600 transition-all">
+                                        <Phone size={20} />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-white/80 text-lg font-bold tracking-tight">{profilePhone ? (profilePhone.length > 13 ? profilePhone.slice(0, 13) : profilePhone) : "+234 800"}</span>
+                                        <span className="text-white/80 text-lg font-bold tracking-widest uppercase italic -mt-1">{profileName.slice(0, 6).toUpperCase() || "VEMTAP"}</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-5 group">
+                                    <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/70 group-hover:bg-blue-600 transition-all">
+                                        <Mail size={20} />
+                                    </div>
+                                    <span className="text-white/80 text-lg font-bold tracking-tight lowercase break-all">
+                                        {profileEmail || `hello@${profileName.toLowerCase()}.com`}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-5 group">
+                                    <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/70 group-hover:bg-blue-600 transition-all">
+                                        <Globe size={20} />
+                                    </div>
+                                    <span className="text-white/80 text-lg font-bold tracking-tight">
+                                        {profileWebsite || `www.${profileName.toLowerCase()}.com`}
+                                    </span>
                                 </div>
                             </div>
                             
-                            {/* Brand Footer */}
-                            <div className="flex flex-col items-center gap-4 py-8">
-                                <div className="flex items-center gap-2 grayscale opacity-20">
-                                    <span className="text-xs font-black tracking-tighter uppercase">VemTap</span>
-                                    <div className="w-1 h-1 rounded-full bg-slate-900"></div>
-                                    <span className="text-[10px] font-bold">2026</span>
+                            <div className="w-full h-px bg-white/10 my-10" />
+                            
+                            <div className="flex justify-between items-center px-1">
+                                {socialItems.filter(s => s.url || true).slice(0, 3).map((social, idx) => (
+                                    <a 
+                                        key={social.key} 
+                                        href={social.url || "#"} 
+                                        className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-blue-600 hover:border-blue-600 transition-all text-white/60 hover:text-white"
+                                    >
+                                        {React.createElement(social.icon, { size: 20 })}
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Business Hours Card */}
+                        <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden">
+                            <h3 className="text-lg font-black uppercase tracking-[0.2em] text-slate-800 mb-10 text-center">BUSINESS HOURS</h3>
+                            
+                            <div className="space-y-8">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex flex-col">
+                                        <span className="font-bold text-slate-900 text-lg">Mon -</span>
+                                        <span className="font-bold text-slate-900 text-lg -mt-1">Fri</span>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="font-black text-lg text-slate-900">
+                                            {profileHours?.Monday && !profileHours.Monday.closed ? formatHours(profileHours.Monday) : "9:00 AM - 9:00 PM"}
+                                        </div>
+                                        <div className="text-[#10B981] font-black text-[10px] uppercase tracking-widest mt-0.5">OPEN</div>
+                                    </div>
                                 </div>
-                                <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-300">Sustainable Customer Experience</p>
+                                
+                                <div className="flex justify-between items-start">
+                                    <span className="font-bold text-slate-900 text-lg">Saturday</span>
+                                    <div className="text-right">
+                                        <div className="font-black text-lg text-slate-900">
+                                            {profileHours?.Saturday && !profileHours.Saturday.closed ? formatHours(profileHours.Saturday) : "10:00 AM - 11:00 PM"}
+                                        </div>
+                                        <div className="text-[#10B981] font-black text-[10px] uppercase tracking-widest mt-0.5">OPEN</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-between items-start">
+                                    <span className="font-bold text-slate-900 text-lg">Sunday</span>
+                                    <div className="text-right">
+                                        <div className="font-black text-lg text-slate-400">
+                                            {profileHours?.Sunday && !profileHours.Sunday.closed ? formatHours(profileHours.Sunday) : "Closed"}
+                                        </div>
+                                        <div className="text-red-500 font-black text-[10px] uppercase tracking-widest mt-0.5">CLOSED</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </main>
-            
-            {/* Global Styles for Leaflet */}
+            </div>
+
+            {/* Global Styles for Leaflet Refined to match clean look */}
             <style jsx global>{`
                 .leaflet-container {
                     font-family: inherit;
                     cursor: default !important;
+                    filter: grayscale(0.2) contrast(1.1);
                 }
                 .leaflet-bar {
                     border: none !important;
                     box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+                    margin: 20px !important;
                 }
                 .leaflet-bar a {
                     background-color: white !important;
                     color: #0f172a !important;
                     border: 1px solid #f1f5f9 !important;
-                }
-                .leaflet-bar a:hover {
-                    background-color: #f8fafc !important;
-                    color: #2563eb !important;
+                    border-radius: 8px !important;
+                    margin-bottom: 4px;
                 }
             `}</style>
         </div>

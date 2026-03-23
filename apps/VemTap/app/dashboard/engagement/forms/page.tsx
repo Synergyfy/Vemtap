@@ -214,7 +214,7 @@ export default function EngagementFormsBuilderPage() {
     return map;
   }, [responsesSummary]);
 
-  const { setDefaultForm, getDefaultFormId, clearDefaultForm } = useFormPreferencesStore();
+  const { setDefaultForm, getDefaultFormId, clearDefaultForm, getActiveFormIds, toggleActiveForm } = useFormPreferencesStore();
   const brandColor = engagementSettings?.brandColor || '#2563eb';
   const brandVars = useMemo(
     () => buildBrandCssVars(brandColor),
@@ -1544,12 +1544,26 @@ export default function EngagementFormsBuilderPage() {
                 </p>
               </div>
 
-              <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex gap-3">
-                <Info size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                <div className="text-xs text-amber-700/80 leading-relaxed">
-                  Accidental tapping can happen on mobile. This confirmation ensures you intentionally want to stop this form from appearing in the post-submission flow.
-                </div>
-              </div>
+              {(() => {
+                const bKey = disableConfirm.branchId || branchScope || userBranchId || 'global';
+                const seqIds = getActiveFormIds(bKey);
+                const isInSequence = seqIds.includes(disableConfirm.id);
+                return isInSequence ? (
+                  <div className="p-4 bg-red-50 rounded-xl border border-red-100 flex gap-3">
+                    <Info size={16} className="text-red-600 shrink-0 mt-0.5" />
+                    <div className="text-xs text-red-700/80 leading-relaxed">
+                      <strong>Warning:</strong> This form is currently in the <strong>Additional Forms sequence</strong> under User Experience. Disabling it will also remove it from the sequence.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex gap-3">
+                    <Info size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                    <div className="text-xs text-amber-700/80 leading-relaxed">
+                      Accidental tapping can happen on mobile. This confirmation ensures you intentionally want to stop this form from appearing in the post-submission flow.
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="flex gap-3">
                 <button
@@ -1566,6 +1580,12 @@ export default function EngagementFormsBuilderPage() {
                         payload: { showAfterLeadCapture: false, branchId: disableConfirm.branchId }
                       });
                       clearDefaultForm(disableConfirm.branchId);
+                      // Also remove from sequence if present
+                      const bKey = disableConfirm.branchId || branchScope || userBranchId || 'global';
+                      const seqIds = getActiveFormIds(bKey);
+                      if (seqIds.includes(disableConfirm.id)) {
+                        toggleActiveForm(bKey, disableConfirm.id);
+                      }
                       setDisableConfirm(null);
                       toast.success('Sequence automation disabled');
                     } catch (e: any) {

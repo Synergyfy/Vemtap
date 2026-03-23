@@ -2,8 +2,9 @@
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Smile, Paperclip, Camera, Send, X, CornerUpLeft } from 'lucide-react';
+import { Smile, Paperclip, Camera, Send, X, CornerUpLeft, MoreHorizontal, Gift } from 'lucide-react';
 import { useSendReply, useChatTemplates, useStartConversation, useStartBranchConversation, useInitBranchConversation } from '@/hooks/useMessaging';
+import { useRewards } from '@/services/loyalty/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches } from '@/services/branches/hooks';
 import toast from 'react-hot-toast';
@@ -31,6 +32,7 @@ export default function ChatInput({
 }: ChatInputProps) {
     const [text, setText] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showMediaOptions, setShowMediaOptions] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
     const user = useAuthStore(s => s.user);
     const { activeBranchId, setActiveBranch } = useActiveBranch();
@@ -44,12 +46,16 @@ export default function ChatInput({
 
     // Command selection states
     const [showTemplates, setShowTemplates] = useState(false);
+    const [showRewards, setShowRewards] = useState(false);
+    const [triggerChar, setTriggerChar] = useState(''); // / or @ or #
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [commandSearch, setCommandSearch] = useState('');
     const [triggerPosition, setTriggerPosition] = useState<{ top: number; left: number } | null>(null);
 
-    // Fetch templates for the current branch
-    const { data: templates = [] } = useChatTemplates(activeBranchId! || branches[0]?.id);
+    // Fetch templates and rewards for the current branch
+    const effectiveBranchId = activeBranchId! || branches[0]?.id;
+    const { data: templates = [] } = useChatTemplates(effectiveBranchId);
+    const { data: rewards = [] } = useRewards(effectiveBranchId);
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,6 +64,7 @@ export default function ChatInput({
     const isTypingRef = useRef(false);
     const emojiRef = useRef<HTMLDivElement>(null);
     const templateRef = useRef<HTMLDivElement>(null);
+    const mediaOptionsRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!user || user?.role?.toLowerCase() === 'customer') return;
@@ -65,6 +72,16 @@ export default function ChatInput({
             setActiveBranch(branches[0].id);
         }
     }, [activeBranchId, branches, user, setActiveBranch]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (mediaOptionsRef.current && !mediaOptionsRef.current.contains(event.target as Node)) {
+                setShowMediaOptions(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     useEffect(() => {
         if (conversationId && drafts[conversationId]) {
@@ -99,6 +116,15 @@ export default function ChatInput({
             t.content.toLowerCase().includes(commandSearch.toLowerCase())
         );
     }, [templates, commandSearch]);
+
+    // Filter rewards based on search
+    const filteredRewards = useMemo(() => {
+        if (!commandSearch) return rewards;
+        return rewards.filter((r: any) => 
+            r.name.toLowerCase().includes(commandSearch.toLowerCase()) || 
+            r.description.toLowerCase().includes(commandSearch.toLowerCase())
+        );
+    }, [rewards, commandSearch]);
 
     const handleInput = useCallback(() => {
         if (textareaRef.current) {
@@ -162,7 +188,33 @@ export default function ChatInput({
                 }
             }, 0);
         }
-    }, [text, user, conversationId, setDraft, handleInput]);
+    }, [text, user, conversationId, setDraft]);
+
+    const insertReward = useCallback((reward: any) => {
+        const cursorPosition = textareaRef.current?.selectionStart || text.length;
+        const textBeforeCursor = text.slice(0, cursorPosition);
+        const match = textBeforeCursor.match(/(?:^|\s)#\w*$/);
+
+        if (match) {
+            const startPos = match.index! + (match[0].startsWith(' ') ? 1 : 0);
+            
+            const content = `${reward.name}: ${reward.description || ''}`;
+            const newValue = text.slice(0, startPos) + content + text.slice(cursorPosition);
+            setText(newValue);
+            if (conversationId) setDraft(conversationId, newValue);
+            setShowRewards(false);
+            
+            setTimeout(() => {
+                if (textareaRef.current) {
+                    textareaRef.current.focus();
+                    textareaRef.current.style.height = '';
+                    textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+                    const newPos = startPos + content.length;
+                    textareaRef.current.setSelectionRange(newPos, newPos);
+                }
+            }, 0);
+        }
+    }, [text, conversationId, setDraft]);
 
     // Handle slash commands and mentions
     const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -172,16 +224,26 @@ export default function ChatInput({
         if (conversationId) setDraft(conversationId, value);
         handleTypingActivity(value);
 
-        // Check if cursor is after / or @
+        // Check if cursor is after / or @ or #
         const textBeforeCursor = value.slice(0, cursorPosition);
-        const match = textBeforeCursor.match(/(?:^|\s)([@\/])(\w*)$/);
+        const match = textBeforeCursor.match(/(?:^|\s)([@\/#])(\w*)$/);
         
         if (match) {
+            const char = match[1];
+            setTriggerChar(char);
             setCommandSearch(match[2]);
-            setShowTemplates(true);
+            if (char === '#') {
+                setShowRewards(true);
+                setShowTemplates(false);
+            } else {
+                setShowTemplates(true);
+                setShowRewards(false);
+            }
             setSelectedIndex(0);
         } else {
             setShowTemplates(false);
+            setShowRewards(false);
+            setTriggerChar('');
         }
     };
 
@@ -310,18 +372,23 @@ export default function ChatInput({
     ]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (showTemplates && filteredTemplates.length > 0) {
+        const isPopperOpen = (showTemplates && filteredTemplates.length > 0) || (showRewards && filteredRewards.length > 0);
+        const currentList = showRewards ? filteredRewards : filteredTemplates;
+
+        if (isPopperOpen && currentList.length > 0) {
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                setSelectedIndex(prev => (prev + 1) % filteredTemplates.length);
+                setSelectedIndex(prev => (prev + 1) % currentList.length);
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                setSelectedIndex(prev => (prev - 1 + filteredTemplates.length) % filteredTemplates.length);
+                setSelectedIndex(prev => (prev - 1 + currentList.length) % currentList.length);
             } else if (e.key === 'Enter' || e.key === 'Tab') {
                 e.preventDefault();
-                insertTemplate(filteredTemplates[selectedIndex]);
+                if (showRewards) insertReward(currentList[selectedIndex]);
+                else insertTemplate(currentList[selectedIndex]);
             } else if (e.key === 'Escape') {
                 setShowTemplates(false);
+                setShowRewards(false);
             }
             return;
         }
@@ -378,38 +445,79 @@ export default function ChatInput({
                     </button>
                 </div>
             )}
-            {/* Template Selection Popper */}
-            {showTemplates && filteredTemplates.length > 0 && (
+
+            {/* Reward Selection Popper */}
+            {showRewards && filteredRewards.length > 0 && (
                 <div 
-                    ref={templateRef}
                     className="absolute bottom-full left-4 mb-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
                 >
                     <div className="px-4 py-2 border-b border-slate-50 flex items-center justify-between">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Template</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Reward</p>
                         <span className="text-[9px] text-slate-300 font-bold">Use ↑↓ and ↵</span>
                     </div>
                     <div className="max-h-64 overflow-y-auto p-1 custom-scrollbar">
-                        {filteredTemplates.map((template: any, index: number) => (
+                        {filteredRewards.map((reward: any, index: number) => (
                             <button
-                                key={template.id}
-                                onClick={() => insertTemplate(template)}
+                                key={reward.id}
+                                onClick={() => insertReward(reward)}
                                 onMouseEnter={() => setSelectedIndex(index)}
                                 className={`w-full flex flex-col items-start px-4 py-3 rounded-xl transition-all ${index === selectedIndex ? 'bg-primary/5 ring-1 ring-primary/10' : 'hover:bg-slate-50'}`}
                             >
                                 <div className="flex items-center justify-between w-full">
-                                    <span className={`text-sm font-bold ${index === selectedIndex ? 'text-primary' : 'text-slate-700'}`}>{template.name}</span>
+                                    <div className="flex items-center gap-2">
+                                        <div className={`p-1 rounded-lg ${index === selectedIndex ? 'bg-primary/20 text-primary' : 'bg-gray-100 text-gray-400'}`}>
+                                            <Gift size={12} />
+                                        </div>
+                                        <span className={`text-sm font-bold ${index === selectedIndex ? 'text-primary' : 'text-slate-700'}`}>{reward.name}</span>
+                                    </div>
                                     {index === selectedIndex && <CornerUpLeft size={10} className="text-primary opacity-40" />}
                                 </div>
-                                <span className="text-xs text-slate-400 truncate w-full italic">"{template.content}"</span>
+                                <span className="text-xs text-slate-400 truncate w-full italic mt-1">{reward.description || 'No description'}</span>
                             </button>
                         ))}
                     </div>
                 </div>
             )}
 
+            {/* Media Options Popover */}
+            {showMediaOptions && (
+                <div 
+                    ref={mediaOptionsRef}
+                    className="absolute bottom-full left-4 mb-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-1 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200 overflow-hidden"
+                >
+                    <button 
+                        type="button"
+                        onClick={() => { setShowMediaOptions(false); setShowEmojiPicker(true); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-slate-600 text-left"
+                    >
+                        <Smile size={18} className="text-primary" />
+                        <span className="text-sm font-bold">Emoji</span>
+                    </button>
+                    <button 
+                        type="button"
+                        onClick={() => { setShowMediaOptions(false); imageInputRef.current?.click(); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-slate-600 text-left"
+                    >
+                        <Camera size={18} className="text-primary" />
+                        <span className="text-sm font-bold">Camera</span>
+                    </button>
+                    <button 
+                        type="button"
+                        onClick={() => { setShowMediaOptions(false); fileInputRef.current?.click(); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-slate-600 text-left"
+                    >
+                        <Paperclip size={18} className="text-primary" />
+                        <span className="text-sm font-bold">Other Media</span>
+                    </button>
+                </div>
+            )}
+            
             {/* Emoji Picker Popover */}
             {showEmojiPicker && (
-                <div className="absolute bottom-full left-4 mb-2 p-3 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                <div 
+                    ref={emojiRef}
+                    className="absolute bottom-full left-4 mb-2 p-3 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
+                >
                     <div className="flex items-center justify-between mb-2 px-1">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Quick Emojis</span>
                         <button onClick={() => setShowEmojiPicker(false)} className="text-slate-400 hover:text-slate-600">
@@ -451,27 +559,11 @@ export default function ChatInput({
                 <div className="flex items-center gap-0.5 text-slate-400 mb-1">
                     <button 
                         type="button"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowEmojiPicker(!showEmojiPicker); }}
-                        className={`p-2 hover:text-primary hover:bg-slate-100 rounded-full transition-all ${showEmojiPicker ? 'text-primary bg-primary/10' : ''}`} 
-                        title="Emoji"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowMediaOptions(!showMediaOptions); }}
+                        className={`p-2 hover:text-primary hover:bg-slate-100 rounded-full transition-all ${showMediaOptions ? 'text-primary bg-primary/10' : ''}`} 
+                        title="More options"
                     >
-                        <Smile size={22} />
-                    </button>
-                    <button 
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileInputRef.current?.click(); }}
-                        className="p-2 hover:text-primary hover:bg-slate-100 rounded-full transition-all" 
-                        title="Attach File"
-                    >
-                        <Paperclip size={22} />
-                    </button>
-                    <button 
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); imageInputRef.current?.click(); }}
-                        className="p-2 hover:text-primary hover:bg-slate-100 rounded-full transition-all" 
-                        title="Take Photo"
-                    >
-                        <Camera size={22} />
+                        <MoreHorizontal size={26} />
                     </button>
                 </div>
 

@@ -15,17 +15,20 @@ import { uploadToCloudinary } from '@/lib/cloudinary';
 import { useUpdateBranch, useBranch, useBranches } from '@/services/branches/hooks';
 import { useCategories } from '@/services/categories/hooks';
 import { useRewards } from '@/services/loyalty/hooks';
+import { useUserProfile, useUpdateSocials } from '@/services/users/hooks';
 import Modal from '@/components/ui/Modal';
 import { api } from '@/lib/api';
 import ProfileTabs from '@/components/dashboard/settings/profile/ProfileTabs';
 import PushNotificationsTab from '@/components/dashboard/settings/profile/PushNotificationsTab';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRegisterOwner, useOtp, useLogin, useChangePassword } from '@/services/auth/hooks';
 import {
     Loader2, Instagram, Linkedin, Twitter, Facebook, Globe, Star, Plus, Trash2, X,
-    ChevronDown, Youtube, Music2
+    ChevronDown, Youtube, Music2, ShieldCheck, Lock, Eye, EyeOff
 } from 'lucide-react';
 
 // Social Media Platforms Configuration
+// ... rest of SOCIAL_PLATFORMS stays the same ...
 const SOCIAL_PLATFORMS = [
     { id: 'instagram', name: 'Instagram', icon: Instagram, color: 'text-pink-600', bg: 'bg-pink-50', placeholder: 'yourbrand', prefix: 'https://instagram.com/' },
     { id: 'facebook', name: 'Facebook', icon: Facebook, color: 'text-blue-600', bg: 'bg-blue-50', placeholder: 'yourbrand', prefix: 'https://facebook.com/' },
@@ -61,6 +64,7 @@ export default function BusinessProfilePage() {
     const { activeBranchId, isAllBranches: rawIsAllBranches } = useActiveBranch();
 
     const { data: business, isLoading: businessLoading } = useMyBusiness();
+    const { data: profile, isLoading: profileLoading } = useUserProfile();
     const { data: branches = [] } = useBranches();
     
     const isAllBranches = rawIsAllBranches && branches.length > 1;
@@ -70,6 +74,7 @@ export default function BusinessProfilePage() {
     
     const updateMutation = useUpdateBusiness();
     const updateBranchMutation = useUpdateBranch();
+    const updateSocialsMutation = useUpdateSocials();
     const [selectedRewardToEnable, setSelectedRewardToEnable] = useState<{
         reward: any;
         targetStatus: boolean;
@@ -124,6 +129,40 @@ export default function BusinessProfilePage() {
     const [showFeedback, setShowFeedback] = useState(true);
     const [showRewards, setShowRewards] = useState(true);
     const [activeTab, setActiveTab] = useState('general');
+
+    // Password Update States
+    const { changePassword, isLoading: isChangingPassword } = useChangePassword();
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+
+    const handleUpdatePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (newPassword !== confirmNewPassword) {
+            toast.error('New passwords do not match');
+            return;
+        }
+        if (newPassword.length < 8) {
+            toast.error('Password must be at least 8 characters long');
+            return;
+        }
+
+        try {
+            await changePassword({
+                currentPassword,
+                newPassword
+            });
+            toast.success('Password updated successfully');
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmNewPassword('');
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to update password');
+        }
+    };
 
     // Social Media Selection State
     const [isSocialDropdownOpen, setIsSocialDropdownOpen] = useState(false);
@@ -366,16 +405,18 @@ export default function BusinessProfilePage() {
             setRewardEnabled(source.rewardEnabled || false);
             setRewardVisitThreshold(source.rewardVisitThreshold || 5);
 
-            setFacebookUrl(source.facebookUrl || business?.facebookUrl || '');
-            setInstagramUrl(source.instagramUrl || business?.instagramUrl || '');
-            setTiktokUrl(source.tiktokUrl || business?.tiktokUrl || '');
-            setXUrl(source.xUrl || business?.xUrl || '');
-            setYoutubeUrl(source.youtubeUrl || business?.youtubeUrl || '');
-            setCustomLink(source.customLink || business?.customLink || '');
+            // Prioritize profile engagement data for socials, then fallback to business/branch fields
+            const engagement = profile?.engagement || {};
             
-            setLinkedinUrl(source.linkedinUrl || business?.linkedinUrl || '');
-            setReviewUrl(source.reviewUrl || '');
-            setTrustpilotUrl(source.trustpilotUrl || '');
+            setFacebookUrl(engagement.facebook?.link || source.facebookUrl || business?.facebookUrl || '');
+            setInstagramUrl(engagement.instagram?.link || source.instagramUrl || business?.instagramUrl || '');
+            setTiktokUrl(engagement.tiktok?.link || source.tiktokUrl || business?.tiktokUrl || '');
+            setXUrl(engagement.x?.link || source.xUrl || business?.xUrl || '');
+            setYoutubeUrl(engagement.youtube?.link || source.youtubeUrl || business?.youtubeUrl || '');
+            setLinkedinUrl(engagement.linkedin?.link || source.linkedinUrl || business?.linkedinUrl || '');
+            setCustomLink(engagement.custom?.link || source.customLink || business?.customLink || '');
+            setReviewUrl(engagement.google?.link || source.reviewUrl || '');
+            setTrustpilotUrl(engagement.trustpilot?.link || source.trustpilotUrl || '');
 
             setShowReview(business?.showReview ?? true);
             setShowSocial(business?.showSocial ?? true);
@@ -603,16 +644,6 @@ export default function BusinessProfilePage() {
                 if (hasChanged(name, branch.name)) branchUpdates.name = name;
                 if (hasChanged(finalLogoUrl, branch.logoUrl)) branchUpdates.logoUrl = finalLogoUrl;
 
-                if (hasChanged(instagramUrl, branch.instagramUrl)) branchUpdates.instagramUrl = instagramUrl;
-                if (hasChanged(facebookUrl, branch.facebookUrl)) branchUpdates.facebookUrl = facebookUrl;
-                if (hasChanged(xUrl, branch.xUrl)) branchUpdates.xUrl = xUrl;
-                if (hasChanged(linkedinUrl, branch.linkedinUrl)) branchUpdates.linkedinUrl = linkedinUrl;
-                if (hasChanged(tiktokUrl, branch.tiktokUrl)) branchUpdates.tiktokUrl = tiktokUrl;
-                if (hasChanged(youtubeUrl, branch.youtubeUrl)) branchUpdates.youtubeUrl = youtubeUrl;
-                if (hasChanged(reviewUrl, branch.reviewUrl)) branchUpdates.reviewUrl = reviewUrl;
-                if (hasChanged(trustpilotUrl, branch.trustpilotUrl)) branchUpdates.trustpilotUrl = trustpilotUrl;
-                if (hasChanged(customLink, branch.customLink)) branchUpdates.customLink = customLink;
-
                 if (hasChanged(supportEmail, branch.officialEmail)) branchUpdates.officialEmail = supportEmail;
                 if (hasChanged(supportPhone, branch.phone)) branchUpdates.phone = supportPhone;
                 if (hasChanged(address, branch.address)) branchUpdates.address = address;
@@ -632,8 +663,6 @@ export default function BusinessProfilePage() {
                 if (hasChanged(rewardEnabled, branch.rewardEnabled)) branchUpdates.rewardEnabled = rewardEnabled;
                 if (hasChanged(rewardVisitThreshold, branch.rewardVisitThreshold)) branchUpdates.rewardVisitThreshold = rewardVisitThreshold;
 
-                if (hasChanged(linkedinUrl, branch.linkedinUrl)) branchUpdates.linkedinUrl = linkedinUrl;
-                if (hasChanged(reviewUrl, branch.reviewUrl)) branchUpdates.reviewUrl = reviewUrl;
                 if (hasChanged(showReview, branch.showReview)) branchUpdates.showReview = showReview;
                 if (hasChanged(showSocial, branch.showSocial)) branchUpdates.showSocial = showSocial;
                 if (hasChanged(showFeedback, branch.showFeedback)) branchUpdates.showFeedback = showFeedback;
@@ -645,12 +674,50 @@ export default function BusinessProfilePage() {
                     toast.success('Branch profile updated successfully!');
                     didUpdate = true;
                 }
+            }
+
+            // Correctly update social links via the /users/engagement endpoint
+            const currentEngagement = profile?.engagement || {};
+            const engagementUpdates: any = {};
+
+            const mapSocial = (platform: string, currentUrl: string) => {
+                const originalLink = currentEngagement[platform]?.link || '';
+                if (hasChanged(currentUrl, originalLink)) {
+                    // Extract profile handle from URL if possible, otherwise use full link as profile
+                    let profileHandle = currentUrl;
+                    const platformConfig = SOCIAL_PLATFORMS.find(p => p.id === platform);
+                    if (platformConfig?.prefix && currentUrl.startsWith(platformConfig.prefix)) {
+                        profileHandle = currentUrl.replace(platformConfig.prefix, '');
+                    }
+                    
+                    engagementUpdates[platform] = {
+                        profile: profileHandle,
+                        link: currentUrl
+                    };
                 }
-                if (didUpdate) {
+            };
+
+            mapSocial('instagram', instagramUrl);
+            mapSocial('facebook', facebookUrl);
+            mapSocial('x', xUrl);
+            mapSocial('linkedin', linkedinUrl);
+            mapSocial('tiktok', tiktokUrl);
+            mapSocial('youtube', youtubeUrl);
+            mapSocial('google', reviewUrl);
+            mapSocial('trustpilot', trustpilotUrl);
+            mapSocial('custom', customLink);
+
+            if (Object.keys(engagementUpdates).length > 0) {
+                await updateSocialsMutation.mutateAsync(engagementUpdates);
+                toast.success('Social links updated successfully!');
+                didUpdate = true;
+            }
+
+            if (didUpdate) {
                 setIsEditingGeneral(false);
-                } else {
+            } else {
                 toast.success('No changes discovered.');
-                }
+            }
 
                 updateCustomSettings({ logoUrl: finalLogoUrl });
                 useCustomerFlowStore.setState({ storeName: name });
@@ -685,15 +752,20 @@ export default function BusinessProfilePage() {
 
     // Health Check Progress Data
     const healthTasks = [
-        { label: 'Business Name', completed: !!name, icon: 'business' },
-        { label: 'Business Logo', completed: !!logo, icon: 'image' },
-        { label: 'Category & Sub', completed: !!categoryId && (subcategoryId !== 'other' || !!otherSubcategoryName), icon: 'category' },
-        { label: 'Contact Info', completed: !!supportEmail || !!supportPhone, icon: 'contact_phone' },
-        { label: 'Location Details', completed: !!state && !!city && !!address, icon: 'map' },
-        { label: 'Business Reg.', completed: isRegistered ? !!registrationNumber : true, icon: 'fact_check' },
-        { label: 'CAC Document', completed: isRegistered ? !!cacDocument : true, icon: 'description' },
-        { label: 'Owner Identity', completed: !!idDocument && !!identityNumber, icon: 'person_pin' },
-        { label: 'Utility Bill', completed: !!utilityBill, icon: 'receipt_long' },
+        { id: 'general', label: 'Business Name', completed: !!name, icon: 'business' },
+        { id: 'general', label: 'Business Logo', completed: !!logo, icon: 'image' },
+        { id: 'general', label: 'Category & Sub', completed: !!categoryId && (subcategoryId !== 'other' || !!otherSubcategoryName), icon: 'category' },
+        { id: 'general', label: 'Contact Info', completed: !!supportEmail || !!supportPhone, icon: 'contact_phone' },
+        { id: 'general', label: 'Location Details', completed: !!state && !!city && !!address, icon: 'map' },
+        { id: 'schedule', label: 'Operating Hours', completed: Object.values(businessHours).some(h => !h.closed), icon: 'schedule' },
+        { id: 'socials', label: 'Social Presence', completed: activeSocials.length > 0, icon: 'share' },
+        { id: 'rewards', label: 'Loyalty Program', completed: (rewards && rewards.length > 0), icon: 'auto_awesome' },
+        { id: 'push', label: 'Push Setup', completed: pushSubscribed, icon: 'notifications_active' },
+        { id: 'qr', label: 'QR Generated', completed: !!derivedPublicCode, icon: 'qr_code_2' },
+        { id: 'general', label: 'Business Reg.', completed: isRegistered ? !!registrationNumber : true, icon: 'fact_check' },
+        { id: 'documents', label: 'CAC Document', completed: isRegistered ? !!cacDocument : true, icon: 'description' },
+        { id: 'general', label: 'Owner Identity', completed: !!idDocument && !!identityNumber, icon: 'person_pin' },
+        { id: 'general', label: 'Utility Bill', completed: !!utilityBill, icon: 'receipt_long' },
     ];
     const completedCount = healthTasks.filter(t => t.completed).length;
     const totalCount = healthTasks.length;
@@ -770,17 +842,31 @@ export default function BusinessProfilePage() {
                                     
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         {healthTasks.map((task, i) => (
-                                            <div key={i} className={`flex flex-col gap-2 p-3 rounded-2xl border transition-all ${
-                                                task.completed 
-                                                ? 'bg-green-50 border-green-100 text-green-700' 
-                                                : 'bg-gray-50/50 border-gray-100 text-text-secondary opacity-60'
-                                            }`}>
+                                            <button 
+                                                key={i} 
+                                                onClick={() => {
+                                                    if (task.id === 'general') {
+                                                        setIsEditingGeneral(true);
+                                                    } else {
+                                                        setActiveTab(task.id);
+                                                    }
+                                                }}
+                                                className={`flex flex-col gap-2 p-3 rounded-2xl border transition-all text-left group ${
+                                                    task.completed 
+                                                    ? 'bg-green-50 border-green-100 text-green-700' 
+                                                    : 'bg-gray-50/50 border-gray-100 text-text-secondary opacity-60 hover:opacity-100 hover:border-primary/20 hover:bg-primary/5'
+                                                }`}
+                                            >
                                                 <div className="flex items-center justify-between">
-                                                    <span className="material-icons-round text-lg">{task.icon}</span>
-                                                    {task.completed && <span className="material-icons-round text-xs">check_circle</span>}
+                                                    <span className={`material-icons-round text-lg transition-transform ${!task.completed ? 'group-hover:scale-110 group-hover:text-primary' : ''}`}>{task.icon}</span>
+                                                    {task.completed ? (
+                                                        <span className="material-icons-round text-xs">check_circle</span>
+                                                    ) : (
+                                                        <span className="material-icons-round text-[10px] opacity-0 group-hover:opacity-100 text-primary">arrow_forward</span>
+                                                    )}
                                                 </div>
                                                 <span className="text-[9px] font-black uppercase tracking-tighter truncate">{task.label}</span>
-                                            </div>
+                                            </button>
                                         ))}
                                     </div>
                                 </div>
@@ -1079,6 +1165,92 @@ export default function BusinessProfilePage() {
                                 </div>
                             </div>
                         )}
+
+                        {/* Account Security Section */}
+                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <ShieldCheck size={20} />
+                                    </div>
+                                    <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Account Security</h3>
+                                </div>
+                            </div>
+                            <form onSubmit={handleUpdatePassword} className="p-8 space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Current Password</label>
+                                        <div className="relative">
+                                            <input
+                                                type={showCurrentPassword ? "text" : "password"}
+                                                value={currentPassword}
+                                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                                placeholder="••••••••"
+                                                className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                required
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
+                                            >
+                                                {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">New Password</label>
+                                        <div className="relative">
+                                            <input
+                                                type={showNewPassword ? "text" : "password"}
+                                                value={newPassword}
+                                                onChange={(e) => setNewPassword(e.target.value)}
+                                                placeholder="••••••••"
+                                                className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                required
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowNewPassword(!showNewPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
+                                            >
+                                                {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Confirm New Password</label>
+                                        <div className="relative">
+                                            <input
+                                                type={showConfirmNewPassword ? "text" : "password"}
+                                                value={confirmNewPassword}
+                                                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                                                placeholder="••••••••"
+                                                className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                required
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
+                                            >
+                                                {showConfirmNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex justify-end">
+                                    <button
+                                        type="submit"
+                                        disabled={isChangingPassword || !currentPassword || !newPassword || !confirmNewPassword}
+                                        className="h-11 px-8 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        {isChangingPassword ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
+                                        Update Password
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 )}
                 {activeTab === 'schedule' && !isAllBranches && (

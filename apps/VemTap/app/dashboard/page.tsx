@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Visitor } from '@/lib/store/mockDashboardStore';
 import toast from 'react-hot-toast';
 import {
     Users, UserPlus, Repeat, Calendar, TrendingUp, TrendingDown,
     ChevronDown, Send, Download, Gift, ArrowRight, MessageSquare, Zap
 } from 'lucide-react';
+import Tooltip from '@/components/ui/Tooltip';
 import LogoIcon from '@/components/brand/LogoIcon';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AdminViewerBanner from '@/components/admin/control-tower/AdminViewerBanner';
@@ -30,10 +31,18 @@ export default function DashboardPage() {
     const businessUid = searchParams.get('business_uid');
 
     const user = useAuthStore((state) => state.user);
-    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
-     
-    console.log('[DASHBOARD PAGE] 🔍 isAuthenticated:', isAuthenticated, 'planId:', user?.planId);
+    const isNewUser = useMemo(() => {
+        if (!user) return false;
+        const createdAt = user.createdAt || user.joined;
+        if (!createdAt) return true;
+
+        const createdDate = new Date(createdAt);
+        const now = new Date();
+        const diffInHours = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60);
+
+        return diffInHours < 24;
+    }, [user]);
 
 
 
@@ -158,8 +167,14 @@ export default function DashboardPage() {
             {/* Page Header */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex-1">
-                    <h1 className="text-2xl font-display font-bold text-text-main mb-1">Dashboard</h1>
-                    <p className="text-sm text-text-secondary font-medium">Welcome back! Here's what's happening today.</p>
+                    <h1 className="text-2xl font-display font-bold text-text-main mb-1">
+                        {isNewUser ? `Welcome to VemTap, ${user?.firstName || 'there'}!` : 'Dashboard'}
+                    </h1>
+                    <p className="text-sm text-text-secondary font-medium">
+                        {isNewUser
+                            ? "We're excited to have you here. Let's get your business started."
+                            : "Welcome back! Here's what's happening today."}
+                    </p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -182,19 +197,21 @@ export default function DashboardPage() {
                     const TrendIcon = stat.trend === 'up' ? TrendingUp : TrendingDown;
 
                     return (
-                        <div key={index} className="bg-white rounded-2xl p-5 border border-gray-100 hover:shadow-md transition-shadow">
-                            <div className="flex items-center justify-between mb-3">
-                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                                    <IconComponent className="text-primary" size={18} />
+                        <Tooltip key={index} content={stat.label === 'Avg. Frequency' ? 'Total visits divided by total visitors' : `View ${stat.label} details`}>
+                            <div className="bg-white rounded-2xl p-5 border border-gray-100 hover:shadow-md transition-shadow cursor-default">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                        <IconComponent className="text-primary" size={18} />
+                                    </div>
+                                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${stat.trend === 'up' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                        <TrendIcon size={10} />
+                                        {stat.change}
+                                    </div>
                                 </div>
-                                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${stat.trend === 'up' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                                    <TrendIcon size={10} />
-                                    {stat.change}
-                                </div>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary mb-0.5">{stat.label}</p>
+                                <p className="text-2xl font-display font-bold text-text-main">{stat.value}</p>
                             </div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary mb-0.5">{stat.label}</p>
-                            <p className="text-2xl font-display font-bold text-text-main">{stat.value}</p>
-                        </div>
+                        </Tooltip>
                     );
                 })}
             </div>

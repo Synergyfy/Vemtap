@@ -179,7 +179,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                             <User className="text-gray-400" size={20} />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-text-main truncate">{user?.name || 'Customer'}</p>
+                            <p className="text-sm font-bold text-text-main truncate">{user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Customer'}</p>
                             <p className="text-xs text-text-secondary truncate">{user?.email || 'customer@vemtap.com'}</p>
                         </div>
                     </div>
@@ -223,7 +223,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                 {/* Top Bar (Desktop) */}
                 <header className="hidden lg:flex h-20 bg-white border-b border-gray-200 items-center justify-between px-8">
                     <div>
-                        <h2 className="font-display font-bold text-xl text-text-main">Welcome back, {user?.name?.split(' ')[0] || 'Customer'}! 👋</h2>
+                        <h2 className="font-display font-bold text-xl text-text-main">Welcome back, {user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Customer'}! 👋</h2>
                         <p className="text-xs text-text-secondary font-medium">Here's what's happening with your rewards.</p>
                     </div>
                     <div className="flex items-center gap-4 relative">

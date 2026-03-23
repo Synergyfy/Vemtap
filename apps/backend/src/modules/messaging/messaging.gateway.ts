@@ -153,5 +153,20 @@ export class MessagingGateway
       });
     }
   }
+
+  /**
+   * Broadcast message updates (edit/delete)
+   */
+  emitMessageUpdate(threadId: string, branchId: string, customerId: string, update: any) {
+    // Notify anyone looking at the thread
+    this.server.to(`thread_${threadId}`).emit('messageUpdate', update);
+
+    // Update staff inbox (for last message snippet if it was edited)
+    this.server.to(`branch_${branchId}`).emit('inboxUpdate', {
+      type: 'message_update',
+      threadId,
+      update,
+    });
+  }
 }
 

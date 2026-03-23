@@ -155,7 +155,7 @@ export class LoyaltyController {
 
   // --- Rewards ---
   @Post('rewards')
-  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ 
     summary: 'Owner creates a reward for a branch',
     description: 'Creates a specific reward instance for a branch, optionally based on a template. Access: OWNER, ADMIN'
@@ -187,28 +187,51 @@ export class LoyaltyController {
   }
 
   @Patch('rewards/:id')
-  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ 
     summary: 'Update a reward',
-    description: 'Updates reward details like quantity or expiry date. Access: OWNER, ADMIN'
+    description: 'Updates reward details like quantity or expiry date. Access: OWNER, ADMIN, MANAGER, STAFF'
   })
   @ApiParam({ name: 'id', description: 'The ID of the reward' })
   @ApiBody({ type: CreateRewardDto, description: 'Partial upgrade of reward' })
   @ApiResponse({ status: 200, description: 'Reward updated successfully' })
-  async updateReward(@Param('id') id: string, @Body() dto: Partial<CreateRewardDto>) {
-    return this.loyaltyService.updateReward(id, dto);
+  async updateReward(@Request() req: { user: User }, @Param('id') id: string, @Body() dto: Partial<CreateRewardDto>) {
+    return this.loyaltyService.updateReward(req.user, id, dto);
   }
 
   @Delete('rewards/:id')
-  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({ 
     summary: 'Delete a reward',
-    description: 'Removes a reward from a branch. Access: OWNER, ADMIN'
+    description: 'Removes a reward from a branch. Access: OWNER, ADMIN, MANAGER, STAFF'
   })
   @ApiParam({ name: 'id', description: 'The ID of the reward' })
   @ApiResponse({ status: 200, description: 'Reward deleted successfully' })
-  async deleteReward(@Param('id') id: string) {
-    return this.loyaltyService.deleteReward(id);
+  async deleteReward(@Request() req: { user: User }, @Param('id') id: string) {
+    return this.loyaltyService.deleteReward(req.user, id);
+  }
+
+  @Get('rewards/:id/redemptions')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({ 
+    summary: 'Fetch customers who redeemed a reward',
+    description: 'Retrieves a paginated list of customers who have successfully redeemed a specific reward. Access: OWNER, MANAGER, STAFF'
+  })
+  @ApiParam({ name: 'id', description: 'The ID of the reward' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Returns list of redemptions' })
+  async getRewardRedemptions(
+    @Request() req: { user: User },
+    @Param('id') id: string,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.loyaltyService.getRewardRedemptions(
+      req.user,
+      id,
+      query.page,
+      query.limit,
+    );
   }
 
   // --- Redemption ---

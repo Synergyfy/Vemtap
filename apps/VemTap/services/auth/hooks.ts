@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '@/lib/api';
-import { RegisterOwnerRequest, AuthResponse, LoginRequest, RegisterRequest, RequestOwnerOtpRequest } from './types';
+import { RegisterOwnerRequest, AuthResponse, LoginRequest, RegisterRequest, RequestOwnerOtpRequest, ChangePasswordRequest } from './types';
 
 export const useRegisterOwner = () => {
     const [isLoading, setIsLoading] = useState(false);
@@ -137,3 +137,30 @@ export const useRegister = () => {
         error
     };
 };
+
+export const useChangePassword = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const changePassword = async (payload: any): Promise<any> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/password/change', payload);
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Failed to change password';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return {
+        changePassword,
+        isLoading,
+        error
+    };
+};
+

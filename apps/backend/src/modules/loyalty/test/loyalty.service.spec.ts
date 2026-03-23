@@ -9,6 +9,7 @@ import { RedemptionCode } from '../entities/redemption-code.entity';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
+import { BranchesService } from '../../branches/branches.service';
 import { DataSource } from 'typeorm';
 
 describe('LoyaltyService', () => {
@@ -44,6 +45,11 @@ describe('LoyaltyService', () => {
     })),
   });
 
+  const mockBranchesService = {
+    checkBranchAccess: jest.fn(),
+    findById: jest.fn(),
+  };
+
   const mockDataSource = {
     createQueryRunner: jest.fn().mockReturnValue({
       connect: jest.fn(),
@@ -70,6 +76,7 @@ describe('LoyaltyService', () => {
         { provide: getRepositoryToken(Branch), useFactory: mockRepo },
         { provide: getRepositoryToken(Visit), useFactory: mockRepo },
         { provide: DataSource, useValue: mockDataSource },
+        { provide: BranchesService, useValue: mockBranchesService },
       ],
     }).compile();
 

@@ -461,3 +461,76 @@ export const useWhatsAppConnectionStatus = (branchId?: string) => {
         enabled: isAuthenticated,
     });
 };
+
+// ─── Segmentation ────────────────────────────────────────────────────────────
+import { Segment } from './types';
+
+export const useSegments = (branchId?: string) => {
+    const { branchId: targetBranchId, allBranches } = useResolvedBranchParams(branchId);
+    return useQuery<Segment[], Error>({
+        queryKey: ['messaging', 'segments', targetBranchId, allBranches],
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            if (targetBranchId && targetBranchId !== 'all') params.append('branchId', targetBranchId);
+            return await api.get(`/segments?${params.toString()}`);
+        },
+    });
+};
+
+export const useSegmentDetails = (segmentId: string) => {
+    return useQuery<Segment, Error>({
+        queryKey: ['messaging', 'segments', segmentId],
+        queryFn: async () => await api.get(`/segments/${segmentId}`),
+        enabled: !!segmentId,
+    });
+};
+
+export const useCreateSegment = () => {
+    const queryClient = useQueryClient();
+    return useMutation<Segment, Error, { name: string; description?: string; branchId?: string }>({
+        mutationFn: async (dto) => await api.post('/segments', dto),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messaging', 'segments'] });
+        },
+    });
+};
+
+export const useUpdateSegment = () => {
+    const queryClient = useQueryClient();
+    return useMutation<Segment, Error, { id: string; data: { name?: string; description?: string } }>({
+        mutationFn: async ({ id, data }) => await api.patch(`/segments/${id}`, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messaging', 'segments'] });
+        },
+    });
+};
+
+export const useDeleteSegment = () => {
+    const queryClient = useQueryClient();
+    return useMutation<void, Error, string>({
+        mutationFn: async (id) => await api.delete(`/segments/${id}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messaging', 'segments'] });
+        },
+    });
+};
+
+export const useAddSegmentMembers = () => {
+    const queryClient = useQueryClient();
+    return useMutation<void, Error, { segmentId: string; userIds: string[] }>({
+        mutationFn: async ({ segmentId, userIds }) => await api.post(`/segments/${segmentId}/members`, { userIds }),
+        onSuccess: (_, { segmentId }) => {
+            queryClient.invalidateQueries({ queryKey: ['messaging', 'segments', segmentId] });
+        },
+    });
+};
+
+export const useRemoveSegmentMembers = () => {
+    const queryClient = useQueryClient();
+    return useMutation<void, Error, { segmentId: string; userIds: string[] }>({
+        mutationFn: async ({ segmentId, userIds }) => await api.delete(`/segments/${segmentId}/members`, { userIds }),
+        onSuccess: (_, { segmentId }) => {
+            queryClient.invalidateQueries({ queryKey: ['messaging', 'segments', segmentId] });
+        },
+    });
+};

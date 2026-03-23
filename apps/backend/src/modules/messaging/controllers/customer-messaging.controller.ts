@@ -8,12 +8,15 @@ import {
   Request,
   NotFoundException,
   ParseUUIDPipe,
+  Patch,
+  Delete,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { InboxService } from '../services/inbox.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { User } from '../../users/entities/user.entity';
 import { ReplyDto } from '../dto/reply.dto';
+import { UpdateMessageDto } from '../dto/update-message.dto';
 import { StartConversationDto } from '../dto/start-conversation.dto';
 import { ThreadIdDto } from '../dto/thread-id.dto';
 
@@ -84,6 +87,31 @@ export class CustomerMessagingController {
     @Request() req: { user: User },
   ) {
     return this.inboxService.sendCustomerReply(threadId, dto.content, req.user.id, dto.replyToId);
+  }
+
+  @Patch('messages/:id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Edit a message' })
+  @ApiParam({ name: 'id', description: 'Message UUID' })
+  async editMessage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateMessageDto,
+    @Request() req: { user: User },
+  ) {
+    return this.inboxService.editMessage(id, dto.content, req.user.id);
+  }
+
+  @Delete('messages/:id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Delete (hide) a message' })
+  @ApiParam({ name: 'id', description: 'Message UUID' })
+  async deleteMessage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: { user: User },
+  ) {
+    return this.inboxService.deleteMessage(id, req.user.id);
   }
 }
 

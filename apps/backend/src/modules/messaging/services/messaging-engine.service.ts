@@ -35,6 +35,7 @@ import { ThreadStatus } from '../entities/conversation-thread.entity';
 import { PushNotificationService } from '../../notifications/push-notification.service';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { LoyaltyService } from '../../loyalty/loyalty.service';
+import { Segment } from '../../contacts/entities/segment.entity';
 
 export interface SendMessageResult {
   message: string;
@@ -127,6 +128,13 @@ export class MessagingEngineService {
         .select(['visit.customerId'])
         .getMany();
       targetUserIds = [...new Set(recentVisits.map(v => v.customerId))];
+    } else if (audienceType === AudienceType.SEGMENT && dto.segmentId) {
+      const segment = await this.dataSource.getRepository(Segment).findOne({
+        where: { id: dto.segmentId, branchId },
+        relations: ['users'],
+      });
+      if (!segment) throw new NotFoundException('Segment not found or does not belong to this branch');
+      targetUserIds = segment.users.map(u => u.id);
     }
 
     if (targetUserIds.length === 0) {

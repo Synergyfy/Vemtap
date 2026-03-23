@@ -3,13 +3,49 @@
 import React from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import EngagementTabs from '@/components/dashboard/engagement/EngagementTabs';
-import { Palette, Info, Star, MessageSquare, Heart } from 'lucide-react';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useBranch } from '@/services/branches/hooks';
+import { useUpdateBranchFormSettings } from '@/services/business-forms/hooks';
+import { useMyBusiness } from '@/services/businesses/hooks';
 import PhoneFrame from '@/components/shared/PhoneFrame';
+import { toast } from 'react-hot-toast';
+import { Loader2, Save, Palette, Info, Star, MessageSquare, Heart } from 'lucide-react';
 
 export default function UserExperienceAppearancePage() {
-    const { engagementSettings, updateEngagementSettings } = useCustomerFlowStore();
-    const brandColor = engagementSettings?.brandColor || '#2563eb';
+    const { activeBranchId } = useActiveBranch();
+    const { data: business } = useMyBusiness();
+    const mainBranch = business?.branches?.find((b) => b.isMainBranch);
+    const { data: branch, isLoading } = useBranch(activeBranchId || '');
+    const { updateEngagementSettings, engagementSettings } = useCustomerFlowStore();
+    
+    const updateMutation = useUpdateBranchFormSettings(activeBranchId || mainBranch?.id);
+    const [isSaving, setIsSaving] = React.useState(false);
+
+    // Get color from branch settings first, then fall back to business or store
+    const brandColor = branch?.formAppearanceColor || business?.brandColor || engagementSettings?.brandColor || '#2563eb';
+
+    // Sync brandColor to store on load for preview
+    React.useEffect(() => {
+        if (brandColor && brandColor !== engagementSettings?.brandColor) {
+            updateEngagementSettings({ brandColor });
+        }
+    }, [brandColor, updateEngagementSettings, engagementSettings?.brandColor]);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            await updateMutation.mutateAsync({
+                formAppearanceColor: brandColor,
+            });
+            toast.success('Appearance settings saved');
+        } catch (error) {
+            console.error('Failed to save appearance', error);
+            toast.error('Failed to save appearance settings');
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     return (
         <div className="p-8 space-y-6 max-w-7xl mx-auto">
@@ -31,14 +67,24 @@ export default function UserExperienceAppearancePage() {
                 {/* Configuration Column */}
                 <div className="lg:col-span-7 space-y-6">
                     <div className="bg-white rounded-2xl border border-gray-100 p-8 space-y-8 shadow-sm">
-                        <div className="flex items-center gap-3 pb-4 border-b border-gray-50">
-                            <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                                <Palette size={20} />
+                        <div className="flex items-center justify-between pb-4 border-b border-gray-50">
+                            <div className="flex items-center gap-3">
+                                <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                                    <Palette size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-bold text-gray-900">Global Form Appearance</h3>
+                                    <p className="text-xs text-gray-500 font-medium">Customize how your forms look across {activeBranchId ? 'this branch' : 'all branches'}</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="text-base font-bold text-gray-900">Global Form Appearance</h3>
-                                <p className="text-xs text-gray-500 font-medium">Customize how your forms look across all branches</p>
-                            </div>
+                            <button
+                                onClick={handleSave}
+                                disabled={isSaving || isLoading}
+                                className="h-10 px-4 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
+                            >
+                                {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                Save Changes
+                            </button>
                         </div>
 
                         <div className="space-y-6">

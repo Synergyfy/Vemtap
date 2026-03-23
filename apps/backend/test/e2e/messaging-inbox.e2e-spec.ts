@@ -17,6 +17,7 @@ import { Message } from '../../src/modules/messaging/entities/message.entity';
 import { Visit } from '../../src/modules/visitors/entities/visit.entity';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { Channel } from '../../src/modules/messaging/enums/channel.enum';
+import { MessageDirection } from '../../src/modules/messaging/enums/message.enum';
 import * as bcrypt from 'bcrypt';
 
 describe('Messaging Inbox (e2e)', () => {
@@ -183,5 +184,52 @@ describe('Messaging Inbox (e2e)', () => {
     const updatedThread = await threadRepo.findOne({ where: { id: thread?.id } });
     expect(updatedThread?.customerUnreadCount).toBe(1);
     expect(updatedThread?.lastMessageContent).toBe('Hello from Branch!');
+  });
+
+  it('should allow staff to edit their own message', async () => {
+    const lastMsg = await messageRepo.findOne({ 
+      where: { direction: MessageDirection.OUTBOUND }, 
+      order: { timestamp: 'DESC' } 
+    });
+    
+    const res = await request(app.getHttpServer())
+      .patch(`/api/v1/messaging/messages/${lastMsg?.id}?branchId=${branchId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ content: 'Corrected Hello from Branch!' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.content).toBe('Corrected Hello from Branch!');
+    expect(res.body.isEdited).toBe(true);
+  });
+
+  it('should allow customer to delete their own message', async () => {
+    const thread = await threadRepo.findOne({ where: { customerId, branchId } });
+    const firstMsg = await messageRepo.findOne({ 
+      where: { threadId: thread?.id, direction: 'INBOUND' as any },
+      order: { timestamp: 'ASC' }
+    });
+
+    const res = await request(app.getHttpServer())
+      .delete(`/api/v1/customer/messaging/messages/${firstMsg?.id}`)
+      .set('Authorization', `Bearer ${visitorToken}`);
+
+    expect(res.status).toBe(200);
+    
+    const deletedMsg = await messageRepo.findOne({ where: { id: firstMsg?.id } });
+    expect(deletedMsg?.isDeleted).toBe(true);
+    expect(deletedMsg?.content).toBe('Message deleted');
+  });
+
+  it('should fail if customer tries to delete staff message', async () => {
+    const lastMsg = await messageRepo.findOne({ 
+      where: { direction: 'OUTBOUND' as any }, 
+      order: { timestamp: 'DESC' } 
+    });
+
+    const res = await request(app.getHttpServer())
+      .delete(`/api/v1/customer/messaging/messages/${lastMsg?.id}`)
+      .set('Authorization', `Bearer ${visitorToken}`);
+
+    expect(res.status).toBe(403);
   });
 });

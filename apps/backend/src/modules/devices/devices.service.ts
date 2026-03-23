@@ -12,6 +12,7 @@ import { AdminCreateDeviceDto } from './dto/admin-create-device.dto';
 import { AdminUpdateDeviceDto } from './dto/admin-update-device.dto';
 import { UpdateDeviceDto } from './dto/update-device.dto';
 import { UpdateAssetNamesDto } from './dto/update-asset-names.dto';
+import { AdminDeviceQueryDto } from './dto/admin-device-query.dto';
 import { Order, OrderStatus } from '../products/entities/order.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { BranchesService } from '../branches/branches.service';
@@ -326,12 +327,7 @@ export class DevicesService {
 
   // --- Admin Methods ---
 
-  async findAllAdmin(query: {
-    search?: string;
-    status?: string;
-    page?: number;
-    limit?: number;
-  }) {
+  async findAllAdmin(query: AdminDeviceQueryDto) {
     const qb = this.devicesRepository
       .createQueryBuilder('device')
       .leftJoinAndSelect('device.branch', 'branch')
@@ -343,6 +339,16 @@ export class DevicesService {
       } else if (query.status === 'inactive') {
         qb.andWhere('device.branchId IS NULL');
       }
+    }
+
+    if (query.branchId) {
+      qb.andWhere('device.branchId = :branchId', { branchId: query.branchId });
+    }
+
+    if (query.businessId) {
+      qb.andWhere('branch.businessId = :businessId', {
+        businessId: query.businessId,
+      });
     }
 
     if (query.search) {

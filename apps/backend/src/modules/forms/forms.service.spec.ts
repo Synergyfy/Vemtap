@@ -7,6 +7,7 @@ import { FormResponse } from './entities/form-response.entity';
 import { FormAnswer } from './entities/form-answer.entity';
 import { FormTemplate } from './entities/form-template.entity';
 import { FormFieldTemplate } from './entities/form-field-template.entity';
+import { Branch } from '../branches/entities/branch.entity';
 import { NotFoundException } from '@nestjs/common';
 import { BranchesService } from '../branches/branches.service';
 import { DevicesService } from '../devices/devices.service';
@@ -19,6 +20,7 @@ describe('FormsService', () => {
   const mockDevicesService = {
     findByBranchId: jest.fn(),
     findById: jest.fn(),
+    findByCode: jest.fn(),
   };
 
   const mockFormsRepository = {
@@ -28,6 +30,7 @@ describe('FormsService', () => {
     findOne: jest.fn(),
     findOneBy: jest.fn(),
     remove: jest.fn(),
+    increment: jest.fn(),
   };
 
   const mockFormFieldsRepository = {
@@ -60,6 +63,11 @@ describe('FormsService', () => {
     create: jest.fn(),
     save: jest.fn(),
     delete: jest.fn(),
+  };
+
+  const mockBranchesRepository = {
+    findOneBy: jest.fn(),
+    save: jest.fn(),
   };
 
   const mockBranchesService = {
@@ -96,6 +104,10 @@ describe('FormsService', () => {
         {
           provide: getRepositoryToken(FormFieldTemplate),
           useValue: mockFormFieldTemplatesRepository,
+        },
+        {
+          provide: getRepositoryToken(Branch),
+          useValue: mockBranchesRepository,
         },
         {
           provide: BranchesService,

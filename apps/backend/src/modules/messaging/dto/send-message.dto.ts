@@ -40,6 +40,11 @@ export class SendMessageDto {
   @IsUUID()
   templateId?: string;
 
+  @ApiPropertyOptional({ description: 'Filter audience by segment (if AudienceType=SEGMENT)' })
+  @IsOptional()
+  @IsUUID()
+  segmentId?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
