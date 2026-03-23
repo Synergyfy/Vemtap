@@ -112,6 +112,32 @@ export const useLogin = () => {
     };
 };
 
+export const useRegister = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const registerUser = async (payload: RegisterRequest): Promise<AuthResponse> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/register', payload);
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Failed to register';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return {
+        registerUser,
+        isLoading,
+        error
+    };
+};
+
 export const useChangePassword = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);

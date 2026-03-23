@@ -283,3 +283,22 @@ export const useCreateFormTemplate = () => {
     },
   });
 };
+export const useUpdateBranchFormSettings = (branchId?: string) => {
+  const queryClient = useQueryClient();
+  const { activeBranchId } = useActiveBranch();
+  const targetBranchId = branchId || activeBranchId;
+
+  return useMutation<any, Error, any>({
+    mutationFn: async (payload) => {
+      if (!targetBranchId) throw new Error('No branch ID provided');
+      return await api.patch(`/business-forms/branch-settings/${targetBranchId}`, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['branches'] });
+      if (targetBranchId) {
+        queryClient.invalidateQueries({ queryKey: ['branches', targetBranchId] });
+        queryClient.invalidateQueries({ queryKey: ['public-branch-info', targetBranchId] });
+      }
+    },
+  });
+};

@@ -528,7 +528,7 @@ export const useAddSegmentMembers = () => {
 export const useRemoveSegmentMembers = () => {
     const queryClient = useQueryClient();
     return useMutation<void, Error, { segmentId: string; userIds: string[] }>({
-        mutationFn: async ({ segmentId, userIds }) => await api.delete(`/segments/${segmentId}/members`, { data: { userIds } }),
+        mutationFn: async ({ segmentId, userIds }) => await api.delete(`/segments/${segmentId}/members`, { userIds }),
         onSuccess: (_, { segmentId }) => {
             queryClient.invalidateQueries({ queryKey: ['messaging', 'segments', segmentId] });
         },
