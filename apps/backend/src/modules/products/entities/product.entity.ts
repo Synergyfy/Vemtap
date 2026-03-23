@@ -15,6 +15,10 @@ export class Product extends AbstractBaseEntity {
   @Column()
   name: string;
 
+  @ApiProperty({ example: 'SKU-001', required: false })
+  @Column({ unique: true })
+  sku: string;
+
   @ApiProperty({ example: 'High quality NFC card' })
   @Column()
   description: string;
