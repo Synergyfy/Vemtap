@@ -134,6 +134,8 @@ export class BusinessesController {
             status: 'active',
             isVerified: true,
             owner: { email: 'owner@example.com' },
+            category: { id: 'uuid-cat-1', name: 'Restaurant' },
+            subcategory: { id: 'uuid-subcat-1', name: 'Fine Dining' },
           },
         ],
         meta: { total: 1, page: 1, lastPage: 1 },
