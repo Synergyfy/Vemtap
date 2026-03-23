@@ -152,7 +152,7 @@ export default function CustomerDashboardPage() {
                             </span>
                             <h1 className="text-4xl md:text-5xl font-display font-bold mb-4 tracking-tight leading-tight">
                                 Welcome back, <br />
-                                {user?.firstName || user?.name?.split(' ')[0] || profile?.visitor?.name?.split(' ')[0] || 'Customer'}!
+                                {user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || profile?.visitor?.name || 'Customer'}!
                             </h1>
                             <p className="text-blue-50 text-base md:text-lg max-w-lg mb-8 font-medium leading-relaxed opacity-90">
                                 Visit {businessName} {businessAddress ? `at ${businessAddress}` : ''} and tap your phone at the VemTap terminal to earn rewards instantly.

@@ -90,7 +90,7 @@ export default function CustomerSettingsPage() {
 
     const joinedDateRaw = user?.createdAt || user?.joined;
     const joinedDate = joinedDateRaw
-        ? new Date(joinedDateRaw).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }).toUpperCase()
+        ? new Date(joinedDateRaw).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()
         : '—';
 
     return (
@@ -121,7 +121,7 @@ export default function CustomerSettingsPage() {
                             </button>
                         </div>
 
-                        <h2 className="text-xl font-display font-bold text-text-main">{user?.name || 'Customer'}</h2>
+                        <h2 className="text-xl font-display font-bold text-text-main">{user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Customer'}</h2>
 
                         <div className="mt-8 pt-8 border-t border-gray-50 flex items-center justify-center gap-8">
                             <div>
