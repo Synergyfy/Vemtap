@@ -53,6 +53,8 @@ export class SendCampaignBody {
 
 import { VisitedBranchesQueryDto } from './dto/visited-branches-query.dto';
 import { PaginatedVisitedBranchResponseDto } from './dto/visited-branch-response.dto';
+import { AdminVisitorActivitiesQueryDto } from './dto/admin-visitor-activities-query.dto';
+import { PaginatedVisitResponseDto } from './dto/visit-response.dto';
 
 @Injectable()
 export class VisitorsService {
@@ -958,6 +960,66 @@ export class VisitorsService {
       lastVisit: lastVisit,
       status: status,
       totalSpent: '₦0',
+    };
+  }
+
+  async findAdminVisitorActivities(
+    query: AdminVisitorActivitiesQueryDto,
+  ): Promise<PaginatedVisitResponseDto> {
+    const { page = 1, limit = 10, search, branchId, businessId } = query;
+    const skip = (page - 1) * limit;
+
+    const qb = this.visitRepository
+      .createQueryBuilder('visit')
+      .leftJoinAndSelect('visit.customer', 'customer')
+      .leftJoinAndSelect('visit.branch', 'branch')
+      .leftJoinAndSelect('branch.business', 'business');
+
+    if (branchId) {
+      qb.andWhere('visit.branchId = :branchId', { branchId });
+    }
+
+    if (businessId) {
+      qb.andWhere('visit.businessId = :businessId', { businessId });
+    }
+
+    if (search) {
+      qb.andWhere(
+        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR customer.email ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    const [visits, total] = await qb
+      .orderBy('visit.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data: visits.map((visit) => ({
+        id: visit.id,
+        createdAt: visit.createdAt,
+        status: visit.status,
+        customer: {
+          id: visit.customer?.id,
+          firstName: visit.customer?.firstName,
+          lastName: visit.customer?.lastName,
+          email: visit.customer?.email,
+          phone: visit.customer?.phone,
+        },
+        branch: {
+          id: visit.branch?.id,
+          name: visit.branch?.name,
+        },
+        business: {
+          id: visit.branch?.business?.id,
+          name: visit.branch?.business?.name,
+        },
+      })),
+      total,
+      page,
+      limit,
     };
   }
 }

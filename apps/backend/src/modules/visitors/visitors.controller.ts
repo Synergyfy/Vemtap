@@ -52,6 +52,8 @@ import { ParseUUIDPipe } from '@nestjs/common';
 
 import { VisitedBranchesQueryDto } from './dto/visited-branches-query.dto';
 import { PaginatedVisitedBranchResponseDto } from './dto/visited-branch-response.dto';
+import { AdminVisitorActivitiesQueryDto } from './dto/admin-visitor-activities-query.dto';
+import { PaginatedVisitResponseDto } from './dto/visit-response.dto';
 
 @ApiTags('Visitors')
 @ApiBearerAuth()
@@ -248,6 +250,16 @@ export class VisitorsController {
       context.branchId,
       context.businessId,
     );
+  }
+
+  @Get('admin/activities')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin view of all visitor activities (visits)' })
+  @ApiResponse({ type: PaginatedVisitResponseDto })
+  async findAdminActivities(
+    @Query() query: AdminVisitorActivitiesQueryDto,
+  ): Promise<PaginatedVisitResponseDto> {
+    return this.visitorsService.findAdminVisitorActivities(query);
   }
 
   @Get(':id')
