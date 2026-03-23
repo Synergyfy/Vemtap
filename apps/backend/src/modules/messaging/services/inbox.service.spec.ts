@@ -14,6 +14,7 @@ import { MessagingGateway } from '../messaging.gateway';
 import { PushNotificationService } from '../../notifications/push-notification.service';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Branch } from '../../branches/entities/branch.entity';
+import { MessageDirection } from '../enums/message.enum';
 
 describe('InboxService', () => {
   let service: InboxService;
@@ -306,6 +307,56 @@ describe('InboxService', () => {
       expect(gatewayMock.emitMessage).toHaveBeenCalled();
       expect(pushMock.sendToBranchStaff).toHaveBeenCalled();
       expect(result.content).toBe('reply content');
+      expect(result.content).toBe('reply content');
+    });
+  });
+
+  describe('editMessage', () => {
+    it('should edit message and broadcast', async () => {
+      const mockMsg: any = { 
+        id: 'm1', 
+        content: 'old', 
+        direction: MessageDirection.OUTBOUND, 
+        branchId: 'br1', 
+        threadId: 't1' 
+      };
+      messageRepoMock.findOne.mockResolvedValue(mockMsg);
+      messageRepoMock.save.mockImplementation(m => Promise.resolve(m));
+
+      const result = await service.editMessage('m1', 'new', 'staff-1', 'br1');
+
+      expect(result.content).toBe('new');
+      expect(result.isEdited).toBe(true);
+      expect(gatewayMock.emitMessageUpdate).toHaveBeenCalled();
+    });
+
+    it('should throw Forbidden if non-sender tries to edit', async () => {
+      const mockMsg = { 
+        id: 'm1', 
+        direction: MessageDirection.INBOUND, 
+        customerId: 'customer-1' 
+      };
+      messageRepoMock.findOne.mockResolvedValue(mockMsg);
+
+      await expect(service.editMessage('m1', 'new', 'other-customer')).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('deleteMessage', () => {
+    it('should mark message as deleted and clear content', async () => {
+      const mockMsg: any = { 
+        id: 'm1', 
+        direction: MessageDirection.INBOUND, 
+        customerId: 'c1', 
+        threadId: 't1' 
+      };
+      messageRepoMock.findOne.mockResolvedValue(mockMsg);
+
+      await service.deleteMessage('m1', 'c1');
+
+      expect(mockMsg.isDeleted).toBe(true);
+      expect(mockMsg.content).toBe('Message deleted');
+      expect(gatewayMock.emitMessageUpdate).toHaveBeenCalled();
     });
   });
 });

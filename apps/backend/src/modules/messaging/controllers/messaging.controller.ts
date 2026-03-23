@@ -11,6 +11,7 @@ import {
   Request,
   Patch,
   ParseEnumPipe,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -27,6 +28,7 @@ import { TemplateService } from '../services/template.service';
 import { AnalyticsService } from '../services/analytics.service';
 import { InboxService } from '../services/inbox.service';
 import { SendMessageDto } from '../dto/send-message.dto';
+import { UpdateMessageDto } from '../dto/update-message.dto';
 import { CreateTemplateDto } from '../dto/template/create-template.dto';
 import { ReplyDto } from '../dto/reply.dto';
 import { Channel } from '../enums/channel.enum';
@@ -291,6 +293,37 @@ export class MessagingController {
     @Request() req: { user: User },
   ) {
     return this.templateService.deleteTemplate(id, req.user);
+  }
+
+  @Patch('messages/:id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({ summary: 'Edit a message' })
+  @ApiParam({ name: 'id', description: 'Message UUID' })
+  async editMessage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateMessageDto,
+    @Query() filter: BranchFilterDto,
+    @Request() req: { user: User },
+  ) {
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.inboxService.editMessage(id, dto.content, req.user.id, branchId);
+  }
+
+  @Delete('messages/:id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({ summary: 'Delete (hide) a message' })
+  @ApiParam({ name: 'id', description: 'Message UUID' })
+  async deleteMessage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() filter: BranchFilterDto,
+    @Request() req: { user: User },
+  ) {
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.inboxService.deleteMessage(id, req.user.id, branchId);
   }
 }
 
