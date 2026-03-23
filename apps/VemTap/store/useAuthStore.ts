@@ -40,6 +40,7 @@ export interface User {
   branchId?: string;
   businessName?: string;
   businessLogo?: string;
+  avatar?: string;
 
   // Subscription fields
   planId?: SubscriptionPlan;

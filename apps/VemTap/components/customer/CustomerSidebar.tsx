@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -26,6 +26,11 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
     const [showNotifications, setShowNotifications] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const queryClient = useQueryClient();
+
+    // Close mobile sidebar on navigation
+    useEffect(() => {
+        setIsMobileMenuOpen(false);
+    }, [pathname]);
 
     const { data } = useQuery({
         queryKey: ['dashboard'],
@@ -208,12 +213,24 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                 <Link href="/customer/dashboard" className="flex items-center gap-2">
                     <Logo />
                 </Link>
-                <button
-                    className="p-2 text-text-main"
-                    onClick={() => setIsMobileMenuOpen(true)}
-                >
-                    <Menu size={24} />
-                </button>
+                <div className="flex items-center gap-2">
+                    <Link
+                        href="/customer/settings"
+                        className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100 shadow-xs"
+                    >
+                        {user?.avatar ? (
+                            <img src={user.avatar} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                        ) : (
+                            <User size={20} className="text-text-secondary" />
+                        )}
+                    </Link>
+                    <button
+                        className="p-2 text-text-main"
+                        onClick={() => setIsMobileMenuOpen(true)}
+                    >
+                        <Menu size={24} />
+                    </button>
+                </div>
             </div>
 
             {/* Main Content */}
@@ -225,6 +242,18 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                         <p className="text-xs text-text-secondary font-medium">Here's what's happening with your rewards.</p>
                     </div>
                     <div className="flex items-center gap-4 relative">
+                        {/* Profile Button */}
+                        <Link
+                            href="/customer/settings"
+                            className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100 hover:bg-gray-100 transition-colors shadow-xs"
+                        >
+                            {user?.avatar ? (
+                                <img src={user.avatar} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                            ) : (
+                                <User size={20} className="text-text-secondary" />
+                            )}
+                        </Link>
+
                         {/* Notification Button */}
                         <button
                             onClick={() => setShowNotifications(!showNotifications)}
