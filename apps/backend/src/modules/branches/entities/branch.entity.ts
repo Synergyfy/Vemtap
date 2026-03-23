@@ -48,8 +48,29 @@ export class Branch extends AbstractBaseEntity {
   @Column({ nullable: true })
   officialEmail: string;
 
-  @Column({ type: 'text', nullable: true })
+  @ApiProperty({ example: '#2563EB', description: 'The primary color for branch forms' })
+  @Column({ default: '#2563EB' })
+  formAppearanceColor: string;
+
+  @ApiProperty({ example: 'Quick Link', description: 'Tag for the welcome screen' })
+  @Column({ default: 'Quick Link' })
+  welcomeTag: string;
+
+  @ApiProperty({ example: 'Connect with us', description: 'Title for the welcome screen' })
+  @Column({ default: 'Connect with us' })
+  welcomeTitle: string;
+
+  @ApiProperty({ example: 'Leave your details to stay in touch and earn rewards.', description: 'Message for the welcome screen' })
+  @Column({ type: 'text', default: 'Leave your details to stay in touch and earn rewards.' })
   welcomeMessage: string;
+
+  @ApiProperty({ example: 'Visit recorded successfully!', description: 'Title for the success screen' })
+  @Column({ default: 'Visit recorded successfully!' })
+  successTitle: string;
+
+  @ApiProperty({ example: 'Thank you for visiting our store', description: 'Description for the success screen' })
+  @Column({ type: 'text', default: 'Thank you for visiting our store' })
+  successDescription: string;
 
   @Column({ type: 'text', nullable: true })
   successMessage: string;
