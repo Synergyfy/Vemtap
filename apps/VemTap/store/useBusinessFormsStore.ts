@@ -238,7 +238,7 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
           await adminFormsApi.disableBusinessForm(id);
           set((state) => ({
             adminForms: state.adminForms.map((f: any) =>
-               f.id === id ? { ...f, isActive: false, status: 'disabled' } : f
+               f.id === id ? { ...f, adminDisabled: true } : f
             ),
             isSubmitting: false
           }));
@@ -254,7 +254,7 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
           await adminFormsApi.enableBusinessForm(id);
           set((state) => ({
             adminForms: state.adminForms.map((f: any) =>
-              f.id === id ? { ...f, isActive: true, status: 'approved' } : f
+              f.id === id ? { ...f, adminDisabled: false } : f
             ),
             isSubmitting: false
           }));
@@ -493,7 +493,7 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
       createTemplate: async (input) => {
         set({ isSubmitting: true, error: null });
         try {
-          const { api } = await import('@/lib/api');
+          const { adminFormsApi } = await import('@/lib/api/admin');
           const payload = {
             name: input.title,
             description: input.description,
@@ -506,7 +506,7 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
             }))
           };
 
-          const response = await api.post('/form-templates', payload);
+          const response = await adminFormsApi.createTemplate(payload);
 
           const newTemplate: FormTemplate = {
             id: response.id,
@@ -540,8 +540,8 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
       deleteTemplate: async (id) => {
         set({ isSubmitting: true, error: null });
         try {
-          const { api } = await import('@/lib/api');
-          await api.delete(`/form-templates/${id}`);
+          const { adminFormsApi } = await import('@/lib/api/admin');
+          await adminFormsApi.deleteTemplate(id);
           set((state) => ({
             templates: state.templates.filter((t) => t.id !== id),
             isSubmitting: false
@@ -554,8 +554,8 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
       fetchTemplates: async () => {
         set({ isLoading: true, error: null });
         try {
-          const { api } = await import('@/lib/api');
-          const response = await api.get('/form-templates');
+          const { adminFormsApi } = await import('@/lib/api/admin');
+          const response = await adminFormsApi.getTemplates();
           const items = response.items || [];
 
           const templates: FormTemplate[] = items.map((item: any) => ({
@@ -585,7 +585,7 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
       updateTemplate: async (id, updates) => {
         set({ isSubmitting: true, error: null });
         try {
-          const { api } = await import('@/lib/api');
+          const { adminFormsApi } = await import('@/lib/api/admin');
           const payload: any = {};
           if (updates.title) payload.name = updates.title;
           if (updates.description) payload.description = updates.description;
@@ -599,7 +599,7 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
             }));
           }
 
-          const response = await api.patch(`/form-templates/${id}`, payload);
+          const response = await adminFormsApi.updateTemplate(id, payload);
 
           set((state) => ({
             templates: state.templates.map((t) =>
@@ -629,8 +629,8 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
       useTemplate: async (templateId, branchId) => {
         set({ isSubmitting: true, error: null });
         try {
-          const { api } = await import('@/lib/api');
-          await api.post(`/form-templates/${templateId}/use?branchId=${branchId}`, {});
+          const { adminFormsApi } = await import('@/lib/api/admin');
+          await adminFormsApi.useTemplate(templateId, branchId);
           set({ isSubmitting: false });
         } catch (error: any) {
           set({ error: error.message, isSubmitting: false });

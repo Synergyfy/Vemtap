@@ -55,6 +55,10 @@ export interface LoyaltyTemplate {
     id: string;
     name: string;
     description?: string;
+    pointsRequired: number;
+    category: RewardType;
+    coverImage?: string;
+    galleryImages?: string[];
     status: TemplateStatus;
     rewards: TemplateReward[];
     rules: Partial<LoyaltyRule>;
