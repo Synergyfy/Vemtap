@@ -205,3 +205,5 @@ export interface Message {
 - **Marking as Read**: When a staff member fetches `GET /inbox/threads/:threadId`, the `branchUnreadCount` is automatically reset to `0`. Similarly, `getCustomerThreadMessages` resets the `customerUnreadCount`.
 - **System Automation**: Inbound messages can trigger automated replies (Welcome messages, Off-hours alerts, or FAQ keywords) if configured in **Chat Settings**.
 - **Placeholders**: The `content` can contain placeholders like `{FirstName}`, `{BusinessName}`, or `{Points}`, which the server replaces dynamically before delivery.
+
+

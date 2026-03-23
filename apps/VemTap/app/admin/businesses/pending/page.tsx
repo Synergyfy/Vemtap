@@ -131,32 +131,26 @@ export default function AdminPendingBusinessesPage() {
     };
 
     const getFormattedDocuments = (biz: any) => {
-        // Mocking rich documents if they are just strings or missing in the real DB
-        const defaultDocs = [
-            { id: 'doc1', name: 'CAC Business License', type: 'licence', url: 'https://images.unsplash.com/photo-1554224155-1696413565d3?q=80&w=1000' },
-            { id: 'doc2', name: 'Owner National ID', type: 'id', url: 'https://images.unsplash.com/photo-1556740758-90de374c12ad?q=80&w=1000' }
-        ];
-
         if (!biz.documents || !Array.isArray(biz.documents) || biz.documents.length === 0) {
-            return defaultDocs;
+            return [];
         }
         
-        // If they are strings
-        if (typeof biz.documents[0] === 'string') {
-            return biz.documents.map((doc: string, idx: number) => ({
-                id: `doc${idx}`,
-                name: doc,
-                type: doc.toLowerCase().includes('id') ? 'id' : 'license',
-                url: idx % 2 === 0 ? 'https://images.unsplash.com/photo-1554224155-1696413565d3?q=80&w=1000' : 'https://images.unsplash.com/photo-1556740758-90de374c12ad?q=80&w=1000'
-            }));
-        }
-
-        // If they are actually objects, return them directly
-        if (biz.documents[0]?.url) {
-            return biz.documents;
-        }
-
-        return defaultDocs;
+        return biz.documents.map((doc: any, idx: number) => {
+            if (typeof doc === 'string') {
+                return {
+                    id: `doc-${idx}`,
+                    name: `Document ${idx + 1}`,
+                    type: doc.toLowerCase().includes('id') ? 'ID' : 'License',
+                    url: doc
+                };
+            }
+            return {
+                id: doc.id || `doc-${idx}`,
+                name: doc.name || `Document ${idx + 1}`,
+                type: doc.type || 'Document',
+                url: doc.url
+            };
+        });
     };
 
     const handleViewDetails = (v: any) => {
@@ -192,9 +186,9 @@ export default function AdminPendingBusinessesPage() {
                         Export
                     </button>
                     <div className="bg-white border border-gray-200 rounded-xl p-1 flex items-center shadow-sm">
-                        <button className="px-4 py-2 text-xs font-bold text-primary bg-primary/5 rounded-lg">Pending</button>
-                        <button className="px-4 py-2 text-xs font-bold text-text-secondary hover:text-text-main transition-colors">Approved</button>
-                        <button className="px-4 py-2 text-xs font-bold text-text-secondary hover:text-text-main transition-colors">Rejected</button>
+                        <button className="px-4 py-2 text-xs font-bold text-primary bg-primary/5 rounded-lg">Unverified</button>
+                        <button className="px-4 py-2 text-xs font-bold text-text-secondary hover:text-text-main transition-colors">Verified</button>
+                        <button className="px-4 py-2 text-xs font-bold text-text-secondary hover:text-text-main transition-colors">System Actions</button>
                     </div>
                 </div>
             </div>
@@ -202,7 +196,7 @@ export default function AdminPendingBusinessesPage() {
             {/* Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                 {[
-                    { label: 'Total Pending', value: stats.pendingCount, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
+                    { label: 'Total Unverified', value: stats.pendingCount, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
                     { label: 'Verified Today', value: stats.approvedToday, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
                     { label: 'Avg. Wait Time', value: stats.avgWaitTime, icon: ShieldCheck, color: 'text-blue-600', bg: 'bg-blue-50' },
                     { label: 'Suspicious Flag', value: '0', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
@@ -298,7 +292,7 @@ export default function AdminPendingBusinessesPage() {
                                             <td className="px-6 py-4">
                                                 <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${isBusiness ? 'bg-indigo-50 text-indigo-700' : 'bg-green-50 text-green-700'
                                                     }`}>
-                                                    {v.category || 'Business'}
+                                                    Unverified
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-text-secondary whitespace-nowrap">
@@ -337,7 +331,7 @@ export default function AdminPendingBusinessesPage() {
 
             {/* Multi-Document Viewer Modal */}
             {isViewerOpen && selectedVerification && (
-                <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-999 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setIsViewerOpen(false)} />
 
                     <div className="relative w-full max-w-6xl h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row animate-in zoom-in-95 duration-300">
@@ -440,32 +434,46 @@ export default function AdminPendingBusinessesPage() {
 
                             {/* Image Container */}
                             <div className="flex-1 p-8 overflow-hidden relative">
-                                <div className="w-full h-full bg-white rounded-2xl shadow-xl overflow-auto p-4 flex items-center justify-center">
-                                    <img
-                                        src={selectedVerification.formattedDocs[activeDocIndex]?.url}
-                                        alt={selectedVerification.formattedDocs[activeDocIndex]?.name}
-                                        className="max-w-full max-h-full object-contain rounded-lg"
-                                    />
-                                </div>
+                                {selectedVerification.formattedDocs.length > 0 ? (
+                                    <>
+                                        <div className="w-full h-full bg-white rounded-2xl shadow-xl overflow-auto p-4 flex items-center justify-center">
+                                            <img
+                                                src={selectedVerification.formattedDocs[activeDocIndex]?.url}
+                                                alt={selectedVerification.formattedDocs[activeDocIndex]?.name}
+                                                className="max-w-full max-h-full object-contain rounded-lg"
+                                            />
+                                        </div>
 
-                                {/* Bottom Floating Controls */}
-                                <div className="absolute bottom-12 left-1/2 -translate-x-1/2 bg-black/90 text-white rounded-full px-6 py-3 flex items-center gap-6 shadow-2xl backdrop-blur-md">
-                                    <button
-                                        onClick={() => setActiveDocIndex(i => Math.max(0, i - 1))}
-                                        className={`hover:text-primary transition-colors ${activeDocIndex === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                    >
-                                        Previous
-                                    </button>
-                                    <span className="text-xs font-black uppercase tracking-widest text-gray-400">
-                                        Doc {activeDocIndex + 1} / {selectedVerification.formattedDocs.length}
-                                    </span>
-                                    <button
-                                        onClick={() => setActiveDocIndex(i => Math.min(selectedVerification.formattedDocs.length - 1, i + 1))}
-                                        className={`hover:text-primary transition-colors ${activeDocIndex === selectedVerification.formattedDocs.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                    >
-                                        Next
-                                    </button>
-                                </div>
+                                        {/* Bottom Floating Controls */}
+                                        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 bg-black/90 text-white rounded-full px-6 py-3 flex items-center gap-6 shadow-2xl backdrop-blur-md">
+                                            <button
+                                                onClick={() => setActiveDocIndex(i => Math.max(0, i - 1))}
+                                                className={`hover:text-primary transition-colors ${activeDocIndex === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                            >
+                                                Previous
+                                            </button>
+                                            <span className="text-xs font-black uppercase tracking-widest text-gray-400">
+                                                Doc {activeDocIndex + 1} / {selectedVerification.formattedDocs.length}
+                                            </span>
+                                            <button
+                                                onClick={() => setActiveDocIndex(i => Math.min(selectedVerification.formattedDocs.length - 1, i + 1))}
+                                                className={`hover:text-primary transition-colors ${activeDocIndex === selectedVerification.formattedDocs.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="w-full h-full bg-white rounded-2xl shadow-sm border-2 border-dashed border-gray-200 flex flex-col items-center justify-center p-12 text-center">
+                                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4">
+                                            <FileText size={32} />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-text-main mb-2">No Documents Uploaded</h3>
+                                        <p className="text-sm text-text-secondary max-w-md mx-auto">
+                                            This business has not submitted any verification documents yet. You may want to contact the owner or wait for them to complete their profile.
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -474,7 +482,7 @@ export default function AdminPendingBusinessesPage() {
 
             {/* Confirmation Modal */}
             {isConfirmModalOpen && (
-                <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-1000 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => !isSubmitting && setIsConfirmModalOpen(false)} />
                     <div className="relative w-full max-w-md bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
                         <div className="flex items-center gap-4 mb-6">
