@@ -32,6 +32,11 @@ export class CreateProductDto {
   @IsNotEmpty()
   name: string;
 
+  @ApiProperty({ example: 'SKU-001', required: false })
+  @IsString()
+  @IsOptional()
+  sku?: string;
+
   @ApiProperty({ example: 'High quality NFC card' })
   @IsString()
   @IsNotEmpty()
