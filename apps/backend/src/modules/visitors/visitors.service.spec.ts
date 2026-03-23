@@ -247,13 +247,20 @@ describe('VisitorsService', () => {
 
   describe('getStats', () => {
     it('should return stats with trends', async () => {
-      mockQueryBuilder.getCount.mockResolvedValue(100);
+      mockQueryBuilder.getRawOne.mockResolvedValueOnce({ count: '100' }); // totalVisitors
+      mockVisitRepo.count.mockResolvedValueOnce(250); // totalVisitsCount
+      mockQueryBuilder.getRawMany.mockResolvedValueOnce(new Array(30)); // newVisitorsCount
+      mockQueryBuilder.getRawMany.mockResolvedValueOnce(new Array(40)); // returningCount
 
       const result = await service.getStats('branch-1');
 
       expect(result.stats).toHaveLength(4);
       expect(result.stats[0].label).toBe('Total Visitors');
       expect(result.stats[0].value).toBe('100');
+      expect(result.stats[1].label).toBe('New This Month');
+      expect(result.stats[1].value).toBe('30');
+      expect(result.stats[3].label).toBe('Returning Visitors');
+      expect(result.stats[3].value).toBe('40');
     });
   });
 });
