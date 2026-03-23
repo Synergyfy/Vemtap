@@ -214,7 +214,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 { label: 'Redeem Reward', href: '/dashboard/loyalty/redeem' },
                 { label: 'Settings', href: '/dashboard/loyalty/settings' },
                 { label: 'Customers', href: '/dashboard/loyalty/customers' },
-                { label: 'Verify', href: '/dashboard/loyalty/verify' },
             ]
         },
         {

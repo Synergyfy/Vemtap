@@ -112,18 +112,18 @@ export const useLogin = () => {
     };
 };
 
-export const useRegister = () => {
+export const useChangePassword = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const registerUser = async (payload: RegisterRequest): Promise<AuthResponse> => {
+    const changePassword = async (payload: any): Promise<any> => {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await api.post('/auth/register', payload);
+            const response = await api.post('/auth/password/change', payload);
             return response;
         } catch (err: any) {
-            const errorMessage = err.message || 'Failed to register';
+            const errorMessage = err.message || 'Failed to change password';
             setError(errorMessage);
             throw new Error(errorMessage);
         } finally {
@@ -132,8 +132,9 @@ export const useRegister = () => {
     };
 
     return {
-        registerUser,
+        changePassword,
         isLoading,
         error
     };
 };
+

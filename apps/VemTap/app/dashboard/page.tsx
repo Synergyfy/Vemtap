@@ -7,6 +7,7 @@ import {
     Users, UserPlus, Repeat, Calendar, TrendingUp, TrendingDown,
     ChevronDown, Send, Download, Gift, ArrowRight, MessageSquare, Zap
 } from 'lucide-react';
+import Tooltip from '@/components/ui/Tooltip';
 import LogoIcon from '@/components/brand/LogoIcon';
 import { useRouter } from 'next/navigation';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
@@ -191,19 +192,21 @@ export default function DashboardPage() {
                     const TrendIcon = stat.trend === 'up' ? TrendingUp : TrendingDown;
 
                     return (
-                        <div key={index} className="bg-white rounded-2xl p-5 border border-gray-100 hover:shadow-md transition-shadow">
-                            <div className="flex items-center justify-between mb-3">
-                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                                    <IconComponent className="text-primary" size={18} />
+                        <Tooltip key={index} content={stat.label === 'Avg. Frequency' ? 'Total visits divided by total visitors' : `View ${stat.label} details`}>
+                            <div className="bg-white rounded-2xl p-5 border border-gray-100 hover:shadow-md transition-shadow cursor-default">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                        <IconComponent className="text-primary" size={18} />
+                                    </div>
+                                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${stat.trend === 'up' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                        <TrendIcon size={10} />
+                                        {stat.change}
+                                    </div>
                                 </div>
-                                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${stat.trend === 'up' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                                    <TrendIcon size={10} />
-                                    {stat.change}
-                                </div>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary mb-0.5">{stat.label}</p>
+                                <p className="text-2xl font-display font-bold text-text-main">{stat.value}</p>
                             </div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary mb-0.5">{stat.label}</p>
-                            <p className="text-2xl font-display font-bold text-text-main">{stat.value}</p>
-                        </div>
+                        </Tooltip>
                     );
                 })}
             </div>

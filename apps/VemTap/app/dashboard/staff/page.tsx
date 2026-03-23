@@ -29,13 +29,9 @@ const PERMISSIONS = [
     { id: 'messages', label: 'Channels', icon: MessageSquare },
     { id: 'loyalty', label: 'Loyalty', icon: Gift },
     { id: 'engagement', label: 'Engagement', icon: Zap },
-    { id: 'automations', label: 'Automations', icon: Wand2 },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'staff', label: 'Team', icon: UsersIcon },
     { id: 'nfc', label: 'NFC Manager', icon: Nfc },
-    { id: 'devices', label: 'Devices', icon: Smartphone },
-    { id: 'hardware', label: 'Hardware', icon: Cpu },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'support', label: 'Support', icon: HelpCircle },
     { id: 'tutorial', label: 'Tutorial', icon: BookOpen },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
@@ -96,6 +92,7 @@ export default function StaffManagementPage() {
             firstName: formData.get('firstName') as string,
             lastName: formData.get('lastName') as string,
             email: formData.get('email') as string,
+            phone: formData.get('phone') as string || undefined,
             jobTitle: formData.get('jobTitle') as string || undefined,
             role: roleValue as UserRole,
             branchId: branchId || activeBranchId || user?.branchId || '',
@@ -312,16 +309,20 @@ export default function StaffManagementPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Job Title</label>
-                            <input name="jobTitle" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm" placeholder="e.g. Head of Sales" />
-                        </div>
-                        <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Email Address</label>
                             <input name="email" type="email" required className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm" placeholder="john@example.com" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Phone Number</label>
+                            <input name="phone" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm" placeholder="+1234567890" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Job Title</label>
+                            <input name="jobTitle" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm" placeholder="e.g. Head of Sales" />
+                        </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Access Level</label>
                             <select name="role" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none">
@@ -329,20 +330,21 @@ export default function StaffManagementPage() {
                                 <option value="Manager">Manager (Full Dashboard)</option>
                             </select>
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Assign to Branch</label>
-                            <select
-                                name="branchId"
-                                required
-                                defaultValue={activeBranchId || branches[0]?.id}
-                                className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none"
-                            >
-                                <option value="">Select a branch</option>
-                                {branches.map((b) => (
-                                    <option key={b.id} value={b.id}>{b.name}</option>
-                                ))}
-                            </select>
-                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Assign to Branch</label>
+                        <select
+                            name="branchId"
+                            required
+                            defaultValue={activeBranchId || branches[0]?.id}
+                            className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none"
+                        >
+                            <option value="">Select a branch</option>
+                            {branches.map((b) => (
+                                <option key={b.id} value={b.id}>{b.name}</option>
+                            ))}
+                        </select>
                     </div>
 
                     <div className="space-y-3">
