@@ -139,11 +139,9 @@ export default function UserManagementPage({
         e.preventDefault();
         setIsSubmitting(true);
         const fd = new FormData(e.currentTarget);
-        const fullName = fd.get('firstName') as string;
-        const nameParts = fullName.trim().split(' ');
         const payload = {
-            firstName: nameParts[0] || '',
-            lastName: nameParts.slice(1).join(' ') || 'User',
+            firstName: fd.get('firstName') as string,
+            lastName: fd.get('lastName') as string,
             email: fd.get('email') as string,
             role: fd.get('role') as string,
             status: fd.get('status') as string,
@@ -407,7 +405,7 @@ export default function UserManagementPage({
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Role</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Status</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Last Active</th>
-                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Joined</th>
+                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Date Joined</th>
                                 <th className="text-right py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Actions</th>
                             </tr>
                         </thead>
@@ -551,9 +549,15 @@ export default function UserManagementPage({
                             </button>
                         </div>
                         <form onSubmit={handleFormSubmit} className="space-y-5">
-                            <div>
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Full Name</label>
-                                <input name="firstName" defaultValue={selectedUser ? `${selectedUser.firstName} ${selectedUser.lastName}`.trim() : ''} required placeholder="John Doe" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">First Name</label>
+                                    <input name="firstName" defaultValue={selectedUser?.firstName} required placeholder="John" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Last Name</label>
+                                    <input name="lastName" defaultValue={selectedUser?.lastName} required placeholder="Doe" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                </div>
                             </div>
                             <div>
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Email Address</label>

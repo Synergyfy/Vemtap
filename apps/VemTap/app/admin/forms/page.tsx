@@ -147,13 +147,15 @@ export default function AdminFormsPage() {
         }
     };
 
-    const statusBadge = (status: string) => {
+    const statusBadge = (status: string, adminDisabled?: boolean) => {
+        if (adminDisabled) return 'bg-red-100 text-red-800 border-red-300';
         if (status === 'approved') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
         if (status === 'rejected') return 'bg-red-50 text-red-700 border-red-200';
         return 'bg-amber-50 text-amber-700 border-amber-200';
     };
 
-    const statusIcon = (status: string) => {
+    const statusIcon = (status: string, adminDisabled?: boolean) => {
+        if (adminDisabled) return <XCircle size={14} className="text-red-600" />;
         if (status === 'approved') return <CheckCircle2 size={14} />;
         if (status === 'rejected') return <XCircle size={14} />;
         return <Clock3 size={14} />;
@@ -384,21 +386,22 @@ export default function AdminFormsPage() {
                                         </td>
                                         <td className="px-5 py-4">
                                             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest ${
+                                                form.adminDisabled ? 'bg-red-100 text-red-800 border-red-300' : 
                                                 form.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'
                                             }`}>
-                                                {form.isActive ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-                                                {form.isActive ? 'Active' : 'Suspended'}
+                                                {form.adminDisabled ? <XCircle size={12} /> : form.isActive ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                                                {form.adminDisabled ? 'Admin Suspended' : form.isActive ? 'Active' : 'Merchant Disabled'}
                                             </span>
                                         </td>
                                         <td className="px-5 py-4">
                                             <div className="flex items-center gap-2">
-                                                {form.isActive ? (
+                                                {!form.adminDisabled ? (
                                                     <button
                                                         onClick={async () => {
                                                             if (confirm('Are you sure you want to suspend this form? It will no longer be accessible by customers.')) {
                                                                 try {
                                                                     await disableForm(form.id);
-                                                                    notify.success('Form suspended');
+                                                                    notify.success('Form suspended by admin');
                                                                 } catch (err: any) {
                                                                     notify.error(err.message || 'Failed to suspend form');
                                                                 }
@@ -406,21 +409,21 @@ export default function AdminFormsPage() {
                                                         }}
                                                         className="h-9 px-4 rounded-xl bg-red-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-all shadow-md shadow-red-200 active:scale-95"
                                                     >
-                                                        Suspend
+                                                        Admin Suspend
                                                     </button>
                                                 ) : (
                                                     <button
                                                         onClick={async () => {
                                                             try {
                                                                 await enableForm(form.id);
-                                                                notify.success('Form reactivated');
+                                                                notify.success('Form reactivated by admin');
                                                             } catch (err: any) {
                                                                 notify.error(err.message || 'Failed to reactivate form');
                                                             }
                                                         }}
                                                         className="h-9 px-4 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-md shadow-emerald-200 active:scale-95"
                                                     >
-                                                        Reactivate
+                                                        Admin Reactivate
                                                     </button>
                                                 )}
                                             </div>
