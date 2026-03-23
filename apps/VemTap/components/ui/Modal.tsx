@@ -1,6 +1,5 @@
-'use client';
-
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
@@ -33,6 +32,12 @@ export default function Modal({
     size = 'md',
     showClose = true
 }: ModalProps) {
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     // Prevent scrolling when modal is open
     useEffect(() => {
         if (isOpen) {
@@ -45,10 +50,12 @@ export default function Modal({
         };
     }, [isOpen]);
 
-    return (
+    if (!mounted) return null;
+
+    const modalContent = (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
@@ -101,4 +108,6 @@ export default function Modal({
             )}
         </AnimatePresence>
     );
+
+    return createPortal(modalContent, document.body);
 }

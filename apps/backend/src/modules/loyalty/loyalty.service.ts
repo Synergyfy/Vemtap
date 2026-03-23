@@ -3,6 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, Between, MoreThanOrEqual } from 'typeorm';
@@ -14,6 +16,7 @@ import { PointCode } from './entities/point-code.entity';
 import { RedemptionCode } from './entities/redemption-code.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
+import { BranchesService } from '../branches/branches.service';
 import {
   CreateRewardTemplateDto,
   CreateRewardDto,
@@ -44,6 +47,8 @@ export class LoyaltyService {
     @InjectRepository(Visit)
     private visitRepo: Repository<Visit>,
     private dataSource: DataSource,
+    @Inject(forwardRef(() => BranchesService))
+    private branchesService: BranchesService,
   ) {}
 
   // --- Point Balance ---
@@ -165,12 +170,14 @@ export class LoyaltyService {
     return this.rewardTemplateRepo.find();
   }
 
-  async createReward(owner: User, dto: CreateRewardDto) {
+  async createReward(user: User, dto: CreateRewardDto) {
+    const hasAccess = await this.branchesService.checkBranchAccess(user, dto.branchId);
+    if (!hasAccess) {
+        throw new ForbiddenException('Not your business or branch');
+    }
+
     const branch = await this.branchRepo.findOne({ where: { id: dto.branchId } });
     if (!branch) throw new NotFoundException('Branch not found');
-    if (branch.businessId !== owner.ownedBusiness?.id && owner.role !== UserRole.ADMIN) {
-        throw new ForbiddenException('Not your business');
-    }
 
     const reward = this.rewardRepo.create({
       ...dto,
@@ -180,14 +187,28 @@ export class LoyaltyService {
     return this.rewardRepo.save(reward);
   }
 
-  async updateReward(id: string, dto: Partial<CreateRewardDto>) {
+  async updateReward(user: User, id: string, dto: Partial<CreateRewardDto>) {
     const reward = await this.rewardRepo.findOne({ where: { id } });
     if (!reward) throw new NotFoundException('Reward not found');
+
+    const hasAccess = await this.branchesService.checkBranchAccess(user, reward.branchId);
+    if (!hasAccess) {
+        throw new ForbiddenException('You do not have access to this reward');
+    }
+
     Object.assign(reward, dto);
     return this.rewardRepo.save(reward);
   }
 
-  async deleteReward(id: string) {
+  async deleteReward(user: User, id: string) {
+    const reward = await this.rewardRepo.findOne({ where: { id } });
+    if (!reward) throw new NotFoundException('Reward not found');
+
+    const hasAccess = await this.branchesService.checkBranchAccess(user, reward.branchId);
+    if (!hasAccess) {
+        throw new ForbiddenException('You do not have access to this reward');
+    }
+
     return this.rewardRepo.delete(id);
   }
 
@@ -198,6 +219,41 @@ export class LoyaltyService {
       take: limit,
       skip: (page - 1) * limit,
     });
+  }
+
+  async getRewardRedemptions(user: User, rewardId: string, page = 1, limit = 10) {
+    const reward = await this.rewardRepo.findOne({ where: { id: rewardId } });
+    if (!reward) throw new NotFoundException('Reward not found');
+
+    const hasAccess = await this.branchesService.checkBranchAccess(user, reward.branchId);
+    if (!hasAccess) {
+      throw new ForbiddenException('You do not have access to this reward redemptions');
+    }
+
+    const [items, total] = await this.redemptionCodeRepo.findAndCount({
+      where: { rewardId, isUsed: true },
+      relations: ['usedBy'],
+      order: { usedAt: 'DESC' },
+      take: limit,
+      skip: (page - 1) * limit,
+    });
+
+    return {
+      data: items.map(redemption => ({
+        id: redemption.id,
+        usedAt: redemption.usedAt,
+        customer: redemption.usedBy ? {
+          id: redemption.usedBy.id,
+          firstName: redemption.usedBy.firstName,
+          lastName: redemption.usedBy.lastName,
+          email: redemption.usedBy.email,
+          phone: redemption.usedBy.phone,
+        } : null,
+      })),
+      total,
+      page,
+      limit,
+    };
   }
 
   // --- Redemption ---
@@ -252,6 +308,7 @@ export class LoyaltyService {
       await queryRunner.manager.save(redemptionCode);
 
       reward.remainingQuantity -= 1;
+      reward.redemptionCount += 1;
       await queryRunner.manager.save(reward);
 
       const transaction = this.pointTransactionRepo.create({

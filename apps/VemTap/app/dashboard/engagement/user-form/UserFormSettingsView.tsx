@@ -11,7 +11,10 @@ import { StepOutcome } from '@/components/visitor/StepOutcome';
 import { StepWelcomeBack } from '@/components/visitor/StepWelcomeBack';
 import { StepFinalSuccess } from '@/components/visitor/StepFinalSuccess';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
-import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
+import { useMyBusiness } from '@/services/businesses/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useBranch } from '@/services/branches/hooks';
+import { useUpdateBranchFormSettings } from '@/services/business-forms/hooks';
 import { buildBrandCssVars } from '@/lib/brandColor';
 
 type UserFormSettingsMode = 'all' | 'default' | 'success';
@@ -26,19 +29,26 @@ export default function UserFormSettingsView({
     defaultPreviewTab = 'form',
 }: UserFormSettingsPageProps) {
     const store = useCustomerFlowStore();
-    const { data: business, isLoading } = useMyBusiness();
+    const { activeBranchId } = useActiveBranch();
+    const { data: business, isLoading: isBusinessLoading } = useMyBusiness();
+    const { data: branch, isLoading: isBranchLoading } = useBranch(activeBranchId || '');
+    
+    const isLoading = isBusinessLoading || (!!activeBranchId && isBranchLoading);
+    
     const mainBranch = business?.branches?.find((b) => b.isMainBranch);
-    const updateMutation = useUpdateBusiness();
+    const updateMutation = useUpdateBranchFormSettings(activeBranchId || mainBranch?.id);
     const [isSaving, setIsSaving] = useState(false);
     const [previewTab, setPreviewTab] = useState<'form' | 'thank_you' | 'final_step' | 'returning'>(defaultPreviewTab);
 
     const config = useMemo(() => store.getBusinessConfig(), [store]);
-    const previewStoreName = business?.name || mainBranch?.name || store.storeName || 'Your Store';
-    const previewLogoUrl = business?.logoUrl || mainBranch?.logoUrl || store.logoUrl;
-    const previewHasRewards = mainBranch?.rewardEnabled ?? business?.rewardEnabled ?? store.hasRewardSetup;
+    const previewStoreName = branch?.name || business?.name || mainBranch?.name || store.storeName || 'Your Store';
+    const previewLogoUrl = branch?.logoUrl || business?.logoUrl || mainBranch?.logoUrl || store.logoUrl;
+    const previewHasRewards = branch?.rewardEnabled ?? mainBranch?.rewardEnabled ?? business?.rewardEnabled ?? store.hasRewardSetup;
+    const currentBrandColor = branch?.formAppearanceColor || business?.brandColor || store.engagementSettings.brandColor || '#2563eb';
+    
     const brandVars = useMemo(
-        () => buildBrandCssVars(store.engagementSettings.brandColor),
-        [store.engagementSettings.brandColor]
+        () => buildBrandCssVars(currentBrandColor),
+        [currentBrandColor]
     );
     const previewUser = useMemo(
         () => ({
@@ -62,18 +72,20 @@ export default function UserFormSettingsView({
     });
 
     useEffect(() => {
-        if (!business) return;
+        const source = branch || business;
+        if (!source) return;
+        
         setSettings((prev) => ({
             ...prev,
-            welcomeTitle: business.welcomeTitle || prev.welcomeTitle,
-            welcomeMessage: business.welcomeMessage || prev.welcomeMessage,
-            welcomeTag: business.welcomeTag || prev.welcomeTag,
-            privacyMessage: business.privacyMessage || prev.privacyMessage,
-            submitLabel: business.welcomeButton || prev.submitLabel,
-            successTitle: business.successTitle || prev.successTitle,
-            successMessage: business.successMessage || prev.successMessage,
+            welcomeTitle: source.welcomeTitle || prev.welcomeTitle,
+            welcomeMessage: source.welcomeMessage || prev.welcomeMessage,
+            welcomeTag: source.welcomeTag || prev.welcomeTag,
+            privacyMessage: source.privacyMessage || prev.privacyMessage,
+            submitLabel: source.welcomeButton || prev.submitLabel,
+            successTitle: source.successTitle || prev.successTitle,
+            successMessage: source.successMessage || prev.successMessage,
         }));
-    }, [business]);
+    }, [business, branch]);
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -88,18 +100,15 @@ export default function UserFormSettingsView({
                 successMessage: settings.successMessage,
             });
 
-            if (business) {
+            if (activeBranchId || mainBranch?.id) {
                 await updateMutation.mutateAsync({
-                    id: business.id,
-                    updates: {
-                        welcomeTitle: settings.welcomeTitle,
-                        welcomeMessage: settings.welcomeMessage,
-                        welcomeTag: settings.welcomeTag,
-                        welcomeButton: settings.submitLabel,
-                        privacyMessage: settings.privacyMessage,
-                        successTitle: settings.successTitle,
-                        successMessage: settings.successMessage,
-                    },
+                    welcomeTitle: settings.welcomeTitle,
+                    welcomeMessage: settings.welcomeMessage,
+                    welcomeTag: settings.welcomeTag,
+                    // Note: UpdateBranchFormSettingsDto might not support all these, 
+                    // but the service method is generic.
+                    successTitle: settings.successTitle,
+                    successDescription: settings.successMessage,
                 });
             }
 

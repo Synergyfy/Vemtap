@@ -42,6 +42,10 @@ export class ProductsService {
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
+    if (!createProductDto.sku) {
+      // Generate a unique SKU if not provided
+      createProductDto.sku = `PROD-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+    }
     const product = this.productRepository.create(createProductDto);
 
     if (createProductDto.productTypeId) {

@@ -140,7 +140,7 @@ export default function DashboardPricingPage() {
         const derivedFeatures = [];
         
         const formatLimit = (value: number | undefined, label: string) => {
-            if (value === undefined || value === null) return null;
+            if (value === undefined || value === null || value === 0) return null;
             if (value === -1) return `Unlimited ${label}`;
             return `${value.toLocaleString()} ${label}`;
         };

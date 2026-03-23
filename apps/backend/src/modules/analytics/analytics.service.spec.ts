@@ -11,6 +11,7 @@ import { RedemptionCode } from '../loyalty/entities/redemption-code.entity';
 import { Reward } from '../loyalty/entities/reward.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Message } from '../messaging/entities/message.entity';
+import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { DataSource } from 'typeorm';
 
 describe('AnalyticsService', () => {
@@ -78,6 +79,10 @@ describe('AnalyticsService', () => {
         },
         {
           provide: getRepositoryToken(Message),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(Subscription),
           useValue: mockRepository,
         },
         {

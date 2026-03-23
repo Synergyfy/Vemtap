@@ -1,5 +1,5 @@
 export type Channel = 'WHATSAPP' | 'SMS' | 'EMAIL' | 'IN_HOUSE';
-export type AudienceType = 'ALL' | 'GROUP' | 'TAGGED' | 'RECENT';
+export type AudienceType = 'ALL' | 'GROUP' | 'TAGGED' | 'RECENT' | 'SEGMENT';
 
 export enum MessageDirection {
     INBOUND = 'INBOUND',   // From Customer to Business
@@ -57,6 +57,7 @@ export interface SendMessageRequest {
     templateId?: string;
     content?: string;
     customerIds?: string[];
+    segmentId?: string;
     branchId?: string;
     from?: string;
 }
@@ -138,8 +139,21 @@ export interface MessagingAnalytics {
 
 export interface ChannelStat {
     totalSent: number;
-    deliveryRate: number;
+    totalDelivered: number;
     growth: number;
+}
+
+// ─── Segmentation ────────────────────────────────────────────────────────────
+
+export interface Segment {
+    id: string;
+    name: string;
+    description?: string;
+    branchId: string;
+    businessId: string;
+    users?: any[]; // Typically User[] but any is safer if User is not imported
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 // ─── Automations ─────────────────────────────────────────────────────────────

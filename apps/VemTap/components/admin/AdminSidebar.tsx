@@ -75,11 +75,16 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             icon: Store,
             submenu: [
                 { label: 'All Businesses', href: '/admin/businesses' },
-                { label: 'Business Owners', href: '/admin/users/business' },
                 { label: 'Business Categories', href: '/admin/categories' },
                 { label: 'Badge Approval', href: '/admin/businesses/pending' },
                 { label: 'Suspended', href: '/admin/businesses/suspended' },
             ]
+        },
+        {
+            id: 'business-owners',
+            label: 'Business Owners',
+            icon: Shield,
+            href: '/admin/users/business',
         },
         {
             id: 'customers',

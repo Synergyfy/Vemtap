@@ -182,9 +182,8 @@ export default function AdminBusinessesPage() {
 
     const stats = [
         { label: 'Total', value: metaTotal ?? businesses.length, icon: 'store', color: 'blue' },
-        { label: 'Active', value: apiStats?.active ?? businesses.filter(b => normalizeBusinessStatus(b.status) === 'active').length, icon: 'check_circle', color: 'green' },
-        { label: 'Pending', value: apiStats?.pending ?? businesses.filter(b => normalizeBusinessStatus(b.status) === 'pending').length, icon: 'pending', color: 'yellow' },
-        { label: 'Suspended', value: apiStats?.suspended ?? businesses.filter(b => normalizeBusinessStatus(b.status) === 'suspended').length, icon: 'block', color: 'red' },
+        { label: 'Verified', value: apiStats?.active ?? businesses.filter(b => normalizeBusinessStatus(b.status) === 'active' || (b as any).isVerified).length, icon: 'check_circle', color: 'green' },
+        { label: 'Unverified', value: apiStats?.pending ?? businesses.filter(b => normalizeBusinessStatus(b.status) === 'pending' || !(b as any).isVerified).length, icon: 'pending', color: 'yellow' },
     ];
 
     const handleAction = (action: 'suspend' | 'reactivate' | 'delete', business: Business) => {
@@ -232,7 +231,10 @@ export default function AdminBusinessesPage() {
         const fd = new FormData(e.currentTarget);
         const payload = {
             name: fd.get('name') as string,
-            email: fd.get('email') as string,
+            ownerEmail: fd.get('ownerEmail') as string,
+            ownerFirstName: fd.get('ownerFirstName') as string,
+            ownerLastName: fd.get('ownerLastName') as string,
+            ownerPassword: fd.get('ownerPassword') as string,
             phone: fd.get('phone') as string,
             address: fd.get('address') as string,
         };
@@ -248,15 +250,17 @@ export default function AdminBusinessesPage() {
         }
     };
 
-    const getStatusBadge = (status: string) => {
-        const normalized = normalizeBusinessStatus(status);
-        const map: Record<string, string> = {
-            active: 'bg-green-50 text-green-600',
-            pending: 'bg-yellow-50 text-yellow-700',
-            suspended: 'bg-red-50 text-red-600',
-            rejected: 'bg-gray-100 text-gray-500',
-        };
-        return map[normalized] || 'bg-gray-100 text-gray-500';
+    const getStatusBadge = (biz: Business) => {
+        const normalized = normalizeBusinessStatus(biz.status);
+        const isVerified = (biz as any).isVerified;
+
+        if (isVerified || normalized === 'active') {
+            return { label: 'Verified', classes: 'bg-green-50 text-green-600' };
+        }
+        if (normalized === 'suspended') {
+            return { label: 'Suspended', classes: 'bg-red-50 text-red-600' };
+        }
+        return { label: 'Unverified', classes: 'bg-yellow-50 text-yellow-700' };
     };
 
     const [isExporting, setIsExporting] = useState(false);
@@ -379,9 +383,9 @@ export default function AdminBusinessesPage() {
                     </div>
                     <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20">
                         <option value="">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="pending">Pending</option>
-                        <option value="suspended">Suspended</option>
+                        <option value="active">Verified Only</option>
+                        <option value="pending">Unverified Only</option>
+                        <option value="suspended">Suspended Only</option>
                     </select>
                 </div>
                 <p className="mt-3 text-xs text-text-secondary font-medium">Tip: click any business row to open business analytics.</p>
@@ -460,9 +464,14 @@ export default function AdminBusinessesPage() {
                                             </td>
                                             <td className="py-4 px-6 text-sm font-bold text-text-main">{biz.branches?.length ?? 0}</td>
                                             <td className="py-4 px-6">
-                                                <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${getStatusBadge(biz.status)}`}>
-                                                    {biz.status}
-                                                </span>
+                                                {(() => {
+                                                    const badge = getStatusBadge(biz);
+                                                    return (
+                                                        <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${badge.classes}`}>
+                                                            {badge.label}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </td>
                                             <td className="py-4 px-6 text-xs text-text-secondary font-bold">
                                                 {new Date(biz.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -554,30 +563,50 @@ export default function AdminBusinessesPage() {
                             </div>
                             <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><span className="material-icons-round text-gray-400">close</span></button>
                         </div>
-                        <form onSubmit={handleFormSubmit} className="space-y-5">
-                            <div>
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Business Name</label>
-                                <input name="name" required placeholder="e.g. Skyline Lounge" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                        <form onSubmit={handleFormSubmit} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Business Name</label>
+                                    <input name="name" required placeholder="e.g. Skyline Lounge" className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Owner Email</label>
+                                    <input name="ownerEmail" type="email" required placeholder="owner@example.com" className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                </div>
                             </div>
-                            <div>
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Business Email</label>
-                                <input name="email" type="email" required placeholder="business@example.com" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
-                            </div>
+                            
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Phone</label>
-                                    <input name="phone" type="tel" placeholder="+234 800 000 0000" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Owner First Name</label>
+                                    <input name="ownerFirstName" required placeholder="John" className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Address</label>
-                                    <input name="address" placeholder="City, State" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Owner Last Name</label>
+                                    <input name="ownerLastName" required placeholder="Doe" className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
                                 </div>
                             </div>
-                            <div className="flex gap-3 pt-2">
+
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Owner Password</label>
+                                <input name="ownerPassword" type="password" required placeholder="••••••••" className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Phone (Optional)</label>
+                                    <input name="phone" type="tel" placeholder="+234..." className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Location (Optional)</label>
+                                    <input name="address" placeholder="City, State" className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 h-12 bg-gray-100 text-text-secondary font-bold rounded-xl hover:bg-gray-200 transition-all text-sm">Cancel</button>
                                 <button type="submit" disabled={isSubmitting} className="flex-1 h-12 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-sm active:scale-95 disabled:opacity-70">
                                     {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-                                    Register Business
+                                    Create Business
                                 </button>
                             </div>
                         </form>
@@ -587,7 +616,7 @@ export default function AdminBusinessesPage() {
 
             {/* Confirmation Modal */}
             {isConfirmModalOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => !isSubmitting && setIsConfirmModalOpen(false)} />
                     <div className="relative w-full max-w-md bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
                         <div className="flex items-center gap-4 mb-6">
@@ -651,7 +680,7 @@ export default function AdminBusinessesPage() {
             )}
             {/* Business Detail Modal */}
             {isDetailModalOpen && detailBusiness && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-70 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsDetailModalOpen(false)} />
                     <div className="relative w-full max-w-3xl bg-white rounded-3xl p-0 shadow-2xl animate-in fade-in zoom-in duration-300 overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
@@ -662,9 +691,14 @@ export default function AdminBusinessesPage() {
                                 <div>
                                     <h2 className="text-xl font-display font-bold text-text-main">{detailBusiness.name}</h2>
                                     <div className="flex items-center gap-2 mt-0.5">
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${getStatusBadge(detailBusiness.status)}`}>
-                                            {detailBusiness.status}
-                                        </span>
+                                        {(() => {
+                                            const badge = getStatusBadge(detailBusiness);
+                                            return (
+                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${badge.classes}`}>
+                                                    {badge.label}
+                                                </span>
+                                            );
+                                        })()}
                                         <span className="text-[11px] text-text-secondary font-medium">• Joined {new Date(detailBusiness.createdAt).toLocaleDateString()}</span>
                                     </div>
                                 </div>
@@ -743,6 +777,32 @@ export default function AdminBusinessesPage() {
                                     </div>
                                 </div>
                             </div>
+
+                            {(detailBusiness as any).documents && (detailBusiness as any).documents.length > 0 && (
+                                <div className="border-t border-gray-100 pt-8 mt-4">
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-4">Verification Documents</h3>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                        {(detailBusiness as any).documents.map((doc: any, i: number) => {
+                                            const docUrl = typeof doc === 'string' ? doc : doc.url;
+                                            const docName = typeof doc === 'string' ? `Document ${i + 1}` : (doc.name || `Document ${i + 1}`);
+                                            return (
+                                                <a
+                                                    key={i}
+                                                    href={docUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-4 bg-gray-50 border border-gray-100 rounded-2xl flex flex-col items-center gap-3 hover:border-primary/30 transition-all group"
+                                                >
+                                                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-gray-400 group-hover:text-primary transition-colors">
+                                                        <span className="material-icons-round">description</span>
+                                                    </div>
+                                                    <p className="text-[10px] font-bold text-text-secondary text-center truncate w-full">{docName}</p>
+                                                </a>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 sticky bottom-0">
@@ -768,7 +828,7 @@ export default function AdminBusinessesPage() {
             )}
             {/* Credit Management Modal */}
             {isCreditModalOpen && creditBusiness && (
-                <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-80 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsCreditModalOpen(false)} />
                     <div className="relative w-full max-w-lg bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
                         <div className="flex items-center justify-between mb-7">

@@ -16,8 +16,13 @@ export interface Branch {
     website?: string;
     whatsappNumber?: string;
     officialEmail?: string;
+    formAppearanceColor?: string;
+    welcomeTag?: string;
+    welcomeTitle?: string;
     welcomeMessage?: string;
+    welcomeButton?: string;
     successTitle?: string;
+    successDescription?: string;
     successMessage?: string;
     privacyMessage?: string;
     rewardMessage?: string;
@@ -58,6 +63,7 @@ export interface Business {
     otherSubcategoryName?: string;
     monthlyVisitors: string;
     goal: string;
+    brandColor?: string;
     logoUrl?: string;
     welcomeMessage?: string;
     welcomeSubMessage?: string;

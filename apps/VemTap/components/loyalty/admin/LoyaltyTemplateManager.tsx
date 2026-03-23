@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { BadgeCheck, BookOpen, Info, LayoutTemplate, LayoutList, Plus, Save, Search, Trash2, X, Loader2 } from 'lucide-react';
 import { LoyaltyRule } from '@/types/loyalty';
-import { LoyaltyTemplate, TemplateReward, TemplateStatus } from '@/services/loyalty/types';
+import { LoyaltyTemplate, TemplateReward, TemplateStatus, RewardType } from '@/services/loyalty/types';
 import { cn } from '@/lib/utils';
 import Tooltip from '@/components/ui/Tooltip';
 import { notify } from '@/lib/notify';
@@ -15,8 +15,8 @@ type ScreenMode = 'list' | 'builder';
 
 interface LoyaltyTemplateManagerProps {
     templates: LoyaltyTemplate[];
-    onCreate: (template: any) => Promise<any>;
-    onUpdate: (id: string, updates: any) => Promise<any>;
+    onCreate: (template: Partial<LoyaltyTemplate>) => Promise<any>;
+    onUpdate: (id: string, updates: Partial<LoyaltyTemplate>) => Promise<any>;
     onDelete: (id: string) => void;
     isCreating?: boolean;
     isUpdating?: boolean;
@@ -702,6 +702,8 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
             id: 'new-draft-id',
             name: '',
             description: '',
+            pointsRequired: 0,
+            category: 'custom_discount' as RewardType,
             status: 'draft',
             rewards: [],
             rules: emptyRules,
@@ -884,7 +886,7 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] bg-white/80 backdrop-blur-md flex flex-col items-center justify-center space-y-4"
+                        className="fixed inset-0 z-100 bg-white/80 backdrop-blur-md flex flex-col items-center justify-center space-y-4"
                     >
                         <div className="relative">
                             <div className="size-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -895,7 +897,7 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
                         <div className="text-center">
                             <p className="text-xl font-black text-slate-900">Saving Template...</p>
                             <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">
-                                {localDraft && activeTemplate?.rewards?.some((r: any) => r.localPendingImage) 
+                                {localDraft && activeTemplate?.rewards?.some((r: any) => r.localPendingImages && r.localPendingImages.length > 0) 
                                     ? 'Uploading assets & creating blueprint' 
                                     : 'Please wait while we finalize your changes'}
                             </p>

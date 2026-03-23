@@ -139,7 +139,7 @@ export class BusinessesService {
   async findById(id: string): Promise<Business> {
     const business = await this.businessesRepository.findOne({
       where: { id },
-      relations: ['branches'],
+      relations: ['branches', 'category', 'subcategory'],
     });
     if (!business) {
       throw new NotFoundException('Business not found');
@@ -290,6 +290,8 @@ export class BusinessesService {
         'mainBranch.isMainBranch = :isMain',
         { isMain: true },
       )
+      .leftJoinAndSelect('business.category', 'category')
+      .leftJoinAndSelect('business.subcategory', 'subcategory')
       .loadRelationCountAndMap('business.totalBranches', 'business.branches');
 
     if (query.status) {
@@ -376,7 +378,7 @@ export class BusinessesService {
 
     const [businesses, total] = await this.businessesRepository.findAndCount({
       where: { status: BusinessStatus.SUSPENDED },
-      relations: ['owner'],
+      relations: ['owner', 'category', 'subcategory'],
       order: { suspendedAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -399,7 +401,7 @@ export class BusinessesService {
     // 1. Get businesses that are NOT verified
     const [items, total] = await this.businessesRepository.findAndCount({
       where: { isVerified: false },
-      relations: ['owner'],
+      relations: ['owner', 'category', 'subcategory'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -451,7 +453,31 @@ export class BusinessesService {
     });
 
     if (existingUser && existingUser.status !== UserStatus.PENDING) {
-      throw new ConflictException('A user with that email already exists');
+      throw new BadRequestException('A user with that email already exists');
+    }
+
+    if (dto.ownerPhone) {
+      const existingUserByPhone = await this.usersRepository.findOne({
+        where: { phone: dto.ownerPhone },
+      });
+
+      if (
+        existingUserByPhone &&
+        (!existingUser || existingUserByPhone.id !== existingUser.id)
+      ) {
+        throw new BadRequestException(
+          'A user with that phone number already exists',
+        );
+      }
+    }
+
+    if (dto.businessNumber) {
+      const existingBusinessByPhone = await this.findByPhone(dto.businessNumber);
+      if (existingBusinessByPhone) {
+        throw new BadRequestException(
+          'A business with this phone number already exists',
+        );
+      }
     }
 
     const hashedPassword = await bcrypt.hash(dto.ownerPassword, 10);

@@ -15,6 +15,8 @@ import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import WhatsAppTemplateModal from './WhatsAppTemplateModal';
 import { useCustomerGlobalHistory } from '@/services/customer/hooks';
+import SendMessageModal from '@/components/dashboard/SendMessageModal';
+import { useSegments, useCreateSegment, useAddSegmentMembers } from '@/services/messaging/hooks';
 
 // Inline WhatsApp SVG icon for consistent branding
 function WhatsAppIcon({ size = 14, className = '' }: { size?: number; className?: string }) {
@@ -98,6 +100,11 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
      
      const { data: newVisitorsData } = useNewVisitors(branchId || undefined, { limit: 1 });
      const { data: returningVisitorsData } = useReturningVisitors(branchId || undefined, { limit: 1 });
+     const { data: segments = [] } = useSegments(branchId || undefined);
+     const createSegment = useCreateSegment();
+     const addSegmentMembers = useAddSegmentMembers();
+     const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
+     const [showSendMessageModal, setShowSendMessageModal] = useState(false);
 
     const allThreads = useMemo(() => {
         const real = threads as any[];
@@ -252,28 +259,29 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
         const selectedList = (visitors as any[]).filter(v => selectedContacts.has(v.id));
         
         if (selectedList.length === 0) {
-            toast.error('Select customers from the list first to tag them.');
+            toast.error('Select customers from the list first to create a segment.');
             return;
         }
 
-        const tag = newTagName.trim();
-        const toastId = toast.loading(`Adding tag "${tag}"...`);
+        const name = newTagName.trim();
+        const toastId = toast.loading(`Creating segment "${name}"...`);
         try {
-            await Promise.all(selectedList.map(v => {
-                const currentTags = Array.isArray(v.tags) ? v.tags : [];
-                if (!currentTags.includes(tag)) {
-                    return updateVisitor.mutateAsync({
-                        id: v.id,
-                        data: { tags: [...currentTags, tag] }
-                    });
-                }
-                return Promise.resolve();
-            }));
-            toast.success(`Tag "${tag}" added to ${selectedList.length} customers`, { id: toastId });
+            const segment = await createSegment.mutateAsync({
+                name,
+                branchId: branchId || undefined
+            });
+
+            await addSegmentMembers.mutateAsync({
+                segmentId: segment.id,
+                userIds: selectedList.map(v => v.id)
+            });
+
+            toast.success(`Segment "${name}" created with ${selectedList.length} members`, { id: toastId });
             setNewTagName('');
             setSelectedContacts(new Set());
         } catch (err) {
-            toast.error('Failed to update tags.', { id: toastId });
+            console.error('Create segment error:', err);
+            toast.error('Failed to create segment. Please try again.', { id: toastId });
         }
     };
 
@@ -290,6 +298,12 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
         } else {
             toast.error(`No customers found for tag "${tagName}"`);
         }
+    };
+
+    const handleBroadcastToSegment = (segmentId: string) => {
+        setShowCampaigns(false);
+        setSelectedSegmentId(segmentId);
+        setShowSendMessageModal(true);
     };
 
     const handleBroadcastClick = async (type: 'new' | 'returning') => {
@@ -510,7 +524,26 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                                 </span>
                                             </button>
 
-                                            {/* Custom Tags */}
+                                            {/* Backend Segments */}
+                                            {segments.map((segment: any) => (
+                                                <button 
+                                                    key={segment.id}
+                                                    onClick={() => handleBroadcastToSegment(segment.id)}
+                                                    className="w-full flex items-center justify-between p-3 hover:bg-emerald-50 rounded-xl transition-colors group text-left"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="size-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center">
+                                                            <Users size={16} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-slate-700">{segment.name}</p>
+                                                            <p className="text-[10px] text-slate-400">{segment.description || 'Customer Segment'}</p>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            ))}
+
+                                            {/* Legacy Custom Tags (Keep for transition) */}
                                             {customTagsWithCounts.map(({ name, count }) => (
                                                 <button 
                                                     key={name}
@@ -523,7 +556,7 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                                         </div>
                                                         <div>
                                                             <p className="text-sm font-bold text-slate-700">{name}</p>
-                                                            <p className="text-[10px] text-slate-400">Custom Category</p>
+                                                            <p className="text-[10px] text-slate-400">Visitor Tag</p>
                                                         </div>
                                                     </div>
                                                     <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
@@ -582,17 +615,10 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                     <div className="flex border-b border-slate-100 bg-slate-50/50">
                         <button
                             onClick={() => setActiveTab('INTERNAL')}
-                            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${activeTab === 'INTERNAL' ? 'text-primary border-b-2 border-primary bg-white' : 'text-slate-400 hover:text-slate-600'}`}
+                            className="flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all text-primary border-b-2 border-primary bg-white"
                         >
                             <MessageSquare size={14} />
                             Inbox
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('WHATSAPP')}
-                            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${activeTab === 'WHATSAPP' ? 'text-emerald-500 border-b-2 border-emerald-500 bg-white' : 'text-slate-400 hover:text-slate-600'}`}
-                        >
-                            <WhatsAppIcon size={14} />
-                            WhatsApp
                         </button>
                     </div>
                 )}
@@ -659,6 +685,17 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                             if (conv.contact?.id) toggleContactSelection(conv.contact.id);
                                         }}
                                         onClick={() => setActiveConversation(conv.id)}
+                                        onWhatsApp={() => {
+                                            const phone = conv.contact?.phone || conv.customer?.phone || conv.metadata?.phone || (conv as any).phone;
+                                            const name = conv.contact?.name || (conv.customer?.firstName ? `${conv.customer.firstName} ${conv.customer.lastName || ''}`.trim() : 'Customer');
+                                            const id = conv.contact?.id || conv.customer?.id || conv.customerId;
+                                                
+                                            if (phone) {
+                                                setWhatsappModalVisitors([{ id, name, phone }]);
+                                            } else {
+                                                toast.error('No phone number available for this contact.');
+                                            }
+                                        }}
                                     />
                                 </motion.div>
                             ))}
@@ -698,6 +735,18 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                     businessCode={(business as any)?.branches?.find((b: any) => b.id === branchId)?.uniqueCode || (business as any)?.uniqueCode || branchId || 'business'}
                 />
             )}
+
+            {showSendMessageModal && selectedSegmentId && (
+                <SendMessageModal
+                    isOpen={showSendMessageModal}
+                    onClose={() => {
+                        setShowSendMessageModal(false);
+                        setSelectedSegmentId(null);
+                    }}
+                    segmentId={selectedSegmentId}
+                    type="general"
+                />
+            )}
         </aside>
     );
 }
@@ -709,6 +758,7 @@ function ConversationItem({
     onSelect,
     onClick,
     isCustomer,
+    onWhatsApp,
 }: {
     conversation: any;
     isActive: boolean;
@@ -716,6 +766,7 @@ function ConversationItem({
     isCustomer: boolean;
     onSelect: () => void;
     onClick: () => void;
+    onWhatsApp?: () => void;
 }) {
     const isTyping = useChatStore(s => s.typingByThread[conversation.id]);
     const draftText = useChatStore(s => s.drafts[conversation.id]);
@@ -774,7 +825,7 @@ function ConversationItem({
                 </div>
 
                 {/* Info */}
-                <div className="flex-1 min-w-0 pr-6">
+                <div className="flex-1 min-w-0 pr-12">
                     <div className="flex justify-between items-baseline">
                         <h3 className={`text-sm truncate ${isActive ? 'font-semibold text-slate-900' : 'font-medium text-slate-900'}`}>
                             {name}
@@ -783,6 +834,11 @@ function ConversationItem({
                             {formatTime(conversation.lastActivityAt || conversation.updatedAt)}
                         </span>
                     </div>
+                    {(customer?.phone || conversation.contact?.phone) && (
+                        <p className="text-[10px] font-bold text-slate-400 -mt-0.5 mb-0.5 ml-0.5">
+                            {customer?.phone || conversation.contact?.phone}
+                        </p>
+                    )}
                     <div className="flex items-center gap-2">
                         <p className="text-xs truncate flex-1 text-slate-500">
                             {isTyping ? (
@@ -797,26 +853,31 @@ function ConversationItem({
                                 conversation.lastMessageContent || conversation.status || 'Active conversation'
                             )}
                         </p>
-                        {Array.isArray(customer?.tags) && customer.tags.length > 0 && (
-                            <div className="flex gap-1 shrink-0 ml-1">
-                                {customer.tags.slice(0, 1).map((t: string) => (
-                                    <span key={t} className="px-1.5 py-0.5 bg-emerald-100 text-emerald-600 text-[9px] font-bold rounded-md whitespace-nowrap">
-                                        {t}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
                     </div>
                 </div>
 
-                <button
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-rose-500 opacity-40 md:opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
-                    title="Delete Conversation"
-                >
-                    <Trash2 size={16} />
-                </button>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {(customer?.phone || conversation.contact?.phone) && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onWhatsApp?.();
+                            }}
+                            className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors"
+                            title="Send WhatsApp Message"
+                        >
+                            <WhatsAppIcon size={16} />
+                        </button>
+                    )}
+                    <button
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        className="p-2 text-slate-400 hover:text-rose-500 transition-colors disabled:opacity-50"
+                        title="Delete Conversation"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                </div>
             </button>
         </div>
     );

@@ -142,11 +142,11 @@ export const useChangePassword = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const changePassword = async (payload: ChangePasswordRequest): Promise<any> => {
+    const changePassword = async (payload: any): Promise<any> => {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await api.post('/auth/change-password', payload);
+            const response = await api.post('/auth/password/change', payload);
             return response;
         } catch (err: any) {
             const errorMessage = err.message || 'Failed to change password';
@@ -163,3 +163,4 @@ export const useChangePassword = () => {
         error
     };
 };
+

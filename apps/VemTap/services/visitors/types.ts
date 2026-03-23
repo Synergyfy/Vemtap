@@ -56,6 +56,7 @@ export interface Reward {
     validityDays: number;
     usageLimitPerUser: number;
     active: boolean;
+    audienceTarget?: 'all' | 'new' | 'returning';
     createdAt?: string;
     updatedAt?: string;
 }

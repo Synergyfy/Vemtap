@@ -16,16 +16,18 @@ interface SendMessageModalProps {
     recipientPhone?: string;
     recipientEmail?: string;
     visitorIds?: string[];
+    segmentId?: string;
     type: 'welcome' | 'general' | 'reward' | 'custom';
 }
 
-export default function SendMessageModal({ isOpen, onClose, recipientName, recipientPhone, recipientEmail, visitorIds, type }: SendMessageModalProps) {
+export default function SendMessageModal({ isOpen, onClose, recipientName, recipientPhone, recipientEmail, visitorIds, segmentId: initialSegmentId, type }: SendMessageModalProps) {
     const store = useCustomerFlowStore();
-    const [selectedChannel, setSelectedChannel] = useState<'WhatsApp' | 'SMS' | 'Email'>('WhatsApp');
+    const [selectedChannel, setSelectedChannel] = useState<'In-App' | 'WhatsApp' | 'SMS' | 'Email'>('In-App');
     const [selectedType, setSelectedType] = useState(type);
     const [name, setName] = useState(recipientName || '');
     const [message, setMessage] = useState('');
     const [title, setTitle] = useState('');
+    const [segmentId, setSegmentId] = useState<string | undefined>(initialSegmentId);
     const sendMessage = useSendMessage();
     const isLoading = sendMessage.isPending;
 
@@ -51,10 +53,10 @@ export default function SendMessageModal({ isOpen, onClose, recipientName, recip
     };
 
     const allTemplates = [
-        { id: 'welcome', label: 'Welcome Template', icon: MessageSquare, channels: ['WhatsApp', 'SMS', 'Email'] },
-        { id: 'reward', label: 'Reward Template', icon: Send, channels: ['WhatsApp', 'SMS'] },
-        { id: 'general', label: 'General Announcement', icon: Smartphone, channels: ['WhatsApp', 'SMS', 'Email'] },
-        { id: 'custom', label: 'Custom Message', icon: Edit3, channels: ['WhatsApp', 'SMS', 'Email'] }
+        { id: 'welcome', label: 'Welcome Template', icon: MessageSquare, channels: ['In-App', 'WhatsApp', 'SMS', 'Email'] },
+        { id: 'reward', label: 'Reward Template', icon: Send, channels: ['In-App', 'WhatsApp', 'SMS'] },
+        { id: 'general', label: 'General Announcement', icon: Smartphone, channels: ['In-App', 'WhatsApp', 'SMS', 'Email'] },
+        { id: 'custom', label: 'Custom Message', icon: Edit3, channels: ['In-App', 'WhatsApp', 'SMS', 'Email'] }
     ];
 
     const filteredTemplates = allTemplates.filter(t => t.channels.includes(selectedChannel));
@@ -68,7 +70,7 @@ export default function SendMessageModal({ isOpen, onClose, recipientName, recip
     }, [selectedType, selectedChannel, store.customWelcomeMessage, store.customRewardMessage]);
 
     // Handle channel change: reset template if current one isn't available
-    const handleChannelChange = (channel: 'WhatsApp' | 'SMS' | 'Email') => {
+    const handleChannelChange = (channel: 'In-App' | 'WhatsApp' | 'SMS' | 'Email') => {
         setSelectedChannel(channel);
         const templateExists = allTemplates.find(t => t.id === selectedType && t.channels.includes(channel));
         if (!templateExists) {
@@ -83,6 +85,7 @@ export default function SendMessageModal({ isOpen, onClose, recipientName, recip
             const resolvedTitle = title.replace(/{name}/g, activeName);
             
             const channelMap: Record<string, Channel> = {
+                'In-App': 'IN_HOUSE',
                 'WhatsApp': 'WHATSAPP',
                 'SMS': 'SMS',
                 'Email': 'EMAIL'
@@ -92,7 +95,7 @@ export default function SendMessageModal({ isOpen, onClose, recipientName, recip
 
             // For SMS and WhatsApp, we usually want to include the title in the content 
             // since there is no separate subject field like in Email.
-            const finalContent = selectedChannel === 'Email' 
+            const finalContent = (selectedChannel === 'Email' || selectedChannel === 'In-App')
                 ? resolvedMessage 
                 : (resolvedTitle ? `${resolvedTitle}\n\n${resolvedMessage}` : resolvedMessage);
 
@@ -100,7 +103,8 @@ export default function SendMessageModal({ isOpen, onClose, recipientName, recip
                 channel: selectedChannelApi,
                 content: finalContent,
                 customerIds: visitorIds,
-                audienceType: 'GROUP',
+                segmentId: segmentId,
+                audienceType: segmentId ? 'SEGMENT' : 'GROUP',
                 from: store.storeName || 'VemTap', // Using name as 'from' based on Swagger
             } as any);
 
@@ -124,12 +128,16 @@ export default function SendMessageModal({ isOpen, onClose, recipientName, recip
     const previewMessage = message.replace(/{name}/g, activeName);
     const previewTitle = title.replace(/{name}/g, activeName);
 
+    React.useEffect(() => {
+        setSegmentId(initialSegmentId);
+    }, [initialSegmentId]);
+
     return (
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={recipientName ? "Personalize Message" : "Compose New Message"}
-            description={recipientName ? `Sending to ${recipientName}` : "Send a message to any visitor"}
+            title={recipientName ? "Personalize Message" : (segmentId ? "Broadcast to Segment" : "Compose New Message")}
+            description={recipientName ? `Sending to ${recipientName}` : (segmentId ? "Send a broadcast message to this group" : "Send a message to any visitor")}
             size="2xl"
         >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4">
@@ -139,7 +147,7 @@ export default function SendMessageModal({ isOpen, onClose, recipientName, recip
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Select Channel</label>
                         <div className="flex bg-gray-100 p-1 rounded-xl">
-                            {(['WhatsApp', 'SMS', 'Email'] as const).map((channel) => (
+                            {(['In-App', 'WhatsApp', 'SMS', 'Email'] as const).map((channel) => (
                                 <button
                                     key={channel}
                                     onClick={() => handleChannelChange(channel)}
@@ -151,7 +159,7 @@ export default function SendMessageModal({ isOpen, onClose, recipientName, recip
                         </div>
                     </div>
 
-                    {!recipientName && (
+                    {!recipientName && !segmentId && (
                         <div className="space-y-2">
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Recipient Name</label>
                             <input
@@ -226,7 +234,7 @@ export default function SendMessageModal({ isOpen, onClose, recipientName, recip
                         </button>
                         <button
                             onClick={handleSend}
-                            disabled={isLoading || (!recipientName && !name)}
+                            disabled={isLoading || (!recipientName && !name && !segmentId)}
                             className="flex-2 h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
                         >
                             {isLoading ? (
@@ -245,8 +253,25 @@ export default function SendMessageModal({ isOpen, onClose, recipientName, recip
                 <div className="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex flex-col items-center">
                     <div className={`w-full max-w-[280px] aspect-9/16 bg-gray-900 rounded-[2.5rem] border-4 border-gray-800 shadow-2xl relative overflow-hidden flex flex-col transition-all duration-500 ${selectedChannel === 'Email' ? 'max-w-[340px] aspect-square' : ''}`}>
                         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-4 bg-gray-800 rounded-b-xl z-10"></div>
-                        <div className={`flex-1 bg-white m-1 rounded-4xl overflow-hidden flex flex-col p-4 pt-10 ${selectedChannel === 'WhatsApp' ? 'bg-[#e5ddd5]' : ''}`}>
-                            {selectedChannel === 'WhatsApp' ? (
+                        <div className={`flex-1 bg-white m-1 rounded-4xl overflow-hidden flex flex-col p-4 pt-10 ${selectedChannel === 'WhatsApp' ? 'bg-[#e5ddd5]' : (selectedChannel === 'In-App' ? 'bg-slate-50' : '')}`}>
+                            {selectedChannel === 'In-App' ? (
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 mb-2 p-2 bg-white rounded-xl border border-slate-100 shadow-sm">
+                                        <div className="size-6 bg-primary rounded-lg flex items-center justify-center text-white">
+                                            <LogoIcon size={12} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-[9px] font-bold text-slate-800">Support Team</p>
+                                            <p className="text-[7px] text-slate-400">In-App Message</p>
+                                        </div>
+                                    </div>
+                                    <div className="bg-primary/10 p-3 rounded-2xl rounded-tl-none self-start max-w-[90%] border border-primary/5">
+                                        <p className="text-[10px] font-bold text-primary mb-1">{previewTitle}</p>
+                                        <p className="text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed">{previewMessage}</p>
+                                        <p className="text-[8px] text-slate-400 text-right mt-1">Now</p>
+                                    </div>
+                                </div>
+                            ) : selectedChannel === 'WhatsApp' ? (
                                 <div className="space-y-2">
                                     <div className="bg-white p-3 rounded-lg rounded-tl-none shadow-sm relative max-w-[90%]">
                                         <div className="absolute top-0 -left-2 w-0 h-0 border-t-8 border-t-white border-l-8 border-l-transparent"></div>
