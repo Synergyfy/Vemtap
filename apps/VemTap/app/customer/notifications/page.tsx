@@ -1,36 +1,22 @@
 'use client';
 
 import React from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dashboardApi } from '@/lib/api/dashboard';
-import { Notification } from '@/lib/store/mockDashboardStore';
 import { Bell, CheckCircle2, Info, AlertTriangle, Clock, Trash2, ArrowLeft, MoreHorizontal, Gift, Star, Zap } from 'lucide-react';
 import { notify } from '@/lib/notify';
 import Link from 'next/link';
+import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '@/services/notifications/hooks';
+import { Notification } from '@/services/notifications/types';
 
 export default function CustomerNotificationsPage() {
-    const queryClient = useQueryClient();
-    const { data, isLoading } = useQuery({
-        queryKey: ['dashboard'],
-        queryFn: dashboardApi.fetchDashboardData,
-    });
+    const { data: notifications = [], isLoading } = useNotifications();
+    const readMutation = useMarkAsRead();
+    const readAllMutation = useMarkAllAsRead();
 
-    const notifications = data?.notifications || [];
-
-    const readMutation = useMutation({
-        mutationFn: dashboardApi.markNotificationRead,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-        }
-    });
-
-    const readAllMutation = useMutation({
-        mutationFn: dashboardApi.markAllNotificationsRead,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            notify.success('Platform cleared: All alerts marked as read');
-        }
-    });
+    const handleReadAll = () => {
+        readAllMutation.mutate(undefined, {
+            onSuccess: () => notify.success('Platform cleared: All alerts marked as read')
+        });
+    };
 
     const getIcon = (type: string, title: string) => {
         if (title.toLowerCase().includes('reward')) return <Gift size={20} className="text-orange-500" />;
@@ -64,7 +50,7 @@ export default function CustomerNotificationsPage() {
                 </div>
                 <div className="flex gap-3">
                     <button
-                        onClick={() => readAllMutation.mutate()}
+                        onClick={handleReadAll}
                         disabled={notifications.length === 0}
                         className="h-12 px-6 bg-white border border-gray-200 text-text-main font-black uppercase tracking-widest text-[10px] rounded-lg hover:bg-gray-50 transition-all shadow-sm disabled:opacity-50 flex items-center gap-2"
                     >

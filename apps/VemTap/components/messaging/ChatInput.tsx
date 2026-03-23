@@ -185,8 +185,8 @@ export default function ChatInput({
         }
     };
 
-    const handleAsyncSend = useCallback(async () => {
-        if (!text.trim() || isStarting) return;
+    const handleSend = useCallback(async () => {
+        if (!text.trim() || isSending || isStarting) return;
 
         if (canStartConversation) {
             setIsStarting(true);
@@ -328,7 +328,7 @@ export default function ChatInput({
 
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            handleAsyncSend();
+            if (!isSending) handleSend();
         }
     };
 
@@ -361,7 +361,7 @@ export default function ChatInput({
     }, []);
 
     return (
-        <footer className="p-4 bg-white border-t border-slate-200 shrink-0 relative">
+        <footer className="p-4 bg-white md:border-t md:border-slate-200 shrink-0 relative">
             {replyTo?.content && (
                 <div className="mb-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 flex items-center justify-between gap-2">
                     <div className="min-w-0">
@@ -450,21 +450,24 @@ export default function ChatInput({
             <div className="flex items-end gap-2">
                 <div className="flex items-center gap-0.5 text-slate-400 mb-1">
                     <button 
-                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowEmojiPicker(!showEmojiPicker); }}
                         className={`p-2 hover:text-primary hover:bg-slate-100 rounded-full transition-all ${showEmojiPicker ? 'text-primary bg-primary/10' : ''}`} 
                         title="Emoji"
                     >
                         <Smile size={22} />
                     </button>
                     <button 
-                        onClick={() => fileInputRef.current?.click()}
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileInputRef.current?.click(); }}
                         className="p-2 hover:text-primary hover:bg-slate-100 rounded-full transition-all" 
                         title="Attach File"
                     >
                         <Paperclip size={22} />
                     </button>
                     <button 
-                        onClick={() => imageInputRef.current?.click()}
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); imageInputRef.current?.click(); }}
                         className="p-2 hover:text-primary hover:bg-slate-100 rounded-full transition-all" 
                         title="Take Photo"
                     >
@@ -488,7 +491,7 @@ export default function ChatInput({
 
                 <button
                     type="button"
-                    onClick={handleAsyncSend}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSend(); }}
                     disabled={!text.trim() || isSending}
                     className="w-10 h-10 flex items-center justify-center bg-primary text-white rounded-full shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed mb-1"
                 >

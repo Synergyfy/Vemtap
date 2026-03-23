@@ -94,11 +94,28 @@ export interface FormTemplate {
   createdAt: string;
 }
 
+export interface FormTemplateStats {
+  templateId: string;
+  templateName: string;
+  usageCount: number;
+  totalResponses: number;
+  uniqueBranchesCount: number;
+  uniqueBusinessesCount: number;
+  usage: Array<{
+    formId: string;
+    branchName: string;
+    businessName: string;
+    responseCount: number;
+  }>;
+}
+
 export interface BusinessFormsState {
   forms: BusinessForm[];
   submissions: FormSubmission[];
   templates: FormTemplate[];
+  templateStats: Record<string, FormTemplateStats>;
   customTypeOptionsByBusiness: Record<string, string[]>;
+  adminForms: any[];
   isLoading: boolean;
   isSubmitting: boolean;
   error: string | null;
@@ -114,10 +131,15 @@ export interface BusinessFormsState {
   addCustomTypeOption: (businessId: string, label: string) => void;
   removeCustomTypeOption: (businessId: string, label: string) => void;
 
-  // API Actions
+  // Admin Forms Management
+  fetchAdminForms: () => Promise<void>;
+  disableForm: (id: string) => Promise<void>;
+  enableForm: (id: string) => Promise<void>;
+
   fetchForms: (businessId: string) => Promise<void>;
   fetchSubmissions: (businessId: string) => Promise<void>;
   fetchTemplates: () => Promise<void>;
+  fetchTemplateStats: () => Promise<void>;
   createTemplate: (template: Omit<FormTemplate, 'id' | 'createdAt'>) => Promise<FormTemplate>;
   updateTemplate: (id: string, updates: Partial<FormTemplate>) => Promise<void>;
   deleteTemplate: (id: string) => Promise<void>;
@@ -179,10 +201,68 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
       forms: [],
       submissions: [],
       templates: [],
+      templateStats: {},
       customTypeOptionsByBusiness: {},
+      adminForms: [],
       isLoading: false,
       isSubmitting: false,
       error: null,
+      fetchTemplateStats: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          const { adminFormsApi } = await import('@/lib/api/admin');
+          const response = await adminFormsApi.getTemplatesStats();
+          const statsMap: Record<string, FormTemplateStats> = {};
+          (response || []).forEach((s: any) => {
+            statsMap[s.templateId] = s;
+          });
+          set({ templateStats: statsMap, isLoading: false });
+        } catch (error: any) {
+          set({ error: error.message, isLoading: false });
+        }
+      },
+      fetchAdminForms: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          const { adminFormsApi } = await import('@/lib/api/admin');
+          const response = await adminFormsApi.getBusinessForms();
+          set({ adminForms: response.items || response, isLoading: false });
+        } catch (error: any) {
+          set({ error: error.message, isLoading: false });
+        }
+      },
+      disableForm: async (id: string) => {
+        set({ isSubmitting: true, error: null });
+        try {
+          const { adminFormsApi } = await import('@/lib/api/admin');
+          await adminFormsApi.disableBusinessForm(id);
+          set((state) => ({
+            adminForms: state.adminForms.map((f: any) =>
+               f.id === id ? { ...f, isActive: false, status: 'disabled' } : f
+            ),
+            isSubmitting: false
+          }));
+        } catch (error: any) {
+          set({ error: error.message, isSubmitting: false });
+          throw error;
+        }
+      },
+      enableForm: async (id: string) => {
+        set({ isSubmitting: true, error: null });
+        try {
+          const { adminFormsApi } = await import('@/lib/api/admin');
+          await adminFormsApi.enableBusinessForm(id);
+          set((state) => ({
+            adminForms: state.adminForms.map((f: any) =>
+              f.id === id ? { ...f, isActive: true, status: 'approved' } : f
+            ),
+            isSubmitting: false
+          }));
+        } catch (error: any) {
+          set({ error: error.message, isSubmitting: false });
+          throw error;
+        }
+      },
       createForm: async (input) => {
         set({ isSubmitting: true, error: null });
         try {
