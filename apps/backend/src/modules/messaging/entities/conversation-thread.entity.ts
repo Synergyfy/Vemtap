@@ -59,7 +59,10 @@ export class ConversationThread extends AbstractBaseEntity {
   @Column({ type: 'enum', enum: ThreadStatus, default: ThreadStatus.OPEN })
   status: ThreadStatus;
 
-  @ApiPropertyOptional({ example: 'Hello!', description: 'Last message snippet' })
+  @ApiPropertyOptional({
+    example: 'Hello!',
+    description: 'Last message snippet',
+  })
   @Column({ type: 'text', nullable: true })
   lastMessageContent: string;
 

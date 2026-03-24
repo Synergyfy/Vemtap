@@ -13,9 +13,11 @@ describe('CampaignsService', () => {
 
   const mockCampaignRepository = {
     create: jest.fn().mockImplementation((dto) => dto),
-    save: jest.fn().mockImplementation((campaign) =>
-      Promise.resolve({ id: 'campaign-1', ...campaign }),
-    ),
+    save: jest
+      .fn()
+      .mockImplementation((campaign) =>
+        Promise.resolve({ id: 'campaign-1', ...campaign }),
+      ),
     find: jest.fn().mockResolvedValue([]),
     findOne: jest.fn().mockResolvedValue(null),
     remove: jest.fn().mockResolvedValue(undefined),
@@ -23,9 +25,11 @@ describe('CampaignsService', () => {
 
   const mockTemplateRepository = {
     create: jest.fn().mockImplementation((dto) => dto),
-    save: jest.fn().mockImplementation((template) =>
-      Promise.resolve({ id: 'template-1', ...template }),
-    ),
+    save: jest
+      .fn()
+      .mockImplementation((template) =>
+        Promise.resolve({ id: 'template-1', ...template }),
+      ),
     find: jest.fn().mockResolvedValue([]),
     findOne: jest.fn().mockResolvedValue(null),
   };
@@ -39,7 +43,9 @@ describe('CampaignsService', () => {
   };
 
   const mockBranchesService = {
-    findById: jest.fn().mockResolvedValue({ id: 'branch-1', businessId: 'biz-1' }),
+    findById: jest
+      .fn()
+      .mockResolvedValue({ id: 'branch-1', businessId: 'biz-1' }),
   };
 
   beforeEach(async () => {
@@ -78,11 +84,11 @@ describe('CampaignsService', () => {
 
   describe('create', () => {
     it('should create a campaign', async () => {
-      const dto = { 
-        name: 'Holiday Special', 
-        type: 'SMS' as any, 
+      const dto = {
+        name: 'Holiday Special',
+        type: 'SMS' as any,
         audience: 'all',
-        message: 'Hi!' 
+        message: 'Hi!',
       };
       const branchId = 'branch-1';
       const result = await service.create(dto, branchId);
@@ -96,7 +102,9 @@ describe('CampaignsService', () => {
   describe('findOne', () => {
     it('should throw NotFoundException if campaign not found', async () => {
       mockCampaignRepository.findOne.mockResolvedValue(null);
-      await expect(service.findOne('invalid')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('invalid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should return campaign if found', async () => {

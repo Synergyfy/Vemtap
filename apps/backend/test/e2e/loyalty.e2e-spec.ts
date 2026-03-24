@@ -27,7 +27,7 @@ describe('LoyaltyController (e2e)', () => {
     await app.init();
 
     dataSource = moduleFixture.get<DataSource>(DataSource);
-    
+
     // Setup users and tokens logic here (omitted for brevity in this mock-like E2E)
     // Assuming we have a helper to get tokens for different roles
   });
@@ -38,15 +38,15 @@ describe('LoyaltyController (e2e)', () => {
 
   describe('Point System', () => {
     it('Staff can give points to customer', async () => {
-        // Implementation would use staffToken and customerCode
+      // Implementation would use staffToken and customerCode
     });
 
     it('Staff can generate point code', async () => {
-        // POST /loyalty/points/generate-code
+      // POST /loyalty/points/generate-code
     });
 
     it('Customer can use point code', async () => {
-        // POST /loyalty/points/use-code
+      // POST /loyalty/points/use-code
     });
   });
 
@@ -65,12 +65,12 @@ describe('LoyaltyController (e2e)', () => {
   });
 
   describe('Redemption System', () => {
-      it('Staff can generate redemption code', async () => {
-          // POST /loyalty/redemption/generate-code
-      });
+    it('Staff can generate redemption code', async () => {
+      // POST /loyalty/redemption/generate-code
+    });
 
-      it('Customer can redeem reward', async () => {
-          // POST /loyalty/redemption/redeem
-      });
+    it('Customer can redeem reward', async () => {
+      // POST /loyalty/redemption/redeem
+    });
   });
 });

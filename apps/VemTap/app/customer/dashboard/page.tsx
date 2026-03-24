@@ -9,7 +9,8 @@ import {
     QrCode, Scan, X, ExternalLink, ArrowRight, ChevronRight,
     Loader2
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import AdminViewerBanner from '@/components/admin/control-tower/AdminViewerBanner';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { fetchDeviceByCode, Device } from '@/lib/api/devices';
@@ -42,6 +43,9 @@ export default function CustomerDashboardPage() {
     const redeemMutation = useRedeemCustomerReward();
 
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const isAdminMode = searchParams.get('admin_mode') === '1';
+    const customerUid = searchParams.get('customer_uid');
 
     const analytics = analyticsResponse?.data || analyticsResponse;
     const profile = profileResponse?.data || profileResponse;
@@ -139,6 +143,7 @@ export default function CustomerDashboardPage() {
     return (
         <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
             <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-8">
+                {isAdminMode && <AdminViewerBanner subjectId={customerUid} type="customer" />}
                 {/* ID Card / Quick Scan - Hero Section */}
                 <div className="bg-linear-to-br from-primary via-blue-600 to-indigo-700 rounded-2xl p-8 md:p-12 text-white relative overflow-hidden shadow-2xl shadow-primary/30 group">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full translate-x-32 -translate-y-32 blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
@@ -152,7 +157,7 @@ export default function CustomerDashboardPage() {
                             </span>
                             <h1 className="text-4xl md:text-5xl font-display font-bold mb-4 tracking-tight leading-tight">
                                 Welcome back, <br />
-                                {user?.firstName || user?.name?.split(' ')[0] || profile?.visitor?.name?.split(' ')[0] || 'Customer'}!
+                                {user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || profile?.visitor?.name || 'Customer'}!
                             </h1>
                             <p className="text-blue-50 text-base md:text-lg max-w-lg mb-8 font-medium leading-relaxed opacity-90">
                                 Visit {businessName} {businessAddress ? `at ${businessAddress}` : ''} and tap your phone at the VemTap terminal to earn rewards instantly.

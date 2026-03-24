@@ -9,6 +9,7 @@ import { RedemptionCode } from '../entities/redemption-code.entity';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
+import { BranchesService } from '../../branches/branches.service';
 import { DataSource } from 'typeorm';
 
 describe('LoyaltyService', () => {
@@ -44,6 +45,11 @@ describe('LoyaltyService', () => {
     })),
   });
 
+  const mockBranchesService = {
+    checkBranchAccess: jest.fn(),
+    findById: jest.fn(),
+  };
+
   const mockDataSource = {
     createQueryRunner: jest.fn().mockReturnValue({
       connect: jest.fn(),
@@ -70,6 +76,7 @@ describe('LoyaltyService', () => {
         { provide: getRepositoryToken(Branch), useFactory: mockRepo },
         { provide: getRepositoryToken(Visit), useFactory: mockRepo },
         { provide: DataSource, useValue: mockDataSource },
+        { provide: BranchesService, useValue: mockBranchesService },
       ],
     }).compile();
 
@@ -96,8 +103,14 @@ describe('LoyaltyService', () => {
 
       const points = await service.getBusinessPoints('user1', 'biz1');
       expect(points).toBe(100);
-      expect(qb.where).toHaveBeenCalledWith('transaction.customerId = :userId', { userId: 'user1' });
-      expect(qb.andWhere).toHaveBeenCalledWith('transaction.businessId = :businessId', { businessId: 'biz1' });
+      expect(qb.where).toHaveBeenCalledWith(
+        'transaction.customerId = :userId',
+        { userId: 'user1' },
+      );
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'transaction.businessId = :businessId',
+        { businessId: 'biz1' },
+      );
     });
   });
 
@@ -110,7 +123,11 @@ describe('LoyaltyService', () => {
 
       userRepo.findOne.mockResolvedValue(customer);
       branchRepo.findOne.mockResolvedValue(branch);
-      pointTransactionRepo.create.mockReturnValue({ ...dto, customerId: customer.id, businessId: 'biz1' });
+      pointTransactionRepo.create.mockReturnValue({
+        ...dto,
+        customerId: customer.id,
+        businessId: 'biz1',
+      });
       pointTransactionRepo.save.mockResolvedValue({ id: 'tx1' });
 
       const result = await service.givePoints(staff, dto);
@@ -120,21 +137,28 @@ describe('LoyaltyService', () => {
 
     it('should throw error if customer not found', async () => {
       userRepo.findOne.mockResolvedValue(null);
-      await expect(service.givePoints({} as User, { customerCode: 'X', points: 1, branchId: 'Y' }))
-        .rejects.toThrow('Customer not found');
+      await expect(
+        service.givePoints({} as User, {
+          customerCode: 'X',
+          points: 1,
+          branchId: 'Y',
+        }),
+      ).rejects.toThrow('Customer not found');
     });
   });
 
   describe('generatePointCode', () => {
-      it('should generate a 9-digit code', async () => {
-          const staff = { id: 'staff1' } as User;
-          const dto = { points: 50, businessId: 'biz1' };
-          pointCodeRepo.create.mockImplementation(d => d);
-          pointCodeRepo.save.mockImplementation(d => Promise.resolve({ ...d, id: 'pc1' }));
+    it('should generate a 9-digit code', async () => {
+      const staff = { id: 'staff1' } as User;
+      const dto = { points: 50, businessId: 'biz1' };
+      pointCodeRepo.create.mockImplementation((d) => d);
+      pointCodeRepo.save.mockImplementation((d) =>
+        Promise.resolve({ ...d, id: 'pc1' }),
+      );
 
-          const result = await service.generatePointCode(staff, dto);
-          expect(result.code).toHaveLength(9);
-          expect(result.points).toBe(50);
-      });
+      const result = await service.generatePointCode(staff, dto);
+      expect(result.code).toHaveLength(9);
+      expect(result.points).toBe(50);
+    });
   });
 });

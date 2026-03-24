@@ -42,7 +42,11 @@ describe('MessagingEngineService', () => {
   };
 
   const mockCreditService = {
-    getOrCreateWallet: jest.fn().mockResolvedValue({ smsCredits: 1000, emailCredits: 1000, whatsappCredits: 1000 }),
+    getOrCreateWallet: jest.fn().mockResolvedValue({
+      smsCredits: 1000,
+      emailCredits: 1000,
+      whatsappCredits: 1000,
+    }),
     deductCredits: jest.fn(),
   };
 
@@ -96,7 +100,11 @@ describe('MessagingEngineService', () => {
       create: jest.fn().mockImplementation((d) => d),
       save: jest
         .fn()
-        .mockImplementation((e) => Promise.resolve(Array.isArray(e) ? [{ id: '1', ...e[0] }] : { id: '1', ...e })),
+        .mockImplementation((e) =>
+          Promise.resolve(
+            Array.isArray(e) ? [{ id: '1', ...e[0] }] : { id: '1', ...e },
+          ),
+        ),
       update: jest.fn(),
       findOne: jest.fn(),
       findOneBy: jest.fn(),
@@ -120,7 +128,10 @@ describe('MessagingEngineService', () => {
         { provide: getRepositoryToken(Branch), useValue: branchRepoMock },
         { provide: LoyaltyService, useValue: loyaltyServiceMock },
         { provide: getQueueToken('messaging-batch-send'), useValue: mockQueue },
-        { provide: getQueueToken('messaging-individual-send'), useValue: mockIndividualQueue },
+        {
+          provide: getQueueToken('messaging-individual-send'),
+          useValue: mockIndividualQueue,
+        },
         {
           provide: ComplianceService,
           useValue: {
@@ -168,7 +179,7 @@ describe('MessagingEngineService', () => {
         businessId: 'biz1',
       });
       userRepoMock.find.mockResolvedValueOnce([{ id: 'u1' }, { id: 'u2' }]);
-      
+
       const result = await service.sendMessage({
         branchId: 'br1',
         customerIds: ['u1', 'u2'],
@@ -180,9 +191,15 @@ describe('MessagingEngineService', () => {
       expect(mockIndividualQueue.addBulk).toHaveBeenCalledTimes(1);
       expect(mockIndividualQueue.addBulk).toHaveBeenCalledWith(
         expect.arrayContaining([
-          expect.objectContaining({ name: 'send-individual', data: expect.objectContaining({ customerId: 'u1' }) }),
-          expect.objectContaining({ name: 'send-individual', data: expect.objectContaining({ customerId: 'u2' }) }),
-        ])
+          expect.objectContaining({
+            name: 'send-individual',
+            data: expect.objectContaining({ customerId: 'u1' }),
+          }),
+          expect.objectContaining({
+            name: 'send-individual',
+            data: expect.objectContaining({ customerId: 'u2' }),
+          }),
+        ]),
       );
       expect(result.status).toBe('QUEUED');
       expect(result.count).toBe(2);
@@ -230,9 +247,12 @@ describe('MessagingEngineService', () => {
         'VEMTAP',
       );
 
-      expect(messageRepoMock.create).toHaveBeenCalledWith(expect.objectContaining({
-        content: 'Hello Tobi Adeyemi, welcome to VemTap Global. Your email is tobi@example.com. Link: https://vemtap.com. Points: 500'
-      }));
+      expect(messageRepoMock.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content:
+            'Hello Tobi Adeyemi, welcome to VemTap Global. Your email is tobi@example.com. Link: https://vemtap.com. Points: 500',
+        }),
+      );
       expect(mockProviderRouter.sendMessage).toHaveBeenCalled();
     });
   });

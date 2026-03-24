@@ -79,17 +79,22 @@ function AnalyticsContent() {
 
             {/* Global Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-                {stats.map((stat: any, index: number) => (
+                {[
+                    ...stats,
+                    ...businessStats
+                ].map((stat: any, index: number) => (
                     <div key={index} className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-all">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                                <span className="material-icons-round text-primary">
-                                    {stat.label.includes('Business') ? 'store' :
+                            <div className={`w-10 h-10 rounded-xl ${stat.color || 'bg-primary/10'} flex items-center justify-center`}>
+                                <span className={`material-icons-round ${stat.color ? 'text-current' : 'text-primary'}`}>
+                                    {stat.icon || (
+                                        stat.label.includes('Business') ? 'store' :
                                         stat.label.includes('Customer') ? 'people' :
-                                            stat.label.includes('Tap') ? 'nfc' : 'analytics'}
+                                        stat.label.includes('Tap') ? 'nfc' : 'analytics'
+                                    )}
                                 </span>
                             </div>
-                            {stat.change !== 0 && (
+                            {stat.change !== undefined && stat.change !== 0 && (
                                 <span className={`flex items-center text-[10px] font-black uppercase tracking-widest ${stat.trend === 'up' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'} px-2 py-1 rounded-lg`}>
                                     {stat.trend === 'up' ? '↑' : '↓'} {stat.change}%
                                 </span>
@@ -101,26 +106,6 @@ function AnalyticsContent() {
                 ))}
             </div>
 
-            {/* Business Ecosystem Section */}
-            <div className="mb-12">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="w-1.5 h-6 bg-primary rounded-full" />
-                    <h2 className="text-xl font-display font-bold text-text-main">Business Ecosystem</h2>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {businessStats.map((stat, index) => (
-                        <div key={index} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex items-center gap-4">
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color}`}>
-                                <span className="material-icons-round text-2xl">{stat.icon}</span>
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{stat.label}</p>
-                                <p className="text-xl font-bold text-text-main">{stat.value}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
 
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

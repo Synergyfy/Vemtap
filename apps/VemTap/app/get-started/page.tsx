@@ -13,7 +13,8 @@ import { sanitizeFormData } from '@/lib/utils/sanitize';
 import { useRegisterOwner, useOtp, useRegister } from '@/services/auth/hooks';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPricingPlans } from '@/lib/api/pricing';
-import { CheckCircle2, Loader2, ChevronDown, Instagram, Linkedin, Twitter, Facebook, Globe, Star, Plus, Trash2, X } from 'lucide-react';
+import { CheckCircle2, Loader2, ChevronDown, Sparkles, Key, Instagram, Linkedin, Twitter, Facebook, Globe, Star, Plus, Trash2, X } from 'lucide-react';
+import PasswordValidation from '@/components/shared/PasswordValidation';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { useCategories } from '@/services/categories/hooks';
 
@@ -78,6 +79,7 @@ export default function GetStarted() {
     const [subStep, setSubStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'quarterly'>('monthly');
 
     const [formData, setFormData] = useState({
@@ -171,41 +173,15 @@ export default function GetStarted() {
     const { data: categoryData, isLoading: isCategoriesLoading } = useCategories({ limit: 100 });
     const categories = categoryData?.items || [];
 
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
 
     const goals = ['Capture Leads', 'Automated Rewards', 'Customer Feedback', 'Digital Loyalty'];
 
-    const PASSWORD_REQUIREMENTS = [
-        { label: 'At least 8 characters', regex: /.{8,}/ },
-        { label: 'At least one uppercase letter', regex: /[A-Z]/ },
-        { label: 'At least one lowercase letter', regex: /[a-z]/ },
-        { label: 'At least one number', regex: /[0-9]/ },
-        { label: 'At least one special symbol', regex: /[!@#$%^&*(),.?":{}|<>]/ },
-    ];
-
     const checkRequirement = (regex: RegExp) => regex.test(formData.password);
+
     
-    const calculateStrength = () => {
-        const metCount = PASSWORD_REQUIREMENTS.filter(req => checkRequirement(req.regex)).length;
-        const percentage = (metCount / PASSWORD_REQUIREMENTS.length) * 100;
-        let color = 'bg-red-500';
-        let label = 'Weak';
+    // Password logic now handled by PasswordValidation component
 
-        if (percentage > 40 && percentage <= 60) {
-            color = 'bg-yellow-500';
-            label = 'Medium';
-        } else if (percentage > 60 && percentage <= 80) {
-            color = 'bg-blue-500';
-            label = 'Strong';
-        } else if (percentage > 80) {
-            color = 'bg-green-500';
-            label = 'Very Strong';
-        }
-
-        return { percentage, color, label };
-    };
-
-    const strength = calculateStrength();
 
     const isManager = formData.selectedRole === 'Manager';
     const maxSubStep = isManager ? 3 : 9;
@@ -503,7 +479,6 @@ export default function GetStarted() {
                                                         setFieldErrors(prev => ({ ...prev, password: '' })); 
                                                     }}
                                                     onFocus={() => setShowPasswordRequirements(true)}
-                                                    onBlur={() => setShowPasswordRequirements(false)}
                                                     icon="lock"
                                                     placeholder="••••••••"
                                                     required
@@ -514,48 +489,13 @@ export default function GetStarted() {
                                                     onTogglePassword={() => setShowPassword(!showPassword)}
                                                 />
                                                 
-                                                <AnimatePresence>
-                                                    {(showPasswordRequirements || formData.password) && (
-                                                        <motion.div
-                                                            initial={{ opacity: 0, height: 0 }}
-                                                            animate={{ opacity: 1, height: 'auto' }}
-                                                            exit={{ opacity: 0, height: 0 }}
-                                                            className="space-y-3 overflow-hidden"
-                                                        >
-                                                            <div className="space-y-1.5">
-                                                                <div className="flex justify-between items-center px-1">
-                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Strength: {strength.label}</span>
-                                                                    <span className="text-[10px] font-black text-text-main">{Math.round(strength.percentage)}%</span>
-                                                                </div>
-                                                                <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                                                                    <motion.div 
-                                                                        className={`h-full ${strength.color}`}
-                                                                        initial={{ width: 0 }}
-                                                                        animate={{ width: `${strength.percentage}%` }}
-                                                                        transition={{ duration: 0.3 }}
-                                                                    />
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="grid grid-cols-1 gap-1.5 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                                                {PASSWORD_REQUIREMENTS.map((req, idx) => {
-                                                                    const isMet = checkRequirement(req.regex);
-                                                                    return (
-                                                                        <div key={idx} className="flex items-center gap-2">
-                                                                            <div className={`size-4 rounded-full flex items-center justify-center transition-colors ${isMet ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}>
-                                                                                <span className="material-icons-round text-[10px]">{isMet ? 'check' : 'close'}</span>
-                                                                            </div>
-                                                                            <span className={`text-[10px] font-bold tracking-tight transition-colors ${isMet ? 'text-green-600' : 'text-text-secondary'}`}>
-                                                                                {req.label}
-                                                                            </span>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
+                                                <PasswordValidation 
+                                                    password={formData.password}
+                                                    onSuggest={(p) => setFormData({ ...formData, password: p })}
+                                                    showAlways={showPasswordRequirements}
+                                                />
                                             </div>
+
                                             <SanitizedInput
                                                 label="Confirm Password"
                                                 type="password"

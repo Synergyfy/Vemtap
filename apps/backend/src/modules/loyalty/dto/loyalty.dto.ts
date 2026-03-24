@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsEnum, IsNumber, IsOptional, IsArray, IsDateString, IsUUID, Min } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsArray,
+  IsDateString,
+  IsUUID,
+  Min,
+} from 'class-validator';
 import { RewardCategory } from '../entities/reward-template.entity';
 
 export class CreateRewardTemplateDto {

@@ -371,14 +371,16 @@ export class SubscriptionsService {
       capabilities: {
         teamMembers: {
           enabled: plan.teamMembersEnabled,
-          limit: plan.teamMembersLimit === -1 ? 'unlimited' : (plan.teamMembersLimit ?? 0),
+          limit:
+            plan.teamMembersLimit === -1
+              ? 'unlimited'
+              : (plan.teamMembersLimit ?? 0),
           used: usedStaff,
-          remaining:
-            !plan.teamMembersEnabled
-              ? 0
-              : plan.teamMembersLimit === -1
-                ? 'unlimited'
-                : Math.max(0, (plan.teamMembersLimit ?? 0) - usedStaff),
+          remaining: !plan.teamMembersEnabled
+            ? 0
+            : plan.teamMembersLimit === -1
+              ? 'unlimited'
+              : Math.max(0, (plan.teamMembersLimit ?? 0) - usedStaff),
         },
         tags: {
           enabled: true, // Tags are always enabled for now
@@ -388,25 +390,25 @@ export class SubscriptionsService {
         },
         loyaltyPrograms: {
           enabled: plan.loyaltyEnabled,
-          limit: plan.loyaltyLimit === -1 ? 'unlimited' : (plan.loyaltyLimit ?? 0),
+          limit:
+            plan.loyaltyLimit === -1 ? 'unlimited' : (plan.loyaltyLimit ?? 0),
           used: usedLoyaltyPrograms,
-          remaining:
-            !plan.loyaltyEnabled
-              ? 0
-              : plan.loyaltyLimit === -1
-                ? 'unlimited'
-                : Math.max(0, (plan.loyaltyLimit ?? 0) - usedLoyaltyPrograms),
+          remaining: !plan.loyaltyEnabled
+            ? 0
+            : plan.loyaltyLimit === -1
+              ? 'unlimited'
+              : Math.max(0, (plan.loyaltyLimit ?? 0) - usedLoyaltyPrograms),
         },
         branches: {
           enabled: plan.branchesEnabled,
-          limit: plan.branchLimit === -1 ? 'unlimited' : (plan.branchLimit ?? 0),
+          limit:
+            plan.branchLimit === -1 ? 'unlimited' : (plan.branchLimit ?? 0),
           used: usedBranches,
-          remaining:
-            !plan.branchesEnabled
-              ? 0
-              : plan.branchLimit === -1
-                ? 'unlimited'
-                : Math.max(0, (plan.branchLimit ?? 0) - usedBranches),
+          remaining: !plan.branchesEnabled
+            ? 0
+            : plan.branchLimit === -1
+              ? 'unlimited'
+              : Math.max(0, (plan.branchLimit ?? 0) - usedBranches),
         },
         analytics: {
           enabled: plan.analyticsEnabled,

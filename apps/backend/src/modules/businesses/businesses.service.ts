@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
   Inject,
   forwardRef,
 } from '@nestjs/common';
@@ -60,7 +61,9 @@ export class BusinessesService {
     if (businessData.phone) {
       const existingByPhone = await this.findByPhone(businessData.phone);
       if (existingByPhone) {
-        throw new ConflictException('Business with this phone number already exists');
+        throw new ConflictException(
+          'Business with this phone number already exists',
+        );
       }
     }
 
@@ -177,21 +180,21 @@ export class BusinessesService {
     let activeRewards: Reward[] = [];
     if (businessData.branches && businessData.branches.length > 0) {
       const branchIds = businessData.branches.map((b) => b.id);
-      
+
       const [branchRewards, businessRewards] = await Promise.all([
         this.rewardRepository.find({
           where: { branchId: In(branchIds), isActive: true },
         }),
         this.rewardRepository.find({
           where: { businessId: business.id, isActive: true },
-        })
+        }),
       ]);
-      
+
       activeRewards = [...branchRewards, ...businessRewards];
-      
+
       // Remove duplicates if any happen to overlap
       const uniqueMap = new Map();
-      activeRewards.forEach(r => uniqueMap.set(r.id, r));
+      activeRewards.forEach((r) => uniqueMap.set(r.id, r));
       activeRewards = Array.from(uniqueMap.values());
     } else {
       activeRewards = await this.rewardRepository.find({
@@ -302,7 +305,9 @@ export class BusinessesService {
     }
 
     if (query.isVerified !== undefined) {
-      qb.andWhere('business.isVerified = :isVerified', { isVerified: query.isVerified });
+      qb.andWhere('business.isVerified = :isVerified', {
+        isVerified: query.isVerified,
+      });
     }
 
     if (query.search) {
@@ -456,6 +461,32 @@ export class BusinessesService {
       throw new ConflictException('A user with that email already exists');
     }
 
+    if (dto.ownerPhone) {
+      const existingUserByPhone = await this.usersRepository.findOne({
+        where: { phone: dto.ownerPhone },
+      });
+
+      if (
+        existingUserByPhone &&
+        (!existingUser || existingUserByPhone.id !== existingUser.id)
+      ) {
+        throw new BadRequestException(
+          'A user with that phone number already exists',
+        );
+      }
+    }
+
+    if (dto.businessNumber) {
+      const existingBusinessByPhone = await this.findByPhone(
+        dto.businessNumber,
+      );
+      if (existingBusinessByPhone) {
+        throw new BadRequestException(
+          'A business with this phone number already exists',
+        );
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(dto.ownerPassword, 10);
     let user: User;
 
@@ -549,7 +580,6 @@ export class BusinessesService {
     business.verifiedAt = null;
     return this.businessesRepository.save(business);
   }
-
 
   async reject(id: string): Promise<void> {
     const business = await this.findById(id);

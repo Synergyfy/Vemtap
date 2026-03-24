@@ -57,13 +57,24 @@ describe('MessagingEngineService Credit Logic', () => {
       getOrCreateWallet: jest.fn(),
       deductCredits: jest.fn(),
       addCredits: jest.fn(),
-      allocateSubscriptionCredits: jest.fn().mockImplementation(async (bizId, plan) => {
-          if (plan.smsCredits > 0) await creditServiceMock.addCredits(bizId, Channel.SMS, plan.smsCredits, 'SUBSCRIPTION_ALLOCATION' as any, `Plan: ${plan.name}`);
-      }),
+      allocateSubscriptionCredits: jest
+        .fn()
+        .mockImplementation(async (bizId, plan) => {
+          if (plan.smsCredits > 0)
+            await creditServiceMock.addCredits(
+              bizId,
+              Channel.SMS,
+              plan.smsCredits,
+              'SUBSCRIPTION_ALLOCATION' as any,
+              `Plan: ${plan.name}`,
+            );
+        }),
     };
     paymentsServiceMock = {
-        verifyTransaction: jest.fn().mockResolvedValue({ amount: 100000, status: 'success' }),
-        recordPayment: jest.fn(),
+      verifyTransaction: jest
+        .fn()
+        .mockResolvedValue({ amount: 100000, status: 'success' }),
+      recordPayment: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -79,14 +90,25 @@ describe('MessagingEngineService Credit Logic', () => {
         { provide: getRepositoryToken(Visit), useValue: {} },
         { provide: getRepositoryToken(Business), useValue: {} },
         { provide: getQueueToken('messaging-batch-send'), useValue: mockQueue },
-        { provide: getQueueToken('messaging-individual-send'), useValue: mockIndividualQueue },
+        {
+          provide: getQueueToken('messaging-individual-send'),
+          useValue: mockIndividualQueue,
+        },
         { provide: ComplianceService, useValue: {} },
         { provide: CreditService, useValue: creditServiceMock },
         { provide: TemplateService, useValue: { findOne: jest.fn() } },
-        { provide: CampaignService, useValue: { createCampaign: jest.fn().mockResolvedValue({id: 'c1'}) } },
+        {
+          provide: CampaignService,
+          useValue: {
+            createCampaign: jest.fn().mockResolvedValue({ id: 'c1' }),
+          },
+        },
         { provide: SettingsService, useValue: {} },
         { provide: ProviderRouterService, useValue: {} },
-        { provide: BranchesService, useValue: { findById: jest.fn(), checkBranchAccess: jest.fn() } },
+        {
+          provide: BranchesService,
+          useValue: { findById: jest.fn(), checkBranchAccess: jest.fn() },
+        },
         { provide: DataSource, useValue: {} },
         { provide: ConfigService, useValue: { get: jest.fn() } },
         { provide: PaymentsService, useValue: paymentsServiceMock },
@@ -102,19 +124,21 @@ describe('MessagingEngineService Credit Logic', () => {
 
   it('should throw BadRequestException if credits are insufficient', async () => {
     branchRepoMock.findOne.mockResolvedValueOnce({
-        id: 'br1',
-        businessId: 'biz1',
+      id: 'br1',
+      businessId: 'biz1',
     });
     userRepoMock.find.mockResolvedValueOnce([{ id: 'u1' }]);
     creditServiceMock.getOrCreateWallet.mockResolvedValueOnce({
-        smsCredits: 0,
+      smsCredits: 0,
     });
 
-    await expect(service.sendMessage({
+    await expect(
+      service.sendMessage({
         branchId: 'br1',
         customerIds: ['u1'],
         channel: Channel.SMS,
         content: 'test',
-    })).rejects.toThrow(BadRequestException);
+      }),
+    ).rejects.toThrow(BadRequestException);
   });
 });

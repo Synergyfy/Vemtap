@@ -156,7 +156,9 @@ export class BusinessesController {
 
   @Get('admin/suspended')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get all suspended businesses (newest to oldest)' })
+  @ApiOperation({
+    summary: 'Admin: Get all suspended businesses (newest to oldest)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Return list of suspended businesses.',
@@ -181,7 +183,9 @@ export class BusinessesController {
 
   @Get('admin/pending-verification')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get businesses pending verification with stats' })
+  @ApiOperation({
+    summary: 'Admin: Get businesses pending verification with stats',
+  })
   @ApiResponse({
     status: 200,
     description: 'Return list of businesses pending verification.',

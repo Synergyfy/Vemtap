@@ -3,7 +3,11 @@ import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { User, UserRole, UserStatus } from '../../src/modules/users/entities/user.entity';
+import {
+  User,
+  UserRole,
+  UserStatus,
+} from '../../src/modules/users/entities/user.entity';
 import { Business } from '../../src/modules/businesses/entities/business.entity';
 import { Branch } from '../../src/modules/branches/entities/branch.entity';
 import { Visit } from '../../src/modules/visitors/entities/visit.entity';
@@ -87,7 +91,6 @@ describe('Visited Branches (E2E)', () => {
     )) as unknown as User;
     customerId = customer.id;
 
-
     const loginRes = await authService.login({
       identifier: customer.email,
       password,
@@ -97,28 +100,34 @@ describe('Visited Branches (E2E)', () => {
 
     // 4. Create Visits
     // Visit Branch 1 (Older)
-    await visitRepo.save(visitRepo.create({
-      customerId,
-      branchId: branch1Id,
-      businessId: business.id,
-      createdAt: new Date(Date.now() - 10000)
-    }));
+    await visitRepo.save(
+      visitRepo.create({
+        customerId,
+        branchId: branch1Id,
+        businessId: business.id,
+        createdAt: new Date(Date.now() - 10000),
+      }),
+    );
 
     // Visit Branch 2 (Newer)
-    await visitRepo.save(visitRepo.create({
-      customerId,
-      branchId: branch2Id,
-      businessId: business.id,
-      createdAt: new Date(Date.now() - 5000)
-    }));
+    await visitRepo.save(
+      visitRepo.create({
+        customerId,
+        branchId: branch2Id,
+        businessId: business.id,
+        createdAt: new Date(Date.now() - 5000),
+      }),
+    );
 
     // Visit Branch 1 again (Newest)
-    await visitRepo.save(visitRepo.create({
-      customerId,
-      branchId: branch1Id,
-      businessId: business.id,
-      createdAt: new Date()
-    }));
+    await visitRepo.save(
+      visitRepo.create({
+        customerId,
+        branchId: branch1Id,
+        businessId: business.id,
+        createdAt: new Date(),
+      }),
+    );
   });
 
   afterAll(async () => {
@@ -133,11 +142,11 @@ describe('Visited Branches (E2E)', () => {
 
     expect(res.body.data).toHaveLength(2);
     expect(res.body.total).toBe(2);
-    
+
     // Branch 1 should be first because its newest visit is most recent
     expect(res.body.data[0].id).toBe(branch1Id);
     expect(res.body.data[0].visitCount).toBe(2);
-    
+
     expect(res.body.data[1].id).toBe(branch2Id);
     expect(res.body.data[1].visitCount).toBe(1);
   });

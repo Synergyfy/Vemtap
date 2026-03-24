@@ -30,6 +30,8 @@ import { UpdateEngagementDto } from './dto/update-engagement.dto';
 import { AdminCreateAgentDto } from './dto/admin-create-agent.dto';
 import { FindUsersAdminDto } from './dto/find-users-admin.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
 import { CapabilityGuard } from '../subscriptions/guards/capability.guard';
 import { RequireCapability } from '../subscriptions/decorators/capability.decorator';
 import {
@@ -40,7 +42,7 @@ import { ParseUUIDPipe } from '@nestjs/common';
 
 @ApiTags('Users')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -82,7 +84,8 @@ export class UsersController {
   // --- Team Management ---
 
   @Post('team/invite')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('staff')
   @UseGuards(CapabilityGuard)
   @RequireCapability('teamMembers')
   @ApiOperation({ summary: 'Invite a new team member' })
@@ -97,7 +100,8 @@ export class UsersController {
   }
 
   @Get('team')
-  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @Permissions('staff')
   @ApiOperation({ summary: 'Get all team members for the branch' })
   @ApiResponse({ status: 200, type: [User] })
   async getTeam(@Request() req, @Query() filter: BranchFilterDto) {
@@ -106,7 +110,8 @@ export class UsersController {
   }
 
   @Patch('team/:id')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('staff')
   @ApiOperation({ summary: 'Update a team member' })
   @ApiResponse({ status: 200, type: User })
   async updateStaff(
@@ -120,7 +125,8 @@ export class UsersController {
   }
 
   @Delete('team/:id')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('staff')
   @ApiOperation({ summary: 'Remove a team member' })
   @ApiResponse({ status: 200 })
   async remove(
@@ -190,7 +196,7 @@ export class UsersController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Send password reset link to user email' })
   async adminResetPasswordLink(@Param('email') email: string) {
-    // Basic email validation if needed, but the service handles it. 
+    // Basic email validation if needed, but the service handles it.
     // Usually better to have @IsEmail in a DTO but as a param we could use a custom validator or just let it pass to service.
     return this.usersService.adminResetPasswordLink(email);
   }

@@ -353,7 +353,7 @@ export default function AdminPendingBusinessesPage() {
                                     <div className="flex gap-4">
                                         <div>
                                             <p className="text-[10px] font-black uppercase text-text-secondary mb-1">Type</p>
-                                            <p className="text-sm font-bold text-indigo-600">{selectedVerification.category || 'Business'}</p>
+                                            <p className="text-sm font-bold text-indigo-600">{typeof selectedVerification.category === 'object' ? selectedVerification.category?.name : (selectedVerification.category || 'Business')}</p>
                                         </div>
                                         <div>
                                             <p className="text-[10px] font-black uppercase text-text-secondary mb-1">ID</p>

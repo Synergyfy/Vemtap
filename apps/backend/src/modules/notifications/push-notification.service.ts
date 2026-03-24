@@ -20,14 +20,19 @@ export class PushNotificationService {
   ) {
     const publicKey = this.configService.get<string>('VAPID_PUBLIC_KEY');
     const privateKey = this.configService.get<string>('VAPID_PRIVATE_KEY');
-    const email = this.configService.get<string>('VAPID_EMAIL', 'mailto:admin@vemtap.com');
+    const email = this.configService.get<string>(
+      'VAPID_EMAIL',
+      'mailto:admin@vemtap.com',
+    );
 
     if (publicKey && privateKey) {
       webpush.setVapidDetails(email, publicKey, privateKey);
       this.isConfigured = true;
       this.logger.log('Web Push (VAPID) configured successfully');
     } else {
-      this.logger.warn('Web Push (VAPID) keys missing. Push notifications will be mocked.');
+      this.logger.warn(
+        'Web Push (VAPID) keys missing. Push notifications will be mocked.',
+      );
     }
   }
 
@@ -51,15 +56,23 @@ export class PushNotificationService {
     let token: string | null | undefined;
 
     if (isUser) {
-      const user = await this.userRepo.findOne({ where: { id: targetId }, select: ['pushToken'] });
+      const user = await this.userRepo.findOne({
+        where: { id: targetId },
+        select: ['pushToken'],
+      });
       token = user?.pushToken;
     } else {
-      const contact = await this.contactRepo.findOne({ where: { id: targetId }, select: ['pushToken'] });
+      const contact = await this.contactRepo.findOne({
+        where: { id: targetId },
+        select: ['pushToken'],
+      });
       token = contact?.pushToken;
     }
 
     if (!token) {
-      this.logger.debug(`No push token for ${isUser ? 'User' : 'Contact'} ${targetId}`);
+      this.logger.debug(
+        `No push token for ${isUser ? 'User' : 'Contact'} ${targetId}`,
+      );
       return;
     }
 
@@ -77,7 +90,9 @@ export class PushNotificationService {
         subscription = JSON.parse(token);
       } catch (e) {
         // If not JSON, it might be a standard FCM token which we don't handle with web-push
-        this.logger.error(`Invalid subscription format for ${targetId}. Web Push requires JSON subscription object.`);
+        this.logger.error(
+          `Invalid subscription format for ${targetId}. Web Push requires JSON subscription object.`,
+        );
         return { success: false, error: 'Invalid subscription format' };
       }
 
@@ -88,7 +103,9 @@ export class PushNotificationService {
           icon: '/logo.png', // Assuming logo.png is in public folder
           data: {
             ...data,
-            url: data.threadId ? `/dashboard/messaging/${data.threadId}` : undefined,
+            url: data.threadId
+              ? `/dashboard/messaging/${data.threadId}`
+              : undefined,
           },
         },
       });
@@ -96,18 +113,22 @@ export class PushNotificationService {
       await webpush.sendNotification(subscription, payload);
       return { success: true };
     } catch (error) {
-      this.logger.error(`Error sending push notification to ${targetId}: ${error.message}`);
-      
+      this.logger.error(
+        `Error sending push notification to ${targetId}: ${error.message}`,
+      );
+
       // If subscription is expired or invalid, clear it
       if (error.statusCode === 410 || error.statusCode === 404) {
-        this.logger.warn(`Push subscription for ${targetId} is no longer valid. Clearing token.`);
+        this.logger.warn(
+          `Push subscription for ${targetId} is no longer valid. Clearing token.`,
+        );
         if (isUser) {
           await this.userRepo.update(targetId, { pushToken: null });
         } else {
           await this.contactRepo.update(targetId, { pushToken: null });
         }
       }
-      
+
       return { success: false, error: error.message };
     }
   }
@@ -130,16 +151,22 @@ export class PushNotificationService {
       return;
     }
 
-    this.logger.log(`Sending push notification to ${staffWithTokens.length} staff in branch ${branchId}: ${title}`);
-    
-    const results = await Promise.all(
-      staffWithTokens.map((s) => 
-        this.sendNotification(s.id, title, body, data, true)
-      )
+    this.logger.log(
+      `Sending push notification to ${staffWithTokens.length} staff in branch ${branchId}: ${title}`,
     );
 
-    const successCount = results.filter(r => r?.success).length;
-    
-    return { success: true, count: successCount, total: staffWithTokens.length };
+    const results = await Promise.all(
+      staffWithTokens.map((s) =>
+        this.sendNotification(s.id, title, body, data, true),
+      ),
+    );
+
+    const successCount = results.filter((r) => r?.success).length;
+
+    return {
+      success: true,
+      count: successCount,
+      total: staffWithTokens.length,
+    };
   }
 }

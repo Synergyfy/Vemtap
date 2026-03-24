@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsDateString, IsNumber, IsUUID } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsDateString,
+  IsNumber,
+  IsUUID,
+} from 'class-validator';
 
 export class FlowFilterDto {
   @ApiProperty({ required: false, description: 'Filter by Business ID' })

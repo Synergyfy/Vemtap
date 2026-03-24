@@ -8,15 +8,17 @@ import {
   UserRole,
   UserStatus,
 } from '../../src/modules/users/entities/user.entity';
-import {
-  Business,
-} from '../../src/modules/businesses/entities/business.entity';
+import { Business } from '../../src/modules/businesses/entities/business.entity';
 import { Branch } from '../../src/modules/branches/entities/branch.entity';
-import { ConversationThread, ThreadStatus } from '../../src/modules/messaging/entities/conversation-thread.entity';
+import {
+  ConversationThread,
+  ThreadStatus,
+} from '../../src/modules/messaging/entities/conversation-thread.entity';
 import { Message } from '../../src/modules/messaging/entities/message.entity';
 import { Visit } from '../../src/modules/visitors/entities/visit.entity';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { Channel } from '../../src/modules/messaging/enums/channel.enum';
+import { MessageDirection } from '../../src/modules/messaging/enums/message.enum';
 import * as bcrypt from 'bcrypt';
 
 describe('Messaging Inbox (e2e)', () => {
@@ -95,24 +97,26 @@ describe('Messaging Inbox (e2e)', () => {
     )) as any;
     customerId = visitorUser.id;
 
-    await visitRepo.save(visitRepo.create({
+    await visitRepo.save(
+      visitRepo.create({
         customerId,
         branchId,
         businessId: business.id,
-        status: 'new'
-    }));
+        status: 'new',
+      }),
+    );
 
     // 4. Create another Visitor (Not Visited)
     const otherVisitorUser = (await userRepo.save(
-        userRepo.create({
-          email: `other-visitor-${testId}@test.com`,
-          password: hashedPassword,
-          firstName: 'OtherVisitor',
-          lastName: 'Test',
-          role: UserRole.CUSTOMER,
-          status: UserStatus.ACTIVE,
-        } as any),
-      )) as any;
+      userRepo.create({
+        email: `other-visitor-${testId}@test.com`,
+        password: hashedPassword,
+        firstName: 'OtherVisitor',
+        lastName: 'Test',
+        role: UserRole.CUSTOMER,
+        status: UserStatus.ACTIVE,
+      } as any),
+    )) as any;
     otherCustomerId = otherVisitorUser.id;
 
     // Login
@@ -129,9 +133,9 @@ describe('Messaging Inbox (e2e)', () => {
     visitorToken = visitorLogin.access_token;
 
     const otherVisitorLogin = await authService.login({
-        identifier: otherVisitorUser.email,
-        password,
-      });
+      identifier: otherVisitorUser.email,
+      password,
+    });
     otherVisitorToken = otherVisitorLogin.access_token;
   });
 
@@ -152,7 +156,9 @@ describe('Messaging Inbox (e2e)', () => {
     expect(res.body.content).toBe('First message from customer');
     expect(res.body.threadId).toBeDefined();
 
-    const thread = await threadRepo.findOne({ where: { id: res.body.threadId } });
+    const thread = await threadRepo.findOne({
+      where: { id: res.body.threadId },
+    });
     expect(thread?.branchUnreadCount).toBe(1);
   });
 
@@ -169,28 +175,34 @@ describe('Messaging Inbox (e2e)', () => {
   });
 
   it('should allow branch to reply to the thread started by customer', async () => {
-    const thread = await threadRepo.findOne({ where: { customerId, branchId } });
+    const thread = await threadRepo.findOne({
+      where: { customerId, branchId },
+    });
 
     const res = await request(app.getHttpServer())
-      .post(`/api/v1/messaging/inbox/threads/${thread?.id}/reply?branchId=${branchId}`)
+      .post(
+        `/api/v1/messaging/inbox/threads/${thread?.id}/reply?branchId=${branchId}`,
+      )
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({
         content: 'Hello from Branch!',
       });
 
     expect(res.status).toBe(201);
-    
-    const updatedThread = await threadRepo.findOne({ where: { id: thread?.id } });
+
+    const updatedThread = await threadRepo.findOne({
+      where: { id: thread?.id },
+    });
     expect(updatedThread?.customerUnreadCount).toBe(1);
     expect(updatedThread?.lastMessageContent).toBe('Hello from Branch!');
   });
 
   it('should allow staff to edit their own message', async () => {
-    const lastMsg = await messageRepo.findOne({ 
-      where: { direction: Channel.IN_HOUSE as any }, // Just getting the last one
-      order: { timestamp: 'DESC' } 
+    const lastMsg = await messageRepo.findOne({
+      where: { direction: MessageDirection.OUTBOUND },
+      order: { timestamp: 'DESC' },
     });
-    
+
     const res = await request(app.getHttpServer())
       .patch(`/api/v1/messaging/messages/${lastMsg?.id}?branchId=${branchId}`)
       .set('Authorization', `Bearer ${ownerToken}`)
@@ -202,10 +214,12 @@ describe('Messaging Inbox (e2e)', () => {
   });
 
   it('should allow customer to delete their own message', async () => {
-    const thread = await threadRepo.findOne({ where: { customerId, branchId } });
-    const firstMsg = await messageRepo.findOne({ 
+    const thread = await threadRepo.findOne({
+      where: { customerId, branchId },
+    });
+    const firstMsg = await messageRepo.findOne({
       where: { threadId: thread?.id, direction: 'INBOUND' as any },
-      order: { timestamp: 'ASC' }
+      order: { timestamp: 'ASC' },
     });
 
     const res = await request(app.getHttpServer())
@@ -213,16 +227,18 @@ describe('Messaging Inbox (e2e)', () => {
       .set('Authorization', `Bearer ${visitorToken}`);
 
     expect(res.status).toBe(200);
-    
-    const deletedMsg = await messageRepo.findOne({ where: { id: firstMsg?.id } });
+
+    const deletedMsg = await messageRepo.findOne({
+      where: { id: firstMsg?.id },
+    });
     expect(deletedMsg?.isDeleted).toBe(true);
     expect(deletedMsg?.content).toBe('Message deleted');
   });
 
   it('should fail if customer tries to delete staff message', async () => {
-    const lastMsg = await messageRepo.findOne({ 
-      where: { direction: 'OUTBOUND' as any }, 
-      order: { timestamp: 'DESC' } 
+    const lastMsg = await messageRepo.findOne({
+      where: { direction: 'OUTBOUND' as any },
+      order: { timestamp: 'DESC' },
     });
 
     const res = await request(app.getHttpServer())

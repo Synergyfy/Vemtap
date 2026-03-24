@@ -9,6 +9,7 @@ import { RedemptionCode } from './entities/redemption-code.entity';
 import { User } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
+import { BranchesService } from '../branches/branches.service';
 import { DataSource } from 'typeorm';
 
 describe('LoyaltyService', () => {
@@ -18,7 +19,9 @@ describe('LoyaltyService', () => {
     find: jest.fn().mockResolvedValue([]),
     findOne: jest.fn().mockResolvedValue(null),
     create: jest.fn().mockImplementation((dto) => dto),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: '1', ...entity })),
+    save: jest
+      .fn()
+      .mockImplementation((entity) => Promise.resolve({ id: '1', ...entity })),
     delete: jest.fn().mockResolvedValue({ affected: 1 }),
     createQueryBuilder: jest.fn(() => ({
       select: jest.fn().mockReturnThis(),
@@ -26,6 +29,11 @@ describe('LoyaltyService', () => {
       andWhere: jest.fn().mockReturnThis(),
       getRawOne: jest.fn().mockResolvedValue({ sum: '0' }),
     })),
+  };
+
+  const mockBranchesService = {
+    checkBranchAccess: jest.fn(),
+    findById: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -63,6 +71,10 @@ describe('LoyaltyService', () => {
         {
           provide: getRepositoryToken(Visit),
           useValue: mockRepository,
+        },
+        {
+          provide: BranchesService,
+          useValue: mockBranchesService,
         },
         {
           provide: DataSource,

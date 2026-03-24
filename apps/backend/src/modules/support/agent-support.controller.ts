@@ -118,6 +118,13 @@ export class AgentSupportController {
     return this.supportService.addAgentMessage(id, req.user.id, dto.message);
   }
 
+  @Get('profile')
+  @ApiOperation({ summary: 'Get current agent profile' })
+  @ApiResponse({ status: 200 })
+  async getProfile(@Request() req: AuthRequest) {
+    return this.supportService.findOneAgentUser(req.user.id);
+  }
+
   @Patch('profile')
   @ApiOperation({ summary: 'Update agent profile' })
   @ApiResponse({ status: 200 })

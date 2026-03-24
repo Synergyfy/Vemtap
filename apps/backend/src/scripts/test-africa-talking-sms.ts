@@ -1,17 +1,20 @@
 import axios from 'axios';
 
-const apiKey = 'atsk_e790d4182cb149d69d8308fabb3a91cd452904c38a8e88a57ebb636af15fe3518aebca4c';
+const apiKey =
+  'atsk_e790d4182cb149d69d8308fabb3a91cd452904c38a8e88a57ebb636af15fe3518aebca4c';
 const username = 'Vemtap';
 const baseUrl = 'https://api.africastalking.com/version1/messaging/bulk';
 
-async function sendSms(recipients: { number: string, name: string }[]) {
-  console.log(`Sending TRANSACTIONAL-STYLE SMS to: ${recipients.map(r => r.name).join(', ')}...`);
-  
+async function sendSms(recipients: { number: string; name: string }[]) {
+  console.log(
+    `Sending TRANSACTIONAL-STYLE SMS to: ${recipients.map((r) => r.name).join(', ')}...`,
+  );
+
   const data = {
     username: username,
     // Using a more standard OTP-style message which often bypasses generic "test" filters
     message: `Your Vemtap verification code is 5521. Please do not share this with anyone.`,
-    phoneNumbers: recipients.map(r => r.number),
+    phoneNumbers: recipients.map((r) => r.number),
   };
 
   try {
@@ -28,7 +31,9 @@ async function sendSms(recipients: { number: string, name: string }[]) {
 
     console.log('\n--- Send Results ---');
     results.forEach((recipient: any) => {
-      const name = recipients.find(r => r.number === recipient.number)?.name || 'Unknown';
+      const name =
+        recipients.find((r) => r.number === recipient.number)?.name ||
+        'Unknown';
       if (recipient.status === 'Success' || recipient.status === 'Sent') {
         console.log(`✅ SUCCESS [${name} - ${recipient.number}]:`);
         console.log(`   MessageId: ${recipient.messageId}`);
@@ -41,16 +46,13 @@ async function sendSms(recipients: { number: string, name: string }[]) {
       }
     });
     console.log('-------------------------\n');
-
   } catch (error: any) {
     console.error(`❌ ERROR:`, error.response?.data || error.message);
   }
 }
 
 async function run() {
-  const contacts = [
-    { number: '+2347033486488', name: 'Azeem' }
-  ];
+  const contacts = [{ number: '+2347033486488', name: 'Azeem' }];
   await sendSms(contacts);
 }
 

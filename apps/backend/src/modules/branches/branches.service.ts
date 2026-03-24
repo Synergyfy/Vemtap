@@ -33,7 +33,7 @@ export class BranchesService {
     targetBranchId: string,
   ): Promise<boolean> {
     const userRole = String(user.role || '').toLowerCase();
-    
+
     if (userRole === 'admin') return true;
 
     if (userRole === 'owner') {
@@ -164,7 +164,8 @@ export class BranchesService {
       where: { uniqueCode, isActive: true },
       relations: ['business'],
     });
-    if (!branch) throw new NotFoundException(`Branch with code ${uniqueCode} not found`);
+    if (!branch)
+      throw new NotFoundException(`Branch with code ${uniqueCode} not found`);
     return branch;
   }
 

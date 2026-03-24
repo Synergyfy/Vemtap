@@ -101,7 +101,7 @@ export default function StepDetails() {
             const categorySlug = selectedType.name.trim().toLowerCase().replace(/\s+/g, '-');
             const count = typeof categoryProductCount === 'number' ? categoryProductCount : (categoryProductCount?.count ?? 0);
             const sequence = String(count + 1).padStart(3, '0');
-            const generatedSku = `nfc-${categorySlug}-${sequence}`;
+            const generatedSku = `${categorySlug}-${sequence}`;
 
             updateFormData({ sku: generatedSku });
             setValue('sku', generatedSku, { shouldValidate: true });
@@ -173,7 +173,7 @@ export default function StepDetails() {
                                     <input
                                         className="w-full pl-12 pr-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-medium text-text-main placeholder-gray-400 font-mono tracking-wide"
                                         id="sku"
-                                        placeholder="nfc-cards-001"
+                                        placeholder="cards-001"
                                         type="text"
                                         {...register('sku')}
                                     />
@@ -299,7 +299,7 @@ export default function StepDetails() {
                     <ul className="space-y-3 text-sm text-blue-800/80">
                         <li className="flex gap-2">
                             <span className="mt-1 block size-1.5 rounded-full bg-blue-400 shrink-0" />
-                            SKUs are auto-generated as <code>{'nfc-category-001'}</code> (e.g. <code>nfc-plates-001</code>, <code>nfc-plates-002</code>).
+                            SKUs are auto-generated as <code>{'category-001'}</code> (e.g. <code>plates-001</code>, <code>plates-002</code>).
                         </li>
                         <li className="flex gap-2">
                             <span className="mt-1 block size-1.5 rounded-full bg-blue-400 shrink-0" />

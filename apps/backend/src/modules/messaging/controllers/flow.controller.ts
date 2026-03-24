@@ -74,4 +74,3 @@ export class FlowController {
     return this.flowsService.updateStatus(id, dto, req.user);
   }
 }
-

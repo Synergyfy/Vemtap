@@ -2,7 +2,11 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { User, UserRole, UserStatus } from '../../src/modules/users/entities/user.entity';
+import {
+  User,
+  UserRole,
+  UserStatus,
+} from '../../src/modules/users/entities/user.entity';
 import { Repository } from 'typeorm';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import * as bcrypt from 'bcrypt';
@@ -19,7 +23,7 @@ describe('Smoke Test (E2E)', () => {
     // Setup an authenticated session for the smoke test
     const userRepo = app.get<Repository<User>>(getRepositoryToken(User));
     const authService = app.get(AuthService);
-    
+
     const testEmail = `smoke-test-${Date.now()}@test.com`;
     const password = 'SmokeTestPass123!';
     const hashedPassword = await bcrypt.hash(password, 10);

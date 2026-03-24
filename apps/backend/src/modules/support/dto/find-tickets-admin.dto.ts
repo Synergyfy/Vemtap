@@ -4,7 +4,10 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { TicketType } from '../entities/support-ticket.entity';
 
 export class FindTicketsAdminDto {
-  @ApiPropertyOptional({ enum: TicketType, description: 'Filter by ticket type' })
+  @ApiPropertyOptional({
+    enum: TicketType,
+    description: 'Filter by ticket type',
+  })
   @IsOptional()
   @IsEnum(TicketType)
   type?: TicketType;
