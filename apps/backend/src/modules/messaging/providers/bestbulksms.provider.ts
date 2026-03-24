@@ -40,7 +40,9 @@ export class BestBulkSmsProvider implements MessagingProvider {
     }
 
     if (payload.channel !== Channel.SMS) {
-      throw new Error(`Channel ${payload.channel} not supported by BestBulkSmsProvider (SMS only)`);
+      throw new Error(
+        `Channel ${payload.channel} not supported by BestBulkSmsProvider (SMS only)`,
+      );
     }
 
     // BestBulkSMS parameters for v1/send: to, sender_id, message
@@ -54,9 +56,9 @@ export class BestBulkSmsProvider implements MessagingProvider {
       const response = await firstValueFrom(
         this.httpService.post<BestBulkSmsResponse>(this.baseUrl, data, {
           headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          }
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
         }),
       );
 
@@ -64,7 +66,10 @@ export class BestBulkSmsProvider implements MessagingProvider {
 
       if (responseData.ok === true) {
         return {
-          messageId: responseData.sms_message_id?.toString() || responseData.reference || null,
+          messageId:
+            responseData.sms_message_id?.toString() ||
+            responseData.reference ||
+            null,
           status: responseData.message === 'Queued' ? 'queued' : 'sent',
           cost: responseData.total_cost,
           units: responseData.units,

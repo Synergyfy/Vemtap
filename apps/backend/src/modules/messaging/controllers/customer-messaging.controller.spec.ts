@@ -29,7 +29,9 @@ describe('CustomerMessagingController', () => {
       ],
     }).compile();
 
-    controller = module.get<CustomerMessagingController>(CustomerMessagingController);
+    controller = module.get<CustomerMessagingController>(
+      CustomerMessagingController,
+    );
     inboxService = module.get<InboxService>(InboxService);
   });
 
@@ -48,22 +50,39 @@ describe('CustomerMessagingController', () => {
     it('should call inboxService.startCustomerConversation', async () => {
       const dto: StartConversationDto = { branchId: 'br-1', content: 'hello' };
       await controller.startConversation(dto, { user: mockUser });
-      expect(inboxService.startCustomerConversation).toHaveBeenCalledWith(mockUser.id, dto.branchId, dto.content);
+      expect(inboxService.startCustomerConversation).toHaveBeenCalledWith(
+        mockUser.id,
+        dto.branchId,
+        dto.content,
+      );
     });
   });
 
   describe('getThreadMessages', () => {
     it('should call inboxService.getCustomerThreadMessages', async () => {
-      await controller.getThreadMessages({ threadId: 't-1' }, { user: mockUser });
-      expect(inboxService.getCustomerThreadMessages).toHaveBeenCalledWith('t-1', mockUser.id);
+      await controller.getThreadMessages(
+        { threadId: 't-1' },
+        { user: mockUser },
+      );
+      expect(inboxService.getCustomerThreadMessages).toHaveBeenCalledWith(
+        't-1',
+        mockUser.id,
+      );
     });
   });
 
   describe('replyToThread', () => {
     it('should call inboxService.sendCustomerReply', async () => {
       const dto: ReplyDto = { content: 'reply', replyToId: 'm-1' };
-      await controller.replyToThread({ threadId: 't-1' }, dto, { user: mockUser });
-      expect(inboxService.sendCustomerReply).toHaveBeenCalledWith('t-1', dto.content, mockUser.id, dto.replyToId);
+      await controller.replyToThread({ threadId: 't-1' }, dto, {
+        user: mockUser,
+      });
+      expect(inboxService.sendCustomerReply).toHaveBeenCalledWith(
+        't-1',
+        dto.content,
+        mockUser.id,
+        dto.replyToId,
+      );
     });
   });
 });

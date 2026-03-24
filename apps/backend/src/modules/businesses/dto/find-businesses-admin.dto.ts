@@ -9,7 +9,10 @@ export class FindBusinessesAdminDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ enum: BusinessStatus, description: 'Filter by business status' })
+  @ApiPropertyOptional({
+    enum: BusinessStatus,
+    description: 'Filter by business status',
+  })
   @IsOptional()
   @IsEnum(BusinessStatus)
   status?: BusinessStatus;

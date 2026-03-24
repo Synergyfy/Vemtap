@@ -22,7 +22,8 @@ export class AuditInterceptor implements NestInterceptor {
     // Only log state-changing requests or impersonated requests
     const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
     const isImpersonated = !!impersonationTokenStr;
-    const isAdminOrAgent = user && (user.role === UserRole.ADMIN || user.role === UserRole.AGENT);
+    const isAdminOrAgent =
+      user && (user.role === UserRole.ADMIN || user.role === UserRole.AGENT);
 
     // LOG: Mutations by anyone, OR any request (including GET) by Admin/Agent if impersonating
     if (!isMutation && !isImpersonated) {
@@ -31,14 +32,14 @@ export class AuditInterceptor implements NestInterceptor {
 
     // Additional check: If it's a GET, only log if it's an Admin/Agent impersonating
     if (method === 'GET' && !isImpersonated) {
-        return next.handle();
+      return next.handle();
     }
 
     return next.handle().pipe(
       tap(async (responseData) => {
         try {
           const statusCode = context.switchToHttp().getResponse().statusCode;
-          
+
           // Determine module from URL or custom decorator (simplified for now)
           const module = this.determineModule(url);
 
@@ -50,7 +51,9 @@ export class AuditInterceptor implements NestInterceptor {
           let impersonationTokenId: string | undefined = undefined;
 
           if (impersonationTokenStr) {
-            const token = await this.adminService.validateToken(impersonationTokenStr);
+            const token = await this.adminService.validateToken(
+              impersonationTokenStr,
+            );
             actorId = token.actorId;
             branchId = token.targetBranchId;
             businessId = token.targetBranch?.businessId;
@@ -83,14 +86,17 @@ export class AuditInterceptor implements NestInterceptor {
   private determineModule(url: string): BackendModule {
     if (url.includes('/loyalty')) return BackendModule.LOYALTY;
     if (url.includes('/visitors')) return BackendModule.VISITORS;
-    if (url.includes('/support') || url.includes('/tickets')) return BackendModule.TICKETS;
-    if (url.includes('/messaging') || url.includes('/campaigns')) return BackendModule.MESSAGING;
+    if (url.includes('/support') || url.includes('/tickets'))
+      return BackendModule.TICKETS;
+    if (url.includes('/messaging') || url.includes('/campaigns'))
+      return BackendModule.MESSAGING;
     if (url.includes('/payments')) return BackendModule.PAYMENTS;
     if (url.includes('/settings')) return BackendModule.SETTINGS;
     if (url.includes('/branches')) return BackendModule.BRANCHES;
     if (url.includes('/businesses')) return BackendModule.BUSINESSES;
-    if (url.includes('/analytics') || url.includes('/reports')) return BackendModule.REPORTS;
-    
+    if (url.includes('/analytics') || url.includes('/reports'))
+      return BackendModule.REPORTS;
+
     return BackendModule.ALL; // Default or fallback
   }
 }

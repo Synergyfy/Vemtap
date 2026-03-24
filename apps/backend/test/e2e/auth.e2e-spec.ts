@@ -35,8 +35,12 @@ describe('Auth & Notifications (e2e)', () => {
     const catRepo = dataSource.getRepository(Category);
     const subRepo = dataSource.getRepository(Subcategory);
 
-    const cat = await catRepo.save(catRepo.create({ name: 'Test Category', description: 'Test' }));
-    const sub = await subRepo.save(subRepo.create({ name: 'Test Subcategory', categoryId: cat.id }));
+    const cat = await catRepo.save(
+      catRepo.create({ name: 'Test Category', description: 'Test' }),
+    );
+    const sub = await subRepo.save(
+      subRepo.create({ name: 'Test Subcategory', categoryId: cat.id }),
+    );
     categoryId = cat.id;
     subcategoryId = sub.id;
     console.log('[AuthE2E] Seeding completed.');
@@ -124,7 +128,8 @@ describe('Auth & Notifications (e2e)', () => {
   });
 
   it('/auth/login (POST) - phone number', async () => {
-    const phone = '+1' + Math.floor(1000000000 + Math.random() * 9000000000).toString();
+    const phone =
+      '+1' + Math.floor(1000000000 + Math.random() * 9000000000).toString();
     const testEmailPhone = `phone-test-${Date.now()}@example.com`;
     // Create a user with phone
     await request(app.getHttpServer())
@@ -167,7 +172,8 @@ describe('Auth & Notifications (e2e)', () => {
 
   it('should allow resuming registration for PENDING users', async () => {
     const resumptionEmail = `resume-${Date.now()}@example.com`;
-    const resumptionPhone = '+1' + Math.floor(1000000000 + Math.random() * 9000000000).toString();
+    const resumptionPhone =
+      '+1' + Math.floor(1000000000 + Math.random() * 9000000000).toString();
 
     // 1. Request OTP
     await request(app.getHttpServer())

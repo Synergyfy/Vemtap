@@ -52,7 +52,9 @@ export async function createTestApp(
 
   // Mock BullMQ Processors to avoid starting workers that require Redis connections
   builder.overrideProvider(BatchSendProcessor).useValue({ process: jest.fn() });
-  builder.overrideProvider(IndividualSendProcessor).useValue({ process: jest.fn() });
+  builder
+    .overrideProvider(IndividualSendProcessor)
+    .useValue({ process: jest.fn() });
   builder.overrideProvider(FlowDelayProcessor).useValue({ process: jest.fn() });
   builder
     .overrideProvider(AutomationProcessor)
@@ -62,7 +64,9 @@ export async function createTestApp(
     configureBuilder(builder);
   }
 
-  console.log('[TestApp] Compiling testing module (TypeORM will sync and BullMQ will connect here)...');
+  console.log(
+    '[TestApp] Compiling testing module (TypeORM will sync and BullMQ will connect here)...',
+  );
   const moduleFixture: TestingModule = await builder.compile();
 
   console.log('[TestApp] Creating Nest application instance...');
@@ -78,6 +82,27 @@ export async function createTestApp(
   console.log('[TestApp] Initializing application (app.init())...');
 
   await app.init();
+
+  // Seed default free plan for e2e tests
+  const dataSource = app.get(DataSource);
+  const planRepo = dataSource.getRepository(require('../../src/modules/subscriptions/entities/plan.entity').Plan);
+  const freePlan = await planRepo.findOne({ where: { isFree: true } });
+  if (!freePlan) {
+    await planRepo.save(
+      planRepo.create({
+        name: 'Free Plan',
+        isFree: true,
+        teamMembersEnabled: true,
+        teamMembersLimit: -1,
+        loyaltyEnabled: true,
+        loyaltyLimit: -1,
+        branchesEnabled: true,
+        branchLimit: 10,
+        analyticsEnabled: true,
+        isActive: true,
+      }),
+    );
+  }
 
   console.log('[TestApp] Application initialized successfully.');
   return app;

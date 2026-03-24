@@ -1,4 +1,11 @@
-import { Entity, Column, ManyToOne, OneToMany, JoinColumn, BeforeInsert } from 'typeorm';
+import {
+  Entity,
+  Column,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+  BeforeInsert,
+} from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { User } from '../../users/entities/user.entity';
@@ -10,7 +17,10 @@ import { ApiProperty } from '@nestjs/swagger';
 
 @Entity('forms')
 export class Form extends AbstractBaseEntity {
-  @ApiProperty({ example: 'ABC123XYZ', description: 'Unique 9-character alphanumeric code for the form' })
+  @ApiProperty({
+    example: 'ABC123XYZ',
+    description: 'Unique 9-character alphanumeric code for the form',
+  })
   @Column({ unique: true })
   uniqueCode: string;
 
@@ -38,7 +48,10 @@ export class Form extends AbstractBaseEntity {
   @Column({ default: false })
   showAfterLeadCapture: boolean;
 
-  @ApiProperty({ example: 0, description: 'Total number of responses received' })
+  @ApiProperty({
+    example: 0,
+    description: 'Total number of responses received',
+  })
   @Column({ default: 0 })
   responseCount: number;
 

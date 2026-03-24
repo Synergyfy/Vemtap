@@ -41,7 +41,7 @@ export class CreditPlanController {
   constructor(
     private readonly creditPlanService: CreditPlanService,
     private readonly branchesService: BranchesService,
-  ) { }
+  ) {}
 
   private async getBranchId(req: any, queryBranchId?: string): Promise<string> {
     const user = req.user as User;
@@ -82,9 +82,10 @@ export class CreditPlanController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Create a new credit top-up plan (Admin only)',
-    description: 'Creates a new plan for purchasing messaging credits. Access: ADMIN'
+    description:
+      'Creates a new plan for purchasing messaging credits. Access: ADMIN',
   })
   @ApiBody({ type: CreateCreditPlanDto })
   @ApiResponse({
@@ -97,9 +98,10 @@ export class CreditPlanController {
   }
 
   @Get()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get all active credit plans',
-    description: 'Retrieves all available credit top-up plans. Publicly accessible by authenticated users.'
+    description:
+      'Retrieves all available credit top-up plans. Publicly accessible by authenticated users.',
   })
   @ApiResponse({
     status: 200,
@@ -112,18 +114,17 @@ export class CreditPlanController {
 
   @Get('my-credits')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get current credit balance for the user context',
-    description: 'Retrieves the messaging credit balance for the business associated with the current user. Access: Authenticated users'
+    description:
+      'Retrieves the messaging credit balance for the business associated with the current user. Access: Authenticated users',
   })
   @ApiResponse({
     status: 200,
     description: 'Returns the credit balance for the business.',
     type: BusinessCreditWallet,
   })
-  async getMyCredits(
-    @Request() req: any,
-  ): Promise<BusinessCreditWallet> {
+  async getMyCredits(@Request() req: any): Promise<BusinessCreditWallet> {
     const businessId = (req.user as User).businessId;
     if (!businessId) {
       throw new BadRequestException('No business associated with this user');
@@ -132,9 +133,10 @@ export class CreditPlanController {
   }
 
   @Get(':id')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get a specific credit plan detail',
-    description: 'Fetches details of a single credit top-up plan. Access: Authenticated users'
+    description:
+      'Fetches details of a single credit top-up plan. Access: Authenticated users',
   })
   @ApiParam({ name: 'id', description: 'Credit plan UUID' })
   @ApiResponse({
@@ -149,9 +151,10 @@ export class CreditPlanController {
 
   @Post(':id/purchase')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Purchase a credit plan top-up',
-    description: 'Confirms a purchase and awards credits to a branch wallet using a payment reference. Access: Authenticated users'
+    description:
+      'Confirms a purchase and awards credits to a branch wallet using a payment reference. Access: Authenticated users',
   })
   @ApiParam({ name: 'id', description: 'Credit plan UUID' })
   @ApiBody({ type: PurchaseCreditPlanDto })
@@ -165,10 +168,7 @@ export class CreditPlanController {
     status: 400,
     description: 'Payment verification failed or insufficient amount.',
   })
-  purchase(
-    @Param() { id }: IdDto,
-    @Body() purchaseDto: PurchaseCreditPlanDto,
-  ) {
+  purchase(@Param() { id }: IdDto, @Body() purchaseDto: PurchaseCreditPlanDto) {
     return this.creditPlanService.purchase(
       purchaseDto.branchId,
       id,
@@ -179,9 +179,9 @@ export class CreditPlanController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Update a credit plan (Admin only)',
-    description: 'Modifies an existing credit top-up plan. Access: ADMIN'
+    description: 'Modifies an existing credit top-up plan. Access: ADMIN',
   })
   @ApiParam({ name: 'id', description: 'Credit plan UUID' })
   @ApiBody({ type: UpdateCreditPlanDto })
@@ -200,9 +200,10 @@ export class CreditPlanController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Deactivate a credit plan (Admin only)',
-    description: 'Permanently removes/deactivates a credit top-up plan. Access: ADMIN'
+    description:
+      'Permanently removes/deactivates a credit top-up plan. Access: ADMIN',
   })
   @ApiParam({ name: 'id', description: 'Credit plan UUID' })
   @ApiResponse({
@@ -213,4 +214,3 @@ export class CreditPlanController {
     return this.creditPlanService.remove(id);
   }
 }
-

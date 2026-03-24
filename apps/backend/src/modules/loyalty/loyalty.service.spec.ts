@@ -19,7 +19,9 @@ describe('LoyaltyService', () => {
     find: jest.fn().mockResolvedValue([]),
     findOne: jest.fn().mockResolvedValue(null),
     create: jest.fn().mockImplementation((dto) => dto),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: '1', ...entity })),
+    save: jest
+      .fn()
+      .mockImplementation((entity) => Promise.resolve({ id: '1', ...entity })),
     delete: jest.fn().mockResolvedValue({ affected: 1 }),
     createQueryBuilder: jest.fn(() => ({
       select: jest.fn().mockReturnThis(),

@@ -14,7 +14,8 @@ import { Channel } from '../enums/channel.enum';
 @Injectable()
 export class AfricaTalkingProvider implements MessagingProvider {
   private readonly logger = new Logger(AfricaTalkingProvider.name);
-  private readonly baseUrl = 'https://api.africastalking.com/version1/messaging/bulk';
+  private readonly baseUrl =
+    'https://api.africastalking.com/version1/messaging/bulk';
 
   constructor(
     private readonly configService: ConfigService,
@@ -31,7 +32,9 @@ export class AfricaTalkingProvider implements MessagingProvider {
     }
 
     if (payload.channel !== Channel.SMS) {
-      throw new Error(`Channel ${payload.channel} not supported by AfricaTalkingProvider (SMS only for now)`);
+      throw new Error(
+        `Channel ${payload.channel} not supported by AfricaTalkingProvider (SMS only for now)`,
+      );
     }
 
     const data = {
@@ -56,7 +59,10 @@ export class AfricaTalkingProvider implements MessagingProvider {
       const messageData = response.data.SMSMessageData;
       const recipient = messageData?.Recipients?.[0];
 
-      if (recipient && (recipient.status === 'Success' || recipient.status === 'Sent')) {
+      if (
+        recipient &&
+        (recipient.status === 'Success' || recipient.status === 'Sent')
+      ) {
         return {
           messageId: recipient.messageId,
           status: 'sent',
@@ -120,7 +126,7 @@ export class AfricaTalkingProvider implements MessagingProvider {
 
   estimateCost(payload: SendMessagePayload): number {
     // Placeholder cost estimation
-    return 1.0; 
+    return 1.0;
   }
 
   private mapStatus(status: string): any {

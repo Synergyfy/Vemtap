@@ -1,4 +1,11 @@
-import { Entity, Column, ManyToOne, OneToMany, JoinColumn, BeforeInsert } from 'typeorm';
+import {
+  Entity,
+  Column,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+  BeforeInsert,
+} from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { User } from '../../users/entities/user.entity';
@@ -10,7 +17,10 @@ import { generateUniqueCode } from '../../../common/utils/random.util';
 
 @Entity('branches')
 export class Branch extends AbstractBaseEntity {
-  @ApiProperty({ example: 'BR123XYZ', description: 'Unique 9-character alphanumeric code for the branch' })
+  @ApiProperty({
+    example: 'BR123XYZ',
+    description: 'Unique 9-character alphanumeric code for the branch',
+  })
   @Column({ unique: true })
   uniqueCode: string;
 
@@ -48,27 +58,48 @@ export class Branch extends AbstractBaseEntity {
   @Column({ nullable: true })
   officialEmail: string;
 
-  @ApiProperty({ example: '#2563EB', description: 'The primary color for branch forms' })
+  @ApiProperty({
+    example: '#2563EB',
+    description: 'The primary color for branch forms',
+  })
   @Column({ default: '#2563EB' })
   formAppearanceColor: string;
 
-  @ApiProperty({ example: 'Quick Link', description: 'Tag for the welcome screen' })
+  @ApiProperty({
+    example: 'Quick Link',
+    description: 'Tag for the welcome screen',
+  })
   @Column({ default: 'Quick Link' })
   welcomeTag: string;
 
-  @ApiProperty({ example: 'Connect with us', description: 'Title for the welcome screen' })
+  @ApiProperty({
+    example: 'Connect with us',
+    description: 'Title for the welcome screen',
+  })
   @Column({ default: 'Connect with us' })
   welcomeTitle: string;
 
-  @ApiProperty({ example: 'Leave your details to stay in touch and earn rewards.', description: 'Message for the welcome screen' })
-  @Column({ type: 'text', default: 'Leave your details to stay in touch and earn rewards.' })
+  @ApiProperty({
+    example: 'Leave your details to stay in touch and earn rewards.',
+    description: 'Message for the welcome screen',
+  })
+  @Column({
+    type: 'text',
+    default: 'Leave your details to stay in touch and earn rewards.',
+  })
   welcomeMessage: string;
 
-  @ApiProperty({ example: 'Visit recorded successfully!', description: 'Title for the success screen' })
+  @ApiProperty({
+    example: 'Visit recorded successfully!',
+    description: 'Title for the success screen',
+  })
   @Column({ default: 'Visit recorded successfully!' })
   successTitle: string;
 
-  @ApiProperty({ example: 'Thank you for visiting our store', description: 'Description for the success screen' })
+  @ApiProperty({
+    example: 'Thank you for visiting our store',
+    description: 'Description for the success screen',
+  })
   @Column({ type: 'text', default: 'Thank you for visiting our store' })
   successDescription: string;
 

@@ -131,7 +131,6 @@ export class UpdateAutomationConfigDto {
   branchId?: string;
 }
 
-
 export class AutomationLogResponseDto {
   @ApiProperty({ example: 'uuid-log' })
   id: string;

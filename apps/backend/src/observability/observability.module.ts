@@ -12,8 +12,6 @@ import { MetricsController } from './metrics.controller';
 export class ObservabilityModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     // Apply request ID and metrics middleware to all routes
-    consumer
-      .apply(RequestIdMiddleware, MetricsMiddleware)
-      .forRoutes('*');
+    consumer.apply(RequestIdMiddleware, MetricsMiddleware).forRoutes('*');
   }
 }

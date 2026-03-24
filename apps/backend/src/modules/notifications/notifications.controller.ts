@@ -42,10 +42,7 @@ export class NotificationsController {
     },
   })
   @ApiResponse({ status: 201, description: 'Token registered successfully' })
-  async registerPushToken(
-    @Body('token') token: string,
-    @Request() req,
-  ) {
+  async registerPushToken(@Body('token') token: string, @Request() req) {
     return this.pushNotificationService.registerToken(req.user.id, token, true);
   }
 
@@ -61,11 +58,12 @@ export class NotificationsController {
     },
   })
   @ApiResponse({ status: 201, description: 'Token registered successfully' })
-  async registerVisitorPushToken(
-    @Body('token') token: string,
-    @Request() req,
-  ) {
-    return this.pushNotificationService.registerToken(req.user.id, token, false);
+  async registerVisitorPushToken(@Body('token') token: string, @Request() req) {
+    return this.pushNotificationService.registerToken(
+      req.user.id,
+      token,
+      false,
+    );
   }
 
   @Get()

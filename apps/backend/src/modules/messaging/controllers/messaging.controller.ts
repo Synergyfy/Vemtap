@@ -37,6 +37,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
+import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { TrialRestrictionGuard } from '../../subscriptions/guards/trial-restriction.guard';
 import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
 import { MessagingAnalyticsFilterDto } from '../dto/messaging-analytics-filter.dto';
@@ -70,9 +71,11 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @ApiOperation({ 
+  @Permissions('messages')
+  @ApiOperation({
     summary: 'Send a single message or start a campaign',
-    description: 'Enqueues a message for delivery or initiates a bulk campaign. Access: OWNER, MANAGER, STAFF'
+    description:
+      'Enqueues a message for delivery or initiates a bulk campaign. Access: OWNER, MANAGER, STAFF',
   })
   @ApiBody({ type: SendMessageDto })
   @ApiResponse({
@@ -92,11 +95,18 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @Permissions('messages')
   @ApiOperation({
-    summary: 'Get available templates for the branch (System + Branch specific)',
-    description: 'Retrieves both system-wide and branch-specific message templates. Access: OWNER, MANAGER, STAFF, ADMIN',
+    summary:
+      'Get available templates for the branch (System + Branch specific)',
+    description:
+      'Retrieves both system-wide and branch-specific message templates. Access: OWNER, MANAGER, STAFF, ADMIN',
   })
-  @ApiQuery({ name: 'branchId', required: false, description: 'Filter templates by branch' })
+  @ApiQuery({
+    name: 'branchId',
+    required: false,
+    description: 'Filter templates by branch',
+  })
   @ApiResponse({ status: 200, description: 'Templates retrieved successfully' })
   async getTemplates(
     @Request() req: { user: User },
@@ -110,9 +120,11 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
-  @ApiOperation({ 
+  @Permissions('messages')
+  @ApiOperation({
     summary: 'Create a new message template',
-    description: 'Creates a message template that can be reused for campaigns or direct messages. Access: OWNER, MANAGER, ADMIN'
+    description:
+      'Creates a message template that can be reused for campaigns or direct messages. Access: OWNER, MANAGER, ADMIN',
   })
   @ApiBody({ type: CreateTemplateDto })
   @ApiResponse({ status: 201, description: 'Template created successfully' })
@@ -130,9 +142,11 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
-  @ApiOperation({ 
+  @Permissions('messages')
+  @ApiOperation({
     summary: 'Update a message template',
-    description: 'Modifies an existing message template. Access: OWNER, MANAGER, ADMIN'
+    description:
+      'Modifies an existing message template. Access: OWNER, MANAGER, ADMIN',
   })
   @ApiParam({ name: 'id', description: 'Template UUID' })
   @ApiBody({ type: CreateTemplateDto, description: 'Partial template data' })
@@ -148,9 +162,11 @@ export class MessagingController {
   @Get('campaigns')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Permissions('messages')
   @ApiOperation({
     summary: 'Get all messaging campaigns for a branch',
-    description: 'Lists all sent and scheduled messaging campaigns for the branch. Access: Authenticated users with branch access'
+    description:
+      'Lists all sent and scheduled messaging campaigns for the branch. Access: Authenticated users with branch access',
   })
   @ApiQuery({ name: 'branchId', required: false })
   @ApiResponse({ status: 200, description: 'Campaigns retrieved successfully' })
@@ -165,9 +181,11 @@ export class MessagingController {
   @Get('analytics')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
-  @ApiOperation({ 
+  @Permissions('messages')
+  @ApiOperation({
     summary: 'Get messaging analytics by branch',
-    description: 'Provides delivery metrics and success rates for a branch. Access: Authenticated users with branch access'
+    description:
+      'Provides delivery metrics and success rates for a branch. Access: Authenticated users with branch access',
   })
   @ApiQuery({ name: 'branchId', required: false })
   @ApiResponse({ status: 200, description: 'Analytics retrieved successfully' })
@@ -179,18 +197,23 @@ export class MessagingController {
     return this.analyticsService.getDashboardMetrics(branchId, filter.channel);
   }
 
-
   @Get('inbox/:channel')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @Permissions('chat')
   @ApiParam({ name: 'channel', enum: Channel })
   @ApiOperation({
-    summary: 'Get conversation threads by channel for a branch (Newest to Oldest)',
-    description: 'Retrieves all active message threads for a specific channel (e.g., WhatsApp, SMS) in a branch. Access: OWNER, MANAGER, STAFF, ADMIN',
+    summary:
+      'Get conversation threads by channel for a branch (Newest to Oldest)',
+    description:
+      'Retrieves all active message threads for a specific channel (e.g., WhatsApp, SMS) in a branch. Access: OWNER, MANAGER, STAFF, ADMIN',
   })
   @ApiQuery({ name: 'branchId', required: false })
-  @ApiResponse({ status: 200, description: 'List of threads sorted by last activity' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of threads sorted by last activity',
+  })
   async getInboxThreads(
     @Param('channel', new ParseEnumPipe(Channel)) channel: Channel,
     @Query() filter: MessagingThreadFilterDto,
@@ -204,13 +227,18 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
-  @ApiOperation({ 
+  @Permissions('chat')
+  @ApiOperation({
     summary: 'Get messages in a specific thread (Newest to Oldest)',
-    description: 'Fetches the full conversation history for a specific thread ID. Access: OWNER, MANAGER, STAFF, ADMIN'
+    description:
+      'Fetches the full conversation history for a specific thread ID. Access: OWNER, MANAGER, STAFF, ADMIN',
   })
   @ApiParam({ name: 'threadId', description: 'Conversation thread UUID' })
   @ApiQuery({ name: 'branchId', required: false })
-  @ApiResponse({ status: 200, description: 'List of messages with quoting support' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of messages with quoting support',
+  })
   async getThreadMessages(
     @Param() { threadId }: ThreadIdDto,
     @Query() filter: BranchFilterDto,
@@ -224,14 +252,19 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @ApiOperation({ 
+  @Permissions('chat')
+  @ApiOperation({
     summary: 'Send a reply to an active thread (Supports Quoting)',
-    description: 'Sends a response to a customer message in a thread. Access: OWNER, MANAGER, STAFF'
+    description:
+      'Sends a response to a customer message in a thread. Access: OWNER, MANAGER, STAFF',
   })
   @ApiParam({ name: 'threadId', description: 'Conversation thread UUID' })
   @ApiBody({ type: ReplyDto })
   @ApiQuery({ name: 'branchId', required: false })
-  @ApiResponse({ status: 201, description: 'Reply sent and broadcast via Socket' })
+  @ApiResponse({
+    status: 201,
+    description: 'Reply sent and broadcast via Socket',
+  })
   async replyToThread(
     @Param() { threadId }: ThreadIdDto,
     @Body() dto: ReplyDto,
@@ -240,16 +273,23 @@ export class MessagingController {
   ) {
     const branchId = await this.getBranchId(req, filter.branchId);
 
-    return this.inboxService.sendReply(threadId, dto.content, branchId, dto.replyToId);
+    return this.inboxService.sendReply(
+      threadId,
+      dto.content,
+      branchId,
+      dto.replyToId,
+    );
   }
 
   @Post('inbox/threads/:threadId/read')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
-  @ApiOperation({ 
+  @Permissions('chat')
+  @ApiOperation({
     summary: 'Mark a conversation thread as read for the branch',
-    description: 'Marks all messages in the thread as read to clear notifications. Access: OWNER, MANAGER, STAFF, ADMIN'
+    description:
+      'Marks all messages in the thread as read to clear notifications. Access: OWNER, MANAGER, STAFF, ADMIN',
   })
   @ApiParam({ name: 'threadId', description: 'Conversation thread UUID' })
   @ApiQuery({ name: 'branchId', required: false })
@@ -267,11 +307,12 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @ApiOperation({ 
+  @Permissions('chat')
+  @ApiOperation({
     summary: 'Initialize an empty conversation thread with a customer',
   })
   async initThread(
-    @Body() dto: { branchId?: string, customerId: string },
+    @Body() dto: { branchId?: string; customerId: string },
     @Request() req: { user: User },
   ) {
     const branchId = await this.getBranchId(req, dto.branchId);
@@ -282,16 +323,15 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
-  @ApiOperation({ 
+  @Permissions('messages')
+  @ApiOperation({
     summary: 'Delete a message template',
-    description: 'Permanently removes a message template. Access: OWNER, MANAGER, ADMIN'
+    description:
+      'Permanently removes a message template. Access: OWNER, MANAGER, ADMIN',
   })
   @ApiParam({ name: 'id', description: 'Template UUID' })
   @ApiResponse({ status: 200, description: 'Template deleted successfully' })
-  async deleteTemplate(
-    @Param() { id }: IdDto,
-    @Request() req: { user: User },
-  ) {
+  async deleteTemplate(@Param() { id }: IdDto, @Request() req: { user: User }) {
     return this.templateService.deleteTemplate(id, req.user);
   }
 
@@ -299,6 +339,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('chat')
   @ApiOperation({ summary: 'Edit a message' })
   @ApiParam({ name: 'id', description: 'Message UUID' })
   async editMessage(
@@ -308,13 +349,19 @@ export class MessagingController {
     @Request() req: { user: User },
   ) {
     const branchId = await this.getBranchId(req, filter.branchId);
-    return this.inboxService.editMessage(id, dto.content, req.user.id, branchId);
+    return this.inboxService.editMessage(
+      id,
+      dto.content,
+      req.user.id,
+      branchId,
+    );
   }
 
   @Delete('messages/:id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('chat')
   @ApiOperation({ summary: 'Delete (hide) a message' })
   @ApiParam({ name: 'id', description: 'Message UUID' })
   async deleteMessage(
@@ -326,4 +373,3 @@ export class MessagingController {
     return this.inboxService.deleteMessage(id, req.user.id, branchId);
   }
 }
-

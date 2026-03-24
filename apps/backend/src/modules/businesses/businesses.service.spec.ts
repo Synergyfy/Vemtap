@@ -1,10 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BusinessesService } from './businesses.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import {
-  Business,
-  BusinessStatus,
-} from './entities/business.entity';
+import { Business, BusinessStatus } from './entities/business.entity';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
@@ -34,7 +31,9 @@ describe('BusinessesService', () => {
     create: jest
       .fn()
       .mockImplementation((dto) => ({ ...dto, id: 'biz-1', save: jest.fn() })),
-    save: jest.fn().mockImplementation((biz) => Promise.resolve({ id: 'biz-1', ...biz })),
+    save: jest
+      .fn()
+      .mockImplementation((biz) => Promise.resolve({ id: 'biz-1', ...biz })),
     findOne: jest.fn().mockResolvedValue(mockBusiness),
     createQueryBuilder: jest.fn(() => ({
       leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -56,7 +55,9 @@ describe('BusinessesService', () => {
   const mockUsersRepository = {
     findOne: jest.fn(),
     create: jest.fn().mockImplementation((dto) => ({ ...dto, id: 'user-1' })),
-    save: jest.fn().mockImplementation((user) => Promise.resolve({ id: 'user-1', ...user })),
+    save: jest
+      .fn()
+      .mockImplementation((user) => Promise.resolve({ id: 'user-1', ...user })),
     update: jest.fn(),
   };
 
@@ -205,7 +206,10 @@ describe('BusinessesService', () => {
         ownerPassword: 'Password123!',
       };
 
-      usersRepository.findOne.mockResolvedValue({ id: 'existing', status: UserStatus.ACTIVE });
+      usersRepository.findOne.mockResolvedValue({
+        id: 'existing',
+        status: UserStatus.ACTIVE,
+      });
 
       await expect(service.adminCreate(dto as any)).rejects.toThrow(
         ConflictException,

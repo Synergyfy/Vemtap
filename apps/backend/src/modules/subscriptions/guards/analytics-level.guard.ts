@@ -33,8 +33,14 @@ export class AnalyticsLevelGuard implements CanActivate {
     }
 
     // Security check: Only Admins can view other business analytics
-    if (user.role !== 'Admin' && user.businessId && businessId !== user.businessId) {
-        throw new ForbiddenException('You do not have permission to access analytics for this business');
+    if (
+      user.role !== 'Admin' &&
+      user.businessId &&
+      businessId !== user.businessId
+    ) {
+      throw new ForbiddenException(
+        'You do not have permission to access analytics for this business',
+      );
     }
 
     const capabilitiesData =

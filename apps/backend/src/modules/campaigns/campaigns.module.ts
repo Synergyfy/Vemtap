@@ -13,12 +13,7 @@ import { Contact } from '../contacts/entities/contact.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Campaign,
-      CampaignTemplate,
-      User,
-      Contact,
-    ]),
+    TypeOrmModule.forFeature([Campaign, CampaignTemplate, User, Contact]),
     forwardRef(() => MessagingModule),
     forwardRef(() => UsersModule),
     ContactsModule,

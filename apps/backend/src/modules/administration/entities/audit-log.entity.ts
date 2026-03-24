@@ -13,7 +13,9 @@ export class AuditLog extends AbstractBaseEntity {
   @Index()
   actor: User;
 
-  @ApiProperty({ description: 'The ID of the admin or agent who performed the action' })
+  @ApiProperty({
+    description: 'The ID of the admin or agent who performed the action',
+  })
   @Column()
   actorId: string;
 
@@ -35,7 +37,10 @@ export class AuditLog extends AbstractBaseEntity {
   @Column({ nullable: true })
   branchId: string;
 
-  @ApiProperty({ enum: BackendModule, description: 'The module where the action was performed' })
+  @ApiProperty({
+    enum: BackendModule,
+    description: 'The module where the action was performed',
+  })
   @Column({ type: 'simple-enum', enum: BackendModule })
   module: BackendModule;
 

@@ -50,10 +50,18 @@ export class PinoLoggerService {
 
       // If the first parameter is an object, merge it for structured logging
       if (typeof message === 'object') {
-        return { ...message, context, params: params.length > 0 ? params : undefined };
+        return {
+          ...message,
+          context,
+          params: params.length > 0 ? params : undefined,
+        };
       }
 
-      return { msg: message, context, params: params.length > 0 ? params : undefined };
+      return {
+        msg: message,
+        context,
+        params: params.length > 0 ? params : undefined,
+      };
     }
 
     if (typeof message === 'object') {

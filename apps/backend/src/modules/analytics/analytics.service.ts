@@ -9,7 +9,10 @@ import { MessageStatus } from '../messaging/enums/message.enum';
 import { PointTransaction } from '../loyalty/entities/point-transaction.entity';
 import { RedemptionCode } from '../loyalty/entities/redemption-code.entity';
 import { Reward } from '../loyalty/entities/reward.entity';
-import { Business, BusinessStatus } from '../businesses/entities/business.entity';
+import {
+  Business,
+  BusinessStatus,
+} from '../businesses/entities/business.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Message } from '../messaging/entities/message.entity';
 import {

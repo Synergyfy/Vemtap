@@ -55,5 +55,4 @@ describe('Campaigns (E2E)', () => {
       expect(res.body.length).toBeGreaterThan(0);
     });
   });
-
 });

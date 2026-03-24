@@ -21,7 +21,13 @@ interface TwilioWebhookPayload {
   SmsSid?: string;
   MessageSid?: string;
   Body?: string;
-  MessageStatus?: 'queued' | 'failed' | 'sent' | 'delivered' | 'undelivered' | 'read';
+  MessageStatus?:
+    | 'queued'
+    | 'failed'
+    | 'sent'
+    | 'delivered'
+    | 'undelivered'
+    | 'read';
   ErrorCode?: string;
   ErrorMessage?: string;
   [key: string]: any;
@@ -37,7 +43,8 @@ export class TwilioProvider implements MessagingProvider {
   constructor(private readonly configService: ConfigService) {
     const accountSid = this.configService.get<string>('TWILIO_ACCOUNT_SID');
     this.authToken = this.configService.get<string>('TWILIO_AUTH_TOKEN') || '';
-    this.whatsappNumber = this.configService.get<string>('TWILIO_WHATSAPP_NUMBER') || '';
+    this.whatsappNumber =
+      this.configService.get<string>('TWILIO_WHATSAPP_NUMBER') || '';
 
     if (accountSid && this.authToken) {
       this.client = twilio(accountSid, this.authToken);
@@ -52,13 +59,21 @@ export class TwilioProvider implements MessagingProvider {
     }
 
     if (payload.channel !== Channel.WHATSAPP) {
-      throw new Error(`Channel ${payload.channel} not supported by TwilioProvider`);
+      throw new Error(
+        `Channel ${payload.channel} not supported by TwilioProvider`,
+      );
     }
 
-    const to = payload.to.startsWith('whatsapp:') ? payload.to : `whatsapp:${payload.to}`;
-    const from = payload.from 
-      ? (payload.from.startsWith('whatsapp:') ? payload.from : `whatsapp:${payload.from}`)
-      : (this.whatsappNumber.startsWith('whatsapp:') ? this.whatsappNumber : `whatsapp:${this.whatsappNumber}`);
+    const to = payload.to.startsWith('whatsapp:')
+      ? payload.to
+      : `whatsapp:${payload.to}`;
+    const from = payload.from
+      ? payload.from.startsWith('whatsapp:')
+        ? payload.from
+        : `whatsapp:${payload.from}`
+      : this.whatsappNumber.startsWith('whatsapp:')
+        ? this.whatsappNumber
+        : `whatsapp:${this.whatsappNumber}`;
 
     try {
       const messageOptions: any = {
@@ -79,7 +94,10 @@ export class TwilioProvider implements MessagingProvider {
         rawResponse: response,
       };
     } catch (error: any) {
-      this.logger.error(`Twilio WhatsApp Send Failed: ${error.message}`, error.stack);
+      this.logger.error(
+        `Twilio WhatsApp Send Failed: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -126,7 +144,11 @@ export class TwilioProvider implements MessagingProvider {
    * Validates if the request is actually from Twilio.
    * This is a security feature to prevent unauthorized webhook calls.
    */
-  validateRequest(signature: string, url: string, params: Record<string, any>): boolean {
+  validateRequest(
+    signature: string,
+    url: string,
+    params: Record<string, any>,
+  ): boolean {
     if (!this.authToken) return false;
     try {
       return twilio.validateRequest(this.authToken, signature, url, params);

@@ -34,18 +34,21 @@ describe('MessagingEngineService (Background Processing)', () => {
   beforeEach(async () => {
     mockBatchQueue = { add: jest.fn() };
     mockIndividualQueue = { add: jest.fn(), addBulk: jest.fn() };
-    
+
     branchRepoMock = {
-      findOne: jest.fn().mockResolvedValue({ 
-        id: 'br1', 
+      findOne: jest.fn().mockResolvedValue({
+        id: 'br1',
         businessId: 'biz1',
         whatsappNumber: '+1234567890',
-        business: { id: 'biz1', name: 'Biz' }
+        business: { id: 'biz1', name: 'Biz' },
       }),
     };
 
     userRepoMock = {
-      find: jest.fn().mockResolvedValue([{ id: 'c1', firstName: 'C1' }, { id: 'c2', firstName: 'C2' }]),
+      find: jest.fn().mockResolvedValue([
+        { id: 'c1', firstName: 'C1' },
+        { id: 'c2', firstName: 'C2' },
+      ]),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -59,20 +62,45 @@ describe('MessagingEngineService (Background Processing)', () => {
         { provide: getRepositoryToken(Branch), useValue: branchRepoMock },
         { provide: LoyaltyService, useValue: {} },
         { provide: getRepositoryToken(Visit), useValue: {} },
-        { provide: getQueueToken('messaging-batch-send'), useValue: mockBatchQueue },
-        { provide: getQueueToken('messaging-individual-send'), useValue: mockIndividualQueue },
+        {
+          provide: getQueueToken('messaging-batch-send'),
+          useValue: mockBatchQueue,
+        },
+        {
+          provide: getQueueToken('messaging-individual-send'),
+          useValue: mockIndividualQueue,
+        },
         { provide: ComplianceService, useValue: {} },
-        { 
-          provide: CreditService, 
-          useValue: { 
-            getOrCreateWallet: jest.fn().mockResolvedValue({ smsCredits: 1000, emailCredits: 1000, whatsappCredits: 1000 }) 
-          } 
+        {
+          provide: CreditService,
+          useValue: {
+            getOrCreateWallet: jest.fn().mockResolvedValue({
+              smsCredits: 1000,
+              emailCredits: 1000,
+              whatsappCredits: 1000,
+            }),
+          },
         },
         { provide: TemplateService, useValue: { findOne: jest.fn() } },
-        { provide: CampaignService, useValue: { createCampaign: jest.fn().mockResolvedValue({ id: 'camp1' }) } },
-        { provide: SettingsService, useValue: { getSettings: jest.fn().mockResolvedValue({ whatsappNumber: '+1234567890' }) } },
+        {
+          provide: CampaignService,
+          useValue: {
+            createCampaign: jest.fn().mockResolvedValue({ id: 'camp1' }),
+          },
+        },
+        {
+          provide: SettingsService,
+          useValue: {
+            getSettings: jest
+              .fn()
+              .mockResolvedValue({ whatsappNumber: '+1234567890' }),
+          },
+        },
         { provide: ProviderRouterService, useValue: {} },
-        { provide: BranchesService, useValue: { checkBranchAccess: jest.fn() } },
+        {
+          provide: BranchesService,
+          useValue: { checkBranchAccess: jest.fn() },
+        },
         { provide: DataSource, useValue: {} },
         { provide: ConfigService, useValue: { get: jest.fn() } },
         { provide: MessagingGateway, useValue: {} },
@@ -104,7 +132,7 @@ describe('MessagingEngineService (Background Processing)', () => {
             customerId: 'c1',
           }),
         }),
-      ])
+      ]),
     );
   });
 });

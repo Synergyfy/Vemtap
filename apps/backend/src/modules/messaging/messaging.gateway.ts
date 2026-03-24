@@ -39,7 +39,9 @@ export class MessagingGateway
 
   async handleConnection(client: Socket) {
     try {
-      const token = client.handshake.auth.token || client.handshake.headers.authorization?.split(' ')[1];
+      const token =
+        client.handshake.auth.token ||
+        client.handshake.headers.authorization?.split(' ')[1];
       if (!token) {
         this.logger.debug('No token provided, disconnecting client');
         client.disconnect();
@@ -47,11 +49,13 @@ export class MessagingGateway
       }
 
       const payload = this.jwtService.verify(token);
-      
+
       const user = await this.userRepo.findOne({ where: { id: payload.sub } });
 
       if (!user) {
-        this.logger.debug(`User not found for sub: ${payload.sub}, disconnecting`);
+        this.logger.debug(
+          `User not found for sub: ${payload.sub}, disconnecting`,
+        );
         client.disconnect();
         return;
       }
@@ -69,7 +73,7 @@ export class MessagingGateway
       }
 
       this.logger.log(`Client connected: ${user.id} (${user.role})`);
-      
+
       // Update last active
       await this.userRepo.update(user.id, { lastActive: new Date() });
     } catch (e) {
@@ -87,7 +91,9 @@ export class MessagingGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { threadId: string },
   ) {
-    this.logger.debug(`User ${client.data.userId} joining thread ${data.threadId}`);
+    this.logger.debug(
+      `User ${client.data.userId} joining thread ${data.threadId}`,
+    );
     client.join(`thread_${data.threadId}`);
     return { status: 'joined', threadId: data.threadId };
   }
@@ -97,7 +103,9 @@ export class MessagingGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { threadId: string },
   ) {
-    this.logger.debug(`User ${client.data.userId} leaving thread ${data.threadId}`);
+    this.logger.debug(
+      `User ${client.data.userId} leaving thread ${data.threadId}`,
+    );
     client.leave(`thread_${data.threadId}`);
     return { status: 'left', threadId: data.threadId };
   }
@@ -119,10 +127,15 @@ export class MessagingGateway
   /**
    * Helper to emit message to relevant rooms
    */
-  emitMessage(threadId: string, branchId: string, customerId: string, message: any) {
+  emitMessage(
+    threadId: string,
+    branchId: string,
+    customerId: string,
+    message: any,
+  ) {
     // 1. Emit to specific thread (for anyone currently looking at it)
     this.server.to(`thread_${threadId}`).emit('newMessage', message);
-    
+
     // 2. Emit to branch room (for staff inbox list updates)
     this.server.to(`branch_${branchId}`).emit('inboxUpdate', {
       type: 'new_message',
@@ -131,14 +144,17 @@ export class MessagingGateway
     });
 
     // 3. Emit a general notification to the specific recipient
-    const isOutbound = message.direction === 'outbound' || message.direction === 'OUTBOUND';
-    
+    const isOutbound =
+      message.direction === 'outbound' || message.direction === 'OUTBOUND';
+
     if (isOutbound) {
       // Notify the customer
       this.server.to(`user_${customerId}`).emit('notification', {
         type: 'new_message',
         title: 'New Message',
-        body: message.content.substring(0, 50) + (message.content.length > 50 ? '...' : ''),
+        body:
+          message.content.substring(0, 50) +
+          (message.content.length > 50 ? '...' : ''),
         threadId,
         message,
       });
@@ -147,7 +163,9 @@ export class MessagingGateway
       this.server.to(`branch_${branchId}`).emit('notification', {
         type: 'new_message',
         title: 'New Message from Customer',
-        body: message.content.substring(0, 50) + (message.content.length > 50 ? '...' : ''),
+        body:
+          message.content.substring(0, 50) +
+          (message.content.length > 50 ? '...' : ''),
         threadId,
         message,
       });
@@ -157,7 +175,12 @@ export class MessagingGateway
   /**
    * Broadcast message updates (edit/delete)
    */
-  emitMessageUpdate(threadId: string, branchId: string, customerId: string, update: any) {
+  emitMessageUpdate(
+    threadId: string,
+    branchId: string,
+    customerId: string,
+    update: any,
+  ) {
     // Notify anyone looking at the thread
     this.server.to(`thread_${threadId}`).emit('messageUpdate', update);
 
@@ -169,4 +192,3 @@ export class MessagingGateway
     });
   }
 }
-

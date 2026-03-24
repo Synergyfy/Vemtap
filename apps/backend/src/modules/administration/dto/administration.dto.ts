@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsArray, IsEnum, IsOptional } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  MinLength,
+  IsArray,
+  IsEnum,
+  IsOptional,
+} from 'class-validator';
 import { BackendModule } from '../../../common/enums/backend-module.enum';
 
 export class AdminCreateAgentDto {
@@ -28,7 +36,11 @@ export class AdminCreateAgentDto {
   @IsNotEmpty()
   phone: string;
 
-  @ApiProperty({ enum: BackendModule, isArray: true, example: [BackendModule.LOYALTY, BackendModule.TICKETS] })
+  @ApiProperty({
+    enum: BackendModule,
+    isArray: true,
+    example: [BackendModule.LOYALTY, BackendModule.TICKETS],
+  })
   @IsArray()
   @IsEnum(BackendModule, { each: true })
   @IsNotEmpty()
