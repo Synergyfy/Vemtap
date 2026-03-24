@@ -226,7 +226,11 @@ export const useMessagingStore = create<MessagingState>()(
         }),
         {
             name: 'messaging-storage',
-            storage: createJSONStorage(() => localStorage),
+            storage: createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : {
+                getItem: () => null,
+                setItem: () => {},
+                removeItem: () => {},
+            })),
         }
     )
 );
