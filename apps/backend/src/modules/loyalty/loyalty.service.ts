@@ -7,7 +7,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, Between, MoreThanOrEqual } from 'typeorm';
+import { Repository, DataSource, Between, MoreThanOrEqual, FindOptionsWhere, ILike, FindOptionsOrder } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import { RewardTemplate } from './entities/reward-template.entity';
 import { Reward } from './entities/reward.entity';
@@ -20,6 +20,7 @@ import { RedemptionCode } from './entities/redemption-code.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
 import { BranchesService } from '../branches/branches.service';
+import { RewardQueryDto } from './dto/loyalty-query.dto';
 import {
   CreateRewardTemplateDto,
   CreateRewardDto,
@@ -67,13 +68,35 @@ export class LoyaltyService {
   }
 
   async getPointLogs(userId: string, businessId: string, page = 1, limit = 10) {
-    return this.pointTransactionRepo.find({
+    const transactions = await this.pointTransactionRepo.find({
       where: { customerId: userId, businessId },
       order: { createdAt: 'DESC' },
       take: limit,
       skip: (page - 1) * limit,
       relations: ['givenBy', 'branch'],
     });
+
+    return transactions.map((t) => ({
+      id: t.id,
+      amount: t.amount,
+      type: t.type,
+      reason: t.reason,
+      createdAt: t.createdAt,
+      branch: t.branch
+        ? {
+            id: t.branch.id,
+            name: t.branch.name,
+          }
+        : null,
+      givenBy: t.givenBy
+        ? {
+            id: t.givenBy.id,
+            firstName: t.givenBy.firstName,
+            lastName: t.givenBy.lastName,
+            email: t.givenBy.email,
+          }
+        : null,
+    }));
   }
 
   async getBusinessPointLogs(
@@ -236,6 +259,79 @@ export class LoyaltyService {
     }
 
     return this.rewardRepo.delete(id);
+  }
+
+  async getPublicRewards(query: RewardQueryDto) {
+    const {
+      branchId,
+      branchCode,
+      search,
+      newest,
+      oldest,
+      lowestQuantity,
+      highestQuantity,
+      aboutToExpire,
+      highestPoints,
+      lowestPoints,
+      page = 1,
+      limit = 10,
+    } = query;
+
+    if (!branchId && !branchCode) {
+      throw new BadRequestException('Branch ID or Code is required');
+    }
+
+    let resolvedBranchId = branchId;
+
+    if (!resolvedBranchId && branchCode) {
+      const branch = await this.branchRepo.findOne({
+        where: { uniqueCode: branchCode },
+      });
+      if (!branch) {
+        throw new NotFoundException('Branch not found');
+      }
+      resolvedBranchId = branch.id;
+    }
+
+    const where: FindOptionsWhere<Reward> = {
+      branchId: resolvedBranchId,
+      isActive: true,
+      remainingQuantity: MoreThanOrEqual(1),
+      expiryDate: MoreThanOrEqual(new Date()),
+    };
+
+    if (search) {
+      where.name = ILike(`%${search}%`);
+    }
+
+    const order: FindOptionsOrder<Reward> = {};
+
+    if (newest) order.createdAt = 'DESC';
+    else if (oldest) order.createdAt = 'ASC';
+    else if (highestPoints) order.pointsRequired = 'DESC';
+    else if (lowestPoints) order.pointsRequired = 'ASC';
+    else if (highestQuantity) order.remainingQuantity = 'DESC';
+    else if (lowestQuantity) order.remainingQuantity = 'ASC';
+    else if (aboutToExpire) order.expiryDate = 'ASC';
+    else order.createdAt = 'DESC'; // default sorting
+
+    const [items, total] = await this.rewardRepo.findAndCount({
+      where,
+      order,
+      take: limit,
+      skip: (page - 1) * limit,
+    });
+
+    return {
+      data: items.map((item) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { redemptionCount, ...rest } = item;
+        return rest;
+      }),
+      total,
+      page,
+      limit,
+    };
   }
 
   async getBranchRewards(branchId: string, page = 1, limit = 10) {

@@ -18,6 +18,7 @@ describe('LoyaltyService', () => {
   const mockRepository = {
     find: jest.fn().mockResolvedValue([]),
     findOne: jest.fn().mockResolvedValue(null),
+    findAndCount: jest.fn().mockResolvedValue([[], 0]),
     create: jest.fn().mockImplementation((dto) => dto),
     save: jest
       .fn()
@@ -36,8 +37,10 @@ describe('LoyaltyService', () => {
     findById: jest.fn(),
   };
 
+  let module: TestingModule;
+
   beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         LoyaltyService,
         {
@@ -105,6 +108,67 @@ describe('LoyaltyService', () => {
     it('should return point balance', async () => {
       const result = await service.getBusinessPoints('u1', 'biz1');
       expect(result).toBe(0);
+    });
+  });
+
+  describe('getPublicRewards', () => {
+    it('should require branchId or branchCode', async () => {
+      await expect(service.getPublicRewards({})).rejects.toThrow(
+        'Branch ID or Code is required',
+      );
+    });
+
+    it('should throw NotFoundException if branchCode is invalid', async () => {
+      const mockBranchRepo = module.get(getRepositoryToken(Branch));
+      jest.spyOn(mockBranchRepo, 'findOne').mockResolvedValueOnce(null);
+
+      await expect(
+        service.getPublicRewards({ branchCode: 'INVALID' }),
+      ).rejects.toThrow('Branch not found');
+    });
+
+    it('should call findAndCount with correct default params', async () => {
+      const mockBranchRepo = module.get(getRepositoryToken(Branch));
+      jest.spyOn(mockBranchRepo, 'findOne').mockResolvedValueOnce({ id: 'branch-123' } as any);
+
+      const mockRewardRepo = module.get(getRepositoryToken(Reward));
+      jest.spyOn(mockRewardRepo, 'findAndCount').mockResolvedValueOnce([[], 0]);
+
+      await service.getPublicRewards({ branchCode: 'CODE123' });
+
+      expect(mockRewardRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ branchId: 'branch-123' }),
+          order: { createdAt: 'DESC' },
+          take: 10,
+          skip: 0,
+        }),
+      );
+    });
+
+    it('should map search and sort filters correctly', async () => {
+      const mockRewardRepo = module.get(getRepositoryToken(Reward));
+      jest.spyOn(mockRewardRepo, 'findAndCount').mockResolvedValueOnce([[], 0]);
+
+      await service.getPublicRewards({
+        branchId: 'branch-123',
+        search: 'Coffee',
+        lowestPoints: true,
+        page: 2,
+        limit: 5,
+      });
+
+      expect(mockRewardRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            branchId: 'branch-123',
+            name: expect.anything(),
+          }),
+          order: { pointsRequired: 'ASC' },
+          take: 5,
+          skip: 5,
+        }),
+      );
     });
   });
 });

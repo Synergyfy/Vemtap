@@ -52,15 +52,29 @@ describe('LoyaltyController (e2e)', () => {
 
   describe('Reward System', () => {
     it('Admin can create reward template', async () => {
-      // POST /loyalty/templates
+      // POST /loyalty/reward-templates
     });
 
     it('Owner can create reward for branch', async () => {
       // POST /loyalty/rewards
     });
 
-    it('Public can view branch rewards', async () => {
-      // GET /loyalty/rewards/branch/:id
+    it('Public can view branch rewards with filters', async () => {
+      // This sends an actual request to the test server using Supertest.
+      // Expect 400 because we are hitting a real E2E backend setup with an empty query (branchId/Code missing).
+      const response = await request(app.getHttpServer())
+        .get('/loyalty/rewards')
+        .expect(400);
+
+      expect(response.body.message).toBe('Branch ID or Code is required');
+    });
+
+    it('Fails properly when branch is invalid', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/loyalty/rewards?branchCode=invalid-code')
+        .expect(404);
+
+      expect(response.body.message).toBe('Branch not found');
     });
   });
 
