@@ -14,6 +14,7 @@ import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import WhatsAppTemplateModal from './WhatsAppTemplateModal';
+import { useCustomerGlobalHistory } from '@/services/customer/hooks';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import { useSegments, useCreateSegment, useAddSegmentMembers } from '@/services/messaging/hooks';
 
@@ -137,8 +138,33 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
 
     const activeConv = allThreads.find(c => c.id === activeConversationId);
     
+    const { data: customerHistory = [] } = useCustomerGlobalHistory();
+    
+    // For customers, get list of branches from history
+    const customerAvailableBranches = useMemo(() => {
+        if (!isCustomer) return [];
+        const branchesMap = new Map();
+        const logs = Array.isArray(customerHistory) ? customerHistory : ((customerHistory as any)?.data || []);
+        logs.forEach((log: any) => {
+            const loyaltyProfile = log.loyaltyProfile;
+            const branch = loyaltyProfile?.branch || log.branch;
+            const business = loyaltyProfile?.business || log.business;
+            if (branch && branch.id && !branchesMap.has(branch.id)) {
+                branchesMap.set(branch.id, {
+                    ...branch,
+                    business,
+                    name: business?.name || branch.name || 'Business',
+                    avatar: business?.logoUrl || branch.avatar
+                });
+            }
+        });
+        return Array.from(branchesMap.values()).filter(b => 
+            b.name.toLowerCase().includes(customerQuery.toLowerCase())
+        );
+    }, [customerHistory, isCustomer, customerQuery]);
+
     const headerName = isCustomer 
-        ? (activeConv?.contact?.name || 'Business Chat') 
+        ? (activeConv?.contact?.name || 'Customer Chat') 
         : (mode === 'WHATSAPP' ? 'WhatsApp' : (business?.name || user?.businessName || 'Vemtap'));
         
     const headerLogo = isCustomer 
@@ -334,14 +360,14 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                         )}
                         <h1 className="font-bold text-lg text-slate-800 tracking-tight truncate">{headerName}</h1>
                     </div>
-                    {!isCustomer && activeTab === 'INTERNAL' && (
+                    {activeTab === 'INTERNAL' && (
                         <div className="flex gap-2 text-slate-400 shrink-0 ml-2">
                             <div className="relative" ref={newChatRef}>
                                 <button
                                     type="button"
                                     onClick={() => setShowNewChat(prev => !prev)}
-                                    className={`p-1.5 rounded-lg transition-colors ${branchId ? 'hover:text-primary hover:bg-slate-100' : 'text-slate-300'}`}
-                                    title="New Chat"
+                                    className={`p-1.5 rounded-lg transition-colors ${branchId || isCustomer ? 'hover:text-primary hover:bg-slate-100' : 'text-slate-300'}`}
+                                    title={isCustomer ? "Start Chat with Business" : "New Chat"}
                                 >
                                     <Plus size={18} />
                                 </button>
@@ -359,7 +385,48 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                             />
                                         </div>
                                         <div className="max-h-64 overflow-y-auto custom-scrollbar">
-                                            {!branchId ? (
+                                            {isCustomer ? (
+                                                customerAvailableBranches.length === 0 ? (
+                                                    <div className="px-4 py-4 text-xs text-slate-400">No businesses found in your visit history.</div>
+                                                ) : (
+                                                    customerAvailableBranches.map(branch => (
+                                                        <button
+                                                            key={branch.id}
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                // Check if we already have a conversation with this branch
+                                                                const existingConv = allThreads.find(t => t.contact?.id === branch.id);
+                                                                if (existingConv) {
+                                                                    setActiveConversation(existingConv.id);
+                                                                } else {
+                                                                    addPendingThread({
+                                                                        id: branch.id,
+                                                                        name: branch.name,
+                                                                        avatar: branch.avatar,
+                                                                        isOnline: false,
+                                                                    });
+                                                                }
+                                                                setShowNewChat(false);
+                                                                setCustomerQuery('');
+                                                            }}
+                                                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 text-left"
+                                                        >
+                                                            <div className={`w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0 text-white text-xs font-bold ${getAvatarColor(branch.id)}`}>
+                                                                {branch.avatar ? (
+                                                                    <img src={branch.avatar} alt={branch.name} className="w-full h-full rounded-full object-cover" />
+                                                                ) : (
+                                                                    getInitials(branch.name)
+                                                                )}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-semibold text-slate-900 truncate">{branch.name}</p>
+                                                                <p className="text-xs text-slate-400 truncate">VemTap Partner</p>
+                                                            </div>
+                                                        </button>
+                                                    ))
+                                                )
+                                            ) : !branchId ? (
                                                 <div className="px-4 py-4 text-xs text-amber-600">Select a branch to start a chat.</div>
                                             ) : visitorsLoading ? (
                                                 <div className="px-4 py-4 text-xs text-slate-400">Loading visitors...</div>
