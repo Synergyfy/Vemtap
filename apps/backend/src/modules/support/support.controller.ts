@@ -57,9 +57,10 @@ export class SupportController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   async getTickets(
     @Request() req: AuthRequest,
-    @Query() query: PaginationQueryDto,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
   ) {
-    return this.supportService.findAll(req.user.id, query.page, query.limit);
+    return this.supportService.findAll(req.user.id, page, limit);
   }
 
   @Get('tickets/:id')

@@ -32,6 +32,8 @@ import { MessagingModule } from './modules/messaging/messaging.module';
 import { FormsModule } from './modules/forms/forms.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ObservabilityModule } from './observability/observability.module';
+import { AdministrationModule } from './modules/administration/administration.module';
+import { ImpersonationGuard } from './modules/administration/impersonation.guard';
 
 import { dataSourceOptions } from './database/data-source';
 
@@ -116,6 +118,7 @@ import { dataSourceOptions } from './database/data-source';
     FormsModule,
     CategoriesModule,
     ObservabilityModule,
+    AdministrationModule,
   ],
   controllers: [AppController],
   providers: [
@@ -127,6 +130,10 @@ import { dataSourceOptions } from './database/data-source';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ImpersonationGuard,
     },
     {
       provide: APP_GUARD,

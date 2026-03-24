@@ -22,9 +22,18 @@ export class RolesGuard implements CanActivate {
     if (!requiredRoles) {
       return true;
     }
-    const request = context.switchToHttp().getRequest<{ user: User }>();
+    const request = context.switchToHttp().getRequest<{ user: User, headers: any }>();
     const user = request.user;
     const userRole = this.normalizeRole(user?.role);
+
+    // If the user is an Admin or Agent and has an impersonation token, 
+    // we allow them past the initial role check. The ImpersonationGuard 
+    // will further validate their specific module permissions.
+    const isImpersonating = !!request.headers['x-impersonation-token'];
+    if (isImpersonating && (user?.role === UserRole.ADMIN || user?.role === UserRole.AGENT)) {
+      return true;
+    }
+
     return requiredRoles.some(
       (role) => this.normalizeRole(String(role)) === userRole,
     );
