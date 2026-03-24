@@ -9,10 +9,13 @@ export interface StaffMember {
     role: UserRole;
     businessId: string;
     branchId?: string;
+    jobTitle?: string;
     permissions: string[];
-    status: 'Active' | 'Inactive' | 'Invited' | 'Pending' | 'Suspended';
+    status: 'Active' | 'Inactive' | 'Invited' | 'Pending' | 'Suspended' | 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'SUSPENDED' | 'INVITED';
     createdAt: string;
     updatedAt: string;
+    uniqueCode?: string;
+    lastActive?: string;
 }
 
 export interface InviteStaffRequest {
