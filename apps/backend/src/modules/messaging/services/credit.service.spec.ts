@@ -42,7 +42,10 @@ describe('CreditService', () => {
         { provide: getRepositoryToken(Branch), useValue: mockRepo },
         { provide: getRepositoryToken(Message), useValue: mockRepo },
         { provide: getRepositoryToken(BusinessCredit), useValue: mockRepo },
-        { provide: getRepositoryToken(BusinessCreditWallet), useValue: mockRepo },
+        {
+          provide: getRepositoryToken(BusinessCreditWallet),
+          useValue: mockRepo,
+        },
         { provide: getRepositoryToken(CreditTransaction), useValue: mockRepo },
         { provide: getRepositoryToken(Subscription), useValue: mockRepo },
       ],
@@ -82,9 +85,9 @@ describe('CreditService', () => {
         return cb(mockManager);
       });
 
-      await expect(service.deductCredits('biz1', Channel.SMS, 5, 'test deduction')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.deductCredits('biz1', Channel.SMS, 5, 'test deduction'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException if wallet is not found', async () => {
@@ -96,9 +99,9 @@ describe('CreditService', () => {
         return cb(mockManager);
       });
 
-      await expect(service.deductCredits('biz1', Channel.SMS, 5, 'test')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.deductCredits('biz1', Channel.SMS, 5, 'test'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

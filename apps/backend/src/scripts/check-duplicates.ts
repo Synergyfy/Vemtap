@@ -21,7 +21,7 @@ const AppDataSource = new DataSource({
 
 async function check() {
   await AppDataSource.initialize();
-  
+
   console.log('Checking for duplicate phone numbers in Businesses...');
   const businessDuplicates = await AppDataSource.query(`
     SELECT phone, COUNT(*) as count 
@@ -34,8 +34,11 @@ async function check() {
 
   if (businessDuplicates.length > 0) {
     for (const dup of businessDuplicates) {
-       const details = await AppDataSource.query(`SELECT id, name, phone FROM businesses WHERE phone = $1`, [dup.phone]);
-       console.log(`Details for ${dup.phone}:`, details);
+      const details = await AppDataSource.query(
+        `SELECT id, name, phone FROM businesses WHERE phone = $1`,
+        [dup.phone],
+      );
+      console.log(`Details for ${dup.phone}:`, details);
     }
   }
 
@@ -51,15 +54,18 @@ async function check() {
 
   if (userDuplicates.length > 0) {
     for (const dup of userDuplicates) {
-       const details = await AppDataSource.query(`SELECT id, "firstName", "lastName", email, phone FROM users WHERE phone = $1`, [dup.phone]);
-       console.log(`Details for ${dup.phone}:`, details);
+      const details = await AppDataSource.query(
+        `SELECT id, "firstName", "lastName", email, phone FROM users WHERE phone = $1`,
+        [dup.phone],
+      );
+      console.log(`Details for ${dup.phone}:`, details);
     }
   }
 
   await AppDataSource.destroy();
 }
 
-check().catch(err => {
+check().catch((err) => {
   console.error(err);
   process.exit(1);
 });

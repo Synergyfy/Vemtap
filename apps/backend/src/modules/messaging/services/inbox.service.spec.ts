@@ -7,7 +7,11 @@ import {
 } from '../entities/conversation-thread.entity';
 import { Message } from '../entities/message.entity';
 import { MessagingEngineService } from './messaging-engine.service';
-import { NotFoundException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ForbiddenException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { User } from '../../users/entities/user.entity';
 import { Channel } from '../enums/channel.enum';
 import { MessagingGateway } from '../messaging.gateway';
@@ -31,7 +35,11 @@ describe('InboxService', () => {
     threadRepoMock = {
       findOne: jest.fn(),
       find: jest.fn(),
-      save: jest.fn().mockImplementation((t) => Promise.resolve({ id: 'new-thread-id', ...t })),
+      save: jest
+        .fn()
+        .mockImplementation((t) =>
+          Promise.resolve({ id: 'new-thread-id', ...t }),
+        ),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
       increment: jest.fn().mockResolvedValue({ affected: 1 }),
       create: jest.fn().mockImplementation((t) => t),
@@ -48,11 +56,13 @@ describe('InboxService', () => {
       find: jest.fn(),
       findOne: jest.fn(),
       create: jest.fn().mockImplementation((m) => m),
-      save: jest.fn().mockImplementation((m) => Promise.resolve({ id: 'new-msg-id', ...m })),
+      save: jest
+        .fn()
+        .mockImplementation((m) => Promise.resolve({ id: 'new-msg-id', ...m })),
     };
 
     userRepoMock = {
-        findOne: jest.fn(),
+      findOne: jest.fn(),
     };
 
     visitRepoMock = {
@@ -137,8 +147,14 @@ describe('InboxService', () => {
       const result = await service.getThreads(branchId, channel);
 
       expect(result).toEqual(mockThreads);
-      expect(queryBuilder.where).toHaveBeenCalledWith('thread.branchId = :branchId', { branchId });
-      expect(queryBuilder.andWhere).toHaveBeenCalledWith('thread.channel = :channel', { channel });
+      expect(queryBuilder.where).toHaveBeenCalledWith(
+        'thread.branchId = :branchId',
+        { branchId },
+      );
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+        'thread.channel = :channel',
+        { channel },
+      );
       expect(queryBuilder.innerJoin).not.toHaveBeenCalled();
     });
 
@@ -171,24 +187,33 @@ describe('InboxService', () => {
   describe('startCustomerConversation', () => {
     it('should throw ForbiddenException if customer has not visited the branch', async () => {
       visitRepoMock.findOne.mockResolvedValue(null);
-      await expect(service.startCustomerConversation('c1', 'br1', 'hi')).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.startCustomerConversation('c1', 'br1', 'hi'),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should create a new thread and message if no thread exists', async () => {
       visitRepoMock.findOne.mockResolvedValue({ id: 'v1' });
       threadRepoMock.findOne.mockResolvedValue(null);
-      branchRepoMock.findOne.mockResolvedValue({ id: 'br1', businessId: 'bus1' });
+      branchRepoMock.findOne.mockResolvedValue({
+        id: 'br1',
+        businessId: 'bus1',
+      });
       userRepoMock.findOne.mockResolvedValue({ id: 'c1', firstName: 'John' });
 
-      const result = await service.startCustomerConversation('c1', 'br1', 'hello branch');
+      const result = await service.startCustomerConversation(
+        'c1',
+        'br1',
+        'hello branch',
+      );
 
-      expect(threadRepoMock.create).toHaveBeenCalledWith(expect.objectContaining({
-        branchId: 'br1',
-        customerId: 'c1',
-        channel: Channel.IN_HOUSE,
-      }));
+      expect(threadRepoMock.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          branchId: 'br1',
+          customerId: 'c1',
+          channel: Channel.IN_HOUSE,
+        }),
+      );
       expect(threadRepoMock.save).toHaveBeenCalled();
       expect(messageRepoMock.save).toHaveBeenCalled();
       expect(gatewayMock.emitMessage).toHaveBeenCalled();
@@ -197,17 +222,27 @@ describe('InboxService', () => {
 
     it('should reuse existing thread if it exists', async () => {
       visitRepoMock.findOne.mockResolvedValue({ id: 'v1' });
-      const existingThread = { id: 't1', branchId: 'br1', customerId: 'c1', customer: { firstName: 'John' } };
+      const existingThread = {
+        id: 't1',
+        branchId: 'br1',
+        customerId: 'c1',
+        customer: { firstName: 'John' },
+      };
       threadRepoMock.findOne.mockResolvedValue(existingThread);
 
       await service.startCustomerConversation('c1', 'br1', 'another message');
 
       expect(threadRepoMock.create).not.toHaveBeenCalled();
-      expect(threadRepoMock.update).toHaveBeenCalledWith('t1', expect.any(Object));
-      expect(messageRepoMock.save).toHaveBeenCalledWith(expect.objectContaining({
-        threadId: 't1',
-        content: 'another message',
-      }));
+      expect(threadRepoMock.update).toHaveBeenCalledWith(
+        't1',
+        expect.any(Object),
+      );
+      expect(messageRepoMock.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          threadId: 't1',
+          content: 'another message',
+        }),
+      );
     });
   });
 
@@ -255,12 +290,23 @@ describe('InboxService', () => {
 
       const result = await service.sendReply('t1', 'hello', 'br1');
 
-      expect(engineMock.sendReply).toHaveBeenCalledWith(mockThread, 'hello', undefined);
-      expect(threadRepoMock.update).toHaveBeenCalledWith('t1', expect.objectContaining({
-        lastMessageContent: 'hello',
-        status: ThreadStatus.OPEN,
-      }));
-      expect(threadRepoMock.increment).toHaveBeenCalledWith({ id: 't1' }, 'customerUnreadCount', 1);
+      expect(engineMock.sendReply).toHaveBeenCalledWith(
+        mockThread,
+        'hello',
+        undefined,
+      );
+      expect(threadRepoMock.update).toHaveBeenCalledWith(
+        't1',
+        expect.objectContaining({
+          lastMessageContent: 'hello',
+          status: ThreadStatus.OPEN,
+        }),
+      );
+      expect(threadRepoMock.increment).toHaveBeenCalledWith(
+        { id: 't1' },
+        'customerUnreadCount',
+        1,
+      );
       expect(gatewayMock.emitMessage).toHaveBeenCalled();
       expect(pushMock.sendNotification).toHaveBeenCalled();
       expect(result).toBeDefined();
@@ -275,9 +321,11 @@ describe('InboxService', () => {
 
       const result = await service.getThreadMessages('t1', 'br1');
 
-      expect(messageRepoMock.find).toHaveBeenCalledWith(expect.objectContaining({
-        order: { timestamp: 'DESC' }
-      }));
+      expect(messageRepoMock.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          order: { timestamp: 'DESC' },
+        }),
+      );
       expect(mockThread.branchUnreadCount).toBe(0);
       expect(threadRepoMock.save).toHaveBeenCalledWith(mockThread);
       expect(result).toHaveLength(1);
@@ -293,18 +341,29 @@ describe('InboxService', () => {
         channel: Channel.IN_HOUSE,
         status: ThreadStatus.CLOSED,
         branchUnreadCount: 0,
-        customer: { firstName: 'Visitor', phone: '+123' }
+        customer: { firstName: 'Visitor', phone: '+123' },
       } as any;
       threadRepoMock.findOne.mockResolvedValue(mockThread);
-      
-      const result = await service.sendCustomerReply('t1', 'reply content', 'c1');
+
+      const result = await service.sendCustomerReply(
+        't1',
+        'reply content',
+        'c1',
+      );
 
       expect(messageRepoMock.save).toHaveBeenCalled();
-      expect(threadRepoMock.update).toHaveBeenCalledWith('t1', expect.objectContaining({
-        lastMessageContent: 'reply content',
-        status: ThreadStatus.OPEN,
-      }));
-      expect(threadRepoMock.increment).toHaveBeenCalledWith({ id: 't1' }, 'branchUnreadCount', 1);
+      expect(threadRepoMock.update).toHaveBeenCalledWith(
+        't1',
+        expect.objectContaining({
+          lastMessageContent: 'reply content',
+          status: ThreadStatus.OPEN,
+        }),
+      );
+      expect(threadRepoMock.increment).toHaveBeenCalledWith(
+        { id: 't1' },
+        'branchUnreadCount',
+        1,
+      );
       expect(gatewayMock.emitMessage).toHaveBeenCalled();
       expect(pushMock.sendToBranchStaff).toHaveBeenCalled();
       expect(result.content).toBe('reply content');
@@ -314,15 +373,15 @@ describe('InboxService', () => {
 
   describe('editMessage', () => {
     it('should edit message and broadcast', async () => {
-      const mockMsg: any = { 
-        id: 'm1', 
-        content: 'old', 
-        direction: MessageDirection.OUTBOUND, 
-        branchId: 'br1', 
-        threadId: 't1' 
+      const mockMsg: any = {
+        id: 'm1',
+        content: 'old',
+        direction: MessageDirection.OUTBOUND,
+        branchId: 'br1',
+        threadId: 't1',
       };
       messageRepoMock.findOne.mockResolvedValue(mockMsg);
-      messageRepoMock.save.mockImplementation(m => Promise.resolve(m));
+      messageRepoMock.save.mockImplementation((m) => Promise.resolve(m));
 
       const result = await service.editMessage('m1', 'new', 'staff-1', 'br1');
 
@@ -332,24 +391,26 @@ describe('InboxService', () => {
     });
 
     it('should throw Forbidden if non-sender tries to edit', async () => {
-      const mockMsg = { 
-        id: 'm1', 
-        direction: MessageDirection.INBOUND, 
-        customerId: 'customer-1' 
+      const mockMsg = {
+        id: 'm1',
+        direction: MessageDirection.INBOUND,
+        customerId: 'customer-1',
       };
       messageRepoMock.findOne.mockResolvedValue(mockMsg);
 
-      await expect(service.editMessage('m1', 'new', 'other-customer')).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.editMessage('m1', 'new', 'other-customer'),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
   describe('deleteMessage', () => {
     it('should mark message as deleted and clear content', async () => {
-      const mockMsg: any = { 
-        id: 'm1', 
-        direction: MessageDirection.INBOUND, 
-        customerId: 'c1', 
-        threadId: 't1' 
+      const mockMsg: any = {
+        id: 'm1',
+        direction: MessageDirection.INBOUND,
+        customerId: 'c1',
+        threadId: 't1',
       };
       messageRepoMock.findOne.mockResolvedValue(mockMsg);
 

@@ -92,7 +92,9 @@ export class FormTemplatesController {
 
   @Get('stats')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get tracking statistics for all form templates (Admin only)' })
+  @ApiOperation({
+    summary: 'Get tracking statistics for all form templates (Admin only)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Return tracking statistics for all templates.',
@@ -116,7 +118,10 @@ export class FormTemplatesController {
 
   @Get(':id/stats')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get tracking statistics for a specific form template (Admin only)' })
+  @ApiOperation({
+    summary:
+      'Get tracking statistics for a specific form template (Admin only)',
+  })
   @ApiParam({ name: 'id', description: 'Template UUID' })
   @ApiResponse({
     status: 200,

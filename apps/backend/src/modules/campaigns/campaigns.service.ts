@@ -87,7 +87,9 @@ export class CampaignsService {
   async createTemplate(
     createTemplateDto: CreateCampaignTemplateDto,
   ): Promise<CampaignTemplate> {
-    const template = this.templateRepository.create(createTemplateDto as Partial<CampaignTemplate>);
+    const template = this.templateRepository.create(
+      createTemplateDto as Partial<CampaignTemplate>,
+    );
     return this.templateRepository.save(template);
   }
 

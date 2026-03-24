@@ -61,7 +61,11 @@ describe('MessagingGateway', () => {
 
   describe('handleConnection', () => {
     it('should authenticate and join rooms on connection', async () => {
-      userRepo.findOne.mockResolvedValue({ id: 'user-1', role: 'Customer', branchId: 'branch-1' });
+      userRepo.findOne.mockResolvedValue({
+        id: 'user-1',
+        role: 'Customer',
+        branchId: 'branch-1',
+      });
 
       await gateway.handleConnection(mockSocket);
 
@@ -92,7 +96,10 @@ describe('MessagingGateway', () => {
       expect(mockServer.to).toHaveBeenCalledWith('thread_thread-1');
       expect(mockServer.to).toHaveBeenCalledWith('branch_branch-1');
       expect(mockServer.emit).toHaveBeenCalledWith('newMessage', message);
-      expect(mockServer.emit).toHaveBeenCalledWith('inboxUpdate', expect.any(Object));
+      expect(mockServer.emit).toHaveBeenCalledWith(
+        'inboxUpdate',
+        expect.any(Object),
+      );
     });
 
     it('should emit notification for outbound message to customer', () => {
@@ -101,10 +108,13 @@ describe('MessagingGateway', () => {
       gateway.emitMessage('thread-1', 'branch-1', 'user-1', message);
 
       expect(mockServer.to).toHaveBeenCalledWith('user_user-1');
-      expect(mockServer.emit).toHaveBeenCalledWith('notification', expect.objectContaining({
-        type: 'new_message',
-        threadId: 'thread-1',
-      }));
+      expect(mockServer.emit).toHaveBeenCalledWith(
+        'notification',
+        expect.objectContaining({
+          type: 'new_message',
+          threadId: 'thread-1',
+        }),
+      );
     });
 
     it('should emit notification for inbound message to staff', () => {
@@ -113,29 +123,39 @@ describe('MessagingGateway', () => {
       gateway.emitMessage('thread-1', 'branch-1', 'user-1', message);
 
       expect(mockServer.to).toHaveBeenCalledWith('branch_branch-1');
-      expect(mockServer.emit).toHaveBeenCalledWith('notification', expect.objectContaining({
-        type: 'new_message',
-        threadId: 'thread-1',
-      }));
+      expect(mockServer.emit).toHaveBeenCalledWith(
+        'notification',
+        expect.objectContaining({
+          type: 'new_message',
+          threadId: 'thread-1',
+        }),
+      );
     });
   });
 
   describe('SubscribeMessages', () => {
     it('should join thread room on joinThread', () => {
-      const res = gateway.handleJoinThread(mockSocket, { threadId: 'thread-1' });
+      const res = gateway.handleJoinThread(mockSocket, {
+        threadId: 'thread-1',
+      });
       expect(mockSocket.join).toHaveBeenCalledWith('thread_thread-1');
       expect(res.status).toBe('joined');
     });
 
     it('should leave thread room on leaveThread', () => {
-      const res = gateway.handleLeaveThread(mockSocket, { threadId: 'thread-1' });
+      const res = gateway.handleLeaveThread(mockSocket, {
+        threadId: 'thread-1',
+      });
       expect(mockSocket.leave).toHaveBeenCalledWith('thread_thread-1');
       expect(res.status).toBe('left');
     });
 
     it('should broadcast typing status', () => {
       mockSocket.data = { userId: 'user-1' };
-      gateway.handleTyping(mockSocket, { threadId: 'thread-1', isTyping: true });
+      gateway.handleTyping(mockSocket, {
+        threadId: 'thread-1',
+        isTyping: true,
+      });
       expect(mockSocket.to).toHaveBeenCalledWith('thread_thread-1');
       expect(mockSocket.emit).toHaveBeenCalledWith('userTyping', {
         userId: 'user-1',

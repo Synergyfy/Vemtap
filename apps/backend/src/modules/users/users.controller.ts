@@ -84,7 +84,7 @@ export class UsersController {
   // --- Team Management ---
 
   @Post('team/invite')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @Permissions('staff')
   @UseGuards(CapabilityGuard)
   @RequireCapability('teamMembers')
@@ -100,7 +100,7 @@ export class UsersController {
   }
 
   @Get('team')
-  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @Permissions('staff')
   @ApiOperation({ summary: 'Get all team members for the branch' })
   @ApiResponse({ status: 200, type: [User] })
@@ -110,7 +110,7 @@ export class UsersController {
   }
 
   @Patch('team/:id')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @Permissions('staff')
   @ApiOperation({ summary: 'Update a team member' })
   @ApiResponse({ status: 200, type: User })
@@ -125,7 +125,7 @@ export class UsersController {
   }
 
   @Delete('team/:id')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @Permissions('staff')
   @ApiOperation({ summary: 'Remove a team member' })
   @ApiResponse({ status: 200 })
@@ -196,7 +196,7 @@ export class UsersController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Send password reset link to user email' })
   async adminResetPasswordLink(@Param('email') email: string) {
-    // Basic email validation if needed, but the service handles it. 
+    // Basic email validation if needed, but the service handles it.
     // Usually better to have @IsEmail in a DTO but as a param we could use a custom validator or just let it pass to service.
     return this.usersService.adminResetPasswordLink(email);
   }

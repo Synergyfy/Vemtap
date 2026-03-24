@@ -111,7 +111,7 @@ export class VisitorsService {
       .limit(limit);
 
     const rawData = await qb.getRawMany();
-    
+
     // For total count, we need another query to count grouped branches
     const countQb = this.visitRepository
       .createQueryBuilder('visit')
@@ -239,7 +239,9 @@ export class VisitorsService {
     const totalVisitors = parseInt(totalVisitorsRaw?.count || '0', 10);
 
     // Total visits in this context
-    const totalVisitsCount = await this.visitRepository.count({ where: contextWhere });
+    const totalVisitsCount = await this.visitRepository.count({
+      where: contextWhere,
+    });
 
     // New Visitors in this context: Customers whose FIRST visit in this branch/business was this month
     const startOfMonth = new Date();
@@ -309,7 +311,7 @@ export class VisitorsService {
     const dto = createVisitorDto as CreateVisitorDto & {
       deviceId?: string;
     };
-    
+
     // Check by email
     let user = await this.userRepository.findOne({
       where: { email: dto.email },
@@ -321,7 +323,9 @@ export class VisitorsService {
         where: { phone: dto.phone },
       });
       if (user && user.email !== dto.email) {
-        throw new BadRequestException('A user with this phone number already exists with a different email');
+        throw new BadRequestException(
+          'A user with this phone number already exists with a different email',
+        );
       }
     }
 
@@ -480,7 +484,7 @@ export class VisitorsService {
     // Points awarding logic should be moved to a generic "award points on tap" if needed,
     // but based on requirements, points are given by staff or via code.
     // However, if we want to keep the "tap to earn points" feature, we can award 1 point.
-    let loyaltyResult: any = null;
+    const loyaltyResult: any = null;
     // For now, points are manual or via code as per the new requirements.
 
     return {
@@ -537,7 +541,7 @@ export class VisitorsService {
     if (updateData.phone) user.phone = updateData.phone;
 
     await this.userRepository.save(user);
-    // Note: We return findOne without context here as update is generally global, 
+    // Note: We return findOne without context here as update is generally global,
     // but the controller will call findOne with context if needed next time.
     return this.findOne(id);
   }

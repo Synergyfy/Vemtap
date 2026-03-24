@@ -15,8 +15,8 @@ export class PublicBusinessesController {
   @Public()
   @Get('businesses/code/:code')
   @ApiOperation({ summary: 'Get business details by unique 9-digit code' })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Business details with branches',
     schema: {
       example: {
@@ -38,11 +38,11 @@ export class PublicBusinessesController {
             uniqueCode: 'BR123ABC',
             name: 'Main Branch',
             isActive: true,
-            isMainBranch: true
-          }
-        ]
-      }
-    }
+            isMainBranch: true,
+          },
+        ],
+      },
+    },
   })
   async getBusinessByCode(@Param('code') code: string) {
     return this.businessesService.findByCode(code);
@@ -51,8 +51,8 @@ export class PublicBusinessesController {
   @Public()
   @Get('branches/code/:code')
   @ApiOperation({ summary: 'Get branch details by unique 9-digit code' })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Branch details',
     schema: {
       example: {
@@ -68,10 +68,10 @@ export class PublicBusinessesController {
           id: 'uuid-business-1234',
           uniqueCode: 'BIZ123XYZ',
           name: 'The Azure Bistro',
-          logoUrl: 'https://example.com/logo.png'
-        }
-      }
-    }
+          logoUrl: 'https://example.com/logo.png',
+        },
+      },
+    },
   })
   async getBranchByCode(@Param('code') code: string) {
     return this.branchesService.findByCode(code);

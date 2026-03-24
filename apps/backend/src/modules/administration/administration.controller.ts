@@ -36,7 +36,9 @@ export class AdministrationController {
 
   @Post('agents')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Create a new agent with module permissions' })
+  @ApiOperation({
+    summary: 'Admin: Create a new agent with module permissions',
+  })
   @ApiResponse({ status: 201, description: 'Agent created successfully' })
   async createAgent(@Body() dto: AdminCreateAgentDto) {
     return this.adminService.createAgent(dto);
@@ -44,7 +46,9 @@ export class AdministrationController {
 
   @Post('impersonation/token')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Generate an impersonation token for an agent or admin' })
+  @ApiOperation({
+    summary: 'Admin: Generate an impersonation token for an agent or admin',
+  })
   async generateToken(@Body() dto: GenerateImpersonationTokenDto) {
     return this.adminService.generateToken(dto);
   }

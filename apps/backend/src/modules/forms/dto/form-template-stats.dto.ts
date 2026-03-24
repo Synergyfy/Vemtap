@@ -7,16 +7,29 @@ export class FormTemplateStatsDto {
   @ApiProperty({ example: 'Feedback Template' })
   templateName: string;
 
-  @ApiProperty({ example: 5, description: 'Number of forms created from this template' })
+  @ApiProperty({
+    example: 5,
+    description: 'Number of forms created from this template',
+  })
   usageCount: number;
 
-  @ApiProperty({ example: 120, description: 'Total number of responses received across all forms using this template' })
+  @ApiProperty({
+    example: 120,
+    description:
+      'Total number of responses received across all forms using this template',
+  })
   totalResponses: number;
 
-  @ApiProperty({ example: 3, description: 'Number of unique branches using this template' })
+  @ApiProperty({
+    example: 3,
+    description: 'Number of unique branches using this template',
+  })
   uniqueBranchesCount: number;
 
-  @ApiProperty({ example: 2, description: 'Number of unique businesses using this template' })
+  @ApiProperty({
+    example: 2,
+    description: 'Number of unique businesses using this template',
+  })
   uniqueBusinessesCount: number;
 
   @ApiProperty({

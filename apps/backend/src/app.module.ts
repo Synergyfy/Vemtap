@@ -76,9 +76,10 @@ import { dataSourceOptions } from './database/data-source';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        const dbType = (configService.get<string>('DB_TYPE') || 'postgres') as any;
+        const dbType = (configService.get<string>('DB_TYPE') ||
+          'postgres') as any;
         const dbName = configService.get<string>('DB_NAME');
-        
+
         return {
           type: dbType,
           host: configService.get<string>('DB_HOST'),
@@ -86,7 +87,10 @@ import { dataSourceOptions } from './database/data-source';
           username: configService.get<string>('DB_USERNAME'),
           password: configService.get<string>('DB_PASSWORD'),
           database: dbName,
-          ssl: configService.get<string>('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
+          ssl:
+            configService.get<string>('DB_SSL') === 'true'
+              ? { rejectUnauthorized: false }
+              : false,
           autoLoadEntities: true,
           synchronize:
             process.env.NODE_ENV === 'test' ||
@@ -150,4 +154,3 @@ import { dataSourceOptions } from './database/data-source';
   ],
 })
 export class AppModule {}
-

@@ -36,10 +36,13 @@ describe('VisitorsController', () => {
     it('should call service.getVisitedBranches with customer id', async () => {
       const mockUser = { id: 'cust-1', role: UserRole.CUSTOMER } as User;
       const query = { page: 1, limit: 10, search: 'branch' };
-      
+
       await controller.getVisitedBranches({ user: mockUser }, query);
-      
-      expect(service.getVisitedBranches).toHaveBeenCalledWith(mockUser.id, query);
+
+      expect(service.getVisitedBranches).toHaveBeenCalledWith(
+        mockUser.id,
+        query,
+      );
     });
   });
 });

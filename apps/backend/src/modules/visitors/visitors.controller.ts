@@ -68,11 +68,14 @@ export class VisitorsController {
 
   @Get('visited-branches')
   @Roles(UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'Get branches visited by the customer with pagination and search' })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiOperation({
+    summary: 'Get branches visited by the customer with pagination and search',
+  })
+  @ApiResponse({
+    status: 200,
     type: PaginatedVisitedBranchResponseDto,
-    description: 'List of branches visited by the customer, ordered from last visited to first visited'
+    description:
+      'List of branches visited by the customer, ordered from last visited to first visited',
   })
   async getVisitedBranches(
     @Req() req: any,
@@ -341,8 +344,11 @@ export class VisitorsController {
     @Body() body: CreateVisitorRewardDto,
     @Query() filter: BranchFilterDto,
   ): Promise<any> {
-    const branchId = await this.getBranchId(req, body.branchId || filter.branchId);
-    
+    const branchId = await this.getBranchId(
+      req,
+      body.branchId || filter.branchId,
+    );
+
     // Map simplified DTO to the more comprehensive CreateRewardDto used by loyaltyService
     const rewardDto = {
       ...body,
@@ -350,7 +356,9 @@ export class VisitorsController {
       branchId,
       category: (body as any).category || RewardCategory.FREE_PRODUCT,
       totalQuantity: (body as any).totalQuantity || 100, // Defaul quantity if not provided
-      expiryDate: new Date(Date.now() + (body.validityDays || 30) * 24 * 60 * 60 * 1000).toISOString(),
+      expiryDate: new Date(
+        Date.now() + (body.validityDays || 30) * 24 * 60 * 60 * 1000,
+      ).toISOString(),
     };
 
     return this.loyaltyService.createReward(req.user, rewardDto as any);
@@ -362,7 +370,11 @@ export class VisitorsController {
   @Post('signup')
   @ApiOperation({ summary: 'Public visitor signup (Customer Only)' })
   @ApiBody({ type: VisitorSignupDto })
-  @ApiQuery({ name: 'branchId', type: String, description: 'The UUID of the branch' })
+  @ApiQuery({
+    name: 'branchId',
+    type: String,
+    description: 'The UUID of the branch',
+  })
   @ApiResponse({
     status: 201,
     description: 'Visitor registered successfully',
@@ -403,8 +415,6 @@ export class VisitorsController {
   ): Promise<RecordVisitResponse> {
     return this.visitorsService.recordVisit(req.user.id, dto.deviceCode);
   }
-
-
 
   @Patch(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)

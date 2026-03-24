@@ -11,7 +11,14 @@ import {
   Patch,
   Delete,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiResponse, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiBody,
+  ApiResponse,
+  ApiParam,
+} from '@nestjs/swagger';
 import { InboxService } from '../services/inbox.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { User } from '../../users/entities/user.entity';
@@ -23,18 +30,21 @@ import { ThreadIdDto } from '../dto/thread-id.dto';
 @ApiTags('Customer Messaging')
 @Controller('customer/messaging')
 export class CustomerMessagingController {
-  constructor(
-    private readonly inboxService: InboxService,
-  ) {}
+  constructor(private readonly inboxService: InboxService) {}
 
   @Get('threads')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ 
-    summary: 'Get all in-house messaging threads for the customer (Newest to Oldest)',
-    description: 'Retrieves all active conversations between the customer and various business branches. Access: CUSTOMER'
+  @ApiOperation({
+    summary:
+      'Get all in-house messaging threads for the customer (Newest to Oldest)',
+    description:
+      'Retrieves all active conversations between the customer and various business branches. Access: CUSTOMER',
   })
-  @ApiResponse({ status: 200, description: 'List of business threads for the visitor' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of business threads for the visitor',
+  })
   async getThreads(@Request() req: { user: User }) {
     return this.inboxService.getCustomerThreads(req.user.id);
   }
@@ -42,28 +52,40 @@ export class CustomerMessagingController {
   @Post('threads/start')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Start a new conversation with a branch',
-    description: 'Initiates a new chat thread with a specific business branch and sends the first message. Access: CUSTOMER'
+    description:
+      'Initiates a new chat thread with a specific business branch and sends the first message. Access: CUSTOMER',
   })
   @ApiBody({ type: StartConversationDto })
-  @ApiResponse({ status: 201, description: 'Conversation started and first message sent' })
+  @ApiResponse({
+    status: 201,
+    description: 'Conversation started and first message sent',
+  })
   async startConversation(
     @Body() dto: StartConversationDto,
     @Request() req: { user: User },
   ) {
-    return this.inboxService.startCustomerConversation(req.user.id, dto.branchId, dto.content);
+    return this.inboxService.startCustomerConversation(
+      req.user.id,
+      dto.branchId,
+      dto.content,
+    );
   }
 
   @Get('threads/:threadId')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get messages in a specific in-house thread (Newest to Oldest)',
-    description: 'Fetches conversation history for a specific thread. Access: CUSTOMER'
+    description:
+      'Fetches conversation history for a specific thread. Access: CUSTOMER',
   })
   @ApiParam({ name: 'threadId', description: 'Conversation thread UUID' })
-  @ApiResponse({ status: 200, description: 'List of messages with quoting support' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of messages with quoting support',
+  })
   async getThreadMessages(
     @Param() { threadId }: ThreadIdDto,
     @Request() req: { user: User },
@@ -74,19 +96,28 @@ export class CustomerMessagingController {
   @Post('threads/:threadId/reply')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Reply to an in-house message (Supports Quoting)',
-    description: 'Sends a reply to an existing conversation thread. Access: CUSTOMER'
+    description:
+      'Sends a reply to an existing conversation thread. Access: CUSTOMER',
   })
   @ApiParam({ name: 'threadId', description: 'Conversation thread UUID' })
   @ApiBody({ type: ReplyDto })
-  @ApiResponse({ status: 201, description: 'Reply sent and broadcast via Socket' })
+  @ApiResponse({
+    status: 201,
+    description: 'Reply sent and broadcast via Socket',
+  })
   async replyToThread(
     @Param() { threadId }: ThreadIdDto,
     @Body() dto: ReplyDto,
     @Request() req: { user: User },
   ) {
-    return this.inboxService.sendCustomerReply(threadId, dto.content, req.user.id, dto.replyToId);
+    return this.inboxService.sendCustomerReply(
+      threadId,
+      dto.content,
+      req.user.id,
+      dto.replyToId,
+    );
   }
 
   @Patch('messages/:id')
@@ -114,4 +145,3 @@ export class CustomerMessagingController {
     return this.inboxService.deleteMessage(id, req.user.id);
   }
 }
-

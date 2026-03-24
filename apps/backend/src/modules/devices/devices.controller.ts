@@ -119,8 +119,13 @@ export class DevicesController {
   // --- Admin Endpoints ---
   @Get('admin')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get all devices with filters and pagination' })
-  @ApiResponse({ status: 200, description: 'Return list of devices with pagination' })
+  @ApiOperation({
+    summary: 'Admin: Get all devices with filters and pagination',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Return list of devices with pagination',
+  })
   async findAllAdmin(@Query() query: AdminDeviceQueryDto) {
     return this.devicesService.findAllAdmin(query);
   }

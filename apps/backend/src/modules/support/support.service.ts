@@ -223,7 +223,16 @@ export class SupportService {
   async findOneAgentUser(agentId: string) {
     const user = await this.userRepository.findOne({
       where: { id: agentId, role: UserRole.AGENT },
-      select: ['id', 'firstName', 'lastName', 'email', 'phone', 'status', 'lastActive', 'permissions'],
+      select: [
+        'id',
+        'firstName',
+        'lastName',
+        'email',
+        'phone',
+        'status',
+        'lastActive',
+        'permissions',
+      ],
     });
     if (!user) throw new NotFoundException('Agent not found');
     return user;

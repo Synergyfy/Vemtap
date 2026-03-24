@@ -210,4 +210,3 @@ export class BusinessSummaryResponseDto {
   @ApiProperty({ example: 5000 })
   totalPlatformUsers: number;
 }
-

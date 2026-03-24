@@ -1,4 +1,13 @@
-import { IsString, IsBoolean, IsOptional, IsArray, MinLength, IsObject, ValidateNested, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsBoolean,
+  IsOptional,
+  IsArray,
+  MinLength,
+  IsObject,
+  ValidateNested,
+  IsUUID,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -13,7 +22,10 @@ export class DayScheduleDto {
 }
 
 export class CustomScheduleDto {
-  @ApiProperty({ type: 'object', additionalProperties: { $ref: '#/components/schemas/DayScheduleDto' } })
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: { $ref: '#/components/schemas/DayScheduleDto' },
+  })
   @IsObject()
   @IsOptional()
   days?: Record<string, DayScheduleDto>; // e.g., { "monday": { startTime: "09:00", endTime: "17:00" } }
@@ -56,7 +68,7 @@ export class UpdateChatAutomationDto {
   @ValidateNested()
   @Type(() => CustomScheduleDto)
   customSchedule?: CustomScheduleDto;
-  
+
   @IsUUID()
   @IsOptional()
   branchId?: string;
@@ -78,7 +90,6 @@ export class AddFaqKeywordDto {
   @IsOptional()
   branchId?: string;
 }
-
 
 export class UpdateFaqKeywordDto {
   @ApiProperty({ required: false })

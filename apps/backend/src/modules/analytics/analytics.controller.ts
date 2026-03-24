@@ -79,7 +79,9 @@ export class AnalyticsController {
 
   @Get('admin/business-summary')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Detailed business status summary for super admins' })
+  @ApiOperation({
+    summary: 'Detailed business status summary for super admins',
+  })
   @ApiResponse({
     status: 200,
     description: 'Business summary data',

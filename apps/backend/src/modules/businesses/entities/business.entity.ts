@@ -1,4 +1,12 @@
-import { Entity, Column, OneToMany, JoinColumn, OneToOne, ManyToOne, BeforeInsert } from 'typeorm';
+import {
+  Entity,
+  Column,
+  OneToMany,
+  JoinColumn,
+  OneToOne,
+  ManyToOne,
+  BeforeInsert,
+} from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { User } from '../../users/entities/user.entity';
 import { Branch } from '../../branches/entities/branch.entity';
@@ -15,7 +23,10 @@ export enum BusinessStatus {
 
 @Entity('businesses')
 export class Business extends AbstractBaseEntity {
-  @ApiProperty({ example: 'BIZ123XYZ', description: 'Unique 9-character alphanumeric code for the business' })
+  @ApiProperty({
+    example: 'BIZ123XYZ',
+    description: 'Unique 9-character alphanumeric code for the business',
+  })
   @Column({ unique: true })
   uniqueCode: string;
 
@@ -95,7 +106,10 @@ export class Business extends AbstractBaseEntity {
   @Column({ nullable: true })
   whatsappNumber: string;
 
-  @ApiProperty({ example: false, description: 'Whether the business is verified by admin' })
+  @ApiProperty({
+    example: false,
+    description: 'Whether the business is verified by admin',
+  })
   @Column({ default: false })
   isVerified: boolean;
 

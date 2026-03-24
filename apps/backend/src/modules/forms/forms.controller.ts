@@ -18,7 +18,6 @@ import { UpdateFormDto } from './dto/update-form.dto';
 import { UpdateBranchFormSettingsDto } from './dto/update-branch-form-settings.dto';
 import { BranchIdParamDto } from './dto/branch-id-param.dto';
 
-
 import {
   ApiTags,
   ApiOperation,
@@ -336,7 +335,9 @@ export class FormsController {
   @Patch('branch-settings/:branchId')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @Permissions('engagement')
-  @ApiOperation({ summary: 'Update branch-specific form settings (appearance, messages)' })
+  @ApiOperation({
+    summary: 'Update branch-specific form settings (appearance, messages)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Branch settings have been successfully updated.',
@@ -350,5 +351,3 @@ export class FormsController {
     return this.formsService.updateBranchSettings(branchId, dto);
   }
 }
-
-

@@ -4,7 +4,10 @@ import { createTestApp } from '../utils/create-app';
 import { createAuthenticatedUser } from '../utils/auth';
 import { UserRole } from '../../src/modules/users/entities/user.entity';
 import { DataSource, Repository } from 'typeorm';
-import { Device, DeviceStatus } from '../../src/modules/devices/entities/device.entity';
+import {
+  Device,
+  DeviceStatus,
+} from '../../src/modules/devices/entities/device.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 describe('Devices (E2E)', () => {
@@ -19,7 +22,7 @@ describe('Devices (E2E)', () => {
     const ownerRes = await createAuthenticatedUser(app, UserRole.OWNER);
     ownerToken = ownerRes.token;
     branchId = ownerRes.user.branchId;
-    
+
     deviceRepo = app.get(getRepositoryToken(Device));
 
     // Manually create a device for testing update and delete
@@ -70,7 +73,7 @@ describe('Devices (E2E)', () => {
         .set('Authorization', `Bearer ${ownerToken}`)
         .send({ branchId })
         .expect(201);
-      
+
       expect(Array.isArray(res.body)).toBe(true);
     });
   });
@@ -102,7 +105,9 @@ describe('Devices (E2E)', () => {
         .set('Authorization', `Bearer ${ownerToken}`)
         .expect(200);
 
-      const deletedDevice = await deviceRepo.findOne({ where: { id: deviceId } });
+      const deletedDevice = await deviceRepo.findOne({
+        where: { id: deviceId },
+      });
       expect(deletedDevice).toBeNull();
     });
   });

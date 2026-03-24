@@ -9,15 +9,17 @@ import {
   UserRole,
   UserStatus,
 } from '../../src/modules/users/entities/user.entity';
-import {
-  Business,
-} from '../../src/modules/businesses/entities/business.entity';
+import { Business } from '../../src/modules/businesses/entities/business.entity';
 import { Branch } from '../../src/modules/branches/entities/branch.entity';
 import { Visit } from '../../src/modules/visitors/entities/visit.entity';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { Channel } from '../../src/modules/messaging/enums/channel.enum';
 import { Plan } from '../../src/modules/subscriptions/entities/plan.entity';
-import { BillingPeriod, Subscription, SubscriptionStatus } from '../../src/modules/subscriptions/entities/subscription.entity';
+import {
+  BillingPeriod,
+  Subscription,
+  SubscriptionStatus,
+} from '../../src/modules/subscriptions/entities/subscription.entity';
 import { BusinessCreditWallet } from '../../src/modules/messaging/entities/business-credit-wallet.entity';
 import { TermiiProvider } from '../../src/modules/messaging/providers/termii.provider';
 import { BestBulkSmsProvider } from '../../src/modules/messaging/providers/bestbulksms.provider';
@@ -201,7 +203,9 @@ describe('Messaging (e2e)', () => {
     });
 
     it('should send a message to a specific customer with branchId', async () => {
-      const customers = await userRepo.find({ where: { role: UserRole.CUSTOMER } });
+      const customers = await userRepo.find({
+        where: { role: UserRole.CUSTOMER },
+      });
       const res = await request(app.getHttpServer())
         .post('/api/v1/messaging/send')
         .set('Authorization', `Bearer ${ownerToken}`)

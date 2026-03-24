@@ -32,7 +32,9 @@ export class UsersService {
     if (dto.phone) {
       const existingPhone = await this.findByPhone(dto.phone);
       if (existingPhone) {
-        throw new BadRequestException('User with this phone number already exists');
+        throw new BadRequestException(
+          'User with this phone number already exists',
+        );
       }
     }
 
@@ -111,7 +113,16 @@ export class UsersService {
   }
 
   async updateProfile(id: string, updates: Partial<User>): Promise<User> {
-    const { branch, business, ownedBusiness, notifications, visits, messages, threads, ...plainUpdates } = updates as any;
+    const {
+      branch,
+      business,
+      ownedBusiness,
+      notifications,
+      visits,
+      messages,
+      threads,
+      ...plainUpdates
+    } = updates as any;
     await this.usersRepository.update(id, plainUpdates);
     const user = await this.findOne(id);
     if (!user) throw new NotFoundException('User not found');
@@ -119,7 +130,16 @@ export class UsersService {
   }
 
   async update(id: string, updates: Partial<User>): Promise<User> {
-    const { branch, business, ownedBusiness, notifications, visits, messages, threads, ...plainUpdates } = updates as any;
+    const {
+      branch,
+      business,
+      ownedBusiness,
+      notifications,
+      visits,
+      messages,
+      threads,
+      ...plainUpdates
+    } = updates as any;
     await this.usersRepository.update(id, plainUpdates);
     const user = await this.findOne(id);
     if (!user) throw new NotFoundException('User not found');
@@ -224,7 +244,16 @@ export class UsersService {
       updates.status = UserStatus.ACTIVE;
     }
 
-    const { branch, business, ownedBusiness, notifications, visits, messages, threads, ...plainUpdates } = updates as any;
+    const {
+      branch,
+      business,
+      ownedBusiness,
+      notifications,
+      visits,
+      messages,
+      threads,
+      ...plainUpdates
+    } = updates as any;
     await this.usersRepository.update(userId, plainUpdates);
 
     const history = this.passwordResetHistoryRepository.create({
