@@ -1,5 +1,5 @@
 export type PointTransactionType = 'earn' | 'redeem' | 'expire' | 'bonus' | 'adjustment';
-export type RewardType = 'discount' | 'free_item' | 'service' | 'cashback' | 'gift';
+export type RewardType = 'custom_discount' | 'free_product' | 'service_upgrade' | 'tangible_gifts' | 'discount' | 'free_item' | 'service' | 'cashback' | 'gift';
 export type RedemptionStatus = 'pending' | 'verified' | 'used' | 'expired' | 'cancelled';
 export type TierLevel = 'bronze' | 'silver' | 'gold' | 'platinum';
 export type RuleType = 'spending' | 'visit' | 'hybrid';

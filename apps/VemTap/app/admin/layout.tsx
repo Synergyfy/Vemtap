@@ -10,7 +10,9 @@ export default function AdminLayout({
 }) {
     return (
         <AdminSidebar>
-            {children}
+            <React.Suspense fallback={<div className="p-8 animate-pulse text-center">Loading...</div>}>
+                {children}
+            </React.Suspense>
         </AdminSidebar>
     );
 }

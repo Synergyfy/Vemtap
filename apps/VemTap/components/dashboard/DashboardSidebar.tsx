@@ -82,7 +82,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const businessName = myBusiness?.name || user?.businessName || 'Business Profile';
     const businessSlug = businessName.toLowerCase().replace(/\s+/g, '-');
     const publicProfileCode = activeBranch?.uniqueCode || mainBranch?.uniqueCode || firstBranchWithCode?.uniqueCode || myBusiness?.uniqueCode;
-    const publicProfileHref = publicProfileCode ? `/b/${publicProfileCode}` : `/business/${businessSlug}`;
+    const publicProfileHref = getLinkWithBranch(publicProfileCode ? `/b/${publicProfileCode}` : `/business/${businessSlug}`);
 
 
 
@@ -289,9 +289,11 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         },
     ];
 
-    const filteredMenuItems = menuItems.filter(item =>
-        !item.roles || item.roles.includes((user?.role as string)?.toLowerCase() || 'owner')
-    );
+    const filteredMenuItems = menuItems.filter(item => {
+        const userRole = (user?.role as string)?.toLowerCase() || 'owner';
+        if (userRole === 'admin') return true;
+        return !item.roles || item.roles.includes(userRole);
+    });
 
     const isActive = (href: string) => pathname === href;
     const isParentActive = (submenu?: any[]): boolean =>
@@ -612,7 +614,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                             if (isFree || !activeSubscription) {
                                 return (
                                     <Link
-                                        href="/dashboard/settings/subscription"
+                                        href={withBranch("/dashboard/settings/subscription")}
                                         className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-gray-200 transition-colors"
                                     >
                                         Free Plan
@@ -627,7 +629,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
                                 return (
                                     <Link
-                                        href="/dashboard/settings/subscription/manage"
+                                        href={withBranch("/dashboard/settings/subscription/manage")}
                                         className="flex items-center gap-2 pl-3 pr-1 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-full transition-all group"
                                     >
                                         <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">
@@ -645,7 +647,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
                             return (
                                 <Link
-                                    href="/dashboard/settings/subscription/manage"
+                                    href={withBranch("/dashboard/settings/subscription/manage")}
                                     className="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-emerald-100 transition-colors"
                                 >
                                     {activeSubscription?.plan?.name || 'Active Plan'}
@@ -713,7 +715,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                     </div>
                                     <div className="p-3 border-t border-gray-100 text-center">
                                         <Link
-                                            href="/dashboard/notifications"
+                                            href={withBranch("/dashboard/notifications")}
                                             className="text-xs font-bold text-primary hover:text-primary-hover"
                                             onClick={() => setShowNotifications(false)}
                                         >
@@ -725,7 +727,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         )}
 
                         <Link
-                            href="/dashboard/support"
+                            href={withBranch("/dashboard/support")}
                             className="p-2 text-text-secondary hover:text-text-main hover:bg-gray-50 rounded-lg transition-colors"
                         >
                             <HelpCircle size={20} />
@@ -763,7 +765,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                         </div>
                                         <div className="px-2">
                                             <Link
-                                                href="/dashboard/settings/profile"
+                                                href={withBranch("/dashboard/settings/profile")}
                                                 className="flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-primary/5 hover:text-primary rounded-lg transition-colors"
                                                 onClick={() => setShowUserDropdown(false)}
                                             >
@@ -772,7 +774,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                             </Link>
                                             {((user?.role as string)?.toLowerCase() === 'owner' || (user?.role as string)?.toLowerCase() === 'admin') && (
                                                 <Link
-                                                    href="/dashboard/staff"
+                                                    href={withBranch("/dashboard/staff")}
                                                     className="flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-primary/5 hover:text-primary rounded-lg transition-colors"
                                                     onClick={() => setShowUserDropdown(false)}
                                                 >

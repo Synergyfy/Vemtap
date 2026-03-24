@@ -45,8 +45,10 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
             // Skip if this is the login endpoint itself
             if (!normalizedEndpoint.includes('/auth/login') && !normalizedEndpoint.includes('/auth/register')) {
                 try {
-                    localStorage.removeItem('auth-storage-v2');
-                    document.cookie = 'vemtap-auth-token=; path=/; max-age=0; SameSite=Lax';
+                    if (typeof window !== 'undefined') {
+                        localStorage.removeItem('auth-storage-v2');
+                        document.cookie = 'vemtap-auth-token=; path=/; max-age=0; SameSite=Lax';
+                    }
                     
                     // Only redirect to login if we are on a protected route
                     if (typeof window !== 'undefined') {
