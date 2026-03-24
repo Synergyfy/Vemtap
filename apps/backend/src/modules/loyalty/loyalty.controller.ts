@@ -14,8 +14,10 @@ import { LoyaltyService } from './loyalty.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Permissions } from '../../common/decorators/permissions.decorator';
 import { User, UserRole } from '../users/entities/user.entity';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import {
   CreateRewardTemplateDto,
   CreateRewardDto,
@@ -31,7 +33,7 @@ import { CustomerAnalyticsQueryDto, PointLogsQueryDto } from './dto/loyalty-quer
 
 @ApiTags('Loyalty, Points & Rewards')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Controller('loyalty')
 export class LoyaltyController {
   constructor(private readonly loyaltyService: LoyaltyService) {}
@@ -95,6 +97,7 @@ export class LoyaltyController {
   // --- Point Earning ---
   @Post('points/give')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('loyalty')
   @ApiOperation({ 
     summary: 'Staff gives points to customer using unique code',
     description: 'Manually award points to a customer using their unique customer code. Access: OWNER, MANAGER, STAFF'
@@ -107,6 +110,7 @@ export class LoyaltyController {
 
   @Post('points/generate-code')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('loyalty')
   @ApiOperation({ 
     summary: 'Staff generates a 9-digit point code',
     description: 'Generates a temporary code that a customer can use to claim points. Access: OWNER, MANAGER, STAFF'
@@ -156,6 +160,7 @@ export class LoyaltyController {
   // --- Rewards ---
   @Post('rewards')
   @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('loyalty')
   @ApiOperation({ 
     summary: 'Owner creates a reward for a branch',
     description: 'Creates a specific reward instance for a branch, optionally based on a template. Access: OWNER, ADMIN'
@@ -188,6 +193,7 @@ export class LoyaltyController {
 
   @Patch('rewards/:id')
   @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('loyalty')
   @ApiOperation({ 
     summary: 'Update a reward',
     description: 'Updates reward details like quantity or expiry date. Access: OWNER, ADMIN, MANAGER, STAFF'
@@ -201,6 +207,7 @@ export class LoyaltyController {
 
   @Delete('rewards/:id')
   @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('loyalty')
   @ApiOperation({ 
     summary: 'Delete a reward',
     description: 'Removes a reward from a branch. Access: OWNER, ADMIN, MANAGER, STAFF'
@@ -213,6 +220,7 @@ export class LoyaltyController {
 
   @Get('rewards/:id/redemptions')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('loyalty')
   @ApiOperation({ 
     summary: 'Fetch customers who redeemed a reward',
     description: 'Retrieves a paginated list of customers who have successfully redeemed a specific reward. Access: OWNER, MANAGER, STAFF'
@@ -237,6 +245,7 @@ export class LoyaltyController {
   // --- Redemption ---
   @Post('redemption/generate-code')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('loyalty')
   @ApiOperation({ 
     summary: 'Staff generates a redemption code for a reward',
     description: 'Generates a code that a customer can use to redeem a reward at the branch. Access: OWNER, MANAGER, STAFF'

@@ -20,16 +20,19 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { User, UserRole } from '../users/entities/user.entity';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
 
 @ApiTags('Campaigns')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Controller('campaigns')
 export class CampaignsController {
   constructor(private readonly campaignsService: CampaignsService) {}
 
   @Post()
   @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('engagement')
   @ApiOperation({ summary: 'Create a new campaign' })
   async create(
     @Request() req: { user: User },
@@ -40,6 +43,7 @@ export class CampaignsController {
   }
   @Get()
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @Permissions('engagement')
   @ApiOperation({ summary: 'Get all campaigns for a branch or business' })
   async findAll(
     @Request() req: { user: User },
@@ -54,6 +58,7 @@ export class CampaignsController {
 
   @Get(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('engagement')
   @ApiOperation({ summary: 'Get a campaign by ID' })
   async findOne(@Param('id') id: string) {
     return this.campaignsService.findOne(id);
@@ -61,6 +66,7 @@ export class CampaignsController {
 
   @Patch(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('engagement')
   @ApiOperation({ summary: 'Update a campaign' })
   async update(
     @Param('id') id: string,
@@ -71,6 +77,7 @@ export class CampaignsController {
 
   @Delete(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('engagement')
   @ApiOperation({ summary: 'Delete a campaign' })
   async remove(@Param('id') id: string) {
     return this.campaignsService.remove(id);

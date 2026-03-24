@@ -8,12 +8,14 @@ import { UsersController } from './users.controller';
 import { BusinessesModule } from '../businesses/businesses.module';
 import { BranchesModule } from '../branches/branches.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, PasswordResetHistory]),
     BusinessesModule,
     BranchesModule,
+    MailModule,
     forwardRef(() => SubscriptionsModule),
   ],
   providers: [UsersService],

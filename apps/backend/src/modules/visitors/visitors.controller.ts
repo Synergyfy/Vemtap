@@ -322,6 +322,7 @@ export class VisitorsController {
 
   @Delete('reset')
   @Roles(UserRole.OWNER)
+  @Permissions('settings')
   @ApiOperation({ summary: 'Reset all dashboard data for the branch' })
   async resetDashboard(
     @Req() req: any,

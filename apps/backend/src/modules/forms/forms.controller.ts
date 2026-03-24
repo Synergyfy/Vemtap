@@ -9,8 +9,10 @@ import {
   Request,
   BadRequestException,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { FormsService } from './forms.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { UpdateBranchFormSettingsDto } from './dto/update-branch-form-settings.dto';
@@ -24,7 +26,10 @@ import {
   ApiResponse,
   ApiBody,
 } from '@nestjs/swagger';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Permissions } from '../../common/decorators/permissions.decorator';
 import { UserRole, User } from '../users/entities/user.entity';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
 
@@ -34,6 +39,7 @@ interface RequestWithUser extends Request {
 
 @ApiTags('Business Forms')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Controller('business-forms')
 export class FormsController {
   constructor(private readonly formsService: FormsService) {}
@@ -74,6 +80,7 @@ export class FormsController {
 
   @Post()
   @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('engagement')
   @ApiOperation({ summary: 'Create a new form for the branch' })
   @ApiBody({
     type: CreateFormDto,
@@ -155,6 +162,7 @@ export class FormsController {
 
   @Get()
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('engagement')
   @ApiOperation({ summary: 'Get all forms for the branch' })
   @ApiResponse({
     status: 200,
@@ -187,6 +195,7 @@ export class FormsController {
 
   @Get(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('engagement')
   @ApiOperation({ summary: 'Get a specific form by ID' })
   @ApiResponse({
     status: 200,
@@ -225,6 +234,7 @@ export class FormsController {
 
   @Patch(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('engagement')
   @ApiOperation({ summary: 'Update a specific form by ID' })
   @ApiBody({
     type: UpdateFormDto,
@@ -258,6 +268,7 @@ export class FormsController {
 
   @Delete(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('engagement')
   @ApiOperation({ summary: 'Delete a specific form by ID' })
   @ApiResponse({
     status: 200,
@@ -274,6 +285,7 @@ export class FormsController {
 
   @Get(':id/responses')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('engagement')
   @ApiOperation({ summary: 'Get all responses for a specific form' })
   @ApiResponse({
     status: 200,
@@ -323,6 +335,7 @@ export class FormsController {
 
   @Patch('branch-settings/:branchId')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('engagement')
   @ApiOperation({ summary: 'Update branch-specific form settings (appearance, messages)' })
   @ApiResponse({
     status: 200,

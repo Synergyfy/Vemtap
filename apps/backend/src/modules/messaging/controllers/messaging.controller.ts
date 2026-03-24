@@ -37,6 +37,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
+import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { TrialRestrictionGuard } from '../../subscriptions/guards/trial-restriction.guard';
 import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
 import { MessagingAnalyticsFilterDto } from '../dto/messaging-analytics-filter.dto';
@@ -70,6 +71,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('messages')
   @ApiOperation({ 
     summary: 'Send a single message or start a campaign',
     description: 'Enqueues a message for delivery or initiates a bulk campaign. Access: OWNER, MANAGER, STAFF'
@@ -92,6 +94,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @Permissions('messages')
   @ApiOperation({
     summary: 'Get available templates for the branch (System + Branch specific)',
     description: 'Retrieves both system-wide and branch-specific message templates. Access: OWNER, MANAGER, STAFF, ADMIN',
@@ -110,6 +113,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @Permissions('messages')
   @ApiOperation({ 
     summary: 'Create a new message template',
     description: 'Creates a message template that can be reused for campaigns or direct messages. Access: OWNER, MANAGER, ADMIN'
@@ -130,6 +134,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @Permissions('messages')
   @ApiOperation({ 
     summary: 'Update a message template',
     description: 'Modifies an existing message template. Access: OWNER, MANAGER, ADMIN'
@@ -148,6 +153,7 @@ export class MessagingController {
   @Get('campaigns')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Permissions('messages')
   @ApiOperation({
     summary: 'Get all messaging campaigns for a branch',
     description: 'Lists all sent and scheduled messaging campaigns for the branch. Access: Authenticated users with branch access'
@@ -165,6 +171,7 @@ export class MessagingController {
   @Get('analytics')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Permissions('messages')
   @ApiOperation({ 
     summary: 'Get messaging analytics by branch',
     description: 'Provides delivery metrics and success rates for a branch. Access: Authenticated users with branch access'
@@ -184,6 +191,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @Permissions('chat')
   @ApiParam({ name: 'channel', enum: Channel })
   @ApiOperation({
     summary: 'Get conversation threads by channel for a branch (Newest to Oldest)',
@@ -204,6 +212,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @Permissions('chat')
   @ApiOperation({ 
     summary: 'Get messages in a specific thread (Newest to Oldest)',
     description: 'Fetches the full conversation history for a specific thread ID. Access: OWNER, MANAGER, STAFF, ADMIN'
@@ -224,6 +233,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('chat')
   @ApiOperation({ 
     summary: 'Send a reply to an active thread (Supports Quoting)',
     description: 'Sends a response to a customer message in a thread. Access: OWNER, MANAGER, STAFF'
@@ -247,6 +257,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @Permissions('chat')
   @ApiOperation({ 
     summary: 'Mark a conversation thread as read for the branch',
     description: 'Marks all messages in the thread as read to clear notifications. Access: OWNER, MANAGER, STAFF, ADMIN'
@@ -267,6 +278,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('chat')
   @ApiOperation({ 
     summary: 'Initialize an empty conversation thread with a customer',
   })
@@ -282,6 +294,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @Permissions('messages')
   @ApiOperation({ 
     summary: 'Delete a message template',
     description: 'Permanently removes a message template. Access: OWNER, MANAGER, ADMIN'
@@ -299,6 +312,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('chat')
   @ApiOperation({ summary: 'Edit a message' })
   @ApiParam({ name: 'id', description: 'Message UUID' })
   async editMessage(
@@ -315,6 +329,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('chat')
   @ApiOperation({ summary: 'Delete (hide) a message' })
   @ApiParam({ name: 'id', description: 'Message UUID' })
   async deleteMessage(

@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
 import { PasswordResetHistory } from './entities/password-reset-history.entity';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class UsersService {
@@ -19,6 +20,7 @@ export class UsersService {
     private usersRepository: Repository<User>,
     @InjectRepository(PasswordResetHistory)
     private passwordResetHistoryRepository: Repository<PasswordResetHistory>,
+    private readonly mailService: MailService,
   ) {}
 
   async inviteStaff(branchId: string, dto: InviteStaffDto): Promise<User> {
@@ -34,19 +36,33 @@ export class UsersService {
       }
     }
 
+    const hashedPassword = await bcrypt.hash(dto.firstName.toLowerCase(), 10);
     const user = this.usersRepository.create({
       firstName: dto.firstName,
       lastName: dto.lastName,
       email: dto.email.toLowerCase(),
       phone: dto.phone,
+      password: hashedPassword,
       role: dto.role,
       jobTitle: dto.jobTitle,
       permissions: dto.permissions,
       branchId: branchId,
       status: UserStatus.INVITED,
     });
+    const savedUser = await this.usersRepository.save(user);
 
-    return this.usersRepository.save(user);
+    // Send welcome email with default password
+    try {
+      await this.mailService.sendWelcomeEmail(
+        savedUser.email,
+        savedUser.firstName,
+        dto.firstName.toLowerCase(),
+      );
+    } catch (error) {
+      console.error('Failed to send invitation email:', error);
+    }
+
+    return savedUser;
   }
 
   async create(userData: Partial<User>): Promise<User> {

@@ -30,6 +30,8 @@ import { UpdateEngagementDto } from './dto/update-engagement.dto';
 import { AdminCreateAgentDto } from './dto/admin-create-agent.dto';
 import { FindUsersAdminDto } from './dto/find-users-admin.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
 import { CapabilityGuard } from '../subscriptions/guards/capability.guard';
 import { RequireCapability } from '../subscriptions/decorators/capability.decorator';
 import {
@@ -40,7 +42,7 @@ import { ParseUUIDPipe } from '@nestjs/common';
 
 @ApiTags('Users')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -83,6 +85,7 @@ export class UsersController {
 
   @Post('team/invite')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('staff')
   @UseGuards(CapabilityGuard)
   @RequireCapability('teamMembers')
   @ApiOperation({ summary: 'Invite a new team member' })
@@ -98,6 +101,7 @@ export class UsersController {
 
   @Get('team')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @Permissions('staff')
   @ApiOperation({ summary: 'Get all team members for the branch' })
   @ApiResponse({ status: 200, type: [User] })
   async getTeam(@Request() req, @Query() filter: BranchFilterDto) {
@@ -107,6 +111,7 @@ export class UsersController {
 
   @Patch('team/:id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('staff')
   @ApiOperation({ summary: 'Update a team member' })
   @ApiResponse({ status: 200, type: User })
   async updateStaff(
@@ -121,6 +126,7 @@ export class UsersController {
 
   @Delete('team/:id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('staff')
   @ApiOperation({ summary: 'Remove a team member' })
   @ApiResponse({ status: 200 })
   async remove(
