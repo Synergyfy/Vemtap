@@ -51,7 +51,9 @@ describe('ProviderRouterService', () => {
     service = module.get<ProviderRouterService>(ProviderRouterService);
     termiiProvider = module.get<TermiiProvider>(TermiiProvider);
     twilioProvider = module.get<TwilioProvider>(TwilioProvider);
-    africaTalkingProvider = module.get<AfricaTalkingProvider>(AfricaTalkingProvider);
+    africaTalkingProvider = module.get<AfricaTalkingProvider>(
+      AfricaTalkingProvider,
+    );
     bestBulkSmsProvider = module.get<BestBulkSmsProvider>(BestBulkSmsProvider);
     emailProvider = module.get<EmailProvider>(EmailProvider);
     inHouseProvider = module.get<InHouseProvider>(InHouseProvider);

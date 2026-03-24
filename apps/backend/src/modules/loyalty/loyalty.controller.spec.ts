@@ -51,15 +51,26 @@ describe('LoyaltyController', () => {
     it('should call getBusinessPoints', async () => {
       const businessId = 'biz-1';
       await controller.getBalance(mockReq as any, businessId);
-      expect(service.getBusinessPoints).toHaveBeenCalledWith(mockUser.id, businessId);
+      expect(service.getBusinessPoints).toHaveBeenCalledWith(
+        mockUser.id,
+        businessId,
+      );
     });
   });
 
   describe('getMyLogs', () => {
     it('should call getPointLogs', async () => {
       const businessId = 'biz-1';
-      await controller.getMyLogs(mockReq as any, businessId, { page: 1, limit: 10 });
-      expect(service.getPointLogs).toHaveBeenCalledWith(mockUser.id, businessId, 1, 10);
+      await controller.getMyLogs(mockReq as any, businessId, {
+        page: 1,
+        limit: 10,
+      });
+      expect(service.getPointLogs).toHaveBeenCalledWith(
+        mockUser.id,
+        businessId,
+        1,
+        10,
+      );
     });
   });
 

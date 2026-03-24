@@ -3,12 +3,17 @@ import { IsOptional, IsString, IsNumber, IsUUID, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class AdminDeviceQueryDto {
-  @ApiPropertyOptional({ description: 'Search by device code, ID, branch name or business name' })
+  @ApiPropertyOptional({
+    description: 'Search by device code, ID, branch name or business name',
+  })
   @IsOptional()
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by status (active: linked to a branch, inactive: not linked)' })
+  @ApiPropertyOptional({
+    description:
+      'Filter by status (active: linked to a branch, inactive: not linked)',
+  })
   @IsOptional()
   @IsString()
   status?: string;

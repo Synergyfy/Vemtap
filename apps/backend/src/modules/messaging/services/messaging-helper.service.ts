@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { BranchesService } from '../../branches/branches.service';
 
@@ -13,7 +17,10 @@ export class MessagingHelperService {
    * - Owner/Manager: Uses provided branchId (if authorized) or defaults to their primary branchId.
    * - Staff/Agent: Always uses their own branchId.
    */
-  async resolveBranchId(user: User, providedBranchId?: string): Promise<string> {
+  async resolveBranchId(
+    user: User,
+    providedBranchId?: string,
+  ): Promise<string> {
     if (user.role === UserRole.ADMIN) {
       if (!providedBranchId) {
         throw new BadRequestException('Branch ID is required for admin');
@@ -31,7 +38,10 @@ export class MessagingHelperService {
       }
 
       // If branchId provided, verify they have access to it
-      const hasAccess = await this.branchesService.checkBranchAccess(user, providedBranchId);
+      const hasAccess = await this.branchesService.checkBranchAccess(
+        user,
+        providedBranchId,
+      );
       if (!hasAccess) {
         throw new ForbiddenException('Access denied to this branch');
       }

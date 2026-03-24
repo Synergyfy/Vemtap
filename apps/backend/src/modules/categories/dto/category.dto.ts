@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsOptional, IsUUID, Min, IsInt } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsUUID,
+  Min,
+  IsInt,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateCategoryDto {
@@ -35,7 +42,10 @@ export class CreateSubcategoryDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiPropertyOptional({ example: 'Grocery stores', description: 'Subcategory description' })
+  @ApiPropertyOptional({
+    example: 'Grocery stores',
+    description: 'Subcategory description',
+  })
   @IsString()
   @IsOptional()
   description?: string;

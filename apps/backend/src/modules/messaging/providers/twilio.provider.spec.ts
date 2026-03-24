@@ -97,7 +97,7 @@ describe('TwilioProvider', () => {
       expect(mockTwilioMessages.create).toHaveBeenCalledWith(
         expect.objectContaining({
           mediaUrl: ['https://example.com/image.png'],
-        })
+        }),
       );
     });
   });
@@ -119,7 +119,7 @@ describe('TwilioProvider', () => {
           from: '+2348012345678',
           content: 'Hello back',
           providerMessageId: 'SM123',
-        })
+        }),
       );
     });
 
@@ -136,7 +136,7 @@ describe('TwilioProvider', () => {
         expect.objectContaining({
           messageId: 'SM123',
           status: 'DELIVERED',
-        })
+        }),
       );
     });
   });

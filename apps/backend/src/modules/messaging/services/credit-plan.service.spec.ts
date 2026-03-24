@@ -65,7 +65,9 @@ describe('CreditPlanService', () => {
         {
           provide: BranchesService,
           useValue: {
-            findById: jest.fn().mockResolvedValue({ id: 'branch-123', businessId: 'biz-123' }),
+            findById: jest
+              .fn()
+              .mockResolvedValue({ id: 'branch-123', businessId: 'biz-123' }),
           },
         },
       ],

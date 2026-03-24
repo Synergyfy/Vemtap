@@ -252,7 +252,9 @@ describe('AuthService', () => {
       );
 
       // Verify Auto-Subscription
-      expect(mockSubscriptionsService.subscribeToFreePlan).toHaveBeenCalledWith('biz-1');
+      expect(mockSubscriptionsService.subscribeToFreePlan).toHaveBeenCalledWith(
+        'biz-1',
+      );
 
       // Verify OTP consumed
       expect(otpRepository.remove).toHaveBeenCalled();

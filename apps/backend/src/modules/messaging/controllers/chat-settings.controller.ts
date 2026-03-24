@@ -19,14 +19,14 @@ import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { MessagingEngineService } from '../services/messaging-engine.service';
-import { 
-  UpdateChatAutomationDto, 
-  AddFaqKeywordDto, 
-  UpdateFaqKeywordDto 
+import {
+  UpdateChatAutomationDto,
+  AddFaqKeywordDto,
+  UpdateFaqKeywordDto,
 } from '../dto/chat-automation.dto';
-import { 
-  CreateChatCategoryDto, 
-  UpdateChatCategoryDto 
+import {
+  CreateChatCategoryDto,
+  UpdateChatCategoryDto,
 } from '../dto/chat-category.dto';
 import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
 import { IdDto } from '../dto/id.dto';
@@ -42,13 +42,19 @@ export class ChatSettingsController {
     private readonly messagingHelperService: MessagingHelperService,
   ) {}
 
-  private async getBranchId(req: { user: User }, branchId?: string): Promise<string> {
+  private async getBranchId(
+    req: { user: User },
+    branchId?: string,
+  ): Promise<string> {
     return this.messagingHelperService.resolveBranchId(req.user, branchId);
   }
 
   @Get('automation')
   @ApiOperation({ summary: 'Get automated reply settings' })
-  async getAutomation(@Request() req: { user: User }, @Query() filter: BranchFilterDto) {
+  async getAutomation(
+    @Request() req: { user: User },
+    @Query() filter: BranchFilterDto,
+  ) {
     const effectiveBranchId = await this.getBranchId(req, filter.branchId);
     return this.chatSettingsService.getAutomatedReplies(effectiveBranchId);
   }
@@ -56,22 +62,31 @@ export class ChatSettingsController {
   @Patch('automation')
   @ApiOperation({ summary: 'Update automated reply settings' })
   async updateAutomation(
-    @Request() req: { user: User }, 
+    @Request() req: { user: User },
     @Body() dto: UpdateChatAutomationDto,
-    @Query() filter: BranchFilterDto
+    @Query() filter: BranchFilterDto,
   ) {
-    const effectiveBranchId = await this.getBranchId(req, filter.branchId || dto.branchId);
-    return this.chatSettingsService.updateAutomatedReplies(effectiveBranchId, dto);
+    const effectiveBranchId = await this.getBranchId(
+      req,
+      filter.branchId || dto.branchId,
+    );
+    return this.chatSettingsService.updateAutomatedReplies(
+      effectiveBranchId,
+      dto,
+    );
   }
 
   @Post('automation/faq')
   @ApiOperation({ summary: 'Add a new FAQ keyword trigger' })
   async addFaq(
-    @Request() req: { user: User }, 
+    @Request() req: { user: User },
     @Body() dto: AddFaqKeywordDto,
-    @Query() filter: BranchFilterDto
+    @Query() filter: BranchFilterDto,
   ) {
-    const effectiveBranchId = await this.getBranchId(req, filter.branchId || dto.branchId);
+    const effectiveBranchId = await this.getBranchId(
+      req,
+      filter.branchId || dto.branchId,
+    );
     return this.chatSettingsService.addFaqKeyword(effectiveBranchId, dto);
   }
 
@@ -81,18 +96,22 @@ export class ChatSettingsController {
     @Param() { id }: IdDto,
     @Request() req: { user: User },
     @Body() dto: UpdateFaqKeywordDto,
-    @Query() filter: BranchFilterDto
+    @Query() filter: BranchFilterDto,
   ) {
     const effectiveBranchId = await this.getBranchId(req, filter.branchId);
-    return this.chatSettingsService.updateFaqKeyword(id, effectiveBranchId, dto);
+    return this.chatSettingsService.updateFaqKeyword(
+      id,
+      effectiveBranchId,
+      dto,
+    );
   }
 
   @Delete('automation/faq/:id')
   @ApiOperation({ summary: 'Delete an FAQ keyword trigger' })
   async deleteFaq(
-    @Param() { id }: IdDto, 
+    @Param() { id }: IdDto,
     @Request() req: { user: User },
-    @Query() filter: BranchFilterDto
+    @Query() filter: BranchFilterDto,
   ) {
     const effectiveBranchId = await this.getBranchId(req, filter.branchId);
     return this.chatSettingsService.deleteFaqKeyword(id, effectiveBranchId);
@@ -100,7 +119,10 @@ export class ChatSettingsController {
 
   @Get('categories')
   @ApiOperation({ summary: 'Get chat/ticket categories' })
-  async getCategories(@Request() req: { user: User }, @Query() filter: BranchFilterDto) {
+  async getCategories(
+    @Request() req: { user: User },
+    @Query() filter: BranchFilterDto,
+  ) {
     const effectiveBranchId = await this.getBranchId(req, filter.branchId);
     return this.chatSettingsService.getCategories(effectiveBranchId);
   }
@@ -108,11 +130,14 @@ export class ChatSettingsController {
   @Post('categories')
   @ApiOperation({ summary: 'Create a new ticket category' })
   async createCategory(
-    @Request() req: { user: User }, 
+    @Request() req: { user: User },
     @Body() dto: CreateChatCategoryDto,
-    @Query() filter: BranchFilterDto
+    @Query() filter: BranchFilterDto,
   ) {
-    const effectiveBranchId = await this.getBranchId(req, filter.branchId || dto.branchId);
+    const effectiveBranchId = await this.getBranchId(
+      req,
+      filter.branchId || dto.branchId,
+    );
     return this.chatSettingsService.createCategory(effectiveBranchId, dto);
   }
 
@@ -122,7 +147,7 @@ export class ChatSettingsController {
     @Param() { id }: IdDto,
     @Request() req: { user: User },
     @Body() dto: UpdateChatCategoryDto,
-    @Query() filter: BranchFilterDto
+    @Query() filter: BranchFilterDto,
   ) {
     const effectiveBranchId = await this.getBranchId(req, filter.branchId);
     return this.chatSettingsService.updateCategory(id, effectiveBranchId, dto);
@@ -131,12 +156,11 @@ export class ChatSettingsController {
   @Delete('categories/:id')
   @ApiOperation({ summary: 'Delete a ticket category' })
   async deleteCategory(
-    @Param() { id }: IdDto, 
+    @Param() { id }: IdDto,
     @Request() req: { user: User },
-    @Query() filter: BranchFilterDto
+    @Query() filter: BranchFilterDto,
   ) {
     const effectiveBranchId = await this.getBranchId(req, filter.branchId);
     return this.chatSettingsService.deleteCategory(id, effectiveBranchId);
   }
 }
-

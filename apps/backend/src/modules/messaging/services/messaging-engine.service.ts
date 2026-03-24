@@ -65,7 +65,8 @@ export class MessagingEngineService {
     @InjectRepository(Visit)
     private readonly visitRepo: Repository<Visit>,
     @InjectQueue('messaging-batch-send') private readonly batchQueue: Queue,
-    @InjectQueue('messaging-individual-send') private readonly individualQueue: Queue,
+    @InjectQueue('messaging-individual-send')
+    private readonly individualQueue: Queue,
     private readonly complianceService: ComplianceService,
     private readonly creditService: CreditService,
     private readonly templateService: TemplateService,
@@ -115,26 +116,29 @@ export class MessagingEngineService {
         where: { branchId },
         select: ['customerId'],
       });
-      targetUserIds = [...new Set(visits.map(v => v.customerId))];
+      targetUserIds = [...new Set(visits.map((v) => v.customerId))];
     } else if (audienceType === AudienceType.RECENT) {
       // Last 30 days visits
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
+
       const recentVisits = await this.visitRepo
         .createQueryBuilder('visit')
         .where('visit.branchId = :branchId', { branchId })
         .andWhere('visit.createdAt >= :thirtyDaysAgo', { thirtyDaysAgo })
         .select(['visit.customerId'])
         .getMany();
-      targetUserIds = [...new Set(recentVisits.map(v => v.customerId))];
+      targetUserIds = [...new Set(recentVisits.map((v) => v.customerId))];
     } else if (audienceType === AudienceType.SEGMENT && dto.segmentId) {
       const segment = await this.dataSource.getRepository(Segment).findOne({
         where: { id: dto.segmentId, branchId },
         relations: ['users'],
       });
-      if (!segment) throw new NotFoundException('Segment not found or does not belong to this branch');
-      targetUserIds = segment.users.map(u => u.id);
+      if (!segment)
+        throw new NotFoundException(
+          'Segment not found or does not belong to this branch',
+        );
+      targetUserIds = segment.users.map((u) => u.id);
     }
 
     if (targetUserIds.length === 0) {
@@ -142,7 +146,8 @@ export class MessagingEngineService {
     }
 
     // 2. Validate Credits
-    const wallet = await this.creditService.getOrCreateWallet(effectiveBusinessId);
+    const wallet =
+      await this.creditService.getOrCreateWallet(effectiveBusinessId);
     let balance = 0;
     if (channel === Channel.SMS) balance = wallet.smsCredits;
     else if (channel === Channel.EMAIL) balance = wallet.emailCredits;
@@ -165,17 +170,21 @@ export class MessagingEngineService {
     });
 
     if (validUsers.length === 0) {
-      return { 
+      return {
         message: 'No valid customers to send to',
         count: 0,
-        messageIds: []
+        messageIds: [],
       };
     }
 
     let totalCreditsNeeded = 0;
     if (channel === Channel.SMS) {
       for (const customer of validUsers) {
-        const resolved = await this.resolvePlaceholdersSync(baseContent, customer, branch);
+        const resolved = await this.resolvePlaceholdersSync(
+          baseContent,
+          customer,
+          branch,
+        );
         totalCreditsNeeded += resolved.length > 160 ? 2 : 1;
       }
     } else if (channel === Channel.IN_HOUSE) {
@@ -197,12 +206,15 @@ export class MessagingEngineService {
     if (channel === Channel.SMS && !from) {
       from = 'VEMTAP'; // Use default sender ID for all businesses for now
     }
-    
+
     if (channel === Channel.WHATSAPP && !from) {
       from = this.configService.get<string>('TWILIO_WHATSAPP_NUMBER') || '';
-      
+
       if (!from) {
-        from = branch.whatsappNumber || (branch.business as any)?.whatsappNumber || '';
+        from =
+          branch.whatsappNumber ||
+          (branch.business as any)?.whatsappNumber ||
+          '';
         if (!from) {
           const settings = await this.settingsService.getSettings();
           from = (settings as any).whatsappNumber;
@@ -236,12 +248,12 @@ export class MessagingEngineService {
         content: baseContent,
         from,
       });
-      return { 
-        message: 'Batch campaign queued', 
-        status: 'QUEUED', 
+      return {
+        message: 'Batch campaign queued',
+        status: 'QUEUED',
         campaignId,
         count: validUserIds.length,
-        messageIds: []
+        messageIds: [],
       };
     }
 
@@ -278,7 +290,8 @@ export class MessagingEngineService {
     let resolved = content;
 
     // --- Customer Placeholders ---
-    const fullName = `${customer.firstName} ${customer.lastName}`.trim() || 'Customer';
+    const fullName =
+      `${customer.firstName} ${customer.lastName}`.trim() || 'Customer';
     const firstName = customer.firstName || 'Customer';
     const lastName = customer.lastName || '';
 
@@ -286,7 +299,10 @@ export class MessagingEngineService {
     resolved = resolved.replace(/{FirstName}/g, firstName);
     resolved = resolved.replace(/{LastName}/g, lastName || '');
     resolved = resolved.replace(/{Email}/g, customer.email || '');
-    resolved = resolved.replace(/{Phone}/g, formatPhoneNumber(customer.phone || ''));
+    resolved = resolved.replace(
+      /{Phone}/g,
+      formatPhoneNumber(customer.phone || ''),
+    );
 
     // --- Business/Branch Placeholders ---
     const bizName = branch.business?.name || branch.name || 'Our Business';
@@ -294,10 +310,16 @@ export class MessagingEngineService {
     resolved = resolved.replace(/{BranchName}/g, branch.name || '');
     resolved = resolved.replace(/{BranchAddress}/g, branch.address || '');
     resolved = resolved.replace(/{BranchCity}/g, branch.city || '');
-    resolved = resolved.replace(/{BranchPhone}/g, formatPhoneNumber(branch.phone || ''));
+    resolved = resolved.replace(
+      /{BranchPhone}/g,
+      formatPhoneNumber(branch.phone || ''),
+    );
     resolved = resolved.replace(/{Website}/g, branch.website || '');
     resolved = resolved.replace(/{ReviewLink}/g, branch.reviewUrl || '');
-    resolved = resolved.replace(/{Link}/g, branch.website || branch.reviewUrl || '');
+    resolved = resolved.replace(
+      /{Link}/g,
+      branch.website || branch.reviewUrl || '',
+    );
 
     resolved = resolved.replace(/{Points}/g, '9999');
 
@@ -315,11 +337,17 @@ export class MessagingEngineService {
     const customer = await this.userRepo.findOneBy({ id: customerId });
     if (!customer) throw new NotFoundException('Customer not found');
 
-    const resolvedContent = await this.resolvePlaceholders(content, customerId, branch);
+    const resolvedContent = await this.resolvePlaceholders(
+      content,
+      customerId,
+      branch,
+    );
 
     // Credit Check
     if (!campaignId && channel !== Channel.IN_HOUSE) {
-      const wallet = await this.creditService.getOrCreateWallet(branch.businessId);
+      const wallet = await this.creditService.getOrCreateWallet(
+        branch.businessId,
+      );
       let balance = 0;
       if (channel === Channel.SMS) balance = wallet.smsCredits;
       else if (channel === Channel.EMAIL) balance = wallet.emailCredits;
@@ -361,9 +389,10 @@ export class MessagingEngineService {
       direction: MessageDirection.OUTBOUND,
       status: MessageStatus.PENDING,
       from,
-      to: channel === Channel.EMAIL 
-        ? (customer.email || '') 
-        : formatPhoneNumber(customer.phone || ''),
+      to:
+        channel === Channel.EMAIL
+          ? customer.email || ''
+          : formatPhoneNumber(customer.phone || ''),
     } as any) as unknown as Message;
 
     const savedMessageResult = await this.messageRepo.save(message);
@@ -384,7 +413,7 @@ export class MessagingEngineService {
       if (channel === Channel.IN_HOUSE) {
         savedMessage.status = MessageStatus.DELIVERED;
         await this.messageRepo.save(savedMessage);
-        
+
         this.messagingGateway.emitMessage(
           thread.id,
           branch.id,
@@ -392,13 +421,17 @@ export class MessagingEngineService {
           savedMessage,
         );
 
-        this.pushNotificationService.sendNotification(
-          customerId,
-          `New Message from ${branch.business?.name || branch.name}`,
-          resolvedContent,
-          { threadId: thread.id, channel: Channel.IN_HOUSE },
-          true,
-        ).catch(e => this.logger.error(`Push notification failed: ${e.message}`));
+        this.pushNotificationService
+          .sendNotification(
+            customerId,
+            `New Message from ${branch.business?.name || branch.name}`,
+            resolvedContent,
+            { threadId: thread.id, channel: Channel.IN_HOUSE },
+            true,
+          )
+          .catch((e) =>
+            this.logger.error(`Push notification failed: ${e.message}`),
+          );
       } else {
         const providerResult = await this.providerRouter.sendMessage({
           channel,
@@ -415,12 +448,17 @@ export class MessagingEngineService {
         savedMessage.reference = providerResult.reference;
         await this.messageRepo.save(savedMessage);
 
-        const customerName = `${customer.firstName} ${customer.lastName}`.trim() || 'Customer';
-        if (savedMessage.status === MessageStatus.SENT || savedMessage.status === MessageStatus.DELIVERED || savedMessage.status === MessageStatus.PENDING) {
+        const customerName =
+          `${customer.firstName} ${customer.lastName}`.trim() || 'Customer';
+        if (
+          savedMessage.status === MessageStatus.SENT ||
+          savedMessage.status === MessageStatus.DELIVERED ||
+          savedMessage.status === MessageStatus.PENDING
+        ) {
           this.logger.log(
             `✅ SUCCESS: [${channel}] message to ${customerName} (${savedMessage.to}) status: ${savedMessage.status}. Provider Ref: ${savedMessage.reference || 'N/A'}. Response: ${JSON.stringify(providerResult.rawResponse)}`,
           );
-          
+
           let units = providerResult.units || 1;
           if (channel === Channel.SMS && savedMessage.content.length > 160) {
             units = 2;
@@ -440,10 +478,12 @@ export class MessagingEngineService {
 
       await this.logMessage(savedMessage);
     } catch (err: any) {
-      const customerName = (customer as any)?.firstName ? `${customer.firstName} ${customer.lastName}`.trim() : customerId;
+      const customerName = (customer as any)?.firstName
+        ? `${customer.firstName} ${customer.lastName}`.trim()
+        : customerId;
       this.logger.error(
         `❌ ERROR: Failed to send [${channel}] message to ${customerName}: ${err.message}`,
-        err.stack
+        err.stack,
       );
       savedMessage.status = MessageStatus.FAILED;
       await this.messageRepo.save(savedMessage);
@@ -465,7 +505,8 @@ export class MessagingEngineService {
     let resolved = content;
 
     // --- Customer Placeholders ---
-    const fullName = `${customer.firstName} ${customer.lastName}`.trim() || 'Customer';
+    const fullName =
+      `${customer.firstName} ${customer.lastName}`.trim() || 'Customer';
     const firstName = customer.firstName || 'Customer';
     const lastName = customer.lastName || '';
 
@@ -473,7 +514,10 @@ export class MessagingEngineService {
     resolved = resolved.replace(/{FirstName}/g, firstName);
     resolved = resolved.replace(/{LastName}/g, lastName || '');
     resolved = resolved.replace(/{Email}/g, customer.email || '');
-    resolved = resolved.replace(/{Phone}/g, formatPhoneNumber(customer.phone || ''));
+    resolved = resolved.replace(
+      /{Phone}/g,
+      formatPhoneNumber(customer.phone || ''),
+    );
 
     // --- Business/Branch Placeholders ---
     const bizName = branch.business?.name || branch.name || 'Our Business';
@@ -481,13 +525,22 @@ export class MessagingEngineService {
     resolved = resolved.replace(/{BranchName}/g, branch.name || '');
     resolved = resolved.replace(/{BranchAddress}/g, branch.address || '');
     resolved = resolved.replace(/{BranchCity}/g, branch.city || '');
-    resolved = resolved.replace(/{BranchPhone}/g, formatPhoneNumber(branch.phone || ''));
+    resolved = resolved.replace(
+      /{BranchPhone}/g,
+      formatPhoneNumber(branch.phone || ''),
+    );
     resolved = resolved.replace(/{Website}/g, branch.website || '');
     resolved = resolved.replace(/{ReviewLink}/g, branch.reviewUrl || '');
-    resolved = resolved.replace(/{Link}/g, branch.website || branch.reviewUrl || '');
+    resolved = resolved.replace(
+      /{Link}/g,
+      branch.website || branch.reviewUrl || '',
+    );
 
     try {
-      const points = await this.loyaltyService.getBusinessPoints(customer.id, branch.businessId);
+      const points = await this.loyaltyService.getBusinessPoints(
+        customer.id,
+        branch.businessId,
+      );
       resolved = resolved.replace(/{Points}/g, points.toString());
     } catch (e) {
       resolved = resolved.replace(/{Points}/g, '0');
@@ -498,10 +551,14 @@ export class MessagingEngineService {
 
   private mapProviderStatus(status: string): MessageStatus {
     switch (status) {
-      case 'queued': return MessageStatus.PENDING;
-      case 'sent': return MessageStatus.SENT;
-      case 'failed': return MessageStatus.FAILED;
-      default: return MessageStatus.SENT;
+      case 'queued':
+        return MessageStatus.PENDING;
+      case 'sent':
+        return MessageStatus.SENT;
+      case 'failed':
+        return MessageStatus.FAILED;
+      default:
+        return MessageStatus.SENT;
     }
   }
 
@@ -561,7 +618,11 @@ export class MessagingEngineService {
     return unitCost * count;
   }
 
-  async sendReply(thread: ConversationThread, content: string, replyToId?: string) {
+  async sendReply(
+    thread: ConversationThread,
+    content: string,
+    replyToId?: string,
+  ) {
     const branch = await this.branchRepo.findOne({
       where: { id: thread.branchId },
       relations: ['business'],
@@ -572,7 +633,11 @@ export class MessagingEngineService {
     if (thread.channel === Channel.IN_HOUSE) {
       from = branch.business?.name || branch.name || 'Business';
     } else if (thread.channel === Channel.WHATSAPP) {
-      from = formatPhoneNumber(this.configService.get<string>('TWILIO_WHATSAPP_NUMBER') || branch.whatsappNumber || '');
+      from = formatPhoneNumber(
+        this.configService.get<string>('TWILIO_WHATSAPP_NUMBER') ||
+          branch.whatsappNumber ||
+          '',
+      );
     } else {
       from = formatPhoneNumber(branch.whatsappNumber || '');
     }
@@ -587,7 +652,8 @@ export class MessagingEngineService {
 
     // Only save again if we need to update threadId or replyToId that wasn't
     // set correctly by sendIndividualMessage
-    const needsUpdate = msg.threadId !== thread.id || (replyToId && msg.replyToId !== replyToId);
+    const needsUpdate =
+      msg.threadId !== thread.id || (replyToId && msg.replyToId !== replyToId);
     if (needsUpdate) {
       msg.threadId = thread.id;
       if (replyToId) {
@@ -600,10 +666,11 @@ export class MessagingEngineService {
   }
 
   async handleInbound(inbound: InboundMessage) {
-    const from = inbound.channel === Channel.EMAIL 
-      ? inbound.from 
-      : formatPhoneNumber(inbound.from);
-      
+    const from =
+      inbound.channel === Channel.EMAIL
+        ? inbound.from
+        : formatPhoneNumber(inbound.from);
+
     const customer = await this.userRepo.findOne({
       where: [{ phone: from }, { email: from }],
     });
@@ -624,7 +691,9 @@ export class MessagingEngineService {
       });
 
       if (!lastVisit) {
-        this.logger.warn(`Customer ${customer.id} has no visit history to associate inbound message.`);
+        this.logger.warn(
+          `Customer ${customer.id} has no visit history to associate inbound message.`,
+        );
         return;
       }
 

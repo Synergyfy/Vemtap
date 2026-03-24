@@ -79,7 +79,6 @@ export class AdminFlowEngineController {
     await this.adminFlowService.deleteTemplate(id);
   }
 
-
   @Get('triggers')
   @ApiOperation({ summary: 'Get all flow trigger configurations' })
   @ApiResponse({ status: 200, type: [FlowTriggerConfig] })

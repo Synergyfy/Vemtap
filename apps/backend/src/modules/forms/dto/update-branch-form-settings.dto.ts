@@ -2,7 +2,6 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class UpdateBranchFormSettingsDto {
-
   @ApiPropertyOptional({ example: '#2563EB' })
   @IsString()
   @IsOptional()
@@ -18,7 +17,9 @@ export class UpdateBranchFormSettingsDto {
   @IsOptional()
   welcomeTitle?: string;
 
-  @ApiPropertyOptional({ example: 'Leave your details to stay in touch and earn rewards.' })
+  @ApiPropertyOptional({
+    example: 'Leave your details to stay in touch and earn rewards.',
+  })
   @IsString()
   @IsOptional()
   welcomeMessage?: string;

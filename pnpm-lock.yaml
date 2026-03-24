@@ -326,8 +326,8 @@ importers:
         specifier: ^0.3.28
         version: 0.3.28(ioredis@5.10.0)(pg@8.18.0)(redis@4.7.1)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@22.19.11)(typescript@5.9.3))
       uuid:
-        specifier: ^13.0.0
-        version: 13.0.0
+        specifier: ^11.0.0
+        version: 11.1.0
       web-push:
         specifier: ^3.6.7
         version: 3.6.7

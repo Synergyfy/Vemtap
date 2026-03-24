@@ -18,7 +18,11 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { SegmentsService } from '../services/segments.service';
-import { CreateSegmentDto, UpdateSegmentDto, SegmentMemberDto } from '../dto/segment.dto';
+import {
+  CreateSegmentDto,
+  UpdateSegmentDto,
+  SegmentMemberDto,
+} from '../dto/segment.dto';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';

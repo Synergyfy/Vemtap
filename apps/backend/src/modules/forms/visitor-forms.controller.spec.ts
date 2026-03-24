@@ -50,9 +50,7 @@ describe('VisitorFormsController', () => {
 
     const result = await controller.getFormByCode('ABC123XYZ');
 
-    expect(service.getFormByUniqueCode).toHaveBeenCalledWith(
-      'ABC123XYZ',
-    );
+    expect(service.getFormByUniqueCode).toHaveBeenCalledWith('ABC123XYZ');
     expect(result).toEqual(form);
   });
 

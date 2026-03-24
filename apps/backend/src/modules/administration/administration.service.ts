@@ -1,10 +1,23 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, LessThan, MoreThanOrEqual } from 'typeorm';
+import {
+  Repository,
+  FindOptionsWhere,
+  LessThan,
+  MoreThanOrEqual,
+} from 'typeorm';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { ImpersonationToken } from './entities/impersonation-token.entity';
 import { AuditLog } from './entities/audit-log.entity';
-import { AdminCreateAgentDto, GenerateImpersonationTokenDto, AuditLogFilterDto } from './dto/administration.dto';
+import {
+  AdminCreateAgentDto,
+  GenerateImpersonationTokenDto,
+  AuditLogFilterDto,
+} from './dto/administration.dto';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { BackendModule } from '../../common/enums/backend-module.enum';
@@ -21,11 +34,16 @@ export class AdministrationService {
   ) {}
 
   async createAgent(dto: AdminCreateAgentDto): Promise<User> {
-    const existingEmail = await this.userRepository.findOne({ where: { email: dto.email.toLowerCase() } });
+    const existingEmail = await this.userRepository.findOne({
+      where: { email: dto.email.toLowerCase() },
+    });
     if (existingEmail) throw new BadRequestException('Email already in use');
 
-    const existingPhone = await this.userRepository.findOne({ where: { phone: dto.phone } });
-    if (existingPhone) throw new BadRequestException('Phone number already in use');
+    const existingPhone = await this.userRepository.findOne({
+      where: { phone: dto.phone },
+    });
+    if (existingPhone)
+      throw new BadRequestException('Phone number already in use');
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
@@ -40,18 +58,26 @@ export class AdministrationService {
     return this.userRepository.save(agent);
   }
 
-  async generateToken(dto: GenerateImpersonationTokenDto): Promise<ImpersonationToken> {
-    const actor = await this.userRepository.findOne({ where: { id: dto.actorId } });
+  async generateToken(
+    dto: GenerateImpersonationTokenDto,
+  ): Promise<ImpersonationToken> {
+    const actor = await this.userRepository.findOne({
+      where: { id: dto.actorId },
+    });
     if (!actor) throw new NotFoundException('Actor not found');
-    
+
     if (actor.role !== UserRole.ADMIN && actor.role !== UserRole.AGENT) {
       throw new BadRequestException('Only admins and agents can impersonate');
     }
 
     // Invalidate existing active tokens for this actor-target pair (optional, but cleaner)
     await this.tokenRepository.update(
-      { actorId: dto.actorId, targetBranchId: dto.targetBranchId, isActive: true },
-      { isActive: false }
+      {
+        actorId: dto.actorId,
+        targetBranchId: dto.targetBranchId,
+        isActive: true,
+      },
+      { isActive: false },
     );
 
     const token = this.tokenRepository.create({
@@ -74,7 +100,8 @@ export class AdministrationService {
       relations: ['actor', 'targetBranch', 'targetBranch.business'],
     });
 
-    if (!token) throw new BadRequestException('Invalid or expired impersonation token');
+    if (!token)
+      throw new BadRequestException('Invalid or expired impersonation token');
     return token;
   }
 

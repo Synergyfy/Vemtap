@@ -15,7 +15,9 @@ export class ImpersonationToken extends AbstractBaseEntity {
   @JoinColumn({ name: 'actorId' })
   actor: User;
 
-  @ApiProperty({ description: 'The ID of the admin or agent performing the action' })
+  @ApiProperty({
+    description: 'The ID of the admin or agent performing the action',
+  })
   @Column()
   actorId: string;
 

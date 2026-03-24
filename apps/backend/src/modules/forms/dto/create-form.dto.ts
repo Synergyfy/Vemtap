@@ -59,7 +59,10 @@ export class CreateFormDto {
   @IsBoolean()
   isPublished?: boolean;
 
-  @ApiPropertyOptional({ default: false, description: 'Show form after lead capture' })
+  @ApiPropertyOptional({
+    default: false,
+    description: 'Show form after lead capture',
+  })
   @IsOptional()
   @IsBoolean()
   showAfterLeadCapture?: boolean;

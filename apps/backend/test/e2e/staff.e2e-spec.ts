@@ -33,6 +33,24 @@ describe('Staff Management (e2e)', () => {
   });
 
   describe('Team Management', () => {
+    it('/users/team/invite (POST) - should invite a new staff member', async () => {
+      const email = `newstaff${Date.now()}@example.com`;
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/users/team/invite')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({
+          email,
+          firstName: 'New',
+          lastName: 'Staff',
+          role: UserRole.STAFF,
+          permissions: ['dashboard'],
+        })
+        .expect(201);
+
+      expect(response.body.email).toBe(email);
+      expect(response.body.status).toBe('Invited');
+    });
+
     it('/users/team (GET) - should return team for owner', async () => {
       const response = await request(app.getHttpServer())
         .get(`/api/v1/users/team?branchId=${branchId}`)

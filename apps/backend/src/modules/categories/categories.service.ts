@@ -30,8 +30,9 @@ export class CategoriesService {
       // In newer versions of cache-manager (v5+), store is often stores[0] or moved.
       // NestJS Cache object sometimes hides the store depending on the version.
       const cacheMgr = this.cacheManager as any;
-      const store = cacheMgr.store || (cacheMgr.stores ? cacheMgr.stores[0] : null);
-      
+      const store =
+        cacheMgr.store || (cacheMgr.stores ? cacheMgr.stores[0] : null);
+
       if (store && typeof store.keys === 'function') {
         const keys = await store.keys('categories:*');
         for (const key of keys) {
@@ -40,7 +41,9 @@ export class CategoriesService {
       } else {
         // Fallback to reset if we can't find keys (less efficient but safe)
         // await this.cacheManager.reset();
-        this.logger.warn('Cache store does not support keys() method. Cache might not be cleared correctly.');
+        this.logger.warn(
+          'Cache store does not support keys() method. Cache might not be cleared correctly.',
+        );
       }
     } catch (error) {
       this.logger.error(`Failed to clear cache: ${error.message}`);
@@ -68,24 +71,27 @@ export class CategoriesService {
 
   async deleteCategory(id: string): Promise<void> {
     const result = await this.categoryRepository.delete(id);
-    if (result.affected === 0) throw new NotFoundException('Category not found');
+    if (result.affected === 0)
+      throw new NotFoundException('Category not found');
     await this.clearCache();
   }
 
-  async findAllCategories(dto: CategoryPaginationDto): Promise<{ items: Category[], meta: any }> {
+  async findAllCategories(
+    dto: CategoryPaginationDto,
+  ): Promise<{ items: Category[]; meta: any }> {
     const { page = 1, limit = 10, search } = dto;
     const cacheKey = `categories:all:${page}:${limit}:${search || 'none'}`;
-    
-    const cached = await this.cacheManager.get<{ items: Category[]; meta: any }>(cacheKey);
+
+    const cached = await this.cacheManager.get<{
+      items: Category[];
+      meta: any;
+    }>(cacheKey);
     if (cached) return cached;
 
     const skip = (page - 1) * limit;
 
     const where = search
-      ? [
-          { name: ILike(`%${search}%`) },
-          { description: ILike(`%${search}%`) },
-        ]
+      ? [{ name: ILike(`%${search}%`) }, { description: ILike(`%${search}%`) }]
       : {};
 
     const [items, total] = await this.categoryRepository.findAndCount({
@@ -120,7 +126,7 @@ export class CategoriesService {
       relations: ['subcategories'],
     });
     if (!category) throw new NotFoundException('Category not found');
-    
+
     await this.cacheManager.set(cacheKey, category);
     return category;
   }
@@ -128,7 +134,9 @@ export class CategoriesService {
   // --- Subcategory CRUD ---
 
   async createSubcategory(dto: CreateSubcategoryDto): Promise<Subcategory> {
-    const category = await this.categoryRepository.findOne({ where: { id: dto.categoryId } });
+    const category = await this.categoryRepository.findOne({
+      where: { id: dto.categoryId },
+    });
     if (!category) throw new NotFoundException('Parent category not found');
 
     const subcategory = this.subcategoryRepository.create(dto);
@@ -137,8 +145,13 @@ export class CategoriesService {
     return saved;
   }
 
-  async updateSubcategory(id: string, dto: UpdateSubcategoryDto): Promise<Subcategory> {
-    const subcategory = await this.subcategoryRepository.findOne({ where: { id } });
+  async updateSubcategory(
+    id: string,
+    dto: UpdateSubcategoryDto,
+  ): Promise<Subcategory> {
+    const subcategory = await this.subcategoryRepository.findOne({
+      where: { id },
+    });
     if (!subcategory) throw new NotFoundException('Subcategory not found');
 
     Object.assign(subcategory, dto);
@@ -149,22 +162,28 @@ export class CategoriesService {
 
   async deleteSubcategory(id: string): Promise<void> {
     const result = await this.subcategoryRepository.delete(id);
-    if (result.affected === 0) throw new NotFoundException('Subcategory not found');
+    if (result.affected === 0)
+      throw new NotFoundException('Subcategory not found');
     await this.clearCache();
   }
 
-  async findAllSubcategories(dto: SubcategoryPaginationDto): Promise<{ items: Subcategory[], meta: any }> {
+  async findAllSubcategories(
+    dto: SubcategoryPaginationDto,
+  ): Promise<{ items: Subcategory[]; meta: any }> {
     const { page = 1, limit = 10, search, categoryId } = dto;
     const cacheKey = `categories:sub:all:${page}:${limit}:${categoryId || 'none'}:${search || 'none'}`;
-    
-    const cached = await this.cacheManager.get<{ items: Subcategory[]; meta: any }>(cacheKey);
+
+    const cached = await this.cacheManager.get<{
+      items: Subcategory[];
+      meta: any;
+    }>(cacheKey);
     if (cached) return cached;
 
     const skip = (page - 1) * limit;
 
     const where: any = {};
     if (categoryId) where.categoryId = categoryId;
-    
+
     let whereClause: any = where;
     if (search) {
       whereClause = [
@@ -204,4 +223,3 @@ export class CategoriesService {
     return subcategory;
   }
 }
-

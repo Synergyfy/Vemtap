@@ -143,14 +143,16 @@ export class CreditService {
   }
 
   async allocateSubscriptionCredits(businessId: string, plan: Plan) {
-    this.logger.log(`Allocating credits for business ${businessId} from plan ${plan.name}`);
-    
+    this.logger.log(
+      `Allocating credits for business ${businessId} from plan ${plan.name}`,
+    );
+
     // According to PRD Part 9: "Unused credits are removed" at the end of billing cycle.
     // This implies we RESET the credits to the plan amount, rather than just adding.
     // However, if they have TOP-UP credits, we should probably keep them?
     // The PRD says "Top-up credits may have longer expiry".
     // This is getting complex. For now, I'll just ADD them as per "Assign Credits on Subscription" step.
-    
+
     if (plan.smsCredits > 0) {
       await this.addCredits(
         businessId,
@@ -204,6 +206,11 @@ export class CreditService {
     });
     if (!branch) throw new NotFoundException('Branch not found');
 
-    await this.deductCredits(branch.businessId, channel, amount, `Branch: ${branch.name}`);
+    await this.deductCredits(
+      branch.businessId,
+      channel,
+      amount,
+      `Branch: ${branch.name}`,
+    );
   }
 }

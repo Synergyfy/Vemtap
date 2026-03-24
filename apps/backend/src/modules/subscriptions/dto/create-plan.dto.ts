@@ -136,7 +136,6 @@ export class CreatePlanDto {
   @IsOptional()
   isActive?: boolean;
 
-
   @ApiPropertyOptional({
     description: 'Plan description',
     example: 'Access to premium features.',

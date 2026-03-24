@@ -85,12 +85,16 @@ export class AutomationsController {
 
   @Post()
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Create a new automation rule',
-    description: 'Defines a new automation rule with triggers and actions for messaging. Access: OWNER, MANAGER'
+    description:
+      'Defines a new automation rule with triggers and actions for messaging. Access: OWNER, MANAGER',
   })
   @ApiBody({ type: CreateAutomationRuleDto })
-  @ApiCreatedResponse({ type: AutomationRule, description: 'Automation rule created successfully' })
+  @ApiCreatedResponse({
+    type: AutomationRule,
+    description: 'Automation rule created successfully',
+  })
   async create(
     @Body() dto: CreateAutomationRuleDto,
     @Request() req: { user: User },
@@ -101,12 +105,20 @@ export class AutomationsController {
   }
 
   @Get()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'List automation rules',
-    description: 'Retrieves all automation rules for a specific branch. Access: Authenticated users with branch access'
+    description:
+      'Retrieves all automation rules for a specific branch. Access: Authenticated users with branch access',
   })
-  @ApiQuery({ name: 'branchId', required: false, description: 'Filter by branch ID (required for Owners/Admins)' })
-  @ApiOkResponse({ type: [AutomationRule], description: 'List of automation rules' })
+  @ApiQuery({
+    name: 'branchId',
+    required: false,
+    description: 'Filter by branch ID (required for Owners/Admins)',
+  })
+  @ApiOkResponse({
+    type: [AutomationRule],
+    description: 'List of automation rules',
+  })
   async findAll(
     @Query() filter: BranchFilterDto,
     @Request() req: { user: User },
@@ -116,9 +128,10 @@ export class AutomationsController {
   }
 
   @Get('logs')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get automation execution logs',
-    description: 'Retrieves a paginated history of automation executions for a branch. Access: Authenticated users with branch access'
+    description:
+      'Retrieves a paginated history of automation executions for a branch. Access: Authenticated users with branch access',
   })
   @ApiQuery({ name: 'branchId', required: false })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -148,10 +161,14 @@ export class AutomationsController {
   @Get('logs/:sessionId')
   @ApiOperation({
     summary: 'Get details for a specific automation session log',
-    description: 'Fetches detailed execution steps and data for a specific automation session. Access: Authenticated users with branch access'
+    description:
+      'Fetches detailed execution steps and data for a specific automation session. Access: Authenticated users with branch access',
   })
   @ApiParam({ name: 'sessionId', description: 'Session UUID from logs' })
-  @ApiOkResponse({ type: AutomationLogResponseDto, description: 'Session log details' })
+  @ApiOkResponse({
+    type: AutomationLogResponseDto,
+    description: 'Session log details',
+  })
   async getLogDetails(
     @Param() { sessionId }: SessionIdDto,
     @Request() req: { user: User },
@@ -165,9 +182,10 @@ export class AutomationsController {
   }
 
   @Get('connection-status')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get WhatsApp connection status for the branch',
-    description: 'Checks if the WhatsApp provider is correctly connected for the branch. Access: Authenticated users with branch access'
+    description:
+      'Checks if the WhatsApp provider is correctly connected for the branch. Access: Authenticated users with branch access',
   })
   @ApiQuery({ name: 'branchId', required: false })
   @ApiOkResponse({
@@ -189,14 +207,18 @@ export class AutomationsController {
   }
 
   @Get('performance')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get simple automation performance analytics',
-    description: 'Retrieves aggregated performance data (runs, successes, failures) for automations. Access: Authenticated users with branch access'
+    description:
+      'Retrieves aggregated performance data (runs, successes, failures) for automations. Access: Authenticated users with branch access',
   })
   @ApiQuery({ name: 'branchId', required: false })
   @ApiQuery({ name: 'startDate', required: false, type: Date })
   @ApiQuery({ name: 'endDate', required: false, type: Date })
-  @ApiOkResponse({ type: AutomationPerformanceResponseDto, description: 'Performance analytics data' })
+  @ApiOkResponse({
+    type: AutomationPerformanceResponseDto,
+    description: 'Performance analytics data',
+  })
   async getPerformance(
     @Query() filter: BranchFilterDto,
     @Query('startDate') startDate: Date,
@@ -212,12 +234,16 @@ export class AutomationsController {
   }
 
   @Get(':id')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get a specific automation rule',
-    description: 'Retrieves details of a single automation rule. Access: Authenticated users with branch access'
+    description:
+      'Retrieves details of a single automation rule. Access: Authenticated users with branch access',
   })
   @ApiParam({ name: 'id', description: 'Automation rule UUID' })
-  @ApiOkResponse({ type: AutomationRule, description: 'Automation rule details' })
+  @ApiOkResponse({
+    type: AutomationRule,
+    description: 'Automation rule details',
+  })
   async findOne(@Param() { id }: IdDto, @Request() req: { user: User }) {
     const branchId = await this.getBranchId(req);
     const rule = await this.automationService.findOne(id);
@@ -229,13 +255,17 @@ export class AutomationsController {
 
   @Patch(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Update an automation rule',
-    description: 'Modifies the trigger, conditions, or actions of an existing automation rule. Access: OWNER, MANAGER'
+    description:
+      'Modifies the trigger, conditions, or actions of an existing automation rule. Access: OWNER, MANAGER',
   })
   @ApiParam({ name: 'id', description: 'Automation rule UUID' })
   @ApiBody({ type: UpdateAutomationRuleDto })
-  @ApiOkResponse({ type: AutomationRule, description: 'Automation rule updated successfully' })
+  @ApiOkResponse({
+    type: AutomationRule,
+    description: 'Automation rule updated successfully',
+  })
   async update(
     @Param() { id }: IdDto,
     @Body() dto: UpdateAutomationRuleDto,
@@ -252,9 +282,10 @@ export class AutomationsController {
 
   @Delete(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Delete an automation rule',
-    description: 'Permanently removes an automation rule. Access: OWNER, MANAGER'
+    description:
+      'Permanently removes an automation rule. Access: OWNER, MANAGER',
   })
   @ApiParam({ name: 'id', description: 'Automation rule UUID' })
   @ApiOkResponse({ description: 'Rule deleted successfully' })
@@ -270,13 +301,17 @@ export class AutomationsController {
 
   @Patch(':id/toggle')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Toggle an automation rule ON or OFF',
-    description: 'Enables or disables an automation rule without deleting it. Access: OWNER, MANAGER'
+    description:
+      'Enables or disables an automation rule without deleting it. Access: OWNER, MANAGER',
   })
   @ApiParam({ name: 'id', description: 'Automation rule UUID' })
   @ApiBody({ type: UpdateAutomationToggleDto })
-  @ApiOkResponse({ type: AutomationRule, description: 'Toggle status updated successfully' })
+  @ApiOkResponse({
+    type: AutomationRule,
+    description: 'Toggle status updated successfully',
+  })
   async toggle(
     @Param() { id }: IdDto,
     @Body() dto: UpdateAutomationToggleDto,
@@ -293,13 +328,17 @@ export class AutomationsController {
 
   @Patch(':id/configure')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Configure settings for an automation template',
-    description: 'Applies specific settings/configuration values to an automation template. Access: OWNER, MANAGER'
+    description:
+      'Applies specific settings/configuration values to an automation template. Access: OWNER, MANAGER',
   })
   @ApiParam({ name: 'id', description: 'Automation rule UUID' })
   @ApiBody({ type: UpdateAutomationConfigDto })
-  @ApiOkResponse({ type: AutomationRule, description: 'Automation configuration updated successfully' })
+  @ApiOkResponse({
+    type: AutomationRule,
+    description: 'Automation configuration updated successfully',
+  })
   async configure(
     @Param() { id }: IdDto,
     @Body() dto: UpdateAutomationConfigDto,
@@ -318,4 +357,3 @@ export class AutomationsController {
     }
   }
 }
-

@@ -45,7 +45,10 @@ export class Message extends AbstractBaseEntity {
   @JoinColumn({ name: 'campaignId' })
   campaign: MessageCampaign;
 
-  @ApiProperty({ example: 'Hello, how are you?', description: 'Content of the message' })
+  @ApiProperty({
+    example: 'Hello, how are you?',
+    description: 'Content of the message',
+  })
   @Column({ type: 'text' })
   content: string;
 
@@ -85,7 +88,10 @@ export class Message extends AbstractBaseEntity {
   @Column({ nullable: true })
   reference?: string;
 
-  @ApiPropertyOptional({ type: () => Message, description: 'The message being replied to' })
+  @ApiPropertyOptional({
+    type: () => Message,
+    description: 'The message being replied to',
+  })
   @ManyToOne(() => Message, { nullable: true })
   @JoinColumn({ name: 'replyToId' })
   replyTo: Message;
@@ -94,7 +100,10 @@ export class Message extends AbstractBaseEntity {
   @Column({ nullable: true })
   replyToId: string;
 
-  @ApiPropertyOptional({ example: { browser: 'Chrome' }, description: 'Channel-specific metadata' })
+  @ApiPropertyOptional({
+    example: { browser: 'Chrome' },
+    description: 'Channel-specific metadata',
+  })
   @Column({ type: 'jsonb', nullable: true })
   metadata: MessageMetadata;
 

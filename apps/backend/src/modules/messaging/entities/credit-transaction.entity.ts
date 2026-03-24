@@ -19,7 +19,10 @@ export class CreditTransaction extends AbstractBaseEntity {
   @Column({ type: 'enum', enum: Channel })
   channel: Channel;
 
-  @ApiProperty({ example: CreditTransactionType.MESSAGE_DEDUCTION, enum: CreditTransactionType })
+  @ApiProperty({
+    example: CreditTransactionType.MESSAGE_DEDUCTION,
+    enum: CreditTransactionType,
+  })
   @Column({ type: 'enum', enum: CreditTransactionType })
   transactionType: CreditTransactionType;
 

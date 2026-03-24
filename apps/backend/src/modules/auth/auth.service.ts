@@ -40,12 +40,18 @@ export class AuthService {
   async requestOwnerOtp(dto: RequestOtpDto) {
     const email = dto.email.toLowerCase();
     const existingUserByEmail = await this.usersService.findByEmail(email);
-    if (existingUserByEmail && existingUserByEmail.status !== UserStatus.PENDING) {
+    if (
+      existingUserByEmail &&
+      existingUserByEmail.status !== UserStatus.PENDING
+    ) {
       throw new ConflictException('User with this email already exists');
     }
 
     const existingUserByPhone = await this.usersService.findByPhone(dto.phone);
-    if (existingUserByPhone && existingUserByPhone.status !== UserStatus.PENDING) {
+    if (
+      existingUserByPhone &&
+      existingUserByPhone.status !== UserStatus.PENDING
+    ) {
       throw new ConflictException('User with this phone number already exists');
     }
 
@@ -551,7 +557,11 @@ export class AuthService {
     };
   }
 
-  async changePassword(user: User, dto: ChangePasswordDto, meta?: { ip: string; userAgent: string }) {
+  async changePassword(
+    user: User,
+    dto: ChangePasswordDto,
+    meta?: { ip: string; userAgent: string },
+  ) {
     const dbUser = await this.usersService.findOne(user.id);
     if (!dbUser) throw new NotFoundException('User not found');
 

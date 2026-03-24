@@ -89,7 +89,11 @@ export class InboxService {
     });
   }
 
-  async markAsRead(threadId: string, branchId?: string, customerId?: string): Promise<void> {
+  async markAsRead(
+    threadId: string,
+    branchId?: string,
+    customerId?: string,
+  ): Promise<void> {
     const where: any = { id: threadId };
     if (branchId) where.branchId = branchId;
     if (customerId) where.customerId = customerId;
@@ -121,12 +125,16 @@ export class InboxService {
       throw new NotFoundException('Thread not found');
     }
 
-    const messageId = await this.messagingEngine.sendReply(thread, content, replyToId);
+    const messageId = await this.messagingEngine.sendReply(
+      thread,
+      content,
+      replyToId,
+    );
     if (!messageId) {
       throw new InternalServerErrorException('Failed to send reply');
     }
 
-    const savedMessage = await this.messageRepo.findOne({ 
+    const savedMessage = await this.messageRepo.findOne({
       where: { id: messageId },
       relations: ['replyTo'],
     });
@@ -143,7 +151,11 @@ export class InboxService {
       status: ThreadStatus.OPEN,
     });
     // Atomic increment to prevent race conditions
-    await this.threadRepo.increment({ id: thread.id }, 'customerUnreadCount', 1);
+    await this.threadRepo.increment(
+      { id: thread.id },
+      'customerUnreadCount',
+      1,
+    );
 
     // Broadcast via socket
     this.messagingGateway.emitMessage(
@@ -154,13 +166,15 @@ export class InboxService {
     );
 
     // Send push notification to visitor
-    this.pushNotificationService.sendNotification(
-      thread.customerId,
-      'New Message from Business',
-      content,
-      { threadId: thread.id, channel: thread.channel },
-      true, // Is User (Customer is a User now)
-    ).catch(e => console.error('Push error:', e.message));
+    this.pushNotificationService
+      .sendNotification(
+        thread.customerId,
+        'New Message from Business',
+        content,
+        { threadId: thread.id, channel: thread.channel },
+        true, // Is User (Customer is a User now)
+      )
+      .catch((e) => console.error('Push error:', e.message));
 
     return savedMessage;
   }
@@ -178,7 +192,9 @@ export class InboxService {
       const branch = await this.branchRepo.findOne({ where: { id: branchId } });
       if (!branch) throw new NotFoundException('Branch not found');
 
-      const customer = await this.userRepo.findOne({ where: { id: customerId } });
+      const customer = await this.userRepo.findOne({
+        where: { id: customerId },
+      });
       if (!customer) throw new NotFoundException('Customer not found');
 
       thread = this.threadRepo.create({
@@ -215,11 +231,17 @@ export class InboxService {
     // Note: if branchId is provided, we check if it matches the message branchId (staff context)
     // but we should still ideally check if it was OUTBOUND (staff) or INBOUND (customer)
     if (branchId) {
-      if (message.direction !== MessageDirection.OUTBOUND || message.branchId !== branchId) {
+      if (
+        message.direction !== MessageDirection.OUTBOUND ||
+        message.branchId !== branchId
+      ) {
         throw new ForbiddenException('Cannot edit this message');
       }
     } else {
-      if (message.direction !== MessageDirection.INBOUND || message.customerId !== userId) {
+      if (
+        message.direction !== MessageDirection.INBOUND ||
+        message.customerId !== userId
+      ) {
         throw new ForbiddenException('Cannot edit this message');
       }
     }
@@ -233,12 +255,17 @@ export class InboxService {
     const saved = await this.messageRepo.save(message);
 
     // Broadcast update
-    this.messagingGateway.emitMessageUpdate(message.threadId, message.branchId, message.customerId, {
-      id: message.id,
-      content: message.content,
-      isEdited: true,
-      type: 'EDIT',
-    });
+    this.messagingGateway.emitMessageUpdate(
+      message.threadId,
+      message.branchId,
+      message.customerId,
+      {
+        id: message.id,
+        content: message.content,
+        isEdited: true,
+        type: 'EDIT',
+      },
+    );
 
     return saved;
   }
@@ -256,11 +283,17 @@ export class InboxService {
     if (!message) throw new NotFoundException('Message not found');
 
     if (branchId) {
-      if (message.direction !== MessageDirection.OUTBOUND || message.branchId !== branchId) {
+      if (
+        message.direction !== MessageDirection.OUTBOUND ||
+        message.branchId !== branchId
+      ) {
         throw new ForbiddenException('Cannot delete this message');
       }
     } else {
-      if (message.direction !== MessageDirection.INBOUND || message.customerId !== userId) {
+      if (
+        message.direction !== MessageDirection.INBOUND ||
+        message.customerId !== userId
+      ) {
         throw new ForbiddenException('Cannot delete this message');
       }
     }
@@ -270,11 +303,16 @@ export class InboxService {
     await this.messageRepo.save(message);
 
     // Broadcast update
-    this.messagingGateway.emitMessageUpdate(message.threadId, message.branchId, message.customerId, {
-      id: message.id,
-      isDeleted: true,
-      type: 'DELETE',
-    });
+    this.messagingGateway.emitMessageUpdate(
+      message.threadId,
+      message.branchId,
+      message.customerId,
+      {
+        id: message.id,
+        isDeleted: true,
+        type: 'DELETE',
+      },
+    );
   }
 
   // --- Customer Facing Methods ---
@@ -364,12 +402,14 @@ export class InboxService {
     );
 
     // Send push notification to branch staff
-    this.pushNotificationService.sendToBranchStaff(
-      thread.branchId,
-      `New Message from ${thread.customer.firstName || 'Visitor'}`,
-      content,
-      { threadId: thread.id, channel: thread.channel },
-    ).catch(e => console.error('Push error:', e.message));
+    this.pushNotificationService
+      .sendToBranchStaff(
+        thread.branchId,
+        `New Message from ${thread.customer.firstName || 'Visitor'}`,
+        content,
+        { threadId: thread.id, channel: thread.channel },
+      )
+      .catch((e) => console.error('Push error:', e.message));
 
     return savedMessage;
   }
@@ -385,7 +425,9 @@ export class InboxService {
     });
 
     if (!visit) {
-      throw new ForbiddenException('You must be a visitor of this branch to start a conversation');
+      throw new ForbiddenException(
+        'You must be a visitor of this branch to start a conversation',
+      );
     }
 
     // 2. Find or create an In-House thread
@@ -400,7 +442,9 @@ export class InboxService {
         throw new NotFoundException('Branch not found');
       }
 
-      const customer = await this.userRepo.findOne({ where: { id: customerId } });
+      const customer = await this.userRepo.findOne({
+        where: { id: customerId },
+      });
       if (!customer) {
         throw new NotFoundException('Customer not found');
       }
@@ -425,7 +469,11 @@ export class InboxService {
         lastMessageContent: content,
         status: ThreadStatus.OPEN,
       });
-      await this.threadRepo.increment({ id: thread.id }, 'branchUnreadCount', 1);
+      await this.threadRepo.increment(
+        { id: thread.id },
+        'branchUnreadCount',
+        1,
+      );
     }
 
     // 3. Create and save the message
@@ -453,12 +501,14 @@ export class InboxService {
     );
 
     // 5. Send push notification to branch staff
-    this.pushNotificationService.sendToBranchStaff(
-      thread.branchId,
-      `New Message from ${thread.customer.firstName || 'Visitor'}`,
-      content,
-      { threadId: thread.id, channel: thread.channel },
-    ).catch(e => console.error('Push error:', e.message));
+    this.pushNotificationService
+      .sendToBranchStaff(
+        thread.branchId,
+        `New Message from ${thread.customer.firstName || 'Visitor'}`,
+        content,
+        { threadId: thread.id, channel: thread.channel },
+      )
+      .catch((e) => console.error('Push error:', e.message));
 
     return savedMessage;
   }

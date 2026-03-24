@@ -32,8 +32,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
-      error: typeof message === 'string' ? message : (message as any).error || (message as any).message || message,
-      message: (message as any).message || (typeof message === 'string' ? message : 'Internal server error'),
+      error:
+        typeof message === 'string'
+          ? message
+          : (message as any).error || (message as any).message || message,
+      message:
+        (message as any).message ||
+        (typeof message === 'string' ? message : 'Internal server error'),
     };
 
     // Log the error for tracking

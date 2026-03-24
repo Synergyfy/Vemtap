@@ -21,7 +21,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 export function configureApp(app: INestApplication) {
   // Security
   app.use(helmet());
-  
+
   // Compression
   app.use(compression());
 
@@ -48,7 +48,7 @@ export function configureApp(app: INestApplication) {
 
   // Filters & Interceptors
   app.useGlobalFilters(new AllExceptionsFilter());
-  
+
   // Serialization & Global Logging
   app.useGlobalInterceptors(
     new ClassSerializerInterceptor(app.get(Reflector)),

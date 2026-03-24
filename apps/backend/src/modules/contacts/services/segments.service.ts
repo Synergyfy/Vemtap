@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Segment } from '../entities/segment.entity';
@@ -57,7 +61,11 @@ export class SegmentsService {
     return segment;
   }
 
-  async updateSegment(id: string, dto: UpdateSegmentDto, branchId: string): Promise<Segment> {
+  async updateSegment(
+    id: string,
+    dto: UpdateSegmentDto,
+    branchId: string,
+  ): Promise<Segment> {
     const segment = await this.getSegmentWithMembers(id, branchId);
     Object.assign(segment, dto);
     return this.segmentRepo.save(segment);
@@ -68,24 +76,34 @@ export class SegmentsService {
     await this.segmentRepo.remove(segment);
   }
 
-  async addMembers(id: string, userIds: string[], branchId: string): Promise<Segment> {
+  async addMembers(
+    id: string,
+    userIds: string[],
+    branchId: string,
+  ): Promise<Segment> {
     const segment = await this.getSegmentWithMembers(id, branchId);
-    
+
     const usersToAdd = await this.userRepo.find({
       where: { id: In(userIds) },
     });
 
     // Merge without duplicates
-    const currentMemberIds = segment.users.map(u => u.id);
-    const newMembers = usersToAdd.filter(u => !currentMemberIds.includes(u.id));
-    
+    const currentMemberIds = segment.users.map((u) => u.id);
+    const newMembers = usersToAdd.filter(
+      (u) => !currentMemberIds.includes(u.id),
+    );
+
     segment.users.push(...newMembers);
     return this.segmentRepo.save(segment);
   }
 
-  async removeMembers(id: string, userIds: string[], branchId: string): Promise<Segment> {
+  async removeMembers(
+    id: string,
+    userIds: string[],
+    branchId: string,
+  ): Promise<Segment> {
     const segment = await this.getSegmentWithMembers(id, branchId);
-    segment.users = segment.users.filter(u => !userIds.includes(u.id));
+    segment.users = segment.users.filter((u) => !userIds.includes(u.id));
     return this.segmentRepo.save(segment);
   }
 }

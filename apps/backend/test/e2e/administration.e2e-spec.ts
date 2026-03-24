@@ -68,13 +68,13 @@ describe('Administration & Impersonation (e2e)', () => {
   it('Agent performs action using impersonation token (Audit Check)', async () => {
     // Login as agent
     const loginRes = await request(app.getHttpServer())
-        .post('/api/v1/auth/login')
-        .send({
-            identifier: agentEmail,
-            password: 'Password123!'
-        })
-        .expect(200);
-    
+      .post('/api/v1/auth/login')
+      .send({
+        identifier: agentEmail,
+        password: 'Password123!',
+      })
+      .expect(200);
+
     const activeAgentToken = loginRes.body.access_token;
 
     // Perform an action that should be audited and restricted by module
@@ -87,13 +87,13 @@ describe('Administration & Impersonation (e2e)', () => {
 
   it('Agent is forbidden from unauthorized modules', async () => {
     const loginRes = await request(app.getHttpServer())
-        .post('/api/v1/auth/login')
-        .send({
-            identifier: agentEmail,
-            password: 'Password123!'
-        })
-        .expect(200);
-    
+      .post('/api/v1/auth/login')
+      .send({
+        identifier: agentEmail,
+        password: 'Password123!',
+      })
+      .expect(200);
+
     const activeAgentToken = loginRes.body.access_token;
 
     // Agent doesn't have VISITORS permission

@@ -30,7 +30,7 @@ interface RequestWithUser extends Request {
 @ApiBearerAuth()
 @Controller('visitor-forms')
 export class VisitorFormsController {
-  constructor(private readonly formsService: FormsService) { }
+  constructor(private readonly formsService: FormsService) {}
 
   @Public()
   @Get('branch/:branchId')
@@ -62,11 +62,12 @@ export class VisitorFormsController {
     return this.formsService.getFormsForVisitor(branchId);
   }
 
-
-
   @Public()
   @Get('code/:code')
-  @ApiOperation({ summary: 'Get a specific form by its unique 9-digit code with its questions' })
+  @ApiOperation({
+    summary:
+      'Get a specific form by its unique 9-digit code with its questions',
+  })
   @ApiResponse({
     status: 200,
     description: 'Return the form with fields to answer.',
@@ -76,7 +77,10 @@ export class VisitorFormsController {
         id: { type: 'string', example: 'uuid-form-1234' },
         uniqueCode: { type: 'string', example: 'ABC123XYZ' },
         title: { type: 'string', example: 'Customer Feedback' },
-        description: { type: 'string', example: 'Let us know how your visit went' },
+        description: {
+          type: 'string',
+          example: 'Let us know how your visit went',
+        },
         fields: {
           type: 'array',
           items: {
@@ -84,15 +88,22 @@ export class VisitorFormsController {
             properties: {
               id: { type: 'string', example: 'uuid-field-1234' },
               type: { type: 'string', example: 'radio' },
-              question: { type: 'string', example: 'How would you rate our service?' },
-              options: { type: 'array', items: { type: 'string' }, example: ['1', '2', '3', '4', '5'] },
+              question: {
+                type: 'string',
+                example: 'How would you rate our service?',
+              },
+              options: {
+                type: 'array',
+                items: { type: 'string' },
+                example: ['1', '2', '3', '4', '5'],
+              },
               isRequired: { type: 'boolean', example: true },
-              order: { type: 'number', example: 1 }
-            }
-          }
-        }
-      }
-    }
+              order: { type: 'number', example: 1 },
+            },
+          },
+        },
+      },
+    },
   })
   getFormByCode(@Param('code') code: string) {
     return this.formsService.getFormByUniqueCode(code);
@@ -100,9 +111,10 @@ export class VisitorFormsController {
 
   @Public()
   @Get('device/:code')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get all forms to show after lead capture for a device',
-    description: 'Retrieves active, published forms for the branch linked to the device that have showAfterLeadCapture enabled.'
+    description:
+      'Retrieves active, published forms for the branch linked to the device that have showAfterLeadCapture enabled.',
   })
   @ApiResponse({
     status: 200,
@@ -123,15 +135,18 @@ export class VisitorFormsController {
               properties: {
                 id: { type: 'string', example: 'uuid-field-1234' },
                 type: { type: 'string', example: 'text' },
-                question: { type: 'string', example: 'Any additional comments?' },
+                question: {
+                  type: 'string',
+                  example: 'Any additional comments?',
+                },
                 isRequired: { type: 'boolean', example: false },
-                order: { type: 'number', example: 1 }
-              }
-            }
-          }
-        }
-      }
-    }
+                order: { type: 'number', example: 1 },
+              },
+            },
+          },
+        },
+      },
+    },
   })
   getFormsByDeviceCode(@Param('code') code: string) {
     return this.formsService.getFormsByDeviceCode(code);
@@ -139,7 +154,9 @@ export class VisitorFormsController {
 
   @Post(':code/responses')
   @Roles(UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'Submit answers for a specific form using its unique code' })
+  @ApiOperation({
+    summary: 'Submit answers for a specific form using its unique code',
+  })
   @ApiBody({
     type: SubmitFormResponseDto,
     examples: {

@@ -8,7 +8,10 @@ export class FindCampaignsDto {
   @IsUUID()
   branchId?: string;
 
-  @ApiPropertyOptional({ enum: CampaignStatus, description: 'Filter by campaign status' })
+  @ApiPropertyOptional({
+    enum: CampaignStatus,
+    description: 'Filter by campaign status',
+  })
   @IsOptional()
   @IsEnum(CampaignStatus)
   status?: CampaignStatus;

@@ -44,7 +44,12 @@ describe('SegmentsService', () => {
       const mockUser = { branchId: 'branch-1' } as User;
       const mockBranch = { id: 'branch-1', businessId: 'biz-1' } as Branch;
       const dto = { name: 'VIP', description: 'Top tier' };
-      const mockSegment = { id: 'seg-1', ...dto, branchId: 'branch-1', businessId: 'biz-1' };
+      const mockSegment = {
+        id: 'seg-1',
+        ...dto,
+        branchId: 'branch-1',
+        businessId: 'biz-1',
+      };
 
       branchRepo.findOne.mockResolvedValue(mockBranch);
       segmentRepo.create.mockReturnValue(mockSegment);
@@ -53,14 +58,18 @@ describe('SegmentsService', () => {
       const result = await service.createSegment(dto, mockUser);
 
       expect(result).toEqual(mockSegment);
-      expect(segmentRepo.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'VIP' }));
+      expect(segmentRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'VIP' }),
+      );
     });
 
     it('should throw ForbiddenException if no branchId context is available', async () => {
       const mockUser = { branchId: null } as any;
       const dto = { name: 'VIP' };
 
-      await expect(service.createSegment(dto, mockUser)).rejects.toThrow(ForbiddenException);
+      await expect(service.createSegment(dto, mockUser)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -74,7 +83,7 @@ describe('SegmentsService', () => {
 
       segmentRepo.findOne.mockResolvedValue(mockSegment);
       userRepo.find.mockResolvedValue(mockUsers);
-      segmentRepo.save.mockImplementation(s => s);
+      segmentRepo.save.mockImplementation((s) => s);
 
       const result = await service.addMembers(segmentId, userIds, branchId);
 
@@ -86,12 +95,16 @@ describe('SegmentsService', () => {
       const branchId = 'branch-1';
       const segmentId = 'seg-1';
       const userIds = ['user-1'];
-      const mockSegment = { id: segmentId, branchId, users: [{ id: 'user-1' }] } as any;
+      const mockSegment = {
+        id: segmentId,
+        branchId,
+        users: [{ id: 'user-1' }],
+      } as any;
       const mockUsers = [{ id: 'user-1' }] as User[];
 
       segmentRepo.findOne.mockResolvedValue(mockSegment);
       userRepo.find.mockResolvedValue(mockUsers);
-      segmentRepo.save.mockImplementation(s => s);
+      segmentRepo.save.mockImplementation((s) => s);
 
       const result = await service.addMembers(segmentId, userIds, branchId);
 
@@ -104,10 +117,14 @@ describe('SegmentsService', () => {
       const branchId = 'branch-1';
       const segmentId = 'seg-1';
       const userIds = ['user-1'];
-      const mockSegment = { id: segmentId, branchId, users: [{ id: 'user-1' }, { id: 'user-2' }] } as any;
+      const mockSegment = {
+        id: segmentId,
+        branchId,
+        users: [{ id: 'user-1' }, { id: 'user-2' }],
+      } as any;
 
       segmentRepo.findOne.mockResolvedValue(mockSegment);
-      segmentRepo.save.mockImplementation(s => s);
+      segmentRepo.save.mockImplementation((s) => s);
 
       const result = await service.removeMembers(segmentId, userIds, branchId);
 

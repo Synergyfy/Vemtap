@@ -40,7 +40,9 @@ export class SendMessageDto {
   @IsUUID()
   templateId?: string;
 
-  @ApiPropertyOptional({ description: 'Filter audience by segment (if AudienceType=SEGMENT)' })
+  @ApiPropertyOptional({
+    description: 'Filter audience by segment (if AudienceType=SEGMENT)',
+  })
   @IsOptional()
   @IsUUID()
   segmentId?: string;
@@ -66,4 +68,3 @@ export class SendMessageDto {
   @IsUUID('all', { each: true })
   customerIds?: string[];
 }
-

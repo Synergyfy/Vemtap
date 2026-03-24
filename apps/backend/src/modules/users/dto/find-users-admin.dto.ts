@@ -14,7 +14,10 @@ export class FindUsersAdminDto {
   @IsEnum(UserRole)
   role?: UserRole;
 
-  @ApiPropertyOptional({ enum: UserStatus, description: 'Filter by user status' })
+  @ApiPropertyOptional({
+    enum: UserStatus,
+    description: 'Filter by user status',
+  })
   @IsOptional()
   @IsEnum(UserStatus)
   status?: UserStatus;
