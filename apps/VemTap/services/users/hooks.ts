@@ -25,7 +25,7 @@ export const useInviteStaff = () => {
     const queryClient = useQueryClient();
 
     return useMutation<StaffMember, Error, InviteStaffRequest>({
-        mutationFn: async (dto) => await api.post('/users/staff/invite', dto),
+        mutationFn: async (dto) => await api.post('/users/team/invite', dto),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['staff'] });
         },
