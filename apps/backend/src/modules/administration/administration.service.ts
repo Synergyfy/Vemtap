@@ -85,20 +85,23 @@ export class AdministrationService {
     if (filter.branchId) where.branchId = filter.branchId;
     if (filter.module) where.module = filter.module;
 
+    const page = filter.page || 1;
+    const limit = filter.limit || 10;
+
     const [data, total] = await this.auditLogRepository.findAndCount({
       where,
       relations: ['actor', 'business', 'branch'],
       order: { createdAt: 'DESC' },
-      skip: (filter.page - 1) * filter.limit,
-      take: filter.limit,
+      skip: (page - 1) * limit,
+      take: limit,
     });
 
     return {
       data,
       meta: {
         total,
-        page: filter.page,
-        lastPage: Math.ceil(total / filter.limit),
+        page,
+        lastPage: Math.ceil(total / limit),
       },
     };
   }
