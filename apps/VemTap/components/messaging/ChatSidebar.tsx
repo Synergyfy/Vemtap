@@ -32,7 +32,7 @@ const AVATAR_COLORS = [
     'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-teal-500',
 ];
 
-type MessagingTab = 'INTERNAL' | 'WHATSAPP';
+// type MessagingTab = 'INTERNAL' | 'WHATSAPP';
 
 function getInitials(name: string) {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -81,7 +81,7 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
     const { branchId, isCustomer } = useMessagingBranch();
     const [showNewChat, setShowNewChat] = useState(false);
     const [customerQuery, setCustomerQuery] = useState('');
-    const [activeTab, setActiveTab] = useState<MessagingTab>(mode || 'INTERNAL');
+    const [activeTab, setActiveTab] = useState<'INTERNAL'>(mode === 'WHATSAPP' ? 'INTERNAL' : (mode || 'INTERNAL'));
     const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
     const [whatsappModalVisitors, setWhatsappModalVisitors] = useState<any[]>([]);
     const [showCampaigns, setShowCampaigns] = useState(false);
@@ -610,18 +610,7 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                     )}
                 </header>
 
-                {/* Tabs - only show if no mode is forced */}
-                {!mode && (
-                    <div className="flex border-b border-slate-100 bg-slate-50/50">
-                        <button
-                            onClick={() => setActiveTab('INTERNAL')}
-                            className="flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all text-primary border-b-2 border-primary bg-white"
-                        >
-                            <MessageSquare size={14} />
-                            Inbox
-                        </button>
-                    </div>
-                )}
+                {/* Tabs removed as WhatsApp moved to its own page */}
 
                 {/* Search */}
                 <div className="p-4 bg-white">
@@ -685,17 +674,6 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                                             if (conv.contact?.id) toggleContactSelection(conv.contact.id);
                                         }}
                                         onClick={() => setActiveConversation(conv.id)}
-                                        onWhatsApp={() => {
-                                            const phone = conv.contact?.phone || conv.customer?.phone || conv.metadata?.phone || (conv as any).phone;
-                                            const name = conv.contact?.name || (conv.customer?.firstName ? `${conv.customer.firstName} ${conv.customer.lastName || ''}`.trim() : 'Customer');
-                                            const id = conv.contact?.id || conv.customer?.id || conv.customerId;
-                                                
-                                            if (phone) {
-                                                setWhatsappModalVisitors([{ id, name, phone }]);
-                                            } else {
-                                                toast.error('No phone number available for this contact.');
-                                            }
-                                        }}
                                     />
                                 </motion.div>
                             ))}
@@ -758,7 +736,6 @@ function ConversationItem({
     onSelect,
     onClick,
     isCustomer,
-    onWhatsApp,
 }: {
     conversation: any;
     isActive: boolean;
@@ -766,7 +743,6 @@ function ConversationItem({
     isCustomer: boolean;
     onSelect: () => void;
     onClick: () => void;
-    onWhatsApp?: () => void;
 }) {
     const isTyping = useChatStore(s => s.typingByThread[conversation.id]);
     const draftText = useChatStore(s => s.drafts[conversation.id]);
@@ -856,28 +832,16 @@ function ConversationItem({
                     </div>
                 </div>
 
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {(customer?.phone || conversation.contact?.phone) && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onWhatsApp?.();
-                            }}
-                            className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors"
-                            title="Send WhatsApp Message"
+                            onClick={handleDelete}
+                            disabled={isDeleting}
+                            className="p-2 text-slate-400 hover:text-rose-500 transition-colors disabled:opacity-50"
+                            title="Delete Conversation"
                         >
-                            <WhatsAppIcon size={16} />
+                            <Trash2 size={16} />
                         </button>
-                    )}
-                    <button
-                        onClick={handleDelete}
-                        disabled={isDeleting}
-                        className="p-2 text-slate-400 hover:text-rose-500 transition-colors disabled:opacity-50"
-                        title="Delete Conversation"
-                    >
-                        <Trash2 size={16} />
-                    </button>
-                </div>
+                    </div>
             </button>
         </div>
     );
