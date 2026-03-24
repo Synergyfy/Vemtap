@@ -30,7 +30,7 @@ export default function UserExperienceAppearancePage() {
         if (brandColor && brandColor !== engagementSettings?.brandColor) {
             updateEngagementSettings({ brandColor });
         }
-    }, [brandColor, updateEngagementSettings, engagementSettings?.brandColor]);
+    }, []); // Empty dependency array to run only once on mount
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -106,7 +106,7 @@ export default function UserExperienceAppearancePage() {
                                             type="color"
                                             value={brandColor}
                                             onChange={(e) => updateEngagementSettings({ brandColor: e.target.value })}
-                                            className="size-12 rounded-xl border-4 border-white shadow-md cursor-pointer p-0 overflow-hidden appearance-none"
+                                            className="size-12 rounded-xl border-4 border-white shadow-md cursor-pointer p-0 overflow-hidden"
                                         />
                                     </div>
                                 </div>

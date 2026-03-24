@@ -54,14 +54,14 @@ export default function StaffManagementPage() {
     const { data: realBranches = [] } = useBranches();
     const branches = realBranches;
 
-    const { data: staffMembers, isLoading: isStaffLoading } = useStaff(activeBranchId || undefined);
+    const isOwner = user?.role?.toLowerCase() === 'owner';
+
+    const { data: staffMembers, isLoading: isStaffLoading } = useStaff(activeBranchId || undefined, isOwner);
     const inviteMutation = useInviteStaff();
     const updateMutation = useUpdateStaff();
-    const removeMutation = useRemoveStaff();
+    const removeMutation = useRemoveStaff(activeBranchId || undefined);
 
     const isLoading = isStaffLoading;
-
-    const isOwner = user?.role?.toLowerCase() === 'owner';
 
     // Close upgrade modal on navigation
     React.useEffect(() => {
@@ -175,18 +175,19 @@ export default function StaffManagementPage() {
         {
             header: 'Status',
             accessor: (item: StaffMember) => {
+                const status = item.status?.toLowerCase();
                 const statusColors: Record<string, string> = {
-                    'Active': 'bg-green-500',
-                    'Pending': 'bg-amber-500',
-                    'Invited': 'bg-blue-400',
-                    'Suspended': 'bg-red-500',
-                    'Inactive': 'bg-gray-400',
+                    'active': 'bg-green-500',
+                    'pending': 'bg-amber-500',
+                    'invited': 'bg-blue-400',
+                    'suspended': 'bg-red-500',
+                    'inactive': 'bg-gray-400',
                 };
 
                 return (
                     <div className="flex items-center gap-2">
-                        <div className={`size-1.5 rounded-full ${statusColors[item.status] || 'bg-gray-300'} ${item.status === 'Active' ? 'animate-pulse' : ''}`}></div>
-                        <span className="text-sm font-bold text-text-main capitalize">{item.status}</span>
+                        <div className={`size-1.5 rounded-full ${statusColors[status] || 'bg-gray-300'} ${status === 'active' ? 'animate-pulse' : ''}`}></div>
+                        <span className="text-sm font-bold text-text-main capitalize">{status || item.status}</span>
                     </div>
                 );
             }
@@ -450,7 +451,8 @@ export default function StaffManagementPage() {
                                         updates: {
                                             role: editingStaff.role,
                                             permissions: editingStaff.permissions
-                                        }
+                                        },
+                                        branchId: activeBranchId || undefined
                                     }, {
                                         onSuccess: () => {
                                             toast.success('Staff access updated');
