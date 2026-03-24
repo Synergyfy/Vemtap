@@ -610,48 +610,83 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                             const isOnTrial = activeSubscription?.status === 'trial' || activeSubscription?.status === 'trialing';
                             const planId = String(activeSubscription?.planId || '').toLowerCase();
                             const isFree = planId.includes('free') || Boolean(activeSubscription?.plan?.isFree);
+                            const planName = activeSubscription?.plan?.name || (isFree ? 'Free Plan' : 'Active Plan');
 
-                            if (isFree || !activeSubscription) {
-                                return (
-                                    <Link
-                                        href={withBranch("/dashboard/settings/subscription")}
-                                        className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-gray-200 transition-colors"
-                                    >
-                                        Free Plan
-                                    </Link>
-                                );
-                            }
-
-                            if (isOnTrial && activeSubscription.trialEndDate) {
+                            // Compute counts/days for trial
+                            let daysRemaining = 0;
+                            if (isOnTrial && activeSubscription?.trialEndDate) {
                                 const trialEndDate = new Date(activeSubscription.trialEndDate);
                                 const now = new Date();
-                                const daysRemaining = Math.max(0, Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-
-                                return (
-                                    <Link
-                                        href={withBranch("/dashboard/settings/subscription/manage")}
-                                        className="flex items-center gap-2 pl-3 pr-1 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-full transition-all group"
-                                    >
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">
-                                            {activeSubscription?.plan?.name || 'Trial'}
-                                        </span>
-                                        <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-500 text-white rounded-full">
-                                            <Zap size={10} className="fill-white" />
-                                            <span className="text-[9px] font-black uppercase tracking-tighter">
-                                                {daysRemaining > 0 ? `${daysRemaining}d trial` : 'Last day!'}
-                                            </span>
-                                        </div>
-                                    </Link>
-                                );
+                                daysRemaining = Math.max(0, Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
                             }
 
+                            const subscriptionLink = withBranch("/dashboard/settings/subscription" + (!isFree ? "/manage" : ""));
+
                             return (
-                                <Link
-                                    href={withBranch("/dashboard/settings/subscription/manage")}
-                                    className="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-emerald-100 transition-colors"
-                                >
-                                    {activeSubscription?.plan?.name || 'Active Plan'}
-                                </Link>
+                                <>
+                                    {/* Desktop View: Full Badge */}
+                                    <div className="hidden sm:flex items-center">
+                                        {isFree ? (
+                                            <Link
+                                                href={subscriptionLink}
+                                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-gray-200 transition-colors"
+                                            >
+                                                Free Plan
+                                            </Link>
+                                        ) : isOnTrial ? (
+                                            <Link
+                                                href={subscriptionLink}
+                                                className="flex items-center gap-2 pl-3 pr-1 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-full transition-all group"
+                                            >
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">
+                                                    {planName}
+                                                </span>
+                                                <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-500 text-white rounded-full">
+                                                    <Zap size={10} className="fill-white" />
+                                                    <span className="text-[9px] font-black uppercase tracking-tighter">
+                                                        {daysRemaining > 0 ? `${daysRemaining}d trial` : 'Last day!'}
+                                                    </span>
+                                                </div>
+                                            </Link>
+                                        ) : (
+                                            <Link
+                                                href={subscriptionLink}
+                                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-emerald-100 transition-colors"
+                                            >
+                                                {planName}
+                                            </Link>
+                                        )}
+                                    </div>
+
+                                    {/* Mobile View: Compact Icon */}
+                                    <div className="flex sm:hidden items-center">
+                                        <Link
+                                            href={subscriptionLink}
+                                            className={`size-9 rounded-xl flex items-center justify-center border transition-all shadow-sm ${
+                                                isFree 
+                                                    ? 'bg-gray-50 border-gray-200 text-gray-400' 
+                                                    : isOnTrial 
+                                                        ? 'bg-amber-50 border-amber-200 text-amber-600' 
+                                                        : 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                                            }`}
+                                        >
+                                            {isFree ? (
+                                                <Zap size={18} className="opacity-40" />
+                                            ) : isOnTrial ? (
+                                                <div className="relative">
+                                                    <Zap size={18} className="fill-current" />
+                                                    {daysRemaining > 0 && (
+                                                        <span className="absolute -top-1 -right-1 size-4 bg-amber-500 text-white text-[8px] font-black rounded-full border-2 border-amber-50 flex items-center justify-center">
+                                                            {daysRemaining}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <ShieldCheck size={18} />
+                                            )}
+                                        </Link>
+                                    </div>
+                                </>
                             );
                         })()}
 

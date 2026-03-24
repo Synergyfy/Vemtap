@@ -13,19 +13,10 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
-import WhatsAppTemplateModal from './WhatsAppTemplateModal';
 import { useCustomerGlobalHistory } from '@/services/customer/hooks';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import { useSegments, useCreateSegment, useAddSegmentMembers } from '@/services/messaging/hooks';
 
-// Inline WhatsApp SVG icon for consistent branding
-function WhatsAppIcon({ size = 14, className = '' }: { size?: number; className?: string }) {
-    return (
-        <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-        </svg>
-    );
-}
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
@@ -68,7 +59,7 @@ const SidebarSkeleton = () => (
     </div>
 );
 
-export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }) {
+export default function ChatSidebar() {
     const activeConversationId = useChatStore(s => s.activeConversationId);
     const searchQuery = useChatStore(s => s.searchQuery);
     const setSearchQuery = useChatStore(s => s.setSearchQuery);
@@ -81,9 +72,7 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
     const { branchId, isCustomer } = useMessagingBranch();
     const [showNewChat, setShowNewChat] = useState(false);
     const [customerQuery, setCustomerQuery] = useState('');
-    const [activeTab, setActiveTab] = useState<'INTERNAL'>(mode === 'WHATSAPP' ? 'INTERNAL' : (mode || 'INTERNAL'));
     const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
-    const [whatsappModalVisitors, setWhatsappModalVisitors] = useState<any[]>([]);
     const [showCampaigns, setShowCampaigns] = useState(false);
     const newChatRef = useRef<HTMLDivElement>(null);
     const [newTagName, setNewTagName] = useState('');
@@ -165,7 +154,7 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
 
     const headerName = isCustomer 
         ? (activeConv?.contact?.name || 'Customer Chat') 
-        : (mode === 'WHATSAPP' ? 'WhatsApp' : (business?.name || user?.businessName || 'Vemtap'));
+        : (business?.name || user?.businessName || 'Vemtap');
         
     const headerLogo = isCustomer 
         ? (activeConv?.contact?.avatar) 
@@ -293,7 +282,6 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
         });
         
         if (audience.length > 0) {
-            setWhatsappModalVisitors(audience);
             toast.success(`Broadcasting to ${audience.length} customers with tag "${tagName}"`);
         } else {
             toast.error(`No customers found for tag "${tagName}"`);
@@ -316,7 +304,6 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
             
             if (audience.length > 0) {
                 toast.success(`Found ${audience.length} ${type} visitors`, { id: toastId });
-                setWhatsappModalVisitors(audience);
             } else {
                 toast.error(`No ${type} visitors found in this segment.`, { id: toastId });
             }
@@ -339,7 +326,7 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
     const handleBulkWhatsApp = () => {
         const selectedList = visitors.filter((v: any) => selectedContacts.has(v.id));
         if (selectedList.length > 0) {
-            setWhatsappModalVisitors(selectedList);
+            toast.success(`${selectedList.length} customers selected for action.`);
         }
         setSelectedContacts(new Set());
     };
@@ -360,9 +347,8 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                         )}
                         <h1 className="font-bold text-lg text-slate-800 tracking-tight truncate">{headerName}</h1>
                     </div>
-                    {activeTab === 'INTERNAL' && (
-                        <div className="flex gap-2 text-slate-400 shrink-0 ml-2">
-                            <div className="relative" ref={newChatRef}>
+                    <div className="flex gap-2 text-slate-400 shrink-0 ml-2">
+                        <div className="relative" ref={newChatRef}>
                                 <button
                                     type="button"
                                     onClick={() => setShowNewChat(prev => !prev)}
@@ -605,10 +591,9 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                             >
                                 <Settings size={18} />
 
-                            </Link>
-                        </div>
-                    )}
-                </header>
+                    </Link>
+                </div>
+            </header>
 
                 {/* Tabs removed as WhatsApp moved to its own page */}
 
@@ -618,37 +603,20 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                         <input
                             type="text"
-                            placeholder={activeTab === 'INTERNAL' ? "Search conversations..." : "Search contacts..."}
+                            placeholder="Search conversations..."
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                             className="block w-full pl-10 pr-3 py-2 border-none bg-slate-100 rounded-xl text-sm placeholder-slate-500 focus:ring-2 focus:ring-primary focus:bg-white transition-all outline-none"
                         />
                     </div>
                 </div>
-
-                {/* Bulk Actions for WhatsApp */}
-                {activeTab === 'WHATSAPP' && selectedContacts.size > 0 && (
-                    <div className="px-4 py-3 bg-emerald-50 border-t border-emerald-100 flex items-center justify-between animate-in slide-in-from-top-2">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Selected</span>
-                            <span className="text-xs font-bold text-slate-700">{selectedContacts.size} Recipients</span>
-                        </div>
-                        <button
-                            onClick={handleBulkWhatsApp}
-                            className="px-4 py-2 bg-emerald-500 text-white text-[11px] font-bold rounded-xl hover:bg-emerald-600 shadow-md shadow-emerald-200 transition-all flex items-center gap-2"
-                        >
-                            <WhatsAppIcon size={14} />
-                            Send Message
-                        </button>
-                    </div>
-                )}
             </div>
 
             {/* Conversations / Contacts - Scrollable Area */}
             <nav className="flex-1 overflow-y-auto custom-scrollbar">
                 {!isCustomer && !branchId ? (
                     <div className="p-8 text-center text-amber-500 text-sm font-medium">Please select a branch first</div>
-                ) : activeTab === 'INTERNAL' ? (
+                ) : (
                     <>
                         {threadsLoading ? (
                             <SidebarSkeleton />
@@ -681,39 +649,8 @@ export default function ChatSidebar({ mode }: { mode?: 'INTERNAL' | 'WHATSAPP' }
 
                         )}
                     </>
-                ) : (
-                    <>
-                         {visitorsLoading ? (
-                             <SidebarSkeleton />
-                         ) : availableVisitors.length === 0 ? (
-                            <div className="p-8 text-center text-slate-400 text-sm">No contacts found.</div>
-                        ) : (
-                            availableVisitors.map(visitor => (
-                                <WhatsAppContactItem
-                                    key={visitor.id}
-                                    visitor={visitor}
-                                    isSelected={selectedContacts.has(visitor.id)}
-                                    onSelect={() => toggleContactSelection(visitor.id)}
-                                    businessName={business?.name || 'Vemtap'}
-                                    onChat={() => setWhatsappModalVisitors([visitor])}
-                                />
-                            ))
-                        )}
-                    </>
                 )}
             </nav>
-
-            {/* WhatsApp Template Modal */}
-            {whatsappModalVisitors.length > 0 && (
-                <WhatsAppTemplateModal
-                    isOpen={whatsappModalVisitors.length > 0}
-                    onClose={() => setWhatsappModalVisitors([])}
-                    visitors={whatsappModalVisitors}
-                    businessName={business?.name || 'Vemtap'}
-                    businessCode={(business as any)?.branches?.find((b: any) => b.id === branchId)?.uniqueCode || (business as any)?.uniqueCode || branchId || 'business'}
-                />
-            )}
-
             {showSendMessageModal && selectedSegmentId && (
                 <SendMessageModal
                     isOpen={showSendMessageModal}
@@ -843,83 +780,6 @@ function ConversationItem({
                         </button>
                     </div>
             </button>
-        </div>
-    );
-}
-
-function WhatsAppContactItem({
-    visitor,
-    isSelected,
-    onSelect,
-    onChat,
-    businessName
-}: {
-    visitor: any;
-    isSelected: boolean;
-    onSelect: () => void;
-    onChat: () => void;
-    businessName: string;
-}) {
-    const name = visitor.name || (visitor.firstName ? `${visitor.firstName} ${visitor.lastName || ''}`.trim() : 'Unknown');
-    const hasPhone = !!visitor.phone;
-
-    return (
-        <div className={`w-full flex items-center gap-3 p-4 transition-all border-b border-slate-50 ${isSelected ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onSelect();
-                }}
-                className={`shrink-0 size-5 rounded-lg border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 bg-white'}`}
-            >
-                {isSelected && <Check size={12} strokeWidth={3} />}
-            </button>
-
-            <div className="relative shrink-0">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm ${getAvatarColor(visitor.id)}`}>
-                    {getInitials(name)}
-                </div>
-                {hasPhone && (
-                    <div className="absolute -right-1 -bottom-1 size-5 bg-[#25d366] rounded-full border-2 border-white flex items-center justify-center text-white">
-                        <WhatsAppIcon size={10} />
-                    </div>
-                )}
-            </div>
-
-            <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-baseline">
-                    <h3 className="text-sm font-semibold text-slate-900 truncate">
-                        {name}
-                    </h3>
-                </div>
-                <div className="flex items-center gap-1.5 overflow-hidden">
-                    <p className="text-xs text-slate-500 truncate flex-1">
-                        {visitor.phone || visitor.email || 'No contact info'}
-                    </p>
-                    {Array.isArray(visitor.tags) && visitor.tags.length > 0 && (
-                        <div className="flex gap-1 shrink-0">
-                            {visitor.tags.slice(0, 1).map((t: string) => (
-                                <span key={t} className="px-1.5 py-0.5 bg-emerald-100 text-emerald-600 text-[9px] font-bold rounded-md">
-                                    {t}
-                                </span>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {hasPhone && (
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onChat();
-                    }}
-                    className="p-2.5 bg-[#25d366]/10 text-[#25d366] rounded-xl hover:bg-[#25d366]/20 transition-colors"
-                    title="Chat on WhatsApp"
-                >
-                    <WhatsAppIcon size={16} />
-                </button>
-            )}
         </div>
     );
 }

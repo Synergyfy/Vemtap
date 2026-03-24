@@ -8,8 +8,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import TopUpModal from '@/components/messaging/TopUpModal';
 import ChannelBalance from '@/components/messaging/ChannelBalance';
 import { useMessagingAnalytics } from '@/services/messaging/hooks';
-import ChatSidebar from '@/components/messaging/ChatSidebar';
-import ChatWindow from '@/components/messaging/ChatWindow';
 import { useMessagingVisitorsByBranch } from '@/services/visitors/hooks';
 import { useMessagingBranch } from '@/hooks/useMessagingBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
