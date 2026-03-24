@@ -54,6 +54,7 @@ export interface User {
   lastLogin?: string;
   joined?: string;
   createdAt?: string;
+  permissions?: string[];
   engagement?: UserEngagement;
 }
 

@@ -47,7 +47,7 @@ export class AuditInterceptor implements NestInterceptor {
           let businessId = user?.businessId;
           let branchId = user?.branchId;
           let actorId = user?.id;
-          let impersonationTokenId = null;
+          let impersonationTokenId: string | undefined = undefined;
 
           if (impersonationTokenStr) {
             const token = await this.adminService.validateToken(impersonationTokenStr);

@@ -37,6 +37,7 @@ export function getBusinessSudoActions(): SudoAction[] {
         { key: 'add_user', label: 'Add New User', description: 'Create a new staff user for the business account.' },
         { key: 'send_message', label: 'Send Message', description: 'Send a campaign or support message on behalf of business.' },
         { key: 'add_device', label: 'Register Device', description: 'Attach a new terminal/device to the business profile.' },
+        { key: 'assign_agent', label: 'Assign Support Agent', description: 'Manually assign an agent to oversee this business.' },
         { key: 'adjust_loyalty', label: 'Adjust Loyalty Rule', description: 'Update reward points or loyalty settings.' },
         { key: 'resolve_ticket', label: 'Resolve Complaint', description: 'Apply a support fix directly for reported issue.' },
     ];

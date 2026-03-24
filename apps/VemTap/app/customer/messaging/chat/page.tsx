@@ -1,9 +1,11 @@
 'use client';
 
 import React, { Suspense } from 'react';
-import ChatSidebar from '@/components/messaging/ChatSidebar';
-import ChatWindow from '@/components/messaging/ChatWindow';
+import dynamic from 'next/dynamic';
 import { useChatStore } from '@/lib/store/useChatStore';
+
+const ChatSidebar = dynamic(() => import('@/components/messaging/ChatSidebar'), { ssr: false });
+const ChatWindow = dynamic(() => import('@/components/messaging/ChatWindow'), { ssr: false });
 
 export default function CustomerChatPage() {
     const activeConversationId = useChatStore((s: any) => s.activeConversationId);

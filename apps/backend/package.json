@@ -77,6 +77,7 @@
     "socket.io": "^4.8.3",
     "twilio": "^5.13.0",
     "typeorm": "^0.3.28",
+    "uuid": "^13.0.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
@@ -91,6 +92,7 @@
     "@types/node": "^22.10.7",
     "@types/passport-local": "^1.0.38",
     "@types/supertest": "^6.0.2",
+    "@types/uuid": "^11.0.0",
     "@types/web-push": "^3.6.4",
     "cross-env": "^10.1.0",
     "dotenv-cli": "^11.0.0",

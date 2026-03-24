@@ -152,12 +152,27 @@ const REWARD_TYPE_DETAILS: Record<RewardType, { label: string, description: stri
         description: "Apply percentage or fixed price reduction on checkout.",
         icon: Percent
     },
+    custom_discount: {
+        label: "Custom Discount",
+        description: "Apply percentage or fixed price reduction on checkout.",
+        icon: Percent
+    },
     free_item: {
         label: "Free Product",
         description: "Offer a specific item at no cost to the customer.",
         icon: Package
     },
+    free_product: {
+        label: "Free Product",
+        description: "Offer a specific item at no cost to the customer.",
+        icon: Package
+    },
     service: {
+        label: "Service Upgrade",
+        description: "Complimentary services or feature upgrades.",
+        icon: Ticket
+    },
+    service_upgrade: {
         label: "Service Upgrade",
         description: "Complimentary services or feature upgrades.",
         icon: Ticket
@@ -168,6 +183,11 @@ const REWARD_TYPE_DETAILS: Record<RewardType, { label: string, description: stri
         icon: Wallet
     },
     gift: {
+        label: "Tangible Gift",
+        description: "A surprise physical reward or gift package.",
+        icon: Gift
+    },
+    tangible_gifts: {
         label: "Tangible Gift",
         description: "A surprise physical reward or gift package.",
         icon: Gift

@@ -1,100 +1,30 @@
-app/dashboard/settings/profile/page.tsx:324:44 - error TS2339: Property 'identityNumber' does not exist on type 'Business'.
-
-324                 setIdentityNumber(business.identityNumber || '');
-                                               ~~~~~~~~~~~~~~
-
-app/dashboard/settings/profile/page.tsx:325:41 - error TS2339: Property 'utilityBill' does not exist on type 'Business'.
-
-325                 setUtilityBill(business.utilityBill || '');
-                                            ~~~~~~~~~~~
-
-app/dashboard/settings/profile/page.tsx:368:38 - error TS2339: Property 'identityNumber' does not exist on type 'Branch'.
-
-368             setIdentityNumber(branch.identityNumber || '');
-                                         ~~~~~~~~~~~~~~
-
-app/dashboard/settings/profile/page.tsx:369:35 - error TS2339: Property 'utilityBill' does not exist on type 'Branch'.
-
-369             setUtilityBill(branch.utilityBill || '');
-                                      ~~~~~~~~~~~
-
-app/dashboard/settings/profile/page.tsx:503:57 - error TS2339: Property 'identityNumber' does not exist on type 'Business'.
-
-503                 if (hasChanged(identityNumber, business.identityNumber)) businessUpdates.identityNumber = identityNumber;
-                                                            ~~~~~~~~~~~~~~
-
-app/dashboard/settings/profile/page.tsx:550:55 - error TS2339: Property 'identityNumber' does not exist on type 'Branch'.
-
-550                 if (hasChanged(identityNumber, branch.identityNumber)) branchUpdates.identityNumber = identityNumber;
-                                                          ~~~~~~~~~~~~~~
-
-app/dashboard/settings/profile/page.tsx:551:57 - error TS2339: Property 'utilityBill' does not exist on type 'Branch'.
-
-551                 if (hasChanged(finalUtilityBill, branch.utilityBill)) branchUpdates.utilityBill = finalUtilityBill;
-                                                            ~~~~~~~~~~~
-
-app/dashboard/settings/profile/page.tsx:801:82 - error TS7006: Parameter 'c' implicitly has an 'any' type.        
-
-801                                                                 {categories.find(c => c.id === categoryId)?.name || 'Not specified'}
-                                                                                     ~
-
-app/dashboard/settings/profile/page.tsx:823:137 - error TS7006: Parameter 's' implicitly has an 'any' type.       
-
-823                                                                 {subcategoryId === 'other' ? otherSubcategoryName : (subcategories.find(s => s.id === subcategoryId)?.name || 'Not specified')}
-    
-                          ~
-
-app/dashboard/visitors/new/page.tsx:74:47 - error TS2339: Property 'addMockThread' does not exist on type 'ChatState'.
-
-74     const addMockThread = useChatStore(s => s.addMockThread);
-                                                 ~~~~~~~~~~~~~
-
-app/dashboard/visitors/returning/page.tsx:35:47 - error TS2339: Property 'addMockThread' does not exist on type 'ChatState'.
-
-35     const addMockThread = useChatStore(s => s.addMockThread);
-                                                 ~~~~~~~~~~~~~
-
-components/messaging/ChatSidebar.tsx:696:38 - error TS2552: Cannot find name 'isCustomer'. Did you mean 'customer'?
-
-696                                     {isCustomer ? 'Business typing...' : 'Customer typing...'}
-                                         ~~~~~~~~~~
-
-  components/messaging/ChatSidebar.tsx:638:11
-    638     const customer = conversation.customer;
-                  ~~~~~~~~
-    'customer' is declared here.
-
-components/messaging/ChatSidebar.tsx:698:33 - error TS2304: Cannot find name 'draftText'.
-
-698                             ) : draftText ? (
-                                    ~~~~~~~~~
-
-components/messaging/ChatSidebar.tsx:700:90 - error TS2304: Cannot find name 'draftText'.
-
-700                                     Draft: <span className="text-slate-500 font-normal">{draftText}</span>    
-                                                                                             ~~~~~~~~~
-
-components/messaging/ChatSidebar.tsx:719:30 - error TS2304: Cannot find name 'handleDelete'.
-
-719                     onClick={handleDelete}
-                                 ~~~~~~~~~~~~
-
-components/messaging/ChatSidebar.tsx:720:31 - error TS2304: Cannot find name 'deleteThreadMutation'.
-
-720                     disabled={deleteThreadMutation.isPending}
-                                  ~~~~~~~~~~~~~~~~~~~~
-
-components/messaging/ChatWindow.tsx:447:58 - error TS2304: Cannot find name 'isMockThread'.
-
-447                             if (!activeConversationId || isMockThread) return;
-                                                             ~~~~~~~~~~~~
+======
+admin@vemtap.com
+securePassword123!
+=====
+propertyphone should not exist
+in bussiness approval maake actions have 3 dots first instead of everything then for the verified and unverfied use icons
+use phone instead of phonenumber in creating business
+---merge bussiness owner functionality with a part of which is apropriate bussiness please and then after testing we delete the page
+--coustomer should use thier own role please.
+--agents should be able to  
+--filter for a bussiness for subscription management,lastt month,last 7 days
+--remove the nfc-nfcprefix in product sku only ensure that its nfc-productcatgoy-number eg nfc-plate-001 not nfc-nfc-plate-00
+--reward modal not working
+--assign agents to the ticket :the available or manually. in support here
+--quote request should  be inside bussiness
+1.assign an agent to a bussiness in control tower 
+--the admin should be able to see the full bussiness dashboard 
+--coustomer dashboard to see in tower  
+--remove coustomer overide from bussiness overide
+--- show the message that this person is viewing this dashboard in the top right corner
+-- allow an agent to look into it and the max time for an agent to look at eith bussiness or coustomer dashboard is 15 munites and there should be a count down 5 munites to the time.
+--all actions will be tied to the agent that did that
+--agent should be able to assigned 
+--from the bussiness ticket copy the uid and go to control tower
+--check why this is not searching.
 
 
-Found 17 errors in 5 files.
+ 
 
-Errors  Files
-     9  app/dashboard/settings/profile/page.tsx:324
-     1  app/dashboard/visitors/new/page.tsx:74
-     1  app/dashboard/visitors/returning/page.tsx:35
-     5  components/messaging/ChatSidebar.tsx:696
-     1  components/messaging/ChatWindow.tsx:447
+

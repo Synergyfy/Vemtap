@@ -204,6 +204,27 @@ const REWARD_TYPE_DETAILS: Record<RewardType, { label: string, description: stri
         label: "Tangible Gift",
         description: "A surprise physical reward or gift package.",
         icon: Gift
+    },
+    // New types mapping to existing UI categories
+    custom_discount: {
+        label: "Custom Discount",
+        description: "Apply percentage or fixed price reduction on checkout.",
+        icon: Percent
+    },
+    free_product: {
+        label: "Free Product",
+        description: "Offer a specific item at no cost to the customer.",
+        icon: Package
+    },
+    service_upgrade: {
+        label: "Service Upgrade",
+        description: "Complimentary services or feature upgrades.",
+        icon: Ticket
+    },
+    tangible_gifts: {
+        label: "Tangible Gift",
+        description: "A surprise physical reward or gift package.",
+        icon: Gift
     }
 };
 
