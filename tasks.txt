@@ -1,0 +1,34 @@
+# BACKEND TASKS FOR VEMTAP ADMIN DASHBOARD
+
+The following endpoints and features are missing in the backend and are required for the Admin Dashboard frontend to be fully functional.
+
+## 1. Referrals Module (NOT FOUND)
+- **Task**: Implement a Referrals Controller and Service.
+- **Endpoints Needed**:
+  - `GET /admin/referrals`: List all business referrals.
+  - `GET /admin/referrals/:id`: Detail view of a referral.
+  - `PATCH /admin/referrals/:id/status`: Approve or reject a referral.
+
+## 2. Advanced Settings (PARTIALLY IMPLEMENTED)
+- **Task**: Expand `Setting` entity and `SettingsService` to support new configurations.
+- **Fields Needed**:
+  - **Payment Gateways**: Store configuration for Stripe, Flutterwave, Paystack, etc. (API Keys, Webhooks).
+  - **Notification Controls**: Global toggles for push notifications, marketing emails, system alerts.
+  - **API Integration**: Generic platform-wide API keys for third-party service integration.
+- **Endpoints Needed**: Existing `GET /admin/settings` and `PATCH /admin/settings` should be updated to handle these new fields.
+
+## 3. Pricing Plan Reordering (NOT FOUND)
+- **Task**: Add sorting capability to the `Plan` entity.
+- **Fields Needed**: `sortOrder: number` (or similar) in the `Plan` entity.
+- **Endpoints Needed**:
+  - `PATCH /admin/pricing/reorder`: A bulk update endpoint to save the new order of plans (e.g., takes an array of `{ id, sortOrder }`).
+
+## 4. Admin Loyalty Stats (NOT FOUND)
+- **Task**: Add a global platform-wide loyalty analytics endpoint.
+- **Endpoints Needed**:
+  - `GET /admin/loyalty/analytics`: Summary of platform-wide rewards issued, active users in loyalty programs, points distributed vs redeemed, etc.
+
+---
+## BUG FIXES (FRONTEND)
+- Resolve 404 error on `/admin/dashboard` (Investigating PWA/Serwist caching).
+- Resolve React state update error on `/login` (Added mounting guards).
