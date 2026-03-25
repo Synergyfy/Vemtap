@@ -7,7 +7,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, Between, MoreThanOrEqual } from 'typeorm';
+import { Repository, DataSource, Between, MoreThanOrEqual, FindOptionsWhere, ILike, FindOptionsOrder } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import { RewardTemplate } from './entities/reward-template.entity';
 import { Reward } from './entities/reward.entity';
@@ -20,6 +20,7 @@ import { RedemptionCode } from './entities/redemption-code.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
 import { BranchesService } from '../branches/branches.service';
+import { RewardQueryDto } from './dto/loyalty-query.dto';
 import {
   CreateRewardTemplateDto,
   CreateRewardDto,
@@ -67,13 +68,35 @@ export class LoyaltyService {
   }
 
   async getPointLogs(userId: string, businessId: string, page = 1, limit = 10) {
-    return this.pointTransactionRepo.find({
+    const transactions = await this.pointTransactionRepo.find({
       where: { customerId: userId, businessId },
       order: { createdAt: 'DESC' },
       take: limit,
       skip: (page - 1) * limit,
       relations: ['givenBy', 'branch'],
     });
+
+    return transactions.map((t) => ({
+      id: t.id,
+      amount: t.amount,
+      type: t.type,
+      reason: t.reason,
+      createdAt: t.createdAt,
+      branch: t.branch
+        ? {
+            id: t.branch.id,
+            name: t.branch.name,
+          }
+        : null,
+      givenBy: t.givenBy
+        ? {
+            id: t.givenBy.id,
+            firstName: t.givenBy.firstName,
+            lastName: t.givenBy.lastName,
+            email: t.givenBy.email,
+          }
+        : null,
+    }));
   }
 
   async getBusinessPointLogs(
@@ -120,6 +143,11 @@ export class LoyaltyService {
   }
 
   async generatePointCode(staff: User, dto: GeneratePointCodeDto) {
+    // Owners/Staff shouldn't be able to arbitrarily create codes for another business
+    if (staff.role !== UserRole.ADMIN && staff.businessId !== dto.businessId) {
+      throw new ForbiddenException('You do not have access to this business');
+    }
+
     const code = Math.floor(100000000 + Math.random() * 900000000).toString();
     const pointCode = this.pointCodeRepo.create({
       code,
@@ -131,20 +159,29 @@ export class LoyaltyService {
   }
 
   async usePointCode(customer: User, dto: UsePointCodeDto) {
-    const pointCode = await this.pointCodeRepo.findOne({
-      where: { code: dto.code, isUsed: false },
-    });
-    if (!pointCode)
-      throw new BadRequestException('Invalid or already used code');
-
-    // Business ID from point code must match business context if applicable,
-    // but here we just use it to assign points to the right business balance.
-
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
+      const pointCode = await queryRunner.manager.findOne(PointCode, {
+        where: { code: dto.code },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!pointCode) {
+        throw new BadRequestException('Invalid or already used code');
+      }
+
+      if (pointCode.isUsed) {
+        if (pointCode.usedById === customer.id) {
+          // Idempotency: user already successfully claimed it
+          await queryRunner.commitTransaction();
+          return { success: true, points: pointCode.points };
+        }
+        throw new BadRequestException('Invalid or already used code');
+      }
+
       pointCode.isUsed = true;
       pointCode.usedById = customer.id;
       pointCode.usedAt = new Date();
@@ -238,6 +275,79 @@ export class LoyaltyService {
     return this.rewardRepo.delete(id);
   }
 
+  async getPublicRewards(query: RewardQueryDto) {
+    const {
+      branchId,
+      branchCode,
+      search,
+      newest,
+      oldest,
+      lowestQuantity,
+      highestQuantity,
+      aboutToExpire,
+      highestPoints,
+      lowestPoints,
+      page = 1,
+      limit = 10,
+    } = query;
+
+    if (!branchId && !branchCode) {
+      throw new BadRequestException('Branch ID or Code is required');
+    }
+
+    let resolvedBranchId = branchId;
+
+    if (!resolvedBranchId && branchCode) {
+      const branch = await this.branchRepo.findOne({
+        where: { uniqueCode: branchCode },
+      });
+      if (!branch) {
+        throw new NotFoundException('Branch not found');
+      }
+      resolvedBranchId = branch.id;
+    }
+
+    const where: FindOptionsWhere<Reward> = {
+      branchId: resolvedBranchId,
+      isActive: true,
+      remainingQuantity: MoreThanOrEqual(1),
+      expiryDate: MoreThanOrEqual(new Date()),
+    };
+
+    if (search) {
+      where.name = ILike(`%${search}%`);
+    }
+
+    const order: FindOptionsOrder<Reward> = {};
+
+    if (newest) order.createdAt = 'DESC';
+    else if (oldest) order.createdAt = 'ASC';
+    else if (highestPoints) order.pointsRequired = 'DESC';
+    else if (lowestPoints) order.pointsRequired = 'ASC';
+    else if (highestQuantity) order.remainingQuantity = 'DESC';
+    else if (lowestQuantity) order.remainingQuantity = 'ASC';
+    else if (aboutToExpire) order.expiryDate = 'ASC';
+    else order.createdAt = 'DESC'; // default sorting
+
+    const [items, total] = await this.rewardRepo.findAndCount({
+      where,
+      order,
+      take: limit,
+      skip: (page - 1) * limit,
+    });
+
+    return {
+      data: items.map((item) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { redemptionCount, ...rest } = item;
+        return rest;
+      }),
+      total,
+      page,
+      limit,
+    };
+  }
+
   async getBranchRewards(branchId: string, page = 1, limit = 10) {
     return this.rewardRepo.find({
       where: { branchId },
@@ -296,6 +406,14 @@ export class LoyaltyService {
 
   // --- Redemption ---
   async generateRedemptionCode(staff: User, dto: GenerateRedemptionCodeDto) {
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      staff,
+      dto.branchId,
+    );
+    if (!hasAccess) {
+      throw new ForbiddenException('You do not have access to this branch');
+    }
+
     const reward = await this.rewardRepo.findOne({
       where: { id: dto.rewardId, branchId: dto.branchId },
     });
@@ -321,54 +439,84 @@ export class LoyaltyService {
   }
 
   async redeemReward(customer: User, dto: RedeemRewardDto) {
-    const redemptionCode = await this.redemptionCodeRepo.findOne({
-      where: { code: dto.code, isUsed: false },
-      relations: ['reward'],
-    });
-    if (!redemptionCode)
-      throw new BadRequestException('Invalid or already used code');
-
-    const reward = redemptionCode.reward;
-    if (new Date() > new Date(reward.expiryDate)) {
-      throw new BadRequestException('Reward has expired');
-    }
-
-    const balance = await this.getBusinessPoints(
-      customer.id,
-      reward.businessId,
-    );
-    if (balance < reward.pointsRequired) {
-      throw new BadRequestException('Insufficient points');
-    }
-
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
+      const redemptionCode = await queryRunner.manager.findOne(RedemptionCode, {
+        where: { code: dto.code },
+        relations: ['reward'],
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!redemptionCode) {
+        throw new BadRequestException('Invalid or already used code');
+      }
+
+      const reward = redemptionCode.reward;
+
+      if (redemptionCode.isUsed) {
+        if (redemptionCode.usedById === customer.id) {
+          // Idempotency: user already successfully redeemed it
+          await queryRunner.commitTransaction();
+          return { success: true, reward: reward.name };
+        }
+        throw new BadRequestException('Invalid or already used code');
+      }
+
+      if (new Date() > new Date(reward.expiryDate)) {
+        throw new BadRequestException('Reward has expired');
+      }
+
+      // Re-fetch the reward with a lock to ensure its remainingQuantity is correct under concurrency
+      const lockedReward = await queryRunner.manager.findOne(Reward, {
+        where: { id: reward.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!lockedReward || lockedReward.remainingQuantity <= 0) {
+        throw new BadRequestException('Reward out of stock');
+      }
+
+      // Check balance atomically by aggregating point transactions inside the transaction
+      const balanceResult = await queryRunner.manager
+        .createQueryBuilder(PointTransaction, 'transaction')
+        .select('SUM(transaction.amount)', 'sum')
+        .where('transaction.customerId = :userId', { userId: customer.id })
+        .andWhere('transaction.businessId = :businessId', {
+          businessId: lockedReward.businessId,
+        })
+        .getRawOne();
+      const currentBalance = parseInt(balanceResult?.sum || '0', 10);
+
+      if (currentBalance < lockedReward.pointsRequired) {
+        throw new BadRequestException('Insufficient points');
+      }
+
       redemptionCode.isUsed = true;
       redemptionCode.usedById = customer.id;
       redemptionCode.usedAt = new Date();
       await queryRunner.manager.save(redemptionCode);
 
-      reward.remainingQuantity -= 1;
-      reward.redemptionCount += 1;
-      await queryRunner.manager.save(reward);
+      lockedReward.remainingQuantity -= 1;
+      lockedReward.redemptionCount += 1;
+      await queryRunner.manager.save(lockedReward);
 
       const transaction = this.pointTransactionRepo.create({
-        amount: -reward.pointsRequired,
+        amount: -lockedReward.pointsRequired,
         type: PointTransactionType.REDEEMED,
-        reason: `Redeemed reward: ${reward.name}`,
+        reason: `Redeemed reward: ${lockedReward.name}`,
         customerId: customer.id,
         givenById: redemptionCode.createdById,
-        businessId: reward.businessId,
-        branchId: reward.branchId,
+        businessId: lockedReward.businessId,
+        branchId: lockedReward.branchId,
         referenceCode: redemptionCode.code,
       });
       await queryRunner.manager.save(transaction);
 
       await queryRunner.commitTransaction();
-      return { success: true, reward: reward.name };
+      return { success: true, reward: lockedReward.name };
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;
