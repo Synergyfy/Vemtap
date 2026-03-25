@@ -340,12 +340,18 @@ export class FormsService {
     return { items, total };
   }
 
-  async setAdminDisabledStatus(id: string, isDisabled: boolean) {
+  async setAdminDisabledStatus(id: string, isDisabled: boolean, note?: string) {
     const form = await this.formsRepository.findOneBy({ id });
     if (!form) throw new NotFoundException('Form not found');
     form.adminDisabled = isDisabled;
+    if (isDisabled && note) {
+      form.adminDisabledNote = note;
+    } else if (!isDisabled) {
+      form.adminDisabledNote = null as any;
+    }
     return this.formsRepository.save(form);
   }
+
 
   // Visitor actions
   async getFormsForVisitor(branchId: string): Promise<Form[]> {
