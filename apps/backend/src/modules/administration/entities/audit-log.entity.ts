@@ -16,7 +16,7 @@ export class AuditLog extends AbstractBaseEntity {
   @ApiProperty({
     description: 'The ID of the admin or agent who performed the action',
   })
-  @Column()
+  @Column({ nullable: true })
   actorId: string;
 
   @ManyToOne(() => Business)
@@ -54,7 +54,7 @@ export class AuditLog extends AbstractBaseEntity {
 
   @ApiProperty({ description: 'The payload/body of the request' })
   @Column({ type: 'jsonb', nullable: true })
-  payload: any;
+  payload: Record<string, unknown> | null;
 
   @ApiProperty({ description: 'The HTTP response status code' })
   @Column({ nullable: true })
