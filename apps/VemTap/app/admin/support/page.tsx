@@ -94,17 +94,7 @@ export default function AdminSupportPage() {
         onError: () => notify.error('Failed to assign ticket'),
     });
 
-    // Auto-assignment effect
-    useEffect(() => {
-        if (selectedTicket && !selectedTicket.assignedTo && agents.length > 0 && !assignMutation.isPending) {
-            // Find an available agent (or just pick the first one for now as per "automatically assign")
-            // In a real system, this would be backend logic, but we can trigger it here if it's unassigned.
-            const autoAgent = agents[0];
-            if (autoAgent) {
-                assignMutation.mutate({ id: selectedTicket.id, agentId: autoAgent.id });
-            }
-        }
-    }, [selectedTicket, agents, assignMutation.isPending]);
+    // Auto-assignment was removed as per user request to manual assignment.
 
     const updateStatusMutation = useMutation({
         mutationFn: ({ id, status }: { id: string; status: TicketStatus }) =>
@@ -215,7 +205,7 @@ export default function AdminSupportPage() {
                                             <p className="text-xs text-text-secondary font-medium mt-0.5">{ticket.id}</p>
                                         </td>
                                         <td className="py-3 px-4">
-                                            <p className="text-sm font-bold text-text-main">{ticket.user?.name || ticket.requester || 'Unknown User'}</p>
+                                            <p className="text-sm font-bold text-text-main">{ticket.user?.name || ticket.requester || ticket.user?.email || ticket.email || 'Unknown User'}</p>
                                             <p className="text-xs text-text-secondary">{ticket.user?.email || ticket.email || 'No email'}</p>
                                         </td>
                                         <td className="py-3 px-4 text-sm text-text-secondary font-medium">{ticket.category || 'General'}</td>

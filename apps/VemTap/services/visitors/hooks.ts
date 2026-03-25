@@ -1,14 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { PaginatedVisitorResponse, VisitorStatsResponse, Visitor } from './types';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useAuthStore, UserRole } from '@/store/useAuthStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import toast from 'react-hot-toast';
 
 const UUID_V4_REGEX =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const isUuidV4 = (value?: string | null): value is string =>
-    !!value && UUID_V4_REGEX.test(value);
+    !!value && (UUID_V4_REGEX.test(value) || value.length >= 3);
 
 const normalizeRole = (role?: string | null) => String(role || '').toLowerCase();
 
@@ -26,22 +27,27 @@ const getReadContextParams = ({
     const params = new URLSearchParams();
     const normalizedRole = normalizeRole(role);
     const hasBranchId = isUuidV4(branchId);
+    const isAdminOrAgent = normalizedRole === 'admin' || normalizedRole === 'agent';
 
-    // If we have a specific branchId, always send it regardless of role.
-    // This simplifies the logic and ensures the backend gets the intended context.
+    // If we have a specific branchId, add it.
     if (hasBranchId) {
         params.append('branchId', branchId);
-        return params;
     }
 
-    // Handle 'all branches' view for Owner and Admin
-    if (allBranches) {
-        if (normalizedRole === 'owner' || normalizedRole === 'admin') {
-            params.append('allBranches', 'true');
-            if (normalizedRole === 'admin' && isUuidV4(businessId)) {
-                params.append('businessId', businessId);
-            }
-        }
+    // If it's an admin/agent and we have an override businessId, ALWAYS add it.
+    // This is crucial for Sudo mode / Control Tower views.
+    if (isAdminOrAgent && isUuidV4(businessId)) {
+        params.set('businessId', businessId);
+    }
+
+    // Handle 'all branches' view for natural Owners
+    if (allBranches && normalizedRole === 'owner') {
+        params.append('allBranches', 'true');
+    }
+    
+    // For admins, allBranches=true is only needed if not viewing a specific branch
+    if (allBranches && normalizedRole === 'admin' && !hasBranchId) {
+        params.set('allBranches', 'true');
     }
 
     return params;
@@ -82,9 +88,10 @@ function useResolvedBranchParams(branchId?: string): { branchId?: string; allBra
     return { branchId: resolvedBranchId };
 }
 
-export const useVisitors = (branchId?: string, query?: Record<string, any>) => {
+export const useVisitors = (branchId?: string, query?: Record<string, any>, overrideBusinessId?: string) => {
     const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
-    const businessId = query?.businessId || useAuthStore((state) => state.user?.businessId);
+    const authBusinessId = useAuthStore((state) => state.user?.businessId);
+    const businessId = overrideBusinessId || query?.businessId || authBusinessId;
     const role = useAuthStore((state) => state.user?.role);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
@@ -102,9 +109,10 @@ export const useVisitors = (branchId?: string, query?: Record<string, any>) => {
     });
 };
 
-export const useVisitorStats = (branchId?: string) => {
+export const useVisitorStats = (branchId?: string, overrideBusinessId?: string) => {
     const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
-    const businessId = useAuthStore((state) => state.user?.businessId);
+    const authBusinessId = useAuthStore((state) => state.user?.businessId);
+    const businessId = overrideBusinessId || authBusinessId;
     const role = useAuthStore((state) => state.user?.role);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
@@ -119,9 +127,10 @@ export const useVisitorStats = (branchId?: string) => {
     });
 };
 
-export const useNewVisitors = (branchId?: string, query?: Record<string, any>) => {
+export const useNewVisitors = (branchId?: string, query?: Record<string, any>, overrideBusinessId?: string) => {
     const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
-    const businessId = useAuthStore((state) => state.user?.businessId);
+    const authBusinessId = useAuthStore((state) => state.user?.businessId);
+    const businessId = overrideBusinessId || authBusinessId;
     const role = useAuthStore((state) => state.user?.role);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
@@ -139,9 +148,10 @@ export const useNewVisitors = (branchId?: string, query?: Record<string, any>) =
     });
 };
 
-export const useNewVisitorStats = (branchId?: string) => {
+export const useNewVisitorStats = (branchId?: string, overrideBusinessId?: string) => {
     const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
-    const businessId = useAuthStore((state) => state.user?.businessId);
+    const authBusinessId = useAuthStore((state) => state.user?.businessId);
+    const businessId = overrideBusinessId || authBusinessId;
     const role = useAuthStore((state) => state.user?.role);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
@@ -156,9 +166,10 @@ export const useNewVisitorStats = (branchId?: string) => {
     });
 };
 
-export const useReturningVisitors = (branchId?: string, query?: Record<string, any>) => {
+export const useReturningVisitors = (branchId?: string, query?: Record<string, any>, overrideBusinessId?: string) => {
     const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
-    const businessId = useAuthStore((state) => state.user?.businessId);
+    const authBusinessId = useAuthStore((state) => state.user?.businessId);
+    const businessId = overrideBusinessId || authBusinessId;
     const role = useAuthStore((state) => state.user?.role);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
@@ -176,9 +187,10 @@ export const useReturningVisitors = (branchId?: string, query?: Record<string, a
     });
 };
 
-export const useReturningVisitorStats = (branchId?: string) => {
+export const useReturningVisitorStats = (branchId?: string, overrideBusinessId?: string) => {
     const { branchId: resolvedBranchId, allBranches } = useResolvedBranchParams(branchId);
-    const businessId = useAuthStore((state) => state.user?.businessId);
+    const authBusinessId = useAuthStore((state) => state.user?.businessId);
+    const businessId = overrideBusinessId || authBusinessId;
     const role = useAuthStore((state) => state.user?.role);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId, allBranches });
@@ -246,9 +258,10 @@ export const useMessagingVisitorsByBranch = (branchId?: string, query?: Record<s
     };
 };
 
-export const useVisitor = (id: string, branchId?: string) => {
+export const useVisitor = (id: string, branchId?: string, overrideBusinessId?: string) => {
     const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
-    const businessId = useAuthStore((state) => state.user?.businessId);
+    const authBusinessId = useAuthStore((state) => state.user?.businessId);
+    const businessId = overrideBusinessId || authBusinessId;
     const role = useAuthStore((state) => state.user?.role);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const contextParams = getReadContextParams({ role, businessId, branchId: resolvedBranchId });
@@ -269,8 +282,9 @@ export const useResetDashboard = () => {
     const role = useAuthStore((state) => state.user?.role);
     const userBranchId = useAuthStore((state) => state.user?.branchId);
 
-    return useMutation<void, Error, void>({
-        mutationFn: async () => {
+    return useMutation<void, Error, { businessId?: string } | void>({
+        mutationFn: async (args) => {
+            const businessId = (args as any)?.businessId;
             const params = new URLSearchParams();
             const branchId = getWriteBranchId({
                 role,
@@ -282,6 +296,10 @@ export const useResetDashboard = () => {
                 params.append('branchId', branchId);
             }
 
+            if (businessId && (role === 'admin' || role === 'agent')) {
+                params.append('businessId', businessId);
+            }
+
             return await api.delete(`/visitors/reset?${params.toString()}`);
         },
         onSuccess: () => {
@@ -290,14 +308,78 @@ export const useResetDashboard = () => {
     });
 };
 
+export const useAddVisitor = () => {
+    const queryClient = useQueryClient();
+    const role = useAuthStore((state) => state.user?.role);
+
+    return useMutation<any, Error, { data: any; businessId?: string; branchId?: string }>({
+        mutationFn: async ({ data, businessId, branchId }) => {
+            const params = new URLSearchParams();
+            if (branchId) params.append('branchId', branchId);
+            if (businessId && (role === 'admin' || role === 'agent')) {
+                params.append('businessId', businessId);
+            }
+            return await api.post(`/visitors?${params.toString()}`, data);
+        },
+        onSuccess: (_, { businessId }) => {
+            queryClient.invalidateQueries({ queryKey: ['visitors', businessId] });
+            toast.success('Visitor added successfully');
+        },
+    });
+};
+
+export const useDeleteVisitor = () => {
+    const queryClient = useQueryClient();
+    const role = useAuthStore((state) => state.user?.role);
+
+    return useMutation<void, Error, { id: string; businessId?: string }>({
+        mutationFn: async ({ id, businessId }) => {
+            const params = new URLSearchParams();
+            if (businessId && (role === 'admin' || role === 'agent')) {
+                params.append('businessId', businessId);
+            }
+            return await api.delete(`/visitors/${id}?${params.toString()}`);
+        },
+        onSuccess: (_, { businessId }) => {
+            queryClient.invalidateQueries({ queryKey: ['visitors', businessId] });
+            toast.success('Visitor removed successfully');
+        },
+    });
+};
+
 export const useUpdateVisitor = () => {
     const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async ({ id, data }: { id: string; data: Partial<Visitor> }) => {
-            return await api.patch(`/visitors/${id}`, data);
+    const role = useAuthStore((state) => state.user?.role);
+
+    return useMutation<any, Error, { id: string; data: Partial<Visitor>; businessId?: string }>({
+        mutationFn: async ({ id, data, businessId }) => {
+            const params = new URLSearchParams();
+            if (businessId && (role === 'admin' || role === 'agent')) {
+                params.append('businessId', businessId);
+            }
+            return await api.patch(`/visitors/${id}?${params.toString()}`, data);
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['visitors'] });
+        onSuccess: (_, { businessId }) => {
+            queryClient.invalidateQueries({ queryKey: ['visitors', businessId] });
         }
+    });
+};
+
+export const useCreateReward = () => {
+    const queryClient = useQueryClient();
+    const role = useAuthStore((state) => state.user?.role);
+
+    return useMutation<any, Error, { data: any; businessId?: string }>({
+        mutationFn: async ({ data, businessId }) => {
+            const params = new URLSearchParams();
+            if (businessId && (role === 'admin' || role === 'agent')) {
+                params.append('businessId', businessId);
+            }
+            return await api.post(`/visitors/rewards?${params.toString()}`, data);
+        },
+        onSuccess: (_, { businessId }) => {
+            queryClient.invalidateQueries({ queryKey: ['dashboard', businessId] });
+            toast.success('Reward created successfully');
+        },
     });
 };

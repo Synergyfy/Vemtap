@@ -6,20 +6,24 @@ import { DashboardAnalyticsResponse, FootfallAnalyticsResponse, PeakTimesAnalyti
 
 
 
-export const useDashboardAnalytics = (branchId?: string) => {
+export const useDashboardAnalytics = (branchId?: string, businessId?: string) => {
     const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
     const resolvedBranchId = branchId || urlBranchId;
-    const businessId = useAuthStore((state) => state.user?.businessId);
+    const authBusinessId = useAuthStore((state) => state.user?.businessId);
+    const resolvedBusinessId = businessId || authBusinessId;
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
     return useQuery<DashboardAnalyticsResponse, Error>({
-        queryKey: ['dashboard-analytics', businessId, resolvedBranchId, isAllBranches],
+        queryKey: ['dashboard-analytics', resolvedBusinessId, resolvedBranchId, isAllBranches],
         queryFn: async () => {
             const searchParams = new URLSearchParams();
             if (resolvedBranchId) {
                 searchParams.append('branchId', resolvedBranchId);
             } else if (isAllBranches) {
                 searchParams.set('allBranches', 'true');
+            }
+            if (businessId) {
+                searchParams.append('businessId', businessId);
             }
             const query = searchParams.toString();
             return await api.get(`/analytics/dashboard${query ? `?${query}` : ''}`);
@@ -28,20 +32,24 @@ export const useDashboardAnalytics = (branchId?: string) => {
     });
 };
 
-export const useFootfallAnalytics = (branchId?: string) => {
+export const useFootfallAnalytics = (branchId?: string, businessId?: string) => {
     const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
     const resolvedBranchId = branchId || urlBranchId;
-    const businessId = useAuthStore((state) => state.user?.businessId);
+    const authBusinessId = useAuthStore((state) => state.user?.businessId);
+    const resolvedBusinessId = businessId || authBusinessId;
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
     return useQuery<FootfallAnalyticsResponse, Error>({
-        queryKey: ['footfall-analytics', businessId, resolvedBranchId, isAllBranches],
+        queryKey: ['footfall-analytics', resolvedBusinessId, resolvedBranchId, isAllBranches],
         queryFn: async () => {
             const searchParams = new URLSearchParams();
             if (resolvedBranchId) {
                 searchParams.append('branchId', resolvedBranchId);
             } else if (isAllBranches) {
                 searchParams.append('allBranches', 'true');
+            }
+            if (businessId) {
+                searchParams.append('businessId', businessId);
             }
             const query = searchParams.toString();
             return await api.get(`/analytics/footfall${query ? `?${query}` : ''}`);
@@ -50,21 +58,25 @@ export const useFootfallAnalytics = (branchId?: string) => {
     });
 };
 
-export const usePeakTimesAnalytics = (branchId?: string) => {
+export const usePeakTimesAnalytics = (branchId?: string, businessId?: string) => {
     const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
     const resolvedBranchId = branchId || urlBranchId;
-    const businessId = useAuthStore((state) => state.user?.businessId);
+    const authBusinessId = useAuthStore((state) => state.user?.businessId);
+    const resolvedBusinessId = businessId || authBusinessId;
 
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
     return useQuery<PeakTimesAnalyticsResponse, Error>({
-        queryKey: ['peak-times-analytics', businessId, resolvedBranchId, isAllBranches],
+        queryKey: ['peak-times-analytics', resolvedBusinessId, resolvedBranchId, isAllBranches],
         queryFn: async () => {
             const searchParams = new URLSearchParams();
             if (resolvedBranchId) {
                 searchParams.append('branchId', resolvedBranchId);
             } else if (isAllBranches) {
                 searchParams.append('allBranches', 'true');
+            }
+            if (businessId) {
+                searchParams.append('businessId', businessId);
             }
             const query = searchParams.toString();
             return await api.get(`/analytics/peak-times${query ? `?${query}` : ''}`);

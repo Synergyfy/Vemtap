@@ -3,10 +3,15 @@ import { api } from '@/lib/api';
 import { Branch, CreateBranchRequest, UpdateBranchRequest } from './types';
 
 // ─── Fetch all branches for the authenticated user's business ─────────────────
-export const useBranches = () => {
+export const useBranches = (businessId?: string) => {
     return useQuery<Branch[], Error>({
-        queryKey: ['branches'],
-        queryFn: async () => await api.get('/branches'),
+        queryKey: ['branches', businessId],
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            if (businessId) params.append('businessId', businessId);
+            const query = params.toString() ? `?${params.toString()}` : '';
+            return await api.get(`/branches${query}`);
+        },
         staleTime: 1000 * 60 * 5, // cache for 5 minutes
     });
 };

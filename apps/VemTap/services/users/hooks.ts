@@ -83,10 +83,14 @@ export const useUpdateSocials = () => {
 
 // --- Admin Hooks ---
 
-export const useUserProfile = () => {
+export const useUserProfile = (userId?: string) => {
     return useQuery<any, Error>({
-        queryKey: ['user-profile'],
-        queryFn: async () => await api.get('/users/profile'),
+        queryKey: ['user-profile', userId],
+        queryFn: async () => {
+            const endpoint = (userId && userId !== 'undefined') ? `/users/admin/${userId}` : '/users/profile';
+            const res = await api.get(endpoint);
+            return res?.data || res;
+        },
     });
 };
 
@@ -132,5 +136,16 @@ export const useAdminDeleteUser = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-users'] });
         },
+    });
+};
+
+export const useAdminUser = (id?: string) => {
+    return useQuery<any, Error>({
+        queryKey: ['admin-user', id],
+        queryFn: async () => {
+            const res = await api.get(`/users/admin/${id}`);
+            return res?.data || res;
+        },
+        enabled: !!id,
     });
 };

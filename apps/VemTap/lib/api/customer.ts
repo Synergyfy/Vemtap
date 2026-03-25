@@ -10,25 +10,25 @@ const withQuery = (endpoint: string, params?: Record<string, string | undefined>
 };
 
 export const customerApi = {
-    getMe: () => api.get('/users/profile'),
+    getMe: (customerUid?: string) => api.get(withQuery('/users/profile', { customerUid })),
     updateMe: (data: { name?: string; phone?: string }) => api.patch('/users/profile', data),
     deactivateMe: () => api.delete('/users/profile'),
 
-    getLoyaltyAnalytics: () => api.get('/loyalty/analytics'),
+    getLoyaltyAnalytics: (customerUid?: string, businessId?: string) => api.get(withQuery('/loyalty/analytics', { customerUid, businessId })),
     tapDevice: (code: string, payload?: { visitorId?: string; name?: string; email?: string; phone?: string }) => api.post(`/tap/record/${code}`, payload ?? {}),
     getDeviceInfo: (code: string) => api.get(`/tap/context/${code}`),
-    getLoyaltyProfile: (businessId?: string) => api.get(withQuery('/loyalty/points/balance', { businessId })),
-    getLoyaltyHistory: (businessId?: string) => api.get(withQuery('/loyalty/points/logs', { businessId })),   
-    getMyHistory: () => api.get('/loyalty/points/logs'),
-    getLoyaltyRewards: (branchId?: string) => api.get(`/loyalty/rewards/branch/${branchId}`),
-    redeemReward: (data: { rewardId: string; businessId?: string }) => api.post('/loyalty/redemption/redeem', data),
-    claimCode: (data: { code: string; branchId?: string }) => api.post('/loyalty/points/use-code', data),
+    getLoyaltyProfile: (businessId?: string, customerUid?: string) => api.get(withQuery('/loyalty/points/balance', { businessId, customerUid })),
+    getLoyaltyHistory: (businessId?: string, customerUid?: string) => api.get(withQuery('/loyalty/points/logs', { businessId, customerUid })),   
+    getMyHistory: (customerUid?: string) => api.get(withQuery('/loyalty/points/logs', { customerUid })),
+    getLoyaltyRewards: (branchId?: string, customerUid?: string) => api.get(withQuery(`/loyalty/rewards/branch/${branchId}`, { customerUid })),
+    redeemReward: (data: { rewardId: string; businessId?: string; customerUid?: string }) => api.post('/loyalty/redemption/redeem', data),
+    claimCode: (data: { code: string; branchId?: string; customerUid?: string }) => api.post('/loyalty/points/use-code', data),
 
-    getSupportTickets: () => api.get('/support/tickets'),
-    createSupportTicket: (data: { subject: string; category: string; priority: string; description: string }) =>
-        api.post('/support/tickets', { subject: data.subject, category: data.category, message: data.description }),
-    getSupportTicketDetails: (id: string) => api.get(`/support/tickets/${id}`),
-    replyToSupportTicket: (id: string, message: string) => api.post(`/support/tickets/${id}/message`, { message }),
+    getSupportTickets: (customerUid?: string) => api.get(withQuery('/support/tickets', { customerUid })),
+    createSupportTicket: (data: { subject: string; category: string; priority: string; description: string; customerUid?: string }) =>
+        api.post(withQuery('/support/tickets', { customerUid: data.customerUid }), { subject: data.subject, category: data.category, message: data.description }),
+    getSupportTicketDetails: (id: string, customerUid?: string) => api.get(withQuery(`/support/tickets/${id}`, { customerUid })),
+    replyToSupportTicket: (id: string, message: string, customerUid?: string) => api.post(withQuery(`/support/tickets/${id}/message`, { customerUid }), { message }),
 
     visitorSignup: (data: Record<string, any>) => api.post('/visitors/signup', data),
     recordVisit: (code: string, payload?: { visitorId?: string; name?: string; email?: string; phone?: string }) => api.post(`/tap/record/${code}`, payload ?? {}),

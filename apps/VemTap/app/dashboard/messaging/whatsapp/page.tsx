@@ -29,7 +29,7 @@ export default function WhatsAppOverviewPage() {
     const [activeTab, setActiveTab] = React.useState<'chat' | 'promotional'>('chat');
     const { branchId } = useMessagingBranch();
     const { user } = useAuthStore();
-    const { data: business } = useMyBusiness(!!user);
+    const { data: business } = useMyBusiness(undefined, !!user);
     const [searchQuery, setSearchQuery] = useState('');
     const [whatsappModalVisitors, setWhatsappModalVisitors] = useState<any[]>([]);
 

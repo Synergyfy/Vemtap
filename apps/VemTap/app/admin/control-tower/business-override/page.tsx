@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { Search, ShieldCheck, LogIn } from 'lucide-react';
-import { useControlTowerBusinesses } from '@/services/control-tower/hooks';
+import { useControlTowerBusinesses, useExecuteBusinessSudoAction } from '@/services/control-tower/hooks';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 export default function BusinessOverridePage() {
     const [businessQuery, setBusinessQuery] = useState('');
@@ -13,6 +15,30 @@ export default function BusinessOverridePage() {
         query: debouncedBusinessQuery,
         limit: 10,
     });
+
+    const executeSudo = useExecuteBusinessSudoAction();
+    const startImpersonation = useAuthStore(s => s.startImpersonation);
+    const router = useRouter();
+
+    const handleSudoLogin = async (biz: any) => {
+        try {
+            const result = await executeSudo.mutateAsync({
+                businessUid: biz.uid,
+                actionKey: 'assume_session'
+            });
+            
+            if (result.success && result.data?.token) {
+                // For business, we still use the token returned by the backend
+                startImpersonation(result.data.token, 'business');
+                router.push(`/dashboard?admin_mode=1&business_uid=${encodeURIComponent(biz.uid)}`);
+                toast.success(`Successfully logged in as ${biz.name} (Sudo)`);
+            } else {
+                toast.error(result.message || 'Failed to get impersonation token');
+            }
+        } catch (err: any) {
+            toast.error(err.message || 'Sudo login failed');
+        }
+    };
 
     return (
         <div className="p-4 md:p-8 space-y-10">
@@ -43,7 +69,7 @@ export default function BusinessOverridePage() {
                                 value={businessQuery}
                                 onChange={(e) => setBusinessQuery(e.target.value)}
                                 className="w-full h-12 pl-10 pr-4 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                                placeholder="Search business by name, owner, or UID..."
+                                placeholder="Search business by name, owner, email or UID..."
                             />
                         </div>
                     </div>
@@ -54,7 +80,7 @@ export default function BusinessOverridePage() {
                         <thead className="bg-gray-50/50 border-b border-gray-200">
                             <tr>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Business Info</th>
-                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Users</th>
+                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Owner / Email</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Status</th>
                                 <th className="text-right py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Actions</th>
                             </tr>
@@ -76,22 +102,36 @@ export default function BusinessOverridePage() {
                                     >
                                         <td className="py-4 px-6">
                                             <p className="font-bold text-sm text-text-main">{biz.name}</p>
-                                            <p className="text-[10px] text-text-secondary font-mono mt-0.5">{biz.uid} • {biz.owner}</p>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <p className="text-[10px] text-text-secondary font-mono">{biz.uid}</p>
+                                                <span className="text-gray-300">•</span>
+                                                <a 
+                                                    href={`/b/${biz.uniqueCode || biz.slug || biz.uid}`} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="text-[10px] text-primary font-black uppercase tracking-wider hover:underline"
+                                                >
+                                                    Business URL
+                                                </a>
+                                            </div>
                                         </td>
-                                        <td className="py-4 px-6 text-sm font-bold text-text-main">{biz.users}</td>
+                                        <td className="py-4 px-6">
+                                            <p className="text-sm font-bold text-text-main truncate max-w-[200px]">{biz.owner !== 'N/A' ? biz.owner : 'System Owner'}</p>
+                                        </td>
                                         <td className="py-4 px-6">
                                             <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${biz.status === 'active' ? 'bg-green-50 text-green-600' : biz.status === 'suspended' ? 'bg-red-50 text-red-600' : 'bg-yellow-50 text-yellow-700'}`}>
                                                 {biz.status}
                                             </span>
                                         </td>
                                         <td className="py-4 px-6 text-right">
-                                            <Link
-                                                href={`/dashboard?admin_mode=1&business_uid=${encodeURIComponent(biz.uid)}`}
-                                                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-hover transition-all shadow-md shadow-primary/10 active:scale-95"
+                                            <button
+                                                onClick={() => handleSudoLogin(biz)}
+                                                disabled={executeSudo.isPending}
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-hover transition-all shadow-md shadow-primary/10 active:scale-95 disabled:opacity-50"
                                             >
                                                 <LogIn size={14} />
                                                 Sudo Login
-                                            </Link>
+                                            </button>
                                         </td>
                                     </tr>
                                 ))

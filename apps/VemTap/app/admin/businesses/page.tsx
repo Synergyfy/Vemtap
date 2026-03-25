@@ -237,6 +237,7 @@ export default function AdminBusinessesPage() {
     };
 
     const handleUnverifiedClick = (biz: Business) => {
+        if (!biz) return;
         // Since `documents` isn't fully typed on Business in this page yet, 
         // fallback to checking `isRegistered` or just `biz.documents` directly.
         const docs = (biz as any).documents;
@@ -244,7 +245,7 @@ export default function AdminBusinessesPage() {
             notify.error('No documents uploaded');
             return;
         }
-        router.push('/admin/businesses/pending');
+        router.push(`/admin/businesses/pending?reviewId=${biz.id}`);
     };
 
     const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {

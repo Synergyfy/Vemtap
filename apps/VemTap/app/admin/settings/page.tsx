@@ -13,7 +13,8 @@ import {
     Save,
     History,
     RefreshCw,
-    Link
+    Link,
+    Loader2
 } from 'lucide-react';
 import { useRegisterPushToken } from '@/services/notifications/hooks';
 import toast from 'react-hot-toast';
@@ -22,6 +23,7 @@ import { api } from '@/lib/api';
 
 export default function AdminSettingsPage() {
     const settings = useSystemSettingsStore();
+    const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('general');
     const [localSettings, setLocalSettings] = useState({
         platformName: settings.platformName,
@@ -34,21 +36,43 @@ export default function AdminSettingsPage() {
     });
 
     useEffect(() => {
+        const init = async () => {
+            await settings.fetchSettings();
+            setIsLoading(false);
+        };
+        init();
+    }, []);
+
+    useEffect(() => {
         setLocalSettings({
-            platformName: settings.platformName,
-            supportEmail: settings.supportEmail,
-            currency: settings.currency,
-            timezone: settings.timezone,
+            platformName: settings.platformName || '',
+            supportEmail: settings.supportEmail || '',
+            currency: settings.currency || 'NGN',
+            timezone: settings.timezone || 'Africa/Lagos',
             messagingCosts: { ...settings.messagingCosts },
             enforce2FA: settings.enforce2FA,
             passwordExpiry: settings.passwordExpiry
         });
     }, [settings.platformName, settings.supportEmail, settings.currency, settings.timezone, settings.messagingCosts, settings.enforce2FA, settings.passwordExpiry]);
 
-    const handleSave = () => {
-        settings.updateSettings(localSettings);
-        notify.success('System settings updated successfully');
+    const handleSave = async () => {
+        const loadingToast = toast.loading('Saving system settings...');
+        try {
+            await settings.updateSettings(localSettings);
+            toast.success('System settings updated successfully', { id: loadingToast });
+        } catch (error) {
+            toast.error('Failed to save settings', { id: loadingToast });
+        }
     };
+
+    if (isLoading) {
+        return (
+            <div className="p-8 flex flex-col items-center justify-center min-h-[400px] gap-4">
+                <Loader2 className="animate-spin text-primary" size={40} />
+                <p className="text-sm font-black uppercase tracking-widest text-text-secondary">Loading System Settings...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="p-8 pb-20">

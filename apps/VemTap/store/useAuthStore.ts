@@ -13,7 +13,7 @@ const clearAuthCookie = () => {
   document.cookie = 'vemtap-auth-token=; path=/; max-age=0; SameSite=Lax';
 };
 
-export type UserRole = 'owner' | 'manager' | 'staff' | 'admin' | 'customer' | null;
+export type UserRole = 'owner' | 'manager' | 'staff' | 'admin' | 'agent' | 'customer' | null;
 export type SubscriptionPlan = 'free' | 'pro' | 'enterprise' | string;
 export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'trialing' | string;
 
@@ -63,6 +63,10 @@ export interface AuthState {
   access_token: string | null;
   isAuthenticated: boolean;
   activeBranchId: string | null; // Globally selected branch for filtering
+  
+  // Impersonation state
+  impersonationToken: string | null;
+  impersonatingType: 'business' | 'customer' | null;
 
   login: (userData: User, access_token: string) => void;
   signup: (userData: User, access_token: string) => void;
@@ -70,6 +74,10 @@ export interface AuthState {
   setActiveBranch: (branchId: string | null) => void;
   updateUser: (updates: Partial<User>) => Promise<{ success: boolean; error?: string }>;
   subscribe: (planId: SubscriptionPlan) => Promise<{ success: boolean; error?: string }>;
+  
+  // Impersonation actions
+  startImpersonation: (token: string, type: 'business' | 'customer') => void;
+  stopImpersonation: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -79,6 +87,8 @@ export const useAuthStore = create<AuthState>()(
       access_token: null,
       isAuthenticated: false,
       activeBranchId: null,
+      impersonationToken: null,
+      impersonatingType: null,
 
       login: (userData, access_token) => {
         console.log('[AUTH] login() called', { email: userData?.email, role: userData?.role });       
@@ -144,7 +154,9 @@ export const useAuthStore = create<AuthState>()(
           user: null, 
           access_token: null, 
           isAuthenticated: false, 
-          activeBranchId: null 
+          activeBranchId: null,
+          impersonationToken: null,
+          impersonatingType: null
         });
         clearAuthCookie();
         
@@ -194,6 +206,14 @@ export const useAuthStore = create<AuthState>()(
         } catch (error: unknown) {
           return { success: false, error: 'Failed to subscribe' };
         }
+      },
+
+      startImpersonation: (token, type) => {
+        set({ impersonationToken: token, impersonatingType: type });
+      },
+
+      stopImpersonation: () => {
+        set({ impersonationToken: null, impersonatingType: null });
       }
     }),
     {

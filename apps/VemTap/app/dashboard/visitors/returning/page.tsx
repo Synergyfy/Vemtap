@@ -10,7 +10,7 @@ import { RewardCreationModal } from '@/components/loyalty/admin/RewardCreationMo
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Reward, Visitor } from '@/services/visitors/types';
-import { useReturningVisitors, useReturningVisitorStats } from '@/services/visitors/hooks';
+import { useReturningVisitors, useReturningVisitorStats, useCreateReward } from '@/services/visitors/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import toast from 'react-hot-toast';
 import { formatDate } from '@/lib/utils/date';
@@ -19,7 +19,7 @@ import MessagingChannelSelectorModal from '@/components/dashboard/MessagingChann
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import { Repeat, Users, Star, AlertTriangle, Gift, Award, Send } from 'lucide-react';
 import { useChatStore } from '@/lib/store/useChatStore';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function ReturningVisitorsPage() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -27,37 +27,32 @@ export default function ReturningVisitorsPage() {
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
     const [showChannelSelector, setShowChannelSelector] = useState(false);
     const queryClient = useQueryClient();
+    const searchParams = useSearchParams();
+    const businessUid = searchParams.get('business_uid');
+    const isAdminMode = searchParams.get('admin_mode') === '1';
+    
     const { user, activeBranchId } = useAuthStore();
     const router = useRouter();
 
-    const { data: paginatedData, isLoading } = useReturningVisitors();
-    const { data: statsData } = useReturningVisitorStats();
+    const { data: paginatedData, isLoading } = useReturningVisitors(undefined, undefined, businessUid || undefined);
+    const { data: statsData } = useReturningVisitorStats(undefined, businessUid || undefined);
     const addPendingThread = useChatStore(s => s.addPendingThread);
     const setActiveConversation = useChatStore(s => s.setActiveConversation);
 
     const returningVisitors = paginatedData?.data || [];
 
-    const createRewardMutation = useMutation({
-        mutationFn: async (rewardData: any) => {
-            const payload = {
-                ...rewardData,
-                branchId: activeBranchId || undefined,
-            };
-            return await api.post('/visitors/rewards', payload);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            setIsCreateModalOpen(false);
-            toast.success('Reward created successfully');
-        },
-        onError: (err: any) => {
-            console.error('Reward creation error:', err);
-            toast.error(err.response?.data?.message || 'Failed to create reward');
-        }
-    });
+    const { mutate: createReward, isPending: isCreatingReward } = useCreateReward();
 
     const handleCreateReward = async (rewardData: any) => {
-        await createRewardMutation.mutateAsync(rewardData);
+        createReward({ 
+            data: {
+                ...rewardData,
+                branchId: activeBranchId || undefined,
+            },
+            businessId: businessUid || undefined 
+        }, {
+            onSuccess: () => setIsCreateModalOpen(false)
+        });
     };
 
     const handleRewardVisitor = (visitor: Visitor) => {

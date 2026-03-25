@@ -26,6 +26,17 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
                 if (token && token !== 'mock-token') {
                     headers.set('Authorization', `Bearer ${token}`);
                 }
+
+                // Add Impersonation Headers
+                const impersonationToken = state?.impersonationToken;
+                const impersonatingType = state?.impersonatingType;
+                if (impersonationToken) {
+                    if (impersonatingType === 'customer') {
+                        headers.set('x-customer-impersonation-token', impersonationToken);
+                    } else {
+                        headers.set('x-impersonation-token', impersonationToken);
+                    }
+                }
             } catch (e) {
                 console.error('Error parsing auth storage', e);
             }

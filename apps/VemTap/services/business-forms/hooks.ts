@@ -11,21 +11,38 @@ import type {
   UpdateBusinessFormRequest,
 } from './types';
 
+const mapBusinessForm = (f: any): BusinessForm => {
+  if (!f) return f;
+  return {
+    ...f,
+    uniqueCode: f.uniqueCode || f.key || f.slug || f.formCode || '',
+  };
+};
+
 const toList = <T,>(payload: unknown): T[] => {
-  if (Array.isArray(payload)) return payload as T[];
-  if (payload && typeof payload === 'object') {
+  let items: T[] = [];
+  if (Array.isArray(payload)) {
+    items = payload as T[];
+  } else if (payload && typeof payload === 'object') {
     const objectPayload = payload as {
       data?: unknown;
       items?: unknown;
       forms?: unknown;
       results?: unknown;
     };
-    if (Array.isArray(objectPayload.data)) return objectPayload.data as T[];
-    if (Array.isArray(objectPayload.items)) return objectPayload.items as T[];
-    if (Array.isArray(objectPayload.forms)) return objectPayload.forms as T[];
-    if (Array.isArray(objectPayload.results)) return objectPayload.results as T[];
+    if (Array.isArray(objectPayload.data)) items = objectPayload.data as T[];
+    else if (Array.isArray(objectPayload.items)) items = objectPayload.items as T[];
+    else if (Array.isArray(objectPayload.forms)) items = objectPayload.forms as T[];
+    else if (Array.isArray(objectPayload.results)) items = objectPayload.results as T[];
   }
-  return [];
+
+  // Specifically map BusinessForm objects if T is BusinessForm
+  return items.map((item) => {
+    if (item && typeof item === 'object' && ('title' in item || 'uniqueCode' in item)) {
+      return mapBusinessForm(item) as unknown as T;
+    }
+    return item;
+  });
 };
 
 type BusinessFormsQuery = {
@@ -63,7 +80,8 @@ export const useBusinessForm = (id?: string, params: BusinessFormsQuery = {}) =>
       if (resolvedBranchId) query.set('branchId', resolvedBranchId);
       if (resolvedAllBranches) query.set('allBranches', 'true');
       const suffix = query.toString();
-      return await api.get(`/business-forms/${id}${suffix ? `?${suffix}` : ''}`);
+      const response = await api.get(`/business-forms/${id}${suffix ? `?${suffix}` : ''}`);
+      return mapBusinessForm(response);
     },
     enabled: !!id,
   });
@@ -74,9 +92,11 @@ export const usePublicBusinessForm = (id?: string) =>
     queryKey: ['public-business-form', id],
     queryFn: async () => {
       try {
-        return await api.get(`/visitor-forms/code/${id}`);
+        const response = await api.get(`/visitor-forms/code/${id}`);
+        return mapBusinessForm(response);
       } catch {
-        return await api.get(`/visitor-forms/public/${id}`);
+        const response = await api.get(`/visitor-forms/public/${id}`);
+        return mapBusinessForm(response);
       }
     },
     enabled: !!id,
@@ -267,7 +287,8 @@ export const useFormsByDevice = (deviceCode: string) =>
   useQuery<BusinessForm[], Error>({
     queryKey: ['forms-by-device', deviceCode],
     queryFn: async () => {
-      return await api.get(`/visitor-forms/device/${deviceCode}`);
+      const response = await api.get(`/visitor-forms/device/${deviceCode}`);
+      return toList<BusinessForm>(response);
     },
     enabled: !!deviceCode,
   });

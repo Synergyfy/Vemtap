@@ -303,7 +303,7 @@ export default function ChatSettingsPanel() {
     const deleteRule = useDeleteAutomation();
     
     const isAuthenticated = useAuthStore(s => s.isAuthenticated);
-    const { data: business } = useMyBusiness(isAuthenticated);
+    const { data: business } = useMyBusiness(undefined, isAuthenticated);
 
     const businessName = business?.name || user?.businessName || 'Vemtap';
     const businessLogo = business?.logoUrl || user?.businessLogo;

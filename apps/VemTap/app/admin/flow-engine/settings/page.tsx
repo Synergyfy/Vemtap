@@ -1,50 +1,53 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, Eye, EyeOff, Link2, ShieldCheck, Loader2, Save, Webhook, Key, Settings } from 'lucide-react';
 import FlowEngineNav from '@/components/admin/flow-engine/FlowEngineNav';
-import { useFlowEngineSettings } from '@/services/flow-engine/hooks';
+import { useSystemSettingsStore } from '@/store/useSystemSettingsStore';
 import { adminFlowEngineApi } from '@/lib/api/admin';
 import { notify } from '@/lib/notify';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export default function FlowSettingsPage() {
-    const queryClient = useQueryClient();
-    const { data: settingsData, isLoading } = useFlowEngineSettings();
-    const settings = settingsData?.data || settingsData || {};
-
+    const settings = useSystemSettingsStore();
+    const [isLoading, setIsLoading] = useState(true);
     const [showApiKey, setShowApiKey] = useState(false);
     const [showWebhookSecret, setShowWebhookSecret] = useState(false);
     const [formData, setFormData] = useState({
-        termiiApiKey: '',
-        webhookUrl: '',
-        webhookSecret: '',
+        termiiApiKey: settings.termiiApiKey || '',
+        webhookUrl: settings.webhookUrl || '',
+        webhookSecret: settings.webhookSecret || '',
     });
 
     useEffect(() => {
-        if (settings) {
-            setFormData({
-                termiiApiKey: settings.termiiApiKey || '',
-                webhookUrl: settings.webhookUrl || '',
-                webhookSecret: settings.webhookSecret || '',
-            });
-        }
-    }, [settings]);
+        const init = async () => {
+            await settings.fetchSettings();
+            setIsLoading(false);
+        };
+        init();
+    }, []);
 
-    const updateMutation = useMutation({
-        mutationFn: (data: any) => adminFlowEngineApi.updateSettings(data),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['flow-engine-settings'] });
-            notify.success('System settings updated successfully');
-        },
-        onError: (error: any) => {
-            notify.error(error?.message || 'Failed to update settings');
-        },
-    });
+    useEffect(() => {
+        setFormData({
+            termiiApiKey: settings.termiiApiKey || '',
+            webhookUrl: settings.webhookUrl || '',
+            webhookSecret: settings.webhookSecret || '',
+        });
+    }, [settings.termiiApiKey, settings.webhookUrl, settings.webhookSecret]);
 
-    const handleSave = (e: React.FormEvent) => {
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        updateMutation.mutate(formData);
+        setIsSaving(true);
+        try {
+            await settings.updateSettings(formData);
+            notify.success('System settings updated successfully');
+        } catch (error: any) {
+            notify.error(error?.message || 'Failed to update settings');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     if (isLoading) {
@@ -133,10 +136,10 @@ export default function FlowSettingsPage() {
                         <div className="flex flex-wrap gap-4 mt-10 pt-8 border-t border-gray-50">
                             <button
                                 type="submit"
-                                disabled={updateMutation.isPending}
+                                disabled={isSaving}
                                 className="h-12 px-8 rounded-2xl bg-primary text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all disabled:opacity-50 active:scale-95"
                             >
-                                <Save size={16} /> {updateMutation.isPending ? 'Saving...' : 'Save Configuration'}
+                                <Save size={16} /> {isSaving ? 'Saving...' : 'Save Configuration'}
                             </button>
                             <button
                                 type="button"

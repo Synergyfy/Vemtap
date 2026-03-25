@@ -16,6 +16,7 @@ import {
     UpdateLoyaltyRuleRequest,
     VerifyRedemptionResponse,
     LoyaltyTemplate,
+    CreateLoyaltyTemplateRequest,
     BusinessLoyaltyStats,
     CustomerAnalytics,
     ClaimCodeResponse,
@@ -310,7 +311,7 @@ import { notify } from '@/lib/notify';
 
 export const useCreateLoyaltyTemplate = () => {
     const queryClient = useQueryClient();
-    return useMutation<LoyaltyTemplate, Error, Partial<LoyaltyTemplate>>({
+    return useMutation<LoyaltyTemplate, Error, CreateLoyaltyTemplateRequest>({
         mutationFn: async (data) => await api.post('/loyalty/templates', data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates'] });

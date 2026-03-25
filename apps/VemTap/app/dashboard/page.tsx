@@ -10,7 +10,6 @@ import {
 import Tooltip from '@/components/ui/Tooltip';
 import LogoIcon from '@/components/brand/LogoIcon';
 import { useRouter, useSearchParams } from 'next/navigation';
-import AdminViewerBanner from '@/components/admin/control-tower/AdminViewerBanner';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import PreviewRewardModal from '@/components/dashboard/PreviewRewardModal';
@@ -18,6 +17,7 @@ import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
 import { useVisitorStats, useResetDashboard } from '@/services/visitors/hooks';
+import { useAdminBusiness } from '@/services/businesses/hooks';
 
 
 export default function DashboardPage() {
@@ -47,8 +47,9 @@ export default function DashboardPage() {
 
 
     // Fetch Dashboard Data
-    const { data, isLoading } = useDashboardAnalytics();
-    const { data: visitorStatsData } = useVisitorStats();
+    const { data, isLoading } = useDashboardAnalytics(undefined, businessUid || undefined);
+    const { data: visitorStatsData } = useVisitorStats(undefined, businessUid || undefined);
+    const { data: adminBusinessInfo } = useAdminBusiness(isAdminMode ? (businessUid as string) : undefined);
     const resetDashboardMutation = useResetDashboard();
 
     const { getPlan } = useSubscriptionStore();
@@ -163,17 +164,21 @@ export default function DashboardPage() {
 
     return (
         <div className="p-4 md:p-8 space-y-6">
-            {isAdminMode && <AdminViewerBanner subjectId={businessUid} type="business" />}
             {/* Page Header */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex-1">
                     <h1 className="text-2xl font-display font-bold text-text-main mb-1">
-                        {isNewUser ? `Welcome to VemTap, ${user?.firstName || 'there'}!` : 'Dashboard'}
+                        {isAdminMode 
+                            ? `Viewing Analytics: ${(adminBusinessInfo?.business || adminBusinessInfo)?.name || (adminBusinessInfo?.business || adminBusinessInfo)?.businessName || 'Business'}`
+                            : isNewUser ? `Welcome to VemTap, ${user?.firstName || 'there'}!` : 'Dashboard'
+                        }
                     </h1>
                     <p className="text-sm text-text-secondary font-medium">
-                        {isNewUser
-                            ? "We're excited to have you here. Let's get your business started."
-                            : "Welcome back! Here's what's happening today."}
+                        {isAdminMode
+                            ? "Currently viewing live data for this business. All actions are logged."
+                            : isNewUser
+                                ? "We're excited to have you here. Let's get your business started."
+                                : "Welcome back! Here's what's happening today."}
                     </p>
                 </div>
 
@@ -223,7 +228,7 @@ export default function DashboardPage() {
                         <p className="text-[11px] text-text-secondary">Learn how to run core workflows with step-by-step docs.</p>
                     </div>
                     <button
-                        onClick={() => router.push('/bussinesss')}
+                        onClick={() => router.push('/dashboard/tutorial')}
                         className="px-4 py-2 text-xs font-black rounded-xl border border-primary/20 text-primary hover:bg-primary/5"
                     >
                         Open Tutorial
@@ -231,14 +236,14 @@ export default function DashboardPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {[
-                        { title: 'Build Forms', desc: 'Create forms, preview on mobile, and publish.', href: '/bussinesss' },
-                        { title: 'Send Messages', desc: 'Attach form links to SMS, WhatsApp, and Email.', href: '/bussinesss' },
-                        { title: 'Track Results', desc: 'Use analytics and visitor reports to improve.', href: '/bussinesss' },
+                        { title: 'Build Forms', desc: 'Create forms, preview on mobile, and publish.', href: '/dashboard/tutorial' },
+                        { title: 'Send Messages', desc: 'Attach form links to SMS, WhatsApp, and Email.', href: '/dashboard/tutorial' },
+                        { title: 'Track Results', desc: 'Use analytics and visitor reports to improve.', href: '/dashboard/tutorial' },
                     ].map((item) => (
                         <button
                             key={item.title}
                             onClick={() => router.push(item.href)}
-                            className="text-left rounded-xl border border-gray-200 p-3 hover:border-primary/30 hover:bg-primary/[0.03] transition-colors"
+                            className="text-left rounded-xl border border-gray-200 p-3 hover:border-primary/30 hover:bg-primary/3 transition-colors"
                         >
                             <p className="text-sm font-black text-text-main">{item.title}</p>
                             <p className="text-xs text-text-secondary mt-1">{item.desc}</p>

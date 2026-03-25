@@ -10,7 +10,6 @@ import {
     Loader2
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import AdminViewerBanner from '@/components/admin/control-tower/AdminViewerBanner';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { fetchDeviceByCode, Device } from '@/lib/api/devices';
@@ -23,6 +22,7 @@ import {
     useCustomerLoyaltyRewards,
     useRedeemCustomerReward
 } from '@/services/customer/hooks';
+import { useAdminUser } from '@/services/users/hooks';
 
 export default function CustomerDashboardPage() {
     const user = useAuthStore((state) => state.user);
@@ -35,20 +35,22 @@ export default function CustomerDashboardPage() {
     const [showRewardAnimation, setShowRewardAnimation] = useState(false);
     const [currentReward, setCurrentReward] = useState<{ name: string; points: number; icon?: React.ReactNode } | null>(null);
 
-    const businessId = flowBusinessId || user?.businessId;
-    const { data: analyticsResponse } = useCustomerLoyaltyAnalytics();
-    const { data: profileResponse } = useCustomerLoyaltyProfile(businessId);
-    const { data: availableRewardsData = [], isLoading: isRewardsLoading } = useCustomerLoyaltyRewards(flowBranchId || businessInfo?.branch?.id || businessInfo?.device?.branchId || user?.branchId || businessId);
-    const { data: recentTransactionsData = [], isLoading: isHistoryLoading } = useCustomerGlobalHistory();
-    const redeemMutation = useRedeemCustomerReward();
-
     const router = useRouter();
     const searchParams = useSearchParams();
     const isAdminMode = searchParams.get('admin_mode') === '1';
     const customerUid = searchParams.get('customer_uid');
 
+    const businessId = flowBusinessId || user?.businessId;
+    const { data: analyticsResponse } = useCustomerLoyaltyAnalytics(customerUid || undefined, businessId);
+    const { data: profileResponse } = useCustomerLoyaltyProfile(businessId, customerUid || undefined);
+    const { data: adminUserResponse } = useAdminUser(isAdminMode ? (customerUid as string) : undefined);
+    const { data: availableRewardsData = [], isLoading: isRewardsLoading } = useCustomerLoyaltyRewards(flowBranchId || businessInfo?.branch?.id || businessInfo?.device?.branchId || user?.branchId || businessId, customerUid || undefined);
+    const { data: recentTransactionsData = [], isLoading: isHistoryLoading } = useCustomerGlobalHistory(customerUid || undefined);
+    const redeemMutation = useRedeemCustomerReward();
+
     const analytics = analyticsResponse?.data || analyticsResponse;
     const profile = profileResponse?.data || profileResponse;
+    const adminUser = adminUserResponse?.data || adminUserResponse;
     const availableRewards = Array.isArray(availableRewardsData) ? availableRewardsData : (availableRewardsData?.data || []);
     const recentTransactions = Array.isArray(recentTransactionsData) ? recentTransactionsData : (recentTransactionsData?.data || []);
     const isLoyaltyLoading = isRewardsLoading || isHistoryLoading;
@@ -64,8 +66,8 @@ export default function CustomerDashboardPage() {
             return;
         }
 
-        if (user?.role?.toLowerCase() !== 'customer') {
-
+        const role = user?.role?.toLowerCase();
+        if (role !== 'customer' && !isAdminMode) {
             console.log('[CUSTOMER DASHBOARD] 🔄 Role not customer, redirecting to /dashboard');
             router.push('/dashboard');
             return;
@@ -93,9 +95,9 @@ export default function CustomerDashboardPage() {
         };
 
         initializeDashboard();
-    }, [isAuthenticated, user, router, flowBranchId, deviceCode]);
+    }, [isAuthenticated, user, router, flowBranchId, deviceCode, isAdminMode]);
 
-    if (!isAuthenticated || user?.role?.toLowerCase() !== 'customer') {
+    if (!isAuthenticated || (user?.role?.toLowerCase() !== 'customer' && !isAdminMode)) {
         return null;
     }
 
@@ -111,7 +113,7 @@ export default function CustomerDashboardPage() {
         }
 
         try {
-            const result = await redeemMutation.mutateAsync({ rewardId, businessId });
+            const result = await redeemMutation.mutateAsync({ rewardId, businessId, customerUid: customerUid || undefined });
             if (result?.success) {
                 setCurrentReward({ name, points, icon });
                 setShowRewardAnimation(true);
@@ -143,7 +145,6 @@ export default function CustomerDashboardPage() {
     return (
         <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
             <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-8">
-                {isAdminMode && <AdminViewerBanner subjectId={customerUid} type="customer" />}
                 {/* ID Card / Quick Scan - Hero Section */}
                 <div className="bg-linear-to-br from-primary via-blue-600 to-indigo-700 rounded-2xl p-8 md:p-12 text-white relative overflow-hidden shadow-2xl shadow-primary/30 group">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full translate-x-32 -translate-y-32 blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
@@ -157,7 +158,7 @@ export default function CustomerDashboardPage() {
                             </span>
                             <h1 className="text-4xl md:text-5xl font-display font-bold mb-4 tracking-tight leading-tight">
                                 Welcome back, <br />
-                                {user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || profile?.visitor?.name || 'Customer'}!
+                                {(adminUser?.user || adminUser)?.name || profile?.visitor?.name || user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Customer'}!
                             </h1>
                             <p className="text-blue-50 text-base md:text-lg max-w-lg mb-8 font-medium leading-relaxed opacity-90">
                                 Visit {businessName} {businessAddress ? `at ${businessAddress}` : ''} and tap your phone at the VemTap terminal to earn rewards instantly.

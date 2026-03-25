@@ -492,7 +492,7 @@ export default function ProductClient({ id }: { id: string }) {
                                         <div className="space-y-6">
                                             {(product.howToSteps || []).map((step: any, index: number) => (
                                                 <div key={index} className="flex gap-4">
-                                                    <div className="flex-shrink-0 w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center font-bold text-sm">
+                                                    <div className="shrink-0 w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center font-bold text-sm">
                                                         {index + 1}
                                                     </div>
                                                     <div>

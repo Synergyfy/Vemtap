@@ -1,17 +1,43 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import Link from 'next/link';
 import { Search, ShieldCheck, LogIn } from 'lucide-react';
-import { useControlTowerCustomers } from '@/services/control-tower/hooks';
+import { useControlTowerCustomers, useExecuteCustomerSudoAction } from '@/services/control-tower/hooks';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 export default function CustomerOverridePage() {
     const [query, setQuery] = useState('');
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [uid, setUid] = useState('');
+
+    const debouncedQuery = useDebounce(query, 500);
+    const debouncedName = useDebounce(name, 500);
+    const debouncedEmail = useDebounce(email, 500);
+    const debouncedUid = useDebounce(uid, 500);
+
     const { data: customers, isLoading } = useControlTowerCustomers({
-        query: query,
+        query: debouncedQuery,
         limit: 10,
     });
+
+    const executeSudo = useExecuteCustomerSudoAction();
+    const startImpersonation = useAuthStore(s => s.startImpersonation);
+    const router = useRouter();
+
+    const handleSudoLogin = async (customer: any) => {
+        try {
+            // Use direct UID-based impersonation via headers as requested
+            startImpersonation(customer.uid, 'customer');
+            router.push(`/customer/dashboard?admin_mode=1&customer_uid=${encodeURIComponent(customer.uid)}&business_uid=${encodeURIComponent(customer.businessUid)}`);
+            toast.success(`Successfully impersonating ${customer.name} via header auth`);
+        } catch (err: any) {
+            toast.error(err.message || 'Sudo login failed');
+        }
+    };
 
     return (
         <div className="p-4 md:p-8 space-y-6">
@@ -29,61 +55,63 @@ export default function CustomerOverridePage() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        className="w-full h-11 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                        placeholder="Search customer by UID, name, or business..."
+                        className="w-full h-12 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-display"
+                        placeholder="Search by Name, Email, UUID, or Phone..."
                     />
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="px-6 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Showing latest 5 customers</p>
-                    {isLoading && <p className="text-[10px] font-black uppercase tracking-widest text-primary animate-pulse">Loading...</p>}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Recent Customer Records</p>
+                    {isLoading && <p className="text-[10px] font-black uppercase tracking-widest text-primary animate-pulse">Filtering...</p>}
                 </div>
                 <table className="w-full">
                     <thead className="bg-gray-50 border-b border-gray-200">
                         <tr>
-                            <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Customer</th>
+                            <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Customer Info</th>
+                            <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Email</th>
                             <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Business UID</th>
-                            <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Tier</th>
                             <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Visits</th>
                             <th className="text-right py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {customers?.map((customer) => (
-                            <tr
-                                key={customer.uid}
-                                className="hover:bg-gray-50 transition-colors group"
-                            >
-                                <td className="py-4 px-6">
-                                    <p className="font-bold text-sm text-text-main">{customer.name}</p>
-                                    <p className="text-xs text-text-secondary font-mono mt-0.5">{customer.uid}</p>
-                                </td>
-                                <td className="py-4 px-6 text-sm font-bold text-text-main">{customer.businessUid}</td>
-                                <td className="py-4 px-6">
-                                    <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-wider">
-                                        {customer.tier}
-                                    </span>
-                                </td>
-                                <td className="py-4 px-6 text-sm text-text-main font-bold">{customer.visits}</td>
-                                <td className="py-4 px-6 text-right">
-                                    <Link
-                                        href={`/customer/dashboard?admin_mode=1&customer_uid=${encodeURIComponent(customer.uid)}&business_uid=${encodeURIComponent(customer.businessUid)}`}
-                                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-hover transition-all shadow-md shadow-primary/10 active:scale-95"
-                                    >
-                                        <LogIn size={14} />
-                                        Sudo Login
-                                    </Link>
-                                </td>
+                        {customers?.length === 0 ? (
+                            <tr>
+                                <td colSpan={5} className="py-12 text-center text-sm text-text-secondary italic">No customers found matching your search</td>
                             </tr>
-                        ))}
+                        ) : (
+                            customers?.map((customer) => (
+                                <tr
+                                    key={customer.uid}
+                                    className="hover:bg-gray-50 transition-colors group"
+                                >
+                                    <td className="py-4 px-6">
+                                        <p className="font-bold text-sm text-text-main">{customer.name}</p>
+                                        <p className="text-[10px] text-text-secondary font-mono mt-0.5">{customer.uid}</p>
+                                    </td>
+                                    <td className="py-4 px-6 text-sm text-text-secondary truncate max-w-[150px]">{customer.email || 'N/A'}</td>
+                                    <td className="py-4 px-6 text-[10px] font-bold text-text-secondary font-mono">{customer.businessUid}</td>
+                                    <td className="py-4 px-6 text-sm text-text-main font-bold">{customer.visits}</td>
+                                    <td className="py-4 px-6 text-right">
+                                        <button
+                                            onClick={() => handleSudoLogin(customer)}
+                                            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-hover transition-all shadow-md shadow-primary/10 active:scale-95 disabled:opacity-50"
+                                        >
+                                            <LogIn size={14} />
+                                            Sudo Login
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>

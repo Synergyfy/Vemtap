@@ -2,9 +2,10 @@
 
 import React, { useMemo, useState } from 'react';
 import { useBusinessFormsStore } from '@/store/useBusinessFormsStore';
-import { CheckCircle2, XCircle, Clock3, Plus, Trash2, FilePlus, Layout, Settings2, Pencil } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock3, Plus, Trash2, FilePlus, Layout, Settings2, Pencil, ShieldAlert } from 'lucide-react';
 import { notify } from '@/lib/notify';
 import { motion, AnimatePresence } from 'framer-motion';
+import SuspensionReasonModal from '@/components/admin/SuspensionReasonModal';
 
 export default function AdminFormsPage() {
     const forms = useBusinessFormsStore((state) => state.forms);
@@ -51,6 +52,8 @@ export default function AdminFormsPage() {
         isSystem: true,
         fields: [] as any[]
     });
+
+    const [suspendingFormId, setSuspendingFormId] = useState<string | null>(null);
 
     const [newField, setNewField] = useState({ label: '', type: 'short_text' });
 
@@ -397,16 +400,7 @@ export default function AdminFormsPage() {
                                             <div className="flex items-center gap-2">
                                                 {!form.adminDisabled ? (
                                                     <button
-                                                        onClick={async () => {
-                                                            if (confirm('Are you sure you want to suspend this form? It will no longer be accessible by customers.')) {
-                                                                try {
-                                                                    await disableForm(form.id);
-                                                                    notify.success('Form suspended by admin');
-                                                                } catch (err: any) {
-                                                                    notify.error(err.message || 'Failed to suspend form');
-                                                                }
-                                                            }
-                                                        }}
+                                                        onClick={() => setSuspendingFormId(form.id)}
                                                         className="h-9 px-4 rounded-xl bg-red-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-all shadow-md shadow-red-200 active:scale-95"
                                                     >
                                                         Admin Suspend
@@ -719,6 +713,22 @@ export default function AdminFormsPage() {
                     </div>
                 )}
             </AnimatePresence>
+
+            <SuspensionReasonModal
+                isOpen={!!suspendingFormId}
+                onClose={() => setSuspendingFormId(null)}
+                onConfirm={async (reason) => {
+                    if (suspendingFormId) {
+                        try {
+                            await disableForm(suspendingFormId, reason);
+                            notify.success('Form suspended by admin');
+                        } catch (err: any) {
+                            notify.error(err.message || 'Failed to suspend form');
+                            throw err;
+                        }
+                    }
+                }}
+            />
         </div>
     );
 }

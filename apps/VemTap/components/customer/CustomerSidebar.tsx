@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '@/services/notifications/hooks';
+import { useAdminUser } from '@/services/users/hooks';
 import { Notification } from '@/services/notifications/types';
 import {
     LayoutGrid, History, Gift, User, Nfc, Bell,
@@ -23,6 +24,10 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
     const router = useRouter();
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
+    const searchParams = useSearchParams();
+    const isAdminMode = searchParams.get('admin_mode') === '1';
+    const customerUid = searchParams.get('customer_uid');
+
     const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
     const { getPersistedLink } = useUrlPersistence();
     const [showNotifications, setShowNotifications] = useState(false);
@@ -36,6 +41,9 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
 
     const { data: notifications = [] } = useNotifications();
     const unreadCount = notifications.filter((n: Notification) => !n.read).length;
+
+    const { data: adminUserInfo } = useAdminUser(isAdminMode ? (customerUid as string) : undefined);
+    const displayUser = (isAdminMode && adminUserInfo) ? (adminUserInfo.user || adminUserInfo) : user;
 
     const readNotificationMutation = useMarkAsRead();
     const readAllMutation = useMarkAllAsRead();
@@ -179,8 +187,10 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                             <User className="text-gray-400" size={20} />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-text-main truncate">{user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Customer'}</p>
-                            <p className="text-xs text-text-secondary truncate">{user?.email || 'customer@vemtap.com'}</p>
+                            <p className="text-sm font-bold text-text-main truncate">
+                                {displayUser?.name || `${displayUser?.firstName || ''} ${displayUser?.lastName || ''}`.trim() || 'Customer'}
+                            </p>
+                            <p className="text-xs text-text-secondary truncate">{displayUser?.email || 'customer@vemtap.com'}</p>
                         </div>
                     </div>
                     <button
@@ -223,7 +233,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                 {/* Top Bar (Desktop) */}
                 <header className="hidden lg:flex h-20 bg-white border-b border-gray-200 items-center justify-between px-8">
                     <div>
-                        <h2 className="font-display font-bold text-xl text-text-main">Welcome back, {user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Customer'}! 👋</h2>
+                        <h2 className="font-display font-bold text-xl text-text-main">Welcome back, {displayUser?.name || displayUser?.firstName || 'Customer'}! 👋</h2>
                         <p className="text-xs text-text-secondary font-medium">Here's what's happening with your rewards.</p>
                     </div>
                     <div className="flex items-center gap-4 relative">

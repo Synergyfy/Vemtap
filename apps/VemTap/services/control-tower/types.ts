@@ -2,6 +2,9 @@ export interface BusinessControlRecord {
     uid: string;
     name: string;
     owner: string;
+    email: string;
+    uniqueCode: string;
+    slug?: string;
     status: string;
     users: number;
 }
@@ -9,6 +12,7 @@ export interface BusinessControlRecord {
 export interface CustomerControlRecord {
     uid: string;
     name: string;
+    email: string;
     businessUid: string;
     businessName: string;
     tier: string;

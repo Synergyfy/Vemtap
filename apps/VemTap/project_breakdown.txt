@@ -24,7 +24,13 @@ use phone instead of phonenumber in creating business
 --from the bussiness ticket copy the uid and go to control tower
 --check why this is not searching.
 
-
+--redirect to badge approval and open documents modal even 
+--synergify,not been filtered
+--unkown user
+sudo login
+--permission issue on control tower
+--bussiness search not working for controll tower search dropdown
+--loyalty endpoint have been updated check the proper payload 
  
 
 

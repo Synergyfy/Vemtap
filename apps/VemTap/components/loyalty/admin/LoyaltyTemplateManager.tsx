@@ -116,7 +116,7 @@ const TemplateListItem: React.FC<{
     onSelect: () => void;
     onDelete: () => void;
 }> = ({ template, isActive, onSelect, onDelete }) => {
-    const previewImage = template.rewards.find((r: any) => r.imageUrls?.length > 0)?.imageUrls?.[0];
+    const previewImage = template.rewards?.find((r: any) => r.imageUrls?.length > 0)?.imageUrls?.[0];
     return (
         <button
             onClick={onSelect}
@@ -161,7 +161,7 @@ const TemplateListItem: React.FC<{
                     {template.description || 'No description provided.'}
                 </p>
                 <div className="flex gap-2 text-[10px] uppercase tracking-widest font-black text-slate-400 pt-1">
-                    <span>{template.rewards.length} rewards</span>
+                    <span>{(template.rewards?.length || 0)} rewards</span>
                     <span>&bull;</span>
                     <span>{template.rules?.ruleType || 'rules'}</span>
                 </div>
@@ -184,9 +184,9 @@ const TemplateListRow: React.FC<{
     >
         <button onClick={onSelect} className="col-span-5 text-left flex items-center gap-3">
             <div className="size-10 rounded-full overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
-                {template.rewards.find((r: any) => r.imageUrls?.length > 0)?.imageUrls?.[0] ? (
+                {template.rewards?.find((r: any) => r.imageUrls?.length > 0)?.imageUrls?.[0] ? (
                     <img
-                        src={template.rewards.find((r: any) => r.imageUrls?.length > 0)?.imageUrls?.[0] as string}
+                        src={template.rewards?.find((r: any) => r.imageUrls?.length > 0)?.imageUrls?.[0] as string}
                         alt={`${template.name} preview`}
                         className="w-full h-full object-cover"
                     />
@@ -205,7 +205,7 @@ const TemplateListRow: React.FC<{
             {template.rules?.ruleType || 'rules'}
         </div>
         <div className="col-span-2 text-xs font-black uppercase tracking-widest text-slate-400">
-            {template.rewards.length} rewards
+            {(template.rewards?.length || 0)} rewards
         </div>
         <div className="col-span-2 text-xs font-black uppercase tracking-widest text-slate-400">
             {template.status}
@@ -749,7 +749,7 @@ export const LoyaltyTemplateManager: React.FC<LoyaltyTemplateManagerProps> = ({
         try {
             if (localDraft) {
                 // 1. Handle delayed image uploads
-                const finalRewards = await Promise.all(activeTemplate.rewards.map(async (r: any) => {
+                const finalRewards = await Promise.all((activeTemplate.rewards || []).map(async (r: any) => {
                     const existingUrls = r.imageUrls || [];
                     const pendingBase64s = r.localPendingImages || [];
                     

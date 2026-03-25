@@ -67,7 +67,7 @@ export default function ChatSidebar() {
     const pendingThreads = useChatStore(s => s.pendingThreads);
     const addPendingThread = useChatStore(s => s.addPendingThread);
     const isAuthenticated = useAuthStore(s => s.isAuthenticated);
-    const { data: business } = useMyBusiness(isAuthenticated);
+    const { data: business } = useMyBusiness(undefined, isAuthenticated);
     const user = useAuthStore(s => s.user);
     const { branchId, isCustomer } = useMessagingBranch();
     const [showNewChat, setShowNewChat] = useState(false);

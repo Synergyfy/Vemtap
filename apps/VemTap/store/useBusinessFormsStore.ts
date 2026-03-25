@@ -133,7 +133,7 @@ export interface BusinessFormsState {
 
   // Admin Forms Management
   fetchAdminForms: () => Promise<void>;
-  disableForm: (id: string) => Promise<void>;
+  disableForm: (id: string, reason?: string) => Promise<void>;
   enableForm: (id: string) => Promise<void>;
 
   fetchForms: (businessId: string) => Promise<void>;
@@ -226,19 +226,32 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
         try {
           const { adminFormsApi } = await import('@/lib/api/admin');
           const response = await adminFormsApi.getBusinessForms();
-          set({ adminForms: response.items || response, isLoading: false });
+          const items = response.items || response || [];
+          
+          const mappedAdminForms = items.map((f: any) => ({
+            ...f,
+            id: f.id || String(Math.random()),
+            businessName: f.businessName || f.business?.name || 'Unknown Business',
+            branchName: f.branchName || f.branch?.name || 'Main Branch',
+            title: f.title || f.name || 'Untitled Form',
+            key: f.key || f.slug || f.formCode || f.uniqueCode || 'no-key',
+            type: f.type || 'custom',
+            status: f.status || (f.isActive ? 'approved' : 'pending'),
+          }));
+
+          set({ adminForms: mappedAdminForms, isLoading: false });
         } catch (error: any) {
           set({ error: error.message, isLoading: false });
         }
       },
-      disableForm: async (id: string) => {
+      disableForm: async (id: string, reason?: string) => {
         set({ isSubmitting: true, error: null });
         try {
           const { adminFormsApi } = await import('@/lib/api/admin');
-          await adminFormsApi.disableBusinessForm(id);
+          await adminFormsApi.disableBusinessForm(id, reason);
           set((state) => ({
             adminForms: state.adminForms.map((f: any) =>
-               f.id === id ? { ...f, adminDisabled: true } : f
+               f.id === id ? { ...f, adminDisabled: true, suspensionReason: reason } : f
             ),
             isSubmitting: false
           }));
@@ -426,13 +439,13 @@ export const useBusinessFormsStore = create<BusinessFormsState>()(
           const items = response || [];
 
           const forms: BusinessForm[] = items.map((item: any) => ({
-            id: item.id,
+            id: item.id || String(Math.random()),
             businessId: item.businessId,
-            businessName: item.businessName || 'Business',
+            businessName: item.businessName || item.business?.name || 'Business',
             type: item.type || 'survey',
             typeLabel: item.typeLabel,
-            title: item.title,
-            key: item.key,
+            title: item.title || item.name || 'Untitled Form',
+            key: item.key || item.slug || item.formCode || item.uniqueCode || 'no-key',
             status: item.isActive ? 'approved' : 'pending',
             fields: item.fields?.map((f: any) => ({
               id: f.id,

@@ -17,10 +17,10 @@ import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import toast from 'react-hot-toast';
 import { formatDate } from '@/lib/utils/date';
 import { useChatStore } from '@/lib/store/useChatStore';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-function NewVisitorJoinedCell({ visitor }: { visitor: Visitor }) {
-    const { data: fullVisitor } = useVisitor(visitor.id);
+function NewVisitorJoinedCell({ visitor, businessId }: { visitor: Visitor, businessId?: string }) {
+    const { data: fullVisitor } = useVisitor(visitor.id, undefined, businessId);
 
     const resolveJoinedDate = (item: Visitor) => {
         const enhanced = item as Visitor & {
@@ -69,9 +69,13 @@ export default function NewVisitorsPage() {
     const [showChannelSelector, setShowChannelSelector] = useState(false);
     const [isBulkChannelSelector, setIsBulkChannelSelector] = useState(false);
 
+    const searchParams = useSearchParams();
+    const businessUid = searchParams.get('business_uid');
+    const isAdminMode = searchParams.get('admin_mode') === '1';
+
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
-    const { data: paginatedData, isLoading } = useNewVisitors();
-    const { data: statsData } = useNewVisitorStats();
+    const { data: paginatedData, isLoading } = useNewVisitors(undefined, undefined, businessUid || undefined);
+    const { data: statsData } = useNewVisitorStats(undefined, businessUid || undefined);
     const addPendingThread = useChatStore(s => s.addPendingThread);
     const setActiveConversation = useChatStore(s => s.setActiveConversation);
 
@@ -168,7 +172,7 @@ export default function NewVisitorsPage() {
                 );
             }
         },
-        { header: 'Joined', accessor: (item: Visitor) => <NewVisitorJoinedCell visitor={item} /> },
+        { header: 'Joined', accessor: (item: Visitor) => <NewVisitorJoinedCell visitor={item} businessId={businessUid || undefined} /> },
         {
             header: 'Status',
             accessor: () => (

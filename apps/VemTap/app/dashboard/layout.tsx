@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useEffect, Suspense } from 'react';
-import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSearchParams } from 'next/navigation';
+import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
+import AdminViewerBanner from '@/components/admin/control-tower/AdminViewerBanner';
 
 export default function DashboardLayout({
     children,
@@ -19,6 +21,10 @@ export default function DashboardLayout({
         }
     }, [accessToken]);
 
+    const searchParams = useSearchParams();
+    const isAdminMode = searchParams.get('admin_mode') === '1';
+    const businessUid = searchParams.get('business_uid');
+
     return (
         <Suspense fallback={
             <div className="flex items-center justify-center p-8 h-screen">
@@ -29,6 +35,7 @@ export default function DashboardLayout({
             </div>
         }>
             <DashboardSidebar>
+                {isAdminMode && <AdminViewerBanner subjectId={businessUid} type="business" />}
                 {children}
             </DashboardSidebar>
         </Suspense>

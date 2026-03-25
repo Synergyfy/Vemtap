@@ -17,7 +17,8 @@ import {
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
-import { useMyBusiness } from '@/services/businesses/hooks';
+import { useMyBusiness, useAdminBusiness } from '@/services/businesses/hooks';
+import { useAdminUser } from '@/services/users/hooks';
 import DashboardMobileNav from './DashboardMobileNav';
 import UpgradeModal from './UpgradeModal';
 
@@ -57,6 +58,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const isChatRoute = pathname.includes('/messaging/chat');
     const mainRef = useRef<HTMLElement | null>(null);
 
+    const isAdminMode = searchParams.get('admin_mode') === '1';
+    const businessUid = searchParams.get('business_uid');
+    const customerUid = searchParams.get('customer_uid');
+
     // Close upgrade modal and mobile sidebar on navigation
     useEffect(() => {
         setUpgradeModal({ isOpen: false, featureName: '' });
@@ -75,13 +80,19 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         }
     }, [isAuthenticated, fetchSubscriptionData]);
 
-    const mainBranch = myBusiness?.branches?.find(b => b.isMainBranch);
-    const activeBranch = myBusiness?.branches?.find(b => b.id === activeBranchId);
-    const firstBranchWithCode = myBusiness?.branches?.find(b => b.uniqueCode);
-    const businessLogo = myBusiness?.logoUrl || mainBranch?.logoUrl || defaultLogo;
-    const businessName = myBusiness?.name || user?.businessName || 'Business Profile';
+    const { data: adminBusinessInfo } = useAdminBusiness(isAdminMode ? (businessUid as string) : undefined);
+    const { data: adminUserInfo } = useAdminUser(isAdminMode ? (customerUid as string) : undefined);
+
+    const displayBusiness = (isAdminMode && adminBusinessInfo) ? (adminBusinessInfo.business || adminBusinessInfo) : myBusiness;
+    const displayUser = (isAdminMode && adminUserInfo) ? (adminUserInfo.user || adminUserInfo) : user;
+
+    const mainBranch = displayBusiness?.branches?.find((b: any) => b.isMainBranch);
+    const activeBranch = displayBusiness?.branches?.find((b: any) => b.id === activeBranchId);
+    const firstBranchWithCode = displayBusiness?.branches?.find((b: any) => b.uniqueCode);
+    const businessLogo = displayBusiness?.logoUrl || mainBranch?.logoUrl || defaultLogo;
+    const businessName = displayBusiness?.name || displayBusiness?.businessName || user?.businessName || 'Business Profile';
     const businessSlug = businessName.toLowerCase().replace(/\s+/g, '-');
-    const publicProfileCode = activeBranch?.uniqueCode || mainBranch?.uniqueCode || firstBranchWithCode?.uniqueCode || myBusiness?.uniqueCode;
+    const publicProfileCode = activeBranch?.uniqueCode || mainBranch?.uniqueCode || firstBranchWithCode?.uniqueCode || displayBusiness?.uniqueCode;
     const publicProfileHref = getLinkWithBranch(publicProfileCode ? `/b/${publicProfileCode}` : `/business/${businessSlug}`);
 
 
@@ -576,7 +587,9 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                             )}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-text-main truncate">{user?.name || 'Business Owner'}</p>
+                            <p className="text-sm font-bold text-text-main truncate">
+                                {displayUser?.name || `${displayUser?.firstName || ''} ${displayUser?.lastName || ''}`.trim() || 'Business Owner'}
+                            </p>
                             <p className="text-xs text-text-secondary truncate">{businessName}</p>
                         </div>
                     </Link>
@@ -795,8 +808,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                     ></div>
                                     <div className="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden py-2 animate-in fade-in slide-in-from-top-2 duration-200">
                                         <div className="px-4 py-3 border-b border-gray-50 mb-1 bg-gray-50/50">
-                                            <p className="text-sm font-bold text-text-main truncate">{user?.name || 'User'}</p>
-                                            <p className="text-[11px] text-text-secondary truncate">{user?.email}</p>
+                                            <p className="text-sm font-bold text-text-main truncate">
+                                                {displayUser?.name || `${displayUser?.firstName || ''} ${displayUser?.lastName || ''}`.trim() || 'User'}
+                                            </p>
+                                            <p className="text-[11px] text-text-secondary truncate">{displayUser?.email}</p>
                                         </div>
                                         <div className="px-2">
                                             <Link

@@ -62,12 +62,15 @@ const statesData: Record<string, string[]> = {
 
 export default function BusinessProfilePage() {
     const searchParams = useSearchParams();
+    const isAdminMode = searchParams.get('admin_mode') === '1';
+    const businessUid = searchParams.get('business_uid');
+    
     const { storeName, logoUrl, updateCustomSettings, setRedirect } = useCustomerFlowStore();
     const user = useAuthStore((state) => state.user);
     const { activeBranchId, isAllBranches: rawIsAllBranches } = useActiveBranch();
 
-    const { data: business, isLoading: businessLoading } = useMyBusiness();
-    const { data: profile, isLoading: profileLoading } = useUserProfile();
+    const { data: business, isLoading: businessLoading } = useMyBusiness(businessUid || undefined);
+    const { data: profile, isLoading: profileLoading } = useUserProfile(business?.ownerId || undefined);
     const { data: branches = [] } = useBranches();
     
     const isAllBranches = rawIsAllBranches && branches.length > 1;
@@ -652,7 +655,11 @@ export default function BusinessProfilePage() {
                 if (docs.length > 0) businessUpdates.documents = docs;
 
                 if (Object.keys(businessUpdates).length > 0) {
-                    await updateMutation.mutateAsync({ id: business.id, updates: businessUpdates });
+                    await updateMutation.mutateAsync({ 
+                        id: business.id, 
+                        updates: businessUpdates,
+                        businessId: businessUid || undefined
+                    });
                     toast.success('Business profile updated successfully!');
                     didUpdate = true;
                 }

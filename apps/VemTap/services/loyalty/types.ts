@@ -59,10 +59,19 @@ export interface LoyaltyTemplate {
     category: RewardType;
     coverImage?: string;
     galleryImages?: string[];
-    status: TemplateStatus;
-    rewards: TemplateReward[];
-    rules: Partial<LoyaltyRule>;
-    createdAt: string;
+    status?: TemplateStatus;
+    rewards?: TemplateReward[];
+    rules?: Partial<LoyaltyRule>;
+    createdAt?: string;
+}
+
+export interface CreateLoyaltyTemplateRequest {
+    name: string;
+    description?: string;
+    pointsRequired: number;
+    category: RewardType | string;
+    coverImage?: string;
+    galleryImages?: string[];
 }
 
 export interface VerifyRedemptionResponse {

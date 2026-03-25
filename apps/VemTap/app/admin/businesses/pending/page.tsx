@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { adminBusinessesApi } from '@/lib/api/admin';
 import { notify } from '@/lib/notify';
 import {
@@ -9,7 +10,9 @@ import {
     Download, ShieldCheck, AlertCircle, Clock, ClipboardList
 } from 'lucide-react';
 
-export default function AdminPendingBusinessesPage() {
+function PendingBusinessesContent() {
+    const searchParams = useSearchParams();
+    const reviewId = searchParams.get('reviewId');
     const [searchQuery, setSearchQuery] = useState('');
     const [businesses, setBusinesses] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -56,6 +59,18 @@ export default function AdminPendingBusinessesPage() {
     useEffect(() => {
         fetchPendingBusinesses();
     }, [fetchPendingBusinesses]);
+
+    // Handle automated review redirect
+    useEffect(() => {
+        if (reviewId && businesses.length > 0) {
+            const biz = businesses.find(b => b.id === reviewId);
+            if (biz) {
+                handleViewDetails(biz);
+                // Optional: clear the param to avoid re-opening on manual refresh if desired
+                // but usually keeping it is fine for the session
+            }
+        }
+    }, [reviewId, businesses]);
 
     const handleApprove = (id: string, name: string) => {
         setSelectedBusiness({ id, name });
@@ -539,5 +554,17 @@ export default function AdminPendingBusinessesPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function AdminPendingBusinessesPage() {
+    return (
+        <Suspense fallback={
+            <div className="p-8 flex items-center justify-center min-h-[400px]">
+                <Loader2 className="animate-spin text-primary" size={40} />
+            </div>
+        }>
+            <PendingBusinessesContent />
+        </Suspense>
     );
 }

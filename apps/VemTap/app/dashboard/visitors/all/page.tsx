@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Visitor } from '@/services/visitors/types';
-import { useVisitors, useVisitorStats } from '@/services/visitors/hooks';
+import { useVisitors, useVisitorStats, useAddVisitor, useDeleteVisitor } from '@/services/visitors/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBranches } from '@/services/branches/hooks';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
@@ -33,6 +33,10 @@ import { useDebounce } from '@/hooks/useDebounce';
 export default function AllVisitorsPage() {
     const router = useRouter();
     const queryClient = useQueryClient();
+    const searchParams = useSearchParams();
+    const businessUid = searchParams.get('business_uid');
+    const isAdminMode = searchParams.get('admin_mode') === '1';
+
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -51,49 +55,29 @@ export default function AllVisitorsPage() {
     const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(undefined, {
         search: debouncedSearch,
         status: filterStatus !== 'all' ? filterStatus : undefined
-    });
-    const { data: statsData } = useVisitorStats();
+    }, businessUid || undefined);
+    const { data: statsData } = useVisitorStats(undefined, businessUid || undefined);
 
     const visitors = paginatedData?.data || [];
     const isLoading = isLoadingVisitors;
 
-    const deleteMutation = useMutation({
-        mutationFn: async (id: string) => await api.delete(`/visitors/${id}`),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['visitors'] });
-            toast.success('Visitor removed successfully');
-            setDeleteVisitorId(null);
-        }
-    });
+    const { mutate: deleteVisitor, isPending: isDeleting } = useDeleteVisitor();
 
-    const addVisitorMutation = useMutation({
-        mutationFn: async (data: VisitorFormData) => {
-            const nameParts = data.name.trim().split(/\s+/);
-            const firstName = nameParts[0] || 'Visitor';
-            const lastName = nameParts.slice(1).join(' ') || ' ';
-
-            const payload = {
-                firstName,
-                lastName,
-                email: data.email,
-                phone: data.phone,
-            };
-
-            const url = data.branchId
-                ? `/visitors?branchId=${data.branchId}`
-                : '/visitors';
-
-            return await api.post(url, payload);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['visitors'] });
-            setIsAddModalOpen(false);
-            toast.success('Visitor added successfully');
-        }
-    });
+    const { mutate: addVisitor, isPending: isAdding } = useAddVisitor();
 
     const handleAddVisitor = (data: VisitorFormData) => {
-        addVisitorMutation.mutate(data);
+        addVisitor({ 
+            data: {
+                firstName: data.name.trim().split(/\s+/)[0] || 'Visitor',
+                lastName: data.name.trim().split(/\s+/).slice(1).join(' ') || ' ',
+                email: data.email,
+                phone: data.phone,
+            },
+            businessId: businessUid || undefined,
+            branchId: data.branchId
+        }, {
+            onSuccess: () => setIsAddModalOpen(false)
+        });
     };
 
     const handleExportCSV = () => {
@@ -117,7 +101,12 @@ export default function AllVisitorsPage() {
 
     const confirmDeleteVisitor = () => {
         if (deleteVisitorId) {
-            deleteMutation.mutate(deleteVisitorId);
+            deleteVisitor({ 
+                id: deleteVisitorId, 
+                businessId: businessUid || undefined 
+            }, {
+                onSuccess: () => setDeleteVisitorId(null)
+            });
         }
     };
 
@@ -326,7 +315,7 @@ export default function AllVisitorsPage() {
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
                 onSubmit={handleAddVisitor}
-                isLoading={isLoading || addVisitorMutation.isPending}
+                isLoading={isLoading || isAdding}
                 branches={branches}
                 defaultBranchId={activeBranchId || branches[0]?.id}
             />
@@ -376,7 +365,7 @@ export default function AllVisitorsPage() {
                 onConfirm={confirmDeleteVisitor}
                 title="Delete Visitor?"
                 description="This action cannot be undone. All visitor history and data will be permanently removed."
-                isLoading={deleteMutation.isPending}
+                isLoading={isDeleting}
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

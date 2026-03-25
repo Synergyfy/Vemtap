@@ -20,6 +20,7 @@ export const adminUsersApi = {
     suspend: (id: string) => api.post(`/users/admin/${id}/suspend`, {}),
     activate: (id: string) => api.post(`/users/admin/${id}/activate`, {}),
     resetPassword: (email: string) => api.post(`/users/admin/reset-password-link/${email}`, {}),
+    getById: (id: string) => api.get(`/users/admin/${id}`),
     createAgent: (data: any) => api.post('/administration/agents', data),
 };
 
@@ -57,6 +58,7 @@ export const adminBusinessesApi = {
     },
     update: (id: string, data: any) => api.patch(`/businesses/${id}`, data),
     getStats: (id: string) => api.get(`/businesses/admin/${id}/stats`),
+    getById: (id: string) => api.get(`/businesses/admin/${id}`),
 };
 
 // =====================
@@ -148,7 +150,7 @@ export const adminFormsApi = {
         if (params?.limit) q.set('limit', String(params.limit));
         return api.get(`/admin-forms?${q.toString()}`);
     },
-    disableBusinessForm: (id: string) => api.patch(`/admin-forms/${id}/disable`, {}),
+    disableBusinessForm: (id: string, reason?: string) => api.patch(`/admin-forms/${id}/disable`, { reason }),
     enableBusinessForm: (id: string) => api.patch(`/admin-forms/${id}/enable`, {}),
 
     // Template Management
@@ -209,7 +211,6 @@ export const adminFlowApi = {
     }) => api.post('/messaging/flows', data),
     updateStatus: (id: string, status: 'draft' | 'active' | 'paused') =>
         api.post(`/messaging/flows/${id}/status`, { status }),
-    updateTemplate: (id: string, data: any) => api.put(`/admin/flow-engine/templates/${id}`, data),
 };
 
 export const adminHealthApi = {
@@ -267,6 +268,7 @@ export const adminFlowEngineApi = {
         status?: string;
         structure: { nodes: any[]; edges: any[] };
     }) => api.post('/admin/flow-engine/templates', data),
+    updateTemplate: (id: string, data: any) => api.put(`/admin/flow-engine/templates/${id}`, data),
     deleteTemplate: (id: string) => api.delete(`/admin/flow-engine/templates/${id}`),
 };
 

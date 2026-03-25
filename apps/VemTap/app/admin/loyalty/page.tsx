@@ -313,7 +313,6 @@ export default function AdminLoyaltyPage() {
                 category: (draft.category || 'custom_discount') as any,
                 coverImage: uploadedUrls[0] || draft.coverImage,
                 galleryImages: [...(draft.galleryImages || []), ...uploadedUrls.slice(1)],
-                status: 'published',
             };
 
             if (editingId) {
@@ -522,7 +521,7 @@ export default function AdminLoyaltyPage() {
                                             <div className="flex items-center space-x-4">
                                                 <div className="relative w-full h-full overflow-hidden rounded-2xl">
                                                     <RewardGallery 
-                                                        items={template.rewards?.flatMap(r => (r as any).imageUrls || []) || []} 
+                                                        items={[...(template.coverImage ? [template.coverImage] : []), ...(template.galleryImages || [])]} 
                                                         name={template.name} 
                                                     />
                                                 </div>
@@ -566,7 +565,10 @@ export default function AdminLoyaltyPage() {
 
                                         {/* Preview Images */}
                                         {(() => {
-                                            const allImages = template.rewards?.flatMap(r => (r as any).imageUrls || []).slice(0, 4) || [];
+                                            const allImages = [
+                                                ...(template.coverImage ? [template.coverImage] : []),
+                                                ...(template.galleryImages || [])
+                                            ].slice(0, 4);
                                             return allImages.length > 0 ? (
                                                 <div className="flex gap-2 mb-6 overflow-x-auto pb-1 scrollbar-hide">
                                                     {allImages.map((url: string, i: number) => (
@@ -607,7 +609,7 @@ export default function AdminLoyaltyPage() {
                                                 Delete
                                             </button>
                                             <span className="text-sm font-black text-slate-900 group-hover:text-primary transition-colors">
-                                                {template.rewards?.[0]?.pointCost?.toLocaleString() || '0'} PTS
+                                                {(template.pointsRequired || 0).toLocaleString()} PTS
                                             </span>
                                         </div>
                                     </div>
@@ -780,7 +782,7 @@ export default function AdminLoyaltyPage() {
                                                                     initial={{ opacity: 0, scale: 0.95, y: 10 }}
                                                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                                                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                                                                    className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-hidden z-[1001]"
+                                                                    className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-hidden z-1001"
                                                                 >
                                                                     <div className="p-2 max-h-64 overflow-y-auto scrollbar-hide">
                                                                         {Object.entries(REWARD_TYPE_DETAILS).map(([key, details]) => {
@@ -907,7 +909,7 @@ export default function AdminLoyaltyPage() {
                                                                     initial={{ opacity: 0, scale: 0.95, y: 10 }}
                                                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                                                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                                                                    className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-hidden z-[1001]"
+                                                                    className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-hidden z-1001"
                                                                 >
                                                                     <div className="p-2">
                                                                         <button

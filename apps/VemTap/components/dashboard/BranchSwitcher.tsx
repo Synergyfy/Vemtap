@@ -4,17 +4,26 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronDown, MapPin, Building2, Check, Plus, Layers, X, Save, Trash2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useBranches, useCreateBranch, useDeleteBranch } from '@/services/branches/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useAdminBusiness } from '@/services/businesses/hooks';
 
 export default function BranchSwitcher() {
+    const searchParams = useSearchParams();
+    const isAdminMode = searchParams.get('admin_mode') === '1';
+    const businessUid = searchParams.get('business_uid');
+
     const { activeBranchId, setActiveBranch } = useActiveBranch();
-    const { data: branches = [], isLoading } = useBranches();
+    const { data: branches = [], isLoading } = useBranches(isAdminMode ? (businessUid as string) : undefined);
+    const { data: adminBusinessInfo } = useAdminBusiness(isAdminMode ? (businessUid as string) : undefined);
     const createBranchMutation = useCreateBranch();
     const deleteBranchMutation = useDeleteBranch();
-    const businessName = useAuthStore((state) => state.user?.businessName);
+    
+    const displayBusiness = (isAdminMode && adminBusinessInfo) ? (adminBusinessInfo.business || adminBusinessInfo) : null;
+    const businessName = displayBusiness?.name || displayBusiness?.businessName || useAuthStore((state) => state.user?.businessName);
 
     const [isOpen, setIsOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
