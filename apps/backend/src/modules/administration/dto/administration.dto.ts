@@ -8,6 +8,7 @@ import {
   IsEnum,
   IsOptional,
   IsDateString,
+  IsUUID,
 } from 'class-validator';
 import { BackendModule } from '../../../common/enums/backend-module.enum';
 
@@ -50,7 +51,7 @@ export class AdminCreateAgentDto {
 
 export class GenerateImpersonationTokenDto {
   @ApiProperty({ example: 'branch-uuid' })
-  @IsString()
+  @IsUUID()
   @IsNotEmpty()
   targetBranchId: string;
 
@@ -62,12 +63,12 @@ export class GenerateImpersonationTokenDto {
 
 export class GenerateCustomerImpersonationTokenDto {
   @ApiProperty({ example: 'customer-user-uuid' })
-  @IsString()
+  @IsUUID()
   @IsNotEmpty()
   targetCustomerId: string;
 
   @ApiProperty({ example: 'branch-uuid' })
-  @IsString()
+  @IsUUID()
   @IsNotEmpty()
   targetBranchId: string;
 
