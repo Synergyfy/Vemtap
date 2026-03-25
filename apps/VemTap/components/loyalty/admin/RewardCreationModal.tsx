@@ -194,6 +194,8 @@ const REWARD_TYPE_DETAILS: Record<RewardType, { label: string, description: stri
     }
 };
 
+const CREATABLE_REWARD_TYPES: RewardType[] = ['custom_discount', 'free_product', 'service_upgrade', 'tangible_gifts'];
+
 const AUDIENCE_OPTIONS = [
     { value: 'all', label: 'All Visitors', description: 'Target everyone visiting your business.' },
     { value: 'new', label: 'New Visitors', description: 'Focus on capturing new customers.' },
@@ -230,7 +232,7 @@ export const RewardCreationModal: React.FC<RewardCreationModalProps> = ({
     const [formData, setFormData] = useState<Partial<Reward>>({
         name: '',
         description: '',
-        rewardType: 'free_item',
+        rewardType: 'free_product',
         pointCost: 100,
         validityDays: 30,
         value: 0,
@@ -248,7 +250,7 @@ export const RewardCreationModal: React.FC<RewardCreationModalProps> = ({
                 setFormData({
                     name: '',
                     description: '',
-                    rewardType: 'free_item',
+                    rewardType: 'free_product',
                     pointCost: 100,
                     validityDays: 30,
                     value: 0,
@@ -486,7 +488,7 @@ export const RewardCreationModal: React.FC<RewardCreationModalProps> = ({
                                                             className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-hidden z-20"
                                                         >
                                                             <div className="p-2 max-h-64 overflow-y-auto custom-scrollbar">
-                                                                {(Object.keys(REWARD_TYPE_DETAILS) as RewardType[]).map((type) => {
+                                                                {CREATABLE_REWARD_TYPES.map((type) => {
                                                                     const details = REWARD_TYPE_DETAILS[type];
                                                                     const Icon = details.icon;
                                                                     const isSelected = formData.rewardType === type;

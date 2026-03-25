@@ -116,7 +116,8 @@ const TemplateListItem: React.FC<{
     onSelect: () => void;
     onDelete: () => void;
 }> = ({ template, isActive, onSelect, onDelete }) => {
-    const previewImage = template.rewards.find((r: any) => r.imageUrls?.length > 0)?.imageUrls?.[0];
+    const rewards = template.rewards || [];
+    const previewImage = rewards.find((r: any) => r.imageUrls?.length > 0)?.imageUrls?.[0];
     return (
         <button
             onClick={onSelect}
@@ -161,7 +162,7 @@ const TemplateListItem: React.FC<{
                     {template.description || 'No description provided.'}
                 </p>
                 <div className="flex gap-2 text-[10px] uppercase tracking-widest font-black text-slate-400 pt-1">
-                    <span>{template.rewards.length} rewards</span>
+                    <span>{rewards.length} rewards</span>
                     <span>&bull;</span>
                     <span>{template.rules?.ruleType || 'rules'}</span>
                 </div>
@@ -175,53 +176,56 @@ const TemplateListRow: React.FC<{
     isActive: boolean;
     onSelect: () => void;
     onDelete: () => void;
-}> = ({ template, isActive, onSelect, onDelete }) => (
-    <div
-        className={cn(
-            "grid grid-cols-12 items-center gap-3 border px-4 py-3 text-sm rounded-xl transition-all",
-            isActive ? "border-primary bg-primary/5" : "border-slate-200 bg-white hover:bg-slate-50"
-        )}
-    >
-        <button onClick={onSelect} className="col-span-5 text-left flex items-center gap-3">
-            <div className="size-10 rounded-full overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
-                {template.rewards.find((r: any) => r.imageUrls?.length > 0)?.imageUrls?.[0] ? (
-                    <img
-                        src={template.rewards.find((r: any) => r.imageUrls?.length > 0)?.imageUrls?.[0] as string}
-                        alt={`${template.name} preview`}
-                        className="w-full h-full object-cover"
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-300">
-                        <LayoutTemplate size={16} />
-                    </div>
-                )}
-            </div>
-            <div>
-                <p className="font-black text-slate-900">{template.name}</p>
-                <p className="text-xs text-slate-500 truncate max-w-[200px]">{template.description || 'No description provided.'}</p>
-            </div>
-        </button>
-        <div className="col-span-2 text-xs font-black uppercase tracking-widest text-slate-400">
-            {template.rules?.ruleType || 'rules'}
-        </div>
-        <div className="col-span-2 text-xs font-black uppercase tracking-widest text-slate-400">
-            {template.rewards.length} rewards
-        </div>
-        <div className="col-span-2 text-xs font-black uppercase tracking-widest text-slate-400">
-            {template.status}
-        </div>
-        <div className="col-span-1 flex items-center justify-end gap-2">
-            <BadgeCheck className={cn("w-4 h-4", template.status === 'published' ? "text-emerald-500" : "text-slate-300")} />
-            <button
-                onClick={onDelete}
-                className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
-                title="Delete template"
-            >
-                <Trash2 size={14} />
+}> = ({ template, isActive, onSelect, onDelete }) => {
+    const rewards = template.rewards || [];
+    return (
+        <div
+            className={cn(
+                "grid grid-cols-12 items-center gap-3 border px-4 py-3 text-sm rounded-xl transition-all",
+                isActive ? "border-primary bg-primary/5" : "border-slate-200 bg-white hover:bg-slate-50"
+            )}
+        >
+            <button onClick={onSelect} className="col-span-5 text-left flex items-center gap-3">
+                <div className="size-10 rounded-full overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
+                    {rewards.find((r: any) => r.imageUrls?.length > 0)?.imageUrls?.[0] ? (
+                        <img
+                            src={rewards.find((r: any) => r.imageUrls?.length > 0)?.imageUrls?.[0] as string}
+                            alt={`${template.name} preview`}
+                            className="w-full h-full object-cover"
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-300">
+                            <LayoutTemplate size={16} />
+                        </div>
+                    )}
+                </div>
+                <div>
+                    <p className="font-black text-slate-900">{template.name}</p>
+                    <p className="text-xs text-slate-500 truncate max-w-[200px]">{template.description || 'No description provided.'}</p>
+                </div>
             </button>
+            <div className="col-span-2 text-xs font-black uppercase tracking-widest text-slate-400">
+                {template.rules?.ruleType || 'rules'}
+            </div>
+            <div className="col-span-2 text-xs font-black uppercase tracking-widest text-slate-400">
+                {rewards.length} rewards
+            </div>
+            <div className="col-span-2 text-xs font-black uppercase tracking-widest text-slate-400">
+                {template.status}
+            </div>
+            <div className="col-span-1 flex items-center justify-end gap-2">
+                <BadgeCheck className={cn("w-4 h-4", template.status === 'published' ? "text-emerald-500" : "text-slate-300")} />
+                <button
+                    onClick={onDelete}
+                    className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
+                    title="Delete template"
+                >
+                    <Trash2 size={14} />
+                </button>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 const CoreDetailsStep: React.FC<{
     template: LoyaltyTemplate;

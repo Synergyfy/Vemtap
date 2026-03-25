@@ -18,38 +18,51 @@ export default function RewardManagementPage() {
     const { data: templates = [] } = useLoyaltyTemplates();
     const applyTemplateMutation = useApplyLoyaltyTemplate();
 
-    const handleCreate = async (reward: Partial<Reward>) => {
-        const dto: CreateRewardRequest = {
+    const handleCreate = async (reward: any) => {
+        const expiryDateStr = new Date(Date.now() + (reward.validityDays || 30) * 24 * 60 * 60 * 1000).toISOString();
+        const mainImage = reward.imageUrls && reward.imageUrls.length > 0 ? reward.imageUrls[0] : '';
+        const gallery = reward.imageUrls && reward.imageUrls.length > 1 ? reward.imageUrls.slice(1) : [];
+        
+        const dto: any = {
             name: reward.name || '',
             description: reward.description || '',
-            rewardType: reward.rewardType || 'free_item',
-            pointCost: reward.pointCost || 100,
-            value: reward.value || 0,
-            validityDays: reward.validityDays || 30,
-            usageLimitPerUser: reward.usageLimitPerUser || 1,
-            totalAvailable: reward.totalAvailable || 0,
-            imageUrls: reward.imageUrls,
-            audienceTarget: reward.audienceTarget,
-            branchId: activeBranchId || undefined,
+            category: reward.rewardType || 'free_product',
+            pointsRequired: reward.pointCost || 100,
+            expiryDate: expiryDateStr,
+            totalQuantity: reward.totalAvailable || 999,
+            audienceType: reward.audienceTarget || 'all',
+            branchId: activeBranchId || "GLOBAL",
         };
+        
+        if (reward.templateId) dto.templateId = reward.templateId;
+        if (mainImage) dto.coverImage = mainImage;
+        if (gallery.length > 0) dto.galleryImages = gallery;
+
         await createMutation.mutateAsync(dto);
+        notify.success('Reward structured successfully');
     };
 
-    const handleUpdate = async (id: string, updates: Partial<Reward>) => {
-        const dto: UpdateRewardRequest = {
-            name: updates.name,
-            description: updates.description,
-            pointCost: updates.pointCost,
-            value: updates.value,
-            validityDays: updates.validityDays,
-            usageLimitPerUser: updates.usageLimitPerUser,
-            totalAvailable: updates.totalAvailable,
-            isActive: updates.isActive,
-            imageUrls: updates.imageUrls,
-            audienceTarget: updates.audienceTarget,
-            branchId: activeBranchId || undefined,
-        };
+    const handleUpdate = async (id: string, updates: any) => {
+        const expiryDateStr = updates.validityDays 
+            ? new Date(Date.now() + updates.validityDays * 24 * 60 * 60 * 1000).toISOString()
+            : undefined;
+        const mainImage = updates.imageUrls && updates.imageUrls.length > 0 ? updates.imageUrls[0] : '';
+        const gallery = updates.imageUrls && updates.imageUrls.length > 1 ? updates.imageUrls.slice(1) : [];
+
+        const dto: any = {};
+        if (updates.name !== undefined) dto.name = updates.name;
+        if (updates.description !== undefined) dto.description = updates.description;
+        if (updates.rewardType !== undefined) dto.category = updates.rewardType;
+        if (updates.pointCost !== undefined) dto.pointsRequired = updates.pointCost;
+        if (updates.totalAvailable !== undefined) dto.totalQuantity = updates.totalAvailable || 999;
+        if (expiryDateStr) dto.expiryDate = expiryDateStr;
+        if (updates.audienceTarget !== undefined) dto.audienceType = updates.audienceTarget;
+        if (mainImage) dto.coverImage = mainImage;
+        if (gallery.length > 0) dto.galleryImages = gallery;
+        if (activeBranchId) dto.branchId = activeBranchId;
+
         await updateMutation.mutateAsync({ id, updates: dto });
+        notify.success('Reward updated successfully');
     };
 
     const handleDelete = async (id: string) => {

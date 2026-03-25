@@ -168,7 +168,7 @@ export const useCreateReward = (branchId?: string) => {
             }
             const payload = { ...dto };
             delete payload.totalAvailable;
-            return await api.post(`/visitors/rewards?${params.toString()}`, payload);
+            return await api.post(`/loyalty/rewards?${params.toString()}`, payload);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'rewards'] });
