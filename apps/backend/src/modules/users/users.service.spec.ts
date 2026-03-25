@@ -32,6 +32,11 @@ describe('UsersService', () => {
         orderBy: jest.fn().mockReturnThis(),
         getMany: jest.fn().mockResolvedValue([]),
       }),
+      manager: {
+        getRepository: jest.fn().mockReturnValue({
+          findOne: jest.fn().mockResolvedValue({ businessId: 'biz-1' }),
+        }),
+      },
     };
 
     mailService = {

@@ -204,6 +204,7 @@ describe('AuthService', () => {
       whatsappNumber: '123456',
       officialEmail: 'info@dan.com',
       businessNumber: '987654',
+      engagement: { instagram: 'https://instagr.am/dan' },
     };
 
     const storedMetadata = {
@@ -243,11 +244,11 @@ describe('AuthService', () => {
         }),
       );
 
-      // Verify Business Creation
       expect(businessesService.create).toHaveBeenCalledWith(
         expect.objectContaining({
           name: otpDto.businessName,
           ownerId: 'user-1',
+          engagement: otpDto.engagement,
         }),
       );
 
