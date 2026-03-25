@@ -60,10 +60,18 @@ export const useMarkAllAsRead = () => {
     });
 };
 
+export const useRegisterPushToken = () => {
+    return useMutation<void, Error, { token: string }>({
+        mutationFn: async ({ token }) => {
+            await api.post('/notifications/push-token', { token });
+        },
+    });
+};
+
 export const useRegisterVisitorPushToken = () => {
-    return useMutation<void, Error, { pushToken: string }>({
-        mutationFn: async ({ pushToken }) => {
-            await api.post('/notifications/visitor-push-token', { pushToken });
+    return useMutation<void, Error, { token: string }>({
+        mutationFn: async ({ token }) => {
+            await api.post('/notifications/visitor/push-token', { token });
         },
     });
 };

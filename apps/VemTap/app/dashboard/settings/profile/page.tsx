@@ -632,16 +632,6 @@ export default function BusinessProfilePage() {
                 const normalizedSubcategoryId = subcategoryId === 'other' ? null : (subcategoryId || null);
                 const nextOtherSubcategoryName = subcategoryId === 'other' ? otherSubcategoryName : '';
 
-                if (hasChanged(instagramUrl, business.instagramUrl)) businessUpdates.instagramUrl = instagramUrl;
-                if (hasChanged(facebookUrl, business.facebookUrl)) businessUpdates.facebookUrl = facebookUrl;
-                if (hasChanged(xUrl, business.xUrl)) businessUpdates.xUrl = xUrl;
-                if (hasChanged(linkedinUrl, business.linkedinUrl)) businessUpdates.linkedinUrl = linkedinUrl;
-                if (hasChanged(tiktokUrl, business.tiktokUrl)) businessUpdates.tiktokUrl = tiktokUrl;
-                if (hasChanged(youtubeUrl, business.youtubeUrl)) businessUpdates.youtubeUrl = youtubeUrl;
-                if (hasChanged(reviewUrl, business.reviewUrl)) businessUpdates.reviewUrl = reviewUrl;
-                if (hasChanged(trustpilotUrl, business.trustpilotUrl)) businessUpdates.trustpilotUrl = trustpilotUrl;
-                if (hasChanged(customLink, business.customLink)) businessUpdates.customLink = customLink;
-
                 if (hasChanged(categoryId, business.categoryId)) businessUpdates.categoryId = categoryId || null;
                 if (hasChanged(normalizedSubcategoryId, business.subcategoryId)) businessUpdates.subcategoryId = normalizedSubcategoryId;
                 if (hasChanged(nextOtherSubcategoryName, business.otherSubcategoryName)) {

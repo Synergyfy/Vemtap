@@ -60,8 +60,8 @@ export default function AdminSupportPage() {
                 !query ||
                 ticket?.id?.toLowerCase().includes(query) ||
                 ticket?.subject?.toLowerCase().includes(query) ||
-                ticket?.user?.name?.toLowerCase().includes(query) ||
-                ticket?.user?.email?.toLowerCase().includes(query);
+                (ticket?.user?.name || ticket?.requester || '').toLowerCase().includes(query) ||
+                (ticket?.user?.email || ticket?.email || '').toLowerCase().includes(query);
 
             const matchesStatus = statusFilter === 'all' || ticket?.status === statusFilter;
             return matchesQuery && matchesStatus;
@@ -215,8 +215,8 @@ export default function AdminSupportPage() {
                                             <p className="text-xs text-text-secondary font-medium mt-0.5">{ticket.id}</p>
                                         </td>
                                         <td className="py-3 px-4">
-                                            <p className="text-sm font-bold text-text-main">{ticket.user?.name || 'Unknown User'}</p>
-                                            <p className="text-xs text-text-secondary">{ticket.user?.email || 'No email'}</p>
+                                            <p className="text-sm font-bold text-text-main">{ticket.user?.name || ticket.requester || 'Unknown User'}</p>
+                                            <p className="text-xs text-text-secondary">{ticket.user?.email || ticket.email || 'No email'}</p>
                                         </td>
                                         <td className="py-3 px-4 text-sm text-text-secondary font-medium">{ticket.category || 'General'}</td>
                                         <td className="py-3 px-4">

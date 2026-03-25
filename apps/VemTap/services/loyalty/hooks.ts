@@ -366,3 +366,25 @@ export const useApplyLoyaltyTemplate = (branchId?: string) => {
         }
     });
 };
+
+export const usePointsBalance = (businessId: string) => {
+    return useQuery<{ balance: number }, Error>({
+        queryKey: ['loyalty', 'points-balance', businessId],
+        queryFn: async () => await api.get(`/loyalty/points/balance?businessId=${businessId}`),
+        enabled: !!businessId,
+    });
+};
+
+export const usePointsLogs = (params: { businessId: string; page?: number; limit?: number }) => {
+    return useQuery<{ data: PointTransaction[]; total: number; page: number; limit: number }, Error>({
+        queryKey: ['loyalty', 'points-logs', params],
+        queryFn: async () => {
+            const q = new URLSearchParams();
+            q.set('businessId', params.businessId);
+            if (params.page) q.set('page', String(params.page));
+            if (params.limit) q.set('limit', String(params.limit));
+            return await api.get(`/loyalty/points/logs?${q.toString()}`);
+        },
+        enabled: !!params.businessId,
+    });
+};
