@@ -20,7 +20,7 @@ export const adminUsersApi = {
     suspend: (id: string) => api.post(`/users/admin/${id}/suspend`, {}),
     activate: (id: string) => api.post(`/users/admin/${id}/activate`, {}),
     resetPassword: (email: string) => api.post(`/users/admin/reset-password-link/${email}`, {}),
-    createAgent: (data: any) => api.post('/users/admin/create-agent', data),
+    createAgent: (data: any) => api.post('/administration/agents', data),
 };
 
 // =====================
@@ -190,6 +190,7 @@ export const adminNotificationsApi = {
     getUnreadCount: () => api.get('/notifications/unread-count'),
     markRead: (id: string) => api.patch(`/notifications/${id}/read`, {}),
     markAllRead: () => api.post('/notifications/mark-all-read', {}),
+    registerPushToken: (token: string) => api.post('/notifications/push-token', { token }),
 };
 
 export const adminFlowApi = {
