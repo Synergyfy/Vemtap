@@ -43,6 +43,8 @@ import {
   RewardQueryDto,
 } from './dto/loyalty-query.dto';
 
+import { Public } from '../../common/decorators/public.decorator';
+
 @ApiTags('Loyalty, Points & Rewards')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -309,6 +311,7 @@ export class LoyaltyController {
     return this.loyaltyService.createReward(req.user, dto);
   }
 
+  @Public()
   @Get('rewards')
   @ApiOperation({
     summary: 'Publicly fetch rewards for a branch',
@@ -350,6 +353,7 @@ export class LoyaltyController {
     return this.loyaltyService.getPublicRewards(query);
   }
 
+  @Public()
   @Get('rewards/branch/:branchId')
   @ApiOperation({
     summary: 'Publicly fetch rewards for a branch (Legacy)',

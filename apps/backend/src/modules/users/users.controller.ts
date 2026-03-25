@@ -105,8 +105,14 @@ export class UsersController {
   @ApiOperation({ summary: 'Get all team members for the branch' })
   @ApiResponse({ status: 200, type: [User] })
   async getTeam(@Request() req, @Query() filter: BranchFilterDto) {
+    const businessId = req.user.businessId;
+
+    if (filter.allBranches && (req.user.role === UserRole.OWNER || req.user.role === UserRole.ADMIN)) {
+      return this.usersService.findTeamMembers({ businessId });
+    }
+
     const branchId = this.getBranchId(req, filter.branchId);
-    return this.usersService.findByBranch(branchId);
+    return this.usersService.findTeamMembers({ branchId, businessId });
   }
 
   @Patch('team/:id')

@@ -46,10 +46,10 @@ describe('Module Permissions Enforcement (e2e)', () => {
     it('Staff with "visitors" should access visitors but NOT loyalty', async () => {
       const token = await createStaffWithPermissions(['visitors']);
 
-      // Loyalty: GET /api/v1/loyalty/templates (Protected with @Roles(OWNER, ADMIN))
+      // Loyalty: GET /api/v1/loyalty/reward-templates (Protected with @Roles(OWNER, ADMIN))
       // It should return 403 because role is STAFF
       await request(app.getHttpServer())
-        .get('/api/v1/loyalty/templates')
+        .get('/api/v1/loyalty/reward-templates')
         .set('Authorization', `Bearer ${token}`)
         .expect(403);
 
