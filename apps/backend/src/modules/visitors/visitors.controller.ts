@@ -29,6 +29,7 @@ import { VisitorQueryDto } from './dto/visitor-query.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { Public } from '../../common/decorators/public.decorator';
+import { AllowPending } from '../../common/decorators/allow-pending.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -408,6 +409,7 @@ export class VisitorsController {
 
   @Post('record-visit')
   @Roles(UserRole.CUSTOMER)
+  @AllowPending()
   @ApiOperation({ summary: 'Record a visit via device tap (Customer Only)' })
   async recordVisit(
     @Body() dto: DeviceTapDto,
