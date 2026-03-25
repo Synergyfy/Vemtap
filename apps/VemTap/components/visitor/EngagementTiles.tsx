@@ -34,6 +34,7 @@ interface EngagementTilesProps {
     selectedFormTitle?: string | null;
     selectedFormType?: string | null;
     attachedForms?: Array<{ id: string; title: string; description?: string }>;
+    attachedRewards?: Array<{ id: string; name: string; pointCost?: number }>;
     completedFormIds?: string[];
     settings?: {
         showReview?: boolean;
@@ -54,6 +55,7 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
     onAction,
     selectedFormTitle,
     attachedForms = [],
+    attachedRewards = [],
     completedFormIds = [],
     settings = {}
 }) => {
@@ -69,7 +71,7 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
                 Boost Your Experience
             </h3>
 
-            {attachedForms.length > 0 ? (
+            {attachedForms.length > 0 && (
                 <div className="space-y-2">
                     {attachedForms.map((form) => {
                         const isCompleted = completedFormIds.includes(form.id);
@@ -91,7 +93,30 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
                         );
                     })}
                 </div>
-            ) : (
+            )}
+
+            {attachedRewards.length > 0 && (
+                <div className="space-y-2">
+                    {attachedRewards.map((reward) => (
+                        <button
+                            key={reward.id}
+                            onClick={() => onAction('rewards')}
+                            className={`${formButtonBase} border-transparent text-white hover:brightness-95`}
+                            style={{ backgroundColor: brandColor }}
+                        >
+                            <div className="flex items-center gap-3">
+                                <span className="material-symbols-outlined text-sm">redeem</span>
+                                <span className="truncate">{reward.name || 'Claim Reward'}</span>
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-2 py-0.5 rounded-full text-white">
+                                {reward.pointCost || 0} PTS
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {attachedForms.length === 0 && attachedRewards.length === 0 && (
                 <>
                     {hasSelectedForm ? (
                         <button

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import PageHeader from '@/components/dashboard/PageHeader';
@@ -15,6 +15,7 @@ import { uploadToCloudinary } from '@/lib/cloudinary';
 import { useUpdateBranch, useBranch, useBranches } from '@/services/branches/hooks';
 import { useCategories } from '@/services/categories/hooks';
 import { useRewards } from '@/services/loyalty/hooks';
+import { Reward } from '@/services/loyalty/types';
 import { useUserProfile, useUpdateSocials } from '@/services/users/hooks';
 import Modal from '@/components/ui/Modal';
 import { api } from '@/lib/api';
@@ -24,8 +25,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRegisterOwner, useOtp, useLogin, useChangePassword } from '@/services/auth/hooks';
 import {
     Loader2, Instagram, Linkedin, Twitter, Facebook, Globe, Star, Plus, Trash2, X,
-    ChevronDown, Youtube, Music2, ShieldCheck, Lock, Eye, EyeOff
+    ChevronDown, Youtube, Music2, ShieldCheck, Lock, Eye, EyeOff, Gift, Info, AlertTriangle
 } from 'lucide-react';
+import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
+import DraggableButtonList from '@/components/dashboard/engagement/DraggableButtonList';
 
 // Social Media Platforms Configuration
 // ... rest of SOCIAL_PLATFORMS stays the same ...
@@ -75,6 +78,32 @@ export default function BusinessProfilePage() {
     const updateMutation = useUpdateBusiness();
     const updateBranchMutation = useUpdateBranch();
     const updateSocialsMutation = useUpdateSocials();
+    
+    // Rewards Sequence States
+    const { toggleActiveReward, setActiveRewardIds, activeRewardIdsByBranch } = useFormPreferencesStore();
+    const branchKey = effectiveBranchId || 'global';
+    const activeRewardIds = useMemo(
+        () => activeRewardIdsByBranch[branchKey] || [],
+        [branchKey, activeRewardIdsByBranch]
+    );
+    const sequenceRewards = useMemo(() => {
+        const rewardById = new Map(rewards.map((r: Reward) => [r.id, r]));
+        return activeRewardIds.map((id: string) => rewardById.get(id)).filter((r: Reward | undefined): r is Reward => !!r);
+    }, [activeRewardIds, rewards]);
+
+    const inactiveRewards = useMemo(
+        () => rewards.filter((r: Reward) => !activeRewardIds.includes(r.id)),
+        [rewards, activeRewardIds]
+    );
+
+    const reorderRewards = (sourceIndex: number, targetIndex: number) => {
+        const next = [...activeRewardIds];
+        if (sourceIndex < 0 || targetIndex < 0 || sourceIndex >= next.length || targetIndex >= next.length) return;
+        const [moved] = next.splice(sourceIndex, 1);
+        next.splice(targetIndex, 0, moved);
+        setActiveRewardIds(branchKey, next);
+    };
+
     const [selectedRewardToEnable, setSelectedRewardToEnable] = useState<{
         reward: any;
         targetStatus: boolean;
@@ -602,16 +631,6 @@ export default function BusinessProfilePage() {
                 const businessUpdates: any = {};
                 const normalizedSubcategoryId = subcategoryId === 'other' ? null : (subcategoryId || null);
                 const nextOtherSubcategoryName = subcategoryId === 'other' ? otherSubcategoryName : '';
-
-                if (hasChanged(instagramUrl, business.instagramUrl)) businessUpdates.instagramUrl = instagramUrl;
-                if (hasChanged(facebookUrl, business.facebookUrl)) businessUpdates.facebookUrl = facebookUrl;
-                if (hasChanged(xUrl, business.xUrl)) businessUpdates.xUrl = xUrl;
-                if (hasChanged(linkedinUrl, business.linkedinUrl)) businessUpdates.linkedinUrl = linkedinUrl;
-                if (hasChanged(tiktokUrl, business.tiktokUrl)) businessUpdates.tiktokUrl = tiktokUrl;
-                if (hasChanged(youtubeUrl, business.youtubeUrl)) businessUpdates.youtubeUrl = youtubeUrl;
-                if (hasChanged(reviewUrl, business.reviewUrl)) businessUpdates.reviewUrl = reviewUrl;
-                if (hasChanged(trustpilotUrl, business.trustpilotUrl)) businessUpdates.trustpilotUrl = trustpilotUrl;
-                if (hasChanged(customLink, business.customLink)) businessUpdates.customLink = customLink;
 
                 if (hasChanged(categoryId, business.categoryId)) businessUpdates.categoryId = categoryId || null;
                 if (hasChanged(normalizedSubcategoryId, business.subcategoryId)) businessUpdates.subcategoryId = normalizedSubcategoryId;
@@ -1504,77 +1523,168 @@ export default function BusinessProfilePage() {
 
                 {activeTab === 'rewards' && !isAllBranches && (
                     <div className="space-y-6">
-                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-start justify-between gap-4">
-                                <div>
-                                    <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Rewards Library</h3>
-                                    <p className="text-xs text-text-secondary mt-1">
-                                        Manage your branch rewards and toggle each reward on or off individually.
-                                    </p>
-                                </div>
-                                <Link
-                                    href="/dashboard/loyalty/rewards"
-                                    className="text-[10px] font-black uppercase tracking-widest text-primary bg-white border border-primary/20 px-3 py-2 rounded-xl hover:bg-primary/5 transition-colors"
-                                >
-                                    Manage rewards
-                                </Link>
+                        <div className="bg-white rounded-2xl border border-gray-100 p-5 flex items-start gap-3">
+                            <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                <Gift size={18} />
                             </div>
-                            <div className="p-8">
-                                {rewardsLoading ? (
-                                    <div className="flex items-center gap-2 text-sm text-text-secondary">
-                                        <Loader2 size={16} className="animate-spin" />
-                                        Loading rewards...
-                                    </div>
-                                ) : rewards.length === 0 ? (
-                                    <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-text-secondary">
-                                        No rewards created yet.
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {rewards.map((reward) => {
-                                            const isActive = localRewardVisibility.hasOwnProperty(reward.id)
-                                                ? localRewardVisibility[reward.id]
-                                                : reward.isActive !== false;
-                                            return (
-                                                <div key={reward.id} className="rounded-2xl border border-gray-100 bg-gray-50/60 p-5 space-y-3">
-                                                    <div className="flex items-start justify-between gap-3">
-                                                        <div>
-                                                            <p className="text-sm font-bold text-text-main">{reward.name || 'Untitled reward'}</p>
-                                                            <p className="text-xs text-text-secondary line-clamp-2 mt-1">{reward.description || 'No description provided.'}</p>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => handleRewardToggle(reward)}
-                                                            disabled={showRewardsModal}
-                                                            className={`relative w-12 h-6 rounded-full transition-all ${isActive ? 'bg-primary' : 'bg-gray-300'} ${showRewardsModal ? 'opacity-70 cursor-wait' : 'cursor-pointer'}`}
-                                                            aria-label={`Toggle ${reward.name || 'reward'} ${isActive ? 'off' : 'on'}`}
-                                                        >
-                                                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isActive ? 'translate-x-6' : 'translate-x-0'}`} />
-                                                        </button>
-                                                    </div>
-
-                                                    <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-text-secondary">
-                                                        {reward.rewardType && (
-                                                            <span className="px-2 py-1 bg-white border border-gray-200 rounded-full uppercase tracking-widest">
-                                                                {reward.rewardType.replace(/_/g, ' ')}
-                                                            </span>
-                                                        )}
-                                                        <span className="px-2 py-1 bg-white border border-gray-200 rounded-full">{reward.pointCost ?? 0} pts</span>
-                                                        {reward.validityDays ? (
-                                                            <span className="px-2 py-1 bg-white border border-gray-200 rounded-full">{reward.validityDays} days</span>
-                                                        ) : (
-                                                            <span className="px-2 py-1 bg-white border border-gray-200 rounded-full">No expiry</span>
-                                                        )}
-                                                        <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                            {isActive ? 'Active' : 'Inactive'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
+                            <div>
+                                <p className="text-sm font-bold text-gray-900">Manage Reward Sequence</p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Select which rewards should be visible on your public business profile and in what order. 
+                                    Drag the items to change their priority.
+                                </p>
                             </div>
                         </div>
+
+                        {rewardsLoading ? (
+                            <div className="flex h-64 items-center justify-center">
+                                <Loader2 className="animate-spin text-primary" size={32} />
+                            </div>
+                        ) : rewards.length === 0 ? (
+                            <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-12 text-center">
+                                <Gift size={48} className="mx-auto text-gray-300 mb-4" />
+                                <p className="text-sm font-bold text-gray-900">No rewards created yet</p>
+                                <p className="text-xs text-gray-500 mt-1 mb-6">Create rewards in the Loyalty section to manage them here.</p>
+                                <Link
+                                    href="/dashboard/loyalty/rewards"
+                                    className="inline-flex h-10 items-center px-6 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest hover:bg-primary-hover transition-all"
+                                >
+                                    Go to Rewards
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                                <div className="space-y-6">
+                                    <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h3 className="text-sm font-bold text-gray-900">Sequence Order</h3>
+                                                <p className="text-xs text-gray-500 font-medium">Order shown on your profile</p>
+                                            </div>
+                                            <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded-full font-black uppercase">
+                                                {sequenceRewards.length} Active
+                                            </span>
+                                        </div>
+
+                                        {sequenceRewards.length === 0 ? (
+                                            <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-8 text-xs text-gray-500 text-center">
+                                                No rewards in sequence. Select from available rewards below.
+                                            </div>
+                                        ) : (
+                                            <DraggableButtonList
+                                                items={sequenceRewards.map((reward: Reward) => ({
+                                                    id: reward.id,
+                                                    title: reward.name || 'Untitled Reward',
+                                                    subtitle: `${reward.pointCost ?? 0} Points`,
+                                                    icon: <Gift size={10} className="text-primary" />
+                                                }))}
+                                                onReorder={reorderRewards}
+                                                onRemove={(id) => toggleActiveReward(branchKey, id)}
+                                            />
+                                        )}
+                                    </div>
+                                    
+                                    <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h3 className="text-sm font-bold text-gray-900">Available Rewards</h3>
+                                                <p className="text-xs text-gray-500 font-medium font-sans">Tap to add to your profile</p>
+                                            </div>
+                                            <Link
+                                                href="/dashboard/loyalty/rewards"
+                                                className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline"
+                                            >
+                                                Edit Library
+                                            </Link>
+                                        </div>
+                                        
+                                        {inactiveRewards.length === 0 ? (
+                                            <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-xs text-gray-500 text-center">
+                                                All your rewards are already in the sequence.
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                                                {inactiveRewards.map((reward: Reward) => (
+                                                    <button
+                                                        key={reward.id}
+                                                        onClick={() => toggleActiveReward(branchKey, reward.id)}
+                                                        className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-primary/50 hover:bg-primary/5 transition-all text-left group shadow-sm"
+                                                    >
+                                                        <div className="flex-shrink-0 size-8 rounded-lg bg-gray-50 text-gray-400 group-hover:bg-primary/10 group-hover:text-primary flex items-center justify-center transition-colors">
+                                                            <span className="text-lg font-bold">+</span>
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-bold text-gray-900 truncate group-hover:text-primary transition-colors">
+                                                                {reward.name || 'Untitled Reward'}
+                                                            </p>
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                                                    {reward.pointCost || 0} PTS
+                                                                </span>
+                                                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-300">•</span>
+                                                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                                                    {reward.rewardType?.replace(/_/g, ' ') || 'REWARD'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Reward Preview Section */}
+                                <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm sticky top-6">
+                                    <div className="px-6 py-4 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Public Profile Preview</p>
+                                    </div>
+                                    <div className="p-8 space-y-8">
+                                        <div className="space-y-2">
+                                            <h4 className="text-xl font-black text-slate-800 tracking-tight">Active Rewards</h4>
+                                            <p className="text-xs text-slate-500 font-medium">This is how your selected rewards appear to visitors.</p>
+                                        </div>
+
+                                        {sequenceRewards.length === 0 ? (
+                                            <div className="h-64 rounded-2xl border-2 border-dashed border-slate-100 flex flex-col items-center justify-center text-center p-6 bg-slate-50/50">
+                                                <div className="size-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-slate-200 mb-4">
+                                                    <Gift size={32} />
+                                                </div>
+                                                <p className="text-sm font-bold text-slate-400">No Rewards Visible</p>
+                                                <p className="text-[11px] text-slate-400 mt-1 italic">Add rewards to show them on your profile.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 gap-4">
+                                                {sequenceRewards.map((reward: Reward, idx: number) => (
+                                                    <div 
+                                                        key={reward.id} 
+                                                        className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm relative group overflow-hidden transition-all hover:border-primary/20"
+                                                    >
+                                                        <div className="flex justify-between items-start mb-4">
+                                                            <div className="w-12 h-12 bg-white shadow-inner border border-slate-50 flex items-center justify-center rounded-xl text-2xl">
+                                                                {idx % 2 === 0 ? "☕" : "🏷️"}
+                                                            </div>
+                                                            <div className="bg-blue-50 text-primary px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
+                                                                {reward.pointCost} POINTS
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-black text-lg text-slate-900 mb-0.5">{reward.name}</h3>
+                                                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest leading-none">Tap to reclaim</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {sequenceRewards.length > 0 && (
+                                                    <div className="pt-2 text-center">
+                                                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">View All Rewards</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

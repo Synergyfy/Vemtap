@@ -4,19 +4,27 @@ import { StaffMember, InviteStaffRequest, UpdateStaffRequest, AdminUser, AdminUs
 import { useAuthStore, AuthState } from '../../store/useAuthStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 
-export const useStaff = (branchId?: string) => {
+export const useStaff = (branchId?: string, allBranches?: boolean) => {
     const { activeBranchId: urlBranchId } = useActiveBranch();
     const userBusinessId = useAuthStore((state: AuthState) => state.user?.businessId);
     const resolvedBranchId = branchId || urlBranchId;
 
     return useQuery<StaffMember[], Error>({
-        queryKey: ['staff', userBusinessId, resolvedBranchId],
+        queryKey: ['staff', userBusinessId, resolvedBranchId, allBranches],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (resolvedBranchId) {
+            if (resolvedBranchId && !allBranches) {
                 params.append('branchId', resolvedBranchId);
             }
-            return await api.get(`/users/staff?${params.toString()}`);
+            if (allBranches) {
+                params.append('allBranches', 'true');
+            }
+            const data = await api.get(`/users/team?${params.toString()}`);
+            if (!Array.isArray(data)) return [];
+            return data.map(item => ({
+                ...item,
+                id: item.id || item.uniqueCode || item.email
+            }));
         },
         enabled: !!userBusinessId,
     });
@@ -25,7 +33,7 @@ export const useInviteStaff = () => {
     const queryClient = useQueryClient();
 
     return useMutation<StaffMember, Error, InviteStaffRequest>({
-        mutationFn: async (dto) => await api.post('/users/staff/invite', dto),
+        mutationFn: async (dto) => await api.post('/users/team/invite', dto),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['staff'] });
         },
@@ -35,19 +43,27 @@ export const useInviteStaff = () => {
 export const useUpdateStaff = () => {
     const queryClient = useQueryClient();
 
-    return useMutation<StaffMember, Error, { id: string; updates: UpdateStaffRequest }>({
-        mutationFn: async ({ id, updates }) => await api.patch(`/users/staff/${id}`, updates),
+    return useMutation<StaffMember, Error, { id: string; updates: UpdateStaffRequest; branchId?: string }>({
+        mutationFn: async ({ id, updates, branchId }) => {
+            const params = new URLSearchParams();
+            if (branchId) params.append('branchId', branchId);
+            return await api.patch(`/users/team/${id}?${params.toString()}`, updates);
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['staff'] });
         },
     });
 };
 
-export const useRemoveStaff = () => {
+export const useRemoveStaff = (branchId?: string) => {
     const queryClient = useQueryClient();
 
     return useMutation<void, Error, string>({
-        mutationFn: async (id) => await api.delete(`/users/staff/${id}`),
+        mutationFn: async (id) => {
+            const params = new URLSearchParams();
+            if (branchId) params.append('branchId', branchId);
+            return await api.delete(`/users/team/${id}?${params.toString()}`);
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['staff'] });
         },

@@ -63,8 +63,8 @@ export default function AdminAgentsPage() {
     });
 
     const toggleAgentMutation = useMutation({
-        mutationFn: ({ id, permissions }: { id: string, permissions: string[] }) =>
-            adminUsersApi.update(id, { permissions }),
+        mutationFn: ({ id }: { id: string }) =>
+            adminUsersApi.update(id, { role: 'Agent' }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-agents'] });
         },
@@ -82,7 +82,7 @@ export default function AdminAgentsPage() {
             // Revoke all admin permissions
             const newPermissions = currentPermissions.filter(p => !p.startsWith('admin:') && p !== 'agent');
             toggleAgentMutation.mutate(
-                { id, permissions: newPermissions },
+                { id },
                 {
                     onSuccess: () => {
                         notify.success(`${name} is no longer a support agent.`);
@@ -112,13 +112,12 @@ export default function AdminAgentsPage() {
             const firstName = nameParts[0];
             const lastName = nameParts.slice(1).join(' ') || '-';
 
-            await adminUsersApi.create({
+            await adminUsersApi.createAgent({
                 firstName,
                 lastName,
                 email: inviteForm.email,
                 password: inviteForm.password,
-                role: 'Agent',
-                status: 'Active',
+                phone: inviteForm.phone,
                 permissions: inviteForm.permissions
             });
 
@@ -516,8 +515,7 @@ export default function AdminAgentsPage() {
                             onClick={() => {
                                 if (editingAgent) {
                                     toggleAgentMutation.mutate({
-                                        id: editingAgent.id,
-                                        permissions: editingAgent.permissions
+                                        id: editingAgent.id
                                     }, {
                                         onSuccess: () => {
                                             notify.success(`Permissions updated for ${editingAgent.name}`);
