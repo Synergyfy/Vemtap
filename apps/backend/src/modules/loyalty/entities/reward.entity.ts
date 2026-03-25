@@ -5,6 +5,13 @@ import { Branch } from '../../branches/entities/branch.entity';
 import { RewardTemplate, RewardCategory } from './reward-template.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
+export enum RewardAudienceType {
+  NEW = 'new',
+  RETURNING = 'returning',
+  ALL = 'all',
+}
+
+
 @Entity('rewards')
 export class Reward extends AbstractBaseEntity {
   @ApiProperty()
@@ -22,6 +29,10 @@ export class Reward extends AbstractBaseEntity {
   @ApiProperty({ enum: RewardCategory })
   @Column({ type: 'simple-enum', enum: RewardCategory })
   category: RewardCategory;
+
+  @ApiProperty({ enum: RewardAudienceType, default: RewardAudienceType.ALL })
+  @Column({ type: 'simple-enum', enum: RewardAudienceType, default: RewardAudienceType.ALL })
+  audienceType: RewardAudienceType;
 
   @ApiProperty()
   @Column({ nullable: true })
