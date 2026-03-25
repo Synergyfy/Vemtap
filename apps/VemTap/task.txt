@@ -1,7 +1,7 @@
 # Tasks Requiring Backend Implementation / Verification
 
 1. [ ] **Subscription Filtering**: Implement backend support for `range` parameter (`last_7_days`, `last_month`) in `GET /api/v1/subscriptions/admin`.
-2. [ ] **Reward Management**: Verify `GET/POST/PATCH/DELETE` endpoints for `/api/v1/loyalty/templates`. Ensure `imageUrls` are correctly handled.
+2. [ ] **Reward Management**: Verify `GET/POST/PATCH/DELETE` endpoints for `/api/v1/loyalty/reward-templates`. Ensure `imageUrls` are correctly handled.
 3. [ ] **Image Upload**: Verify `/api/upload` endpoint exists and handles base64 image uploads for reward covers and galleries.
 4. [ ] **Business Owner Merging**: Create unified endpoints for creating/managing businesses that include owner details in a single transaction if not already present.
 5. [ ] **Ticket Assignment**: Implement `POST /api/v1/support/admin/tickets/{id}/assign` to assign a ticket to a specific agent.

@@ -8,12 +8,12 @@ import { toast } from 'react-hot-toast';
 import DynamicQRCode from '@/components/shared/DynamicQRCode';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { BusinessHours } from '@/services/businesses/types';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { useUpdateBranch, useBranch, useBranches } from '@/services/branches/hooks';
 import { useCategories } from '@/services/categories/hooks';
+import { useMyBusiness, useUpdateBusiness } from '@/services/businesses/hooks';
 import { useRewards } from '@/services/loyalty/hooks';
 import { Reward } from '@/services/loyalty/types';
 import { useUserProfile, useUpdateSocials } from '@/services/users/hooks';
@@ -66,16 +66,17 @@ export default function BusinessProfilePage() {
     const user = useAuthStore((state) => state.user);
     const { activeBranchId, isAllBranches: rawIsAllBranches } = useActiveBranch();
 
-    const { data: business, isLoading: businessLoading } = useMyBusiness();
     const { data: profile, isLoading: profileLoading } = useUserProfile();
-    const { data: branches = [] } = useBranches();
+    const { data: branches = [], isLoading: branchesLoading } = useBranches();
     
     const isAllBranches = rawIsAllBranches && branches.length > 1;
     const effectiveBranchId = activeBranchId || (branches.length === 1 ? branches[0].id : '');
     const { data: branch, isLoading: branchLoading } = useBranch(effectiveBranchId);
     const { data: rewards = [], isLoading: rewardsLoading } = useRewards(effectiveBranchId || undefined);
     
-    const updateMutation = useUpdateBusiness();
+    const { data: myBusiness, isLoading: myBusinessLoading } = useMyBusiness();
+    const updateBusinessMutation = useUpdateBusiness();
+    
     const updateBranchMutation = useUpdateBranch();
     const updateSocialsMutation = useUpdateSocials();
     
@@ -383,33 +384,41 @@ export default function BusinessProfilePage() {
     }, [activeTab]);
 
     const firstBranchWithCode = branches.find((b) => b.uniqueCode);
-    const fallbackProfileCode = firstBranchWithCode?.uniqueCode || business?.uniqueCode || '';
+    const mainBranch = branches[0];
+    const fallbackProfileCode = firstBranchWithCode?.uniqueCode || mainBranch?.uniqueCode || '';
     
     // Check if the current branch is the main branch or if it's the only branch
     const isMainBranch = branch?.isMainBranch || (branches.length === 1 && branches[0].id === effectiveBranchId);
     const useBusinessLevelCode = isAllBranches || isMainBranch;
 
     // Use business unique code for main branch or aggregate view
-    const qrId = (useBusinessLevelCode ? (business?.uniqueCode || branch?.uniqueCode) : branch?.uniqueCode) || fallbackProfileCode || '';
+    const qrId = (useBusinessLevelCode ? (mainBranch?.uniqueCode || branch?.uniqueCode) : branch?.uniqueCode) || fallbackProfileCode || '';
     
     // Calculate publicProfileUrl directly in render for reliability
-    const derivedPublicCode = (useBusinessLevelCode ? (business?.uniqueCode || branch?.uniqueCode) : (branch?.uniqueCode || business?.uniqueCode)) || fallbackProfileCode || qrId;
+    const derivedPublicCode = (useBusinessLevelCode ? (mainBranch?.uniqueCode || branch?.uniqueCode) : (branch?.uniqueCode || mainBranch?.uniqueCode)) || fallbackProfileCode || qrId;
     const derivedPublicProfileUrl = derivedPublicCode ? `${origin}/b/${derivedPublicCode}` : '';
 
     useEffect(() => {
-        const source = (isAllBranches && business) ? business : branch;
-        
+        // Determine the source based on mode
+        // For "All Locations", use the first branch (main branch) from the branches list
+        // For specific branch, use the branch data
+        const isAllBranchesMode = isAllBranches && branches.length > 0;
+        const source = isAllBranchesMode ? branches[0] : branch;
+        const profileSource = profile; // From /users/profile
+
         if (source) {
-            setName(source.name || '');
-            setLogo(source.logoUrl || '');
+            setName(myBusiness?.name || source.name || '');
+            setLogo(myBusiness?.logoUrl || source.logoUrl || '');
             
-            // For categories/location, prioritize business-level data if it's main branch or all-branches
-            const catSource = (business || source) as any;
-            setCategoryId(catSource.categoryId || '');
-            setSubcategoryId(catSource.subcategoryId || '');
-            setOtherSubcategoryName(catSource.otherSubcategoryName || '');
-            setState(source.state || business?.state || '');
-            setCity(source.city || business?.city || '');
+            setCategoryId(myBusiness?.categoryId || '');
+            setSubcategoryId(myBusiness?.subcategoryId || '');
+            setOtherSubcategoryName(myBusiness?.otherSubcategoryName || '');
+            setIsRegistered(myBusiness?.isRegistered || false);
+            setRegistrationNumber(myBusiness?.registrationNumber || '');
+            
+            // For categories/location, use business data if available, else branch data
+            setState(myBusiness?.state || source.state || '');
+            setCity(myBusiness?.city || source.city || '');
             
             setSupportEmail(source.officialEmail || '');
             setSupportPhone(source.phone || source.whatsappNumber || '');
@@ -434,45 +443,33 @@ export default function BusinessProfilePage() {
             setRewardEnabled(source.rewardEnabled || false);
             setRewardVisitThreshold(source.rewardVisitThreshold || 5);
 
-            // Prioritize profile engagement data for socials, then fallback to business/branch fields
-            const engagement = profile?.engagement || {};
+            // For socials, use engagement from branch or profile
+            const engagement = source.engagement || profileSource?.engagement || {};
             
-            setFacebookUrl(engagement.facebook?.link || source.facebookUrl || business?.facebookUrl || '');
-            setInstagramUrl(engagement.instagram?.link || source.instagramUrl || business?.instagramUrl || '');
-            setTiktokUrl(engagement.tiktok?.link || source.tiktokUrl || business?.tiktokUrl || '');
-            setXUrl(engagement.x?.link || source.xUrl || business?.xUrl || '');
-            setYoutubeUrl(engagement.youtube?.link || source.youtubeUrl || business?.youtubeUrl || '');
-            setLinkedinUrl(engagement.linkedin?.link || source.linkedinUrl || business?.linkedinUrl || '');
-            setCustomLink(engagement.custom?.link || source.customLink || business?.customLink || '');
+            setFacebookUrl(engagement.facebook?.link || source.facebookUrl || '');
+            setInstagramUrl(engagement.instagram?.link || source.instagramUrl || '');
+            setTiktokUrl(engagement.tiktok?.link || source.tiktokUrl || '');
+            setXUrl(engagement.x?.link || source.xUrl || '');
+            setYoutubeUrl(engagement.youtube?.link || source.youtubeUrl || '');
+            setLinkedinUrl(engagement.linkedin?.link || source.linkedinUrl || '');
+            setCustomLink(engagement.custom?.link || source.customLink || '');
             setReviewUrl(engagement.google?.link || source.reviewUrl || '');
             setTrustpilotUrl(engagement.trustpilot?.link || source.trustpilotUrl || '');
 
-            setShowReview(business?.showReview ?? true);
-            setShowSocial(business?.showSocial ?? true);
-            setShowFeedback(business?.showFeedback ?? true);
-            setShowRewards(business?.showRewards ?? true);
-
-            if (business) {
-                setCacDocument(business.cacDocument || '');
-                setIdDocument(business.idDocument || '');
-                setIsRegistered(business.isRegistered || false);
-                setRegistrationNumber(business.registrationNumber || '');
-                if ((business.registrationNumber || '').startsWith('BN')) setCacType('BN');
-                else if ((business.registrationNumber || '').startsWith('IT')) setCacType('IT');
-                else setCacType('RC');
-                setIdentityNumber(business.identityNumber || '');
-                setUtilityBill(business.utilityBill || '');
-            }
+            setShowReview(source.showReview ?? true);
+            setShowSocial(source.showSocial ?? true);
+            setShowFeedback(source.showFeedback ?? true);
+            setShowRewards(source.showRewards ?? true);
 
             // Still update the redirect side effect
             if (qrId && derivedPublicProfileUrl) {
                 setRedirect(qrId, derivedPublicProfileUrl);
             }
         } else if (branch) {
-            setName(branch.name || '');
-            setLogo(branch.logoUrl || '');
-            setState(branch.state || '');
-            setCity(branch.city || '');
+            setName(myBusiness?.name || branch.name || '');
+            setLogo(myBusiness?.logoUrl || branch.logoUrl || '');
+            setState(myBusiness?.state || branch.state || '');
+            setCity(myBusiness?.city || branch.city || '');
             setSupportEmail(branch.officialEmail || '');
             setSupportPhone(branch.phone || branch.whatsappNumber || '');
             setAddress(branch.address || '');
@@ -496,9 +493,16 @@ export default function BusinessProfilePage() {
             setRewardEnabled(branch.rewardEnabled || false);
             setRewardVisitThreshold(branch.rewardVisitThreshold || 5);
 
-            setLinkedinUrl(branch.linkedinUrl || '');
-            setReviewUrl(branch.reviewUrl || '');
-            setTrustpilotUrl(branch.trustpilotUrl || '');
+            const engagement = branch.engagement || {};
+            setFacebookUrl(engagement.facebook?.link || branch.facebookUrl || '');
+            setInstagramUrl(engagement.instagram?.link || branch.instagramUrl || '');
+            setTiktokUrl(engagement.tiktok?.link || branch.tiktokUrl || '');
+            setXUrl(engagement.x?.link || branch.xUrl || '');
+            setYoutubeUrl(engagement.youtube?.link || branch.youtubeUrl || '');
+            setLinkedinUrl(engagement.linkedin?.link || branch.linkedinUrl || '');
+            setCustomLink(engagement.custom?.link || branch.customLink || '');
+            setReviewUrl(engagement.google?.link || branch.reviewUrl || '');
+            setTrustpilotUrl(engagement.trustpilot?.link || branch.trustpilotUrl || '');
 
             setShowReview(branch.showReview ?? true);
             setShowSocial(branch.showSocial ?? true);
@@ -521,7 +525,7 @@ export default function BusinessProfilePage() {
                 setRedirect(qrId, derivedPublicProfileUrl);
             }
         }
-    }, [business, branch, isAllBranches, activeBranchId, origin, branches.length, fallbackProfileCode, qrId, user, useBusinessLevelCode, setRedirect, derivedPublicProfileUrl]);
+    }, [branch, isAllBranches, activeBranchId, origin, branches.length, fallbackProfileCode, qrId, user, useBusinessLevelCode, setRedirect, derivedPublicProfileUrl, profile, myBusiness]);
 
     const loadLocalRewardVisibilityFromStorage = () => {
         if (typeof window === 'undefined') return;
@@ -604,7 +608,7 @@ export default function BusinessProfilePage() {
         };
 
         try {
-            if (!business && !branch) {
+            if (!branch && !isAllBranches) {
                 toast.error('Profile data not loaded yet. Please try again.');
                 return;
             }
@@ -627,39 +631,50 @@ export default function BusinessProfilePage() {
 
             let didUpdate = false;
 
-            if (business) {
-                const businessUpdates: any = {};
-                const normalizedSubcategoryId = subcategoryId === 'other' ? null : (subcategoryId || null);
-                const nextOtherSubcategoryName = subcategoryId === 'other' ? otherSubcategoryName : '';
+            const businessUpdates: any = {};
+            if (hasChanged(name, myBusiness?.name)) businessUpdates.name = name;
+            if (hasChanged(categoryId, myBusiness?.categoryId)) businessUpdates.categoryId = categoryId;
+            if (hasChanged(subcategoryId, myBusiness?.subcategoryId)) businessUpdates.subcategoryId = subcategoryId;
+            if (hasChanged(otherSubcategoryName, myBusiness?.otherSubcategoryName)) businessUpdates.otherSubcategoryName = otherSubcategoryName;
+            if (hasChanged(state, myBusiness?.state)) businessUpdates.state = state;
+            if (hasChanged(city, myBusiness?.city)) businessUpdates.city = city;
+            if (hasChanged(isRegistered, myBusiness?.isRegistered)) businessUpdates.isRegistered = isRegistered;
+            if (hasChanged(registrationNumber, myBusiness?.registrationNumber)) businessUpdates.registrationNumber = registrationNumber;
+            if (hasChanged(finalLogoUrl, myBusiness?.logoUrl)) businessUpdates.logoUrl = finalLogoUrl;
+            
+            const docs = [];
+            if (finalCacDocument) docs.push(finalCacDocument);
+            if (docs.length > 0) businessUpdates.documents = docs;
 
-                if (hasChanged(categoryId, business.categoryId)) businessUpdates.categoryId = categoryId || null;
-                if (hasChanged(normalizedSubcategoryId, business.subcategoryId)) businessUpdates.subcategoryId = normalizedSubcategoryId;
-                if (hasChanged(nextOtherSubcategoryName, business.otherSubcategoryName)) {
-                    businessUpdates.otherSubcategoryName = nextOtherSubcategoryName || null;
-                }
-                if (hasChanged(isRegistered, business.isRegistered)) businessUpdates.isRegistered = isRegistered;
-                if (hasChanged(registrationNumber, business.registrationNumber)) businessUpdates.registrationNumber = registrationNumber;
-                if (hasChanged(identityNumber, business.identityNumber)) businessUpdates.identityNumber = identityNumber;
-
-                if (isAllBranches) {
-                    if (hasChanged(name, business.name)) businessUpdates.name = name;
-                    if (hasChanged(state, business.state)) businessUpdates.state = state;
-                    if (hasChanged(city, business.city)) businessUpdates.city = city;
-                    if (hasChanged(finalLogoUrl, business.logoUrl)) businessUpdates.logoUrl = finalLogoUrl;
-                }
-
-                const docs = [finalCacDocument, finalIdDocument, finalUtilityBill].filter(Boolean);
-                if (docs.length > 0) businessUpdates.documents = docs;
-
-                if (Object.keys(businessUpdates).length > 0) {
-                    await updateMutation.mutateAsync({ id: business.id, updates: businessUpdates });
-                    toast.success('Business profile updated successfully!');
-                    didUpdate = true;
-                }
+            if (Object.keys(businessUpdates).length > 0) {
+                await updateBusinessMutation.mutateAsync({ updates: businessUpdates });
+                didUpdate = true;
             }
 
-            if (!isAllBranches && branch) {
+            if (isAllBranches) {
+                // "All Locations" mode: Update user profile via /users/profile
+                // Only editable fields: firstName, lastName, phone
+                const profileUpdates: any = {};
+                
+                // Note: The "name" field in the form is for business name, not user name
+                // So we don't send it to /users/profile
+                
+                // Only update phone if changed
+                if (hasChanged(supportPhone, profile?.phone)) {
+                    profileUpdates.phone = supportPhone;
+                }
+
+                if (Object.keys(profileUpdates).length > 0) {
+                    await updateSocialsMutation.mutateAsync(profileUpdates);
+                    toast.success('Profile updated successfully!');
+                    didUpdate = true;
+                } else {
+                    toast.success('No changes to profile.');
+                }
+            } else if (branch) {
+                // Specific branch mode: Update general info and socials via /branches/{id}
                 const branchUpdates: any = {};
+                
                 if (hasChanged(name, branch.name)) branchUpdates.name = name;
                 if (hasChanged(finalLogoUrl, branch.logoUrl)) branchUpdates.logoUrl = finalLogoUrl;
 
@@ -688,48 +703,45 @@ export default function BusinessProfilePage() {
                 if (hasChanged(identityNumber, branch.identityNumber)) branchUpdates.identityNumber = identityNumber;
                 if (hasChanged(finalUtilityBill, branch.utilityBill)) branchUpdates.utilityBill = finalUtilityBill;
 
+                // Handle socials via engagement field in branch
+                const currentEngagement = branch.engagement || {};
+                const engagementUpdates: any = {};
+
+                const mapSocial = (platform: string, currentUrl: string) => {
+                    const originalLink = currentEngagement[platform]?.link || '';
+                    if (hasChanged(currentUrl, originalLink)) {
+                        let profileHandle = currentUrl;
+                        const platformConfig = SOCIAL_PLATFORMS.find(p => p.id === platform);
+                        if (platformConfig?.prefix && currentUrl.startsWith(platformConfig.prefix)) {
+                            profileHandle = currentUrl.replace(platformConfig.prefix, '');
+                        }
+                        
+                        engagementUpdates[platform] = {
+                            profile: profileHandle,
+                            link: currentUrl
+                        };
+                    }
+                };
+
+                mapSocial('instagram', instagramUrl);
+                mapSocial('facebook', facebookUrl);
+                mapSocial('x', xUrl);
+                mapSocial('linkedin', linkedinUrl);
+                mapSocial('tiktok', tiktokUrl);
+                mapSocial('youtube', youtubeUrl);
+                mapSocial('google', reviewUrl);
+                mapSocial('trustpilot', trustpilotUrl);
+                mapSocial('custom', customLink);
+
+                if (Object.keys(engagementUpdates).length > 0) {
+                    branchUpdates.engagement = engagementUpdates;
+                }
+
                 if (Object.keys(branchUpdates).length > 0) {
                     await updateBranchMutation.mutateAsync({ id: branch.id, updates: branchUpdates });
                     toast.success('Branch profile updated successfully!');
                     didUpdate = true;
                 }
-            }
-
-            // Correctly update social links via the /users/engagement endpoint
-            const currentEngagement = profile?.engagement || {};
-            const engagementUpdates: any = {};
-
-            const mapSocial = (platform: string, currentUrl: string) => {
-                const originalLink = currentEngagement[platform]?.link || '';
-                if (hasChanged(currentUrl, originalLink)) {
-                    // Extract profile handle from URL if possible, otherwise use full link as profile
-                    let profileHandle = currentUrl;
-                    const platformConfig = SOCIAL_PLATFORMS.find(p => p.id === platform);
-                    if (platformConfig?.prefix && currentUrl.startsWith(platformConfig.prefix)) {
-                        profileHandle = currentUrl.replace(platformConfig.prefix, '');
-                    }
-                    
-                    engagementUpdates[platform] = {
-                        profile: profileHandle,
-                        link: currentUrl
-                    };
-                }
-            };
-
-            mapSocial('instagram', instagramUrl);
-            mapSocial('facebook', facebookUrl);
-            mapSocial('x', xUrl);
-            mapSocial('linkedin', linkedinUrl);
-            mapSocial('tiktok', tiktokUrl);
-            mapSocial('youtube', youtubeUrl);
-            mapSocial('google', reviewUrl);
-            mapSocial('trustpilot', trustpilotUrl);
-            mapSocial('custom', customLink);
-
-            if (Object.keys(engagementUpdates).length > 0) {
-                await updateSocialsMutation.mutateAsync(engagementUpdates);
-                toast.success('Social links updated successfully!');
-                didUpdate = true;
             }
 
             if (didUpdate) {
@@ -746,7 +758,7 @@ export default function BusinessProfilePage() {
                 }
                 };
 
-                if (businessLoading || (effectiveBranchId && branchLoading)) {
+                if (branchesLoading || (effectiveBranchId && branchLoading) || myBusinessLoading) {
                 return (
                 <div className="flex h-[calc(100vh-100px)] items-center justify-center">
                 <Loader2 className="animate-spin text-primary" size={32} />
@@ -799,10 +811,10 @@ export default function BusinessProfilePage() {
                 actions={
                     <button
                         onClick={handleSave}
-                        disabled={updateMutation.isPending || updateBranchMutation.isPending || (activeTab === 'general' && !isEditingGeneral)}
+                        disabled={updateBranchMutation.isPending || updateSocialsMutation.isPending || (activeTab === 'general' && !isEditingGeneral)}
                         className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20 disabled:opacity-50"
                     >
-                        {updateMutation.isPending || updateBranchMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
+                        {updateBranchMutation.isPending || updateSocialsMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
                     </button>
                 }
             />
@@ -972,17 +984,21 @@ export default function BusinessProfilePage() {
                                                     type="text"
                                                     value={name}
                                                     onChange={(e) => setName(e.target.value)}
-                                                    readOnly={!isEditingGeneral}
+                                                    readOnly={!isEditingGeneral || isAllBranches}
                                                     className={`w-full h-12 rounded-xl px-4 text-sm font-bold transition-all outline-none ${
-                                                        isEditingGeneral 
+                                                        isEditingGeneral && !isAllBranches
                                                         ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
                                                         : 'bg-transparent border-transparent cursor-default px-0'
                                                     }`}
                                                 />
+                                                {isAllBranches && isEditingGeneral && (
+                                                    <p className="text-[10px] text-amber-600 mt-1">Select a branch to edit name</p>
+                                                )}
                                             </div>
                                         </div>
 
-                                        {(isAllBranches || branches.length <= 1) && (
+                                        {/* Only show Category & Subcategory for specific branch, not for "All Locations" */}
+                                        {!isAllBranches && branches.length > 0 && (
                                             <>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <div className="space-y-2">
@@ -1049,9 +1065,11 @@ export default function BusinessProfilePage() {
                                             </>
                                         )}
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">State</label>
+                                        {/* Only show State & City for specific branch, not for "All Locations" */}
+                                        {!isAllBranches && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">State</label>
                                                 {!isEditingGeneral ? (
                                                     <div className="w-full h-12 flex items-center text-sm font-bold">
                                                         {state || 'Not specified'}
@@ -1071,9 +1089,9 @@ export default function BusinessProfilePage() {
                                                         ))}
                                                     </select>
                                                 )}
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">City</label>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">City</label>
                                                 {!isEditingGeneral ? (
                                                     <div className="w-full h-12 flex items-center text-sm font-bold">
                                                         {city || 'Not specified'}
@@ -1091,47 +1109,45 @@ export default function BusinessProfilePage() {
                                                         ))}
                                                     </select>
                                                 )}
+                                                </div>
                                             </div>
-                                        </div>
-
-                                        {(isAllBranches || branches.length <= 1) && (
-                                            <>
-                                                
-                                            </>
                                         )}
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {!isAllBranches && (
-                            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                                <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                                    <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Contact & Location</h3>
+                        {/* Show Contact & Location section, but make it partially editable in All Locations mode */}
+                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
+                                <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Contact & Location</h3>
+                            </div>
+                            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Support Email</label>
+                                    <input 
+                                        type="email" 
+                                        value={supportEmail} 
+                                        onChange={e => setSupportEmail(e.target.value)} 
+                                        placeholder="hello@vemtap.com" 
+                                        readOnly={!isEditingGeneral || isAllBranches}
+                                        className={`w-full h-12 rounded-xl px-4 text-sm font-bold transition-all outline-none ${
+                                            isEditingGeneral && !isAllBranches
+                                            ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
+                                            : 'bg-transparent border-transparent cursor-default px-0'
+                                        }`}
+                                    />
+                                    {isAllBranches && isEditingGeneral && (
+                                        <p className="text-[10px] text-amber-600 mt-1">Select a branch to edit email</p>
+                                    )}
                                 </div>
-                                <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Support Email</label>
-                                        <input 
-                                            type="email" 
-                                            value={supportEmail} 
-                                            onChange={e => setSupportEmail(e.target.value)} 
-                                            placeholder="hello@vemtap.com" 
-                                            readOnly={!isEditingGeneral}
-                                            className={`w-full h-12 rounded-xl px-4 text-sm font-bold transition-all outline-none ${
-                                                isEditingGeneral 
-                                                ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
-                                                : 'bg-transparent border-transparent cursor-default px-0'
-                                            }`}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Support Phone</label>
-                                        <input 
-                                            type="tel" 
-                                            value={supportPhone} 
-                                            onChange={e => setSupportPhone(e.target.value)} 
-                                            placeholder="+234 801 234 5678" 
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Support Phone</label>
+                                    <input 
+                                        type="tel" 
+                                        value={supportPhone} 
+                                        onChange={e => setSupportPhone(e.target.value)} 
+                                        placeholder="+234 801 234 5678" 
                                             readOnly={!isEditingGeneral}
                                             className={`w-full h-12 rounded-xl px-4 text-sm font-bold transition-all outline-none ${
                                                 isEditingGeneral 
@@ -1147,17 +1163,19 @@ export default function BusinessProfilePage() {
                                             onChange={e => setAddress(e.target.value)} 
                                             placeholder="Address..." 
                                             rows={3} 
-                                            readOnly={!isEditingGeneral}
+                                            readOnly={!isEditingGeneral || isAllBranches}
                                             className={`w-full rounded-xl p-5 text-sm font-bold transition-all outline-none resize-none ${
-                                                isEditingGeneral 
+                                                isEditingGeneral && !isAllBranches
                                                 ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
                                                 : 'bg-transparent border-transparent cursor-default px-0'
                                             }`}
                                         />
-                                    </div>
+                                    {isAllBranches && isEditingGeneral && (
+                                        <p className="text-[10px] text-amber-600 mt-1">Select a branch to edit address</p>
+                                    )}
                                 </div>
                             </div>
-                        )}
+                        </div>
 
                         {!isAllBranches && (
                             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
@@ -1880,9 +1898,9 @@ export default function BusinessProfilePage() {
                                                     </div>
                                                 )}
                                             </div>
-                                        </div>
                                     </div>
                                 </div>
+                            </div>
                             )}
 
                             {!isDocsCollapsed && !isRegistered && (
