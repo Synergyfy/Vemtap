@@ -4,6 +4,7 @@ export class RenameContactToCustomer1773831091778 implements MigrationInterface 
   name = 'RenameContactToCustomer1773831091778';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // Drop old constraints
     await queryRunner.query(
       `ALTER TABLE "conversation_threads" DROP CONSTRAINT "FK_eb40ce34ada4dbd69f44344a1d7"`,
     );
@@ -16,39 +17,33 @@ export class RenameContactToCustomer1773831091778 implements MigrationInterface 
     await queryRunner.query(
       `ALTER TABLE "conversation_threads" DROP CONSTRAINT "UQ_a2e43b7432b4a2b88cc6e776e54"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "messages" RENAME COLUMN "contactId" TO "customerId"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "message_logs" RENAME COLUMN "contactId" TO "customerId"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "flow_executions" RENAME COLUMN "contactId" TO "customerId"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "automation_logs" RENAME COLUMN "contactId" TO "customerId"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "conversation_threads" DROP COLUMN "contactId"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "conversation_threads" ADD "businessId" uuid`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "conversation_threads" ADD "customerId" uuid NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "messages" ALTER COLUMN "cost" TYPE numeric(10,3)`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "settings" ALTER COLUMN "messagingCostSms" SET DEFAULT '0.05'`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "settings" ALTER COLUMN "messagingCostWhatsapp" SET DEFAULT '0.08'`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "settings" ALTER COLUMN "messagingCostEmail" SET DEFAULT '0.01'`,
-    );
+
+    // Rename columns in other tables
+    await queryRunner.query(`ALTER TABLE "messages" RENAME COLUMN "contactId" TO "customerId"`);
+    await queryRunner.query(`ALTER TABLE "message_logs" RENAME COLUMN "contactId" TO "customerId"`);
+    await queryRunner.query(`ALTER TABLE "flow_executions" RENAME COLUMN "contactId" TO "customerId"`);
+    await queryRunner.query(`ALTER TABLE "automation_logs" RENAME COLUMN "contactId" TO "customerId"`);
+
+    // Add new columns to conversation_threads
+    await queryRunner.query(`ALTER TABLE "conversation_threads" ADD "businessId" uuid`);
+    await queryRunner.query(`ALTER TABLE "conversation_threads" ADD "customerId" uuid`);
+
+    // Backfill customerId from contactId before dropping it
+    await queryRunner.query(`UPDATE "conversation_threads" SET "customerId" = "contactId"`);
+
+    // Now safe to drop contactId
+    await queryRunner.query(`ALTER TABLE "conversation_threads" DROP COLUMN "contactId"`);
+
+    // Enforce NOT NULL after backfill
+    await queryRunner.query(`ALTER TABLE "conversation_threads" ALTER COLUMN "customerId" SET NOT NULL`);
+
+    // Other changes
+    await queryRunner.query(`ALTER TABLE "messages" ALTER COLUMN "cost" TYPE numeric(10,3)`);
+    await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostSms" SET DEFAULT '0.05'`);
+    await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostWhatsapp" SET DEFAULT '0.08'`);
+    await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostEmail" SET DEFAULT '0.01'`);
+
+    // New constraints
     await queryRunner.query(
       `ALTER TABLE "conversation_threads" ADD CONSTRAINT "UQ_bf6efd46540551cfe4c2e2657a3" UNIQUE ("branchId", "customerId", "channel")`,
     );
@@ -65,6 +60,7 @@ export class RenameContactToCustomer1773831091778 implements MigrationInterface 
       `ALTER TABLE "flow_executions" ADD CONSTRAINT "FK_2a94f0c130838804e6825075453" FOREIGN KEY ("customerId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
     );
   }
+
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
