@@ -32,20 +32,20 @@ export class BranchesService {
     user: User,
     targetBranchId: string,
   ): Promise<boolean> {
-    if (user.role === 'Admin') return true;
+    const userRole = String(user.role || '').toLowerCase();
 
-    if (user.role === 'Owner') {
+    if (userRole === 'admin') return true;
+
+    if (userRole === 'owner') {
       // Owner can access any branch that belongs to their business
       const branch = await this.branchesRepository.findOne({
         where: { id: targetBranchId },
       });
       if (!branch) return false;
 
-      // We need to check if the branch belongs to the owner's business
-      // Using businessId from token if available, or fetching from DB
-      const businessId = user.businessId;
-      if (businessId) {
-        return branch.businessId === businessId;
+      // Check if branch belongs to user's businessId from token
+      if (user.businessId && branch.businessId === user.businessId) {
+        return true;
       }
 
       // Fallback: check if the business belongs to this owner
@@ -107,6 +107,7 @@ export class BranchesService {
       privacyMessage: mainBranch?.privacyMessage,
       rewardMessage: mainBranch?.rewardMessage,
       about: mainBranch?.about,
+      engagement: createBranchDto.engagement ?? mainBranch?.engagement,
       rewardEnabled: mainBranch?.rewardEnabled ?? false,
       rewardVisitThreshold: mainBranch?.rewardVisitThreshold ?? 5,
       linkedinUrl: mainBranch?.linkedinUrl,
@@ -164,7 +165,8 @@ export class BranchesService {
       where: { uniqueCode, isActive: true },
       relations: ['business'],
     });
-    if (!branch) throw new NotFoundException(`Branch with code ${uniqueCode} not found`);
+    if (!branch)
+      throw new NotFoundException(`Branch with code ${uniqueCode} not found`);
     return branch;
   }
 

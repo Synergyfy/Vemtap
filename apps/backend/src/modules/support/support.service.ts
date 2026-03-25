@@ -220,6 +220,24 @@ export class SupportService {
     return this.userRepository.save(user);
   }
 
+  async findOneAgentUser(agentId: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: agentId, role: UserRole.AGENT },
+      select: [
+        'id',
+        'firstName',
+        'lastName',
+        'email',
+        'phone',
+        'status',
+        'lastActive',
+        'permissions',
+      ],
+    });
+    if (!user) throw new NotFoundException('Agent not found');
+    return user;
+  }
+
   private async logActivity(ticketId: string, action: string, by: string) {
     const activity = this.activityRepository.create({
       ticketId,

@@ -61,6 +61,7 @@ export interface BusinessData {
     showReview?: boolean;
     showSocial?: boolean;
     showFeedback?: boolean;
+    showRewards?: boolean;
     monthlyVisitors?: string;
     goal?: string;
 }
@@ -119,6 +120,6 @@ export const createDevice = async (data: any): Promise<Device> => {
     return await api.post('/devices', data);
 };
 
-export const fetchDeviceByCode = async (code: string): Promise<Device> => {
-    return await api.get(`/loyalty/device-info/${code}`);
+export const fetchDeviceByCode = async (code: string): Promise<{ business: BusinessData & { id: string }; branch: { id: string; name: string }; device: Device }> => {
+    return await api.get(`/tap/context/${code}`);
 };

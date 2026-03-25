@@ -498,9 +498,12 @@ export default function AdminPricingPage() {
                                             <div className="space-y-2">
                                                 <p className="font-bold text-text-main">Credits</p>
                                                 <div className="flex gap-4 text-text-secondary">
-                                                    <p>SMS: {formatCredit(plan.smsCredits)}</p>
-                                                    <p>WA: {formatCredit(plan.whatsappCredits)}</p>
-                                                    <p>Email: {formatCredit(plan.emailCredits)}</p>
+                                                    {Number(plan.smsCredits) !== 0 && <p>SMS: {formatCredit(plan.smsCredits)}</p>}
+                                                    {Number(plan.whatsappCredits) !== 0 && <p>WA: {formatCredit(plan.whatsappCredits)}</p>}
+                                                    {Number(plan.emailCredits) !== 0 && <p>Email: {formatCredit(plan.emailCredits)}</p>}
+                                                    {Number(plan.smsCredits) === 0 && Number(plan.whatsappCredits) === 0 && Number(plan.emailCredits) === 0 && (
+                                                        <p className="italic opacity-50">No credits included</p>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -544,7 +547,7 @@ export default function AdminPricingPage() {
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-text-main">₦</span>
                                         <FormattedNumberInput
-                                            value={currentPlan.monthlyPrice}
+                                            value={currentPlan.monthlyPrice === '0' ? '' : currentPlan.monthlyPrice}
                                             onChange={(value) => setNumericField('monthlyPrice', value)}
                                             className="w-full h-12 pl-8 pr-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
                                             placeholder="0"
@@ -597,7 +600,7 @@ export default function AdminPricingPage() {
                                                     </div>
                                                 ) : (
                                                     <FormattedNumberInput 
-                                                        value={currentPlan.smsCredits} 
+                                                        value={currentPlan.smsCredits === '0' ? '' : currentPlan.smsCredits} 
                                                         onChange={(value) => setNumericField('smsCredits', value)} 
                                                         className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
                                                         placeholder="0" 
@@ -623,7 +626,7 @@ export default function AdminPricingPage() {
                                                     </div>
                                                 ) : (
                                                     <FormattedNumberInput 
-                                                        value={currentPlan.whatsappCredits} 
+                                                        value={currentPlan.whatsappCredits === '0' ? '' : currentPlan.whatsappCredits} 
                                                         onChange={(value) => setNumericField('whatsappCredits', value)} 
                                                         className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
                                                         placeholder="0" 
@@ -649,7 +652,7 @@ export default function AdminPricingPage() {
                                                     </div>
                                                 ) : (
                                                     <FormattedNumberInput 
-                                                        value={currentPlan.emailCredits} 
+                                                        value={currentPlan.emailCredits === '0' ? '' : currentPlan.emailCredits} 
                                                         onChange={(value) => setNumericField('emailCredits', value)} 
                                                         className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
                                                         placeholder="0" 
@@ -717,7 +720,7 @@ export default function AdminPricingPage() {
                                                     </div>
                                                 ) : (
                                                     <FormattedNumberInput 
-                                                        value={currentPlan.teamMembersLimit} 
+                                                        value={currentPlan.teamMembersLimit === '0' ? '' : currentPlan.teamMembersLimit} 
                                                         onChange={(value) => setNumericField('teamMembersLimit', value)} 
                                                         className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
                                                         placeholder="0" 
@@ -774,7 +777,7 @@ export default function AdminPricingPage() {
                                                     </div>
                                                 ) : (
                                                     <FormattedNumberInput 
-                                                        value={currentPlan.loyaltyLimit} 
+                                                        value={currentPlan.loyaltyLimit === '0' ? '' : currentPlan.loyaltyLimit} 
                                                         onChange={(value) => setNumericField('loyaltyLimit', value)} 
                                                         className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
                                                         placeholder="0" 
@@ -831,7 +834,7 @@ export default function AdminPricingPage() {
                                                     </div>
                                                 ) : (
                                                     <FormattedNumberInput 
-                                                        value={currentPlan.branchLimit} 
+                                                        value={currentPlan.branchLimit === '0' ? '' : currentPlan.branchLimit} 
                                                         onChange={(value) => setNumericField('branchLimit', value)} 
                                                         className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
                                                         placeholder="0" 
@@ -880,7 +883,12 @@ export default function AdminPricingPage() {
                             <div className="grid grid-cols-1 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Trial Duration (Days)</label>
-                                    <FormattedNumberInput value={currentPlan.trialDurationDays} onChange={(value) => setNumericField('trialDurationDays', value)} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="30" />
+                                    <FormattedNumberInput 
+                                        value={currentPlan.trialDurationDays === '0' ? '' : currentPlan.trialDurationDays} 
+                                        onChange={(value) => setNumericField('trialDurationDays', value)} 
+                                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none" 
+                                        placeholder="30" 
+                                    />
                                 </div>
                             </div>
 

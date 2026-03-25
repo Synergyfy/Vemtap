@@ -3,6 +3,7 @@ import {
   Column,
   ManyToOne,
   OneToMany,
+  ManyToMany,
   JoinColumn,
   OneToOne,
   BeforeInsert,
@@ -14,6 +15,9 @@ import { Business } from '../../businesses/entities/business.entity';
 import { Notification } from '../../notifications/entities/notification.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Branch } from '../../branches/entities/branch.entity';
+import { Message } from '../../messaging/entities/message.entity';
+import { ConversationThread } from '../../messaging/entities/conversation-thread.entity';
+import { Segment } from '../../contacts/entities/segment.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum UserRole {
@@ -71,7 +75,7 @@ export class User extends AbstractBaseEntity {
   @Column({ type: 'simple-array', nullable: true })
   permissions: string[];
 
-  @ApiProperty({ enum: UserStatus, example: UserStatus.PENDING })
+  @ApiProperty({ example: 'ACTIVE', enum: UserStatus })
   @Column({
     type: 'simple-enum',
     enum: UserStatus,
@@ -79,9 +83,17 @@ export class User extends AbstractBaseEntity {
   })
   status: UserStatus;
 
+  @ApiProperty({ example: 'CUST-12345', nullable: true })
+  @Column({ unique: true, nullable: true })
+  uniqueCode: string;
+
   @ApiProperty({ example: '2023-10-25T10:00:00.000Z', nullable: true })
   @Column({ type: 'timestamp', nullable: true })
   lastActive: Date;
+
+  @ApiProperty({ example: 'fcm-token-string', nullable: true })
+  @Column({ type: 'varchar', nullable: true })
+  pushToken: string | null;
 
   // Relation to branch they belong to
   @ManyToOne(() => Branch, (branch) => branch.staff, {
@@ -110,17 +122,34 @@ export class User extends AbstractBaseEntity {
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
 
-  @ApiProperty({
-    example: {
-      instagram: { profile: 'johndoe', link: 'https://instagr.am/johndoe' },
-    },
-    nullable: true,
-  })
-  @Column({ type: 'jsonb', nullable: true })
-  engagement: Record<string, any>;
+
 
   @OneToMany(() => Visit, (visit) => visit.customer)
   visits: Visit[];
+
+  @OneToMany(() => Message, (message) => message.customer)
+  messages: Message[];
+
+  @OneToMany(() => ConversationThread, (thread) => thread.customer)
+  threads: ConversationThread[];
+
+  @ManyToMany(() => Segment, (segment) => segment.users)
+  segments: Segment[];
+
+  @ApiProperty({ example: ['SMS', 'WhatsApp'], nullable: true })
+  @Column({ type: 'simple-array', nullable: true })
+  optInChannels: string[];
+
+  @ApiProperty({ example: false })
+  @Column({ default: false })
+  optOut: boolean;
+
+  @ApiProperty({
+    example: false,
+    description: 'Whether the user has changed their default password',
+  })
+  @Column({ default: false })
+  isPasswordChanged: boolean;
 
   @BeforeInsert()
   @BeforeUpdate()

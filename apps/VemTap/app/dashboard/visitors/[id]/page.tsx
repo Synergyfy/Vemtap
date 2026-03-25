@@ -224,6 +224,8 @@ export default function VisitorProfilePage() {
                 onClose={() => setIsMsgOpen(false)}
                 recipientName={displayName}
                 recipientPhone={visitor.phone}
+                recipientEmail={visitor.email}
+                visitorIds={[visitorId]}
                 type="welcome"
             />
 

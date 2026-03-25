@@ -2,6 +2,9 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
@@ -15,7 +18,8 @@ import { MailService } from '../mail/mail.service';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
 import { DevicesService } from '../devices/devices.service';
-import { Reward } from '../campaigns/entities/reward.entity';
+import { Reward } from '../loyalty/entities/reward.entity';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 @Injectable()
 export class BusinessesService {
@@ -32,6 +36,8 @@ export class BusinessesService {
     private rewardRepository: Repository<Reward>,
     private readonly mailService: MailService,
     private readonly devicesService: DevicesService,
+    @Inject(forwardRef(() => SubscriptionsService))
+    private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
   async create(
@@ -43,6 +49,7 @@ export class BusinessesService {
       city?: string;
       whatsappNumber?: string;
       officialEmail?: string;
+      engagement?: Record<string, any>;
     },
   ): Promise<Business> {
     if (businessData.ownerId) {
@@ -55,7 +62,9 @@ export class BusinessesService {
     if (businessData.phone) {
       const existingByPhone = await this.findByPhone(businessData.phone);
       if (existingByPhone) {
-        throw new ConflictException('Business with this phone number already exists');
+        throw new ConflictException(
+          'Business with this phone number already exists',
+        );
       }
     }
 
@@ -69,6 +78,7 @@ export class BusinessesService {
       whatsappNumber,
       officialEmail,
       phone,
+      engagement,
       ...businessBaseData
     } = businessData;
 
@@ -98,6 +108,7 @@ export class BusinessesService {
       whatsappNumber,
       officialEmail: officialEmail,
       phone: phone,
+      engagement,
     } as any); // Cast to any because the repository might not be updated yet in TS context
     const savedBranch = (await this.branchRepository.save(
       mainBranch,
@@ -134,7 +145,7 @@ export class BusinessesService {
   async findById(id: string): Promise<Business> {
     const business = await this.businessesRepository.findOne({
       where: { id },
-      relations: ['branches'],
+      relations: ['branches', 'category', 'subcategory'],
     });
     if (!business) {
       throw new NotFoundException('Business not found');
@@ -172,21 +183,21 @@ export class BusinessesService {
     let activeRewards: Reward[] = [];
     if (businessData.branches && businessData.branches.length > 0) {
       const branchIds = businessData.branches.map((b) => b.id);
-      
+
       const [branchRewards, businessRewards] = await Promise.all([
         this.rewardRepository.find({
           where: { branchId: In(branchIds), isActive: true },
         }),
         this.rewardRepository.find({
           where: { businessId: business.id, isActive: true },
-        })
+        }),
       ]);
-      
+
       activeRewards = [...branchRewards, ...businessRewards];
-      
+
       // Remove duplicates if any happen to overlap
       const uniqueMap = new Map();
-      activeRewards.forEach(r => uniqueMap.set(r.id, r));
+      activeRewards.forEach((r) => uniqueMap.set(r.id, r));
       activeRewards = Array.from(uniqueMap.values());
     } else {
       activeRewards = await this.rewardRepository.find({
@@ -238,7 +249,8 @@ export class BusinessesService {
           phone: customerData.phone,
           password: hashedPassword,
           role: UserRole.CUSTOMER,
-          status: UserStatus.ACTIVE,
+          status: UserStatus.PENDING,
+          isPasswordChanged: false,
           branchId,
         });
 
@@ -271,6 +283,7 @@ export class BusinessesService {
   async findAllAdmin(query: {
     search?: string;
     status?: BusinessStatus;
+    isVerified?: boolean;
     page?: number;
     limit?: number;
   }) {
@@ -283,6 +296,8 @@ export class BusinessesService {
         'mainBranch.isMainBranch = :isMain',
         { isMain: true },
       )
+      .leftJoinAndSelect('business.category', 'category')
+      .leftJoinAndSelect('business.subcategory', 'subcategory')
       .loadRelationCountAndMap('business.totalBranches', 'business.branches');
 
     if (query.status) {
@@ -290,6 +305,12 @@ export class BusinessesService {
         query.status,
       ).toLowerCase() as BusinessStatus;
       qb.andWhere('business.status = :status', { status: normalizedStatus });
+    }
+
+    if (query.isVerified !== undefined) {
+      qb.andWhere('business.isVerified = :isVerified', {
+        isVerified: query.isVerified,
+      });
     }
 
     if (query.search) {
@@ -359,78 +380,182 @@ export class BusinessesService {
     };
   }
 
-  async adminCreate(dto: AdminCreateBusinessDto): Promise<Business> {
-    const existingUser = await this.usersRepository.findOne({
-      where: { email: dto.ownerEmail },
+  async findSuspendedAdmin(query: { page?: number; limit?: number }) {
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+
+    const [businesses, total] = await this.businessesRepository.findAndCount({
+      where: { status: BusinessStatus.SUSPENDED },
+      relations: ['owner', 'category', 'subcategory'],
+      order: { suspendedAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
 
-    if (existingUser) {
+    return {
+      data: businesses,
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async findPendingVerificationAdmin(query: { page?: number; limit?: number }) {
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+
+    // 1. Get businesses that are NOT verified
+    const [items, total] = await this.businessesRepository.findAndCount({
+      where: { isVerified: false },
+      relations: ['owner', 'category', 'subcategory'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    // 2. Stats for verification
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const verifiedToday = await this.businessesRepository
+      .createQueryBuilder('business')
+      .where('business.isVerified = :verified', { verified: true })
+      .andWhere('business.verifiedAt >= :today', { today: todayStart })
+      .getCount();
+
+    // 3. Average Wait Time for verification (from creation to verifiedAt)
+    const waitTimeData = await this.businessesRepository
+      .createQueryBuilder('business')
+      .select(
+        'AVG(EXTRACT(EPOCH FROM (business.verifiedAt - business.createdAt)))',
+        'avgSeconds',
+      )
+      .where('business.isVerified = :verified', { verified: true })
+      .andWhere('business.verifiedAt >= :today', { today: todayStart })
+      .getRawOne<{ avgSeconds: string | null }>();
+
+    const avgWaitHours = waitTimeData?.avgSeconds
+      ? (parseFloat(waitTimeData.avgSeconds) / 3600).toFixed(1)
+      : '0.0';
+
+    return {
+      data: items,
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+      },
+      stats: {
+        totalPending: total,
+        verifiedToday,
+        avgWaitTime: avgWaitHours,
+      },
+    };
+  }
+
+  async adminCreate(dto: AdminCreateBusinessDto): Promise<Business> {
+    const existingUser = await this.usersRepository.findOne({
+      where: { email: dto.ownerEmail.toLowerCase() },
+    });
+
+    if (existingUser && existingUser.status !== UserStatus.PENDING) {
       throw new ConflictException('A user with that email already exists');
     }
 
+    if (dto.ownerPhone) {
+      const existingUserByPhone = await this.usersRepository.findOne({
+        where: { phone: dto.ownerPhone },
+      });
+
+      if (
+        existingUserByPhone &&
+        (!existingUser || existingUserByPhone.id !== existingUser.id)
+      ) {
+        throw new BadRequestException(
+          'A user with that phone number already exists',
+        );
+      }
+    }
+
+    if (dto.businessNumber) {
+      const existingBusinessByPhone = await this.findByPhone(
+        dto.businessNumber,
+      );
+      if (existingBusinessByPhone) {
+        throw new BadRequestException(
+          'A business with this phone number already exists',
+        );
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(dto.ownerPassword, 10);
-    const ownerUser = this.usersRepository.create({
-      firstName: dto.ownerFirstName,
-      lastName: dto.ownerLastName,
-      email: dto.ownerEmail,
-      password: hashedPassword,
-      phone: dto.ownerPhone,
-      role: UserRole.OWNER,
-    });
+    let user: User;
 
-    const savedUser = await this.usersRepository.save(ownerUser);
+    if (existingUser) {
+      existingUser.firstName = dto.ownerFirstName;
+      existingUser.lastName = dto.ownerLastName;
+      existingUser.password = hashedPassword;
+      existingUser.phone = dto.ownerPhone || existingUser.phone;
+      user = await this.usersRepository.save(existingUser);
+    } else {
+      user = this.usersRepository.create({
+        firstName: dto.ownerFirstName,
+        lastName: dto.ownerLastName,
+        email: dto.ownerEmail.toLowerCase(),
+        password: hashedPassword,
+        role: UserRole.OWNER,
+        status: UserStatus.ACTIVE,
+        phone: dto.ownerPhone,
+      });
+      user = await this.usersRepository.save(user);
+    }
 
-    const business = this.businessesRepository.create({
+    const goalString = Array.isArray(dto.goals)
+      ? dto.goals.join(', ')
+      : (dto.goals as any);
+
+    const business = await this.create({
       name: dto.name,
-      ownerId: savedUser.id,
+      ownerId: user.id,
       status: dto.status || BusinessStatus.ACTIVE,
-      officialEmail: dto.officialEmail,
       categoryId: dto.categoryId,
       subcategoryId: dto.subcategoryId,
       otherSubcategoryName: dto.otherSubcategoryName,
-      phone: dto.whatsappNumber || dto.officialEmail,
+      monthlyVisitors: dto.visitors,
+      goal: goalString,
       logoUrl: dto.logoUrl,
       address: dto.address,
       website: dto.website,
       state: dto.state,
       city: dto.city,
-      whatsappNumber: dto.whatsappNumber,
-    } as Partial<Business>);
-
-    const savedBusiness = await this.businessesRepository.save(business);
-
-    // Automatically create Main Branch
-    const mainBranch = this.branchRepository.create({
-      name: 'Main Branch',
-      businessId: savedBusiness.id,
-      isMainBranch: true,
-      logoUrl: dto.logoUrl,
-      address: dto.address,
-      state: dto.state,
-      city: dto.city,
-      website: dto.website,
       whatsappNumber: dto.whatsappNumber,
       officialEmail: dto.officialEmail,
+      phone: dto.businessNumber,
+      isRegistered: dto.isRegistered,
+      registrationNumber: dto.registrationNumber,
+      documents: dto.documents,
+      engagement: dto.engagement,
     } as any);
-    const savedBranch = (await this.branchRepository.save(
-      mainBranch,
-    )) as unknown as Branch;
 
-    // Link branchId back to user for proper context
-    savedUser.branchId = savedBranch.id;
-    await this.usersRepository.save(savedUser);
+    // Ensure user status is active and linked to branch (linked during this.create)
+    user.status = UserStatus.ACTIVE;
+    await this.usersRepository.save(user);
 
-    // Automatically generate a device for the Main Branch
+    // Automatically generate a device for the Main Branch (already handled in this.create)
+
+    // Auto-subscribe to free plan
     try {
-      await this.devicesService.createAutoDevice(savedBranch.id);
+      await this.subscriptionsService.subscribeToFreePlan(business.id);
     } catch (error) {
       console.error(
-        `Failed to auto-generate device for business ${savedBusiness.id} main branch (admin create):`,
+        'Failed to auto-subscribe to free plan during admin create:',
         error,
       );
     }
 
-    return savedBusiness;
+    return business;
   }
 
   async adminDelete(id: string): Promise<void> {
@@ -441,6 +566,20 @@ export class BusinessesService {
   async approve(id: string): Promise<Business> {
     const business = await this.findById(id);
     business.status = BusinessStatus.ACTIVE;
+    return this.businessesRepository.save(business);
+  }
+
+  async verify(id: string): Promise<Business> {
+    const business = await this.findById(id);
+    business.isVerified = true;
+    business.verifiedAt = new Date();
+    return this.businessesRepository.save(business);
+  }
+
+  async unverify(id: string): Promise<Business> {
+    const business = await this.findById(id);
+    business.isVerified = false;
+    business.verifiedAt = null;
     return this.businessesRepository.save(business);
   }
 

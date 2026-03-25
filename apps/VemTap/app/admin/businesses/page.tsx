@@ -3,9 +3,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
-import { adminBusinessesApi } from '@/lib/api/admin';
-import { Search, Plus, RefreshCw, Loader2, Trash2, CheckCircle, XCircle, Ban, RotateCcw, Copy, Download, Eye } from 'lucide-react';
+import { adminBusinessesApi, adminCreditsApi } from '@/lib/api/admin';
+import { CheckCircle, XCircle, Search, Trash2, Edit, MoreVertical, Plus, Download, Filter, Eye, EyeOff, CreditCard, Ban, RotateCcw, Loader2, Check, RefreshCw, Copy } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import PasswordValidation from '@/components/shared/PasswordValidation';
+
 const PAGE_SIZE = 10;
+
 
 interface Business {
     id: string;
@@ -71,6 +75,10 @@ const extractBusinesses = (payload: any): { items: Business[]; total?: number; s
 
 const DetailItem = ({ label, value, icon, link }: { label: string, value?: string | number | null, icon: string, link?: boolean }) => {
     if (!value && value !== 0) value = 'Not provided';
+    const displayValue = (typeof value === 'object' && value !== null && 'name' in (value as any)) 
+        ? (value as any).name 
+        : value;
+
     return (
         <div className="flex gap-4">
             <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 shrink-0 border border-gray-100">
@@ -78,12 +86,12 @@ const DetailItem = ({ label, value, icon, link }: { label: string, value?: strin
             </div>
             <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-0.5">{label}</p>
-                {link && value !== 'Not provided' ? (
-                    <a href={String(value).startsWith('http') ? String(value) : `https://${value}`} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-primary hover:underline break-all truncate block">
-                        {value}
+                {link && displayValue !== 'Not provided' ? (
+                    <a href={String(displayValue).startsWith('http') ? String(displayValue) : `https://${displayValue}`} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-primary hover:underline break-all truncate block">
+                        {displayValue}
                     </a>
                 ) : (
-                    <p className="text-sm font-bold text-text-main break-all">{value}</p>
+                    <p className="text-sm font-bold text-text-main break-all">{displayValue}</p>
                 )}
             </div>
         </div>
@@ -106,11 +114,55 @@ export default function AdminBusinessesPage() {
 
     // Confirmation Modal State
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-    const [confirmAction, setConfirmAction] = useState<'approve' | 'reject' | 'suspend' | 'reactivate' | 'delete' | null>(null);
+    const [confirmAction, setConfirmAction] = useState<'suspend' | 'reactivate' | 'delete' | null>(null);
     const [confirmReason, setConfirmReason] = useState('');
 
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [detailBusiness, setDetailBusiness] = useState<Business | null>(null);
+    const [passwordValue, setPasswordValue] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showPasswordValidation, setShowPasswordValidation] = useState(false);
+
+
+    const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+    const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
+    const [creditBusiness, setCreditBusiness] = useState<Business | null>(null);
+    const [creditBalances, setCreditBalances] = useState<any>(null);
+    const [isCreditLoading, setIsCreditLoading] = useState(false);
+    const [adjustForm, setAdjustForm] = useState({ channel: 'SMS', amount: '', action: 'add' });
+
+    const fetchCredits = async (businessId: string) => {
+        setIsCreditLoading(true);
+        try {
+            const data = await adminCreditsApi.getBusinessBalance(businessId);
+            setCreditBalances(data);
+        } catch (err: any) {
+            notify.error('Failed to fetch credits');
+        } finally {
+            setIsCreditLoading(false);
+        }
+    };
+
+    const handleAdjustCredits = async () => {
+        if (!creditBusiness || !adjustForm.amount) return;
+        setIsSubmitting(true);
+        try {
+            await adminCreditsApi.adjustCredits({
+                businessId: creditBusiness.id,
+                channel: adjustForm.channel as any,
+                amount: parseInt(adjustForm.amount),
+                action: adjustForm.action as any
+            });
+            notify.success('Credits adjusted successfully');
+            fetchCredits(creditBusiness.id);
+            setAdjustForm({ ...adjustForm, amount: '' });
+        } catch (err: any) {
+            notify.error(err.message || 'Failed to adjust credits');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     useEffect(() => {
         setCurrentPage(1);
@@ -142,14 +194,21 @@ export default function AdminBusinessesPage() {
         return () => clearTimeout(t);
     }, [fetchBusinesses]);
 
+    // Close menu on click outside
+    useEffect(() => {
+        if (!activeMenuId) return;
+        const handleClick = () => setActiveMenuId(null);
+        window.addEventListener('click', handleClick);
+        return () => window.removeEventListener('click', handleClick);
+    }, [activeMenuId]);
+
     const stats = [
         { label: 'Total', value: metaTotal ?? businesses.length, icon: 'store', color: 'blue' },
-        { label: 'Active', value: apiStats?.active ?? businesses.filter(b => normalizeBusinessStatus(b.status) === 'active').length, icon: 'check_circle', color: 'green' },
-        { label: 'Pending', value: apiStats?.pending ?? businesses.filter(b => normalizeBusinessStatus(b.status) === 'pending').length, icon: 'pending', color: 'yellow' },
-        { label: 'Suspended', value: apiStats?.suspended ?? businesses.filter(b => normalizeBusinessStatus(b.status) === 'suspended').length, icon: 'block', color: 'red' },
+        { label: 'Verified', value: apiStats?.active ?? businesses.filter(b => normalizeBusinessStatus(b.status) === 'active' || (b as any).isVerified).length, icon: 'check_circle', color: 'green' },
+        { label: 'Unverified', value: apiStats?.pending ?? businesses.filter(b => normalizeBusinessStatus(b.status) === 'pending' || !(b as any).isVerified).length, icon: 'pending', color: 'yellow' },
     ];
 
-    const handleAction = (action: 'approve' | 'reject' | 'suspend' | 'reactivate' | 'delete', business: Business) => {
+    const handleAction = (action: 'suspend' | 'reactivate' | 'delete', business: Business) => {
         setSelectedBusiness(business);
         setConfirmAction(action);
         setConfirmReason('');
@@ -160,12 +219,10 @@ export default function AdminBusinessesPage() {
         if (!selectedBusiness || !confirmAction) return;
 
         setIsSubmitting(true);
-        const labels = { approve: 'Approve', reject: 'Reject', suspend: 'Suspend', reactivate: 'Reactivate', delete: 'Delete' };
+        const labels = { suspend: 'Suspend', reactivate: 'Reactivate', delete: 'Delete' };
 
         try {
-            if (confirmAction === 'approve') await adminBusinessesApi.approve(selectedBusiness.id);
-            else if (confirmAction === 'reject') await adminBusinessesApi.reject(selectedBusiness.id);
-            else if (confirmAction === 'suspend') await adminBusinessesApi.suspend(selectedBusiness.id, confirmReason);
+            if (confirmAction === 'suspend') await adminBusinessesApi.suspend(selectedBusiness.id, confirmReason);
             else if (confirmAction === 'reactivate') await adminBusinessesApi.reactivate(selectedBusiness.id);
             else if (confirmAction === 'delete') await adminBusinessesApi.delete(selectedBusiness.id);
 
@@ -179,14 +236,38 @@ export default function AdminBusinessesPage() {
         }
     };
 
+    const handleUnverifiedClick = (biz: Business) => {
+        // Since `documents` isn't fully typed on Business in this page yet, 
+        // fallback to checking `isRegistered` or just `biz.documents` directly.
+        const docs = (biz as any).documents;
+        if (!docs || (!Array.isArray(docs) && Object.keys(docs).length === 0) || (Array.isArray(docs) && docs.length === 0)) {
+            notify.error('No documents uploaded');
+            return;
+        }
+        router.push('/admin/businesses/pending');
+    };
+
     const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsSubmitting(true);
         const fd = new FormData(e.currentTarget);
+        const ownerPassword = fd.get('ownerPassword') as string;
+
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+        if (!passwordRegex.test(ownerPassword)) {
+            notify.error('Password must meet all security requirements');
+            setIsSubmitting(false);
+            return;
+        }
+
         const payload = {
             name: fd.get('name') as string,
-            email: fd.get('email') as string,
-            phone: fd.get('phone') as string,
+            ownerEmail: fd.get('ownerEmail') as string,
+            ownerFirstName: fd.get('ownerFirstName') as string,
+            ownerLastName: fd.get('ownerLastName') as string,
+            ownerPassword: ownerPassword,
+            ownerPhone: fd.get('phone') as string,
+            businessNumber: fd.get('phone') as string,
             address: fd.get('address') as string,
         };
         try {
@@ -201,15 +282,17 @@ export default function AdminBusinessesPage() {
         }
     };
 
-    const getStatusBadge = (status: string) => {
-        const normalized = normalizeBusinessStatus(status);
-        const map: Record<string, string> = {
-            active: 'bg-green-50 text-green-600',
-            pending: 'bg-yellow-50 text-yellow-700',
-            suspended: 'bg-red-50 text-red-600',
-            rejected: 'bg-gray-100 text-gray-500',
-        };
-        return map[normalized] || 'bg-gray-100 text-gray-500';
+    const getStatusBadge = (biz: Business) => {
+        const normalized = normalizeBusinessStatus(biz.status);
+        const isVerified = (biz as any).isVerified;
+
+        if (isVerified || normalized === 'active') {
+            return { label: 'Verified', classes: 'bg-green-50 text-green-600', icon: <CheckCircle size={12} /> };
+        }
+        if (normalized === 'suspended') {
+            return { label: 'Suspended', classes: 'bg-red-50 text-red-600', icon: <XCircle size={12} /> };
+        }
+        return { label: 'Unverified', classes: 'bg-yellow-50 text-yellow-700', icon: <Search size={12} /> };
     };
 
     const [isExporting, setIsExporting] = useState(false);
@@ -272,27 +355,27 @@ export default function AdminBusinessesPage() {
     return (
         <div className="p-4 md:p-8 space-y-8">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-3xl font-display font-bold text-text-main mb-1">Business Management</h1>
+                    <h1 className="text-2xl md:text-3xl font-display font-bold text-text-main mb-1">Business Management</h1>
                     <p className="text-text-secondary font-medium text-sm">Manage all registered businesses on the platform</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <button
                         onClick={handleExportCSV}
                         disabled={isExporting}
-                        className="px-5 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all flex items-center gap-2 font-bold text-text-secondary active:scale-95 disabled:opacity-50"
+                        className="flex-1 md:flex-none px-4 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2 font-bold text-text-secondary active:scale-95 disabled:opacity-50 text-sm"
                         title="Export CSV"
                     >
-                        {isExporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                        {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
                         {isExporting ? 'Exporting...' : 'Export'}
                     </button>
-                    <button onClick={fetchBusinesses} className="p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors" title="Refresh">
+                    <button onClick={fetchBusinesses} className="p-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors" title="Refresh">
                         <RefreshCw size={18} className="text-text-secondary" />
                     </button>
                     <button
                         onClick={() => { setSelectedBusiness(null); setIsModalOpen(true); }}
-                        className="px-5 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all flex items-center gap-2 shadow-lg shadow-primary/20 active:scale-95"
+                        className="flex-1 md:flex-none px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 active:scale-95 text-sm"
                     >
                         <Plus size={18} />
                         Add Business
@@ -327,14 +410,22 @@ export default function AdminBusinessesPage() {
                             placeholder="Search by name, owner or email..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full h-11 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                            className="w-full h-11 pl-10 pr-10 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
                         />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full text-gray-400 transition-colors"
+                            >
+                                <XCircle size={16} />
+                            </button>
+                        )}
                     </div>
                     <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20">
                         <option value="">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="pending">Pending</option>
-                        <option value="suspended">Suspended</option>
+                        <option value="active">Verified Only</option>
+                        <option value="pending">Unverified Only</option>
+                        <option value="suspended">Suspended Only</option>
                     </select>
                 </div>
                 <p className="mt-3 text-xs text-text-secondary font-medium">Tip: click any business row to open business analytics.</p>
@@ -413,37 +504,103 @@ export default function AdminBusinessesPage() {
                                             </td>
                                             <td className="py-4 px-6 text-sm font-bold text-text-main">{biz.branches?.length ?? 0}</td>
                                             <td className="py-4 px-6">
-                                                <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${getStatusBadge(biz.status)}`}>
-                                                    {biz.status}
-                                                </span>
+                                                {(() => {
+                                                    const badge = getStatusBadge(biz);
+                                                    return (
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${badge.classes}`}>
+                                                            {badge.icon}
+                                                            {badge.label}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </td>
                                             <td className="py-4 px-6 text-xs text-text-secondary font-bold">
                                                 {new Date(biz.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                             </td>
                                             <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
-                                                <div className="flex items-center justify-end gap-1">
+                                                <div className="relative inline-block text-left">
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            setDetailBusiness(biz);
-                                                            setIsDetailModalOpen(true);
+                                                            setActiveMenuId(activeMenuId === biz.id ? null : biz.id);
                                                         }}
-                                                        className="p-2 text-primary hover:bg-primary/5 rounded-lg transition-all"
-                                                        title="View Onboarding Details"
+                                                        className="p-2 hover:bg-gray-100 rounded-lg transition-all text-gray-400 hover:text-text-main"
                                                     >
-                                                        <Eye size={16} />
+                                                        <MoreVertical size={20} />
                                                     </button>
-                                                    {normalizeBusinessStatus(biz.status) === 'pending' && <>
-                                                        <button onClick={() => handleAction('approve', biz)} className="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-all" title="Approve"><CheckCircle size={16} /></button>
-                                                        <button onClick={() => handleAction('reject', biz)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Reject"><XCircle size={16} /></button>
-                                                    </>}
-                                                    {normalizeBusinessStatus(biz.status) === 'active' && (
-                                                        <button onClick={() => handleAction('suspend', biz)} className="p-2 text-orange-500 hover:bg-orange-50 rounded-lg transition-all" title="Suspend"><Ban size={16} /></button>
-                                                    )}
-                                                    {normalizeBusinessStatus(biz.status) === 'suspended' && (
-                                                        <button onClick={() => handleAction('reactivate', biz)} className="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-all" title="Reactivate"><RotateCcw size={16} /></button>
-                                                    )}
-                                                    <button onClick={() => handleAction('delete', biz)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete"><Trash2 size={16} /></button>
+
+                                                    <AnimatePresence>
+                                                        {activeMenuId === biz.id && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                                className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 z-50 py-2"
+                                                            >
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setCreditBusiness(biz);
+                                                                        setIsCreditModalOpen(true);
+                                                                        fetchCredits(biz.id);
+                                                                        setActiveMenuId(null);
+                                                                    }}
+                                                                    className="w-full px-4 py-2.5 text-left text-sm font-bold text-blue-600 hover:bg-blue-50 flex items-center gap-3 transition-colors"
+                                                                >
+                                                                    <CreditCard size={16} />
+                                                                    Manage Credits
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setDetailBusiness(biz);
+                                                                        setIsDetailModalOpen(true);
+                                                                        setActiveMenuId(null);
+                                                                    }}
+                                                                    className="w-full px-4 py-2.5 text-left text-sm font-bold text-primary hover:bg-primary/5 flex items-center gap-3 transition-colors"
+                                                                >
+                                                                    <Eye size={16} />
+                                                                    View Details
+                                                                </button>
+
+                                                                {normalizeBusinessStatus(biz.status) === 'pending' && (
+                                                                    <button
+                                                                        onClick={() => { handleUnverifiedClick(biz); setActiveMenuId(null); }}
+                                                                        className="w-full px-4 py-2.5 text-left text-sm font-bold text-orange-600 hover:bg-orange-50 flex items-center gap-3 transition-colors border-t border-gray-50"
+                                                                    >
+                                                                        <CheckCircle size={16} />
+                                                                        Review Documents
+                                                                    </button>
+                                                                )}
+
+                                                                <div className="border-t border-gray-50 my-1" />
+
+                                                                {normalizeBusinessStatus(biz.status) === 'active' && (
+                                                                    <button
+                                                                        onClick={() => { handleAction('suspend', biz); setActiveMenuId(null); }}
+                                                                        className="w-full px-4 py-2.5 text-left text-sm font-bold text-orange-500 hover:bg-orange-50 flex items-center gap-3 transition-colors"
+                                                                    >
+                                                                        <Ban size={16} />
+                                                                        Suspend
+                                                                    </button>
+                                                                )}
+                                                                {normalizeBusinessStatus(biz.status) === 'suspended' && (
+                                                                    <button
+                                                                        onClick={() => { handleAction('reactivate', biz); setActiveMenuId(null); }}
+                                                                        className="w-full px-4 py-2.5 text-left text-sm font-bold text-green-500 hover:bg-green-50 flex items-center gap-3 transition-colors"
+                                                                    >
+                                                                        <RotateCcw size={16} />
+                                                                        Reactivate
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    onClick={() => { handleAction('delete', biz); setActiveMenuId(null); }}
+                                                                    className="w-full px-4 py-2.5 text-left text-sm font-bold text-gray-400 hover:text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                    Delete Business
+                                                                </button>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
                                                 </div>
                                             </td>
                                         </tr>
@@ -491,30 +648,75 @@ export default function AdminBusinessesPage() {
                             </div>
                             <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><span className="material-icons-round text-gray-400">close</span></button>
                         </div>
-                        <form onSubmit={handleFormSubmit} className="space-y-5">
-                            <div>
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Business Name</label>
-                                <input name="name" required placeholder="e.g. Skyline Lounge" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                        <form onSubmit={handleFormSubmit} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Business Name</label>
+                                    <input name="name" required placeholder="e.g. Skyline Lounge" className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Owner Email</label>
+                                    <input name="ownerEmail" type="email" required placeholder="owner@example.com" className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                </div>
                             </div>
-                            <div>
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Business Email</label>
-                                <input name="email" type="email" required placeholder="business@example.com" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Owner First Name</label>
+                                    <input name="ownerFirstName" required placeholder="John" className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Owner Last Name</label>
+                                    <input name="ownerLastName" required placeholder="Doe" className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                </div>
                             </div>
+
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Owner Password</label>
+                                <div className="relative">
+                                    <input 
+                                        name="ownerPassword" 
+                                        type={showPassword ? "text" : "password"} 
+                                        required 
+                                        placeholder="••••••••" 
+                                        className="w-full h-11 pl-4 pr-11 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" 
+                                        onChange={(e) => setPasswordValue(e.target.value)}
+                                        onFocus={() => setShowPasswordValidation(true)}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-text-main transition-colors p-1"
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+                                <div className="mt-2">
+                                    <PasswordValidation 
+                                        password={passwordValue}
+                                        onSuggest={(p) => setPasswordValue(p)}
+                                        showAlways={showPasswordValidation}
+                                    />
+                                </div>
+                            </div>
+
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Phone</label>
-                                    <input name="phone" type="tel" placeholder="+234 800 000 0000" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                    <input name="phone" type="tel" placeholder="+234..." className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Address</label>
-                                    <input name="address" placeholder="City, State" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Location (Optional)</label>
+                                    <input name="address" placeholder="City, State" className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
                                 </div>
                             </div>
-                            <div className="flex gap-3 pt-2">
+
+                            <div className="flex gap-3 pt-4">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 h-12 bg-gray-100 text-text-secondary font-bold rounded-xl hover:bg-gray-200 transition-all text-sm">Cancel</button>
                                 <button type="submit" disabled={isSubmitting} className="flex-1 h-12 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-sm active:scale-95 disabled:opacity-70">
                                     {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-                                    Register Business
+                                    Create Business
                                 </button>
                             </div>
                         </form>
@@ -524,17 +726,16 @@ export default function AdminBusinessesPage() {
 
             {/* Confirmation Modal */}
             {isConfirmModalOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => !isSubmitting && setIsConfirmModalOpen(false)} />
                     <div className="relative w-full max-w-md bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
                         <div className="flex items-center gap-4 mb-6">
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${confirmAction === 'delete' || confirmAction === 'reject' ? 'bg-red-50 text-red-600' :
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${confirmAction === 'delete' ? 'bg-red-50 text-red-600' :
                                 confirmAction === 'suspend' ? 'bg-orange-50 text-orange-600' : 'bg-green-50 text-green-600'
                                 }`}>
                                 {confirmAction === 'delete' ? <Trash2 size={24} /> :
                                     confirmAction === 'suspend' ? <Ban size={24} /> :
-                                        confirmAction === 'approve' ? <CheckCircle size={24} /> :
-                                            confirmAction === 'reject' ? <XCircle size={24} /> : <RotateCcw size={24} />}
+                                        <RotateCcw size={24} />}
                             </div>
                             <div>
                                 <h2 className="text-xl font-display font-bold text-text-main capitalize">{confirmAction} Business</h2>
@@ -548,7 +749,7 @@ export default function AdminBusinessesPage() {
                                 {confirmAction === 'delete' && " This action cannot be undone."}
                             </p>
 
-                            {(confirmAction === 'suspend' || confirmAction === 'delete' || confirmAction === 'reject') && (
+                            {(confirmAction === 'suspend' || confirmAction === 'delete') && (
                                 <div className="mt-6">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">
                                         Reason for {confirmAction}ing
@@ -558,7 +759,7 @@ export default function AdminBusinessesPage() {
                                         onChange={(e) => setConfirmReason(e.target.value)}
                                         placeholder={`Please state why you are ${confirmAction}ing this business...`}
                                         className="w-full h-24 p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all resize-none"
-                                        required={confirmAction === 'suspend' || confirmAction === 'reject'}
+                                        required={confirmAction === 'suspend'}
                                     />
                                 </div>
                             )}
@@ -575,8 +776,8 @@ export default function AdminBusinessesPage() {
                             </button>
                             <button
                                 onClick={executeAction}
-                                disabled={isSubmitting || ((confirmAction === 'suspend' || confirmAction === 'delete' || confirmAction === 'reject') && !confirmReason.trim())}
-                                className={`flex-1 h-12 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm active:scale-95 disabled:opacity-70 ${confirmAction === 'delete' || confirmAction === 'reject' ? 'bg-red-600 hover:bg-red-700 shadow-red-200' :
+                                disabled={isSubmitting || ((confirmAction === 'suspend' || confirmAction === 'delete') && !confirmReason.trim())}
+                                className={`flex-1 h-12 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm active:scale-95 disabled:opacity-70 ${confirmAction === 'delete' ? 'bg-red-600 hover:bg-red-700 shadow-red-200' :
                                     confirmAction === 'suspend' ? 'bg-orange-500 hover:bg-orange-600 shadow-orange-200' : 'bg-primary hover:bg-primary-hover shadow-primary/20'
                                     }`}
                             >
@@ -589,7 +790,7 @@ export default function AdminBusinessesPage() {
             )}
             {/* Business Detail Modal */}
             {isDetailModalOpen && detailBusiness && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-70 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsDetailModalOpen(false)} />
                     <div className="relative w-full max-w-3xl bg-white rounded-3xl p-0 shadow-2xl animate-in fade-in zoom-in duration-300 overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
@@ -600,9 +801,14 @@ export default function AdminBusinessesPage() {
                                 <div>
                                     <h2 className="text-xl font-display font-bold text-text-main">{detailBusiness.name}</h2>
                                     <div className="flex items-center gap-2 mt-0.5">
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${getStatusBadge(detailBusiness.status)}`}>
-                                            {detailBusiness.status}
-                                        </span>
+                                        {(() => {
+                                            const badge = getStatusBadge(detailBusiness);
+                                            return (
+                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${badge.classes}`}>
+                                                    {badge.label}
+                                                </span>
+                                            );
+                                        })()}
                                         <span className="text-[11px] text-text-secondary font-medium">• Joined {new Date(detailBusiness.createdAt).toLocaleDateString()}</span>
                                     </div>
                                 </div>
@@ -619,7 +825,7 @@ export default function AdminBusinessesPage() {
                                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-4">Onboarding Details</h3>
                                         <div className="space-y-4">
                                             <DetailItem label="Business Category" value={detailBusiness.category} icon="category" />
-                                            <DetailItem label="Subcategory" value={detailBusiness.subcategory || 'N/A'} icon="subdirectory_arrow_right" />
+                                            <DetailItem label="Subcategory" value={detailBusiness.subcategory} icon="subdirectory_arrow_right" />
                                             <DetailItem label="Monthly Visitors" value={detailBusiness.monthlyVisitors} icon="groups" />
                                             <DetailItem label="Business Goals" value={detailBusiness.goal} icon="flag" />
                                         </div>
@@ -630,7 +836,7 @@ export default function AdminBusinessesPage() {
                                         <div className="space-y-4">
                                             <DetailItem
                                                 label="Registered Business"
-                                                value={detailBusiness.isRegistered !== undefined ? (detailBusiness.isRegistered ? 'Yes - Registered' : 'No - Not Registered') : 'N/A'}
+                                                value={detailBusiness.isRegistered !== undefined ? (detailBusiness.isRegistered ? 'Yes - Registered' : 'No - Not Registered') : undefined}
                                                 icon="verified"
                                             />
                                             {detailBusiness.isRegistered && (
@@ -646,7 +852,7 @@ export default function AdminBusinessesPage() {
                                         <div className="space-y-4">
                                             <DetailItem
                                                 label="Full Name"
-                                                value={detailBusiness.owner ? `${detailBusiness.owner.firstName} ${detailBusiness.owner.lastName}` : 'N/A'}
+                                                value={detailBusiness.owner ? `${detailBusiness.owner.firstName} ${detailBusiness.owner.lastName}` : undefined}
                                                 icon="person"
                                             />
                                             <DetailItem label="Account Email" value={detailBusiness.owner?.email} icon="alternate_email" />
@@ -681,6 +887,64 @@ export default function AdminBusinessesPage() {
                                     </div>
                                 </div>
                             </div>
+
+                            <div className="border-t border-gray-100 pt-8 mt-4">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Linked Devices</h3>
+                                    <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-lg text-[10px] font-bold">
+                                        {detailBusiness.devices?.length ?? 0} Devices
+                                    </span>
+                                </div>
+                                {detailBusiness.devices && detailBusiness.devices.length > 0 ? (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {detailBusiness.devices.map((dev: any) => (
+                                            <div key={dev.id} className="p-4 bg-gray-50 border border-gray-100 rounded-2xl flex items-center gap-4 group hover:border-primary/20 transition-all">
+                                                <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-gray-400 group-hover:text-primary transition-colors">
+                                                    <span className="material-icons-round">smartphone</span>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-xs font-black text-text-main truncate">{dev.name || dev.serialNumber || 'NFC Device'}</p>
+                                                        <span className={`size-1.5 rounded-full ${dev.status === 'active' ? 'bg-green-500' : 'bg-gray-300'}`} />
+                                                    </div>
+                                                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mt-0.5">{dev.type || 'Standard'}</p>
+                                                </div>
+                                                <p className="text-[9px] font-black text-primary/40 group-hover:text-primary transition-colors">#{dev.id.slice(-6)}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="p-6 bg-gray-50 border border-dashed border-gray-200 rounded-2xl text-center">
+                                        <p className="text-xs font-bold text-text-secondary italic">No devices linked to this business yet.</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {(detailBusiness as any).documents && (detailBusiness as any).documents.length > 0 && (
+                                <div className="border-t border-gray-100 pt-8 mt-4">
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-4">Verification Documents</h3>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                        {(detailBusiness as any).documents.map((doc: any, i: number) => {
+                                            const docUrl = typeof doc === 'string' ? doc : doc.url;
+                                            const docName = typeof doc === 'string' ? `Document ${i + 1}` : (doc.name || `Document ${i + 1}`);
+                                            return (
+                                                <a
+                                                    key={i}
+                                                    href={docUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-4 bg-gray-50 border border-gray-100 rounded-2xl flex flex-col items-center gap-3 hover:border-primary/30 transition-all group"
+                                                >
+                                                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-gray-400 group-hover:text-primary transition-colors">
+                                                        <span className="material-icons-round">description</span>
+                                                    </div>
+                                                    <p className="text-[10px] font-bold text-text-secondary text-center truncate w-full">{docName}</p>
+                                                </a>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 sticky bottom-0">
@@ -701,6 +965,89 @@ export default function AdminBusinessesPage() {
                                 View Full Analytics
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Credit Management Modal */}
+            {isCreditModalOpen && creditBusiness && (
+                <div className="fixed inset-0 z-80 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsCreditModalOpen(false)} />
+                    <div className="relative w-full max-w-lg bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
+                        <div className="flex items-center justify-between mb-7">
+                            <div>
+                                <h2 className="text-2xl font-display font-bold text-text-main">Manage Credits</h2>
+                                <p className="text-sm text-text-secondary font-medium mt-1">Adjust messaging credits for {creditBusiness.name}</p>
+                            </div>
+                            <button onClick={() => setIsCreditModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><span className="material-icons-round text-gray-400">close</span></button>
+                        </div>
+
+                        {isCreditLoading ? (
+                            <div className="py-12 flex justify-center"><Loader2 className="animate-spin text-primary" /></div>
+                        ) : (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                        <p className="text-[10px] font-black uppercase text-blue-600 mb-1">SMS</p>
+                                        <p className="text-xl font-bold text-slate-900">{creditBalances?.smsCredits?.toLocaleString() || 0}</p>
+                                    </div>
+                                    <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                                        <p className="text-[10px] font-black uppercase text-green-600 mb-1">WhatsApp</p>
+                                        <p className="text-xl font-bold text-slate-900">{creditBalances?.whatsappCredits?.toLocaleString() || 0}</p>
+                                    </div>
+                                    <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
+                                        <p className="text-[10px] font-black uppercase text-purple-600 mb-1">Email</p>
+                                        <p className="text-xl font-bold text-slate-900">{creditBalances?.emailCredits?.toLocaleString() || 0}</p>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 space-y-4">
+                                    <h3 className="text-sm font-bold text-slate-900">Manual Adjustment</h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Channel</label>
+                                            <select 
+                                                value={adjustForm.channel} 
+                                                onChange={(e) => setAdjustForm({ ...adjustForm, channel: e.target.value })}
+                                                className="w-full h-11 px-4 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:outline-none"
+                                            >
+                                                <option value="SMS">SMS</option>
+                                                <option value="WHATSAPP">WhatsApp</option>
+                                                <option value="EMAIL">Email</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Action</label>
+                                            <select 
+                                                value={adjustForm.action} 
+                                                onChange={(e) => setAdjustForm({ ...adjustForm, action: e.target.value })}
+                                                className="w-full h-11 px-4 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:outline-none"
+                                            >
+                                                <option value="add">Add Credits</option>
+                                                <option value="remove">Remove Credits</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Amount</label>
+                                        <input 
+                                            type="number" 
+                                            value={adjustForm.amount}
+                                            onChange={(e) => setAdjustForm({ ...adjustForm, amount: e.target.value })}
+                                            placeholder="Enter credit amount" 
+                                            className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10" 
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={handleAdjustCredits}
+                                        disabled={isSubmitting || !adjustForm.amount}
+                                        className="w-full h-12 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-95"
+                                    >
+                                        {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                                        Apply Adjustment
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

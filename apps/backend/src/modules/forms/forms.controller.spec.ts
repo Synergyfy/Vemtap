@@ -42,7 +42,7 @@ describe('FormsController', () => {
     const expectedForms = [{ id: 'form-1', title: 'Form 1' }];
     mockFormsService.getFormsByBranch.mockResolvedValue(expectedForms);
 
-    const result = await controller.findAll(req, {});
+    const result = await controller.findAll(req as any, {});
 
     expect(service.getFormsByBranch).toHaveBeenCalledWith('b1');
     expect(result).toEqual(expectedForms);
@@ -58,9 +58,9 @@ describe('FormsController', () => {
     };
     mockFormsService.createForm.mockResolvedValue(createdForm);
 
-    const result = await controller.create(req, createDto as any);
+    const result = await controller.create(req as any, createDto as any);
 
-    expect(service.createForm).toHaveBeenCalledWith('b1', createDto);
+    expect(service.createForm).toHaveBeenCalledWith('b1', createDto, 'u1');
     expect(result).toEqual(createdForm);
   });
 
@@ -69,7 +69,7 @@ describe('FormsController', () => {
     const responses = [{ id: 'resp-1' }];
     mockFormsService.getFormResponses.mockResolvedValue(responses);
 
-    const result = await controller.findResponses(req, 'form-1', {});
+    const result = await controller.findResponses(req as any, 'form-1', {});
     expect(service.getFormResponses).toHaveBeenCalledWith('b1', 'form-1');
     expect(result).toEqual(responses);
   });

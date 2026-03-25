@@ -18,6 +18,7 @@ interface StepOutcomeProps {
     engagementSettings?: any;
     socialLinks?: any;
     attachedForms?: Array<{ id: string; title: string; description?: string }>;
+    attachedRewards?: Array<{ id: string; name: string; pointCost?: number }>;
     completedFormIds?: string[];
     customSuccessTitle?: string | null;
     customSuccessDescription?: string | null;
@@ -39,6 +40,7 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
     engagementSettings,
     socialLinks,
     attachedForms,
+    attachedRewards = [],
     completedFormIds = [],
     customSuccessTitle,
     customSuccessDescription
@@ -49,19 +51,31 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
     const hasReview = !!engagementSettings?.reviewUrl;
     const hasFeedback = !!engagementSettings?.showFeedback;
     const hasRewards = !!engagementSettings?.showRewards;
+    const brandColor = engagementSettings?.brandColor || '#2563eb';
 
-    const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards || attachedForms?.length);
+    const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards || attachedForms?.length || attachedRewards?.length);
+
+    const normalizeUrl = (value: string | undefined) => {
+        if (!value) return '';
+        const trimmed = value.trim();
+        if (!trimmed) return '';
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        if (trimmed.startsWith('www.')) return `https://${trimmed}`;
+        if (trimmed.startsWith('@')) return `https://instagram.com/${trimmed.slice(1)}`;
+        if (!trimmed.includes('.') && !trimmed.includes('/')) return `https://${trimmed}`;
+        return `https://${trimmed}`;
+    };
 
     const socialItems: Array<{ label: string; url?: string }> = [
-        { label: 'Instagram', url: engagementSettings?.instagram },
-        { label: 'X / Twitter', url: engagementSettings?.twitter },
-        { label: 'Facebook', url: engagementSettings?.facebook },
-        { label: 'LinkedIn', url: engagementSettings?.linkedin },
-        { label: 'Google Review', url: engagementSettings?.reviewUrl },
-        { label: 'Trustpilot', url: engagementSettings?.trustpilotUrl },
+        { label: 'Instagram', url: normalizeUrl(engagementSettings?.instagram) },
+        { label: 'X / Twitter', url: normalizeUrl(engagementSettings?.twitter) },
+        { label: 'Facebook', url: normalizeUrl(engagementSettings?.facebook) },
+        { label: 'LinkedIn', url: normalizeUrl(engagementSettings?.linkedin) },
+        { label: 'Google Review', url: normalizeUrl(engagementSettings?.reviewUrl) },
+        { label: 'Trustpilot', url: normalizeUrl(engagementSettings?.trustpilotUrl) },
     ];
     const hasExplicitSocial = socialItems.some((link) => Boolean(link.url));
-    const fallbackSocialUrl = !hasExplicitSocial ? engagementSettings?.socialUrl : '';
+    const fallbackSocialUrl = !hasExplicitSocial ? normalizeUrl(engagementSettings?.socialUrl) : '';
     const showSocialCard = !!(engagementSettings?.showSocial && (hasExplicitSocial || fallbackSocialUrl));
 
     const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
@@ -76,20 +90,11 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
     return (
         <motion.div key="outcome" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={presets.card}>
             <div className="flex flex-col items-center text-center">
-                {(attachedForms && attachedForms.length > 0) ? (
-                    <div className="mb-6">
-                        <h1 className="text-xl font-black text-slate-900 leading-tight">Post-Submission</h1>
-                        <p className="text-xs text-slate-500 mt-2">Finish these quick forms to complete your visit.</p>
-                    </div>
-                ) : (
-                    <>
-                        <div className="size-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-inner">
-                            <span className="material-symbols-outlined text-4xl">check_circle</span>
-                        </div>
-                        <h1 className={presets.title}>{customSuccessTitle || "Visit Recorded"}</h1>
-                        <p className={`${presets.body} mt-4 mb-4`}>{customSuccessDescription || customSuccessMessage || "Thank you for visiting our store"}</p>
-                    </>
-                )}
+                <div className="size-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                    <span className="material-symbols-outlined text-4xl">check_circle</span>
+                </div>
+                <h1 className={presets.title}>{customSuccessTitle || "Visit Recorded"}</h1>
+                <p className={`${presets.body} mt-4 mb-4`}>{customSuccessDescription || customSuccessMessage || "Thank you for visiting our store"}</p>
 
                 {hasRewardSetup && (
                     <motion.div
@@ -120,6 +125,7 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
                         onAction={handleEngagement}
                         settings={engagementSettings}
                         attachedForms={attachedForms}
+                        attachedRewards={attachedRewards}
                         completedFormIds={completedFormIds}
                     />
                 )}
@@ -127,30 +133,40 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
                 {showSocialCard && (
                     <div className="w-full mt-6 rounded-2xl border border-gray-100 bg-white p-4 text-left">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Social Links</p>
-                        <div className="space-y-2 text-xs text-slate-700">
+                        <div className="grid grid-cols-1 gap-2">
                             {socialItems.map((link) => (
                                 link.url ? (
-                                    <div key={link.label} className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-3 py-2">
-                                        <span className="font-semibold">{link.label}</span>
-                                        <span className="truncate text-slate-500">{link.url}</span>
-                                    </div>
+                                    <a
+                                        key={link.label}
+                                        href={link.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-95 transition-all"
+                                        style={{ backgroundColor: brandColor }}
+                                    >
+                                        <span className="truncate">{link.label}</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-white/80">Open</span>
+                                    </a>
                                 ) : null
                             ))}
                             {fallbackSocialUrl && (
-                                <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-3 py-2">
-                                    <span className="font-semibold">Social Link</span>
-                                    <span className="truncate text-slate-500">{fallbackSocialUrl}</span>
-                                </div>
+                                <a
+                                    href={fallbackSocialUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-95 transition-all"
+                                    style={{ backgroundColor: brandColor }}
+                                >
+                                    <span className="truncate">Social Link</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-white/80">Open</span>
+                                </a>
                             )}
                         </div>
                     </div>
                 )}
 
                 <div className="w-full space-y-4 mt-8">
-                    {allFormsCompleted && (
-                        <button onClick={onFinish} className={presets.button}>Complete Visit</button>
-                    )}
-                    {!hasRewardSetup && !allFormsCompleted && (
+                    {!hasRewardSetup && (
                         <button onClick={onFinish} className={presets.button}>Finish</button>
                     )}
                     <button onClick={onRestart} className="text-[10px] font-black text-gray-300 uppercase tracking-widest hover:text-red-400 transition-colors">Return to Start</button>

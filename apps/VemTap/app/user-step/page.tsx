@@ -33,7 +33,9 @@ function UserStepPageContent() {
         setBusinessType, userData, branchId, logoUrl, visitCount, rewardVisitThreshold,
         redemptionStatus, requestRedemption,
         engagementSettings, surveyQuestions,
-        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton, businessId, deviceCode
+        customNewUserWelcomeMessage, customNewUserWelcomeTitle, customNewUserWelcomeTag, customNewUserWelcomeButton,
+        customSuccessTitle, customSuccessButton, customSuccessTag,
+        businessId, deviceCode
     } = useCustomerFlowStore();
     const searchParams = useSearchParams();
     const preferredFormIdParam = searchParams.get('formId') || searchParams.get('form');
@@ -54,9 +56,22 @@ function UserStepPageContent() {
     const formBranchScope = branchId || activeBranchId || userBranchId || null;
     const defaultFormId = getDefaultFormId(formBranchScope || 'global');
     const locallyActiveFormIds = getActiveFormIds(formBranchScope || 'global');
+    const getActiveRewardIds = useFormPreferencesStore((state) => state.getActiveRewardIds);
+    const locallyActiveRewardIds = getActiveRewardIds(formBranchScope || 'global');
 
     // Filtered forms for the business (fallback/additional logic)
     const approvedFormsForBusiness = useMemo(() => deviceForms, [deviceForms]);
+
+    const { availableRewards, fetchRewards } = useLoyaltyStore();
+    useEffect(() => {
+        if (businessId) {
+            fetchRewards(branchId || businessId);
+        }
+    }, [businessId, branchId, fetchRewards]);
+
+    const attachedRewards = useMemo(() => {
+        return availableRewards.filter(r => locallyActiveRewardIds.includes(r.id));
+    }, [availableRewards, locallyActiveRewardIds]);
 
     const selectedBusinessForm = useMemo(
         () => approvedFormsForBusiness.find((f) => f.id === selectedBusinessFormId) || null,
@@ -369,6 +384,7 @@ function UserStepPageContent() {
                             title: form.title,
                             description: form.description,
                         }))}
+                        attachedRewards={attachedRewards}
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
                             // Add other placeholder or config links here
@@ -397,10 +413,10 @@ function UserStepPageContent() {
 
                 {currentStep === 'FINAL_SUCCESS' && (
                     <StepFinalSuccess
-                        customSuccessTag={useCustomerFlowStore.getState().customSuccessTag}
-                        customSuccessTitle={useCustomerFlowStore.getState().customSuccessTitle}
-                        finalSuccessMessage={useCustomerFlowStore.getState().customSuccessMessage || config.finalSuccessMessage}
-                        customSuccessButton={useCustomerFlowStore.getState().customSuccessButton}
+                        customSuccessTag={customSuccessTag}
+                        customSuccessTitle={customSuccessTitle}
+                        finalSuccessMessage={(customSuccessMessage || '').trim() || config.finalSuccessMessage}
+                        customSuccessButton={customSuccessButton}
                         isFormsLoading={formsLoading}
                         onFinish={resetFlow}
                         onEngagement={handleEngagement}
@@ -410,6 +426,7 @@ function UserStepPageContent() {
                             title: form.title,
                             description: form.description,
                         }))}
+                        attachedRewards={attachedRewards}
                         socialLinks={{
                             instagram: engagementSettings.socialUrl,
                         }}

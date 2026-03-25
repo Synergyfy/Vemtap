@@ -22,11 +22,17 @@ export default function LoginPage() {
         password: '',
         rememberMe: false,
     });
+    const [isMounted, setIsMounted] = React.useState(false);
 
-    // eslint-disable-next-line no-console
+    React.useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+     
     console.log('[LOGIN PAGE] 🔍 isAuthenticated:', isAuthenticated);
 
     const handleLogin = async (e: React.FormEvent) => {
+        if (!isMounted) return;
         e.preventDefault();
         setError('');
 
@@ -39,6 +45,8 @@ export default function LoginPage() {
             }
 
             const response = await loginUser({ identifier, password } as any);
+
+            if (!isMounted) return;
 
             if (!response.access_token || !response.user) {
                 throw new Error('Invalid response from server.');
@@ -66,7 +74,9 @@ export default function LoginPage() {
             // Default fallback for owners/managers/other staff
             router.push('/dashboard');
         } catch (err: any) {
-            setError(err.message || 'Login failed');
+            if (isMounted) {
+                setError(err.message || 'Login failed');
+            }
         }
     };
 

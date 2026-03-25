@@ -9,11 +9,13 @@ import {
     QrCode, Scan, X, ExternalLink, ArrowRight, ChevronRight,
     Loader2
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import AdminViewerBanner from '@/components/admin/control-tower/AdminViewerBanner';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { fetchDeviceByCode, Device } from '@/lib/api/devices';
 import { notify } from '@/lib/notify';
+import Tooltip2 from '@/components/ui/Tooltip2';
 import {
     useCustomerLoyaltyAnalytics,
     useCustomerGlobalHistory,
@@ -26,19 +28,24 @@ export default function CustomerDashboardPage() {
     const user = useAuthStore((state) => state.user);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const { businessId: flowBusinessId, branchId: flowBranchId, deviceCode } = useCustomerFlowStore();
+
+    const [businessInfo, setBusinessInfo] = useState<any>(null);
+    const [isBusinessLoading, setIsBusinessLoading] = useState(false);
+    const [showIdModal, setShowIdModal] = useState(false);
+    const [showRewardAnimation, setShowRewardAnimation] = useState(false);
+    const [currentReward, setCurrentReward] = useState<{ name: string; points: number; icon?: React.ReactNode } | null>(null);
+
     const businessId = flowBusinessId || user?.businessId;
     const { data: analyticsResponse } = useCustomerLoyaltyAnalytics();
     const { data: profileResponse } = useCustomerLoyaltyProfile(businessId);
-    const { data: availableRewardsData = [], isLoading: isRewardsLoading } = useCustomerLoyaltyRewards(businessId);
+    const { data: availableRewardsData = [], isLoading: isRewardsLoading } = useCustomerLoyaltyRewards(flowBranchId || businessInfo?.branch?.id || businessInfo?.device?.branchId || user?.branchId || businessId);
     const { data: recentTransactionsData = [], isLoading: isHistoryLoading } = useCustomerGlobalHistory();
     const redeemMutation = useRedeemCustomerReward();
 
     const router = useRouter();
-    const [showIdModal, setShowIdModal] = useState(false);
-    const [showRewardAnimation, setShowRewardAnimation] = useState(false);
-    const [currentReward, setCurrentReward] = useState<{ name: string; points: number; icon?: React.ReactNode } | null>(null);
-    const [businessInfo, setBusinessInfo] = useState<Device | null>(null);
-    const [isBusinessLoading, setIsBusinessLoading] = useState(false);
+    const searchParams = useSearchParams();
+    const isAdminMode = searchParams.get('admin_mode') === '1';
+    const customerUid = searchParams.get('customer_uid');
 
     const analytics = analyticsResponse?.data || analyticsResponse;
     const profile = profileResponse?.data || profileResponse;
@@ -47,24 +54,24 @@ export default function CustomerDashboardPage() {
     const isLoyaltyLoading = isRewardsLoading || isHistoryLoading;
 
     useEffect(() => {
-        // eslint-disable-next-line no-console
+
         console.log('[CUSTOMER DASHBOARD] 🔍 Auth check', { isAuthenticated, userRole: user?.role });
-        
+
         if (!isAuthenticated) {
-            // eslint-disable-next-line no-console
+
             console.log('[CUSTOMER DASHBOARD] 🚫 Redirecting to /login');
             router.push('/login');
             return;
         }
 
         if (user?.role?.toLowerCase() !== 'customer') {
-            // eslint-disable-next-line no-console
+
             console.log('[CUSTOMER DASHBOARD] 🔄 Role not customer, redirecting to /dashboard');
             router.push('/dashboard');
             return;
         }
 
-        // eslint-disable-next-line no-console
+
         console.log('[CUSTOMER DASHBOARD] ✅ Auth OK');
 
         const initializeDashboard = async () => {
@@ -130,12 +137,13 @@ export default function CustomerDashboardPage() {
 
     // Calculate dynamic stats
     // Calculate dynamic stats from global analytics or fallback to current profile
-    const totalVisitsCount = analytics?.totalVisits ?? profile?.totalVisits ?? 0;
+    const totalVisitsCount = (recentTransactions.length || analytics?.totalVisits) ?? profile?.totalVisits ?? 0;
     const netSavingsValue = analytics?.netSavings ?? profile?.totalSavings ?? 0;
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
             <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-8">
+                {isAdminMode && <AdminViewerBanner subjectId={customerUid} type="customer" />}
                 {/* ID Card / Quick Scan - Hero Section */}
                 <div className="bg-linear-to-br from-primary via-blue-600 to-indigo-700 rounded-2xl p-8 md:p-12 text-white relative overflow-hidden shadow-2xl shadow-primary/30 group">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full translate-x-32 -translate-y-32 blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
@@ -149,7 +157,7 @@ export default function CustomerDashboardPage() {
                             </span>
                             <h1 className="text-4xl md:text-5xl font-display font-bold mb-4 tracking-tight leading-tight">
                                 Welcome back, <br />
-                                {user?.name?.split(' ')[0] || 'Customer'}!
+                                {user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || profile?.visitor?.name || 'Customer'}!
                             </h1>
                             <p className="text-blue-50 text-base md:text-lg max-w-lg mb-8 font-medium leading-relaxed opacity-90">
                                 Visit {businessName} {businessAddress ? `at ${businessAddress}` : ''} and tap your phone at the VemTap terminal to earn rewards instantly.
@@ -186,9 +194,27 @@ export default function CustomerDashboardPage() {
                 {/* Quick Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {[
-                        { label: 'Total Visits', value: totalVisitsCount || '0', icon: History, color: 'blue' },
-                        { label: 'Reward Points', value: userPoints.toLocaleString(), icon: Star, color: 'orange' },
-                        { label: 'Net Savings', value: `₦${netSavingsValue.toLocaleString()}`, icon: PiggyBank, color: 'green' },
+                        {
+                            label: 'Total Visits',
+                            value: totalVisitsCount || '0',
+                            icon: History,
+                            color: 'blue',
+                            tooltip: 'The total number of times you\'ve visited and tapped at any VemTap enabled business location.'
+                        },
+                        {
+                            label: 'Reward Points',
+                            value: userPoints.toLocaleString(),
+                            icon: Star,
+                            color: 'orange',
+                            tooltip: 'Your current balance of points earned from visits and activities, ready to be redeemed for rewards.'
+                        },
+                        {
+                            label: 'Net Savings',
+                            value: `₦${netSavingsValue.toLocaleString()}`,
+                            icon: PiggyBank,
+                            color: 'green',
+                            tooltip: 'The total monetary value you\'ve saved through redeemed rewards, exclusive discounts, and point-based offers.'
+                        },
                     ].map((stat, index) => {
                         const IconComponent = stat.icon;
                         return (
@@ -201,7 +227,12 @@ export default function CustomerDashboardPage() {
                                         <IconComponent size={24} />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="text-[10px] font-black uppercase text-text-secondary tracking-[0.15em] mb-1">{stat.label}</p>
+                                        <Tooltip2 content={stat.tooltip} side="top">
+                                            <p className="text-[10px] font-black uppercase text-text-secondary tracking-[0.15em] mb-1 flex items-center gap-1 cursor-help">
+                                                {stat.label}
+                                                <span className="opacity-40"><Star size={8} /></span>
+                                            </p>
+                                        </Tooltip2>
                                         <p className="text-2xl font-display font-bold text-text-main">{stat.value}</p>
                                     </div>
                                 </div>
@@ -249,9 +280,9 @@ export default function CustomerDashboardPage() {
                                                 </div>
                                             </div>
                                             <span className={`font-black text-sm ${tx.pointsAmount > 0 ? 'text-green-600' : tx.pointsAmount < 0 ? 'text-orange-600' : 'text-gray-400'}`}>
-                                                {tx.pointsAmount > 0 ? '+' : ''}{tx.pointsAmount} pts     
+                                                {tx.pointsAmount > 0 ? '+' : ''}{tx.pointsAmount} pts
                                             </span>
-                                        </div>                                    );
+                                        </div>);
                                 })
                             ) : (
                                 <div className="p-12 text-center text-text-secondary">
@@ -315,26 +346,9 @@ export default function CustomerDashboardPage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <button className="h-14 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all text-xs uppercase tracking-widest active:scale-95 flex items-center justify-center gap-2">
-                            Add to Apple Wallet
-                        </button>
-                        <button className="h-14 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-xs uppercase tracking-widest shadow-xl shadow-primary/20 active:scale-95 flex items-center justify-center gap-2">
-                            Save to G-Pay
-                        </button>
-                    </div>
-
-                    <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
-                        <div className="text-left">
-                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Points Balance</p>
-                            <p className="text-lg font-display font-bold text-primary">{userPoints.toLocaleString()} pts</p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Membership</p>
-                            <p className="text-lg font-display font-bold text-slate-900 flex items-center gap-1 justify-end capitalize">
-                                {profile?.tierLevel || 'Bronze'}
-                            </p>
-                        </div>
+                    <div className="pt-6 border-t border-slate-100">
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Points Balance</p>
+                        <p className="text-lg font-display font-bold text-primary">{userPoints.toLocaleString()} pts</p>
                     </div>
                 </div>
             </Modal>

@@ -45,16 +45,16 @@ const DOCS: Category[] = [
         title: 'Forms',
         pages: [
           { id: 'forms', title: 'Forms Hub', path: '/dashboard/forms', summary: 'Default form and share links.' },
-          { id: 'form-builder', title: 'Form Creator', path: '/dashboard/settings/engagement/forms', summary: 'Build and publish branch forms.' },
-          { id: 'form-responses', title: 'Form Responses', path: '/dashboard/settings/engagement/forms/responses', summary: 'Response metrics by form.' },
-          { id: 'form-response-detail', title: 'Response Detail', path: '/dashboard/settings/engagement/forms/responses/[formId]', summary: 'Deep inspection for one form.' },
+          { id: 'form-builder', title: 'Form Creator', path: '/dashboard/engagement/forms', summary: 'Build and publish branch forms.' },
+          { id: 'form-responses', title: 'Form Responses', path: '/dashboard/engagement/forms/responses', summary: 'Response metrics by form.' },
+          { id: 'form-response-detail', title: 'Response Detail', path: '/dashboard/engagement/forms/responses/[formId]', summary: 'Deep inspection for one form.' },
         ],
       },
       {
         id: 'messaging',
-        title: 'Messaging',
+        title: 'Channels',
         pages: [
-          { id: 'messaging', title: 'Messaging Center', path: '/dashboard/messaging', summary: 'Campaign command center.' },
+          { id: 'messaging', title: 'Channels', path: '/dashboard/messaging', summary: 'Campaign command center.' },
           { id: 'messaging-compose', title: 'Compose', path: '/dashboard/messaging/compose', summary: 'Create campaigns with form links.' },
           { id: 'messaging-history', title: 'History', path: '/dashboard/messaging/history', summary: 'Sent campaigns and outcomes.' },
           { id: 'messaging-sms', title: 'SMS', path: '/dashboard/messaging/sms', summary: 'SMS flows, templates, settings.' },
@@ -96,7 +96,6 @@ const DOCS: Category[] = [
         pages: [
           { id: 'staff', title: 'Staff', path: '/dashboard/staff', summary: 'Users, roles, and permissions.' },
           { id: 'support', title: 'Support', path: '/dashboard/support', summary: 'Support operations and responses.' },
-          { id: 'notifications', title: 'Notifications', path: '/dashboard/notifications', summary: 'Internal alerts and updates.' },
         ],
       },
     ],
@@ -118,9 +117,8 @@ const DOCS: Category[] = [
         id: 'engagement-settings',
         title: 'Engagement Settings',
         pages: [
-          { id: 'settings-engagement', title: 'Engagement', path: '/dashboard/settings/engagement', summary: 'Engagement control center.' },
-          { id: 'settings-socials', title: 'Socials', path: '/dashboard/settings/engagement/socials', summary: 'Social destination links.' },
-          { id: 'settings-messages', title: 'Messages', path: '/dashboard/settings/messages', summary: 'Customer-facing copy and flow text.' },
+          { id: 'settings-engagement', title: 'Engagement', path: '/dashboard/engagement', summary: 'Engagement control center.' },
+          { id: 'settings-socials', title: 'Socials', path: '/dashboard/engagement/socials', summary: 'Social destination links.' },
         ],
       },
       {
@@ -129,7 +127,6 @@ const DOCS: Category[] = [
         pages: [
           { id: 'settings-devices', title: 'Device Settings', path: '/dashboard/settings/devices', summary: 'Global device behavior defaults.' },
           { id: 'settings-integrations', title: 'Integrations', path: '/dashboard/settings/integrations', summary: 'Third-party connections.' },
-          { id: 'settings-notifications', title: 'Notification Settings', path: '/dashboard/settings/notifications', summary: 'Alert preferences.' },
           { id: 'settings-privacy', title: 'Privacy', path: '/dashboard/settings/privacy', summary: 'Consent and privacy controls.' },
           { id: 'settings-subscription', title: 'Subscription', path: '/dashboard/settings/subscription', summary: 'Plan and billing management.' },
         ],
@@ -270,3 +267,4 @@ export default function TutorialDocsPage({ title = 'Business Docs' }: { title?: 
     </div>
   );
 }
+

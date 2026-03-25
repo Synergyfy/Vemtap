@@ -2,10 +2,11 @@
 
 import React from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
-import { CreditCard, Package, CheckCircle2, AlertCircle, Clock, Edit2, X, Save } from 'lucide-react';
+import { CreditCard, Package, CheckCircle2, AlertCircle, Clock, Edit2, X, Save, Search, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminSubscriptionsApi } from '@/lib/api/admin';
+import { useAdminPricingPlans } from '@/services/pricing/hooks';
 import { notify } from '@/lib/notify';
 
 const ShieldLocal = ({ size }: { size: number }) => (
@@ -19,15 +20,23 @@ export default function AdminSubscriptionsPage() {
     const [selectedSub, setSelectedSub] = React.useState<any>(null);
     const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
 
+    const [searchQuery, setSearchQuery] = React.useState('');
+    const [filterRange, setFilterRange] = React.useState('');
+
     const { data: subscriptionsData, isLoading: isLoadingSubs } = useQuery({
-        queryKey: ['admin-subscriptions'],
-        queryFn: () => adminSubscriptionsApi.getAll()
+        queryKey: ['admin-subscriptions', searchQuery, filterRange],
+        queryFn: () => adminSubscriptionsApi.getAll({ 
+            search: searchQuery || undefined, 
+            range: filterRange || undefined 
+        })
     });
 
     const { data: statsData, isLoading: isLoadingStats } = useQuery({
         queryKey: ['admin-subscriptions-stats'],
         queryFn: () => adminSubscriptionsApi.getStats()
     });
+
+    const { data: pricingPlans = [], isLoading: isLoadingPlans } = useAdminPricingPlans();
 
     const subscriptions = Array.isArray(subscriptionsData) ? subscriptionsData : (subscriptionsData?.data || []);
 
@@ -60,16 +69,15 @@ export default function AdminSubscriptionsPage() {
             return;
         }
 
-        // Map the plan string to an ID expected by the backend
-        const planMap: Record<string, string> = {
-            'Basic': 'plan_basic',
-            'Premium': 'plan_premium',
-            'Enterprise': 'plan_enterprise'
-        };
+        // selectedSub.plan might be an ID or a name from the select dropdown
+        // If it's a name, it will fail unless we map it or if labels are used as IDs.
+        // We ensure the select uses IDs now.
 
+        const businessId = selectedSub.business?.id || selectedSub.businessId || selectedSub.id;
+        
         subscribeMutation.mutate({
-            planId: planMap[selectedSub.plan] || selectedSub.plan || 'plan_basic',
-            businessId: selectedSub.businessId || selectedSub.id, // Fallback if ID is the business ID
+            planId: selectedSub.planId || selectedSub.plan?.id || selectedSub.plan || 'plan_basic',
+            businessId: businessId,
             billingPeriod: selectedSub.billingPeriod || 'monthly'
         });
     };
@@ -80,6 +88,31 @@ export default function AdminSubscriptionsPage() {
                 title="Subscription Management"
                 description="Monitor and manage platform subscription plans and billing"
             />
+
+            <div className="flex flex-col md:flex-row gap-4 mb-8">
+                <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                        type="text"
+                        placeholder="Search by business or plan..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full h-11 pl-10 pr-4 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all"
+                    />
+                </div>
+                <div className="flex items-center gap-2">
+                    <Calendar className="text-gray-400" size={18} />
+                    <select 
+                        value={filterRange} 
+                        onChange={(e) => setFilterRange(e.target.value)}
+                        className="h-11 px-4 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all min-w-[160px]"
+                    >
+                        <option value="">All Time</option>
+                        <option value="last_7_days">Last 7 Days</option>
+                        <option value="last_month">Last Month</option>
+                    </select>
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 {[
@@ -126,10 +159,12 @@ export default function AdminSubscriptionsPage() {
                             </tr>
                         ) : subscriptions.map((sub: any) => (
                             <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors">
-                                <td className="px-6 py-4 font-bold text-sm text-slate-900">{sub.business}</td>
+                                <td className="px-6 py-4 font-bold text-sm text-slate-900">
+                                    {typeof sub.business === 'object' ? sub.business?.name : (sub.business || 'N/A')}
+                                </td>
                                 <td className="px-6 py-4">
                                     <span className="px-2 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase rounded-md tracking-wider">
-                                        {sub.plan}
+                                        {typeof sub.plan === 'object' ? sub.plan?.name : (sub.plan || 'N/A')}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">
@@ -179,7 +214,9 @@ export default function AdminSubscriptionsPage() {
                                     </div>
                                     <div>
                                         <h3 className="font-black text-text-main text-sm uppercase tracking-tight">Manual Subscription Override</h3>
-                                        <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">{selectedSub?.business}</p>
+                                        <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">
+                                            {typeof selectedSub?.business === 'object' ? selectedSub.business?.name : selectedSub?.business}
+                                        </p>
                                     </div>
                                 </div>
                                 <button onClick={() => setIsEditModalOpen(false)} className="size-8 flex items-center justify-center text-gray-400 hover:text-text-main hover:bg-gray-100 rounded-lg transition-all">
@@ -192,13 +229,19 @@ export default function AdminSubscriptionsPage() {
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Current Plan</label>
                                         <select
-                                            value={selectedSub?.plan}
-                                            onChange={(e) => setSelectedSub({ ...selectedSub, plan: e.target.value })}
+                                            value={typeof selectedSub?.plan === 'object' ? selectedSub.plan?.id : (selectedSub?.planId || selectedSub?.plan)}
+                                            onChange={(e) => setSelectedSub({ ...selectedSub, planId: e.target.value, plan: undefined })}
                                             className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 outline-none transition-all cursor-pointer"
                                         >
-                                            <option value="Basic">Basic Plan</option>
-                                            <option value="Premium">Premium Plan</option>
-                                            <option value="Enterprise">Enterprise Hub</option>
+                                            {isLoadingPlans ? (
+                                                <option>Loading plans...</option>
+                                            ) : (
+                                                pricingPlans.map((p: any) => (
+                                                    <option key={p.id} value={p.id}>
+                                                        {p.name}
+                                                    </option>
+                                                ))
+                                            )}
                                         </select>
                                     </div>
                                     <div className="space-y-2">

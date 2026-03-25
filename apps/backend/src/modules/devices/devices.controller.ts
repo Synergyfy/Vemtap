@@ -9,8 +9,13 @@ import {
   Request,
   BadRequestException,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { DevicesService } from './devices.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
 import { UpdateDeviceDto } from './dto/update-device.dto';
 import { AdminCreateDeviceDto } from './dto/admin-create-device.dto';
 import { AdminUpdateDeviceDto } from './dto/admin-update-device.dto';
@@ -18,18 +23,23 @@ import { UpdateAssetNamesDto } from './dto/update-asset-names.dto';
 import { Device } from './entities/device.entity';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { User, UserRole } from '../users/entities/user.entity';
+import { AdminDeviceQueryDto } from './dto/admin-device-query.dto';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiBody,
 } from '@nestjs/swagger';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
+import { GenerateDevicesDto, DeviceQueryDto } from './dto/device-action.dto';
+import { ParseUUIDPipe } from '@nestjs/common';
 
 @ApiTags('devices')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Controller('devices')
-@Roles(UserRole.OWNER, UserRole.MANAGER) // Only Owners and Managers can manage devices
+@Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
 export class DevicesController {
   constructor(private readonly devicesService: DevicesService) {}
 
@@ -106,9 +116,53 @@ export class DevicesController {
     return { branchId: user.branchId };
   }
 
-  // ... (admin methods omitted for brevity as they are handled in the full file)
+  // --- Admin Endpoints ---
+  @Get('admin')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin: Get all devices with filters and pagination',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Return list of devices with pagination',
+  })
+  async findAllAdmin(@Query() query: AdminDeviceQueryDto) {
+    return this.devicesService.findAllAdmin(query);
+  }
+
+  @Get('admin/stats')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get overall device statistics' })
+  async getAdminStats() {
+    return this.devicesService.getAdminStats();
+  }
+
+  @Post('admin')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Manually create/register a device code' })
+  async adminCreate(@Body() dto: AdminCreateDeviceDto) {
+    return this.devicesService.adminCreate(dto);
+  }
+
+  @Patch('admin/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Update device details' })
+  async adminUpdate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AdminUpdateDeviceDto,
+  ) {
+    return this.devicesService.adminUpdate(id, dto);
+  }
+
+  @Delete('admin/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Delete a device' })
+  async adminDelete(@Param('id', ParseUUIDPipe) id: string) {
+    return this.devicesService.adminDelete(id);
+  }
 
   @Get()
+  @Permissions('nfc')
   @ApiOperation({ summary: 'Get all devices for the branch or business' })
   @ApiResponse({ status: 200, description: 'List of devices', type: [Device] })
   async findAll(
@@ -123,6 +177,7 @@ export class DevicesController {
   }
 
   @Get('stats')
+  @Permissions('nfc')
   @ApiOperation({
     summary: 'Get summary stats for all devices in the branch or business',
   })
@@ -136,6 +191,7 @@ export class DevicesController {
   }
 
   @Patch('names')
+  @Permissions('nfc')
   @ApiOperation({ summary: 'Update names for generated assets' })
   @ApiResponse({
     status: 200,
@@ -149,8 +205,8 @@ export class DevicesController {
     const branchId = await this.getBranchId(req, dto.branchId);
     return this.devicesService.updateAssetNames(branchId, dto);
   }
-
   @Post('generate')
+  @Permissions('nfc')
   @ApiOperation({
     summary: 'Generate devices for ready orders (Business Owner)',
   })
@@ -159,11 +215,12 @@ export class DevicesController {
     description: 'Devices generated for pending ready orders.',
     type: [Device],
   })
+  @ApiBody({ type: GenerateDevicesDto })
   async generate(
     @Request() req: { user: User },
-    @Body('branchId') branchId?: string,
+    @Body() dto: GenerateDevicesDto,
   ) {
-    const targetBranchId = await this.getBranchId(req, branchId);
+    const targetBranchId = await this.getBranchId(req, dto.branchId);
     return this.devicesService.generateDevicesForReadyOrders(
       req.user.id,
       targetBranchId,
@@ -171,11 +228,12 @@ export class DevicesController {
   }
 
   @Patch(':id')
+  @Permissions('nfc')
   @ApiOperation({ summary: 'Update device configuration' })
   @ApiResponse({ status: 200, description: 'Device updated', type: Device })
   async update(
     @Request() req: { user: User },
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateDeviceDto: UpdateDeviceDto,
   ) {
     const branchId = await this.getBranchId(
@@ -186,14 +244,15 @@ export class DevicesController {
   }
 
   @Delete(':id')
+  @Permissions('nfc')
   @ApiOperation({ summary: 'Remove/Unlink a device' })
   @ApiResponse({ status: 200, description: 'Device removed' })
   async remove(
     @Request() req: { user: User },
-    @Param('id') id: string,
-    @Query('branchId') queryBranchId?: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: DeviceQueryDto,
   ) {
-    const branchId = await this.getBranchId(req, queryBranchId);
+    const branchId = await this.getBranchId(req, query.branchId);
     return this.devicesService.remove(id, branchId);
   }
 }

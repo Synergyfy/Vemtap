@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
 import { PasswordResetHistory } from './entities/password-reset-history.entity';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class UsersService {
@@ -19,7 +20,8 @@ export class UsersService {
     private usersRepository: Repository<User>,
     @InjectRepository(PasswordResetHistory)
     private passwordResetHistoryRepository: Repository<PasswordResetHistory>,
-  ) {}
+    private readonly mailService: MailService,
+  ) { }
 
   async inviteStaff(branchId: string, dto: InviteStaffDto): Promise<User> {
     const existingEmail = await this.findByEmail(dto.email);
@@ -30,23 +32,45 @@ export class UsersService {
     if (dto.phone) {
       const existingPhone = await this.findByPhone(dto.phone);
       if (existingPhone) {
-        throw new BadRequestException('User with this phone number already exists');
+        throw new BadRequestException(
+          'User with this phone number already exists',
+        );
       }
     }
 
+    // Get businessId from branch
+    const branch = await this.usersRepository.manager
+      .getRepository('branches')
+      .findOne({ where: { id: branchId } });
+
+    const hashedPassword = await bcrypt.hash(dto.firstName.toLowerCase(), 10);
     const user = this.usersRepository.create({
       firstName: dto.firstName,
       lastName: dto.lastName,
       email: dto.email.toLowerCase(),
       phone: dto.phone,
+      password: hashedPassword,
       role: dto.role,
       jobTitle: dto.jobTitle,
       permissions: dto.permissions,
       branchId: branchId,
+      businessId: (branch as any)?.businessId,
       status: UserStatus.INVITED,
     });
+    const savedUser = await this.usersRepository.save(user);
 
-    return this.usersRepository.save(user);
+    // Send welcome email with default password
+    try {
+      await this.mailService.sendWelcomeEmail(
+        savedUser.email,
+        savedUser.firstName,
+        dto.firstName.toLowerCase(),
+      );
+    } catch (error) {
+      console.error('Failed to send invitation email:', error);
+    }
+
+    return savedUser;
   }
 
   async create(userData: Partial<User>): Promise<User> {
@@ -95,14 +119,34 @@ export class UsersService {
   }
 
   async updateProfile(id: string, updates: Partial<User>): Promise<User> {
-    await this.usersRepository.update(id, updates);
+    const {
+      branch,
+      business,
+      ownedBusiness,
+      notifications,
+      visits,
+      messages,
+      threads,
+      ...plainUpdates
+    } = updates as any;
+    await this.usersRepository.update(id, plainUpdates);
     const user = await this.findOne(id);
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
   async update(id: string, updates: Partial<User>): Promise<User> {
-    await this.usersRepository.update(id, updates);
+    const {
+      branch,
+      business,
+      ownedBusiness,
+      notifications,
+      visits,
+      messages,
+      threads,
+      ...plainUpdates
+    } = updates as any;
+    await this.usersRepository.update(id, plainUpdates);
     const user = await this.findOne(id);
     if (!user) throw new NotFoundException('User not found');
     return user;
@@ -156,18 +200,6 @@ export class UsersService {
     await this.usersRepository.remove(user);
   }
 
-  async updateEngagement(
-    id: string,
-    engagement: Record<string, any>,
-  ): Promise<User> {
-    const user = await this.findOne(id);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    user.engagement = engagement;
-    return this.usersRepository.save(user);
-  }
-
   async findByBranch(branchId: string): Promise<User[]> {
     return this.usersRepository.find({
       where: { branchId },
@@ -175,11 +207,39 @@ export class UsersService {
     });
   }
 
+  async findTeamMembers(options: {
+    branchId?: string;
+    businessId?: string;
+    roles?: UserRole[];
+  }): Promise<User[]> {
+    const { branchId, businessId, roles } = options;
+    const qb = this.usersRepository.createQueryBuilder('user');
+
+    if (branchId) {
+      qb.andWhere('user.branchId = :branchId', { branchId });
+    } else if (businessId) {
+      qb.andWhere('user.businessId = :businessId', { businessId });
+    }
+
+    if (roles && roles.length > 0) {
+      qb.andWhere('user.role IN (:...roles)', { roles });
+    } else {
+      // Default to team roles
+      qb.andWhere('user.role IN (:...roles)', {
+        roles: [
+          UserRole.MANAGER,
+          UserRole.STAFF,
+
+        ],
+      });
+    }
+
+    qb.orderBy('user.createdAt', 'DESC');
+    return qb.getMany();
+  }
+
   async findTeam(branchId: string): Promise<User[]> {
-    return this.usersRepository.find({
-      where: { branchId },
-      order: { createdAt: 'DESC' },
-    });
+    return this.findTeamMembers({ branchId });
   }
 
   async findByBusiness(businessId: string): Promise<User[]> {
@@ -194,9 +254,29 @@ export class UsersService {
     passwordHash: string,
     meta?: { ipAddress?: string; userAgent?: string },
   ): Promise<boolean> {
-    await this.usersRepository.update(userId, {
+    const user = await this.findOne(userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    const updates: Partial<User> = {
       password: passwordHash,
-    });
+      isPasswordChanged: true,
+    };
+
+    if (user.status === UserStatus.PENDING) {
+      updates.status = UserStatus.ACTIVE;
+    }
+
+    const {
+      branch,
+      business,
+      ownedBusiness,
+      notifications,
+      visits,
+      messages,
+      threads,
+      ...plainUpdates
+    } = updates as any;
+    await this.usersRepository.update(userId, plainUpdates);
 
     const history = this.passwordResetHistoryRepository.create({
       userId,

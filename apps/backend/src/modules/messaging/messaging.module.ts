@@ -6,6 +6,8 @@ import { HttpModule } from '@nestjs/axios';
 import { Business } from '../businesses/entities/business.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Contact } from '../contacts/entities/contact.entity';
+import { User } from '../users/entities/user.entity';
+import { Visit } from '../visitors/entities/visit.entity';
 
 import { MessageTemplate } from './entities/message-template.entity';
 import { MessageCampaign } from './entities/message-campaign.entity';
@@ -22,7 +24,9 @@ import { AutomationLog } from './entities/automation-log.entity';
 import { ChatCategory } from './entities/chat-category.entity';
 import { CreditPlan } from './entities/credit-plan.entity';
 import { BusinessCredit } from './entities/business-credit.entity';
-import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
+import { BusinessCreditWallet } from './entities/business-credit-wallet.entity';
+import { CreditTransaction } from './entities/credit-transaction.entity';
+import { Segment } from '../contacts/entities/segment.entity';
 
 import { ContactsModule } from '../contacts/contacts.module';
 import { BusinessesModule } from '../businesses/businesses.module';
@@ -31,6 +35,8 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { MailModule } from '../mail/mail.module';
 import { BranchesModule } from '../branches/branches.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { LoyaltyModule } from '../loyalty/loyalty.module';
 
 import { MessagingEngineService } from './services/messaging-engine.service';
 import { TemplateService } from './services/template.service';
@@ -44,6 +50,7 @@ import { AdminFlowEngineService } from './services/admin-flow-engine.service';
 import { AutomationService } from './services/automation.service';
 import { MessagingFlowService } from './services/messaging-flow.service';
 import { ChatSettingsService } from './services/chat-settings.service';
+import { MessagingHelperService } from './services/messaging-helper.service';
 
 import { MessagingController } from './controllers/messaging.controller';
 import { CustomerMessagingController } from './controllers/customer-messaging.controller';
@@ -53,6 +60,7 @@ import { AdminFlowEngineController } from './controllers/admin-flow-engine.contr
 import { TermiiWebhookController } from './controllers/termii.controller';
 import { AutomationsController } from './controllers/automations.controller';
 import { CreditPlanController } from './controllers/credit-plan.controller';
+import { CreditController } from './controllers/credit.controller';
 
 import { CreditPlanService } from './services/credit-plan.service';
 import { TermiiProvider } from './providers/termii.provider';
@@ -67,6 +75,9 @@ import { IndividualSendProcessor } from './processors/individual-send.processor'
 import { FlowDelayProcessor } from './processors/flow-delay.processor';
 import { AutomationProcessor } from './processors/automation.processor';
 import { TwilioWebhookController } from './controllers/twilio.controller';
+
+import { MessagingGateway } from './messaging.gateway';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -84,12 +95,16 @@ import { TwilioWebhookController } from './controllers/twilio.controller';
       Business,
       Branch,
       Contact,
+      User,
+      Visit,
       AutomationRule,
       AutomationLog,
       ChatCategory,
       CreditPlan,
       BusinessCredit,
-      LoyaltyProfile,
+      BusinessCreditWallet,
+      CreditTransaction,
+      Segment,
     ]),
     HttpModule,
     ContactsModule,
@@ -99,6 +114,18 @@ import { TwilioWebhookController } from './controllers/twilio.controller';
     PaymentsModule,
     MailModule,
     forwardRef(() => BranchesModule),
+    NotificationsModule,
+    forwardRef(() => LoyaltyModule),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: configService.get<string>('JWT_EXPIRATION') as any,
+        },
+      }),
+      inject: [ConfigService],
+    }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
@@ -167,6 +194,8 @@ import { TwilioWebhookController } from './controllers/twilio.controller';
     CreditPlanService,
     MessagingFlowService,
     ChatSettingsService,
+    MessagingHelperService,
+    MessagingGateway,
   ],
   controllers: [
     MessagingController,
@@ -178,6 +207,7 @@ import { TwilioWebhookController } from './controllers/twilio.controller';
     TwilioWebhookController,
     AutomationsController,
     CreditPlanController,
+    CreditController,
   ],
   exports: [
     TypeOrmModule,
@@ -199,6 +229,8 @@ import { TwilioWebhookController } from './controllers/twilio.controller';
     InHouseProvider,
     ProviderRouterService,
     MessagingFlowService,
+    MessagingHelperService,
+    MessagingGateway,
   ],
 })
 export class MessagingModule {}

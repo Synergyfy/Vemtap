@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -20,9 +21,14 @@ import { FormsService } from './forms.service';
 import { CreateFormTemplateDto } from './dto/create-form-template.dto';
 import { UpdateFormTemplateDto } from './dto/update-form-template.dto';
 import { FormTemplateQueryDto } from './dto/form-template-query.dto';
+import { FormTemplateStatsDto } from './dto/form-template-stats.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '../users/entities/user.entity';
+import { UserRole, User } from '../users/entities/user.entity';
 import { RolesGuard } from '../../common/guards/roles.guard';
+
+interface RequestWithUser extends Request {
+  user: User;
+}
 
 @ApiTags('Form Templates')
 @ApiBearerAuth()
@@ -84,6 +90,66 @@ export class FormTemplatesController {
     return this.formsService.findAllTemplates(query);
   }
 
+  @Get('stats')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Get tracking statistics for all form templates (Admin only)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Return tracking statistics for all templates.',
+    type: [FormTemplateStatsDto],
+    schema: {
+      example: [
+        {
+          templateId: 'uuid-template-1',
+          templateName: 'Feedback Template',
+          usageCount: 5,
+          totalResponses: 120,
+          uniqueBranchesCount: 3,
+          uniqueBusinessesCount: 2,
+        },
+      ],
+    },
+  })
+  getAllStats() {
+    return this.formsService.getAllTemplatesStats();
+  }
+
+  @Get(':id/stats')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary:
+      'Get tracking statistics for a specific form template (Admin only)',
+  })
+  @ApiParam({ name: 'id', description: 'Template UUID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return tracking statistics for the template.',
+    type: FormTemplateStatsDto,
+    schema: {
+      example: {
+        templateId: 'uuid-template-1',
+        templateName: 'Feedback Template',
+        usageCount: 5,
+        totalResponses: 120,
+        uniqueBranchesCount: 3,
+        uniqueBusinessesCount: 2,
+        usage: [
+          {
+            formId: 'uuid-form-1',
+            branchName: 'Main Branch',
+            businessName: 'The Azure Bistro',
+            responseCount: 45,
+          },
+        ],
+      },
+    },
+  })
+  getStats(@Param('id') id: string) {
+    return this.formsService.getTemplateStats(id);
+  }
+
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.OWNER)
   @ApiOperation({ summary: 'Get a form template by id' })
@@ -132,8 +198,25 @@ export class FormTemplatesController {
   @ApiResponse({
     status: 201,
     description: 'A new form has been created from the template.',
+    schema: {
+      example: {
+        id: 'uuid-form-1',
+        title: 'Feedback Template',
+        description: 'Template for feedback',
+        branchId: 'uuid-branch-1',
+        businessId: 'uuid-business-1',
+        templateId: 'uuid-template-1',
+        creatorId: 'uuid-user-1',
+        isActive: true,
+        isPublished: false,
+      },
+    },
   })
-  useTemplate(@Param('id') id: string, @Query('branchId') branchId: string) {
-    return this.formsService.useTemplate(branchId, id);
+  useTemplate(
+    @Request() req: RequestWithUser,
+    @Param('id') id: string,
+    @Query('branchId') branchId: string,
+  ) {
+    return this.formsService.useTemplate(branchId, id, req.user.id);
   }
 }

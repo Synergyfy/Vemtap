@@ -28,10 +28,11 @@ import { CampaignsService } from '../campaigns/campaigns.service';
 import * as bcrypt from 'bcrypt';
 import { MailService } from '../mail/mail.service';
 import { MessageLog } from '../messaging/entities/message-log.entity';
-import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
-import { Redemption } from '../campaigns/entities/redemption.entity';
-import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
 import { BranchesService } from '../branches/branches.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
+import { PointTransaction } from '../loyalty/entities/point-transaction.entity';
+import { RedemptionCode } from '../loyalty/entities/redemption-code.entity';
+import { Reward } from '../loyalty/entities/reward.entity';
 
 export class RecordVisitResponse {
   message: string;
@@ -49,6 +50,11 @@ export class SendCampaignBody {
   channel: Channel;
   message: string;
 }
+
+import { VisitedBranchesQueryDto } from './dto/visited-branches-query.dto';
+import { PaginatedVisitedBranchResponseDto } from './dto/visited-branch-response.dto';
+import { AdminVisitorActivitiesQueryDto } from './dto/admin-visitor-activities-query.dto';
+import { PaginatedVisitResponseDto } from './dto/visit-response.dto';
 
 @Injectable()
 export class VisitorsService {
@@ -69,7 +75,73 @@ export class VisitorsService {
     private automationService: AutomationService,
     private mailService: MailService,
     private branchesService: BranchesService,
+    private loyaltyService: LoyaltyService,
   ) {}
+
+  async getVisitedBranches(
+    customerId: string,
+    query: VisitedBranchesQueryDto,
+  ): Promise<PaginatedVisitedBranchResponseDto> {
+    const { page = 1, limit = 10, search } = query;
+    const skip = (page - 1) * limit;
+
+    const qb = this.visitRepository
+      .createQueryBuilder('visit')
+      .innerJoinAndSelect('visit.branch', 'branch')
+      .where('visit.customerId = :customerId', { customerId });
+
+    if (search) {
+      qb.andWhere('branch.name ILIKE :search', { search: `%${search}%` });
+    }
+
+    qb.select([
+      'branch.id as id',
+      'branch.name as name',
+      'branch.address as address',
+      'branch.city as city',
+      'branch.logoUrl as "logoUrl"',
+      'branch.businessId as "businessId"',
+      'MAX(visit.createdAt) as "lastVisitedAt"',
+      'COUNT(visit.id) as "visitCount"',
+    ]);
+
+    qb.groupBy('branch.id')
+      .orderBy('"lastVisitedAt"', 'DESC')
+      .offset(skip)
+      .limit(limit);
+
+    const rawData = await qb.getRawMany();
+
+    // For total count, we need another query to count grouped branches
+    const countQb = this.visitRepository
+      .createQueryBuilder('visit')
+      .innerJoin('visit.branch', 'branch')
+      .where('visit.customerId = :customerId', { customerId });
+
+    if (search) {
+      countQb.andWhere('branch.name ILIKE :search', { search: `%${search}%` });
+    }
+
+    const total = await countQb
+      .select('COUNT(DISTINCT visit.branchId)', 'count')
+      .getRawOne();
+
+    return {
+      data: rawData.map((row) => ({
+        id: row.id,
+        name: row.name,
+        address: row.address,
+        city: row.city,
+        logoUrl: row.logoUrl,
+        businessId: row.businessId,
+        lastVisitedAt: new Date(row.lastVisitedAt),
+        visitCount: parseInt(row.visitCount, 10),
+      })),
+      total: parseInt(total.count, 10),
+      page,
+      limit,
+    };
+  }
 
   async checkBranchAccess(user: User, branchId: string): Promise<boolean> {
     return this.branchesService.checkBranchAccess(user, branchId);
@@ -154,61 +226,49 @@ export class VisitorsService {
     branchId?: string,
     businessId?: string,
   ): Promise<VisitorStatsResponseDto> {
-    const totalVisitorsQb = this.userRepository
-      .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-      .where('user.role = :role', { role: UserRole.CUSTOMER });
+    const contextWhere: any = {};
+    if (branchId) contextWhere.branchId = branchId;
+    else if (businessId) contextWhere.businessId = businessId;
 
-    if (branchId) {
-      totalVisitorsQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else if (businessId) {
-      totalVisitorsQb.andWhere('visit.businessId = :businessId', {
-        businessId,
-      });
-    }
+    // Total unique visitors in this context
+    const totalVisitorsRaw = await this.visitRepository
+      .createQueryBuilder('visit')
+      .where(contextWhere)
+      .select('COUNT(DISTINCT visit.customerId)', 'count')
+      .getRawOne();
+    const totalVisitors = parseInt(totalVisitorsRaw?.count || '0', 10);
 
-    const totalVisitors = await totalVisitorsQb.getCount();
+    // Total visits in this context
+    const totalVisitsCount = await this.visitRepository.count({
+      where: contextWhere,
+    });
 
+    // New Visitors in this context: Customers whose FIRST visit in this branch/business was this month
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const newThisMonthQb = this.userRepository
-      .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-      .andWhere('user.role = :role', { role: UserRole.CUSTOMER })
-      .andWhere('user.createdAt >= :startOfMonth', { startOfMonth });
+    const newVisitorsRaw = await this.visitRepository
+      .createQueryBuilder('visit')
+      .select('visit.customerId')
+      .where(contextWhere)
+      .groupBy('visit.customerId')
+      .having('MIN(visit.createdAt) >= :startOfMonth', { startOfMonth })
+      .getRawMany();
+    const newVisitorsCount = newVisitorsRaw.length;
 
-    if (branchId) {
-      newThisMonthQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else if (businessId) {
-      newThisMonthQb.andWhere('visit.businessId = :businessId', { businessId });
-    }
+    // Returning Visitors: Customers with more than 1 visit in this context
+    const returningVisitorsRaw = await this.visitRepository
+      .createQueryBuilder('visit')
+      .select('visit.customerId')
+      .where(contextWhere)
+      .groupBy('visit.customerId')
+      .having('COUNT(visit.id) > 1')
+      .getRawMany();
+    const returningCount = returningVisitorsRaw.length;
 
-    const newThisMonth = await newThisMonthQb.getCount();
-
-    const visitsCountQuery: any = branchId
-      ? { where: { branchId } }
-      : { where: { businessId } };
-    const totalVisitsCount = await this.visitRepository.count(visitsCountQuery);
     const avgFrequency =
       totalVisitors > 0 ? (totalVisitsCount / totalVisitors).toFixed(1) : '0';
-
-    const vipCountQb = this.userRepository
-      .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-      .where('user.role = :role', { role: UserRole.CUSTOMER });
-
-    if (branchId) {
-      vipCountQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else if (businessId) {
-      vipCountQb.andWhere('visit.businessId = :businessId', { businessId });
-    }
-
-    const vipCount = await vipCountQb
-      .groupBy('user.id')
-      .having('COUNT(visit.id) > 10')
-      .getCount();
 
     return {
       stats: [
@@ -221,7 +281,7 @@ export class VisitorsService {
         },
         {
           label: 'New This Month',
-          value: newThisMonth.toLocaleString(),
+          value: newVisitorsCount.toLocaleString(),
           icon: 'user-plus',
           color: 'green',
           trend: { value: '+0%', isUp: true },
@@ -234,10 +294,10 @@ export class VisitorsService {
           trend: { value: '0', isUp: true },
         },
         {
-          label: 'VIP Guests',
-          value: vipCount.toLocaleString(),
-          icon: 'star',
-          color: 'yellow',
+          label: 'Returning Visitors',
+          value: returningCount.toLocaleString(),
+          icon: 'refresh-cw',
+          color: 'orange',
           trend: { value: '0', isUp: true },
         },
       ],
@@ -251,7 +311,7 @@ export class VisitorsService {
     const dto = createVisitorDto as CreateVisitorDto & {
       deviceId?: string;
     };
-    
+
     // Check by email
     let user = await this.userRepository.findOne({
       where: { email: dto.email },
@@ -263,7 +323,9 @@ export class VisitorsService {
         where: { phone: dto.phone },
       });
       if (user && user.email !== dto.email) {
-        throw new BadRequestException('A user with this phone number already exists with a different email');
+        throw new BadRequestException(
+          'A user with this phone number already exists with a different email',
+        );
       }
     }
 
@@ -278,6 +340,7 @@ export class VisitorsService {
         phone: dto.phone,
         password: hashedPassword,
         role: UserRole.CUSTOMER,
+        uniqueCode: `CUST-${Math.floor(100000 + Math.random() * 900000)}`,
       });
       await this.userRepository.save(user);
 
@@ -332,12 +395,17 @@ export class VisitorsService {
 
     await this.automationService.trigger(triggerType, {
       branchId,
-      contactId: contact.id,
+      customerId: user.id,
     });
 
     const updatedUser = await this.userRepository.findOne({
       where: { id: user.id },
       relations: ['visits'],
+      order: {
+        visits: {
+          createdAt: 'DESC',
+        },
+      },
     });
 
     return this.mapToVisitorDto(updatedUser!);
@@ -409,26 +477,15 @@ export class VisitorsService {
       visitCount === 1 ? TriggerType.FIRST_TAG : TriggerType.REPEAT_TAG,
       {
         branchId,
-        contactId: contact.id,
+        customerId: userId,
       },
     );
 
-    const activeRule = await this.campaignsService.findActiveRule(branchId);
-
-    let loyaltyResult: { success: boolean; pointsEarned: number; newBalance: number; message: string } | null = null;
-    if (activeRule) {
-      const profile = await this.campaignsService.findProfile(
-        user.id,
-        branchId,
-      );
-
-      if (profile) {
-        loyaltyResult = await this.campaignsService.earnPoints(branchId, {
-          userId: user.id,
-          isVisit: true,
-        });
-      }
-    }
+    // Points awarding logic should be moved to a generic "award points on tap" if needed,
+    // but based on requirements, points are given by staff or via code.
+    // However, if we want to keep the "tap to earn points" feature, we can award 1 point.
+    const loyaltyResult: any = null;
+    // For now, points are manual or via code as per the new requirements.
 
     return {
       message: 'Visit recorded successfully',
@@ -443,12 +500,31 @@ export class VisitorsService {
     };
   }
 
-  async findOne(id: string): Promise<VisitorResponseDto> {
-    const user = await this.userRepository.findOne({
-      where: { id },
-      relations: ['visits'],
-    });
-    if (!user) throw new NotFoundException('Visitor not found');
+  async findOne(
+    id: string,
+    branchId?: string,
+    businessId?: string,
+  ): Promise<VisitorResponseDto> {
+    const qb = this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.visits', 'visit')
+      .where('user.id = :id', { id });
+
+    if (branchId) {
+      qb.andWhere('visit.branchId = :branchId', { branchId });
+    } else if (businessId) {
+      qb.andWhere('visit.businessId = :businessId', { businessId });
+    }
+
+    const user = await qb.orderBy('visit.createdAt', 'DESC').getOne();
+
+    if (!user) {
+      // If user exists but has no visits in this context, we still return the user if they exist globally
+      const baseUser = await this.userRepository.findOne({ where: { id } });
+      if (!baseUser) throw new NotFoundException('Visitor not found');
+      return this.mapToVisitorDto(baseUser);
+    }
+
     return this.mapToVisitorDto(user);
   }
 
@@ -465,6 +541,8 @@ export class VisitorsService {
     if (updateData.phone) user.phone = updateData.phone;
 
     await this.userRepository.save(user);
+    // Note: We return findOne without context here as update is generally global,
+    // but the controller will call findOne with context if needed next time.
     return this.findOne(id);
   }
 
@@ -784,7 +862,7 @@ export class VisitorsService {
     return this.messagingService.sendMessage({
       branchId,
       channel,
-      contactIds,
+      customerIds: contactIds,
       content,
     });
   }
@@ -796,7 +874,7 @@ export class VisitorsService {
     return this.messagingService.sendMessage({
       branchId,
       channel: Channel.SMS,
-      contactIds,
+      customerIds: contactIds,
       content: 'Welcome to our business! We are glad to have you.',
     });
   }
@@ -810,7 +888,7 @@ export class VisitorsService {
     return this.messagingService.sendMessage({
       branchId,
       channel: channel || Channel.SMS,
-      contactIds: [visitorId],
+      customerIds: [visitorId],
       content: message,
     });
   }
@@ -825,49 +903,35 @@ export class VisitorsService {
   }
 
   async sendReward(visitorId: string, rewardId: string, branchId: string) {
-    const rewards = await this.campaignsService.getRewards(branchId);
+    const rewards = await this.loyaltyService.getBranchRewards(branchId);
     const reward = rewards.find((r) => r.id === rewardId);
+
+    if (!reward) throw new NotFoundException('Reward not found');
 
     return this.sendMessage(
       visitorId,
-      `You've received a reward! Use code REWARD123 to redeem.`,
+      `You've received a reward: ${reward.name}! Use code REWARD123 to redeem.`,
       Channel.SMS,
       branchId,
     );
   }
 
   async resetBusinessData(branchId: string): Promise<void> {
-    const context: FindOptionsWhere<
-      Visit | MessageLog | Contact | LoyaltyProfile
-    > = { branchId };
-
     await this.dataSource.transaction(async (manager) => {
-      await manager.delete(Visit, context as FindOptionsWhere<Visit>);
-      await manager.delete(MessageLog, context as FindOptionsWhere<MessageLog>);
-
-      const profiles = await manager.find(LoyaltyProfile, {
-        where: context as FindOptionsWhere<LoyaltyProfile>,
-      });
-      const profileIds = profiles.map((p) => p.id);
-
-      if (profileIds.length > 0) {
-        await manager.delete(PointTransaction, {
-          loyaltyProfileId: In(profileIds),
-        } as FindOptionsWhere<PointTransaction>);
-        await manager.delete(Redemption, {
-          loyaltyProfileId: In(profileIds),
-        } as FindOptionsWhere<Redemption>);
-        await manager.delete(LoyaltyProfile, { id: In(profileIds) });
-      }
-
-      await manager.delete(Contact, context as FindOptionsWhere<Contact>);
+      await manager.delete(Visit, { branchId });
+      await manager.delete(MessageLog, { branchId });
+      await manager.delete(Contact, { branchId });
+      await manager.delete(PointTransaction, { branchId });
+      await manager.delete(RedemptionCode, { branchId });
+      // Rewards are not deleted usually, but if needed:
+      // await manager.delete(Reward, { branchId });
     });
   }
 
   private mapToVisitorDto(user: User): VisitorResponseDto {
     const visits = user.visits || [];
-    const lastVisit =
-      visits.length > 0 ? visits[visits.length - 1].createdAt : new Date();
+    // Assuming visits are ordered DESC (latest first) from query
+    const lastVisit = visits.length > 0 ? visits[0].createdAt : user.createdAt;
     const visitCount = visits.length;
 
     let status = 'New';
@@ -886,6 +950,66 @@ export class VisitorsService {
       lastVisit: lastVisit,
       status: status,
       totalSpent: '₦0',
+    };
+  }
+
+  async findAdminVisitorActivities(
+    query: AdminVisitorActivitiesQueryDto,
+  ): Promise<PaginatedVisitResponseDto> {
+    const { page = 1, limit = 10, search, branchId, businessId } = query;
+    const skip = (page - 1) * limit;
+
+    const qb = this.visitRepository
+      .createQueryBuilder('visit')
+      .leftJoinAndSelect('visit.customer', 'customer')
+      .leftJoinAndSelect('visit.branch', 'branch')
+      .leftJoinAndSelect('branch.business', 'business');
+
+    if (branchId) {
+      qb.andWhere('visit.branchId = :branchId', { branchId });
+    }
+
+    if (businessId) {
+      qb.andWhere('visit.businessId = :businessId', { businessId });
+    }
+
+    if (search) {
+      qb.andWhere(
+        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR customer.email ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    const [visits, total] = await qb
+      .orderBy('visit.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data: visits.map((visit) => ({
+        id: visit.id,
+        createdAt: visit.createdAt,
+        status: visit.status,
+        customer: {
+          id: visit.customer?.id,
+          firstName: visit.customer?.firstName,
+          lastName: visit.customer?.lastName,
+          email: visit.customer?.email,
+          phone: visit.customer?.phone,
+        },
+        branch: {
+          id: visit.branch?.id,
+          name: visit.branch?.name,
+        },
+        business: {
+          id: visit.branch?.business?.id,
+          name: visit.branch?.business?.name,
+        },
+      })),
+      total,
+      page,
+      limit,
     };
   }
 }

@@ -12,7 +12,7 @@ interface SessionDetailsModalProps {
 export default function SessionDetailsModal({ session, onClose }: SessionDetailsModalProps) {
     if (!session) return null;
 
-    const mockHistory = [
+    const sessionHistory = [
         { type: 'message', content: 'Welcome to VemTap! Enjoy your bonus.', direction: 'OUTBOUND', time: '10 mins ago', status: 'Delivered' },
         { type: 'tag', content: 'New Customer', time: '12 mins ago' },
         { type: 'loyalty', content: '+50 Points Assigned', time: '12 mins ago' },
@@ -20,7 +20,7 @@ export default function SessionDetailsModal({ session, onClose }: SessionDetails
     ];
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -54,14 +54,14 @@ export default function SessionDetailsModal({ session, onClose }: SessionDetails
                 <div className="flex-1 overflow-y-auto p-8 space-y-8">
                     {/* Status Banner */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="p-6 bg-gray-50 rounded-[2rem] border border-gray-100 flex flex-col gap-2">
+                        <div className="p-6 bg-gray-50 rounded-4xl border border-gray-100 flex flex-col gap-2">
                             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Current Status</span>
                             <div className="flex items-center gap-2">
                                 <div className={`size-2 rounded-full ${session.status === 'Running' ? 'bg-blue-500' : 'bg-amber-500'}`} />
                                 <span className="text-sm font-bold text-text-main">{session.status}</span>
                             </div>
                         </div>
-                        <div className="p-6 bg-gray-50 rounded-[2rem] border border-gray-100 flex flex-col gap-2">
+                        <div className="p-6 bg-gray-50 rounded-4xl border border-gray-100 flex flex-col gap-2">
                             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Automation</span>
                             <div className="flex items-center gap-2">
                                 <Smartphone size={16} className="text-primary" />
@@ -76,7 +76,7 @@ export default function SessionDetailsModal({ session, onClose }: SessionDetails
                         <div className="space-y-4 relative">
                             <div className="absolute left-6 top-2 bottom-2 w-0.5 bg-gray-100" />
 
-                            {mockHistory.map((item, i) => (
+                            {sessionHistory.map((item, i) => (
                                 <div key={i} className="flex gap-6 relative">
                                     <div className={`size-12 rounded-2xl shrink-0 z-10 flex items-center justify-center border-4 border-white ${item.type === 'message' ? 'bg-blue-50 text-blue-500' :
                                             item.type === 'loyalty' ? 'bg-emerald-50 text-emerald-500' :
@@ -115,7 +115,7 @@ export default function SessionDetailsModal({ session, onClose }: SessionDetails
                         </div>
                     </div>
 
-                    <div className="p-6 bg-blue-50 rounded-[2rem] border border-blue-100 flex gap-4">
+                    <div className="p-6 bg-blue-50 rounded-4xl border border-blue-100 flex gap-4">
                         <AlertCircle className="text-blue-500 shrink-0" size={20} />
                         <p className="text-xs text-blue-900 leading-relaxed font-medium">
                             This session is running on the <strong>WhatsApp Channel</strong>. All messages are logged for your review.

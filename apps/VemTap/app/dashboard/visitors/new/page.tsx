@@ -12,9 +12,12 @@ import { useNewVisitors, useNewVisitorStats, useVisitor } from '@/services/visit
 import { useAuthStore } from '@/store/useAuthStore';
 import { UserPlus, Calendar, TrendingUp, Timer, Send, Hand, Tag } from 'lucide-react';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
+import MessagingChannelSelectorModal from '@/components/dashboard/MessagingChannelSelectorModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import toast from 'react-hot-toast';
 import { formatDate } from '@/lib/utils/date';
+import { useChatStore } from '@/lib/store/useChatStore';
+import { useRouter } from 'next/navigation';
 
 function NewVisitorJoinedCell({ visitor }: { visitor: Visitor }) {
     const { data: fullVisitor } = useVisitor(visitor.id);
@@ -58,27 +61,73 @@ function NewVisitorJoinedCell({ visitor }: { visitor: Visitor }) {
 
 export default function NewVisitorsPage() {
     const queryClient = useQueryClient();
+    const router = useRouter();
 
     const [isBulkMsgOpen, setIsBulkMsgOpen] = useState(false);
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<Visitor | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
+    const [showChannelSelector, setShowChannelSelector] = useState(false);
+    const [isBulkChannelSelector, setIsBulkChannelSelector] = useState(false);
 
     const activeBranchId = useAuthStore((state) => state.activeBranchId);
     const { data: paginatedData, isLoading } = useNewVisitors();
     const { data: statsData } = useNewVisitorStats();
+    const addPendingThread = useChatStore(s => s.addPendingThread);
+    const setActiveConversation = useChatStore(s => s.setActiveConversation);
 
     const newVisitors = paginatedData?.data || [];
 
+    const getVisitorDisplayName = (visitor: Visitor) => {
+        return visitor.name ||
+            (visitor.firstName || visitor.lastName
+                ? `${visitor.firstName || ''} ${visitor.lastName || ''}`.trim()
+                : 'Unknown Visitor');
+    };
+    
     const handleWelcomeVisitor = (visitor: Visitor) => {
         setSelectedVisitorForMsg(visitor);
+        setIsBulkChannelSelector(false);
+        setShowChannelSelector(true);
     };
 
     const handleSendWelcomeMessage = () => {
         if (newVisitors.length > 0) {
-            setIsBulkMsgOpen(true);
+            setIsBulkChannelSelector(true);
+            setShowChannelSelector(true);
         } else {
             toast.error('No new visitors to send welcome message to');
         }
+    };
+
+    const handleSelectInApp = () => {
+        if (isBulkChannelSelector) {
+            // Bulk in-app logic: redirect to chat and trigger the segment-based broadcast
+            router.push(`/dashboard/messaging/chat?segment=new-visitors`);
+        } else if (selectedVisitorForMsg) {
+            const visitorName = getVisitorDisplayName(selectedVisitorForMsg);
+            const chatContact = {
+                id: selectedVisitorForMsg.id,
+                name: visitorName,
+                phone: selectedVisitorForMsg.phone,
+                email: selectedVisitorForMsg.email,
+                isOnline: false,
+            };
+            
+            const threadId = addPendingThread(chatContact);
+            setActiveConversation(threadId);
+            
+            router.push(`/dashboard/messaging/chat?visitorId=${selectedVisitorForMsg.id}`);
+        }
+        setShowChannelSelector(false);
+    };
+
+    const handleSelectExternal = () => {
+        if (isBulkChannelSelector) {
+            setIsBulkMsgOpen(true);
+        } else {
+            // Individual external logic handled by SendMessageModal
+        }
+        setShowChannelSelector(false);
     };
 
     const stats = statsData?.stats && statsData.stats.length > 0 ? statsData.stats.map(s => ({
@@ -99,13 +148,6 @@ export default function NewVisitorsPage() {
         { label: 'Conv. Rate', value: '0%', icon: TrendingUp, color: 'purple' as const, trend: { value: '+0%', isUp: true } },
         { label: 'Avg. Wait', value: '0m', icon: Timer, color: 'yellow' as const, trend: { value: '-0s', isUp: true } },
     ];
-
-    const getVisitorDisplayName = (visitor: Visitor) => {
-        return visitor.name ||
-            (visitor.firstName || visitor.lastName
-                ? `${visitor.firstName || ''} ${visitor.lastName || ''}`.trim()
-                : 'Unknown Visitor');
-    };
 
     const columns: Column<Visitor>[] = [
         {
@@ -172,14 +214,28 @@ export default function NewVisitorsPage() {
                 isOpen={isBulkMsgOpen}
                 onClose={() => setIsBulkMsgOpen(false)}
                 recipientName={`${newVisitors.length} New Visitors`}
+                visitorIds={newVisitors.map(v => v.id)}
                 type="welcome"
             />
 
+            <MessagingChannelSelectorModal
+                isOpen={showChannelSelector}
+                onClose={() => {
+                    setShowChannelSelector(false);
+                    setSelectedVisitorForMsg(null);
+                }}
+                onSelectInApp={handleSelectInApp}
+                onSelectExternal={handleSelectExternal}
+                recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
+            />
+
             <SendMessageModal
-                isOpen={!!selectedVisitorForMsg}
+                isOpen={!!selectedVisitorForMsg && !showChannelSelector}
                 onClose={() => setSelectedVisitorForMsg(null)}
                 recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
                 recipientPhone={selectedVisitorForMsg?.phone}
+                recipientEmail={selectedVisitorForMsg?.email}
+                visitorIds={selectedVisitorForMsg?.id ? [selectedVisitorForMsg.id] : undefined}
                 type="welcome"
             />
 

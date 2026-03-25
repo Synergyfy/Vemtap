@@ -35,7 +35,7 @@ function StandaloneChatContent() {
     const { data: business } = useMyBusiness();
     const { activeBranchId } = useActiveBranch();
     
-    const isCustomer = user?.role === 'customer';
+    const isCustomer = user?.role?.toLowerCase() === 'customer';
     const branchId = isCustomer ? undefined : activeBranchId;
     
     const {
@@ -54,7 +54,7 @@ function StandaloneChatContent() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Queries
-    const { data: threads = [] } = useChatThreads('IN_HOUSE', branchId || undefined);
+    const { data: threads = [] } = useChatThreads('IN_HOUSE', branchId || undefined, isCustomer);
     const activeConversation = (threads as any[]).find(c => c.id === conversationId);
 
     const { data: messages = [], isLoading: messagesLoading } = useQuery({
@@ -65,20 +65,13 @@ function StandaloneChatContent() {
                 : `/messaging/inbox/threads/${conversationId}${branchId ? `?branchId=${branchId}` : ''}`;
             return api.get(endpoint);
         },
-        enabled: !!conversationId,
+        enabled: !!conversationId && conversationId !== 'default',
         refetchInterval: 5000,
     });
 
     // Mutations
-    const businessReply = useSendReply();
-    const customerReply = useMutation({
-        mutationFn: ({ threadId, content }: { threadId: string; content: string }) =>
-          api.post(`/customer/messaging/threads/${threadId}/reply`, { content }),
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ['chat-messages', conversationId] });
-          queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
-        },
-    });
+    const businessReply = useSendReply(false);
+    const customerReply = useSendReply(true);
 
     // Initial load
     useEffect(() => {
@@ -141,7 +134,7 @@ function StandaloneChatContent() {
     const contactName = activeConversation?.contact?.name || 'User';
     const contactAvatar = activeConversation?.contact?.avatar;
     const isOnline = false;
-    const logoUrl = isCustomer ? (contactAvatar || business?.logoUrl) : (business?.logoUrl || contactAvatar);
+    const logoUrl = contactAvatar || business?.logoUrl;
     
     const isTyping = false;
 

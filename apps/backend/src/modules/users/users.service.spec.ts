@@ -4,10 +4,17 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { User, UserRole } from './entities/user.entity';
 import { PasswordResetHistory } from './entities/password-reset-history.entity';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { MailService } from '../mail/mail.service';
+import * as bcrypt from 'bcrypt';
+
+jest.mock('bcrypt', () => ({
+  hash: jest.fn().mockResolvedValue('hashed_password'),
+}));
 
 describe('UsersService', () => {
   let service: UsersService;
   let userRepository: any;
+  let mailService: any;
 
   beforeEach(async () => {
     userRepository = {
@@ -25,6 +32,15 @@ describe('UsersService', () => {
         orderBy: jest.fn().mockReturnThis(),
         getMany: jest.fn().mockResolvedValue([]),
       }),
+      manager: {
+        getRepository: jest.fn().mockReturnValue({
+          findOne: jest.fn().mockResolvedValue({ businessId: 'biz-1' }),
+        }),
+      },
+    };
+
+    mailService = {
+      sendWelcomeEmail: jest.fn().mockResolvedValue(true),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -38,6 +54,7 @@ describe('UsersService', () => {
             save: jest.fn(),
           },
         },
+        { provide: MailService, useValue: mailService },
       ],
     }).compile();
 
@@ -59,6 +76,41 @@ describe('UsersService', () => {
       expect(result).toMatchObject(userData);
       expect(userRepository.create).toHaveBeenCalledWith(userData);
       expect(userRepository.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('inviteStaff', () => {
+    it('should invite a staff member and send welcome email', async () => {
+      const dto = {
+        email: 'staff@example.com',
+        firstName: 'Staff',
+        lastName: 'User',
+        role: UserRole.STAFF,
+        permissions: ['dashboard'],
+      };
+      const branchId = 'br-1';
+
+      userRepository.findOne.mockResolvedValue(null);
+
+      const result = await service.inviteStaff(branchId, dto as any);
+
+      expect(result.email).toBe(dto.email.toLowerCase());
+      expect(result.password).toBe('hashed_password');
+      expect(bcrypt.hash).toHaveBeenCalledWith(dto.firstName.toLowerCase(), 10);
+      expect(userRepository.save).toHaveBeenCalled();
+      expect(mailService.sendWelcomeEmail).toHaveBeenCalledWith(
+        dto.email,
+        dto.firstName,
+        dto.firstName.toLowerCase(),
+      );
+    });
+
+    it('should throw BadRequestException if email already exists', async () => {
+      userRepository.findOne.mockResolvedValue({ id: '1' });
+      const dto = { email: 'staff@example.com', firstName: 'Staff' };
+      await expect(service.inviteStaff('br-1', dto as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 

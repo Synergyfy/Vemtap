@@ -3,6 +3,7 @@
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useCallback, useEffect } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useUrlPersistence } from './useUrlPersistence';
 
 /**
  * Robust hook for managing active branch state.
@@ -14,6 +15,7 @@ export function useActiveBranch() {
     const router = useRouter();
     const pathname = usePathname();
     const { activeBranchId: storeBranchId, setActiveBranch: setStoreBranch } = useAuthStore();
+    const { getPersistedLink } = useUrlPersistence();
 
     // 1. Get branchId from URL and sanitize it (ignore 'all')
     const rawUrlId = searchParams.get('branchId');
@@ -41,6 +43,9 @@ export function useActiveBranch() {
             params.delete('branchId');
         }
         
+        // Sync to store immediately for smoother transition
+        setStoreBranch(cleanId);
+        
         const query = params.toString();
         const newUrl = `${pathname}${query ? `?${query}` : ''}`;
         
@@ -58,21 +63,7 @@ export function useActiveBranch() {
          * Helper to append current branchId to any href
          */
         getLinkWithBranch: (href: string) => {
-            if (!effectiveBranchId) return href;
-            
-            // Handle both absolute paths and relative paths
-            const isAbsolute = href.startsWith('http');
-            const baseUrl = isAbsolute ? undefined : window.location.origin;
-            
-            try {
-                const url = new URL(href, baseUrl);
-                url.searchParams.set('branchId', effectiveBranchId);
-                return isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
-            } catch (e) {
-                // Fallback for malformed URLs
-                const separator = href.includes('?') ? '&' : '?';
-                return `${href}${separator}branchId=${effectiveBranchId}`;
-            }
+             return getPersistedLink(href);
         }
     };
 }

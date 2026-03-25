@@ -1,17 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dashboardApi } from '@/lib/api/dashboard';
-import { Notification } from '@/lib/store/mockDashboardStore';
+import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '@/services/notifications/hooks';
+import { Notification } from '@/services/notifications/types';
 import {
     LayoutGrid, History, Gift, User, Nfc, Bell,
     LogOut, Menu, Star, BarChart3, LifeBuoy, X, MessageSquare, Search
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
+import { useQueryClient } from '@tanstack/react-query';
+import { useUrlPersistence } from '@/hooks/useUrlPersistence';
 
 interface CustomerSidebarProps {
     children: React.ReactNode;
@@ -23,32 +24,21 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
     const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+    const { getPersistedLink } = useUrlPersistence();
     const [showNotifications, setShowNotifications] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const queryClient = useQueryClient();
 
-    const { data } = useQuery({
-        queryKey: ['dashboard'],
-        queryFn: dashboardApi.fetchDashboardData,
-        refetchInterval: 5000,
-    });
+    // Close mobile sidebar on navigation
+    useEffect(() => {
+        setIsMobileMenuOpen(false);
+    }, [pathname]);
 
-    const notifications = data?.notifications || [];
+    const { data: notifications = [] } = useNotifications();
     const unreadCount = notifications.filter((n: Notification) => !n.read).length;
 
-    const readNotificationMutation = useMutation({
-        mutationFn: dashboardApi.markNotificationRead,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-        }
-    });
-
-    const readAllMutation = useMutation({
-        mutationFn: dashboardApi.markAllNotificationsRead,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-        }
-    });
+    const readNotificationMutation = useMarkAsRead();
+    const readAllMutation = useMarkAllAsRead();
 
     const toggleMenu = (menu: string) => {
         setExpandedMenus(prev =>
@@ -62,7 +52,13 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
         router.push('/login');
     };
 
-    const menuItems = [
+    const menuItems: Array<{
+        id: string;
+        label: string;
+        icon: typeof LayoutGrid;
+        href: string;
+        external?: boolean;
+    }> = [
         {
             id: 'overview',
             label: 'Dashboard',
@@ -97,8 +93,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
             id: 'messages',
             label: 'Messages',
             icon: MessageSquare,
-            href: '/support-chat/default',
-            external: true,
+            href: '/customer/messaging/chat',
         },
         {
             id: 'support',
@@ -149,7 +144,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                             return (
                                 <Link
                                     key={item.id}
-                                    href={item.href}
+                                    href={getPersistedLink(item.href)}
                                     onClick={() => setIsMobileMenuOpen(false)}
                                     target={item.external ? '_blank' : undefined}
                                     rel={item.external ? 'noopener noreferrer' : undefined}
@@ -171,7 +166,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                         <Star className="text-white mb-2 bg-white/20 p-2 rounded-lg backdrop-blur-sm" size={32} />
                         <h3 className="font-bold text-sm mb-1">Earn more points!</h3>
                         <p className="text-xs text-white/80 mb-3">Visit our partner stores to unlock exclusive rewards.</p>
-                        <Link href="/customer/loyalty" onClick={() => setIsMobileMenuOpen(false)} className="inline-block text-xs font-bold bg-white text-primary px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+                        <Link href={getPersistedLink("/customer/loyalty")} onClick={() => setIsMobileMenuOpen(false)} className="inline-block text-xs font-bold bg-white text-primary px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
                             View Rewards
                         </Link>
                     </div>
@@ -184,7 +179,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                             <User className="text-gray-400" size={20} />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-text-main truncate">{user?.name || 'Customer'}</p>
+                            <p className="text-sm font-bold text-text-main truncate">{user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Customer'}</p>
                             <p className="text-xs text-text-secondary truncate">{user?.email || 'customer@vemtap.com'}</p>
                         </div>
                     </div>
@@ -203,12 +198,24 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                 <Link href="/customer/dashboard" className="flex items-center gap-2">
                     <Logo />
                 </Link>
-                <button
-                    className="p-2 text-text-main"
-                    onClick={() => setIsMobileMenuOpen(true)}
-                >
-                    <Menu size={24} />
-                </button>
+                <div className="flex items-center gap-2">
+                    <Link
+                        href="/customer/settings"
+                        className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100 shadow-xs"
+                    >
+                        {user?.avatar ? (
+                            <img src={user.avatar} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                        ) : (
+                            <User size={20} className="text-text-secondary" />
+                        )}
+                    </Link>
+                    <button
+                        className="p-2 text-text-main"
+                        onClick={() => setIsMobileMenuOpen(true)}
+                    >
+                        <Menu size={24} />
+                    </button>
+                </div>
             </div>
 
             {/* Main Content */}
@@ -216,10 +223,22 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                 {/* Top Bar (Desktop) */}
                 <header className="hidden lg:flex h-20 bg-white border-b border-gray-200 items-center justify-between px-8">
                     <div>
-                        <h2 className="font-display font-bold text-xl text-text-main">Welcome back, {user?.name?.split(' ')[0] || 'Customer'}! 👋</h2>
+                        <h2 className="font-display font-bold text-xl text-text-main">Welcome back, {user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Customer'}! 👋</h2>
                         <p className="text-xs text-text-secondary font-medium">Here's what's happening with your rewards.</p>
                     </div>
                     <div className="flex items-center gap-4 relative">
+                        {/* Profile Button */}
+                        <Link
+                            href="/customer/settings"
+                            className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100 hover:bg-gray-100 transition-colors shadow-xs"
+                        >
+                            {user?.avatar ? (
+                                <img src={user.avatar} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                            ) : (
+                                <User size={20} className="text-text-secondary" />
+                            )}
+                        </Link>
+
                         {/* Notification Button */}
                         <button
                             onClick={() => setShowNotifications(!showNotifications)}
@@ -280,7 +299,7 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                                     </div>
                                     <div className="p-3 border-t border-gray-100 text-center">
                                         <Link
-                                            href="/customer/notifications"
+                                            href={getPersistedLink("/customer/notifications")}
                                             className="text-xs font-bold text-primary hover:text-primary-hover"
                                             onClick={() => setShowNotifications(false)}
                                         >

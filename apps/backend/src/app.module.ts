@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { CacheModule } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-yet';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
@@ -28,6 +31,11 @@ import { SystemModule } from './modules/system/system.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
 import { FormsModule } from './modules/forms/forms.module';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { ObservabilityModule } from './observability/observability.module';
+import { AdministrationModule } from './modules/administration/administration.module';
+import { ImpersonationGuard } from './modules/administration/impersonation.guard';
+import { CustomerImpersonationGuard } from './modules/administration/customer-impersonation.guard';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { dataSourceOptions } from './database/data-source';
 
@@ -40,13 +48,40 @@ import { dataSourceOptions } from './database/data-source';
           ? join(process.cwd(), '.env.test')
           : join(process.cwd(), '.env'),
     }),
+    CacheModule.registerAsync({
+      isGlobal: true,
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => {
+        if (process.env.NODE_ENV === 'test') {
+          return { ttl: 60 * 60 * 1000 };
+        }
+        return {
+          store: await redisStore({
+            url: configService.get('REDIS_URL') || 'redis://localhost:6379',
+            ttl: 60 * 60 * 1000, // 1 hour default TTL
+          }),
+        };
+      },
+    }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => [
+        {
+          ttl: config.get<number>('THROTTLE_TTL', 60000),
+          limit: config.get<number>('THROTTLE_LIMIT', 10),
+        },
+      ],
+    }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        const dbType = (configService.get<string>('DB_TYPE') || 'postgres') as any;
+        const dbType = (configService.get<string>('DB_TYPE') ||
+          'postgres') as any;
         const dbName = configService.get<string>('DB_NAME');
-        
+
         return {
           type: dbType,
           host: configService.get<string>('DB_HOST'),
@@ -54,7 +89,10 @@ import { dataSourceOptions } from './database/data-source';
           username: configService.get<string>('DB_USERNAME'),
           password: configService.get<string>('DB_PASSWORD'),
           database: dbName,
-          ssl: configService.get<string>('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
+          ssl:
+            configService.get<string>('DB_SSL') === 'true'
+              ? { rejectUnauthorized: false }
+              : false,
           autoLoadEntities: true,
           synchronize:
             process.env.NODE_ENV === 'test' ||
@@ -85,13 +123,28 @@ import { dataSourceOptions } from './database/data-source';
     MessagingModule,
     FormsModule,
     CategoriesModule,
+    ObservabilityModule,
+    AdministrationModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [
     AppService,
     {
       provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ImpersonationGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: CustomerImpersonationGuard,
     },
     {
       provide: APP_GUARD,

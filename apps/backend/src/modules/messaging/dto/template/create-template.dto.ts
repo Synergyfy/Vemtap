@@ -5,6 +5,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsBoolean,
+  IsUUID,
 } from 'class-validator';
 import { Channel } from '../../enums/channel.enum';
 import { TemplateCategory } from '../../entities/message-template.entity';
@@ -43,7 +44,7 @@ export class CreateTemplateDto {
   isSystem?: boolean;
 
   @ApiProperty({ example: 'uuid-branch', required: false })
-  @IsString()
+  @IsUUID()
   @IsOptional()
   branchId?: string;
 }

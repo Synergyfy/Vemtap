@@ -34,6 +34,7 @@ interface EngagementTilesProps {
     selectedFormTitle?: string | null;
     selectedFormType?: string | null;
     attachedForms?: Array<{ id: string; title: string; description?: string }>;
+    attachedRewards?: Array<{ id: string; name: string; pointCost?: number }>;
     completedFormIds?: string[];
     settings?: {
         showReview?: boolean;
@@ -46,20 +47,23 @@ interface EngagementTilesProps {
         facebook?: string;
         linkedin?: string;
         socialUrl?: string;
+        brandColor?: string;
     };
 }
 
 export const EngagementTiles: React.FC<EngagementTilesProps> = ({
     onAction,
     selectedFormTitle,
-    selectedFormType,
     attachedForms = [],
+    attachedRewards = [],
     completedFormIds = [],
     settings = {}
 }) => {
+    const brandColor = settings?.brandColor || '#2563eb';
     const hasSocial = !!(settings.instagram || settings.twitter || settings.facebook || settings.linkedin || settings.socialUrl);
     const hasReview = !!settings.reviewUrl;
     const hasSelectedForm = !!selectedFormTitle;
+    const formButtonBase = "w-full h-11 rounded-xl border px-4 text-left text-sm font-semibold flex items-center justify-between transition-all";
 
     return (
         <div className="w-full space-y-3 mt-8">
@@ -67,30 +71,62 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
                 Boost Your Experience
             </h3>
 
-            {attachedForms.length > 0 ? (
-                attachedForms.map((form) => {
-                    const isCompleted = completedFormIds.includes(form.id);
-                    return (
-                        <EngagementTile
-                            key={form.id}
-                            icon={isCompleted ? "check_circle" : "assignment"}
-                            label={isCompleted ? `${form.title} (Redeemed)` : (form.title || 'Open Form')}
-                            description={isCompleted ? "Thank you for filling this form!" : (form.description || 'Fill this form')}
-                            color={isCompleted ? "bg-emerald-50 text-emerald-500" : "bg-amber-50 text-amber-600"}
-                            onClick={() => !isCompleted && onAction('feedback', form.id)}
-                        />
-                    );
-                })
-            ) : (
+            {attachedForms.length > 0 && (
+                <div className="space-y-2">
+                    {attachedForms.map((form) => {
+                        const isCompleted = completedFormIds.includes(form.id);
+                        return (
+                            <button
+                                key={form.id}
+                                onClick={() => !isCompleted && onAction('feedback', form.id)}
+                                disabled={isCompleted}
+                                className={`${formButtonBase} ${
+                                    isCompleted
+                                        ? 'bg-emerald-50 border-emerald-100 text-emerald-700 cursor-default'
+                                        : 'border-transparent text-white hover:brightness-95'
+                                }`}
+                                style={!isCompleted ? { backgroundColor: brandColor } : undefined}
+                            >
+                                <span className="truncate">{form.title || 'Open Form'}</span>
+                                <span className={`material-symbols-outlined text-base ${isCompleted ? 'text-emerald-400' : 'text-white/80'}`}>arrow_forward</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
+            {attachedRewards.length > 0 && (
+                <div className="space-y-2">
+                    {attachedRewards.map((reward) => (
+                        <button
+                            key={reward.id}
+                            onClick={() => onAction('rewards')}
+                            className={`${formButtonBase} border-transparent text-white hover:brightness-95`}
+                            style={{ backgroundColor: brandColor }}
+                        >
+                            <div className="flex items-center gap-3">
+                                <span className="material-symbols-outlined text-sm">redeem</span>
+                                <span className="truncate">{reward.name || 'Claim Reward'}</span>
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-2 py-0.5 rounded-full text-white">
+                                {reward.pointCost || 0} PTS
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {attachedForms.length === 0 && attachedRewards.length === 0 && (
                 <>
                     {hasSelectedForm ? (
-                        <EngagementTile
-                            icon="assignment"
-                            label={selectedFormTitle || 'Open Form'}
-                            description={`Fill ${selectedFormType || 'selected'} form`}
-                            color="bg-amber-50 text-amber-600"
+                        <button
                             onClick={() => onAction('feedback')}
-                        />
+                            className={`${formButtonBase} border-transparent text-white hover:brightness-95`}
+                            style={{ backgroundColor: brandColor }}
+                        >
+                            <span className="truncate">{selectedFormTitle || 'Open Form'}</span>
+                            <span className="material-symbols-outlined text-base text-white/80">arrow_forward</span>
+                        </button>
                     ) : (
                         <>
                             {settings.showReview && hasReview && (
@@ -110,16 +146,6 @@ export const EngagementTiles: React.FC<EngagementTilesProps> = ({
                                     description="Open social links after default submission"
                                     color="bg-blue-50 text-blue-500"
                                     onClick={() => onAction('social')}
-                                />
-                            )}
-
-                            {settings.showFeedback && (
-                                <EngagementTile
-                                    icon="chat_bubble"
-                                    label="Quick Feedback"
-                                    description="Help us improve our service"
-                                    color="bg-purple-50 text-purple-500"
-                                    onClick={() => onAction('feedback')}
                                 />
                             )}
 

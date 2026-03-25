@@ -34,6 +34,7 @@ import { FlowExecution } from '../entities/flow-execution.entity';
 import { FlowLog } from '../entities/flow-log.entity';
 import { Setting } from '../../settings/entities/setting.entity';
 import { FlowAnalyticsResponse } from '../interfaces/flow-engine.interface';
+import { IdDto } from '../dto/id.dto';
 
 @ApiTags('Admin Flow Engine')
 @Controller('admin/flow-engine')
@@ -65,7 +66,7 @@ export class AdminFlowEngineController {
   @ApiBody({ type: UpdateFlowTemplateDto })
   @ApiResponse({ status: 200, type: FlowTemplate })
   async updateTemplate(
-    @Param('id') id: string,
+    @Param() { id }: IdDto,
     @Body() data: UpdateFlowTemplateDto,
   ): Promise<FlowTemplate | null> {
     return this.adminFlowService.updateTemplate(id, data);
@@ -74,7 +75,7 @@ export class AdminFlowEngineController {
   @Delete('templates/:id')
   @ApiOperation({ summary: 'Delete a global flow template' })
   @ApiResponse({ status: 200, description: 'Template deleted successfully' })
-  async deleteTemplate(@Param('id') id: string): Promise<void> {
+  async deleteTemplate(@Param() { id }: IdDto): Promise<void> {
     await this.adminFlowService.deleteTemplate(id);
   }
 

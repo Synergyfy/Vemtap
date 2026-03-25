@@ -11,6 +11,7 @@ import {
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from '../../common/decorators/public.decorator';
+import { AllowPending } from '../../common/decorators/allow-pending.decorator';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -20,6 +21,7 @@ import { RegisterAdminDto } from './dto/register-admin.dto';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { PasswordResetOtpDto } from './dto/password-reset-otp.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { SwitchRoleDto } from './dto/switch-role.dto';
 import {
   AuthResponseDto,
@@ -195,5 +197,26 @@ export class AuthController {
   })
   async switchRole(@Request() req, @Body() dto: SwitchRoleDto) {
     return this.authService.switchRole(req.user, dto.role);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @AllowPending()
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Change password for authenticated user' })
+  @ApiBody({ type: ChangePasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Password changed successfully',
+    schema: {
+      example: {
+        message: 'Password changed successfully',
+      },
+    },
+  })
+  async changePassword(@Request() req, @Body() dto: ChangePasswordDto) {
+    const ip = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    return this.authService.changePassword(req.user, dto, { ip, userAgent });
   }
 }

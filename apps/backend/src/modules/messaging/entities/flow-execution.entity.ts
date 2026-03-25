@@ -1,7 +1,7 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Flow } from './flow.entity';
-import { Contact } from '../../contacts/entities/contact.entity';
+import { User } from '../../users/entities/user.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 
 export enum ExecutionStatus {
@@ -22,12 +22,12 @@ export class FlowExecution extends AbstractBaseEntity {
   @Column()
   flowId: string;
 
-  @ManyToOne(() => Contact, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'contactId' })
-  contact: Contact;
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'customerId' })
+  customer: User;
 
   @Column()
-  contactId: string;
+  customerId: string;
 
   @ManyToOne(() => Branch, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'branchId' })

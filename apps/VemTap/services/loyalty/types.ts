@@ -47,18 +47,25 @@ export interface TemplateReward {
     usageLimitPerUser: number;
     totalAvailable?: number;
     isActive?: boolean;
-    imageUrl?: string;
     imageUrls?: string[];
+    imageUrl?: string;
 }
 
 export interface LoyaltyTemplate {
     id: string;
     name: string;
     description?: string;
-    status: TemplateStatus;
-    rewards: TemplateReward[];
-    rules: Partial<LoyaltyRule>;
+    pointsRequired: number;
+    category: RewardType;
+    coverImage?: string;
+    galleryImages?: string[];
+    status?: TemplateStatus;
+    rewards?: TemplateReward[];
+    rules?: Partial<LoyaltyRule>;
     createdAt: string;
+    updatedAt?: string;
+    deletedAt?: string | null;
+    createdById?: string;
 }
 
 export interface VerifyRedemptionResponse {
@@ -83,14 +90,14 @@ export interface VerifyRedemptionResponse {
 export interface CreateRewardRequest {
     name: string;
     description: string;
-    rewardType: 'discount' | 'free_item' | 'service' | 'cashback' | 'gift';
+    rewardType: RewardType;
     pointCost: number;
     value: number;
     validityDays: number;
     usageLimitPerUser: number;
     totalAvailable?: number;
+    audienceTarget?: 'all' | 'new' | 'returning';
     branchId?: string;
-    imageUrl?: string;
     imageUrls?: string[];
 }
 
@@ -103,8 +110,8 @@ export interface UpdateRewardRequest {
     usageLimitPerUser?: number;
     totalAvailable?: number;
     isActive?: boolean;
+    audienceTarget?: 'all' | 'new' | 'returning';
     branchId?: string;
-    imageUrl?: string;
     imageUrls?: string[];
 }
 

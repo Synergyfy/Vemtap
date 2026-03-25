@@ -6,14 +6,18 @@ import {
     Plus, Trash2, Edit2, Gift, Ticket, Tag, Clock, Save, X, 
     Eye, ImageIcon, Upload, Image as ImageIcon2, HelpCircle, 
     Wallet, Package, Percent, ChevronDown, CheckCircle2, 
-    AlertCircle, Star, Search, Users, Calendar, LucideIcon, Loader2 
+    AlertCircle, Star, Search, Users, Calendar, LucideIcon, Loader2, Zap, LayoutTemplate,
+    ChevronLeft, ChevronRight
 } from 'lucide-react';
+import { Point, Area } from 'react-easy-crop';
+import useEmblaCarousel from 'embla-carousel-react';
 import { Reward, RewardType, Redemption } from '@/types/loyalty';
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import Tooltip from '@/components/ui/Tooltip';
 import { useRewardRedemptions } from '@/services/loyalty/hooks';
 import { formatDistanceToNow } from 'date-fns';
+import { RewardCreationModal } from './RewardCreationModal';
 
 interface RewardManagerProps {
     rewards: Reward[];
@@ -21,6 +25,9 @@ interface RewardManagerProps {
     onUpdate: (id: string, updates: Partial<Reward>) => Promise<void>;
     onDelete?: (id: string) => Promise<void>;
     className?: string;
+    templates?: any[];
+    onApplyTemplate?: (templateId: string) => Promise<void>;
+    isApplyingTemplate?: boolean;
 }
 
 const RedemptionsModal: React.FC<{ 
@@ -129,6 +136,49 @@ const RedemptionsModal: React.FC<{
     );
 };
 
+
+const RewardGallery: React.FC<{ items: string[], name: string }> = ({ items, name }) => {
+    const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
+    
+    return (
+        <div className="relative w-full aspect-video overflow-hidden rounded-2xl bg-slate-100 border border-slate-200 shadow-inner group/gallery">
+            <div className="overflow-hidden h-full" ref={emblaRef}>
+                <div className="flex h-full">
+                    {items.map((url, index) => (
+                        <div className="flex-[0_0_100%] min-w-0 h-full relative" key={index}>
+                            <img
+                                src={url}
+                                alt={`${name} - ${index + 1}`}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                            />
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {items.length > 1 && (
+                <>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); emblaApi?.scrollPrev(); }}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm border border-slate-200 flex items-center justify-center text-slate-900 opacity-0 group-hover/gallery:opacity-100 transition-all hover:bg-white shadow-lg"
+                    >
+                        <ChevronLeft size={16} />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); emblaApi?.scrollNext(); }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm border border-slate-200 flex items-center justify-center text-slate-900 opacity-0 group-hover/gallery:opacity-100 transition-all hover:bg-white shadow-lg"
+                    >
+                        <ChevronRight size={16} />
+                    </button>
+                    <div className="absolute bottom-3 right-3 px-2 py-1 bg-black/50 backdrop-blur-md rounded-lg text-[8px] font-black text-white uppercase tracking-tighter">
+                        {items.length} Images
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
 const REWARD_TYPE_DETAILS: Record<RewardType, { label: string, description: string, icon: LucideIcon }> = {
     discount: {
         label: "Custom Discount",
@@ -154,103 +204,47 @@ const REWARD_TYPE_DETAILS: Record<RewardType, { label: string, description: stri
         label: "Tangible Gift",
         description: "A surprise physical reward or gift package.",
         icon: Gift
+    },
+    // New types mapping to existing UI categories
+    custom_discount: {
+        label: "Custom Discount",
+        description: "Apply percentage or fixed price reduction on checkout.",
+        icon: Percent
+    },
+    free_product: {
+        label: "Free Product",
+        description: "Offer a specific item at no cost to the customer.",
+        icon: Package
+    },
+    service_upgrade: {
+        label: "Service Upgrade",
+        description: "Complimentary services or feature upgrades.",
+        icon: Ticket
+    },
+    tangible_gifts: {
+        label: "Tangible Gift",
+        description: "A surprise physical reward or gift package.",
+        icon: Gift
     }
 };
 
-export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate, onUpdate, className }) => {
+export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate, onUpdate, onDelete, className, templates, onApplyTemplate, isApplyingTemplate }) => {
     const [isAdding, setIsAdding] = useState(false);
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [isTypeOpen, setIsTypeOpen] = useState(false);
-    const [isSubmitted, setIsSubmitted] = useState(false);
+    const [showTemplateModal, setShowTemplateModal] = useState(false);
+    const [templateSearchQuery, setTemplateSearchQuery] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [viewingRewardForCustomers, setViewingRewardForCustomers] = useState<Reward | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const [isUploading, setIsUploading] = useState(false);
-
-    const [formData, setFormData] = useState<Partial<Reward>>({
-        name: '',
-        description: '',
-        rewardType: 'free_item',
-        pointCost: 100,
-        validityDays: 30,
-        value: 0,
-        totalAvailable: 0,
-        isActive: true,
-        imageUrl: ''
-    });
+    const [editingReward, setEditingReward] = useState<Reward | null>(null);
 
     const resetForm = () => {
-        setFormData({
-            name: '',
-            description: '',
-            rewardType: 'free_item',
-            pointCost: 100,
-            validityDays: 30,
-            value: 0,
-            totalAvailable: 0,
-            isActive: true,
-            imageUrl: ''
-        });
         setIsAdding(false);
-        setEditingId(null);
-        setIsSubmitted(false);
-        setIsTypeOpen(false);
+        setEditingReward(null);
     };
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setIsUploading(true);
-            const reader = new FileReader();
-            reader.onloadend = async () => {
-                try {
-                    const response = await fetch('/api/upload', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ file: reader.result }),
-                    });
-                    const data = await response.json();
-                    if (data.url) {
-                        setFormData(prev => ({ ...prev, imageUrl: data.url }));
-                        notify.success('Image uploaded successfully');
-                    } else {
-                        throw new Error(data.error || 'Upload failed');
-                    }
-                } catch (error: any) {
-                    notify.error(error.message || 'Image upload failed');
-                } finally {
-                    setIsUploading(false);
-                }
-            };
-            reader.readAsDataURL(file);
-        }
-    };
 
     const handleEdit = (reward: Reward) => {
-        setFormData(reward);
-        setEditingId(reward.id);
+        setEditingReward(reward);
         setIsAdding(true);
-    };
-
-    const handleSubmit = async () => {
-        setIsSubmitted(true);
-        if (!formData.name || !formData.pointCost) {
-            notify.error('Required fields are missing. Please check the highlighted inputs.');
-            return;
-        }
-
-        try {
-            if (editingId) {
-                await onUpdate(editingId, formData);
-                notify.success('Reward updated successfully');
-            } else {
-                await onCreate(formData);
-                notify.success('Reward created successfully');
-            }
-            resetForm();
-        } catch (error) {
-            notify.error('Failed to save reward');
-        }
     };
 
     return (
@@ -262,7 +256,13 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                     <p className="text-sm text-slate-500 font-medium">Manage the rewards available to your customers</p>
                 </div>
                 <button
-                    onClick={() => setIsAdding(true)}
+                    onClick={() => {
+                        if (templates && templates.length > 0) {
+                            setShowTemplateModal(true);
+                        } else {
+                            setIsAdding(true);
+                        }
+                    }}
                     className="bg-primary text-white px-6 py-3 font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all flex items-center gap-2 rounded-2xl"
                 >
                     <Plus className="w-4 h-4" />
@@ -293,9 +293,13 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                         r.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                         r.description.toLowerCase().includes(searchQuery.toLowerCase())
                     ).map((reward) => {
-                        const Icon = REWARD_TYPE_DETAILS[reward.rewardType].icon;
-                        const redemptionsCount = reward.totalRedeemed || 0;
-                        const pointsSpent = redemptionsCount * reward.pointCost;
+                        const r = reward as any;
+                        const category = r.category || r.rewardType || 'free_product';
+                        const pointsReq = r.pointsRequired ?? r.pointCost ?? 0;
+                        const redemptionsCount = r.redemptionCount ?? r.totalRedeemed ?? 0;
+                        const typeDetails = REWARD_TYPE_DETAILS[category as RewardType] || REWARD_TYPE_DETAILS['free_product'];
+                        const Icon = typeDetails.icon;
+                        const pointsSpent = redemptionsCount * pointsReq;
 
                         return (
                             <motion.div
@@ -313,40 +317,31 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                 )} />
                                 
                                 <div className="p-6 flex flex-col flex-grow">
-                                    <div className="flex items-start justify-between mb-5">
-                                        <div className="flex items-center space-x-4">
-                                            <div className="relative w-16 h-16 shrink-0 bg-white border border-primary/10 overflow-hidden rounded-2xl flex items-center justify-center p-2 shadow-sm ring-4 ring-primary/5">
-                                                {reward.imageUrl ? (
-                                                    <img
-                                                        src={reward.imageUrl}
-                                                        alt={reward.name}
-                                                        className="w-full h-full object-cover rounded-xl"
-                                                    />
-                                                ) : (
-                                                    <Icon className="w-8 h-8 text-primary" />
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="font-display font-bold text-slate-900 text-lg line-clamp-1">{reward.name}</h4>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className={cn(
-                                                        "px-2.5 py-1 rounded-full text-[9px] uppercase tracking-widest font-black",
-                                                        reward.isActive ? "bg-emerald-100 text-emerald-600" : "bg-slate-200 text-slate-500"
-                                                    )}>
-                                                        {reward.isActive ? 'Active' : 'Disabled'}
-                                                    </span>
-                                                    <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[9px] uppercase tracking-widest font-black border border-primary/20 flex items-center gap-1">
-                                                        <Gift className="w-3 h-3" />
-                                                        Points
-                                                    </span>
-                                                </div>
-                                            </div>
+                                    {/* Prominent Image Section */}
+                                    {(() => {
+                                        const r = reward as any;
+                                        const images = r.galleryImages && r.galleryImages.length > 0
+                                            ? r.galleryImages
+                                            : [r.coverImage || r.imageUrl].filter(Boolean) as string[];
+                                        return <RewardGallery items={images} name={r.name} />;
+                                    })()}
+                                    
+                                    <div className="relative mb-5">
+                                        {/* Tag overlay */}
+                                        <div className="absolute -top-12 left-3 flex gap-2">
+                                            <span className={cn(
+                                                "px-2.5 py-1 rounded-lg text-[9px] uppercase tracking-widest font-black shadow-sm backdrop-blur-md",
+                                                reward.isActive ? "bg-emerald-500/90 text-white" : "bg-slate-800/90 text-slate-300"
+                                            )}>
+                                                {reward.isActive ? 'Active' : 'Disabled'}
+                                            </span>
                                         </div>
 
-                                        <div className="flex items-center">
+                                        {/* Edit Button overlay */}
+                                        <div className="absolute -top-12 right-3">
                                             <button
                                                 onClick={() => handleEdit(reward)}
-                                                className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
+                                                className="p-2.5 bg-white/90 backdrop-blur-md text-slate-900 rounded-xl shadow-lg hover:bg-white transition-colors border border-white/20"
                                                 title="Edit Reward"
                                             >
                                                 <Edit2 className="w-4 h-4" />
@@ -354,9 +349,14 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                         </div>
                                     </div>
 
-                                    <p className="text-sm text-slate-500 font-medium mb-6 line-clamp-2 min-h-[40px]">
-                                        {reward.description || 'No description provided for this reward.'}
-                                    </p>
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-display font-black text-slate-900 text-xl line-clamp-1">{reward.name}</h4>
+                                            <p className="text-sm text-slate-500 font-medium mt-1 line-clamp-2 min-h-[40px]">
+                                                {reward.description || 'No description provided for this reward.'}
+                                            </p>
+                                        </div>
+                                    </div>
 
                                     {/* Stats grid */}
                                     <div className="grid grid-cols-2 gap-3 mb-5">
@@ -364,17 +364,17 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                             <div className="p-3 bg-primary/5 rounded-2xl text-center border border-primary/10 h-full flex flex-col justify-center">
                                                 <div className="flex items-center justify-center gap-1.5 text-primary">
                                                     <Star className="w-5 h-5 fill-primary/20" />
-                                                    <span className="text-2xl font-black">{reward.pointCost.toLocaleString()}</span>
+                                                    <span className="text-2xl font-black">{pointsReq.toLocaleString()}</span>
                                                 </div>
                                                 <p className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mt-1">Pts Required</p>
                                             </div>
                                         </Tooltip>
-                                        <Tooltip content={`Category: ${REWARD_TYPE_DETAILS[reward.rewardType].label}`}>
+                                        <Tooltip content={`Category: ${typeDetails.label}`}>
                                             <div className="p-3 bg-slate-50 rounded-2xl text-center border border-slate-100 h-full flex flex-col justify-center">
-                                                <span className="text-lg font-black text-slate-700 capitalize truncate px-2">
-                                                    {reward.rewardType.replace('_', ' ')}
-                                                </span>
-                                                <p className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mt-1">Type</p>
+                                                <div className="flex justify-center mb-1">
+                                                    <Icon className="w-5 h-5 text-slate-400" />
+                                                </div>
+                                                <p className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Type</p>
                                             </div>
                                         </Tooltip>
                                     </div>
@@ -396,13 +396,29 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                             </Tooltip>
                                         </div>
 
-                                        <button
-                                            onClick={() => setViewingRewardForCustomers(reward)}
-                                            className="w-full flex items-center justify-center gap-2 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl transition-all font-bold text-xs uppercase tracking-widest group/btn"
-                                        >
-                                            <Users className="w-4 h-4 text-slate-400 group-hover/btn:text-primary transition-colors" />
-                                            View Customers
-                                        </button>
+                                        <div className="grid grid-cols-5 gap-2">
+                                            <button
+                                                onClick={() => setViewingRewardForCustomers(reward)}
+                                                className="col-span-4 flex items-center justify-center gap-2 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition-all font-bold text-xs uppercase tracking-widest group/btn shadow-lg shadow-slate-900/10"
+                                            >
+                                                <Users className="w-4 h-4 text-slate-400 group-hover/btn:text-primary transition-colors" />
+                                                View Customers
+                                            </button>
+                                            {onDelete && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (confirm('Are you sure you want to delete this reward?')) {
+                                                            onDelete(reward.id);
+                                                        }
+                                                    }}
+                                                    className="flex items-center justify-center p-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-500 rounded-xl transition-all"
+                                                    title="Delete Reward"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </motion.div>
@@ -412,16 +428,16 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                 </div>
             )}
 
-            {/* Modal Overlay */}
+            {/* Template Selection Modal */}
             <AnimatePresence>
-                {isAdding && (
-                    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 md:p-8">
+                {showTemplateModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
                         {/* Backdrop */}
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            onClick={resetForm}
+                            onClick={() => setShowTemplateModal(false)}
                             className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
                         />
 
@@ -430,231 +446,138 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white w-full max-w-2xl text-slate-900 relative shadow-2xl rounded-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]"
+                            className="bg-white w-full max-w-4xl text-slate-900 relative shadow-2xl rounded-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]"
                         >
-                            <div className="p-8 overflow-y-auto scrollbar-hide">
+                            <div className="p-8 border-b border-slate-100 flex items-center justify-between shrink-0">
+                                <div>
+                                    <h3 className="text-2xl font-display font-bold text-slate-900">Add a New Reward</h3>
+                                    <p className="text-sm text-slate-500 font-medium mt-1">Choose a pre-made template to get started quickly, or create a new reward from scratch.</p>
+                                </div>
                                 <button
-                                    onClick={resetForm}
-                                    className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full transition-colors z-10"
+                                    onClick={() => setShowTemplateModal(false)}
+                                    className="p-2 hover:bg-slate-100 rounded-full transition-colors"
                                 >
-                                    <X className="w-5 h-5" />
+                                    <X className="w-5 h-5 text-slate-400" />
                                 </button>
+                            </div>
 
-                                <div className="flex items-center gap-4 mb-2">
-                                    <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
-                                        <Gift className="w-6 h-6 text-white" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="text-2xl font-display font-semibold tracking-tight text-slate-900 truncate">
-                                            {editingId ? 'Edit Reward' : 'New Creation'}
-                                        </h3>
-                                        <p className="text-xs text-slate-500 font-medium mt-0.5">Configure your loyalty gift</p>
-                                    </div>
-                                </div>
-
-                                {/* Progress Bar */}
-                                <div className="flex gap-1.5 mb-8">
-                                    <div className={cn("h-1.5 flex-1 rounded-full transition-all", formData.name ? "bg-primary" : "bg-slate-100")} />
-                                    <div className={cn("h-1.5 flex-1 rounded-full transition-all", (formData.pointCost ?? 0) > 0 ? "bg-primary" : "bg-slate-100")} />
-                                    <div className={cn("h-1.5 flex-1 rounded-full transition-all", formData.imageUrl ? "bg-primary" : "bg-slate-100")} />
-                                </div>
-
-                                <div className="space-y-8">
-                                    <div className="space-y-6">
-                                        <div className="flex items-center justify-between">
-                                            <h4 className="text-sm font-semibold text-slate-600">Step 1: Core Details</h4>
-                                            {formData.name && (formData.pointCost ?? 0) > 0 && (
-                                                <span className="flex items-center gap-1 text-[10px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-2 py-1 rounded-lg">
-                                                    <CheckCircle2 size={10} /> Valid
-                                                </span>
-                                            )}
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <div className="flex items-center justify-between ml-1">
-                                                    <label className="text-xs font-medium text-slate-700">Reward Name <span className="text-rose-500">*</span></label>
-                                                    {isSubmitted && !formData.name && <span className="text-[8px] font-bold text-rose-500 uppercase">Required</span>}
-                                                </div>
-                                                <input
-                                                    type="text"
-                                                    value={formData.name}
-                                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                                    className={cn(
-                                                        "w-full h-12 px-5 bg-slate-50 border rounded-xl font-bold text-sm outline-none transition-all",
-                                                        isSubmitted && !formData.name 
-                                                            ? "border-rose-400 bg-rose-50/30 focus:bg-white" 
-                                                            : "border-transparent focus:bg-white focus:border-primary/20"
-                                                    )}
-                                                    placeholder="e.g. Complimentary Cappuccino"
-                                                />
-                                            </div>
-
-                                            <div className="space-y-2 relative">
-                                                <label className="text-xs font-medium text-slate-700 ml-1">Category & Behavior</label>
-                                                <div className="relative">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setIsTypeOpen(!isTypeOpen)}
-                                                        className="w-full h-12 px-5 bg-slate-50 border border-transparent rounded-xl flex items-center justify-between group hover:bg-slate-100 transition-all font-bold text-sm"
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            {(() => {
-                                                                const MetaIcon = REWARD_TYPE_DETAILS[formData.rewardType as RewardType].icon;
-                                                                return <MetaIcon size={16} className="text-primary" />;
-                                                            })()}
-                                                            <span>{REWARD_TYPE_DETAILS[formData.rewardType as RewardType].label}</span>
-                                                        </div>
-                                                        <ChevronDown size={16} className={cn("text-slate-400 transition-transform", isTypeOpen && "rotate-180")} />
-                                                    </button>
-
-                                                    <AnimatePresence>
-                                                        {isTypeOpen && (
-                                                            <>
-                                                                <div className="fixed inset-0 z-10" onClick={() => setIsTypeOpen(false)} />
-                                                                <motion.div
-                                                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                                    className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-hidden z-20"
-                                                                >
-                                                                    <div className="p-2 max-h-64 overflow-y-auto custom-scrollbar">
-                                                                        {(Object.keys(REWARD_TYPE_DETAILS) as RewardType[]).map((type) => {
-                                                                            const details = REWARD_TYPE_DETAILS[type];
-                                                                            const Icon = details.icon;
-                                                                            const isSelected = formData.rewardType === type;
-                                                                            return (
-                                                                                <button
-                                                                                    key={type}
-                                                                                    type="button"
-                                                                                    onClick={() => {
-                                                                                        setFormData({ ...formData, rewardType: type });
-                                                                                        setIsTypeOpen(false);
-                                                                                    }}
-                                                                                    className={cn(
-                                                                                        "w-full flex items-start gap-4 p-3 rounded-xl transition-all text-left group",
-                                                                                        isSelected ? "bg-primary/5 border border-primary/10" : "hover:bg-slate-50 border border-transparent"
-                                                                                    )}
-                                                                                >
-                                                                                    <div className={cn(
-                                                                                        "size-8 rounded-lg flex items-center justify-center shrink-0 transition-colors",
-                                                                                        isSelected ? "bg-primary text-white" : "bg-slate-100 text-slate-400 group-hover:text-slate-600 shadow-sm"
-                                                                                    )}>
-                                                                                        <Icon size={14} />
-                                                                                    </div>
-                                                                                    <div className="min-w-0">
-                                                                                        <p className={cn(
-                                                                                            "text-[11px] font-black uppercase tracking-tight",
-                                                                                            isSelected ? "text-primary" : "text-slate-900"
-                                                                                        )}>
-                                                                                            {details.label}
-                                                                                        </p>
-                                                                                        <p className="text-[10px] font-medium text-slate-400 leading-tight mt-0.5">
-                                                                                            {details.description}
-                                                                                        </p>
-                                                                                    </div>
-                                                                                </button>
-                                                                            );
-                                                                        })}
-                                                                    </div>
-                                                                </motion.div>
-                                                            </>
-                                                        )}
-                                                    </AnimatePresence>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-medium text-slate-700 ml-1">Visible Description</label>
-                                            <textarea
-                                                value={formData.description}
-                                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                                rows={2}
-                                                className="w-full p-5 bg-slate-50 border border-transparent rounded-xl font-bold text-sm focus:bg-white focus:border-primary/20 outline-none transition-all resize-none"
-                                                placeholder="Tell customers what makes this reward special..."
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-6">
-                                        <h4 className="text-sm font-semibold text-slate-600">Step 2: Economics & Expiry</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className={cn(
-                                                "p-6 rounded-2xl border transition-all",
-                                                isSubmitted && !formData.pointCost 
-                                                    ? "bg-rose-50/30 border-rose-300" 
-                                                    : "bg-primary/5 border-primary/10"
-                                            )}>
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <label className="text-xs font-medium text-primary">Points Required <span className="text-rose-500">*</span></label>
-                                                    <HelpCircle size={14} className="text-primary/40" />
-                                                </div>
-                                                <div className="flex items-center gap-4">
-                                                    <input
-                                                        type="number"
-                                                        value={formData.pointCost}
-                                                        onChange={(e) => setFormData({ ...formData, pointCost: parseInt(e.target.value) || 0 })}
-                                                        className="bg-white/50 border-b-2 border-primary/10 focus:border-primary focus:bg-white px-2 py-1 outline-none transition-all font-display font-semibold text-3xl text-primary w-full rounded-t-lg"
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                                                <label className="text-xs font-medium text-slate-700 block mb-4">Lifespan (Days)</label>
-                                                <input
-                                                    type="number"
-                                                    value={formData.validityDays}
-                                                    onChange={(e) => setFormData({ ...formData, validityDays: parseInt(e.target.value) || 0 })}
-                                                    className="bg-white/50 border-b-2 border-slate-200 focus:border-primary focus:bg-white px-2 py-1 outline-none transition-all font-display font-semibold text-3xl text-slate-900 w-full rounded-t-lg"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4 pb-4">
-                                        <h4 className="text-sm font-semibold text-slate-600">Cover Image</h4>
-                                        <input
-                                            type="file"
-                                            ref={fileInputRef}
-                                            onChange={handleImageUpload}
-                                            accept="image/*"
-                                            className="hidden"
-                                            disabled={isUploading}
-                                        />
-                                        <div
-                                            className={cn(
-                                                "relative h-48 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden cursor-pointer",
-                                                formData.imageUrl ? "border-solid border-slate-200 bg-white" : "border-slate-200 bg-slate-50 hover:bg-white hover:border-primary/40",
-                                                isUploading && "opacity-50 cursor-wait"
-                                            )}
-                                            onClick={() => fileInputRef.current?.click()}
-                                        >
-                                            {isUploading ? (
-                                                <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                                            ) : formData.imageUrl ? (
-                                                <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <ImageIcon2 className="w-8 h-8 text-slate-300" />
-                                            )}
-                                        </div>
-                                    </div>
+                            <div className="p-6 bg-slate-50 border-b border-slate-100 shrink-0">
+                                <div className="relative max-w-sm">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search templates..."
+                                        value={templateSearchQuery}
+                                        onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                                        className="w-full bg-white border border-slate-200 rounded-xl h-10 pl-10 pr-4 text-sm font-medium outline-none focus:border-primary/30 focus:ring-4 focus:ring-primary/5 transition-all"
+                                    />
                                 </div>
                             </div>
 
-                            <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                                <button onClick={resetForm} className="text-sm font-semibold text-slate-400">Cancel</button>
+                            <div className="flex-grow overflow-y-auto p-6 scrollbar-hide min-h-[300px] bg-slate-50/50">
+                                {templates && templates.filter(t => t.name.toLowerCase().includes(templateSearchQuery.toLowerCase()) || (t.description || '').toLowerCase().includes(templateSearchQuery.toLowerCase())).length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {templates.filter(t => t.name.toLowerCase().includes(templateSearchQuery.toLowerCase()) || (t.description || '').toLowerCase().includes(templateSearchQuery.toLowerCase())).map((template) => {
+                                            // Correctly resolve preview image from rewards
+                                            const templateImage = template.rewards?.find((r: any) => r.imageUrl || (r.imageUrls && r.imageUrls.length > 0));
+                                            const previewUrl = templateImage ? (templateImage.imageUrl || templateImage.imageUrls[0]) : (template.coverImage || (template.galleryImages && template.galleryImages[0]));
+
+                                            return (
+                                                <div
+                                                    key={template.id}
+                                                    className="border border-slate-200 rounded-3xl overflow-hidden bg-white hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col group cursor-pointer"
+                                                >
+                                                    {/* Template Hero Image */}
+                                                    <div className="w-full aspect-[16/10] bg-slate-100 border-b border-slate-100 relative">
+                                                        {previewUrl ? (
+                                                            <img
+                                                                src={previewUrl}
+                                                                alt={template.name}
+                                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
+                                                                <LayoutTemplate className="w-10 h-10 mb-2 opacity-20" />
+                                                                <span className="text-[10px] font-black uppercase tracking-tighter opacity-40">Preset Template</span>
+                                                            </div>
+                                                        )}
+                                                        <div className="absolute top-3 left-3">
+                                                            <span className="px-2.5 py-1 rounded-lg bg-white/90 backdrop-blur-md text-[9px] font-black uppercase tracking-widest text-primary border border-primary/10 shadow-sm">
+                                                                {template.rewards?.length || 1} {template.rewards?.length === 1 ? 'REWARD' : 'REWARDS'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="p-5 flex flex-col flex-grow">
+                                                        <div className="mb-4">
+                                                            <p className="text-lg font-display font-black text-slate-900 leading-tight">{template.name}</p>
+                                                            <p className="text-xs text-slate-500 font-medium line-clamp-2 mt-1 min-h-[32px]">{template.description || 'Professional loyalty blueprint'}</p>
+                                                        </div>
+
+                                                        <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-widest font-black text-slate-400 mb-5">
+                                                            <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1.5">
+                                                                <Zap className="w-3 h-3 text-amber-500" />
+                                                                {template.category || template.rules?.ruleType || 'rules'}
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="mt-auto pt-4 border-t border-slate-100">
+                                                            <button
+                                                                onClick={() => {
+                                                                    const prefill: any = {
+                                                                        name: template.name,
+                                                                        description: template.description || '',
+                                                                        rewardType: template.category || 'free_product',
+                                                                        pointCost: template.pointsRequired || 100,
+                                                                        imageUrls: template.galleryImages || (template.coverImage ? [template.coverImage] : []),
+                                                                        templateId: template.id
+                                                                    };
+                                                                    setEditingReward(prefill);
+                                                                    setIsAdding(true);
+                                                                    setShowTemplateModal(false);
+                                                                }}
+                                                                className="w-full py-3 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/10"
+                                                            >
+                                                                Customize & Apply
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-[200px]">
+                                        <Search className="w-12 h-12 text-slate-200 mb-4" />
+                                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">No templates found</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="p-6 bg-white border-t border-slate-100 flex flex-col items-center shrink-0">
+                                <p className="text-sm font-bold text-slate-500 mb-3 uppercase tracking-widest">Want full control?</p>
                                 <button
-                                    onClick={handleSubmit}
-                                    className="px-10 py-4 bg-primary text-white font-semibold text-sm rounded-2xl shadow-xl shadow-primary/20"
+                                    onClick={() => {
+                                        setShowTemplateModal(false);
+                                        setIsAdding(true);
+                                    }}
+                                    className="px-8 py-3 bg-white border-2 border-slate-200 hover:border-primary/40 hover:bg-slate-50 text-slate-700 font-bold text-xs uppercase tracking-widest rounded-xl transition-all"
                                 >
-                                    {editingId ? 'Update Reward' : 'Confirm & Launch'}
+                                    Create a Reward from Scratch
                                 </button>
                             </div>
                         </motion.div>
                     </div>
                 )}
             </AnimatePresence>
+
+            <RewardCreationModal 
+                isOpen={isAdding} 
+                onClose={resetForm} 
+                onCreate={onCreate} 
+                onUpdate={onUpdate}
+                initialData={editingReward}
+            />
 
             <AnimatePresence>
                 {viewingRewardForCustomers && (

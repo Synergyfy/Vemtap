@@ -6,6 +6,10 @@ import {
   IsNotEmpty,
   IsUUID,
   IsEmail,
+  IsUrl,
+  IsArray,
+  MinLength,
+  IsStrongPassword,
 } from 'class-validator';
 import { BusinessStatus } from '../entities/business.entity';
 
@@ -43,15 +47,21 @@ export class AdminCreateBusinessDto {
   ownerEmail: string;
 
   @ApiProperty({
-    example: 'password123',
+    example: 'SecurePass123!',
     description: 'The password for the new business owner',
   })
   @IsString()
-  @IsNotEmpty()
+  @IsStrongPassword({
+    minLength: 8,
+    minLowercase: 1,
+    minUppercase: 1,
+    minNumbers: 1,
+    minSymbols: 1,
+  })
   ownerPassword: string;
 
   @ApiPropertyOptional({
-    example: '+2348000000000',
+    example: '+2348012345678',
     description: 'The phone number of the business owner',
   })
   @IsString()
@@ -63,67 +73,145 @@ export class AdminCreateBusinessDto {
   @IsOptional()
   status?: BusinessStatus;
 
-  @ApiPropertyOptional({ example: 'uuid' })
+  // --- Business Details (matching RegisterOwnerDto) ---
+
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/logo.png',
+    description: 'Business logo URL',
+  })
   @IsOptional()
+  @IsString()
+  logoUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'uuid',
+    description: 'Category ID of the business',
+  })
+  @IsOptional()
+  @IsNotEmpty()
   @IsUUID()
   categoryId?: string;
 
-  @ApiPropertyOptional({ example: 'uuid' })
+  @ApiPropertyOptional({
+    example: 'uuid',
+    description: 'Subcategory ID of the business',
+  })
   @IsOptional()
+  @IsNotEmpty()
   @IsUUID()
   subcategoryId?: string;
 
-  @ApiPropertyOptional({ example: 'Art Studio' })
+  @ApiPropertyOptional({
+    example: 'Art Studio',
+    description: 'Name of the subcategory if "Others" is selected',
+  })
   @IsOptional()
   @IsString()
   otherSubcategoryName?: string;
 
-  @ApiPropertyOptional({ example: 'https://example.com/logo.png' })
-  @IsString()
+  @ApiPropertyOptional({
+    example: '501-2000',
+    description: 'Monthly visitor range',
+  })
   @IsOptional()
-  logoUrl?: string;
+  @IsString()
+  visitors?: string;
 
-  @ApiPropertyOptional({ example: '123 Main St, Lagos' })
-  @IsString()
+  @ApiPropertyOptional({
+    example: ['Capture Leads', 'Digital Loyalty'],
+    description: 'Business goals',
+  })
   @IsOptional()
-  address?: string;
+  @IsArray()
+  goals?: string[];
 
-  @ApiPropertyOptional({ example: 'Lagos' })
-  @IsString()
+  @ApiPropertyOptional({
+    example: '+2348012345678',
+    description: 'WhatsApp number for support',
+  })
   @IsOptional()
-  state?: string;
-
-  @ApiPropertyOptional({ example: 'Ikeja' })
   @IsString()
-  @IsOptional()
-  city?: string;
-
-  @ApiPropertyOptional({ example: 'https://vemtap.com' })
-  @IsString()
-  @IsOptional()
-  website?: string;
-
-  @ApiPropertyOptional({ example: '+2348000000000' })
-  @IsString()
-  @IsOptional()
   whatsappNumber?: string;
 
-  @ApiPropertyOptional({ example: 'hello@vemtap.com' })
-  @IsEmail()
+  @ApiPropertyOptional({
+    example: 'hello@greenterrace.com',
+    description: 'Official public-facing email',
+  })
   @IsOptional()
+  @IsEmail()
   officialEmail?: string;
 
-  @ApiPropertyOptional({ example: true })
+  @ApiPropertyOptional({
+    example: '+2348012345678',
+    description: 'Primary business phone number',
+  })
+  @IsOptional()
+  @IsString()
+  businessNumber?: string;
+
+  @ApiPropertyOptional({
+    example: '123 Business Ave, Lagos',
+    description: 'Physical address',
+  })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional({
+    example: 'Lagos',
+    description: 'Business state',
+  })
+  @IsOptional()
+  @IsString()
+  state?: string;
+
+  @ApiPropertyOptional({
+    example: 'Ikeja',
+    description: 'Business city',
+  })
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://greenterrace.com',
+    description: 'Business website',
+  })
+  @IsOptional()
+  @IsUrl()
+  website?: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Whether the business is officially registered',
+  })
   @IsOptional()
   isRegistered?: boolean;
 
-  @ApiPropertyOptional({ example: 'RC1234567' })
+  @ApiPropertyOptional({
+    example: 'RC1234567',
+    description: 'Business registration number',
+  })
   @IsOptional()
   @IsString()
   registrationNumber?: string;
 
-  @ApiPropertyOptional({ example: ['https://example.com/doc.pdf'] })
+  @ApiPropertyOptional({
+    example: ['https://example.com/doc.pdf'],
+    description: 'Business documents',
+  })
   @IsOptional()
   @IsString({ each: true })
   documents?: string[];
+
+  @ApiPropertyOptional({
+    example: {
+      instagram: 'https://instagram.com/johndoe',
+      linkedin: 'https://linkedin.com/company/johndoe',
+      reviewUrl: 'https://g.page/r/...',
+    },
+    description: 'User engagement settings (social links, etc.)',
+  })
+  @IsOptional()
+  engagement?: Record<string, any>;
 }

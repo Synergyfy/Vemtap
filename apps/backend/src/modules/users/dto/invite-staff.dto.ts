@@ -14,11 +14,15 @@ export enum StaffPermission {
   DASHBOARD = 'dashboard',
   VISITORS = 'visitors',
   MESSAGES = 'messages',
-  MESSAGING = 'messaging', // Add both since they might be used
-  STAFF = 'staff',
+  CHAT = 'chat',
+  LOYALTY = 'loyalty',
+  ENGAGEMENT = 'engagement',
   ANALYTICS = 'analytics',
-  CAMPAIGNS = 'campaigns',
-  REWARDS = 'rewards',
+  STAFF = 'staff',
+  NFC = 'nfc',
+  SUPPORT = 'support',
+  TUTORIAL = 'tutorial',
+  SETTINGS = 'settings',
 }
 
 export class InviteStaffDto {

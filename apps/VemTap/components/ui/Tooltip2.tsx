@@ -28,7 +28,7 @@ export default function Tooltip2({ content, children, side = 'top' }: Tooltip2Pr
         >
             {children}
             {isVisible && (
-                <div className={`absolute z-50 max-w-52 rounded-lg border border-slate-200 bg-slate-900 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-xl ${positionClasses[side]}`}>
+                <div className={`absolute z-50 max-w-82 w-max rounded-lg border border-slate-200 bg-slate-900 px-3 py-2 text-[12px] font-medium leading-relaxed text-white shadow-2xl ${positionClasses[side]}`}>
                     {content}
                 </div>
             )}

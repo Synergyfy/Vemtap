@@ -4,7 +4,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
 import { adminUsersApi } from '@/lib/api/admin';
-import { Search, UserPlus, Edit2, Lock, Ban, Loader2, RefreshCw, CheckCircle, Trash2, Download } from 'lucide-react';
+import { Search, UserPlus, Edit2, Lock, Ban, Loader2, RefreshCw, CheckCircle, Trash2, Download, Key, Eye, EyeOff } from 'lucide-react';
+import PasswordValidation from '../../shared/PasswordValidation';
+import { suggestPassword } from '@/lib/utils';
+
+
 const DEFAULT_PAGE_SIZE = 10;
 
 
@@ -25,6 +29,7 @@ type UserManagementPageProps = {
     description: string;
     roleFilter?: string | string[];
     hideRoleFilter?: boolean;
+    allowedCreationRoles?: string[];
 };
 
 export default function UserManagementPage({
@@ -32,6 +37,7 @@ export default function UserManagementPage({
     description,
     roleFilter,
     hideRoleFilter = false,
+    allowedCreationRoles,
 }: UserManagementPageProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -56,7 +62,7 @@ export default function UserManagementPage({
     const [confirmReason, setConfirmReason] = useState('');
 
 
-    const normalizeRole = (role?: string) => (role || '').toLowerCase().replace(/\s+/g, '_');
+    const normalizeRole = (role?: string) => (role || '').trim();
 
     const scopedRoles = useMemo(() => {
         if (!roleFilter) return null;
@@ -87,11 +93,11 @@ export default function UserManagementPage({
                 ? mappedUsers.filter((u: any) => {
                     const role = normalizeRole(u.role);
                     return scopedRoles.some((allowedRole) => {
-                        const normalizedAllowed = normalizeRole(allowedRole);
-                        if (normalizedAllowed === 'owner') {
-                            return role === 'owner' || role === 'business_owner';
+                        const normalizedAllowed = allowedRole.trim();
+                        if (normalizedAllowed.toLowerCase() === 'owner') {
+                            return role.toLowerCase() === 'owner' || role.toLowerCase() === 'business_owner';
                         }
-                        return role === normalizedAllowed;
+                        return role.toLowerCase() === normalizedAllowed.toLowerCase();
                     });
                 })
                 : mappedUsers;
@@ -135,26 +141,45 @@ export default function UserManagementPage({
 
     const stats = scopedRoles ? scopedStats : defaultStats;
 
+    const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showPasswordValidation, setShowPasswordValidation] = useState(false);
+    const [selectedRole, setSelectedRole] = useState(Array.isArray(roleFilter) ? (roleFilter[0] || 'Agent') : (roleFilter || 'Agent'));
+
+    useEffect(() => {
+        if (!selectedUser && (selectedRole === 'Agent' || (Array.isArray(selectedRole) && selectedRole.includes('Agent'))) && !password) {
+            setPassword(suggestPassword());
+        }
+    }, [selectedRole, selectedUser, password]);
+
+
     const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsSubmitting(true);
         const fd = new FormData(e.currentTarget);
-        const fullName = fd.get('firstName') as string;
-        const nameParts = fullName.trim().split(' ');
-        const payload = {
-            firstName: nameParts[0] || '',
-            lastName: nameParts.slice(1).join(' ') || 'User',
-            email: fd.get('email') as string,
-            role: fd.get('role') as string,
-            status: fd.get('status') as string,
-            password: (fd.get('password') as string) || 'Vemtap@123',
-        };
         try {
             if (selectedUser) {
-                await adminUsersApi.update(selectedUser.id, payload);
+                // Mapping for update payload (AdminUpdateUserDto)
+                const updatePayload: any = {
+                    firstName: fd.get('firstName') as string,
+                    lastName: fd.get('lastName') as string,
+                    email: fd.get('email') as string,
+                    role: fd.get('role') as string,
+                    phone: (fd.get('phone') as string) || undefined,
+                };
+                await adminUsersApi.update(selectedUser.id, updatePayload);
                 notify.success('User updated successfully');
             } else {
-                await adminUsersApi.create(payload);
+                // Mapping for create payload (AdminCreateUserDto)
+                const createPayload: any = {
+                    firstName: fd.get('firstName') as string,
+                    lastName: fd.get('lastName') as string,
+                    email: fd.get('email') as string,
+                    role: fd.get('role') as string,
+                    password: (fd.get('password') as string) || 'Vemtap@123',
+                    phone: (fd.get('phone') as string) || undefined,
+                };
+                await adminUsersApi.create(createPayload);
                 notify.success('User created successfully');
             }
             setIsModalOpen(false);
@@ -238,14 +263,6 @@ export default function UserManagementPage({
         return map[s] || 'bg-gray-100 text-gray-500';
     };
 
-    const sectionOptions = [
-        { label: 'All Users', value: '/admin/users' },
-        { label: 'Businesses', value: '/admin/users/business' },
-        { label: 'Customers', value: '/admin/users/customers' },
-        { label: 'Agents', value: '/admin/users/agents' },
-    ];
-
-    const currentSection = sectionOptions.find((opt) => pathname?.startsWith(opt.value))?.value || '/admin/users';
 
     const [isExporting, setIsExporting] = useState(false);
 
@@ -332,15 +349,6 @@ export default function UserManagementPage({
                     <p className="text-text-secondary font-medium text-sm">{description}</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                    <select
-                        value={currentSection}
-                        onChange={(e) => router.push(e.target.value)}
-                        className="h-11 px-4 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    >
-                        {sectionOptions.map((option) => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                    </select>
                     <button
                         onClick={handleExportCSV}
                         disabled={isExporting}
@@ -424,7 +432,7 @@ export default function UserManagementPage({
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Role</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Status</th>
                                 <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Last Active</th>
-                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Joined</th>
+                                <th className="text-left py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Date Joined</th>
                                 <th className="text-right py-4 px-6 text-[10px] font-black uppercase tracking-wider text-text-secondary">Actions</th>
                             </tr>
                         </thead>
@@ -568,39 +576,84 @@ export default function UserManagementPage({
                             </button>
                         </div>
                         <form onSubmit={handleFormSubmit} className="space-y-5">
-                            <div>
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Full Name</label>
-                                <input name="firstName" defaultValue={selectedUser ? `${selectedUser.firstName} ${selectedUser.lastName}`.trim() : ''} required placeholder="John Doe" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">First Name</label>
+                                    <input name="firstName" defaultValue={selectedUser?.firstName} required placeholder="John" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Last Name</label>
+                                    <input name="lastName" defaultValue={selectedUser?.lastName} required placeholder="Doe" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                </div>
                             </div>
                             <div>
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Email Address</label>
                                 <input name="email" type="email" defaultValue={selectedUser?.email} required placeholder="john@example.com" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
                             </div>
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Phone Number</label>
+                                <input
+                                    name="phone"
+                                    defaultValue={selectedUser?.phone || ''}
+                                    placeholder="+234 801 234 5678"
+                                    className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all"
+                                />
+                            </div>
                             {!selectedUser && (
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Password</label>
-                                    <input name="password" type="password" placeholder="Min. 8 characters" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">Password</label>
+                                        <div className="relative">
+                                            <input 
+                                                name="password" 
+                                                type={showPassword ? "text" : "password"} 
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                onFocus={() => setShowPasswordValidation(true)}
+                                                placeholder="Min. 8 characters" 
+                                                className="w-full h-12 pl-11 pr-12 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" 
+                                            />
+                                            <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-text-main transition-colors p-1"
+                                            >
+                                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <PasswordValidation 
+                                        password={password} 
+                                        onSuggest={(p) => setPassword(p)}
+                                        showAlways={showPasswordValidation}
+                                    />
                                 </div>
                             )}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Role</label>
-                                    <select name="role" defaultValue={selectedUser?.role || (scopedRoles?.[0] ?? 'Customer')} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all">
-                                        <option value="Admin">Admin</option>
-                                        <option value="Owner">Owner</option>
-                                        <option value="Manager">Manager</option>
-                                        <option value="Staff">Staff</option>
-                                        <option value="Customer">Customer</option>
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Role</label>
+                                <select 
+                                    name="role" 
+                                    value={selectedRole}
+                                    onChange={(e) => setSelectedRole(e.target.value)}
+                                    className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all"
+                                >
+
+                                        {allowedCreationRoles ? (
+                                            allowedCreationRoles.map(role => (
+                                                <option key={role} value={role}>{role}</option>
+                                            ))
+                                        ) : (
+                                            <>
+                                                <option value="Admin">Admin</option>
+                                                <option value="Owner">Owner</option>
+                                                <option value="Manager">Manager</option>
+                                                <option value="Staff">Staff</option>
+                                                <option value="Customer">Customer</option>
+                                            </>
+                                        )}
                                     </select>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Status</label>
-                                    <select name="status" defaultValue={selectedUser?.status || 'Active'} className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all">
-                                        <option value="Active">Active</option>
-                                        <option value="Pending">Pending</option>
-                                        <option value="Suspended">Suspended</option>
-                                    </select>
-                                </div>
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="button" onClick={() => { setIsModalOpen(false); setSelectedUser(null); }} className="flex-1 h-12 bg-gray-100 text-text-secondary font-bold rounded-xl hover:bg-gray-200 transition-all text-sm">Cancel</button>

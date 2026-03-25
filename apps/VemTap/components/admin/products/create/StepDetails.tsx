@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useProductFormStore } from '@/store/useProductFormStore';
 import { Factory, QrCode, ArrowRight, Save, Plus, Trash2, GripVertical, ListOrdered } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import { notify } from '@/lib/notify';
 const stepDetailsSchema = z.object({
     title: z.string().min(3, 'Product title must be at least 3 characters.'),
     productTypeId: z.string().min(1, 'Please select a category.'),
+    nfcType: z.string().min(1, 'Please select an NFC type.'),
     sku: z.string().min(2, 'SKU is required.'),
     tag: z.string().min(2, 'Promo tag is required.'),
     tagColor: z.string().min(1, 'Please choose a tag color.'),
@@ -23,12 +24,14 @@ type StepDetailsFormValues = z.infer<typeof stepDetailsSchema>;
 
 export default function StepDetails() {
     const { formData, updateFormData, nextStep } = useProductFormStore();
+    const [lastAutoSkuDeps, setLastAutoSkuDeps] = useState('');
 
     const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<StepDetailsFormValues>({
         resolver: zodResolver(stepDetailsSchema),
         defaultValues: {
             title: formData.title,
             productTypeId: formData.productTypeId,
+            nfcType: formData.nfcType,
             sku: formData.sku,
             tag: formData.tag,
             tagColor: formData.tagColor,
@@ -39,17 +42,19 @@ export default function StepDetails() {
     React.useEffect(() => {
         setValue('title', formData.title);
         setValue('productTypeId', formData.productTypeId);
+        setValue('nfcType', formData.nfcType);
         setValue('sku', formData.sku);
         setValue('tag', formData.tag);
         setValue('tagColor', formData.tagColor);
         setValue('description', formData.description);
-    }, [formData.title, formData.productTypeId, formData.sku, formData.tag, formData.tagColor, formData.description, setValue]);
+    }, [formData.title, formData.productTypeId, formData.nfcType, formData.sku, formData.tag, formData.tagColor, formData.description, setValue]);
 
     React.useEffect(() => {
         const subscription = watch((values) => {
             updateFormData({
                 title: values.title ?? '',
                 productTypeId: values.productTypeId ?? '',
+                nfcType: values.nfcType ?? 'nfc',
                 sku: values.sku ?? '',
                 tag: values.tag ?? '',
                 tagColor: values.tagColor ?? '',
@@ -78,22 +83,31 @@ export default function StepDetails() {
         queryFn: () => adminProductsApi.getAllTypes(),
     });
 
-    const { data: categoryProductCount, refetch: refetchCount } = useQuery({
+    const { data: categoryProductCount } = useQuery({
         queryKey: ['category-product-count', formData.productTypeId],
         queryFn: () => adminProductsApi.getCountByType(formData.productTypeId),
         enabled: !!formData.productTypeId,
     });
 
     React.useEffect(() => {
+        if (!formData.productTypeId || !formData.nfcType) return;
+
         const selectedType = types?.find((t: any) => t.id === formData.productTypeId);
-        if (categoryProductCount !== undefined && formData.productTypeId && !formData.sku && selectedType) {
-            const prefix = selectedType.name.toLowerCase().split(' ')[0];
-            const count = (categoryProductCount as number) + 1;
-            const generatedSku = `${prefix} ${count}`;
+        if (!selectedType) return;
+
+        const currentDeps = `${formData.productTypeId}-${formData.nfcType}-${categoryProductCount}`;
+
+        if (currentDeps !== lastAutoSkuDeps) {
+            const categorySlug = selectedType.name.trim().toLowerCase().replace(/\s+/g, '-');
+            const count = typeof categoryProductCount === 'number' ? categoryProductCount : (categoryProductCount?.count ?? 0);
+            const sequence = String(count + 1).padStart(3, '0');
+            const generatedSku = `${categorySlug}-${sequence}`;
+
             updateFormData({ sku: generatedSku });
             setValue('sku', generatedSku, { shouldValidate: true });
+            setLastAutoSkuDeps(currentDeps);
         }
-    }, [categoryProductCount, formData.productTypeId, types, formData.sku, updateFormData, setValue]);
+    }, [formData.productTypeId, formData.nfcType, types, categoryProductCount, updateFormData, setValue, lastAutoSkuDeps]);
 
     const onSubmit = () => {
         nextStep();
@@ -128,18 +142,7 @@ export default function StepDetails() {
                                 <select
                                     className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-medium text-text-main appearance-none cursor-pointer"
                                     id="productTypeId"
-                                    name="productTypeId"
-                                    onChange={(e) => {
-                                        const selectedType = types?.find((t: any) => t.id === e.target.value);
-                                        updateFormData({
-                                            productTypeId: e.target.value,
-                                            category: selectedType?.name || '',
-                                            sku: '' // Reset SKU to trigger automatic generation
-                                        });
-                                        setValue('productTypeId', e.target.value, { shouldValidate: true });
-                                        setValue('sku', '', { shouldValidate: true });
-                                    }}
-                                    value={watch('productTypeId')}
+                                    {...register('productTypeId')}
                                 >
                                     <option value="" disabled>Select Category</option>
                                     {types?.map((type: any) => (
@@ -152,13 +155,25 @@ export default function StepDetails() {
                             </div>
 
                             <div className="col-span-1">
+                                <label className="block text-sm font-bold text-text-secondary mb-2" htmlFor="nfcType">NFC Type</label>
+                                <select
+                                    className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-medium text-text-main appearance-none cursor-pointer"
+                                    id="nfcType"
+                                    {...register('nfcType')}
+                                >
+                                    <option value="nfc">Standard NFC (nfc)</option>
+                                    <option value="nfce">NFC Elite (nfce)</option>
+                                </select>
+                            </div>
+
+                            <div className="col-span-1">
                                 <label className="block text-sm font-bold text-text-secondary mb-2" htmlFor="sku">SKU</label>
                                 <div className="relative">
                                     <QrCode className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                                     <input
                                         className="w-full pl-12 pr-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-medium text-text-main placeholder-gray-400 font-mono tracking-wide"
                                         id="sku"
-                                        placeholder="EC-XXX-00"
+                                        placeholder="cards-001"
                                         type="text"
                                         {...register('sku')}
                                     />
@@ -284,7 +299,7 @@ export default function StepDetails() {
                     <ul className="space-y-3 text-sm text-blue-800/80">
                         <li className="flex gap-2">
                             <span className="mt-1 block size-1.5 rounded-full bg-blue-400 shrink-0" />
-                            Use a recognizable product title that includes the key feature (e.g., "NFC").
+                            SKUs are auto-generated as <code>{'category-001'}</code> (e.g. <code>plates-001</code>, <code>plates-002</code>).
                         </li>
                         <li className="flex gap-2">
                             <span className="mt-1 block size-1.5 rounded-full bg-blue-400 shrink-0" />

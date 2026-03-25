@@ -5,8 +5,9 @@ import Modal from '@/components/ui/Modal';
 import AnimatedRewardModal from '@/components/customer/AnimatedRewardModal';
 import { notify } from '@/lib/notify';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { Reward } from '@/types/loyalty';
-import { Star, Gift, Search, Info, CheckCircle2, QrCode, X, Clock, MapPin, Coffee, Dumbbell, Smartphone, Music, Film, Flower2, Loader2 } from 'lucide-react';
+import { Star, Gift, Search, Info, CheckCircle2, QrCode, Clock, Coffee, Dumbbell, Smartphone, Flower2, Loader2 } from 'lucide-react';
 import { useCustomerLoyaltyProfile, useCustomerLoyaltyRewards, useRedeemCustomerReward } from '@/services/customer/hooks';
 
 export default function CustomerRewardsPage() {
@@ -15,9 +16,10 @@ export default function CustomerRewardsPage() {
     const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
     const [showRewardAnimation, setShowRewardAnimation] = useState(false);
     const [redemptionCode, setRedemptionCode] = useState<string | undefined>();
+    const { branchId: flowBranchId } = useCustomerFlowStore();
     const businessId = user?.businessId;
     const { data: profileResponse } = useCustomerLoyaltyProfile(businessId);
-    const { data: rewardsResponse = [], isLoading } = useCustomerLoyaltyRewards(businessId);
+    const { data: rewardsResponse = [], isLoading } = useCustomerLoyaltyRewards(flowBranchId || user?.branchId || businessId);
     const redeemMutation = useRedeemCustomerReward();
     const profile = profileResponse?.data || profileResponse;
     const availableRewards = Array.isArray(rewardsResponse) ? rewardsResponse : (rewardsResponse?.data || []);
@@ -47,7 +49,7 @@ export default function CustomerRewardsPage() {
             } else {
                 notify.error(result.error || 'Redemption failed');
             }
-        } catch (error) {
+        } catch {
             notify.error('Server error during redemption');
         }
     };

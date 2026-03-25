@@ -15,7 +15,13 @@ export interface Branch {
     website?: string;
     whatsappNumber?: string;
     officialEmail?: string;
+    formAppearanceColor?: string;
+    welcomeTag?: string;
+    welcomeTitle?: string;
     welcomeMessage?: string;
+    welcomeButton?: string;
+    successTitle?: string;
+    successDescription?: string;
     successMessage?: string;
     privacyMessage?: string;
     rewardMessage?: string;
@@ -24,15 +30,24 @@ export interface Branch {
     rewardEnabled: boolean;
     rewardVisitThreshold: number;
     linkedinUrl?: string;
+    facebookUrl?: string;
     instagramUrl?: string;
+    tiktokUrl?: string;
+    xUrl?: string;
+    youtubeUrl?: string;
+    customLink?: string;
     reviewUrl?: string;
     trustpilotUrl?: string;
     showReview: boolean;
     showSocial: boolean;
     showFeedback: boolean;
+    showRewards?: boolean;
+    identityNumber?: string;
+    utilityBill?: string;
     createdAt?: string;
     updatedAt?: string;
     deletedAt?: string | null;
+    engagement?: Record<string, any>;
 }
 
 export interface CreateBranchRequest {
@@ -56,7 +71,13 @@ export interface UpdateBranchRequest {
     officialEmail?: string;
     whatsappNumber?: string;
     about?: string;
+    formAppearanceColor?: string;
+    welcomeTag?: string;
+    welcomeTitle?: string;
     welcomeMessage?: string;
+    welcomeButton?: string;
+    successTitle?: string;
+    successDescription?: string;
     successMessage?: string;
     privacyMessage?: string;
     rewardMessage?: string;
@@ -75,4 +96,9 @@ export interface UpdateBranchRequest {
     showReview?: boolean;
     showSocial?: boolean;
     showFeedback?: boolean;
+    showRewards?: boolean;
+    identityNumber?: string;
+    utilityBill?: string;
+    engagement?: Record<string, any>;
+    isMainBranch?: boolean;
 }

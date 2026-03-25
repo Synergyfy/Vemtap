@@ -90,16 +90,30 @@ export default function Pricing() {
         return plan.isFree ? 0 : (plan.trialDurationDays || plan.freeDurationDays || 0);
     };
 
+    const formatLimit = (value: number | string | undefined, label: string) => {
+        if (value === undefined || value === null || value === 0 || value === '0') return null;
+        if (value === -1 || value === 'unlimited') return `Unlimited ${label}`;
+        return `${value} ${label}`;
+    };
+
     const normalizeFeatures = (plan: any) => {
         const baseFeatures = Array.isArray(plan.features) ? plan.features.filter(Boolean) : [];
         const derivedFeatures = [];
-        if (plan.smsCredits) derivedFeatures.push(`${plan.smsCredits} SMS Credits`);
-        if (plan.whatsappCredits) derivedFeatures.push(`${plan.whatsappCredits} WhatsApp Credits`);
-        if (plan.emailCredits) derivedFeatures.push(`${plan.emailCredits} Email Credits`);
-        if (plan.teamMembersLimit) derivedFeatures.push(`${plan.teamMembersLimit} Team Members`);
-        if (plan.loyaltyLimit) derivedFeatures.push(`${plan.loyaltyLimit} Loyalty Points`);
-        if (plan.tagsLimit) derivedFeatures.push(`${plan.tagsLimit} Tags`);
-        if (plan.branchLimit) derivedFeatures.push(`${plan.branchLimit} Branches`);
+        const smsCredits = formatLimit(plan.smsCredits, 'SMS Credits');
+        const whatsappCredits = formatLimit(plan.whatsappCredits, 'WhatsApp Credits');
+        const emailCredits = formatLimit(plan.emailCredits, 'Email Credits');
+        const teamMembersLimit = formatLimit(plan.teamMembersLimit, 'Team Members');
+        const loyaltyLimit = formatLimit(plan.loyaltyLimit, 'Loyalty Points');
+        const tagsLimit = formatLimit(plan.tagsLimit, 'Tags');
+        const branchLimit = formatLimit(plan.branchLimit, 'Branches');
+
+        if (smsCredits) derivedFeatures.push(smsCredits);
+        if (whatsappCredits) derivedFeatures.push(whatsappCredits);
+        if (emailCredits) derivedFeatures.push(emailCredits);
+        if (teamMembersLimit) derivedFeatures.push(teamMembersLimit);
+        if (loyaltyLimit) derivedFeatures.push(loyaltyLimit);
+        if (tagsLimit) derivedFeatures.push(tagsLimit);
+        if (branchLimit) derivedFeatures.push(branchLimit);
         if (plan.analyticsLevel && plan.analyticsLevel !== 'none') derivedFeatures.push(`${plan.analyticsLevel} Analytics`);
 
         return {

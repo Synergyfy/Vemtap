@@ -17,7 +17,7 @@ export const fetchProducts = async (
     const allProducts: any[] = await api.get('/products');
 
     // Map backend product to frontend Product interface
-    let mappedProducts: Product[] = allProducts.map(p => ({
+    const mappedProducts: Product[] = allProducts.map(p => ({
         id: p.id,
         name: p.name,
         brand: p.productType?.name || 'VemTap',
@@ -35,7 +35,7 @@ export const fetchProducts = async (
     }));
 
     // Apply filtering (same as mock implementation but on real data)
-    let filtered = mappedProducts.filter(p => {
+    const filtered = mappedProducts.filter(p => {
         const matchesCategory = category === 'All Products' || p.category === category;
         const matchesPrice = p.price >= priceRange[0] && p.price <= priceRange[1];
         const matchesBrand = brands.length === 0 || (p.brand ? brands.includes(p.brand) : false);

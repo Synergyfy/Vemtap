@@ -8,42 +8,33 @@ interface VisitorHeaderProps {
 }
 
 export const VisitorHeader: React.FC<VisitorHeaderProps> = ({ logoUrl, storeName, tag, variant = 'stacked' }) => {
-    if (variant === 'inline') {
-        return (
-            <div className="flex items-center gap-3 mb-6">
-                <div className="size-10 rounded-full bg-white shadow-md shadow-primary/10 border border-slate-100 overflow-hidden flex items-center justify-center p-1">
-                    <img
-                        src={logoUrl || '/VEMTAP_PNG.png'}
-                        alt={storeName}
-                        className="w-full h-full object-contain"
-                    />
-                </div>
-                <div className="min-w-0">
-                    <h2 className="text-base font-black text-slate-900 tracking-tight leading-none truncate">{storeName}</h2>
-                    {tag && <span className="text-[9px] font-black text-primary uppercase tracking-[0.25em] block mt-1">{tag}</span>}
-                </div>
-            </div>
-        );
-    }
+    const [imageFailed, setImageFailed] = React.useState(false);
+    const displayLogo = logoUrl && !imageFailed ? logoUrl : null;
+    const fallbackInitial = storeName?.trim()?.charAt(0)?.toUpperCase();
 
     return (
         <div className="flex items-center gap-3 mb-6">
-            <div className="size-10 rounded-lg bg-white border border-slate-100 overflow-hidden flex items-center justify-center p-1 shrink-0 shadow-sm">
-                {logoUrl ? (
+            <div className="size-10 rounded-xl bg-white border border-slate-100 overflow-hidden flex items-center justify-center p-1 shrink-0 shadow-sm transition-transform hover:scale-105">
+                {displayLogo ? (
                     <img
-                        src={logoUrl}
+                        src={displayLogo}
                         alt={storeName}
                         className="w-full h-full object-contain"
+                        onError={() => setImageFailed(true)}
                     />
                 ) : (
-                    <div className="w-full h-full bg-slate-50 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-slate-300 text-lg">storefront</span>
-                    </div>
+                    <span className="text-xs font-bold text-slate-400">{fallbackInitial || ''}</span>
                 )}
             </div>
-            <div className="text-left">
-                <h2 className="text-base font-black text-slate-900 tracking-tight leading-tight">{storeName}</h2>
-                {tag && <p className="text-[9px] font-black text-primary uppercase tracking-widest leading-none mt-0.5">{tag}</p>}
+            <div className="text-left min-w-0 flex-1">
+                <h2 className="text-base font-black text-slate-900 tracking-tight leading-tight truncate">
+                    {storeName}
+                </h2>
+                {tag && (
+                    <p className="text-[9px] font-black text-primary uppercase tracking-widest leading-none mt-1">
+                        {tag}
+                    </p>
+                )}
             </div>
         </div>
     );

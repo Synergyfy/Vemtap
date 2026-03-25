@@ -43,8 +43,14 @@ export class CapabilityGuard implements CanActivate {
     }
 
     // Security: Ensure users (except Admin) can only check capabilities for their own business
-    if (user.role !== 'Admin' && user.businessId && businessId !== user.businessId) {
-        throw new ForbiddenException('You do not have permission to check capabilities for this business');
+    if (
+      user.role !== 'Admin' &&
+      user.businessId &&
+      businessId !== user.businessId
+    ) {
+      throw new ForbiddenException(
+        'You do not have permission to check capabilities for this business',
+      );
     }
 
     const capabilitiesData =
@@ -61,7 +67,11 @@ export class CapabilityGuard implements CanActivate {
       );
     }
 
-    if (feature.limit !== undefined && feature.limit !== 'unlimited' && feature.remaining <= 0) {
+    if (
+      feature.limit !== undefined &&
+      feature.limit !== 'unlimited' &&
+      feature.remaining <= 0
+    ) {
       throw new ForbiddenException(
         `You have reached the limit for ${requiredCapability} on your current plan.`,
       );

@@ -28,7 +28,7 @@ export default function BusinessPublicPage() {
     const isBusinessAccount = isAuthenticated && user?.role?.toLowerCase() !== 'customer';
     const isCustomerAccount = isAuthenticated && user?.role?.toLowerCase() === 'customer';
 
-    const [businessData, setBusinessData] = useState<Device | null>(null);
+    const [businessData, setBusinessData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -83,6 +83,7 @@ export default function BusinessPublicPage() {
     const { business, owner } = businessData;
     const businessName = business.name || 'VemTap Business';
     const logoUrl = business.logoUrl;
+    const rewardsVisible = business.showRewards ?? true;
 
     const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
@@ -197,7 +198,7 @@ export default function BusinessPublicPage() {
                                 </section>
                             )}
 
-                            {business.rewardEnabled && (
+                            {business.rewardEnabled && rewardsVisible && (
                                 <section className="p-8 rounded-[2rem] bg-linear-to-br from-slate-50 to-white border border-slate-100/50">
                                     <h3 className="text-sm font-black text-slate-900 mb-2 flex items-center gap-2">
                                         <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">

@@ -5,14 +5,30 @@ import { Notification, UnreadCountResponse } from './types';
 export const useNotifications = () => {
     return useQuery<Notification[], Error>({
         queryKey: ['notifications'],
-        queryFn: async () => await api.get('/notifications'),
+        queryFn: async () => {
+            const res = await api.get('/notifications');
+            const data = Array.isArray(res) ? res : (res.data || []);
+            return data.map((n: any) => ({
+                id: n.id,
+                title: n.title,
+                message: n.message,
+                type: n.type || 'info',
+                read: n.isRead,
+                timestamp: n.createdAt,
+                actionUrl: n.actionUrl
+            }));
+        },
     });
 };
 
 export const useUnreadCount = () => {
     return useQuery<UnreadCountResponse, Error>({
         queryKey: ['notifications', 'unread-count'],
-        queryFn: async () => await api.get('/notifications/unread-count'),
+        queryFn: async () => {
+            const res = await api.get('/notifications/unread-count');
+            if (typeof res === 'number') return { count: res };
+            return { count: parseInt(res?.count || res || 0, 10) };
+        },
     });
 };
 
@@ -40,6 +56,22 @@ export const useMarkAllAsRead = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['notifications'] });
             queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
+        },
+    });
+};
+
+export const useRegisterPushToken = () => {
+    return useMutation<void, Error, { token: string }>({
+        mutationFn: async ({ token }) => {
+            await api.post('/notifications/push-token', { token });
+        },
+    });
+};
+
+export const useRegisterVisitorPushToken = () => {
+    return useMutation<void, Error, { token: string }>({
+        mutationFn: async ({ token }) => {
+            await api.post('/notifications/visitor/push-token', { token });
         },
     });
 };

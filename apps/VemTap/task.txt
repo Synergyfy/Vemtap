@@ -1,0 +1,11 @@
+# Tasks Requiring Backend Implementation / Verification
+
+1. [ ] **Subscription Filtering**: Implement backend support for `range` parameter (`last_7_days`, `last_month`) in `GET /api/v1/subscriptions/admin`.
+2. [ ] **Reward Management**: Verify `GET/POST/PATCH/DELETE` endpoints for `/api/v1/loyalty/reward-templates`. Ensure `imageUrls` are correctly handled.
+3. [ ] **Image Upload**: Verify `/api/upload` endpoint exists and handles base64 image uploads for reward covers and galleries.
+4. [ ] **Business Owner Merging**: Create unified endpoints for creating/managing businesses that include owner details in a single transaction if not already present.
+5. [ ] **Ticket Assignment**: Implement `POST /api/v1/support/admin/tickets/{id}/assign` to assign a ticket to a specific agent.
+6. [ ] **Control Tower**: Implement backend support for "Business Override" and "Customer Override" functionalities.
+7. [ ] **NFC / Device Management**: The user requested removing the "NFC" prefix from SKU. Verify if generic "Device" management endpoints (create/update/delete) are fully operational.
+8. [ ] **Business Search**: Verify if the backend supports the `search` parameter in `GET /api/v1/businesses/admin` and which fields it covers (name, owner, email).
+9. [ ] **Subscription Statistics**: Verify `GET /api/v1/subscriptions/admin/stats` returns accurate data for the dashboard.

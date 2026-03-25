@@ -1,3 +1,6 @@
+import { initializeTracing } from './observability/tracing';
+initializeTracing();
+
 import { NestFactory, Reflector } from '@nestjs/core';
 import {
   Logger,
@@ -6,13 +9,22 @@ import {
   INestApplication,
 } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
+import compression from 'compression';
 import { AppModule } from './app.module';
 
-import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { ObservabilityLoggingInterceptor } from './observability/interceptors/logging.interceptor';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 // 1. Shared Configuration Function
 // This setup applies to both Local and Vercel environments
 export function configureApp(app: INestApplication) {
+  // Security
+  app.use(helmet());
+
+  // Compression
+  app.use(compression());
+
   // CORS
   app.enableCors({
     origin: true,
@@ -34,10 +46,13 @@ export function configureApp(app: INestApplication) {
     }),
   );
 
+  // Filters & Interceptors
+  app.useGlobalFilters(new AllExceptionsFilter());
+
   // Serialization & Global Logging
   app.useGlobalInterceptors(
     new ClassSerializerInterceptor(app.get(Reflector)),
-    new LoggingInterceptor(),
+    new ObservabilityLoggingInterceptor(),
   );
 
   // Swagger
@@ -64,13 +79,15 @@ export function configureApp(app: INestApplication) {
   });
 }
 
+import { PinoLoggerService } from './observability/logger.config';
+
 // 2. Local Development Bootstrap
 // This only runs if you execute the file directly (e.g., `nest start` or `node dist/main`)
 if (require.main === module) {
   const bootstrap = async () => {
     const logger = new Logger('Bootstrap');
     const app = await NestFactory.create(AppModule, {
-      logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+      logger: new PinoLoggerService(),
     });
 
     configureApp(app);
@@ -89,7 +106,9 @@ let cachedApp: any;
 
 export default async (req: unknown, res: unknown) => {
   if (!cachedApp) {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, {
+      logger: new PinoLoggerService(),
+    });
     configureApp(app);
     await app.init();
     cachedApp = app.getHttpAdapter().getInstance() as unknown;

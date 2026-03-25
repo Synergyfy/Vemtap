@@ -87,9 +87,9 @@ describe('BestBulkSmsProvider', () => {
         }),
         expect.objectContaining({
           headers: expect.objectContaining({
-            'Authorization': 'Bearer test-api-key'
-          })
-        })
+            Authorization: 'Bearer test-api-key',
+          }),
+        }),
       );
     });
 

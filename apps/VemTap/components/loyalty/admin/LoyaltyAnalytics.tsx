@@ -93,7 +93,7 @@ export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Main Chart */}
-                <div className="lg:col-span-8 bg-white border border-slate-100 p-8">
+                <div className="lg:col-span-12 bg-white border border-slate-100 p-8">
                     <div className="flex items-center justify-between mb-10">
                         <div>
                             <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Activity Overview</h3>
@@ -136,39 +136,7 @@ export const LoyaltyAnalytics: React.FC<{ className?: string }> = ({ className }
                     </div>
                 </div>
 
-                {/* Breakdown Panel */}
-                <div className="lg:col-span-4 bg-white p-8 text-slate-900 border border-slate-200 shadow-sm">
-                    <div className="flex items-center gap-3 mb-8">
-                        <PieChart className="w-5 h-5 text-primary" />
-                        <h3 className="text-lg font-bold tracking-tight uppercase">Tier Distribution</h3>
-                    </div>
-
-                    <div className="space-y-6">
-                        {tierData.map((tier) => (
-                            <div key={tier.label} className="space-y-2">
-                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                                    <span className="text-slate-500">{tier.label} Members</span>
-                                    <span>{tier.value}%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-slate-100 overflow-hidden">
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${tier.value}%` }}
-                                        transition={{ duration: 1, delay: 0.5 }}
-                                        className={cn("h-full", tier.color || 'bg-primary')}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="mt-12 p-5 bg-slate-50 border border-slate-100 text-center">
-                        <TrendingUp className="w-6 h-6 text-emerald-500 mx-auto mb-2" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Growth Forecast</p>
-                        <p className="text-lg font-display font-black text-slate-900">{data?.growthForecast || '+0%'} Growth</p>
-                    </div>
                 </div>
-            </div>
         </div>
     );
 };

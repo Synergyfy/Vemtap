@@ -40,6 +40,7 @@ export interface User {
   branchId?: string;
   businessName?: string;
   businessLogo?: string;
+  avatar?: string;
 
   // Subscription fields
   planId?: SubscriptionPlan;
@@ -53,6 +54,7 @@ export interface User {
   lastLogin?: string;
   joined?: string;
   createdAt?: string;
+  permissions?: string[];
   engagement?: UserEngagement;
 }
 
@@ -80,6 +82,24 @@ export const useAuthStore = create<AuthState>()(
 
       login: (userData, access_token) => {
         console.log('[AUTH] login() called', { email: userData?.email, role: userData?.role });       
+        
+        // Clear chat history on login to ensure fresh session
+        try {
+          import('./chatStore').then((module) => {
+            if (module.useChatStore) {
+              module.useChatStore.getState().clearHistory();
+            }
+          }).catch(err => console.error('Failed to clear main chat history on login:', err));
+
+          import('@/lib/store/useChatStore').then((module) => {
+            if (module.useChatStore) {
+              module.useChatStore.getState().reset();
+            }
+          }).catch(err => console.error('Failed to clear dashboard chat history on login:', err));
+        } catch (e) {
+          console.error('Error clearing chat history during login', e);
+        }
+
         set({ user: userData, access_token, isAuthenticated: true, activeBranchId: get().activeBranchId || null });
         setAuthCookie(access_token);
         console.log('[AUTH] Login complete, isAuthenticated:', true);
@@ -94,6 +114,32 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         console.log('[AUTH] 🚪 logout() called');
+        
+        // 1. Clear chat history to prevent leakage between accounts
+        try {
+          // Main chatStore
+          import('./chatStore').then((module) => {
+            if (module.useChatStore) {
+              module.useChatStore.getState().clearHistory();
+            }
+          }).catch(err => console.error('Failed to clear main chat history:', err));
+
+          // Lib/Dashboard useChatStore
+          import('@/lib/store/useChatStore').then((module) => {
+            if (module.useChatStore) {
+              module.useChatStore.getState().reset();
+            }
+          }).catch(err => console.error('Failed to clear dashboard chat history:', err));
+        } catch (e) {
+          console.error('Error clearing chat history during logout', e);
+        }
+
+        // 2. Explicitly purge local storage keys
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('chat-history');
+          localStorage.removeItem('vemtap-chat-storage');
+        }
+
         set({ 
           user: null, 
           access_token: null, 
@@ -101,10 +147,13 @@ export const useAuthStore = create<AuthState>()(
           activeBranchId: null 
         });
         clearAuthCookie();
-        // Clear session storage just in case
+        
+        // Clear persistent local storage
         if (typeof window !== 'undefined') {
           localStorage.removeItem('auth-storage-v2');
           localStorage.removeItem('business-storage');
+          localStorage.removeItem('chat-history'); // Directly clear the persist key
+          localStorage.removeItem('business-forms-storage-v1'); // Clear forms as well to be safe
         }
       },
 

@@ -3,7 +3,7 @@
 import React from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import Link from 'next/link';
-import { Store, Bell, Users, Puzzle, MessageSquare, Shield, ArrowRight, Star } from 'lucide-react';
+import { Store, Bell, Users, Puzzle, Shield, ArrowRight, Star } from 'lucide-react';
 import LogoIcon from '@/components/brand/LogoIcon';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -13,12 +13,10 @@ export default function SettingsPage() {
 
     const settingsCategories = [
         { title: 'Business Profile', desc: 'Manage your business information and layout', icon: Store, href: '/dashboard/settings/profile' },
-        { title: 'Notifications', desc: 'Configure how you receive alerts and reports', icon: Bell, href: '/dashboard/settings/notifications' },
+        { title: 'Notifications', desc: 'Configure how you receive alerts and reports', icon: Bell, href: '/dashboard/settings/profile?tab=push' },
         { title: 'Device Settings', desc: 'Configure NFC device defaults and behaviors', icon: LogoIcon, href: '/dashboard/settings/devices' },
         { title: 'Team Management', desc: 'Invite staff and manage permissions', icon: Users, href: '/dashboard/staff', ownerOnly: true },
         { title: 'Integrations', desc: 'Connect with POS and CRM tools', icon: Puzzle, href: '/dashboard/settings/integrations' },
-        { title: 'Message Settings', desc: 'Customize welcome and success messages', icon: MessageSquare, href: '/dashboard/settings/messages' },
-        { title: 'Engagement', desc: 'User experience, forms, and response workflows', icon: Star, href: '/dashboard/settings/engagement/experience' },
         { title: 'Data & Privacy', desc: 'Manage data retention and compliance', icon: Shield, href: '/dashboard/settings/privacy' },
     ];
 
@@ -55,3 +53,4 @@ export default function SettingsPage() {
         </div>
     );
 }
+

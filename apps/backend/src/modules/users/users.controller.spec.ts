@@ -14,6 +14,7 @@ describe('UsersController', () => {
     updateProfile: jest.fn(),
     adminDeleteUser: jest.fn(),
     findByBranch: jest.fn(),
+    findTeamMembers: jest.fn(),
     create: jest.fn(),
     findByEmail: jest.fn(),
     updateStaff: jest.fn(),
@@ -88,13 +89,13 @@ describe('UsersController', () => {
   describe('getTeam', () => {
     it('should return team members for the branch', async () => {
       const team = [{ id: 'user-2', role: UserRole.STAFF }];
-      mockUsersService.findByBranch.mockResolvedValue(team);
+      mockUsersService.findTeamMembers.mockResolvedValue(team);
 
       const result = await controller.getTeam(mockReq, {
         branchId: 'branch-1',
       });
       expect(result).toEqual(team);
-      expect(mockUsersService.findByBranch).toHaveBeenCalledWith('branch-1');
+      expect(mockUsersService.findTeamMembers).toHaveBeenCalledWith({ branchId: 'branch-1', businessId: undefined });
     });
   });
 

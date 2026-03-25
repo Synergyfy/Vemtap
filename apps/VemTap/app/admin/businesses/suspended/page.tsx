@@ -190,7 +190,7 @@ export default function AdminSuspendedBusinessesPage() {
             </div>
             {/* Confirmation Modal */}
             {isConfirmModalOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => !isSubmitting && setIsConfirmModalOpen(false)} />
                     <div className="relative w-full max-w-md bg-white rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
                         <div className="flex items-center gap-4 mb-6">

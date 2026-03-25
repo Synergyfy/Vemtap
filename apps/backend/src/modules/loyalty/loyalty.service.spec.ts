@@ -1,86 +1,35 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { LoyaltyService } from './loyalty.service';
-import {
-  LoyaltyProfile,
-  TierLevel,
-} from '../campaigns/entities/loyalty-profile.entity';
-import { Reward } from '../campaigns/entities/reward.entity';
-import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
-import { Redemption } from '../campaigns/entities/redemption.entity';
-import { DevicesService } from '../devices/devices.service';
-import { DataSource } from 'typeorm';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { RewardTemplate } from './entities/reward-template.entity';
+import { Reward } from './entities/reward.entity';
+import { PointTransaction } from './entities/point-transaction.entity';
+import { PointCode } from './entities/point-code.entity';
+import { RedemptionCode } from './entities/redemption-code.entity';
+import { User } from '../users/entities/user.entity';
+import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
-import { CampaignsService } from '../campaigns/campaigns.service';
-import { DeviceStatus } from '../devices/entities/device.entity';
 import { BranchesService } from '../branches/branches.service';
+import { DataSource } from 'typeorm';
 
 describe('LoyaltyService', () => {
   let service: LoyaltyService;
 
-  const mockLoyaltyProfileRepository = {
-    findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-  };
-
-  const mockRewardRepository = {
-    find: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
-  };
-
-  const mockTransactionRepository = {
-    createQueryBuilder: jest.fn(() => ({
-      leftJoinAndSelect: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      getMany: jest.fn(),
-    })),
-    create: jest.fn(),
-    save: jest.fn(),
-  };
-
-  const mockRedemptionRepository = {
-    find: jest.fn(),
-    createQueryBuilder: jest.fn(() => ({
-      leftJoinAndSelect: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      getMany: jest.fn(),
-    })),
-  };
-
-  const mockVisitRepository = {
-    count: jest.fn(),
+  const mockRepository = {
     find: jest.fn().mockResolvedValue([]),
+    findOne: jest.fn().mockResolvedValue(null),
+    findAndCount: jest.fn().mockResolvedValue([[], 0]),
+    create: jest.fn().mockImplementation((dto) => dto),
+    save: jest
+      .fn()
+      .mockImplementation((entity) => Promise.resolve({ id: '1', ...entity })),
+    delete: jest.fn().mockResolvedValue({ affected: 1 }),
     createQueryBuilder: jest.fn(() => ({
-      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      getMany: jest.fn(),
+      getRawOne: jest.fn().mockResolvedValue({ sum: '0' }),
     })),
-  };
-
-  const mockGenericRepository = {
-    findOneBy: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
-    count: jest.fn(),
-  };
-
-  const mockDevicesService = {
-    findByCode: jest.fn(),
-  };
-
-  const mockCampaignsService = {
-    findActiveRule: jest.fn(),
-    earnPoints: jest.fn(),
   };
 
   const mockBranchesService = {
@@ -88,42 +37,43 @@ describe('LoyaltyService', () => {
     findById: jest.fn(),
   };
 
-  const mockDataSource = {
-    getRepository: jest.fn((entity) => mockGenericRepository),
-    transaction: jest.fn(),
-  };
+  let module: TestingModule;
 
   beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         LoyaltyService,
         {
-          provide: getRepositoryToken(LoyaltyProfile),
-          useValue: mockLoyaltyProfileRepository,
+          provide: getRepositoryToken(RewardTemplate),
+          useValue: mockRepository,
         },
         {
           provide: getRepositoryToken(Reward),
-          useValue: mockRewardRepository,
+          useValue: mockRepository,
         },
         {
           provide: getRepositoryToken(PointTransaction),
-          useValue: mockTransactionRepository,
+          useValue: mockRepository,
         },
         {
-          provide: getRepositoryToken(Redemption),
-          useValue: mockRedemptionRepository,
+          provide: getRepositoryToken(PointCode),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(RedemptionCode),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(Branch),
+          useValue: mockRepository,
         },
         {
           provide: getRepositoryToken(Visit),
-          useValue: mockVisitRepository,
-        },
-        {
-          provide: DevicesService,
-          useValue: mockDevicesService,
-        },
-        {
-          provide: CampaignsService,
-          useValue: mockCampaignsService,
+          useValue: mockRepository,
         },
         {
           provide: BranchesService,
@@ -131,12 +81,21 @@ describe('LoyaltyService', () => {
         },
         {
           provide: DataSource,
-          useValue: mockDataSource,
+          useValue: {
+            createQueryRunner: jest.fn().mockReturnValue({
+              connect: jest.fn(),
+              startTransaction: jest.fn(),
+              commitTransaction: jest.fn(),
+              rollbackTransaction: jest.fn(),
+              release: jest.fn(),
+              manager: {
+                save: jest.fn(),
+              },
+            }),
+          },
         },
       ],
     }).compile();
-
-    jest.clearAllMocks();
 
     service = module.get<LoyaltyService>(LoyaltyService);
   });
@@ -145,81 +104,71 @@ describe('LoyaltyService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('getAnalytics', () => {
-    it('should correctly calculate analytics', async () => {
-      const userId = 'user-123';
-
-      mockLoyaltyProfileRepository.find.mockResolvedValue([
-        {
-          branchId: 'b1',
-          totalPointsEarned: 1000,
-          currentPointsBalance: 500,
-          points: 500,
-        },
-      ]);
-
-      mockVisitRepository.find.mockResolvedValue(new Array(15).fill({
-        createdAt: new Date(),
-        branch: { name: 'Branch 1' }
-      }));
-
-      const result = await service.getAnalytics(userId);
-
-      expect(result.totalVisits).toBe(15);
-      expect(result.currentPointsBalance).toBe(500);
+  describe('getBusinessPoints', () => {
+    it('should return point balance', async () => {
+      const result = await service.getBusinessPoints('u1', 'biz1');
+      expect(result).toBe(0);
     });
   });
 
-  describe('getProfile', () => {
-    it('should return loyalty profile for specific branch', async () => {
-      const userId = 'user-123';
-      const branchId = 'branch-456';
-
-      const mockProfile = {
-        id: 'prof-1',
-        userId,
-        branchId,
-        tierLevel: TierLevel.BRONZE,
-        currentPointsBalance: 500,
-        points: 500,
-      };
-
-      mockLoyaltyProfileRepository.findOne.mockResolvedValue(mockProfile);
-
-      const result = await service.getProfile(userId, branchId);
-
-      expect(mockLoyaltyProfileRepository.findOne).toHaveBeenCalledWith({
-        where: { userId, branchId },
-      });
-
-      expect(result.points).toBe(500);
+  describe('getPublicRewards', () => {
+    it('should require branchId or branchCode', async () => {
+      await expect(service.getPublicRewards({})).rejects.toThrow(
+        'Branch ID or Code is required',
+      );
     });
-  });
 
-  describe('processTap', () => {
-    it('should call earnPoints via campaignsService on device tap', async () => {
-      const userId = 'user-123';
-      const deviceCode = 'DEV-001';
+    it('should throw NotFoundException if branchCode is invalid', async () => {
+      const mockBranchRepo = module.get(getRepositoryToken(Branch));
+      jest.spyOn(mockBranchRepo, 'findOne').mockResolvedValueOnce(null);
 
-      const mockDevice = {
-        id: 'dev-1',
-        code: deviceCode,
-        status: DeviceStatus.ACTIVE,
-        branchId: 'branch-1',
-        totalScans: 0,
-      };
+      await expect(
+        service.getPublicRewards({ branchCode: 'INVALID' }),
+      ).rejects.toThrow('Branch not found');
+    });
 
-      mockDevicesService.findByCode.mockResolvedValue(mockDevice);
-      mockCampaignsService.earnPoints.mockResolvedValue({ success: true });
+    it('should call findAndCount with correct default params', async () => {
+      const mockBranchRepo = module.get(getRepositoryToken(Branch));
+      jest.spyOn(mockBranchRepo, 'findOne').mockResolvedValueOnce({ id: 'branch-123' } as any);
 
-      const result = await service.processTap(userId, deviceCode);
+      const mockRewardRepo = module.get(getRepositoryToken(Reward));
+      jest.spyOn(mockRewardRepo, 'findAndCount').mockResolvedValueOnce([[], 0]);
 
-      expect(mockDevicesService.findByCode).toHaveBeenCalledWith(deviceCode);
-      expect(mockCampaignsService.earnPoints).toHaveBeenCalledWith('branch-1', {
-        userId,
-        isVisit: true,
+      await service.getPublicRewards({ branchCode: 'CODE123' });
+
+      expect(mockRewardRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ branchId: 'branch-123' }),
+          order: { createdAt: 'DESC' },
+          take: 10,
+          skip: 0,
+        }),
+      );
+    });
+
+    it('should map search and sort filters correctly', async () => {
+      const mockRewardRepo = module.get(getRepositoryToken(Reward));
+      jest.spyOn(mockRewardRepo, 'findAndCount').mockResolvedValueOnce([[], 0]);
+
+      await service.getPublicRewards({
+        branchId: 'branch-123',
+        search: 'Coffee',
+        lowestPoints: true,
+        page: 2,
+        limit: 5,
       });
-      expect(result).toEqual({ success: true });
+
+      expect(mockRewardRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            branchId: 'branch-123',
+            name: expect.anything(),
+          }),
+          order: { pointsRequired: 'ASC' },
+          take: 5,
+          skip: 5,
+        }),
+      );
     });
   });
 });

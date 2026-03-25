@@ -1,10 +1,22 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AutomationRule } from '../entities/automation-rule.entity';
 import { ChatCategory } from '../entities/chat-category.entity';
 import { TriggerType, ActionType } from '../enums/automation.enum';
-import { UpdateChatAutomationDto } from '../dto/chat-automation.dto';
+import {
+  UpdateChatAutomationDto,
+  AddFaqKeywordDto,
+  UpdateFaqKeywordDto,
+} from '../dto/chat-automation.dto';
+import {
+  CreateChatCategoryDto,
+  UpdateChatCategoryDto,
+} from '../dto/chat-category.dto';
 
 @Injectable()
 export class ChatSettingsService {
@@ -24,19 +36,24 @@ export class ChatSettingsService {
       },
     });
 
-    const welcome = rules.find(r => r.triggerType === TriggerType.WELCOME_MESSAGE);
-    const offHours = rules.find(r => r.triggerType === TriggerType.OFF_HOURS);
-    const faqs = rules.filter(r => r.triggerType === TriggerType.INBOUND_MESSAGE);
+    const welcome = rules.find(
+      (r) => r.triggerType === TriggerType.WELCOME_MESSAGE,
+    );
+    const offHours = rules.find((r) => r.triggerType === TriggerType.OFF_HOURS);
+    const faqs = rules.filter(
+      (r) => r.triggerType === TriggerType.INBOUND_MESSAGE,
+    );
 
     return {
       welcomeEnabled: welcome?.isActive ?? false,
       welcomeMessage: welcome?.actionConfig?.message ?? '',
       offHoursEnabled: offHours?.isActive ?? false,
       offHoursMessage: offHours?.actionConfig?.message ?? '',
-      offHoursSchedule: offHours?.actionConfig?.schedule ?? 'Outside Business Hours',
+      offHoursSchedule:
+        offHours?.actionConfig?.schedule ?? 'Outside Business Hours',
       customSchedule: offHours?.actionConfig?.customSchedule ?? null,
       faqEnabled: faqs.length > 0,
-      faqKeywords: faqs.map(f => ({
+      faqKeywords: faqs.map((f) => ({
         id: f.id,
         keywords: f.actionConfig?.keywords ?? [],
         response: f.actionConfig?.message ?? '',
@@ -54,8 +71,8 @@ export class ChatSettingsService {
     }
 
     if (
-      dto.offHoursEnabled !== undefined || 
-      dto.offHoursMessage !== undefined || 
+      dto.offHoursEnabled !== undefined ||
+      dto.offHoursMessage !== undefined ||
       dto.offHoursSchedule !== undefined ||
       dto.customSchedule !== undefined
     ) {
@@ -74,12 +91,24 @@ export class ChatSettingsService {
     return this.getAutomatedReplies(branchId);
   }
 
-  private validateCustomSchedule(schedule: any) {
+  private validateCustomSchedule(schedule: {
+    days?: Record<string, { startTime: string; endTime: string }>;
+  }) {
     if (!schedule.days || typeof schedule.days !== 'object') {
-      throw new BadRequestException('Invalid custom schedule format: days required');
+      throw new BadRequestException(
+        'Invalid custom schedule format: days required',
+      );
     }
 
-    const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const validDays = [
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+      'sunday',
+    ];
     const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
     for (const [day, config] of Object.entries(schedule.days)) {
@@ -87,14 +116,23 @@ export class ChatSettingsService {
         throw new BadRequestException(`Invalid day: ${day}`);
       }
 
-      const { startTime, endTime } = config as any;
+      const { startTime, endTime } = config as {
+        startTime: string;
+        endTime: string;
+      };
       if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
-        throw new BadRequestException(`Invalid time format for ${day}. Use HH:mm`);
+        throw new BadRequestException(
+          `Invalid time format for ${day}. Use HH:mm`,
+        );
       }
     }
   }
 
-  private async upsertRule(branchId: string, triggerType: TriggerType, config: any) {
+  private async upsertRule(
+    branchId: string,
+    triggerType: TriggerType,
+    config: any,
+  ) {
     let rule = await this.automationRepo.findOne({
       where: { branchId, triggerType },
     });
@@ -110,14 +148,14 @@ export class ChatSettingsService {
     }
 
     if (config.isActive !== undefined) rule.isActive = config.isActive;
-    
+
     // Merge only the keys provided in config
     const currentConfig = rule.actionConfig || {};
-    rule.actionConfig = { 
-        ...currentConfig, 
-        ...config 
+    rule.actionConfig = {
+      ...currentConfig,
+      ...config,
     };
-    
+
     // Clean up isActive if it accidentally got into actionConfig
     delete rule.actionConfig.isActive;
 
@@ -126,7 +164,7 @@ export class ChatSettingsService {
 
   // --- FAQ Keywords ---
 
-  async addFaqKeyword(branchId: string, dto: any) {
+  async addFaqKeyword(branchId: string, dto: AddFaqKeywordDto) {
     const rule = this.automationRepo.create({
       branchId,
       triggerType: TriggerType.INBOUND_MESSAGE,
@@ -141,7 +179,11 @@ export class ChatSettingsService {
     return this.automationRepo.save(rule);
   }
 
-  async updateFaqKeyword(id: string, branchId: string, dto: any) {
+  async updateFaqKeyword(
+    id: string,
+    branchId: string,
+    dto: UpdateFaqKeywordDto,
+  ) {
     const rule = await this.automationRepo.findOne({ where: { id, branchId } });
     if (!rule) throw new NotFoundException('FAQ trigger not found');
 
@@ -166,7 +208,7 @@ export class ChatSettingsService {
     return this.categoryRepo.find({ where: { branchId } });
   }
 
-  async createCategory(branchId: string, dto: any) {
+  async createCategory(branchId: string, dto: CreateChatCategoryDto) {
     const category = this.categoryRepo.create({
       branchId,
       ...dto,
@@ -175,18 +217,26 @@ export class ChatSettingsService {
     return this.categoryRepo.save(category);
   }
 
-  async updateCategory(id: string, branchId: string, dto: any) {
-    const category = await this.categoryRepo.findOne({ where: { id, branchId } });
+  async updateCategory(
+    id: string,
+    branchId: string,
+    dto: UpdateChatCategoryDto,
+  ) {
+    const category = await this.categoryRepo.findOne({
+      where: { id, branchId },
+    });
     if (!category) throw new NotFoundException('Category not found');
 
     Object.assign(category, dto);
     if (dto.name) category.slug = dto.name.toLowerCase().replace(/ /g, '-');
-    
+
     return this.categoryRepo.save(category);
   }
 
   async deleteCategory(id: string, branchId: string) {
-    const category = await this.categoryRepo.findOne({ where: { id, branchId } });
+    const category = await this.categoryRepo.findOne({
+      where: { id, branchId },
+    });
     if (!category) throw new NotFoundException('Category not found');
     await this.categoryRepo.remove(category);
   }

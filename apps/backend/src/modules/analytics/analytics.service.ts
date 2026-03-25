@@ -6,12 +6,19 @@ import { User } from '../users/entities/user.entity';
 import { Device } from '../devices/entities/device.entity';
 import { MessageLog } from '../messaging/entities/message-log.entity';
 import { MessageStatus } from '../messaging/enums/message.enum';
-import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
-import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
-import { Redemption } from '../campaigns/entities/redemption.entity';
-import { Business } from '../businesses/entities/business.entity';
+import { PointTransaction } from '../loyalty/entities/point-transaction.entity';
+import { RedemptionCode } from '../loyalty/entities/redemption-code.entity';
+import { Reward } from '../loyalty/entities/reward.entity';
+import {
+  Business,
+  BusinessStatus,
+} from '../businesses/entities/business.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Message } from '../messaging/entities/message.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../subscriptions/entities/subscription.entity';
 
 @Injectable()
 export class AnalyticsService {
@@ -26,18 +33,20 @@ export class AnalyticsService {
     private readonly deviceRepo: Repository<Device>,
     @InjectRepository(MessageLog)
     private readonly logRepo: Repository<MessageLog>,
-    @InjectRepository(LoyaltyProfile)
-    private readonly loyaltyRepo: Repository<LoyaltyProfile>,
     @InjectRepository(PointTransaction)
     private readonly transactionRepo: Repository<PointTransaction>,
-    @InjectRepository(Redemption)
-    private readonly redemptionRepo: Repository<Redemption>,
+    @InjectRepository(RedemptionCode)
+    private readonly redemptionRepo: Repository<RedemptionCode>,
+    @InjectRepository(Reward)
+    private readonly rewardRepo: Repository<Reward>,
     @InjectRepository(Business)
     private readonly businessRepo: Repository<Business>,
     @InjectRepository(Branch)
     private readonly branchRepo: Repository<Branch>,
     @InjectRepository(Message)
     private readonly messageRepo: Repository<Message>,
+    @InjectRepository(Subscription)
+    private readonly subscriptionRepo: Repository<Subscription>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -121,22 +130,44 @@ export class AnalyticsService {
   }
 
   async getAdminSummary() {
-    const [totalUsers, totalBusinesses, activeCampaigns] = await Promise.all([
-      this.userRepo.count(),
-      this.businessRepo.count(),
-      this.messageRepo.count({ where: { status: MessageStatus.SENT } }),
-    ]);
+    const [totalUsers, totalBusinesses, activeSubscriptions, totalDevices] =
+      await Promise.all([
+        this.userRepo.count(),
+        this.businessRepo.count(),
+        this.subscriptionRepo.count({
+          where: {
+            status: In([SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL]),
+          },
+        }),
+        this.deviceRepo.count(),
+      ]);
 
     return {
       stats: [
+        { label: 'Total Business', value: totalBusinesses },
         { label: 'Total Users', value: totalUsers },
-        { label: 'Total Businesses', value: totalBusinesses },
-        { label: 'Active Campaigns', value: activeCampaigns },
-        { label: 'Platform Growth', value: '12%' },
+        { label: 'Total Active Subscriptions', value: activeSubscriptions },
+        { label: 'Total Device', value: totalDevices },
       ],
       monthlyData: [],
       sectorSplit: [],
       securityAlerts: [],
+    };
+  }
+
+  async getBusinessSummary() {
+    const [active, pending, suspended, totalUsers] = await Promise.all([
+      this.businessRepo.count({ where: { status: BusinessStatus.ACTIVE } }),
+      this.businessRepo.count({ where: { status: BusinessStatus.PENDING } }),
+      this.businessRepo.count({ where: { status: BusinessStatus.SUSPENDED } }),
+      this.userRepo.count(),
+    ]);
+
+    return {
+      totalActiveBusiness: active,
+      totalPendingBusiness: pending,
+      totalSuspendedBusiness: suspended,
+      totalPlatformUsers: totalUsers,
     };
   }
 

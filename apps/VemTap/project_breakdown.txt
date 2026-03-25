@@ -1,199 +1,30 @@
-
+======
 admin@vemtap.com
 securePassword123!
+=====
+propertyphone should not exist
+in bussiness approval maake actions have 3 dots first instead of everything then for the verified and unverfied use icons
+use phone instead of phonenumber in creating business
+---merge bussiness owner functionality with a part of which is apropriate bussiness please and then after testing we delete the page
+--coustomer should use thier own role please.
+--agents should be able to  
+--filter for a bussiness for subscription management,lastt month,last 7 days
+--remove the nfc-nfcprefix in product sku only ensure that its nfc-productcatgoy-number eg nfc-plate-001 not nfc-nfc-plate-00
+--reward modal not working
+--assign agents to the ticket :the available or manually. in support here
+--quote request should  be inside bussiness
+1.assign an agent to a bussiness in control tower 
+--the admin should be able to see the full bussiness dashboard 
+--coustomer dashboard to see in tower  
+--remove coustomer overide from bussiness overide
+--- show the message that this person is viewing this dashboard in the top right corner
+-- allow an agent to look into it and the max time for an agent to look at eith bussiness or coustomer dashboard is 15 munites and there should be a count down 5 munites to the time.
+--all actions will be tied to the agent that did that
+--agent should be able to assigned 
+--from the bussiness ticket copy the uid and go to control tower
+--check why this is not searching.
 
 
-===========
  
-bussiness login
-frankemesinwa@gmail.com
-password
-
-===================
-
-==================================
-new task
-submit button should be under
-logo bussiness logo 
--------
-
-add bussiness category and sub categories eg.retail:provision
-
---- 
-when a user taps it will send the link to them and then the system will check for the first signup and then they can reset thier defaul password eg 123456
---when they click and they try to login first timers will be redirected to a coustomer reset page for password else just login. 
---the system should check if its a new user and then reset the password else just log them in
--- else check if the link has been clicked?
---once they logged they are automatically redirected
-
-=========
-
-questions 
-
-bussinesses can ask for birthdays,anniversery etc 
 
 
-
-
-===================
-Implement a FRONTEND-ONLY mock for customer first-login/password flow in the VemTap app, without changing existing backend logic or unrelated app areas.
-
-Requirements:
-1. Keep all existing flows intact. Scope this change only to the customer auth mock screens/components.
-2. Default password must be shown as `123456`.
-3. After user details are submitted, show a mock “email sent” state/message that says:
-   - account created
-   - default password is `123456`
-   - user can log in immediately or update password later
-4. Password reset is OPTIONAL, not forced.
-5. Login behavior:
-   - user can log in with `123456`
-   - user can choose “Forgot/Reset Password” to set a new one
-6. After successful login, redirect to Customer Dashboard.
-7. Place Forgot Password / Reset Password UI under the Customer module/route section.
-8. Use environment-relative links (no hardcoded static URL):
-   - Build links from current origin (e.g. `window.location.origin`)
-   - If running on localhost, links must use localhost
-   - If running on live domain, links must use live domain
-9. This is mock behavior only:
-   - no real email sending
-   - no real password update API call
-   - use local/mock state and clear TODO comments where backend integration will go
-
-Technical constraints:
-- Do not refactor unrelated files.
-- Do not break current navigation.
-- Keep styling consistent with existing app UI.
-- Add minimal comments only where mock logic is introduced.
-
-Acceptance criteria:
-- User sees default password notice (`123456`) after submit.
-- User can either log in directly with default password or go to reset flow.
-- Reset flow exists under customer routes/UI.
-- Redirect to Customer Dashboard works after login.
-- Generated links adapt automatically to current domain via relative/origin-based construction.
-
---if someone subscribes fir free trail and click current plan and have access to the ull plan
---the 30 days should show well
---count down for free trail for standard plan eg.
---opportunity to be able to pay now plan
---ability to subscribe directly 
---the period should be:
---Start: trial start date
---End: 30 days after trial start date
---This is a 30-day trial window (not a fixed 10-year date range).
-
-
-=======
-
-give a bussiness the liberty to create thier own unique from
---survey,complain,social media
---any form being created will have approved to the admin side 
-
-title--
-
---give them the liberty to create title for social media
---form title form survey etc 
-
---on the survey create survey users cant add a space bar
-
---passenger form with diffrent links to thier form 
---extra step
-
-put under enagment settings 
-dropdown socials,form creator
---survey can come under enagagement
---response to forms there should be an interface should see the response and then thier details
---respond to complain:via sms,whatsaap,email
---bot can respond or agent 
---response for the survey
-
-===========
-
---each branch has thier own dashboard.
---GENERAL SHOULD RECORD TOTAL ANALYTICS
-
-
---automation as tab section tab as tab
---admin can be able to create form templates.
--- template based on branch
-
---when create main branch
---main branch mantains its dashboard/under the bussiness
---each branch should have thier own dashboard 
---bussiness can choose to send list of forms and then load in the messaging and carry the coustomer flow.
---in user step and share
---enagagement 2.tutorial
---choose a template or create 
---description for form create and manage form and use it in threee ways tooltip
---use by link,qr codem,attaching to messaging center,use it after coustomer submit thier data 
-auto redirect to the title please 2.live preview merge the form
---bussiness can determine where thier forms will be linked.
---when messaging is clicked send form link to message please
---explanation under the bussiness 
---configure your bussiness after tapping 
---three ways to utilize the form after subscription
---allow editing for form
---three dots to show actions.
--- three ways  to apply to socials and form creatorss and instructions.
---engagment social can be added to messaging
-
-
----error pnpm outdated lockfile 
-
---immediatley after social media uploads button that say use as link
---use coustom admin template or coustom flow 
---when you come to engagment 
---add the active social links to be shown on the review link please
---remove the tabs in social
---save your config 
---want to decide where sharing 
---allow my socials to allow to show after forms
---allow the socials to be reflected anywhere they are added either in socials or profile
---engagements
---create overview page to handle the info 
---allow to use after default form to capture social media and links
--show all the links 
---we dont need to add toggle and it automatically shows
---form creation create form 
---two cards 
---after creating the form remove the qr and messaging etc
---auto redirect to bussiness profile after redirect
---after form creation they will see three options button to see the form 
-
---after create form see the list of form page
---Add question
-
---under saved as branch template 
---use after default submission
---eg created 5 forms eg. button feedback.
---the main location is the location that created that account
-
-=======
-
-new task 
---actions :popup modal where to use 
---standardize the card across the actives
--- you can use the form as messaging,qrcode, default form, as card
---copy link and download qr code
---explain the  3 steps
---coustomer first vist as new visitor, 
---Business Forms
-
---branchid uses the logo of the branch
---default form settings:submit form button based on what we haveenable social :show default forms shoul show
---i can't see the preview  please
---linking it to branch such that whatever devices scanned would shown 
---live preview of every bussiness first form
-
---allow the socials to
-
-=======
-
-new task
---add a Thank You page after form submit
---welcome page should exist
---add a Preview tab in User Experience
-
-=======
-now check the bussiness page and see how the loyalty is created by a business and apply thesame for admin which will allow admins create loyaslty templates that bussinesses can use for the admin please create the mock template and the creation process with propper ui/ux and information where possible then i can paste in the api endpoint if it is available here 

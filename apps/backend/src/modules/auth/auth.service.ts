@@ -21,6 +21,7 @@ import { RegisterAdminDto } from './dto/register-admin.dto';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { PasswordResetOtpDto } from './dto/password-reset-otp.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 
 @Injectable()
@@ -39,12 +40,18 @@ export class AuthService {
   async requestOwnerOtp(dto: RequestOtpDto) {
     const email = dto.email.toLowerCase();
     const existingUserByEmail = await this.usersService.findByEmail(email);
-    if (existingUserByEmail && existingUserByEmail.status !== UserStatus.PENDING) {
+    if (
+      existingUserByEmail &&
+      existingUserByEmail.status !== UserStatus.PENDING
+    ) {
       throw new ConflictException('User with this email already exists');
     }
 
     const existingUserByPhone = await this.usersService.findByPhone(dto.phone);
-    if (existingUserByPhone && existingUserByPhone.status !== UserStatus.PENDING) {
+    if (
+      existingUserByPhone &&
+      existingUserByPhone.status !== UserStatus.PENDING
+    ) {
       throw new ConflictException('User with this phone number already exists');
     }
 
@@ -247,10 +254,10 @@ export class AuthService {
         email: registrationData.email,
         password: hashedPassword,
         role: role as UserRole,
-        status:
-          role === UserRole.CUSTOMER ? UserStatus.ACTIVE : UserStatus.PENDING,
+        status: UserStatus.PENDING,
         phone: registrationData.phone || metadata.phone,
         branchId: registrationData.branchId, // Use branchId instead of businessId
+        isPasswordChanged: false,
       });
     }
 
@@ -372,6 +379,7 @@ export class AuthService {
           officialEmail: dto.officialEmail,
           phone: dto.businessNumber,
           isRegistered: dto.isRegistered,
+          engagement: dto.engagement,
         });
       } else {
         // Update existing business if needed
@@ -391,6 +399,7 @@ export class AuthService {
           officialEmail: dto.officialEmail,
           phone: dto.businessNumber,
           isRegistered: dto.isRegistered,
+          engagement: dto.engagement,
         } as any);
       }
 
@@ -546,5 +555,27 @@ export class AuthService {
         role: targetRole,
       },
     };
+  }
+
+  async changePassword(
+    user: User,
+    dto: ChangePasswordDto,
+    meta?: { ip: string; userAgent: string },
+  ) {
+    const dbUser = await this.usersService.findOne(user.id);
+    if (!dbUser) throw new NotFoundException('User not found');
+
+    const isMatch = await bcrypt.compare(dto.currentPassword, dbUser.password);
+    if (!isMatch) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
+    await this.usersService.updatePassword(dbUser.id, hashedPassword, {
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+    });
+
+    return { message: 'Password changed successfully' };
   }
 }

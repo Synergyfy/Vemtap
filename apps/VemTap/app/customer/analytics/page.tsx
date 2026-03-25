@@ -5,6 +5,7 @@ import { Coffee, Dumbbell, Smartphone, History, Star, PiggyBank, Loader2, AlertC
 import { useQuery } from '@tanstack/react-query';
 import { loyaltyApi } from '@/lib/api/loyalty';
 import { TbCurrencyNaira } from "react-icons/tb";
+import Tooltip2 from '@/components/ui/Tooltip2';
 
 export default function CustomerAnalyticsPage() {
     const { data, isLoading, isError, refetch } = useQuery({
@@ -40,9 +41,31 @@ export default function CustomerAnalyticsPage() {
     }
 
     const stats = [
-        { label: 'Total Visits', value: data?.totalVisits || 0, icon: History, color: 'blue', trend: { value: '+0%', isUp: true, label: 'vs last month' } },
-        { label: 'Reward Points', value: (data?.currentPointsBalance || 0).toLocaleString(), icon: Star, color: 'primary', trend: { value: '0', isUp: true, label: 'this month' } },
-        { label: 'Net Savings', value: data?.netSavings || 0, icon: PiggyBank, color: 'green', isCurrency: true, trend: { value: '+₦0', isUp: true, label: 'this month' } },
+        { 
+            label: 'Total Visits', 
+            value: data?.totalVisits || 0, 
+            icon: History, 
+            color: 'blue', 
+            trend: { value: '+0%', isUp: true, label: 'vs last month' },
+            tooltip: 'The total number of times you\'ve visited and tapped at any VemTap enabled business location.'
+        },
+        { 
+            label: 'Reward Points', 
+            value: (data?.currentPointsBalance || 0).toLocaleString(), 
+            icon: Star, 
+            color: 'primary', 
+            trend: { value: '0', isUp: true, label: 'this month' },
+            tooltip: 'Your current balance of points earned from visits and activities, ready to be redeemed for rewards.'
+        },
+        { 
+            label: 'Net Savings', 
+            value: data?.netSavings || 0, 
+            icon: PiggyBank, 
+            color: 'green', 
+            isCurrency: true, 
+            trend: { value: '+₦0', isUp: true, label: 'this month' },
+            tooltip: 'The total monetary value you\'ve saved through redeemed rewards, exclusive discounts, and point-based offers.'
+        },
     ];
 
     return (
@@ -74,7 +97,12 @@ export default function CustomerAnalyticsPage() {
                                     </div>
                                 )}
                             </div>
-                            <p className="text-[10px] font-black uppercase text-text-secondary tracking-[0.15em] mb-1">{stat.label}</p>
+                            <Tooltip2 content={stat.tooltip} side="top">
+                                <p className="text-[10px] font-black uppercase text-text-secondary tracking-[0.15em] mb-1 flex items-center gap-1 cursor-help">
+                                    {stat.label}
+                                    <span className="opacity-40"><Star size={8} /></span>
+                                </p>
+                            </Tooltip2>
                             <p className="text-3xl font-display font-bold text-text-main flex items-center gap-1">
                                 {stat.isCurrency && <TbCurrencyNaira />}
                                 {stat.value}
@@ -183,7 +211,7 @@ export default function CustomerAnalyticsPage() {
                                             </div>
                                             <div className="flex-1">
                                                 <p className="text-xs font-bold text-text-main">{venue.venueName}</p>
-                                                <p className="text-[10px] text-text-secondary font-medium">{venue.points} total points earned</p>
+                                                <p className="text-[10px] text-text-secondary font-medium">{venue.points} {venue.points === 1 ? 'visit' : 'visits'}</p>
                                             </div>
                                         </div>
                                     );

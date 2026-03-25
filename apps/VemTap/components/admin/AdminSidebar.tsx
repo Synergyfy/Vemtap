@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminNotificationsApi } from '@/lib/api/admin';
 import {
     Home, Store, Users, Nfc, CreditCard, BarChart, MessageSquare, Activity,
-    Settings, ChevronDown, Shield, ShieldCheck, LogOut, Gift, Search, Bell, HelpCircle, Package, FileText, Tag, Menu, X, Workflow, Eye
+    Settings, ChevronDown, Shield, ShieldCheck, LogOut, Gift, Search, Bell, HelpCircle, Package, FileText, Tag, Menu, X, Workflow, Eye, Zap
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import AdminMobileNav from './AdminMobileNav';
@@ -68,6 +68,7 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             label: 'Dashboard',
             icon: Home,
             href: '/admin/dashboard',
+            permission: 'admin:dashboard'
         },
         {
             id: 'businesses',
@@ -76,20 +77,24 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             submenu: [
                 { label: 'All Businesses', href: '/admin/businesses' },
                 { label: 'Business Categories', href: '/admin/categories' },
-                { label: 'Pending Approval', href: '/admin/businesses/pending' },
+                { label: 'Badge Approval', href: '/admin/businesses/pending' },
                 { label: 'Suspended', href: '/admin/businesses/suspended' },
-            ]
+            ],
+            permission: 'admin:businesses'
         },
         {
-            id: 'users',
-            label: 'Users',
+            id: 'customers',
+            label: 'Customers',
             icon: Users,
-            submenu: [
-                { label: 'All Users', href: '/admin/users' },
-                { label: 'Businesses', href: '/admin/users/business' },
-                { label: 'Customers', href: '/admin/users/customers' },
-                { label: 'Agents', href: '/admin/users/agents' },
-            ],
+            href: '/admin/users/customers',
+            permission: 'admin:customers'
+        },
+        {
+            id: 'agents',
+            label: 'Support Agents',
+            icon: ShieldCheck,
+            href: '/admin/agents',
+            permission: 'admin:agents'
         },
         {
             id: 'devices',
@@ -99,13 +104,15 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                 { label: 'All Devices', href: '/admin/devices' },
                 { label: 'Active', href: '/admin/devices/active' },
                 { label: 'Inactive', href: '/admin/devices/inactive' },
-            ]
+            ],
+            permission: 'admin:devices'
         },
         {
             id: 'subscriptions',
             label: 'Subscriptions',
             icon: CreditCard,
             href: '/admin/subscriptions',
+            permission: 'admin:subscriptions'
         },
         {
             id: 'products',
@@ -114,45 +121,60 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             submenu: [
                 { label: 'All Products', href: '/admin/products' },
                 { label: 'Hardware Orders', href: '/admin/orders' },
+                { label: 'Quote Requests', href: '/admin/quotes' },
                 { label: 'Product Categories', href: '/admin/products/types' },
                 { label: 'Add New Product', href: '/admin/products/create' },
-            ]
+            ],
+            permission: 'admin:products'
         },
         {
             id: 'analytics',
             label: 'Platform Analytics',
             icon: BarChart,
             href: '/admin/analytics',
+            permission: 'admin:analytics'
         },
         {
             id: 'loyalty',
             label: 'Loyalty Control',
             icon: Gift,
             href: '/admin/loyalty',
+            permission: 'admin:loyalty'
         },
         {
             id: 'support',
             label: 'Support Tickets',
             icon: MessageSquare,
             href: '/admin/support',
+            permission: 'admin:support'
         },
         {
             id: 'forms',
             label: 'Form Approvals',
             icon: FileText,
             href: '/admin/forms',
+            permission: 'admin:forms'
         },
         {
-            id: 'quotes',
-            label: 'Quote Requests',
-            icon: FileText,
-            href: '/admin/quotes',
+            id: 'nfc-grants',
+            label: 'NFC Quota Grants',
+            icon: ShieldCheck,
+            href: '/admin/nfc-grants',
+            permission: 'admin:all'
+        },
+        {
+            id: 'engagement',
+            label: 'Engagement Control',
+            icon: Zap,
+            href: '/admin/forms',
+            permission: 'admin:forms'
         },
         {
             id: 'messaging',
             label: 'WhatsApp Templates',
             icon: MessageSquare,
             href: '/admin/messaging',
+            permission: 'admin:messaging'
         },
         {
             id: 'flow-engine',
@@ -167,6 +189,7 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                 { label: 'Logs & Errors', href: '/admin/flow-engine/logs' },
                 { label: 'System Analytics', href: '/admin/flow-engine/analytics' },
             ],
+            permission: 'admin:flow-engine'
         },
         {
             id: 'control-tower',
@@ -176,44 +199,41 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                 { label: 'Business Override', href: '/admin/control-tower/business-override' },
                 { label: 'Customer Override', href: '/admin/control-tower/customer-override' },
             ],
+            permission: 'admin:control-tower'
         },
         {
             id: 'pricing',
             label: 'Pricing Plans',
             icon: Tag,
             href: '/admin/pricing',
+            permission: 'admin:pricing'
         },
         {
             id: 'health',
             label: 'System Health',
             icon: Activity,
             href: '/admin/health',
+            permission: 'admin:health'
         },
-        {
-            id: 'agents',
-            label: 'Manage Agents',
-            icon: Shield,
-            href: '/admin/agents',
-        },
-        {
-            id: 'verifications',
-            label: 'Verifications',
-            icon: ShieldCheck,
-            href: '/admin/verifications',
-        },
-        {
-            id: 'agent-hub',
-            label: 'Support Agent Hub',
-            icon: HelpCircle,
-            href: '/admin/agent-hub',
-        },
+
         {
             id: 'settings',
             label: 'System Settings',
             icon: Settings,
             href: '/admin/settings',
+            permission: 'admin:settings'
         },
     ];
+
+    const filteredMenuItems = menuItems.filter(item => {
+        // Super Admin check (Role is Admin and no restrictions, or specific email/id)
+        if (user?.role?.toLowerCase() === 'admin' && (!user.permissions || user.permissions.length === 0)) return true;
+        if (user?.permissions?.includes('admin:all')) return true;
+
+        // Check specific permission
+        if (!item.permission) return true; // Default to show if no specific permission defined yet
+        return user?.permissions?.includes(item.permission);
+    });
 
     const isActive = (href: string) => pathname === href;
     const isParentActive = (submenu?: { href: string }[]) =>
@@ -243,7 +263,7 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
 
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto py-6 px-3">
-                    {menuItems.map((item) => {
+                    {filteredMenuItems.map((item) => {
                         const IconComponent = item.icon;
                         return (
                             <div key={item.id} className="mb-1">

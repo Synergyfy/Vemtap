@@ -79,6 +79,7 @@ describe('BranchesService', () => {
         isMainBranch: true,
         businessHours: { monday: { open: '08:00' } },
         welcomeMessage: 'Welcome!',
+        engagement: { twitter: '@test' },
       };
       const dto = { name: 'New Branch' };
 
@@ -99,11 +100,14 @@ describe('BranchesService', () => {
       expect(result.businessHours).toEqual(mainBranch.businessHours);
       expect(result.welcomeMessage).toBe(mainBranch.welcomeMessage);
       expect(result.logoUrl).toBe(business.logoUrl);
-      expect(mockBranchRepository.create).toHaveBeenCalledWith(expect.objectContaining({
-        ...dto,
-        businessId: business.id,
-        businessHours: mainBranch.businessHours,
-      }));
+      expect(mockBranchRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...dto,
+          businessId: business.id,
+          businessHours: mainBranch.businessHours,
+          engagement: mainBranch.engagement,
+        }),
+      );
     });
 
     it('should NOT fallback if branch contact is provided', async () => {
@@ -141,12 +145,18 @@ describe('BranchesService', () => {
       const ownerId = 'owner-1';
       const branchId = 'main-1';
       const business = { id: 'bus-1', ownerId };
-      const mainBranch = { id: branchId, isMainBranch: true, businessId: 'bus-1' };
+      const mainBranch = {
+        id: branchId,
+        isMainBranch: true,
+        businessId: 'bus-1',
+      };
 
       mockBusinessRepository.findOne.mockResolvedValue(business);
       mockBranchRepository.findOne.mockResolvedValue(mainBranch);
 
-      await expect(service.remove(ownerId, branchId)).rejects.toThrow(ForbiddenException);
+      await expect(service.remove(ownerId, branchId)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should remove a non-main branch', async () => {

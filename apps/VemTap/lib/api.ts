@@ -45,18 +45,21 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
             // Skip if this is the login endpoint itself
             if (!normalizedEndpoint.includes('/auth/login') && !normalizedEndpoint.includes('/auth/register')) {
                 try {
-                    localStorage.removeItem('auth-storage-v2');
-                    document.cookie = 'vemtap-auth-token=; path=/; max-age=0; SameSite=Lax';
+                    if (typeof window !== 'undefined') {
+                        localStorage.removeItem('auth-storage-v2');
+                        document.cookie = 'vemtap-auth-token=; path=/; max-age=0; SameSite=Lax';
+                    }
                     
                     // Only redirect to login if we are on a protected route
-                    const protectedRoutes = ['/dashboard', '/admin', '/agent', '/business', '/marketplace', '/customer', '/user-step', '/bussinesss'];
-                    const isProtectedRoute = protectedRoutes.some(route => window.location.pathname.startsWith(route));
+                    if (typeof window !== 'undefined') {
+                        const protectedRoutes = ['/dashboard', '/admin', '/agent', '/business', '/marketplace', '/customer', '/user-step', '/bussinesss'];
+                        const isProtectedRoute = protectedRoutes.some(route => window.location.pathname.startsWith(route));
 
-                    if (isProtectedRoute && window.location.pathname !== '/login') {
-                        window.location.href = '/login';
-                        return Promise.reject(new Error('Session expired. Redirecting to login...'));
-                    }
-                } catch (e) {
+                        if (isProtectedRoute && window.location.pathname !== '/login') {
+                            window.location.href = '/login';
+                            return Promise.reject(new Error('Session expired. Redirecting to login...'));
+                        }
+                    }                } catch (e) {
                     // ignore errors during cleanup
                 }
             }
@@ -86,6 +89,6 @@ export const api = {
         apiCall(endpoint, { ...options, method: 'PUT', body: JSON.stringify(data) }),
     patch: (endpoint: string, data: any, options: RequestInit = {}) =>
         apiCall(endpoint, { ...options, method: 'PATCH', body: JSON.stringify(data) }),
-    delete: (endpoint: string, options: RequestInit = {}) =>
-        apiCall(endpoint, { ...options, method: 'DELETE' }),
+    delete: (endpoint: string, data?: any, options: RequestInit = {}) =>
+        apiCall(endpoint, { ...options, method: 'DELETE', body: data ? JSON.stringify(data) : undefined }),
 };

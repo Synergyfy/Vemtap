@@ -5,10 +5,14 @@ import {
   ApiBearerAuth,
   ApiResponse,
   ApiQuery,
+  ApiBody,
 } from '@nestjs/swagger';
 import { FormsService } from './forms.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { AdminFormQueryDto } from './dto/admin-form.dto';
+import { DisableFormDto } from './dto/disable-form.dto';
+import { ParseUUIDPipe, Body } from '@nestjs/common';
 
 @ApiTags('Admin Forms')
 @ApiBearerAuth()
@@ -19,37 +23,48 @@ export class AdminFormsController {
 
   @Get()
   @ApiOperation({ summary: 'Get all forms across the platform' })
-  @ApiQuery({ name: 'branchId', required: false, type: String })
   @ApiResponse({
     status: 200,
-    description: 'Return all forms array based on filters.',
+    description: 'Return list of forms with pagination and relations.',
     schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string', example: 'uuid-form-1234' },
-          title: { type: 'string', example: 'Customer Feedback' },
-          branchId: { type: 'string', example: 'uuid-branch-1234' },
-          isActive: { type: 'boolean', example: true },
-          isPublished: { type: 'boolean', example: true },
-          adminDisabled: { type: 'boolean', example: false },
-        },
+      example: {
+        items: [
+          {
+            id: 'uuid-form-1',
+            title: 'Customer Feedback',
+            responseCount: 15,
+            branch: { name: 'Main Branch' },
+            creator: { firstName: 'John', lastName: 'Doe' },
+          },
+        ],
+        total: 1,
       },
     },
   })
-  findAll(@Query('branchId') branchId?: string) {
-    return this.formsService.findAllForAdmin({ branchId });
+  async findAll(@Query() query: AdminFormQueryDto) {
+    return this.formsService.findAllForAdmin(query);
   }
 
   @Patch(':id/disable')
   @ApiOperation({ summary: 'Disable a specific form as an admin' })
+  @ApiBody({ type: DisableFormDto })
   @ApiResponse({
     status: 200,
     description: 'The form has been successfully disabled.',
+    schema: {
+      example: {
+        id: 'uuid-form-1',
+        title: 'Customer Feedback',
+        adminDisabled: true,
+        adminDisabledNote: 'Violated terms of service'
+      },
+    },
   })
-  disableForm(@Param('id') id: string) {
-    return this.formsService.setAdminDisabledStatus(id, true);
+  disableForm(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DisableFormDto,
+  ) {
+    return this.formsService.setAdminDisabledStatus(id, true, dto.adminDisabledNote);
   }
 
   @Patch(':id/enable')
@@ -57,8 +72,16 @@ export class AdminFormsController {
   @ApiResponse({
     status: 200,
     description: 'The form has been successfully enabled.',
+    schema: {
+      example: {
+        id: 'uuid-form-1',
+        title: 'Customer Feedback',
+        adminDisabled: false,
+        adminDisabledNote: null,
+      },
+    },
   })
-  enableForm(@Param('id') id: string) {
+  enableForm(@Param('id', ParseUUIDPipe) id: string) {
     return this.formsService.setAdminDisabledStatus(id, false);
   }
 }

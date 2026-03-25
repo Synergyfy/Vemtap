@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, FindOptionsWhere } from 'typeorm';
 import { Form } from './entities/form.entity';
@@ -13,9 +17,13 @@ import { SubmitFormResponseDto } from './dto/submit-form-response.dto';
 import { CreateFormTemplateDto } from './dto/create-form-template.dto';
 import { UpdateFormTemplateDto } from './dto/update-form-template.dto';
 import { FormTemplateQueryDto } from './dto/form-template-query.dto';
+import { AdminFormQueryDto } from './dto/admin-form.dto';
 import { BranchesService } from '../branches/branches.service';
 import { DevicesService } from '../devices/devices.service';
+import { FormTemplateStatsDto } from './dto/form-template-stats.dto';
 import { User } from '../users/entities/user.entity';
+import { Branch } from '../branches/entities/branch.entity';
+import { UpdateBranchFormSettingsDto } from './dto/update-branch-form-settings.dto';
 
 @Injectable()
 export class FormsService {
@@ -32,20 +40,28 @@ export class FormsService {
     private readonly formTemplatesRepository: Repository<FormTemplate>,
     @InjectRepository(FormFieldTemplate)
     private readonly formFieldTemplatesRepository: Repository<FormFieldTemplate>,
+    @InjectRepository(Branch)
+    private readonly branchesRepository: Repository<Branch>,
     private readonly branchesService: BranchesService,
+
     private readonly devicesService: DevicesService,
-  ) { }
+  ) {}
 
   async checkBranchAccess(user: User, branchId: string): Promise<boolean> {
     return this.branchesService.checkBranchAccess(user, branchId);
   }
 
-  async createForm(branchId: string, dto: CreateFormDto): Promise<Form> {
+  async createForm(
+    branchId: string,
+    dto: CreateFormDto,
+    creatorId?: string,
+  ): Promise<Form> {
     const branch = await this.branchesService.findById(branchId);
     const form = this.formsRepository.create({
       ...dto,
       branchId,
       businessId: branch.businessId,
+      creatorId,
     });
     return this.formsRepository.save(form);
   }
@@ -68,18 +84,26 @@ export class FormsService {
   }
 
   async getFormByUniqueCode(uniqueCode: string): Promise<Form> {
-    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(uniqueCode);
+    const isUuid =
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+        uniqueCode,
+      );
     const where: FindOptionsWhere<Form>[] = [
       { uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
     ];
 
     if (isUuid) {
-      where.push({ id: uniqueCode, isPublished: true, isActive: true, adminDisabled: false });
+      where.push({
+        id: uniqueCode,
+        isPublished: true,
+        isActive: true,
+        adminDisabled: false,
+      });
     }
 
     const form = await this.formsRepository.findOne({
       where,
-      relations: ['fields'],
+      relations: ['fields', 'branch', 'branch.business'],
     });
 
     if (!form) throw new NotFoundException('Form not found');
@@ -183,7 +207,75 @@ export class FormsService {
     await this.formTemplatesRepository.remove(template);
   }
 
-  async useTemplate(branchId: string, templateId: string): Promise<Form> {
+  async getTemplateStats(templateId: string): Promise<FormTemplateStatsDto> {
+    const template = await this.findTemplateById(templateId);
+
+    const forms = await this.formsRepository.find({
+      where: { templateId },
+      relations: ['branch', 'branch.business'],
+      select: {
+        id: true,
+        responseCount: true,
+        branchId: true,
+        businessId: true,
+        branch: {
+          id: true,
+          name: true,
+          business: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    const usageCount = forms.length;
+    const totalResponses = forms.reduce(
+      (sum, form) => sum + (form.responseCount || 0),
+      0,
+    );
+    const uniqueBranchesCount = new Set(
+      forms.map((f) => f.branchId).filter(Boolean),
+    ).size;
+    const uniqueBusinessesCount = new Set(
+      forms.map((f) => f.businessId).filter(Boolean),
+    ).size;
+
+    const usage = forms.map((form) => ({
+      formId: form.id,
+      branchName: form.branch?.name || 'Unknown Branch',
+      businessName: form.branch?.business?.name || 'Unknown Business',
+      responseCount: form.responseCount || 0,
+    }));
+
+    return {
+      templateId,
+      templateName: template.name,
+      usageCount,
+      totalResponses,
+      uniqueBranchesCount,
+      uniqueBusinessesCount,
+      usage,
+    };
+  }
+
+  async getAllTemplatesStats(): Promise<FormTemplateStatsDto[]> {
+    const templates = await this.formTemplatesRepository.find({
+      select: ['id', 'name'],
+    });
+
+    const stats = await Promise.all(
+      templates.map((template) => this.getTemplateStats(template.id)),
+    );
+
+    return stats;
+  }
+
+  async useTemplate(
+    branchId: string,
+    templateId: string,
+    creatorId?: string,
+  ): Promise<Form> {
     const template = await this.findTemplateById(templateId);
     const branch = await this.branchesService.findById(branchId);
 
@@ -192,6 +284,8 @@ export class FormsService {
       description: template.description,
       branchId,
       businessId: branch.businessId,
+      templateId,
+      creatorId,
       isActive: true,
       isPublished: false,
     });
@@ -216,18 +310,48 @@ export class FormsService {
   }
 
   // Admin Methods
-  async findAllForAdmin(query: { branchId?: string }) {
-    const where: FindOptionsWhere<Form> = {};
-    if (query.branchId) where.branchId = query.branchId;
-    return this.formsRepository.find({ where, relations: ['branch'] });
+  async findAllForAdmin(
+    query: AdminFormQueryDto,
+  ): Promise<{ items: Form[]; total: number }> {
+    const { branchId, businessId, search, page = 1, limit = 10 } = query;
+    const skip = (page - 1) * limit;
+
+    const where: FindOptionsWhere<Form>[] = [];
+
+    const baseWhere: FindOptionsWhere<Form> = {};
+    if (branchId) baseWhere.branchId = branchId;
+    if (businessId) baseWhere.businessId = businessId;
+
+    if (search) {
+      where.push({ ...baseWhere, title: Like(`%${search}%`) });
+      where.push({ ...baseWhere, description: Like(`%${search}%`) });
+    } else {
+      where.push(baseWhere);
+    }
+
+    const [items, total] = await this.formsRepository.findAndCount({
+      where: where.length > 1 ? where : where[0],
+      relations: ['branch', 'branch.business', 'creator'],
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
+    });
+
+    return { items, total };
   }
 
-  async setAdminDisabledStatus(id: string, isDisabled: boolean) {
+  async setAdminDisabledStatus(id: string, isDisabled: boolean, note?: string) {
     const form = await this.formsRepository.findOneBy({ id });
     if (!form) throw new NotFoundException('Form not found');
     form.adminDisabled = isDisabled;
+    if (isDisabled && note) {
+      form.adminDisabledNote = note;
+    } else if (!isDisabled) {
+      form.adminDisabledNote = null as any;
+    }
     return this.formsRepository.save(form);
   }
+
 
   // Visitor actions
   async getFormsForVisitor(branchId: string): Promise<Form[]> {
@@ -238,13 +362,15 @@ export class FormsService {
         isActive: true,
         adminDisabled: false,
       },
+      relations: ['branch'],
     });
   }
 
   async getFormsByDeviceCode(deviceCode: string): Promise<Form[]> {
     const device = await this.devicesService.findByCode(deviceCode);
     if (!device) throw new NotFoundException('Device not found');
-    if (!device.branchId) throw new BadRequestException('Device is not linked to any branch');
+    if (!device.branchId)
+      throw new BadRequestException('Device is not linked to any branch');
 
     return this.formsRepository.find({
       where: {
@@ -254,7 +380,8 @@ export class FormsService {
         adminDisabled: false,
         showAfterLeadCapture: true,
       },
-      relations: ['fields'],
+      relations: ['fields', 'branch'],
+
       order: { createdAt: 'DESC' },
     });
   }
@@ -264,13 +391,21 @@ export class FormsService {
     visitorId: string,
     dto: SubmitFormResponseDto,
   ): Promise<FormResponse> {
-    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(uniqueCode);
+    const isUuid =
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+        uniqueCode,
+      );
     const where: FindOptionsWhere<Form>[] = [
       { uniqueCode, isPublished: true, isActive: true, adminDisabled: false },
     ];
 
     if (isUuid) {
-      where.push({ id: uniqueCode, isPublished: true, isActive: true, adminDisabled: false });
+      where.push({
+        id: uniqueCode,
+        isPublished: true,
+        isActive: true,
+        adminDisabled: false,
+      });
     }
 
     const form = await this.formsRepository.findOne({ where });
@@ -301,5 +436,18 @@ export class FormsService {
     }
 
     return savedResponse;
+  }
+
+  async updateBranchSettings(
+    branchId: string,
+    dto: UpdateBranchFormSettingsDto,
+  ): Promise<Branch> {
+    const branch = await this.branchesRepository.findOneBy({ id: branchId });
+    if (!branch) throw new NotFoundException('Branch not found');
+
+    const updateFields = { ...dto };
+
+    Object.assign(branch, updateFields);
+    return this.branchesRepository.save(branch);
   }
 }

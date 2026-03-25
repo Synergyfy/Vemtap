@@ -1,12 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
-import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
-import { useBusinessStore } from '@/store/useBusinessStore';
 const defaultLogo = '/VEMTAP_PNG.png';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
@@ -14,14 +12,12 @@ import { Notification } from '@/lib/store/mockDashboardStore';
 import {
     Home, Users, Nfc, Gift, BarChart, Users2, Settings,
     ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
-    MessageCircle, LucideIcon
+    MessageCircle, LucideIcon, Zap
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import BranchSwitcher from './BranchSwitcher';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
-import TrialBanner from './TrialBanner';
-import { useActiveSubscription } from '@/services/subscriptions/hooks';
 import DashboardMobileNav from './DashboardMobileNav';
 import UpgradeModal from './UpgradeModal';
 
@@ -47,6 +43,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const router = useRouter();
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -54,11 +54,20 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const { fetchSubscriptionData, isFeatureLocked, capabilities, activeSubscription } = useSubscriptionStore();
     const { activeBranchId, getLinkWithBranch } = useActiveBranch();
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
+    const isChatRoute = pathname.includes('/messaging/chat');
+    const mainRef = useRef<HTMLElement | null>(null);
 
-    // Close upgrade modal on navigation
+    // Close upgrade modal and mobile sidebar on navigation
     useEffect(() => {
         setUpgradeModal({ isOpen: false, featureName: '' });
+        setIsMobileOpen(false);
     }, [pathname, searchParams]);
+
+    useEffect(() => {
+        if (isChatRoute && mainRef.current) {
+            mainRef.current.scrollTop = 0;
+        }
+    }, [isChatRoute, pathname]);
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -67,11 +76,15 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     }, [isAuthenticated, fetchSubscriptionData]);
 
     const mainBranch = myBusiness?.branches?.find(b => b.isMainBranch);
+    const activeBranch = myBusiness?.branches?.find(b => b.id === activeBranchId);
+    const firstBranchWithCode = myBusiness?.branches?.find(b => b.uniqueCode);
     const businessLogo = myBusiness?.logoUrl || mainBranch?.logoUrl || defaultLogo;
     const businessName = myBusiness?.name || user?.businessName || 'Business Profile';
+    const businessSlug = businessName.toLowerCase().replace(/\s+/g, '-');
+    const publicProfileCode = activeBranch?.uniqueCode || mainBranch?.uniqueCode || firstBranchWithCode?.uniqueCode || myBusiness?.uniqueCode;
+    const publicProfileHref = getLinkWithBranch(publicProfileCode ? `/b/${publicProfileCode}` : `/business/${businessSlug}`);
 
-    // eslint-disable-next-line no-console
-    console.log('[DASHBOARD SIDEBAR] 🔍 isAuthenticated:', isAuthenticated, 'path:', pathname);
+
 
     // Auto-expand the menu corresponding to the current path
     const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
@@ -85,6 +98,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const [showNotifications, setShowNotifications] = useState(false);
     const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
+
     const queryClient = useQueryClient();
 
     const { data } = useQuery({
@@ -98,11 +112,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     const unreadCount = notifications.filter((n: Notification) => !n.read).length;
     const pendingRedemptions = redemptionRequests.filter((r: any) => r.status === 'pending').length;
     const isFreePlan = Boolean(activeSubscription?.plan?.isFree) || String(activeSubscription?.planId || '').toLowerCase().includes('free');
-    const showPlanPill = Boolean(activeSubscription)
-        && activeSubscription?.status !== 'cancelled'
-        && activeSubscription?.status !== 'expired'
-        && activeSubscription?.status !== 'pending';
-    const planPillLabel = activeSubscription?.plan?.name || (isFreePlan ? 'Free Plan' : 'Active Plan');
 
     const readNotificationMutation = useMutation({
         mutationFn: dashboardApi.markNotificationRead,
@@ -173,20 +182,24 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             ]
         },
         {
-            id: 'devices',
-            label: 'NFC Hub',
-            icon: Nfc,
-            roles: ['owner', 'manager', 'staff'],
-            submenu: [
-                { label: 'NFC Asset Hub', href: '/dashboard/nfc-manager' },
-            ]
-        },
-        {
             id: 'live-chat',
-            label: 'Live Messaging',
+            label: 'In-App Chat',
             icon: MessageCircle,
             href: '/dashboard/messaging/chat',
             roles: ['owner', 'manager', 'staff'],
+        },
+        {
+            id: 'messaging-center',
+            label: 'Channels',
+            icon: MessageSquare,
+            roles: ['owner', 'manager'],
+            submenu: [
+                { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp' },
+                { label: 'SMS', href: '/dashboard/messaging/sms' },
+                { label: 'Email', href: '/dashboard/messaging/email' },
+                { label: 'Messaging Credits', href: '/dashboard/messaging/credits' },
+                { label: 'History', href: '/dashboard/messaging/history' },
+            ]
         },
         {
             id: 'loyalty',
@@ -201,14 +214,20 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 { label: 'Redeem Reward', href: '/dashboard/loyalty/redeem' },
                 { label: 'Settings', href: '/dashboard/loyalty/settings' },
                 { label: 'Customers', href: '/dashboard/loyalty/customers' },
-                { label: 'Verify', href: '/dashboard/loyalty/verify' },
-                { label: 'New User Preview', href: '/dashboard/messaging/preview/new' },
-                { label: 'Returning Preview', href: '/dashboard/messaging/preview/returning' },
+            ]
+        },
+        {
+            id: 'engagement',
+            label: 'Engagement',
+            icon: Zap,
+            submenu: [
+                { label: 'User Experience', href: '/dashboard/engagement/experience' },
+                { label: 'Form Creator', href: '/dashboard/engagement/forms' },
             ]
         },
         {
             id: 'analytics',
-            label: 'Analytics',
+            label: 'Advanced Analytics ',
             icon: BarChart,
             roles: ['owner', 'manager'],
             submenu: [
@@ -245,6 +264,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             href: '/admin/nfc-grants',
             roles: ['admin']
         },
+        {
+            id: 'devices',
+            label: 'NFC',
+            icon: Nfc,
+            href: '/dashboard/nfc-manager',
+            roles: ['owner', 'manager', 'staff'],
+
+        },
 
         {
             id: 'settings',
@@ -255,35 +282,18 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             submenu: [
                 { label: 'Profile', href: '/dashboard/settings/profile' },
                 { label: 'Business Locations', href: '/dashboard/settings/branches' },
-                {
-                    id: 'messaging-hub',
-                    label: 'Messaging Channels',
-                    submenu: [
-                        { label: 'WhatsApp', href: '/dashboard/messaging/whatsapp' },
-                        { label: 'SMS', href: '/dashboard/messaging/sms' },
-                        { label: 'Email', href: '/dashboard/messaging/email' },
-                        { label: 'History', href: '/dashboard/messaging/history' },
-                    ]
-                },
-                {
-                    id: 'engagement',
-                    label: 'Engagement',
-                    submenu: [
-                        { label: 'User Experience', href: '/dashboard/settings/engagement/experience' },
-                        { label: 'Form Creator', href: '/dashboard/settings/engagement/forms' },
-                    ]
-                },
-                { label: 'Notifications', href: '/dashboard/settings/notifications' },
-                { label: 'Integrations', href: '/dashboard/settings/integrations' },
+
                 { label: 'Subscription', href: '/dashboard/settings/subscription' },
                 { label: 'Privacy & Data', href: '/dashboard/settings/privacy' },
             ]
         },
     ];
 
-    const filteredMenuItems = menuItems.filter(item =>
-        !item.roles || item.roles.includes((user?.role as string)?.toLowerCase() || 'owner')
-    );
+    const filteredMenuItems = menuItems.filter(item => {
+        const userRole = (user?.role as string)?.toLowerCase() || 'owner';
+        if (userRole === 'admin') return true;
+        return !item.roles || item.roles.includes(userRole);
+    });
 
     const isActive = (href: string) => pathname === href;
     const isParentActive = (submenu?: any[]): boolean =>
@@ -343,9 +353,9 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
-                    {filteredMenuItems.map((item) => {
+                    {isMounted && filteredMenuItems.map((item) => {
                         const IconComponent = item.icon;
-                        const isLocked = item.feature && isFeatureLocked(item.feature);
+                        const isLocked = isMounted && item.feature && isFeatureLocked(item.feature);
                         return (
                             <div key={item.id} className="mb-1">
                                 {item.submenu ? (
@@ -370,7 +380,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                         {expandedMenus.includes(item.id || '') && !isLocked && (
                                             <div className="mt-2 ml-4 space-y-2">
                                                 {item.submenu.map((subItem: any, idx) => {
-                                                    const isSubLocked = subItem.feature && isFeatureLocked(subItem.feature);
+                                                    const isSubLocked = isMounted && subItem.feature && isFeatureLocked(subItem.feature);
                                                     return subItem.submenu ? (
                                                         <div key={subItem.id || idx} className="mb-1">
                                                             <button
@@ -390,7 +400,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                             {expandedMenus.includes(subItem.id) && !isSubLocked && (
                                                                 <div className="mt-2 ml-3 space-y-2">
                                                                     {subItem.submenu.map((nestedItem: any, nIdx: number) => {
-                                                                        const isNestedLocked = nestedItem.feature && isFeatureLocked(nestedItem.feature);
+                                                                        const isNestedLocked = isMounted && nestedItem.feature && isFeatureLocked(nestedItem.feature);
                                                                         return nestedItem.submenu ? (
                                                                             <div key={nestedItem.id || nIdx} className="mb-1">
                                                                                 <button
@@ -551,7 +561,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 {/* User Profile */}
                 <div className="border-t border-gray-200 p-4">
                     <Link
-                        href={`/business/${businessName.toLowerCase().replace(/\s+/g, '-')}`}
+                        href={publicProfileHref}
                         className="flex items-center gap-3 mb-3 hover:bg-gray-50 p-2 rounded-xl transition-colors group"
                     >
                         <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-gray-100 group-hover:scale-105 transition-transform">
@@ -581,7 +591,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             </aside>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col h-screen overflow-hidden w-full">
+            <div className="flex-1 flex flex-col h-screen overflow-hidden w-full min-h-0">
                 {/* Top Bar */}
                 <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 shrink-0">
                     <div className="flex items-center gap-4 flex-1">
@@ -596,22 +606,89 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         </div>
                     </div>
                     <div className="flex items-center gap-2 lg:gap-4 relative">
-                        <TrialBanner compact />
-                        {isFreePlan ? (
-                            <Link
-                                href="/dashboard/settings/subscription"
-                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
-                            >
-                                Free Plan
-                            </Link>
-                        ) : showPlanPill && (
-                            <Link
-                                href="/dashboard/settings/subscription/manage"
-                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
-                            >
-                                {planPillLabel}
-                            </Link>
-                        )}
+                        {(() => {
+                            const isOnTrial = activeSubscription?.status === 'trial' || activeSubscription?.status === 'trialing';
+                            const planId = String(activeSubscription?.planId || '').toLowerCase();
+                            const isFree = planId.includes('free') || Boolean(activeSubscription?.plan?.isFree);
+                            const planName = activeSubscription?.plan?.name || (isFree ? 'Free Plan' : 'Active Plan');
+
+                            // Compute counts/days for trial
+                            let daysRemaining = 0;
+                            if (isOnTrial && activeSubscription?.trialEndDate) {
+                                const trialEndDate = new Date(activeSubscription.trialEndDate);
+                                const now = new Date();
+                                daysRemaining = Math.max(0, Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+                            }
+
+                            const subscriptionLink = withBranch("/dashboard/settings/subscription" + (!isFree ? "/manage" : ""));
+
+                            return (
+                                <>
+                                    {/* Desktop View: Full Badge */}
+                                    <div className="hidden sm:flex items-center">
+                                        {isFree ? (
+                                            <Link
+                                                href={subscriptionLink}
+                                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-gray-200 transition-colors"
+                                            >
+                                                Free Plan
+                                            </Link>
+                                        ) : isOnTrial ? (
+                                            <Link
+                                                href={subscriptionLink}
+                                                className="flex items-center gap-2 pl-3 pr-1 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-full transition-all group"
+                                            >
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">
+                                                    {planName}
+                                                </span>
+                                                <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-500 text-white rounded-full">
+                                                    <Zap size={10} className="fill-white" />
+                                                    <span className="text-[9px] font-black uppercase tracking-tighter">
+                                                        {daysRemaining > 0 ? `${daysRemaining}d trial` : 'Last day!'}
+                                                    </span>
+                                                </div>
+                                            </Link>
+                                        ) : (
+                                            <Link
+                                                href={subscriptionLink}
+                                                className="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-emerald-100 transition-colors"
+                                            >
+                                                {planName}
+                                            </Link>
+                                        )}
+                                    </div>
+
+                                    {/* Mobile View: Compact Icon */}
+                                    <div className="flex sm:hidden items-center">
+                                        <Link
+                                            href={subscriptionLink}
+                                            className={`size-9 rounded-xl flex items-center justify-center border transition-all shadow-sm ${
+                                                isFree 
+                                                    ? 'bg-gray-50 border-gray-200 text-gray-400' 
+                                                    : isOnTrial 
+                                                        ? 'bg-amber-50 border-amber-200 text-amber-600' 
+                                                        : 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                                            }`}
+                                        >
+                                            {isFree ? (
+                                                <Zap size={18} className="opacity-40" />
+                                            ) : isOnTrial ? (
+                                                <div className="relative">
+                                                    <Zap size={18} className="fill-current" />
+                                                    {daysRemaining > 0 && (
+                                                        <span className="absolute -top-1 -right-1 size-4 bg-amber-500 text-white text-[8px] font-black rounded-full border-2 border-amber-50 flex items-center justify-center">
+                                                            {daysRemaining}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <ShieldCheck size={18} />
+                                            )}
+                                        </Link>
+                                    </div>
+                                </>
+                            );
+                        })()}
 
                         {/* Notification Button */}
                         <button
@@ -673,7 +750,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                     </div>
                                     <div className="p-3 border-t border-gray-100 text-center">
                                         <Link
-                                            href="/dashboard/notifications"
+                                            href={withBranch("/dashboard/notifications")}
                                             className="text-xs font-bold text-primary hover:text-primary-hover"
                                             onClick={() => setShowNotifications(false)}
                                         >
@@ -685,7 +762,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         )}
 
                         <Link
-                            href="/dashboard/support"
+                            href={withBranch("/dashboard/support")}
                             className="p-2 text-text-secondary hover:text-text-main hover:bg-gray-50 rounded-lg transition-colors"
                         >
                             <HelpCircle size={20} />
@@ -723,7 +800,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                         </div>
                                         <div className="px-2">
                                             <Link
-                                                href="/dashboard/settings/profile"
+                                                href={withBranch("/dashboard/settings/profile")}
                                                 className="flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-primary/5 hover:text-primary rounded-lg transition-colors"
                                                 onClick={() => setShowUserDropdown(false)}
                                             >
@@ -732,7 +809,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                             </Link>
                                             {((user?.role as string)?.toLowerCase() === 'owner' || (user?.role as string)?.toLowerCase() === 'admin') && (
                                                 <Link
-                                                    href="/dashboard/staff"
+                                                    href={withBranch("/dashboard/staff")}
                                                     className="flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-primary/5 hover:text-primary rounded-lg transition-colors"
                                                     onClick={() => setShowUserDropdown(false)}
                                                 >
@@ -762,16 +839,21 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto bg-gray-50 pb-16 lg:pb-0">
+                <main
+                    ref={mainRef}
+                    className={`flex-1 bg-gray-50 min-h-0 ${isChatRoute ? 'overflow-hidden' : 'overflow-y-auto pb-16 lg:pb-0'}`}
+                >
                     {children}
                 </main>
             </div>
 
-            <DashboardMobileNav />
-            <UpgradeModal 
-                isOpen={upgradeModal.isOpen} 
-                onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })} 
-                featureName={upgradeModal.featureName} 
+            {/* Only show Mobile Nav if NOT on a chat route */}
+            {!isChatRoute && <DashboardMobileNav />}
+            
+            <UpgradeModal
+                isOpen={upgradeModal.isOpen}
+                onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })}
+                featureName={upgradeModal.featureName}
             />
         </div>
     );

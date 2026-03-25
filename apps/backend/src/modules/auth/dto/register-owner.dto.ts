@@ -157,4 +157,15 @@ export class RegisterOwnerDto {
   })
   @IsOptional()
   isRegistered?: boolean;
+
+  @ApiPropertyOptional({
+    example: {
+      instagram: 'https://instagram.com/johndoe',
+      linkedin: 'https://linkedin.com/company/johndoe',
+      reviewUrl: 'https://g.page/r/...',
+    },
+    description: 'User engagement settings (social links, etc.)',
+  })
+  @IsOptional()
+  engagement?: Record<string, any>;
 }

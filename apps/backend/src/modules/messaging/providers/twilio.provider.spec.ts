@@ -97,7 +97,7 @@ describe('TwilioProvider', () => {
       expect(mockTwilioMessages.create).toHaveBeenCalledWith(
         expect.objectContaining({
           mediaUrl: ['https://example.com/image.png'],
-        })
+        }),
       );
     });
   });
@@ -111,7 +111,7 @@ describe('TwilioProvider', () => {
         Body: 'Hello back',
       };
 
-      const result = await provider.parseWebhook(payload);
+      const result = await provider.parseWebhook(payload as any);
 
       expect(result?.type).toBe('inbound');
       expect(result?.data).toEqual(
@@ -119,7 +119,7 @@ describe('TwilioProvider', () => {
           from: '+2348012345678',
           content: 'Hello back',
           providerMessageId: 'SM123',
-        })
+        }),
       );
     });
 
@@ -129,14 +129,14 @@ describe('TwilioProvider', () => {
         MessageStatus: 'delivered',
       };
 
-      const result = await provider.parseWebhook(payload);
+      const result = await provider.parseWebhook(payload as any);
 
       expect(result?.type).toBe('delivery');
       expect(result?.data).toEqual(
         expect.objectContaining({
           messageId: 'SM123',
           status: 'DELIVERED',
-        })
+        }),
       );
     });
   });

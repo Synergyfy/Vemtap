@@ -6,6 +6,7 @@ import { RewardsStore } from '@/components/loyalty/RewardsStore';
 import { PointsHistory } from '@/components/loyalty/PointsHistory';
 import { RedemptionCard } from '@/components/loyalty/RedemptionCard';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { Reward, Redemption } from '@/types/loyalty';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Gift, History, LayoutGrid, Info, QrCode, Keyboard, ArrowRight, X, Ticket } from 'lucide-react';
@@ -26,9 +27,10 @@ export default function LoyaltyPage() {
     const [showClaimInput, setShowClaimInput] = useState(false);
     const [claimCodeVal, setClaimCodeVal] = useState('');
     const [selectedRedemption, setSelectedRedemption] = useState<{ redemption: Redemption, reward: Reward, method: 'qr' | 'code' } | null>(null);
+    const { branchId: flowBranchId } = useCustomerFlowStore();
     const businessId = user?.businessId;
     const { data: profileResponse, isLoading: isProfileLoading } = useCustomerLoyaltyProfile(businessId);
-    const { data: rewardsResponse = [] } = useCustomerLoyaltyRewards(businessId);
+    const { data: rewardsResponse = [] } = useCustomerLoyaltyRewards(flowBranchId || user?.branchId || businessId);
     const { data: historyResponse = [] } = useCustomerLoyaltyHistory(businessId);
     const redeemMutation = useRedeemCustomerReward();
     const claimMutation = useClaimCode();
@@ -293,7 +295,7 @@ export default function LoyaltyPage() {
                                     type="text"
                                     value={claimCodeVal}
                                     onChange={(e) => {
-                                        let val = e.target.value.replace(/\D/g, '').substring(0, 9);
+                                        const val = e.target.value.replace(/\D/g, '').substring(0, 9);
                                         let formatted = val;
                                         if (val.length > 3) formatted = val.slice(0, 3) + '-' + val.slice(3);
                                         if (val.length > 6) formatted = formatted.slice(0, 7) + '-' + val.slice(6);

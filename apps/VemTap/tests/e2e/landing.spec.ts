@@ -7,7 +7,7 @@ test.describe('Landing Page', () => {
     await expect(
       page.getByRole('heading', { name: /collect customer details/i })
     ).toBeVisible();
-    await expect(page.getByRole('link', { name: /get started/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /get started/i }).first()).toBeVisible();
   });
 
   test('navigates to get started from CTA', async ({ page }) => {

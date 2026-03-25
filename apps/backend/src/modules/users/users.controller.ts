@@ -26,15 +26,22 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { UpdateEngagementDto } from './dto/update-engagement.dto';
 import { AdminCreateAgentDto } from './dto/admin-create-agent.dto';
+import { FindUsersAdminDto } from './dto/find-users-admin.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
 import { CapabilityGuard } from '../subscriptions/guards/capability.guard';
 import { RequireCapability } from '../subscriptions/decorators/capability.decorator';
+import {
+  AdminCreateUserDto,
+  AdminUpdateUserDto,
+} from './dto/admin-user-management.dto';
+import { ParseUUIDPipe } from '@nestjs/common';
 
 @ApiTags('Users')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -63,20 +70,11 @@ export class UsersController {
     return this.usersService.updateProfile(req.user.id, updates);
   }
 
-  @Patch('engagement')
-  @Roles(UserRole.CUSTOMER)
-  @ApiOperation({
-    summary: 'Update customer engagement links (Instagram, etc.)',
-  })
-  @ApiResponse({ status: 200, type: User })
-  async updateEngagement(@Request() req, @Body() updates: UpdateEngagementDto) {
-    return this.usersService.updateEngagement(req.user.id, updates.engagement);
-  }
-
   // --- Team Management ---
 
   @Post('team/invite')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('staff')
   @UseGuards(CapabilityGuard)
   @RequireCapability('teamMembers')
   @ApiOperation({ summary: 'Invite a new team member' })
@@ -91,21 +89,29 @@ export class UsersController {
   }
 
   @Get('team')
-  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @Permissions('staff')
   @ApiOperation({ summary: 'Get all team members for the branch' })
   @ApiResponse({ status: 200, type: [User] })
   async getTeam(@Request() req, @Query() filter: BranchFilterDto) {
+    const businessId = req.user.businessId;
+
+    if (filter.allBranches && (req.user.role === UserRole.OWNER || req.user.role === UserRole.ADMIN)) {
+      return this.usersService.findTeamMembers({ businessId });
+    }
+
     const branchId = this.getBranchId(req, filter.branchId);
-    return this.usersService.findByBranch(branchId);
+    return this.usersService.findTeamMembers({ branchId, businessId });
   }
 
   @Patch('team/:id')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('staff')
   @ApiOperation({ summary: 'Update a team member' })
   @ApiResponse({ status: 200, type: User })
   async updateStaff(
     @Request() req,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updates: UpdateStaffDto,
     @Query() filter: BranchFilterDto,
   ) {
@@ -114,12 +120,13 @@ export class UsersController {
   }
 
   @Delete('team/:id')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('staff')
   @ApiOperation({ summary: 'Remove a team member' })
   @ApiResponse({ status: 200 })
   async remove(
     @Request() req,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Query() filter: BranchFilterDto,
   ) {
     const branchId = this.getBranchId(req, filter.branchId);
@@ -131,25 +138,8 @@ export class UsersController {
   @Get('admin')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Get all users with filters and stats' })
-  @ApiQuery({ name: 'search', required: false })
-  @ApiQuery({ name: 'role', required: false })
-  @ApiQuery({ name: 'status', required: false })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  async findAllAdmin(
-    @Query('search') search?: string,
-    @Query('role') role?: string,
-    @Query('status') status?: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.usersService.findAllAdmin({
-      search,
-      role,
-      status,
-      page,
-      limit,
-    });
+  async findAllAdmin(@Query() query: FindUsersAdminDto) {
+    return this.usersService.findAllAdmin(query);
   }
 
   @Post('admin/create-agent')
@@ -159,39 +149,41 @@ export class UsersController {
   async adminCreateAgent(@Body() dto: AdminCreateAgentDto) {
     return this.usersService.adminCreateAgent(dto);
   }
-
   @Post('admin')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Create a new user' })
-  async adminCreateUser(@Body() createUserDto: any) {
+  async adminCreateUser(@Body() createUserDto: AdminCreateUserDto) {
     return this.usersService.adminCreateUser(createUserDto);
   }
 
   @Patch('admin/:id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Update user details' })
-  async adminUpdateUser(@Param('id') id: string, @Body() updateUserDto: any) {
+  async adminUpdateUser(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateUserDto: AdminUpdateUserDto,
+  ) {
     return this.usersService.adminUpdateUser(id, updateUserDto);
   }
 
   @Delete('admin/:id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Delete user' })
-  async adminDeleteUser(@Param('id') id: string) {
+  async adminDeleteUser(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.adminDeleteUser(id);
   }
 
   @Post('admin/:id/suspend')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Suspend user account' })
-  async suspendUser(@Param('id') id: string) {
+  async suspendUser(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.suspendUser(id);
   }
 
   @Post('admin/:id/activate')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Reactivate user account' })
-  async activateUser(@Param('id') id: string) {
+  async activateUser(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.activateUser(id);
   }
 
@@ -199,6 +191,8 @@ export class UsersController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Send password reset link to user email' })
   async adminResetPasswordLink(@Param('email') email: string) {
+    // Basic email validation if needed, but the service handles it.
+    // Usually better to have @IsEmail in a DTO but as a param we could use a custom validator or just let it pass to service.
     return this.usersService.adminResetPasswordLink(email);
   }
 }

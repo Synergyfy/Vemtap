@@ -6,11 +6,12 @@ import { User } from '../users/entities/user.entity';
 import { Visit } from '../visitors/entities/visit.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { Device } from '../devices/entities/device.entity';
+import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { MessageLog } from '../messaging/entities/message-log.entity';
 import { Message } from '../messaging/entities/message.entity';
-import { LoyaltyProfile } from '../campaigns/entities/loyalty-profile.entity';
-import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
-import { Redemption } from '../campaigns/entities/redemption.entity';
+import { PointTransaction } from '../loyalty/entities/point-transaction.entity';
+import { RedemptionCode } from '../loyalty/entities/redemption-code.entity';
+import { Reward } from '../loyalty/entities/reward.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
@@ -21,11 +22,12 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
       Visit,
       Business,
       Device,
+      Subscription,
       MessageLog,
       Message,
-      LoyaltyProfile,
       PointTransaction,
-      Redemption,
+      RedemptionCode,
+      Reward,
       Branch,
     ]),
     forwardRef(() => SubscriptionsModule),

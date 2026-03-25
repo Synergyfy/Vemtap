@@ -7,6 +7,7 @@ import { FormResponse } from './entities/form-response.entity';
 import { FormAnswer } from './entities/form-answer.entity';
 import { FormTemplate } from './entities/form-template.entity';
 import { FormFieldTemplate } from './entities/form-field-template.entity';
+import { Branch } from '../branches/entities/branch.entity';
 import { NotFoundException } from '@nestjs/common';
 import { BranchesService } from '../branches/branches.service';
 import { DevicesService } from '../devices/devices.service';
@@ -19,6 +20,7 @@ describe('FormsService', () => {
   const mockDevicesService = {
     findByBranchId: jest.fn(),
     findById: jest.fn(),
+    findByCode: jest.fn(),
   };
 
   const mockFormsRepository = {
@@ -28,6 +30,7 @@ describe('FormsService', () => {
     findOne: jest.fn(),
     findOneBy: jest.fn(),
     remove: jest.fn(),
+    increment: jest.fn(),
   };
 
   const mockFormFieldsRepository = {
@@ -60,6 +63,11 @@ describe('FormsService', () => {
     create: jest.fn(),
     save: jest.fn(),
     delete: jest.fn(),
+  };
+
+  const mockBranchesRepository = {
+    findOneBy: jest.fn(),
+    save: jest.fn(),
   };
 
   const mockBranchesService = {
@@ -96,6 +104,10 @@ describe('FormsService', () => {
         {
           provide: getRepositoryToken(FormFieldTemplate),
           useValue: mockFormFieldTemplatesRepository,
+        },
+        {
+          provide: getRepositoryToken(Branch),
+          useValue: mockBranchesRepository,
         },
         {
           provide: BranchesService,
@@ -147,6 +159,38 @@ describe('FormsService', () => {
       expect(result).toEqual(mockTemplate);
       expect(mockFormTemplatesRepository.create).toHaveBeenCalled();
       expect(mockFormTemplatesRepository.save).toHaveBeenCalled();
+    });
+
+    it('should successfully create a template with DATE_NO_YEAR field type', async () => {
+      const dto: CreateFormTemplateDto = {
+        name: 'Partial Date Template',
+        description: 'Birthday collection',
+        fields: [
+          {
+            type: FormFieldType.DATE_NO_YEAR,
+            question: 'When is your birthday?',
+            isRequired: false,
+            order: 1,
+          },
+        ],
+      };
+
+      const mockField = { id: 'field-birthday', ...dto.fields[0] };
+      const mockTemplate = {
+        id: 'template-2',
+        name: dto.name,
+        description: dto.description,
+        fields: [mockField],
+      };
+
+      mockFormFieldTemplatesRepository.create.mockReturnValue(mockField);
+      mockFormTemplatesRepository.create.mockReturnValue(mockTemplate);
+      mockFormTemplatesRepository.save.mockResolvedValue(mockTemplate);
+
+      const result = await service.createTemplate(dto);
+
+      expect(result).toEqual(mockTemplate);
+      expect(result.fields[0].type).toBe(FormFieldType.DATE_NO_YEAR);
     });
   });
 

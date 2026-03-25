@@ -15,6 +15,7 @@ import { TrialRestrictionGuard } from './guards/trial-restriction.guard';
 import { CapabilityGuard } from './guards/capability.guard';
 import { AnalyticsLevelGuard } from './guards/analytics-level.guard';
 import { BranchesModule } from '../branches/branches.module';
+import { MessagingModule } from '../messaging/messaging.module';
 
 import { Branch } from '../branches/entities/branch.entity';
 import { Device } from '../devices/entities/device.entity';
@@ -32,6 +33,7 @@ import { Device } from '../devices/entities/device.entity';
     forwardRef(() => BusinessesModule),
     PaymentsModule,
     forwardRef(() => BranchesModule),
+    forwardRef(() => MessagingModule),
   ],
   controllers: [PlansController, SubscriptionsController],
   providers: [

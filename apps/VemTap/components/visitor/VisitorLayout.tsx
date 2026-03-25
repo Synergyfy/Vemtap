@@ -1,16 +1,19 @@
 import React from 'react';
 import Link from 'next/link';
 import Script from 'next/script';
+import { buildBrandCssVars } from '@/lib/brandColor';
 
 interface VisitorLayoutProps {
     children: React.ReactNode;
     onReset?: () => void;
     onCredentialResponse?: (response: any) => void;
+    brandColor?: string | null;
 }
 
-export const VisitorLayout: React.FC<VisitorLayoutProps> = ({ children, onReset, onCredentialResponse }) => {
+export const VisitorLayout: React.FC<VisitorLayoutProps> = ({ children, onReset, onCredentialResponse, brandColor }) => {
+    const brandVars = buildBrandCssVars(brandColor || undefined);
     return (
-        <div className="min-h-screen bg-[#fafbfc] font-body flex flex-col items-center py-20 px-6 antialiased">
+        <div style={brandVars} className="min-h-screen bg-[#fafbfc] font-body flex flex-col items-center py-20 px-6 antialiased">
             <Script
                 src="https://accounts.google.com/gsi/client"
                 strategy="afterInteractive"

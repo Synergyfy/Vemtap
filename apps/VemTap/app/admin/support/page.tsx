@@ -5,8 +5,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { Loader2, MessageCircle, RefreshCw, Search, Send } from 'lucide-react';
 import { notify } from '@/lib/notify';
-import { adminSupportApi } from '@/lib/api/admin';
+import { adminSupportApi, adminAgentsApi } from '@/lib/api/admin';
 import { cn } from '@/lib/utils';
+import { User, Shield, UserPlus, Zap } from 'lucide-react';
+import { useAuthStore } from '@/store/useAuthStore';
 
 type TicketStatus = 'Open' | 'In Progress' | 'Closed';
 
@@ -29,6 +31,8 @@ const getStatusClass = (status: string) => {
 
 export default function AdminSupportPage() {
     const queryClient = useQueryClient();
+    const { user } = useAuthStore();
+    const isSuperAdmin = user?.role === 'admin';
     const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -40,6 +44,13 @@ export default function AdminSupportPage() {
         queryFn: () => adminSupportApi.getAllTickets(),
     });
 
+    const { data: agentsResponse } = useQuery({
+        queryKey: ['admin-agents-list'],
+        queryFn: () => adminAgentsApi.getAll({ limit: 100 }),
+    });
+
+    const agents = useMemo(() => agentsResponse?.data || [], [agentsResponse]);
+
     const tickets = useMemo(() => extractList(ticketsResponse), [ticketsResponse]);
 
     const filteredTickets = useMemo(() => {
@@ -49,8 +60,8 @@ export default function AdminSupportPage() {
                 !query ||
                 ticket?.id?.toLowerCase().includes(query) ||
                 ticket?.subject?.toLowerCase().includes(query) ||
-                ticket?.user?.name?.toLowerCase().includes(query) ||
-                ticket?.user?.email?.toLowerCase().includes(query);
+                (ticket?.user?.name || ticket?.requester || '').toLowerCase().includes(query) ||
+                (ticket?.user?.email || ticket?.email || '').toLowerCase().includes(query);
 
             const matchesStatus = statusFilter === 'all' || ticket?.status === statusFilter;
             return matchesQuery && matchesStatus;
@@ -71,6 +82,29 @@ export default function AdminSupportPage() {
     });
 
     const selectedTicket = selectedTicketResponse?.data || selectedTicketResponse;
+
+    const assignMutation = useMutation({
+        mutationFn: ({ id, agentId }: { id: string; agentId: string }) =>
+            adminSupportApi.assignTicket(id, agentId),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['admin-tickets'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-ticket', variables.id] });
+            notify.success('Ticket assigned successfully');
+        },
+        onError: () => notify.error('Failed to assign ticket'),
+    });
+
+    // Auto-assignment effect
+    useEffect(() => {
+        if (selectedTicket && !selectedTicket.assignedTo && agents.length > 0 && !assignMutation.isPending) {
+            // Find an available agent (or just pick the first one for now as per "automatically assign")
+            // In a real system, this would be backend logic, but we can trigger it here if it's unassigned.
+            const autoAgent = agents[0];
+            if (autoAgent) {
+                assignMutation.mutate({ id: selectedTicket.id, agentId: autoAgent.id });
+            }
+        }
+    }, [selectedTicket, agents, assignMutation.isPending]);
 
     const updateStatusMutation = useMutation({
         mutationFn: ({ id, status }: { id: string; status: TicketStatus }) =>
@@ -154,6 +188,7 @@ export default function AdminSupportPage() {
                                 <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">User</th>
                                 <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">Category</th>
                                 <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">Status</th>
+                                <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">Assigned</th>
                                 <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">Updated</th>
                                 <th className="text-right py-3 px-4 text-[10px] font-black uppercase tracking-wider text-text-secondary">Action</th>
                             </tr>
@@ -180,8 +215,8 @@ export default function AdminSupportPage() {
                                             <p className="text-xs text-text-secondary font-medium mt-0.5">{ticket.id}</p>
                                         </td>
                                         <td className="py-3 px-4">
-                                            <p className="text-sm font-bold text-text-main">{ticket.user?.name || 'Unknown User'}</p>
-                                            <p className="text-xs text-text-secondary">{ticket.user?.email || 'No email'}</p>
+                                            <p className="text-sm font-bold text-text-main">{ticket.user?.name || ticket.requester || 'Unknown User'}</p>
+                                            <p className="text-xs text-text-secondary">{ticket.user?.email || ticket.email || 'No email'}</p>
                                         </td>
                                         <td className="py-3 px-4 text-sm text-text-secondary font-medium">{ticket.category || 'General'}</td>
                                         <td className="py-3 px-4">
@@ -198,6 +233,27 @@ export default function AdminSupportPage() {
                                                         <option key={status} value={status}>{status}</option>
                                                     ))}
                                                 </select>
+                                            </div>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <div className="flex items-center gap-2">
+                                                {ticket.assignedTo && (
+                                                    <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                                                        {ticket.assignedTo.name?.charAt(0) || 'A'}
+                                                    </div>
+                                                )}
+                                                <select
+                                                    value={ticket.assignedTo?.id || ''}
+                                                    onChange={(e) => assignMutation.mutate({ id: ticket.id, agentId: e.target.value })}
+                                                    disabled={assignMutation.isPending}
+                                                    className="h-8 px-2 bg-gray-50 border border-gray-200 rounded-md text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-w-[120px]"
+                                                >
+                                                    <option value="">Unassigned</option>
+                                                    {agents.map((agent: any) => (
+                                                        <option key={agent.id} value={agent.id}>{agent.name}</option>
+                                                    ))}
+                                                </select>
+                                                {assignMutation.isPending && <Loader2 className="animate-spin text-primary" size={12} />}
                                             </div>
                                         </td>
                                         <td className="py-3 px-4 text-sm text-text-secondary font-medium">
@@ -247,11 +303,43 @@ export default function AdminSupportPage() {
 
             {selectedTicketId && (
                 <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
-                    <div className="p-5 border-b border-gray-100">
-                        <h2 className="text-lg font-display font-bold text-text-main">Ticket Details</h2>
-                        <p className="text-xs text-text-secondary font-medium mt-1">
-                            {selectedTicket?.subject || selectedTicketId}
-                        </p>
+                    <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h2 className="text-lg font-display font-bold text-text-main">Ticket Details</h2>
+                            <p className="text-xs text-text-secondary font-medium mt-1">
+                                {selectedTicket?.subject || selectedTicketId}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className={cn(
+                                "flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all",
+                                isSuperAdmin ? "bg-gray-50 border-gray-200" : "bg-primary/5 border-primary/20"
+                            )}>
+                                {isSuperAdmin ? <UserPlus size={14} className="text-gray-400" /> : <Shield size={14} className="text-primary" />}
+                                <select
+                                    value={selectedTicket?.assignedTo?.id || ''}
+                                    onChange={(e) => assignMutation.mutate({ id: selectedTicketId!, agentId: e.target.value })}
+                                    className={cn(
+                                        "bg-transparent text-xs font-bold focus:outline-none min-w-[120px]",
+                                        isSuperAdmin ? "text-text-main cursor-pointer" : "text-primary cursor-default appearance-none"
+                                    )}
+                                    disabled={assignMutation.isPending || !isSuperAdmin}
+                                >
+                                    <option value="">Unassigned</option>
+                                    {agents.map((agent: any) => (
+                                        <option key={agent.id} value={agent.id}>
+                                            {agent.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            {!isSuperAdmin && selectedTicket?.assignedTo && (
+                                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 border border-green-100 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                                    <Zap size={12} />
+                                    Auto-Assigned
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div className="p-5 space-y-4">

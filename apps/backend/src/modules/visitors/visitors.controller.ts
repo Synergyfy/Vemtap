@@ -17,21 +17,24 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { VisitorsService } from './visitors.service';
 import { CreateVisitorDto } from './dto/create-visitor.dto';
 import { VisitorSignupDto } from './dto/visitor-signup.dto';
+import { VisitorSignupQueryDto } from './dto/visitor-signup-query.dto';
 import { CreateVisitorRewardDto } from './dto/create-visitor-reward.dto';
 import { DeviceTapDto } from './dto/device-tap.dto';
 import { VisitorQueryDto } from './dto/visitor-query.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { Public } from '../../common/decorators/public.decorator';
+import { AllowPending } from '../../common/decorators/allow-pending.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
-import { CampaignsService } from '../campaigns/campaigns.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 import {
   VisitorResponseDto,
   PaginatedVisitorResponseDto,
@@ -40,7 +43,19 @@ import {
 } from './dto/visitor-response.dto';
 import { VisitorStatsResponseDto } from './dto/visitor-stats.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
-import { RecordVisitResponse, SendCampaignBody } from './visitors.service';
+import { RecordVisitResponse } from './visitors.service';
+import {
+  AdminSendMessageDto,
+  AdminSendRewardDto,
+  SendCampaignDto,
+} from './dto/admin-visitor-action.dto';
+import { ParseUUIDPipe } from '@nestjs/common';
+
+import { VisitedBranchesQueryDto } from './dto/visited-branches-query.dto';
+import { PaginatedVisitedBranchResponseDto } from './dto/visited-branch-response.dto';
+import { AdminVisitorActivitiesQueryDto } from './dto/admin-visitor-activities-query.dto';
+import { PaginatedVisitResponseDto } from './dto/visit-response.dto';
+import { RewardCategory } from '../loyalty/entities/reward-template.entity';
 
 @ApiTags('Visitors')
 @ApiBearerAuth()
@@ -49,8 +64,26 @@ import { RecordVisitResponse, SendCampaignBody } from './visitors.service';
 export class VisitorsController {
   constructor(
     private readonly visitorsService: VisitorsService,
-    private readonly campaignsService: CampaignsService,
+    private readonly loyaltyService: LoyaltyService,
   ) {}
+
+  @Get('visited-branches')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({
+    summary: 'Get branches visited by the customer with pagination and search',
+  })
+  @ApiResponse({
+    status: 200,
+    type: PaginatedVisitedBranchResponseDto,
+    description:
+      'List of branches visited by the customer, ordered from last visited to first visited',
+  })
+  async getVisitedBranches(
+    @Req() req: any,
+    @Query() query: VisitedBranchesQueryDto,
+  ): Promise<PaginatedVisitedBranchResponseDto> {
+    return this.visitorsService.getVisitedBranches(req.user.id, query);
+  }
 
   private async getBranchId(req: any, queryBranchId?: string): Promise<string> {
     const user = req.user;
@@ -224,6 +257,34 @@ export class VisitorsController {
     );
   }
 
+  @Get('admin/activities')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin view of all visitor activities (visits)' })
+  @ApiResponse({ type: PaginatedVisitResponseDto })
+  async findAdminActivities(
+    @Query() query: AdminVisitorActivitiesQueryDto,
+  ): Promise<PaginatedVisitResponseDto> {
+    return this.visitorsService.findAdminVisitorActivities(query);
+  }
+
+  @Get(':id')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @Permissions('visitors')
+  @ApiOperation({ summary: 'Get a visitor by ID' })
+  @ApiResponse({ type: VisitorResponseDto })
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: any,
+    @Query() filter: BranchFilterDto,
+  ) {
+    const context = await this.getResolvedContext(req, filter);
+    return this.visitorsService.findOne(
+      id,
+      context.branchId,
+      context.businessId,
+    );
+  }
+
   // --- Actions (Bulk) ---
 
   @Post('export')
@@ -244,11 +305,11 @@ export class VisitorsController {
   @ApiOperation({ summary: 'Send campaign to visitors' })
   async sendCampaign(
     @Req() req: any,
-    @Body() body: SendCampaignBody,
+    @Body() body: SendCampaignDto,
     @Query() filter: BranchFilterDto,
   ): Promise<any> {
     const branchId = await this.getBranchId(req, filter.branchId);
-    return this.visitorsService.sendCampaign(branchId, body);
+    return this.visitorsService.sendCampaign(branchId, body as any);
   }
 
   @Post('welcome-campaign')
@@ -265,6 +326,7 @@ export class VisitorsController {
 
   @Delete('reset')
   @Roles(UserRole.OWNER)
+  @Permissions('settings')
   @ApiOperation({ summary: 'Reset all dashboard data for the branch' })
   async resetDashboard(
     @Req() req: any,
@@ -281,9 +343,26 @@ export class VisitorsController {
   async createReward(
     @Req() req: any,
     @Body() body: CreateVisitorRewardDto,
+    @Query() filter: BranchFilterDto,
   ): Promise<any> {
-    const branchId = await this.getBranchId(req, body.branchId);
-    return this.campaignsService.createReward(branchId, body);
+    const branchId = await this.getBranchId(
+      req,
+      body.branchId || filter.branchId,
+    );
+
+    // Map simplified DTO to the more comprehensive CreateRewardDto used by loyaltyService
+    const rewardDto = {
+      ...body,
+      pointsRequired: body.pointCost, // Map pointCost to pointsRequired
+      branchId,
+      category: (body as any).category || RewardCategory.FREE_PRODUCT,
+      totalQuantity: (body as any).totalQuantity || 100, // Defaul quantity if not provided
+      expiryDate: new Date(
+        Date.now() + (body.validityDays || 30) * 24 * 60 * 60 * 1000,
+      ).toISOString(),
+    };
+
+    return this.loyaltyService.createReward(req.user, rewardDto as any);
   }
 
   // --- CRUD & Individual Actions ---
@@ -292,6 +371,11 @@ export class VisitorsController {
   @Post('signup')
   @ApiOperation({ summary: 'Public visitor signup (Customer Only)' })
   @ApiBody({ type: VisitorSignupDto })
+  @ApiQuery({
+    name: 'branchId',
+    type: String,
+    description: 'The UUID of the branch',
+  })
   @ApiResponse({
     status: 201,
     description: 'Visitor registered successfully',
@@ -299,11 +383,9 @@ export class VisitorsController {
   })
   async publicSignup(
     @Body() dto: VisitorSignupDto,
-    @Query('branchId') branchId: string,
+    @Query() query: VisitorSignupQueryDto,
   ): Promise<VisitorResponseDto> {
-    if (!branchId)
-      throw new BadRequestException('branchId is required for signup');
-    return this.visitorsService.create(dto, branchId);
+    return this.visitorsService.create(dto, query.branchId);
   }
 
   @Post()
@@ -327,6 +409,7 @@ export class VisitorsController {
 
   @Post('record-visit')
   @Roles(UserRole.CUSTOMER)
+  @AllowPending()
   @ApiOperation({ summary: 'Record a visit via device tap (Customer Only)' })
   async recordVisit(
     @Body() dto: DeviceTapDto,
@@ -335,22 +418,13 @@ export class VisitorsController {
     return this.visitorsService.recordVisit(req.user.id, dto.deviceCode);
   }
 
-  @Get(':id')
-  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
-  @Permissions('visitors')
-  @ApiOperation({ summary: 'Get a visitor by ID' })
-  @ApiResponse({ type: VisitorResponseDto })
-  async findOne(@Param('id') id: string) {
-    return this.visitorsService.findOne(id);
-  }
-
   @Patch(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @Permissions('visitors')
   @ApiOperation({ summary: 'Update a visitor' })
   @ApiResponse({ type: VisitorResponseDto })
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateVisitorDto: Partial<CreateVisitorDto>,
   ) {
     return this.visitorsService.update(id, updateVisitorDto);
@@ -360,7 +434,7 @@ export class VisitorsController {
   @Roles(UserRole.OWNER, UserRole.ADMIN)
   @Permissions('visitors')
   @ApiOperation({ summary: 'Delete a visitor' })
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.visitorsService.remove(id);
   }
 
@@ -370,15 +444,15 @@ export class VisitorsController {
   @ApiOperation({ summary: 'Send a message to a visitor' })
   async sendMessage(
     @Req() req: any,
-    @Param('id') id: string,
-    @Body() body: { message: string; channel: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: AdminSendMessageDto,
     @Query() filter: BranchFilterDto,
   ) {
     const branchId = await this.getBranchId(req, filter.branchId);
     return this.visitorsService.sendMessage(
       id,
       body.message,
-      body.channel as any,
+      body.channel,
       branchId,
     );
   }
@@ -389,7 +463,7 @@ export class VisitorsController {
   @ApiOperation({ summary: 'Send welcome message to a visitor' })
   async sendWelcome(
     @Req() req: any,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Query() filter: BranchFilterDto,
   ) {
     const branchId = await this.getBranchId(req, filter.branchId);
@@ -402,8 +476,8 @@ export class VisitorsController {
   @ApiOperation({ summary: 'Send reward to a visitor' })
   async sendReward(
     @Req() req: any,
-    @Param('id') id: string,
-    @Body() body: { rewardId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: AdminSendRewardDto,
     @Query() filter: BranchFilterDto,
   ) {
     const branchId = await this.getBranchId(req, filter.branchId);

@@ -1,0 +1,56 @@
+for updating the business socials
+Endpoint: `/api/v1/users/engagement`
+Method: PATCH
+Body: {
+  {
+  "engagement": {
+    "instagram": {
+      "profile": "johndoe",
+      "link": "https://instagr.am/johndoe"
+    },
+    "facebook": {
+      "page": "John Doe Page",
+      "link": "https://fb.com/johndoe"
+    }
+  }
+}
+
+}
+
+
+for fetching the user profile 
+Endpoint: /users/profile
+Method: GET
+Body: {
+  {
+  "email": "user@example.com",
+  "firstName": "John",
+  "lastName": "Doe",
+  "role": "Owner",
+  "phone": "+2348012345678",
+  "jobTitle": "Store Manager",
+  "permissions": [
+    "view_reports",
+    "manage_staff"
+  ],
+  "status": "ACTIVE",
+  "uniqueCode": "CUST-12345",
+  "lastActive": "2023-10-25T10:00:00.000Z",
+  "pushToken": "fcm-token-string",
+  "branchId": "uuid-string",
+  "businessId": "uuid-string",
+  "engagement": {
+    "instagram": {
+      "profile": "johndoe",
+      "link": "https://instagr.am/johndoe"
+    }
+  },
+  "optInChannels": [
+    "SMS",
+    "WhatsApp"
+  ],
+  "optOut": false,
+  "isPasswordChanged": false
+}
+}
+

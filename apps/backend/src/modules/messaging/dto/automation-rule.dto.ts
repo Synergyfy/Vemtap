@@ -7,18 +7,19 @@ import {
   IsNumber,
   IsBoolean,
   IsObject,
+  IsUUID,
 } from 'class-validator';
 import { TriggerType, ActionType } from '../enums/automation.enum';
 
 export class CreateAutomationRuleDto {
   @ApiProperty({ example: 'uuid-of-branch' })
   @IsNotEmpty()
-  @IsString()
+  @IsUUID()
   branchId: string;
 
   @ApiPropertyOptional({ example: 'uuid-of-business' })
   @IsOptional()
-  @IsString()
+  @IsUUID()
   businessId?: string;
 
   @ApiProperty({ example: 'Post-Visit Welcome' })
@@ -90,7 +91,7 @@ export class UpdateAutomationRuleDto {
 
 export class AutomationTriggerDto {
   branchId: string;
-  contactId: string;
+  customerId: string;
   metadata?: Record<string, any>;
 }
 
@@ -102,7 +103,7 @@ export class UpdateAutomationToggleDto {
 
   @ApiPropertyOptional({ example: 'uuid-of-branch' })
   @IsOptional()
-  @IsString()
+  @IsUUID()
   branchId?: string;
 }
 
@@ -126,7 +127,7 @@ export class UpdateAutomationConfigDto {
 
   @ApiPropertyOptional({ example: 'uuid-of-branch' })
   @IsOptional()
-  @IsString()
+  @IsUUID()
   branchId?: string;
 }
 
@@ -136,7 +137,7 @@ export class AutomationLogResponseDto {
   @ApiProperty({ example: 'Post-Visit Welcome' })
   ruleName: string;
   @ApiProperty({ example: 'uuid-contact' })
-  contactId: string;
+  customerId: string;
   @ApiProperty({ example: 'success' })
   status: string;
   @ApiProperty({ example: '2024-02-27T10:00:00.000Z' })

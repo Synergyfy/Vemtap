@@ -10,22 +10,27 @@ import { SettingsService } from '../../settings/settings.service';
 import { ProviderRouterService } from './provider-router.service';
 import { BranchesService } from '../../branches/branches.service';
 import { DataSource } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 
-import { Contact } from '../../contacts/entities/contact.entity';
+import { User, UserRole } from '../../users/entities/user.entity';
+import { Visit } from '../../visitors/entities/visit.entity';
 import { Message } from '../entities/message.entity';
 import { MessageLog } from '../entities/message-log.entity';
 import { ConversationThread } from '../entities/conversation-thread.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
-import { LoyaltyProfile } from '../../campaigns/entities/loyalty-profile.entity';
 import { Channel } from '../enums/channel.enum';
+import { MessagingGateway } from '../messaging.gateway';
+import { PushNotificationService } from '../../notifications/push-notification.service';
+import { LoyaltyService } from '../../loyalty/loyalty.service';
 
 describe('MessagingEngineService', () => {
   let service: MessagingEngineService;
   let branchRepoMock: any;
-  let contactRepoMock: any;
+  let userRepoMock: any;
+  let visitRepoMock: any;
   let messageRepoMock: any;
-  let loyaltyRepoMock: any;
+  let loyaltyServiceMock: any;
 
   const mockQueue = {
     add: jest.fn(),
@@ -33,15 +38,20 @@ describe('MessagingEngineService', () => {
 
   const mockIndividualQueue = {
     add: jest.fn(),
+    addBulk: jest.fn(),
   };
 
   const mockCreditService = {
-    deduct: jest.fn(),
-    deductChannelCredit: jest.fn(),
+    getOrCreateWallet: jest.fn().mockResolvedValue({
+      smsCredits: 1000,
+      emailCredits: 1000,
+      whatsappCredits: 1000,
+    }),
+    deductCredits: jest.fn(),
   };
 
   const mockCampaignService = {
-    createCampaign: jest.fn().mockResolvedValue({ id: 'c1' }),
+    createCampaign: jest.fn().mockResolvedValue({ id: 'campaign-1' }),
   };
 
   const mockSettingsService = {
@@ -59,14 +69,26 @@ describe('MessagingEngineService', () => {
     estimateCost: jest.fn().mockReturnValue(1),
   };
 
+  const mockGateway = {
+    emitMessage: jest.fn(),
+  };
+
+  const mockPush = {
+    sendNotification: jest.fn().mockResolvedValue({ success: true }),
+  };
+
   beforeEach(async () => {
     branchRepoMock = {
       findOne: jest.fn(),
       findOneBy: jest.fn(),
     };
-    contactRepoMock = {
+    userRepoMock = {
       find: jest.fn(),
       findOneBy: jest.fn(),
+    };
+    visitRepoMock = {
+      find: jest.fn(),
+      findOne: jest.fn(),
       createQueryBuilder: jest.fn().mockReturnValue({
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
@@ -78,18 +100,24 @@ describe('MessagingEngineService', () => {
       create: jest.fn().mockImplementation((d) => d),
       save: jest
         .fn()
-        .mockImplementation((e) => Promise.resolve({ id: '1', ...e })),
+        .mockImplementation((e) =>
+          Promise.resolve(
+            Array.isArray(e) ? [{ id: '1', ...e[0] }] : { id: '1', ...e },
+          ),
+        ),
       update: jest.fn(),
       findOne: jest.fn(),
+      findOneBy: jest.fn(),
     };
-    loyaltyRepoMock = {
-      findOne: jest.fn(),
+    loyaltyServiceMock = {
+      getBusinessPoints: jest.fn().mockResolvedValue(500),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MessagingEngineService,
-        { provide: getRepositoryToken(Contact), useValue: contactRepoMock },
+        { provide: getRepositoryToken(User), useValue: userRepoMock },
+        { provide: getRepositoryToken(Visit), useValue: visitRepoMock },
         { provide: getRepositoryToken(Message), useValue: messageRepoMock },
         { provide: getRepositoryToken(MessageLog), useValue: messageRepoMock },
         {
@@ -98,9 +126,12 @@ describe('MessagingEngineService', () => {
         },
         { provide: getRepositoryToken(Business), useValue: messageRepoMock },
         { provide: getRepositoryToken(Branch), useValue: branchRepoMock },
-        { provide: getRepositoryToken(LoyaltyProfile), useValue: loyaltyRepoMock },
+        { provide: LoyaltyService, useValue: loyaltyServiceMock },
         { provide: getQueueToken('messaging-batch-send'), useValue: mockQueue },
-        { provide: getQueueToken('messaging-individual-send'), useValue: mockIndividualQueue },
+        {
+          provide: getQueueToken('messaging-individual-send'),
+          useValue: mockIndividualQueue,
+        },
         {
           provide: ComplianceService,
           useValue: {
@@ -121,6 +152,9 @@ describe('MessagingEngineService', () => {
           useValue: { checkBranchAccess: jest.fn() },
         },
         { provide: DataSource, useValue: {} },
+        { provide: ConfigService, useValue: { get: jest.fn() } },
+        { provide: MessagingGateway, useValue: mockGateway },
+        { provide: PushNotificationService, useValue: mockPush },
       ],
     }).compile();
 
@@ -139,32 +173,39 @@ describe('MessagingEngineService', () => {
       ).rejects.toThrow('Branch not found');
     });
 
-    it('should enqueue individual jobs when targeting multiple contacts (<= 50)', async () => {
+    it('should enqueue individual jobs when targeting multiple customers (<= 50)', async () => {
       branchRepoMock.findOne.mockResolvedValueOnce({
         id: 'br1',
         businessId: 'biz1',
       });
-      contactRepoMock.find.mockResolvedValueOnce([{ id: 'c1' }, { id: 'c2' }]);
-      
+      userRepoMock.find.mockResolvedValueOnce([{ id: 'u1' }, { id: 'u2' }]);
+
       const result = await service.sendMessage({
         branchId: 'br1',
-        contactIds: ['c1', 'c2'],
+        customerIds: ['u1', 'u2'],
         channel: Channel.SMS,
         content: 'msg',
       });
 
-      expect(mockCampaignService.createCampaign).toHaveBeenCalledWith(
-        expect.objectContaining({
-          branchId: 'br1',
-        }),
+      expect(mockCampaignService.createCampaign).toHaveBeenCalled();
+      expect(mockIndividualQueue.addBulk).toHaveBeenCalledTimes(1);
+      expect(mockIndividualQueue.addBulk).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'send-individual',
+            data: expect.objectContaining({ customerId: 'u1' }),
+          }),
+          expect.objectContaining({
+            name: 'send-individual',
+            data: expect.objectContaining({ customerId: 'u2' }),
+          }),
+        ]),
       );
-      
-      expect(mockIndividualQueue.add).toHaveBeenCalledTimes(2);
       expect(result.status).toBe('QUEUED');
       expect(result.count).toBe(2);
     });
 
-    it('should throw BadRequestException if no contacts provided', async () => {
+    it('should throw BadRequestException if no customers found', async () => {
       branchRepoMock.findOne.mockResolvedValueOnce({
         id: 'br1',
         businessId: 'biz1',
@@ -172,11 +213,11 @@ describe('MessagingEngineService', () => {
       await expect(
         service.sendMessage({
           branchId: 'br1',
-          contactIds: [],
+          customerIds: [],
           channel: Channel.SMS,
           content: 'test',
         }),
-      ).rejects.toThrow('No contacts found for selected audience');
+      ).rejects.toThrow('No customers found for selected audience');
     });
   });
 
@@ -190,28 +231,29 @@ describe('MessagingEngineService', () => {
         website: 'https://vemtap.com',
         reviewUrl: 'https://google.com/review',
       });
-      contactRepoMock.findOneBy.mockResolvedValue({
-        id: 'c1',
+      userRepoMock.findOneBy.mockResolvedValue({
+        id: 'u1',
         phone: '123',
         email: 'tobi@example.com',
-        name: 'Tobi Adeyemi',
+        firstName: 'Tobi',
+        lastName: 'Adeyemi',
       });
-      loyaltyRepoMock.findOne.mockResolvedValueOnce({ currentPointsBalance: 500 });
 
       await service.processSingleSend(
         'br1',
-        'c1',
+        'u1',
         'Hello {FirstName} {LastName}, welcome to {BusinessName}. Your email is {Email}. Link: {Link}. Points: {Points}',
         Channel.SMS,
         'VEMTAP',
       );
 
-      // Check the first call to create which should have the resolved content
-      expect(messageRepoMock.create).toHaveBeenCalledWith(expect.objectContaining({
-        content: 'Hello Tobi Adeyemi, welcome to VemTap Global. Your email is tobi@example.com. Link: https://vemtap.com. Points: 500'
-      }));
+      expect(messageRepoMock.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content:
+            'Hello Tobi Adeyemi, welcome to VemTap Global. Your email is tobi@example.com. Link: https://vemtap.com. Points: 500',
+        }),
+      );
       expect(mockProviderRouter.sendMessage).toHaveBeenCalled();
     });
   });
 });
-

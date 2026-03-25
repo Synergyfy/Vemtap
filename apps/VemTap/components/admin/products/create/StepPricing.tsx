@@ -55,8 +55,13 @@ export default function StepPricing() {
                 name: formData.title,
                 description: formData.description,
                 productTypeId: formData.productTypeId,
+                category: formData.category,
                 price: formData.msrp,
+                originalPrice: formData.originalPrice,
+                costPrice: formData.costPrice,
+                customizationFee: formData.customizationFee,
                 images: imagesArray,
+                image: imagesArray[0] || 'https://placehold.co/600x400/png?text=Hardware+Product',
                 tag: formData.tag,
                 tagColor: formData.tagColor,
                 moq: formData.volumeDiscounts[0]?.minQty || 1,
@@ -74,13 +79,15 @@ export default function StepPricing() {
                     return acc;
                 }, {} as Record<string, string>),
                 videos: videoUrl ? [videoUrl] : [],
-                howToSteps: formData.howToSteps.map(step => ({
+                howToUse: formData.howToSteps.map(step => ({
                     title: step.title,
                     description: step.description
                 })),
                 rating: 5, // Default rating
                 requestQuoteThreshold: formData.bulkQuotesEnabled ? 100 : null
             };
+
+
 
             if (editingProductId) {
                 return adminProductsApi.update(editingProductId, payload);
@@ -180,9 +187,10 @@ export default function StepPricing() {
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold"><TbCurrencyNaira /></span>
                                 <input
                                     type="number"
-                                    value={formData.msrp}
-                                    onChange={(e) => updateFormData({ msrp: parseFloat(e.target.value) })}
+                                    value={formData.msrp === 0 ? '' : formData.msrp}
+                                    onChange={(e) => updateFormData({ msrp: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                                     className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:outline-none font-bold text-text-main text-lg transition-all"
+                                    placeholder="0.00"
                                 />
                             </div>
                         </div>
@@ -192,9 +200,10 @@ export default function StepPricing() {
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold"><TbCurrencyNaira /></span>
                                 <input
                                     type="number"
-                                    value={formData.originalPrice}
-                                    onChange={(e) => updateFormData({ originalPrice: parseFloat(e.target.value) })}
+                                    value={formData.originalPrice === 0 ? '' : formData.originalPrice}
+                                    onChange={(e) => updateFormData({ originalPrice: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                                     className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:outline-none font-bold text-text-main text-lg transition-all"
+                                    placeholder="0.00"
                                 />
                             </div>
                         </div>
@@ -204,9 +213,10 @@ export default function StepPricing() {
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold"><TbCurrencyNaira /></span>
                                 <input
                                     type="number"
-                                    value={formData.costPrice}
-                                    onChange={(e) => updateFormData({ costPrice: parseFloat(e.target.value) })}
+                                    value={formData.costPrice === 0 ? '' : formData.costPrice}
+                                    onChange={(e) => updateFormData({ costPrice: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                                     className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:outline-none font-bold text-text-main text-lg transition-all"
+                                    placeholder="0.00"
                                 />
                             </div>
                         </div>
@@ -263,9 +273,10 @@ export default function StepPricing() {
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 text-xs font-bold"><TbCurrencyNaira /></span>
                                         <input
                                             type="number"
-                                            value={formData.customizationFee}
-                                            onChange={(e) => updateFormData({ customizationFee: parseFloat(e.target.value) })}
+                                            value={formData.customizationFee === 0 ? '' : formData.customizationFee}
+                                            onChange={(e) => updateFormData({ customizationFee: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                                             className="w-full pl-7 pr-3 py-2 bg-white border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-200 focus:outline-none font-bold text-text-main text-sm transition-all"
+                                            placeholder="0.00"
                                         />
                                     </div>
                                 </div>
@@ -349,7 +360,7 @@ export default function StepPricing() {
                                                 <div className="flex items-center gap-2 bg-gray-50 px-2 py-1 rounded w-fit">
                                                     <input
                                                         type="number"
-                                                        value={tier.discountPercent}
+                                                        value={tier.discountPercent === 0 ? '' : tier.discountPercent}
                                                         onChange={(e) => handleDiscountChange(tier.id, 'discountPercent', e.target.value)}
                                                         className="w-10 bg-transparent text-xs font-bold text-right outline-none"
                                                     />

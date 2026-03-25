@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notify';
 import { adminUsersApi, adminBusinessesApi, adminDevicesApi, adminSubscriptionsApi } from '@/lib/api/admin';
-import { Users, Store, Cpu, TrendingUp, ArrowRight, RefreshCw, Loader2, CheckCircle, Clock, Ban } from 'lucide-react';
+import { Users, Store, Smartphone, TrendingUp, ArrowRight, RefreshCw, Loader2, CheckCircle, Clock, Ban } from 'lucide-react';
 import Link from 'next/link';
 
 interface DashboardStats {
@@ -131,15 +131,15 @@ export default function AdminDashboardPage() {
 
     const platformStats = [
         { label: 'Total Businesses', value: stats.totalBusinesses, icon: Store, color: 'blue', link: '/admin/businesses' },
-        { label: 'Total Users', value: stats.totalUsers, icon: Users, color: 'green', link: '/admin/users' },
+        { label: 'Total Users', value: stats.totalUsers, icon: Users, color: 'green', link: '/admin/users/customers' },
         { label: 'Active Subscriptions', value: stats.activeSubscriptions, icon: TrendingUp, color: 'yellow', link: '/admin/subscriptions' },
-        { label: 'Total Devices', value: stats.totalDevices, icon: Cpu, color: 'red', link: '/admin/devices' },
+        { label: 'Total Devices', value: stats.totalDevices, icon: Smartphone, color: 'red', link: '/admin/devices' },
     ];
 
     const quickActions = [
         { label: 'Add Business', icon: 'add_business', href: '/admin/businesses', primary: true },
-        { label: 'Create User', icon: 'person_add', href: '/admin/users', primary: false },
-        { label: 'Register Device', icon: 'nfc', href: '/admin/devices', primary: false },
+        { label: 'Create User', icon: 'person_add', href: '/admin/users/customers', primary: false },
+        { label: 'Register Device', icon: 'smartphone', href: '/admin/devices', primary: false },
         { label: 'System Settings', icon: 'settings', href: '/admin/settings', primary: false },
     ];
 

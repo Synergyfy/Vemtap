@@ -12,7 +12,8 @@ import toast from 'react-hot-toast';
 import { 
     UserPlus, Shield, Edit3, Trash2, Eye, MessageSquare, 
     BarChart3, Users as UsersIcon, Settings as SettingsIcon, 
-    Building2, Loader2, Lock 
+    Building2, Loader2, Lock, Home, MessageCircle, Gift, Zap, Nfc, HelpCircle,
+    Cpu, Bell, BookOpen, Wand2, Smartphone
 } from 'lucide-react';
 import { useBranches } from '@/services/branches/hooks';
 import Modal from '@/components/ui/Modal';
@@ -22,11 +23,17 @@ import UpgradeModal from '@/components/dashboard/UpgradeModal';
 import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 
 const PERMISSIONS = [
-    { id: 'dashboard', label: 'Dashboard', icon: Eye },
+    { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'visitors', label: 'Visitors', icon: UsersIcon },
-    { id: 'messages', label: 'Messages', icon: MessageSquare },
+    { id: 'chat', label: 'In-App Chat', icon: MessageCircle },
+    { id: 'messages', label: 'Channels', icon: MessageSquare },
+    { id: 'loyalty', label: 'Loyalty', icon: Gift },
+    { id: 'engagement', label: 'Engagement', icon: Zap },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'staff', label: 'Team', icon: UsersIcon },
+    { id: 'nfc', label: 'NFC Manager', icon: Nfc },
+    { id: 'support', label: 'Support', icon: HelpCircle },
+    { id: 'tutorial', label: 'Tutorial', icon: BookOpen },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
 
@@ -34,6 +41,7 @@ export default function StaffManagementPage() {
     const router = useRouter();
     const pathname = usePathname();
     const { user, activeBranchId } = useAuthStore();
+    const businessName = user?.businessName || 'Business';
     const { capabilities, isLimitReached } = useSubscriptionStore();
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -46,14 +54,14 @@ export default function StaffManagementPage() {
     const { data: realBranches = [] } = useBranches();
     const branches = realBranches;
 
-    const { data: staffMembers, isLoading: isStaffLoading } = useStaff(activeBranchId || undefined);
+    const isOwner = user?.role?.toLowerCase() === 'owner';
+
+    const { data: staffMembers, isLoading: isStaffLoading } = useStaff(activeBranchId || undefined, isOwner);
     const inviteMutation = useInviteStaff();
     const updateMutation = useUpdateStaff();
-    const removeMutation = useRemoveStaff();
+    const removeMutation = useRemoveStaff(activeBranchId || undefined);
 
     const isLoading = isStaffLoading;
-
-    const isOwner = user?.role?.toLowerCase() === 'owner';
 
     // Close upgrade modal on navigation
     React.useEffect(() => {
@@ -84,6 +92,7 @@ export default function StaffManagementPage() {
             firstName: formData.get('firstName') as string,
             lastName: formData.get('lastName') as string,
             email: formData.get('email') as string,
+            phone: formData.get('phone') as string || undefined,
             jobTitle: formData.get('jobTitle') as string || undefined,
             role: roleValue as UserRole,
             branchId: branchId || activeBranchId || user?.branchId || '',
@@ -156,7 +165,9 @@ export default function StaffManagementPage() {
                 return (
                     <div className="flex items-center gap-2">
                         <Building2 size={14} className="text-gray-400" />
-                        <span className="text-sm font-bold text-text-main leading-none">{branch?.name || 'Main Branch'}</span>
+                        <span className="text-sm font-bold text-text-main leading-none">
+                            {branch?.name && branch?.name !== 'Main Branch' ? branch.name : businessName}
+                        </span>
                     </div>
                 );
             }
@@ -164,18 +175,19 @@ export default function StaffManagementPage() {
         {
             header: 'Status',
             accessor: (item: StaffMember) => {
+                const status = item.status?.toLowerCase();
                 const statusColors: Record<string, string> = {
-                    'Active': 'bg-green-500',
-                    'Pending': 'bg-amber-500',
-                    'Invited': 'bg-blue-400',
-                    'Suspended': 'bg-red-500',
-                    'Inactive': 'bg-gray-400',
+                    'active': 'bg-green-500',
+                    'pending': 'bg-amber-500',
+                    'invited': 'bg-blue-400',
+                    'suspended': 'bg-red-500',
+                    'inactive': 'bg-gray-400',
                 };
 
                 return (
                     <div className="flex items-center gap-2">
-                        <div className={`size-1.5 rounded-full ${statusColors[item.status] || 'bg-gray-300'} ${item.status === 'Active' ? 'animate-pulse' : ''}`}></div>
-                        <span className="text-sm font-bold text-text-main capitalize">{item.status}</span>
+                        <div className={`size-1.5 rounded-full ${statusColors[status] || 'bg-gray-300'} ${status === 'active' ? 'animate-pulse' : ''}`}></div>
+                        <span className="text-sm font-bold text-text-main capitalize">{status || item.status}</span>
                     </div>
                 );
             }
@@ -298,16 +310,20 @@ export default function StaffManagementPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Job Title</label>
-                            <input name="jobTitle" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm" placeholder="e.g. Head of Sales" />
-                        </div>
-                        <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Email Address</label>
                             <input name="email" type="email" required className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm" placeholder="john@example.com" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Phone Number</label>
+                            <input name="phone" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm" placeholder="+1234567890" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Job Title</label>
+                            <input name="jobTitle" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm" placeholder="e.g. Head of Sales" />
+                        </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Access Level</label>
                             <select name="role" className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none">
@@ -315,20 +331,21 @@ export default function StaffManagementPage() {
                                 <option value="Manager">Manager (Full Dashboard)</option>
                             </select>
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Assign to Branch</label>
-                            <select
-                                name="branchId"
-                                required
-                                defaultValue={activeBranchId || branches[0]?.id}
-                                className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none"
-                            >
-                                <option value="">Select a branch</option>
-                                {branches.map((b) => (
-                                    <option key={b.id} value={b.id}>{b.name}</option>
-                                ))}
-                            </select>
-                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Assign to Branch</label>
+                        <select
+                            name="branchId"
+                            required
+                            defaultValue={activeBranchId || branches[0]?.id}
+                            className="w-full h-12 px-4 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all font-bold text-sm appearance-none"
+                        >
+                            <option value="">Select a branch</option>
+                            {branches.map((b) => (
+                                <option key={b.id} value={b.id}>{b.name}</option>
+                            ))}
+                        </select>
                     </div>
 
                     <div className="space-y-3">
@@ -434,7 +451,8 @@ export default function StaffManagementPage() {
                                         updates: {
                                             role: editingStaff.role,
                                             permissions: editingStaff.permissions
-                                        }
+                                        },
+                                        branchId: activeBranchId || undefined
                                     }, {
                                         onSuccess: () => {
                                             toast.success('Staff access updated');

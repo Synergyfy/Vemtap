@@ -1,32 +1,163 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
+// --- Helpers ---
+
+const normalizeThread = (thread: any, isCustomer: boolean) => {
+  if (!thread) return thread;
+  if (thread.contact) return thread; // Already normalized or mock
+
+  const contact = isCustomer
+    ? {
+        id: thread.branch?.id || thread.branchId,
+        name: thread.branch?.business?.name || 'Business',
+        avatar: thread.branch?.business?.logoUrl,
+        phone: thread.branch?.phone || thread.branch?.business?.phone || thread.metadata?.phone,
+        isOnline: false,
+      }
+    : {
+        id: thread.customer?.id || thread.customerId,
+        name: thread.customer?.firstName 
+          ? `${thread.customer.firstName} ${thread.customer.lastName || ''}`.trim() 
+          : (thread.customer?.name || 'Customer'),
+        avatar: thread.customer?.avatar,
+        phone: thread.customer?.phone || thread.customer?.phoneNumber || thread.metadata?.phone,
+        isOnline: false,
+      };
+
+  return { ...thread, contact };
+};
+
 // --- Inbox Hooks ---
 
-export const useChatThreads = (channel: string = 'IN_HOUSE', branchId?: string) => {
+export const useChatThreads = (channel: string = 'IN_HOUSE', branchId?: string, isCustomer: boolean = false) => {
   return useQuery({
-    queryKey: ['chat-threads', channel, branchId],
-    queryFn: () => api.get(`/messaging/inbox/${channel}${branchId ? `?branchId=${branchId}` : ''}`),
-    enabled: !!branchId || channel === 'IN_HOUSE', // In-house might be global for customers but branch-specific for business
+    queryKey: ['chat-threads', channel, branchId, isCustomer],
+    queryFn: async () => {
+      const endpoint = isCustomer 
+        ? `/customer/messaging/threads`
+        : `/messaging/inbox/${channel}${branchId ? `?branchId=${branchId}` : ''}`;
+      const data = await api.get(endpoint);
+      return (data as any[]).map(t => normalizeThread(t, isCustomer));
+    },
+    enabled: isCustomer || !!branchId || channel === 'IN_HOUSE',
   });
 };
 
-export const useThreadMessages = (threadId: string, branchId?: string) => {
+export const useThreadMessages = (threadId: string, branchId?: string, isCustomer: boolean = false) => {
   return useQuery({
-    queryKey: ['chat-messages', threadId, branchId],
-    queryFn: () => api.get(`/messaging/inbox/threads/${threadId}${branchId ? `?branchId=${branchId}` : ''}`),
-    enabled: !!threadId,
+    queryKey: ['chat-messages', threadId, branchId, isCustomer],
+    queryFn: () => {
+      const endpoint = isCustomer
+        ? `/customer/messaging/threads/${threadId}`
+        : `/messaging/inbox/threads/${threadId}${branchId ? `?branchId=${branchId}` : ''}`;
+      return api.get(endpoint);
+    },
+    enabled: !!threadId && threadId !== 'default',
   });
 };
 
-export const useSendReply = () => {
+export const useSendReply = (isCustomer: boolean = false) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ threadId, content, branchId }: { threadId: string; content: string; branchId?: string }) =>
-      api.post(`/messaging/inbox/threads/${threadId}/reply${branchId ? `?branchId=${branchId}` : ''}`, { content, branchId }),
+    mutationFn: ({ threadId, content, branchId, replyToId }: { threadId: string; content: string; branchId?: string; replyToId?: string }) => {
+      const endpoint = isCustomer
+        ? `/customer/messaging/threads/${threadId}/reply`
+        : `/messaging/inbox/threads/${threadId}/reply${branchId ? `?branchId=${branchId}` : ''}`;
+      return api.post(endpoint, { content, replyToId });
+    },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['chat-messages', variables.threadId] });
       queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
+    },
+  });
+};
+
+export const useStartConversation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ branchId, content }: { branchId: string; content: string }) =>
+      api.post('/customer/messaging/threads/start', { branchId, content }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
+      if (data?.threadId) {
+        queryClient.invalidateQueries({ queryKey: ['chat-messages', data.threadId] });
+      }
+    },
+  });
+};
+
+export const useStartBranchConversation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ branchId, customerId, content, channel = 'IN_HOUSE' }: { branchId: string; customerId: string; content: string; channel?: string }) =>
+            api.post('/messaging/send', { branchId, customerIds: [customerId], content, channel, audienceType: 'GROUP' }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
+        },
+    });
+};
+
+export const useInitBranchConversation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ branchId, customerId }: { branchId: string; customerId: string }) =>
+            api.post('/messaging/inbox/threads/init', { branchId, customerId }),
+        onSuccess: (data: any) => {
+            queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
+            if (data?.id) {
+                queryClient.invalidateQueries({ queryKey: ['chat-messages', data.id] });
+            }
+        },
+    });
+};
+
+export const useMarkThreadAsRead = (isCustomer: boolean = false) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ threadId, branchId }: { threadId: string; branchId?: string }) => {
+      if (isCustomer) return Promise.resolve(null);
+      if (!branchId) return Promise.resolve(null);
+      return api.post(`/messaging/inbox/threads/${threadId}/read?branchId=${branchId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
+    },
+  });
+};
+
+export const useDeleteThread = (isCustomer: boolean = false) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ threadId, branchId }: { threadId: string; branchId?: string }) => {
+      const endpoint = isCustomer
+        ? `/customer/messaging/threads/${threadId}`
+        : `/messaging/inbox/threads/${threadId}${branchId ? `?branchId=${branchId}` : ''}`;
+      return api.delete(endpoint);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
+    },
+  });
+};
+
+export const useDeleteMessage = (isCustomer: boolean = false) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ messageId, threadId, branchId }: { messageId: string; threadId: string; branchId?: string }) => {
+      // Mock deletion as requested: just delay 300ms to simulate network request
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return { success: true };
+    },
+    onSuccess: (_, variables) => {
+      // Optimistically update the query cache to remove the message from the UI instantly
+      queryClient.setQueryData(
+        ['chat-messages', variables.threadId, variables.branchId, isCustomer], 
+        (oldData: any) => {
+          if (!Array.isArray(oldData)) return oldData;
+          return oldData.filter((msg: any) => msg.id !== variables.messageId);
+        }
+      );
     },
   });
 };

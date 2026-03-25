@@ -2,515 +2,664 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, FindOptionsWhere } from 'typeorm';
+import { Repository, DataSource, Between, MoreThanOrEqual, FindOptionsWhere, ILike, FindOptionsOrder } from 'typeorm';
+import { User, UserRole } from '../users/entities/user.entity';
+import { RewardTemplate } from './entities/reward-template.entity';
+import { Reward } from './entities/reward.entity';
 import {
-  LoyaltyProfile,
-  TierLevel,
-} from '../campaigns/entities/loyalty-profile.entity';
-import { Reward } from '../campaigns/entities/reward.entity';
-import { PointTransaction } from '../campaigns/entities/point-transaction.entity';
-import { Redemption } from '../campaigns/entities/redemption.entity';
-import { DevicesService } from '../devices/devices.service';
-import {
-  EarnPointsDto,
-  RedeemRewardDto,
-  CreateLoyaltyRewardDto,
-  UpdateLoyaltyRuleDto,
-  GenerateRedemptionCodeDto,
-  CreateLoyaltyTemplateDto,
-  UpdateLoyaltyTemplateDto,
-} from '../campaigns/dto/loyalty.dto';
-import { CampaignsService } from '../campaigns/campaigns.service';
+  PointTransaction,
+  PointTransactionType,
+} from './entities/point-transaction.entity';
+import { PointCode } from './entities/point-code.entity';
+import { RedemptionCode } from './entities/redemption-code.entity';
+import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
-import { User } from '../users/entities/user.entity';
 import { BranchesService } from '../branches/branches.service';
-import { LoyaltyRule } from '../campaigns/entities/loyalty-rule.entity';
-import { LoyaltyTemplate } from '../campaigns/entities/loyalty-template.entity';
-
-export interface CustomerAnalyticsResponse {
-  totalVisits: number;
-  currentPointsBalance: number;
-  netSavings: number;
-  visitTrends: { month: string; visits: number }[];
-  pointsByVenue: { venueName: string; points: number }[];
-  topVenues: { venueName: string; points: number; visits: number }[];
-}
-
-export interface BusinessLoyaltyStatsResponse {
-  stats: { label: string; value: string; change: number; trend: 'up' | 'down' }[];
-  tierDistribution: { label: string; value: number; color: string }[];
-  activityTrend: { name: string; earnings: number; claims: number }[];
-  growthForecast: string;
-}
-
-export interface TapResponse {
-  success: boolean;
-  pointsEarned: number;
-  newBalance?: number;
-  message: string;
-}
-
-export interface DeviceInfoResponse {
-  id: string;
-  name: string;
-  code: string;
-  branchId: string;
-  branchName: string;
-  branch: any; // Branch entity has complex circular refs, usually okay to leave or use Partial
-  business: any;
-  businessId: string;
-  userProfile: LoyaltyProfile | null;
-  isFirstTimeVisit: boolean;
-}
+import { RewardQueryDto } from './dto/loyalty-query.dto';
+import {
+  CreateRewardTemplateDto,
+  CreateRewardDto,
+  GivePointsDto,
+  GeneratePointCodeDto,
+  UsePointCodeDto,
+  GenerateRedemptionCodeDto,
+  RedeemRewardDto,
+} from './dto/loyalty.dto';
 
 @Injectable()
 export class LoyaltyService {
   constructor(
-    @InjectRepository(LoyaltyProfile)
-    private loyaltyProfileRepository: Repository<LoyaltyProfile>,
+    @InjectRepository(RewardTemplate)
+    private rewardTemplateRepo: Repository<RewardTemplate>,
     @InjectRepository(Reward)
-    private rewardRepository: Repository<Reward>,
+    private rewardRepo: Repository<Reward>,
     @InjectRepository(PointTransaction)
-    private transactionRepository: Repository<PointTransaction>,
-    @InjectRepository(Redemption)
-    private redemptionRepository: Repository<Redemption>,
+    private pointTransactionRepo: Repository<PointTransaction>,
+    @InjectRepository(PointCode)
+    private pointCodeRepo: Repository<PointCode>,
+    @InjectRepository(RedemptionCode)
+    private redemptionCodeRepo: Repository<RedemptionCode>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
+    @InjectRepository(Branch)
+    private branchRepo: Repository<Branch>,
     @InjectRepository(Visit)
-    private visitRepository: Repository<Visit>,
-    private readonly devicesService: DevicesService,
-    private readonly campaignsService: CampaignsService,
-    private readonly branchesService: BranchesService,
-    private readonly dataSource: DataSource,
+    private visitRepo: Repository<Visit>,
+    private dataSource: DataSource,
+    @Inject(forwardRef(() => BranchesService))
+    private branchesService: BranchesService,
   ) {}
 
-  async checkBranchAccess(user: User, branchId: string): Promise<boolean> {
-    return this.branchesService.checkBranchAccess(user, branchId);
+  // --- Point Balance ---
+  async getBusinessPoints(userId: string, businessId: string): Promise<number> {
+    const result = await this.pointTransactionRepo
+      .createQueryBuilder('transaction')
+      .select('SUM(transaction.amount)', 'sum')
+      .where('transaction.customerId = :userId', { userId })
+      .andWhere('transaction.businessId = :businessId', { businessId })
+      .getRawOne();
+
+    return parseInt(result?.sum || '0', 10);
   }
 
-  // --- Rules ---
-
-  async getLoyaltyRule(branchId?: string, businessId?: string): Promise<LoyaltyRule> {
-    return this.campaignsService.getLoyaltyRule(branchId, businessId);
-  }
-
-  async updateLoyaltyRule(branchId: string, updates: UpdateLoyaltyRuleDto): Promise<LoyaltyRule> {
-    return this.campaignsService.updateLoyaltyRule(branchId, updates);
-  }
-
-  // --- Profile Management ---
-
-  async getProfile(
-    userId: string,
-    branchId?: string,
-    businessId?: string,
-  ): Promise<LoyaltyProfile> {
-    const where: FindOptionsWhere<LoyaltyProfile> = { userId };
-    if (branchId) {
-      where.branchId = branchId;
-    } else if (businessId) {
-      const profiles = await this.loyaltyProfileRepository.find({
-        where: { userId, businessId },
-        order: { totalPointsEarned: 'DESC' },
-      });
-      if (profiles.length > 0) return profiles[0];
-    }
-
-    let profile = await this.loyaltyProfileRepository.findOne({ where });
-
-    if (!profile && branchId) {
-      const branch = await this.branchesService.findById(branchId);
-      profile = this.loyaltyProfileRepository.create({
-        userId,
-        branchId,
-        businessId: branch.businessId,
-        points: 0,
-        tierLevel: TierLevel.BRONZE,
-        currentPointsBalance: 0,
-        totalPointsEarned: 0,
-        pointsRedeemed: 0,
-      } as Partial<LoyaltyProfile>) as unknown as LoyaltyProfile;
-      await this.loyaltyProfileRepository.save(profile);
-    }
-
-    if (!profile) {
-      throw new NotFoundException('Loyalty profile not found');
-    }
-
-    return profile;
-  }
-
-  async createCustomerProfile(
-    userId: string,
-    branchId: string,
-  ): Promise<LoyaltyProfile> {
-    return this.getProfile(userId, branchId);
-  }
-
-  async getAllProfiles(userId: string): Promise<LoyaltyProfile[]> {
-    return this.loyaltyProfileRepository.find({
-      where: { userId },
-      relations: ['branch'],
+  async getPointLogs(userId: string, businessId: string, page = 1, limit = 10) {
+    const transactions = await this.pointTransactionRepo.find({
+      where: { customerId: userId, businessId },
+      order: { createdAt: 'DESC' },
+      take: limit,
+      skip: (page - 1) * limit,
+      relations: ['givenBy', 'branch'],
     });
+
+    return transactions.map((t) => ({
+      id: t.id,
+      amount: t.amount,
+      type: t.type,
+      reason: t.reason,
+      createdAt: t.createdAt,
+      branch: t.branch
+        ? {
+            id: t.branch.id,
+            name: t.branch.name,
+          }
+        : null,
+      givenBy: t.givenBy
+        ? {
+            id: t.givenBy.id,
+            firstName: t.givenBy.firstName,
+            lastName: t.givenBy.lastName,
+            email: t.givenBy.email,
+          }
+        : null,
+    }));
+  }
+
+  async getBusinessPointLogs(
+    businessId: string,
+    branchId?: string,
+    page = 1,
+    limit = 10,
+  ) {
+    const where: any = { businessId };
+    if (branchId) where.branchId = branchId;
+
+    return this.pointTransactionRepo.find({
+      where,
+      order: { createdAt: 'DESC' },
+      take: limit,
+      skip: (page - 1) * limit,
+      relations: ['user', 'givenBy', 'branch'],
+    });
+  }
+
+  // --- Point Earning ---
+  async givePoints(staff: User, dto: GivePointsDto) {
+    const customer = await this.userRepo.findOne({
+      where: { uniqueCode: dto.customerCode, role: UserRole.CUSTOMER },
+    });
+    if (!customer) throw new NotFoundException('Customer not found');
+
+    const branch = await this.branchRepo.findOne({
+      where: { id: dto.branchId },
+    });
+    if (!branch) throw new NotFoundException('Branch not found');
+
+    const transaction = this.pointTransactionRepo.create({
+      amount: dto.points,
+      type: PointTransactionType.EARNED,
+      reason: dto.reason || 'Points given by staff',
+      customerId: customer.id,
+      givenById: staff.id,
+      businessId: branch.businessId,
+      branchId: branch.id,
+    });
+
+    return this.pointTransactionRepo.save(transaction);
+  }
+
+  async generatePointCode(staff: User, dto: GeneratePointCodeDto) {
+    // Owners/Staff shouldn't be able to arbitrarily create codes for another business
+    if (staff.role !== UserRole.ADMIN && staff.businessId !== dto.businessId) {
+      throw new ForbiddenException('You do not have access to this business');
+    }
+
+    const code = Math.floor(100000000 + Math.random() * 900000000).toString();
+    const pointCode = this.pointCodeRepo.create({
+      code,
+      points: dto.points,
+      createdById: staff.id,
+      businessId: dto.businessId,
+    });
+    return this.pointCodeRepo.save(pointCode);
+  }
+
+  async usePointCode(customer: User, dto: UsePointCodeDto) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const pointCode = await queryRunner.manager.findOne(PointCode, {
+        where: { code: dto.code },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!pointCode) {
+        throw new BadRequestException('Invalid or already used code');
+      }
+
+      if (pointCode.isUsed) {
+        if (pointCode.usedById === customer.id) {
+          // Idempotency: user already successfully claimed it
+          await queryRunner.commitTransaction();
+          return { success: true, points: pointCode.points };
+        }
+        throw new BadRequestException('Invalid or already used code');
+      }
+
+      pointCode.isUsed = true;
+      pointCode.usedById = customer.id;
+      pointCode.usedAt = new Date();
+      await queryRunner.manager.save(pointCode);
+
+      const transaction = this.pointTransactionRepo.create({
+        amount: pointCode.points,
+        type: PointTransactionType.EARNED,
+        reason: 'Points earned via code',
+        customerId: customer.id,
+        givenById: pointCode.createdById,
+        businessId: pointCode.businessId,
+        branchId: customer.branchId, // Optional: where the user is currently at
+        referenceCode: pointCode.code,
+      });
+      await queryRunner.manager.save(transaction);
+
+      await queryRunner.commitTransaction();
+      return { success: true, points: pointCode.points };
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   // --- Rewards ---
-
-  async getRewards(branchId?: string, businessId?: string): Promise<Reward[]> {
-    if (branchId) {
-      return this.rewardRepository.find({
-        where: { branchId, isActive: true },
-      });
-    }
-    if (businessId) {
-      return this.rewardRepository.find({
-        where: { businessId, isActive: true },
-      });
-    }
-    return [];
-  }
-
-  async createReward(
-    branchId: string,
-    dto: CreateLoyaltyRewardDto,
-  ): Promise<Reward> {
-    const branch = await this.branchesService.findById(branchId);
-    const reward = this.rewardRepository.create({
+  async createTemplate(admin: User, dto: CreateRewardTemplateDto) {
+    const template = this.rewardTemplateRepo.create({
       ...dto,
-      branchId,
-      businessId: branch.businessId,
-      totalRedeemed: 0,
-      isActive: true,
-    } as Partial<Reward>) as unknown as Reward;
-    return this.rewardRepository.save(reward);
+      createdById: admin.id,
+    });
+    return this.rewardTemplateRepo.save(template);
   }
 
-  async redeemReward(
-    userId: string,
-    branchId: string,
-    rewardId: string,
-  ): Promise<Redemption> {
-    const profile = await this.getProfile(userId, branchId);
-    const reward = await this.rewardRepository.findOne({
-      where: { id: rewardId, branchId },
-    });
+  async getTemplates() {
+    return this.rewardTemplateRepo.find();
+  }
 
+  async createReward(user: User, dto: CreateRewardDto) {
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      dto.branchId,
+    );
+    if (!hasAccess) {
+      throw new ForbiddenException('Not your business or branch');
+    }
+
+    const branch = await this.branchRepo.findOne({
+      where: { id: dto.branchId },
+    });
+    if (!branch) throw new NotFoundException('Branch not found');
+
+    const reward = this.rewardRepo.create({
+      ...dto,
+      businessId: branch.businessId,
+      remainingQuantity: dto.totalQuantity,
+    });
+    return this.rewardRepo.save(reward);
+  }
+
+  async updateReward(user: User, id: string, dto: Partial<CreateRewardDto>) {
+    const reward = await this.rewardRepo.findOne({ where: { id } });
     if (!reward) throw new NotFoundException('Reward not found');
 
-    const pointCost = reward.pointCost;
-
-    if (profile.currentPointsBalance < pointCost) {
-      throw new BadRequestException('Insufficient points');
-    }
-
-    return await this.dataSource.transaction(async (manager) => {
-      profile.currentPointsBalance -= pointCost;
-      profile.points = profile.currentPointsBalance;
-      profile.pointsRedeemed += pointCost;
-      await manager.save(profile);
-
-      const redemptionCode = Math.floor(100000000 + Math.random() * 900000000).toString();
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + (reward.validityDays || 30));
-
-      const redemption = this.redemptionRepository.create({
-        loyaltyProfile: profile,
-        reward,
-        rewardId: reward.id,
-        loyaltyProfileId: profile.id,
-        branchId,
-        businessId: profile.businessId,
-        pointsSpent: pointCost,
-        status: 'pending',
-        redemptionCode,
-        expiresAt,
-      } as Partial<Redemption>) as unknown as Redemption;
-
-      const savedRedemption = await manager.save(redemption);
-
-      // Record transaction
-      const transaction = this.transactionRepository.create({
-        loyaltyProfile: profile,
-        businessId: profile.businessId,
-        transactionType: 'redeem',
-        pointsAmount: -pointCost,
-        points: -pointCost,
-        reason: `Redeemed Reward: ${reward.name}`,
-        referenceId: savedRedemption.id,
-      } as Partial<PointTransaction>) as unknown as PointTransaction;
-      await manager.save(transaction);
-
-      return savedRedemption;
-    });
-  }
-
-  async getRewardRedemptions(rewardId: string, branchId: string): Promise<Redemption[]> {
-    return this.redemptionRepository.find({
-      where: { rewardId, branchId },
-      relations: ['loyaltyProfile', 'loyaltyProfile.user'],
-      order: { createdAt: 'DESC' },
-    });
-  }
-
-  // --- Transactions ---
-
-  async earnPoints(branchId: string, dto: EarnPointsDto): Promise<{ success: boolean; pointsEarned: number; newBalance: number; message: string }> {
-    return this.campaignsService.earnPoints(branchId, dto);
-  }
-
-  async getHistory(
-    userId: string,
-    branchId?: string,
-    businessId?: string,
-  ): Promise<any[]> {
-    const profileWhere: FindOptionsWhere<LoyaltyProfile> = { userId };
-    if (branchId) profileWhere.branchId = branchId;
-    else if (businessId) profileWhere.businessId = businessId;
-
-    const transactions = await this.transactionRepository.find({
-      where: { loyaltyProfile: profileWhere },
-      relations: ['loyaltyProfile', 'loyaltyProfile.branch'],
-      order: { createdAt: 'DESC' },
-    });
-
-    const redemptions = await this.redemptionRepository.find({
-      where: { loyaltyProfile: profileWhere },
-      relations: ['loyaltyProfile', 'loyaltyProfile.branch', 'reward'],
-      order: { createdAt: 'DESC' },
-    });
-
-    // Merge and sort
-    return [...transactions, ...redemptions].sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      reward.branchId,
     );
-  }
-
-  // --- Templates ---
-
-  async getLoyaltyTemplates(): Promise<LoyaltyTemplate[]> {
-    return this.campaignsService.getLoyaltyTemplates();
-  }
-
-  async createLoyaltyTemplate(data: CreateLoyaltyTemplateDto): Promise<LoyaltyTemplate> {
-    return this.campaignsService.createLoyaltyTemplate(data);
-  }
-
-  async updateLoyaltyTemplate(id: string, updates: UpdateLoyaltyTemplateDto): Promise<LoyaltyTemplate> {
-    return this.campaignsService.updateLoyaltyTemplate(id, updates);
-  }
-
-  async deleteLoyaltyTemplate(id: string): Promise<void> {
-    return this.campaignsService.deleteLoyaltyTemplate(id);
-  }
-
-  async applyLoyaltyTemplate(branchId: string, templateId: string): Promise<{ success: boolean; message: string }> {
-    return this.campaignsService.applyLoyaltyTemplate(branchId, templateId);
-  }
-
-  // --- Code Flow ---
-
-  async generateRedemptionCode(branchId: string, dto: GenerateRedemptionCodeDto, staffId: string): Promise<Redemption> {
-    return this.campaignsService.generateRedemptionCode(branchId, dto, staffId);
-  }
-
-  async claimRedemptionCode(userId: string, branchId: string, code: string): Promise<{ success: boolean; redemption: Redemption }> {
-    return this.campaignsService.claimRedemptionCode(userId, branchId, code);
-  }
-
-  // --- Taps ---
-
-  async processTap(userId: string, code: string): Promise<{ success: boolean; pointsEarned: number; newBalance?: number; message: string }> {
-    const device = await this.devicesService.findByCode(code);
-    if (!device) throw new NotFoundException('Device not found');
-
-    if (!userId) {
-      return {
-        success: true,
-        message: 'Guest visit acknowledged',
-        pointsEarned: 0,
-      };
+    if (!hasAccess) {
+      throw new ForbiddenException('You do not have access to this reward');
     }
 
-    return this.earnPoints(device.branchId, { userId, isVisit: true });
+    Object.assign(reward, dto);
+    return this.rewardRepo.save(reward);
   }
 
-  async getDeviceByCode(code: string, userId?: string): Promise<{
-    id: string;
-    name: string;
-    code: string;
-    branchId: string;
-    branchName: string;
-    branch: any;
-    business: any;
-    businessId: string;
-    userProfile: LoyaltyProfile | null;
-    isFirstTimeVisit: boolean;
-  }> {
-    const device = await this.devicesService.findByCode(code);
-    if (!device) throw new NotFoundException('Device not found');
+  async deleteReward(user: User, id: string) {
+    const reward = await this.rewardRepo.findOne({ where: { id } });
+    if (!reward) throw new NotFoundException('Reward not found');
 
-    const branch = await this.branchesService.findById(device.branchId, [
-      'business',
-    ]);
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      reward.branchId,
+    );
+    if (!hasAccess) {
+      throw new ForbiddenException('You do not have access to this reward');
+    }
 
-    let profile: LoyaltyProfile | null = null;
-    if (userId) {
-      try {
-        profile = await this.getProfile(userId, device.branchId);
-      } catch (e) {
-        // ignore
+    return this.rewardRepo.delete(id);
+  }
+
+  async getPublicRewards(query: RewardQueryDto) {
+    const {
+      branchId,
+      branchCode,
+      search,
+      newest,
+      oldest,
+      lowestQuantity,
+      highestQuantity,
+      aboutToExpire,
+      highestPoints,
+      lowestPoints,
+      page = 1,
+      limit = 10,
+    } = query;
+
+    if (!branchId && !branchCode) {
+      throw new BadRequestException('Branch ID or Code is required');
+    }
+
+    let resolvedBranchId = branchId;
+
+    if (!resolvedBranchId && branchCode) {
+      const branch = await this.branchRepo.findOne({
+        where: { uniqueCode: branchCode },
+      });
+      if (!branch) {
+        throw new NotFoundException('Branch not found');
       }
+      resolvedBranchId = branch.id;
     }
 
-    const isFirstTimeVisit = userId
-      ? !(await this.checkVisit(userId, device.branchId))
-      : true;
+    const where: FindOptionsWhere<Reward> = {
+      branchId: resolvedBranchId,
+      isActive: true,
+      remainingQuantity: MoreThanOrEqual(1),
+      expiryDate: MoreThanOrEqual(new Date()),
+    };
+
+    if (search) {
+      where.name = ILike(`%${search}%`);
+    }
+
+    const order: FindOptionsOrder<Reward> = {};
+
+    if (newest) order.createdAt = 'DESC';
+    else if (oldest) order.createdAt = 'ASC';
+    else if (highestPoints) order.pointsRequired = 'DESC';
+    else if (lowestPoints) order.pointsRequired = 'ASC';
+    else if (highestQuantity) order.remainingQuantity = 'DESC';
+    else if (lowestQuantity) order.remainingQuantity = 'ASC';
+    else if (aboutToExpire) order.expiryDate = 'ASC';
+    else order.createdAt = 'DESC'; // default sorting
+
+    const [items, total] = await this.rewardRepo.findAndCount({
+      where,
+      order,
+      take: limit,
+      skip: (page - 1) * limit,
+    });
 
     return {
-      id: device.id,
-      name: device.name,
-      code: device.code,
-      branchId: branch.id,
-      branchName: branch.name,
-      branch,
-      business: branch.business,
-      businessId: branch.businessId,
-      userProfile: profile,
-      isFirstTimeVisit,
+      data: items.map((item) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { redemptionCount, ...rest } = item;
+        return rest;
+      }),
+      total,
+      page,
+      limit,
     };
   }
 
-  // --- Stats ---
-
-  async getAnalytics(userId: string): Promise<CustomerAnalyticsResponse> {
-    const profiles = await this.getAllProfiles(userId);
-    const totalPoints = profiles.reduce(
-      (sum, p) => sum + (p.currentPointsBalance || 0),
-      0,
-    );
-    const visits = await this.visitRepository.find({
-      where: { customer: { id: userId } },
-      relations: ['branch'],
+  async getBranchRewards(branchId: string, page = 1, limit = 10) {
+    return this.rewardRepo.find({
+      where: { branchId },
+      order: { createdAt: 'DESC' },
+      take: limit,
+      skip: (page - 1) * limit,
     });
+  }
 
-    const visitTrends: { month: string; visits: number }[] = [];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthLabel = months[d.getMonth()];
-      const count = visits.filter(v => 
-        v.createdAt.getMonth() === d.getMonth() && 
-        v.createdAt.getFullYear() === d.getFullYear()
-      ).length;
-      visitTrends.push({ month: monthLabel, visits: count });
+  async getRewardRedemptions(
+    user: User,
+    rewardId: string,
+    page = 1,
+    limit = 10,
+  ) {
+    const reward = await this.rewardRepo.findOne({ where: { id: rewardId } });
+    if (!reward) throw new NotFoundException('Reward not found');
+
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      reward.branchId,
+    );
+    if (!hasAccess) {
+      throw new ForbiddenException(
+        'You do not have access to this reward redemptions',
+      );
     }
 
-    const pointsByVenue = profiles.map(p => ({
-      venueName: p.branch?.name || 'Unknown',
-      points: p.currentPointsBalance || 0,
-    })).sort((a, b) => b.points - a.points);
-
-    const venueVisitMap = new Map<string, number>();
-    visits.forEach(v => {
-      const name = v.branch?.name || 'Unknown';
-      venueVisitMap.set(name, (venueVisitMap.get(name) || 0) + 1);
+    const [items, total] = await this.redemptionCodeRepo.findAndCount({
+      where: { rewardId, isUsed: true },
+      relations: ['usedBy'],
+      order: { usedAt: 'DESC' },
+      take: limit,
+      skip: (page - 1) * limit,
     });
 
-    const topVenues = Array.from(venueVisitMap.entries()).map(([name, count]) => {
-      const profile = profiles.find(p => p.branch?.name === name);
-      return {
-        venueName: name,
-        points: profile?.currentPointsBalance || 0,
-        visits: count
-      };
-    }).sort((a, b) => b.visits - a.visits).slice(0, 5);
+    return {
+      data: items.map((redemption) => ({
+        id: redemption.id,
+        usedAt: redemption.usedAt,
+        customer: redemption.usedBy
+          ? {
+              id: redemption.usedBy.id,
+              firstName: redemption.usedBy.firstName,
+              lastName: redemption.usedBy.lastName,
+              email: redemption.usedBy.email,
+              phone: redemption.usedBy.phone,
+            }
+          : null,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  // --- Redemption ---
+  async generateRedemptionCode(staff: User, dto: GenerateRedemptionCodeDto) {
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      staff,
+      dto.branchId,
+    );
+    if (!hasAccess) {
+      throw new ForbiddenException('You do not have access to this branch');
+    }
+
+    const reward = await this.rewardRepo.findOne({
+      where: { id: dto.rewardId, branchId: dto.branchId },
+    });
+    if (!reward) throw new NotFoundException('Reward not found');
+
+    if (new Date() > new Date(reward.expiryDate)) {
+      throw new BadRequestException('Reward has expired');
+    }
+
+    if (reward.remainingQuantity <= 0) {
+      throw new BadRequestException('Reward out of stock');
+    }
+
+    const code = Math.floor(100000000 + Math.random() * 900000000).toString();
+    const redemptionCode = this.redemptionCodeRepo.create({
+      code,
+      rewardId: reward.id,
+      createdById: staff.id,
+      businessId: reward.businessId,
+      branchId: reward.branchId,
+    });
+    return this.redemptionCodeRepo.save(redemptionCode);
+  }
+
+  async redeemReward(customer: User, dto: RedeemRewardDto) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const redemptionCode = await queryRunner.manager.findOne(RedemptionCode, {
+        where: { code: dto.code },
+        relations: ['reward'],
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!redemptionCode) {
+        throw new BadRequestException('Invalid or already used code');
+      }
+
+      const reward = redemptionCode.reward;
+
+      if (redemptionCode.isUsed) {
+        if (redemptionCode.usedById === customer.id) {
+          // Idempotency: user already successfully redeemed it
+          await queryRunner.commitTransaction();
+          return { success: true, reward: reward.name };
+        }
+        throw new BadRequestException('Invalid or already used code');
+      }
+
+      if (new Date() > new Date(reward.expiryDate)) {
+        throw new BadRequestException('Reward has expired');
+      }
+
+      // Re-fetch the reward with a lock to ensure its remainingQuantity is correct under concurrency
+      const lockedReward = await queryRunner.manager.findOne(Reward, {
+        where: { id: reward.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!lockedReward || lockedReward.remainingQuantity <= 0) {
+        throw new BadRequestException('Reward out of stock');
+      }
+
+      // Check balance atomically by aggregating point transactions inside the transaction
+      const balanceResult = await queryRunner.manager
+        .createQueryBuilder(PointTransaction, 'transaction')
+        .select('SUM(transaction.amount)', 'sum')
+        .where('transaction.customerId = :userId', { userId: customer.id })
+        .andWhere('transaction.businessId = :businessId', {
+          businessId: lockedReward.businessId,
+        })
+        .getRawOne();
+      const currentBalance = parseInt(balanceResult?.sum || '0', 10);
+
+      if (currentBalance < lockedReward.pointsRequired) {
+        throw new BadRequestException('Insufficient points');
+      }
+
+      redemptionCode.isUsed = true;
+      redemptionCode.usedById = customer.id;
+      redemptionCode.usedAt = new Date();
+      await queryRunner.manager.save(redemptionCode);
+
+      lockedReward.remainingQuantity -= 1;
+      lockedReward.redemptionCount += 1;
+      await queryRunner.manager.save(lockedReward);
+
+      const transaction = this.pointTransactionRepo.create({
+        amount: -lockedReward.pointsRequired,
+        type: PointTransactionType.REDEEMED,
+        reason: `Redeemed reward: ${lockedReward.name}`,
+        customerId: customer.id,
+        givenById: redemptionCode.createdById,
+        businessId: lockedReward.businessId,
+        branchId: lockedReward.branchId,
+        referenceCode: redemptionCode.code,
+      });
+      await queryRunner.manager.save(transaction);
+
+      await queryRunner.commitTransaction();
+      return { success: true, reward: lockedReward.name };
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  // --- Analytics ---
+  async getCustomerAnalytics(userId: string, days?: number) {
+    // 1. Total Visits
+    const totalVisitsQuery = this.visitRepo
+      .createQueryBuilder('visit')
+      .where('visit.customerId = :userId', { userId });
+
+    if (days) {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      totalVisitsQuery.andWhere('visit.createdAt >= :startDate', { startDate });
+    }
+
+    const totalVisits = await totalVisitsQuery.getCount();
+
+    // 2. Current Points Balance (Total across all businesses)
+    const pointsResult = await this.pointTransactionRepo
+      .createQueryBuilder('t')
+      .select('SUM(t.amount)', 'sum')
+      .where('t.customerId = :userId', { userId })
+      .getRawOne();
+    const currentPointsBalance = parseInt(pointsResult?.sum || '0', 10);
+
+    // 3. Net Savings (Proxy: sum of ABS(amount) for REDEEMED transactions)
+    const savingsResult = await this.pointTransactionRepo
+      .createQueryBuilder('t')
+      .select('SUM(ABS(t.amount))', 'sum')
+      .where('t.customerId = :userId', { userId })
+      .andWhere('t.type = :type', { type: PointTransactionType.REDEEMED })
+      .getRawOne();
+    const netSavings = parseInt(savingsResult?.sum || '0', 10);
+
+    // 4. Visit Trends (Grouped by month)
+    const visitTrendsRaw = await this.visitRepo
+      .createQueryBuilder('visit')
+      .select("TO_CHAR(visit.createdAt, 'Mon')", 'month')
+      .addSelect('COUNT(*)', 'visits')
+      .where('visit.customerId = :userId', { userId })
+      .groupBy("TO_CHAR(visit.createdAt, 'Mon')")
+      .orderBy('MIN(visit.createdAt)', 'ASC')
+      .getRawMany();
+
+    const visitTrends = visitTrendsRaw.map((r) => ({
+      month: r.month,
+      visits: parseInt(r.visits, 10),
+    }));
+
+    // 5. Points By Venue (Lifetime earned points per branch)
+    const pointsByVenueRaw = await this.pointTransactionRepo
+      .createQueryBuilder('t')
+      .leftJoin('t.branch', 'branch')
+      .select('branch.name', 'venueName')
+      .addSelect('SUM(t.amount)', 'points')
+      .where('t.customerId = :userId', { userId })
+      .andWhere('t.type = :type', { type: PointTransactionType.EARNED })
+      .groupBy('branch.name')
+      .getRawMany();
+
+    const pointsByVenue = pointsByVenueRaw.map((r) => ({
+      venueName: r.venueName || 'Unknown Venue',
+      points: parseInt(r.points, 10),
+    }));
+
+    // 6. Top Venues (By visit count, but return visits as 'points' to match frontend expected field)
+    const topVenuesRaw = await this.visitRepo
+      .createQueryBuilder('visit')
+      .leftJoin('visit.branch', 'branch')
+      .select('branch.name', 'venueName')
+      .addSelect('COUNT(*)', 'visits')
+      .where('visit.customerId = :userId', { userId })
+      .groupBy('branch.name')
+      .orderBy('visits', 'DESC')
+      .limit(5)
+      .getRawMany();
+
+    const topVenues = topVenuesRaw.map((r) => ({
+      venueName: r.venueName || 'Unknown Venue',
+      points: parseInt(r.visits, 10),
+    }));
+
+    // 7. Trend Calculations (Month-over-Month)
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    const currentMonthVisits = await this.visitRepo.count({
+      where: {
+        customerId: userId,
+        createdAt: MoreThanOrEqual(currentMonthStart),
+      },
+    });
+    const prevMonthVisits = await this.visitRepo.count({
+      where: {
+        customerId: userId,
+        createdAt: Between(prevMonthStart, currentMonthStart),
+      },
+    });
+
+    const currentMonthPoints = await this.pointTransactionRepo
+      .createQueryBuilder('t')
+      .select('SUM(t.amount)', 'sum')
+      .where('t.customerId = :userId', { userId })
+      .andWhere('t.type = :type', { type: PointTransactionType.EARNED })
+      .andWhere('t.createdAt >= :start', { start: currentMonthStart })
+      .getRawOne();
+
+    const prevMonthPoints = await this.pointTransactionRepo
+      .createQueryBuilder('t')
+      .select('SUM(t.amount)', 'sum')
+      .where('t.customerId = :userId', { userId })
+      .andWhere('t.type = :type', { type: PointTransactionType.EARNED })
+      .andWhere('t.createdAt >= :start', { start: prevMonthStart })
+      .andWhere('t.createdAt < :end', { end: currentMonthStart })
+      .getRawOne();
+
+    const calculateTrend = (curr: number, prev: number) => {
+      if (prev === 0) return curr > 0 ? `+${curr}` : '0';
+      const diff = ((curr - prev) / prev) * 100;
+      return `${diff > 0 ? '+' : ''}${diff.toFixed(0)}%`;
+    };
 
     return {
-      totalVisits: visits.length,
-      currentPointsBalance: totalPoints,
-      netSavings: totalPoints * 0.5, 
+      totalVisits,
+      currentPointsBalance,
+      netSavings,
       visitTrends,
       pointsByVenue,
       topVenues,
+      trends: {
+        totalVisits: calculateTrend(currentMonthVisits, prevMonthVisits),
+        rewardPoints: calculateTrend(
+          parseInt(currentMonthPoints?.sum || '0', 10),
+          parseInt(prevMonthPoints?.sum || '0', 10),
+        ),
+      },
     };
-  }
-
-  async getBusinessLoyaltyStats(
-    branchId?: string,
-    businessId?: string,
-  ): Promise<BusinessLoyaltyStatsResponse> {
-    const profileWhere: FindOptionsWhere<LoyaltyProfile> = {};
-    if (branchId) profileWhere.branchId = branchId;
-    else if (businessId) profileWhere.businessId = businessId;
-
-    const profiles = await this.loyaltyProfileRepository.find({ where: profileWhere });
-    const totalMembers = profiles.length;
-
-    const transactions = await this.transactionRepository.find({
-      where: { businessId: businessId || undefined, branchId: branchId || undefined },
-    });
-    const totalPointsIssued = transactions.reduce(
-      (sum, t) => sum + (t.pointsAmount > 0 ? t.pointsAmount : 0),
-      0,
-    );
-
-    const redemptions = await this.redemptionRepository.find({
-      where: { businessId: businessId || undefined, branchId: branchId || undefined },
-    });
-    const totalRedemptions = redemptions.length;
-
-    let bronze = 0, silver = 0, gold = 0, platinum = 0;
-    profiles.forEach(p => {
-      if (p.tierLevel === TierLevel.PLATINUM) platinum++;
-      else if (p.tierLevel === TierLevel.GOLD) gold++;
-      else if (p.tierLevel === TierLevel.SILVER) silver++;
-      else bronze++;
-    });
-
-    const tierDistribution = [
-      { label: 'Bronze', value: totalMembers ? Math.round((bronze / totalMembers) * 100) : 0, color: 'bg-orange-600' },
-      { label: 'Silver', value: totalMembers ? Math.round((silver / totalMembers) * 100) : 0, color: 'bg-slate-400' },
-      { label: 'Gold', value: totalMembers ? Math.round((gold / totalMembers) * 100) : 0, color: 'bg-yellow-500' },
-      { label: 'Platinum', value: totalMembers ? Math.round((platinum / totalMembers) * 100) : 0, color: 'bg-indigo-600' },
-    ];
-
-    const activityTrend: { name: string; earnings: number; claims: number }[] = [];
-    const now = new Date();
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const dayStart = new Date(d.setHours(0,0,0,0));
-      const dayEnd = new Date(d.setHours(23,59,59,999));
-      
-      const dayEarnings = transactions.filter(t => t.transactionType === 'earn' && new Date(t.createdAt) >= dayStart && new Date(t.createdAt) <= dayEnd).length;
-      const dayClaims = transactions.filter(t => t.transactionType === 'redeem' && new Date(t.createdAt) >= dayStart && new Date(t.createdAt) <= dayEnd).length;
-      
-      activityTrend.push({
-        name: d.toLocaleDateString('en-US', { weekday: 'short' }),
-        earnings: dayEarnings,
-        claims: dayClaims,
-      });
-    }
-
-    return {
-      stats: [
-        { label: 'Total Members', value: totalMembers.toLocaleString(), change: 12, trend: 'up' },
-        { label: 'Points Earned', value: totalPointsIssued.toLocaleString(), change: 8, trend: 'up' },
-        { label: 'Rewards Claimed', value: totalRedemptions.toLocaleString(), change: 5, trend: 'up' },
-        { label: 'Redemption Rate', value: totalMembers > 0 ? ((totalRedemptions / totalMembers) * 100).toFixed(1) + '%' : '0%', change: 2, trend: 'up' },
-      ],
-      tierDistribution,
-      activityTrend,
-      growthForecast: '+15%',
-    };
-  }
-
-  async checkVisit(userId: string, branchId: string): Promise<boolean> {
-    const count = await this.visitRepository.count({
-      where: { customer: { id: userId }, branchId },
-    });
-    return count > 0;
   }
 }

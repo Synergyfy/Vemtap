@@ -14,6 +14,8 @@ describe('AgentSupportController', () => {
     updateStatusAgent: jest.fn(),
     addAgentMessage: jest.fn(),
     updateAgentProfile: jest.fn(),
+    findOneAgentUser: jest.fn(),
+    findAllAgents: jest.fn(),
   };
 
   const mockAgent = { id: 'agent-1', role: UserRole.AGENT };
@@ -59,12 +61,14 @@ describe('AgentSupportController', () => {
       const result = [{ id: 'chat-1', type: TicketType.CHAT }];
       mockSupportService.findAssigned.mockResolvedValue(result);
 
-      expect(await controller.getAssignedChats(mockReq as any)).toBe(result);
+      expect(await controller.getAssignedChats(mockReq as any, 1, 10)).toBe(
+        result,
+      );
       expect(mockSupportService.findAssigned).toHaveBeenCalledWith(
         mockAgent.id,
         TicketType.CHAT,
-        undefined,
-        undefined,
+        1,
+        10,
       );
     });
   });
@@ -74,12 +78,14 @@ describe('AgentSupportController', () => {
       const result = [{ id: 'ticket-1', type: TicketType.TICKET }];
       mockSupportService.findAssigned.mockResolvedValue(result);
 
-      expect(await controller.getAssignedTickets(mockReq as any)).toBe(result);
+      expect(await controller.getAssignedTickets(mockReq as any, 1, 10)).toBe(
+        result,
+      );
       expect(mockSupportService.findAssigned).toHaveBeenCalledWith(
         mockAgent.id,
         TicketType.TICKET,
-        undefined,
-        undefined,
+        1,
+        10,
       );
     });
   });
@@ -131,16 +137,26 @@ describe('AgentSupportController', () => {
     });
   });
 
-  describe('updateProfile', () => {
+  describe('profile', () => {
     it('should update agent profile', async () => {
       const dto = { firstName: 'New' };
-      const result = { id: mockAgent.id, firstName: 'New' };
+      const result = { id: mockAgent.id, ...dto };
       mockSupportService.updateAgentProfile.mockResolvedValue(result);
 
       expect(await controller.updateProfile(mockReq as any, dto)).toBe(result);
       expect(mockSupportService.updateAgentProfile).toHaveBeenCalledWith(
         mockAgent.id,
         dto,
+      );
+    });
+
+    it('should get current agent profile', async () => {
+      const result = { id: mockAgent.id, firstName: 'Agent' };
+      mockSupportService.findOneAgentUser.mockResolvedValue(result);
+
+      expect(await controller.getProfile(mockReq as any)).toBe(result);
+      expect(mockSupportService.findOneAgentUser).toHaveBeenCalledWith(
+        mockAgent.id,
       );
     });
   });

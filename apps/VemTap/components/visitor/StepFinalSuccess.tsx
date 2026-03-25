@@ -14,6 +14,7 @@ interface StepFinalSuccessProps {
     engagementSettings?: any;
     socialLinks?: any;
     attachedForms?: Array<{ id: string; title: string; description?: string }>;
+    attachedRewards?: Array<{ id: string; name: string; pointCost?: number }>;
     isFormsLoading?: boolean;
 }
 
@@ -26,6 +27,7 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
     onEngagement,
     engagementSettings,
     attachedForms,
+    attachedRewards = [],
     isFormsLoading = false,
 }) => {
     const [isSocialModalOpen, setIsSocialModalOpen] = React.useState(false);
@@ -35,7 +37,7 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
     const hasFeedback = !!engagementSettings?.showFeedback;
     const hasRewards = !!engagementSettings?.showRewards;
 
-    const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards || attachedForms?.length);
+    const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards || attachedForms?.length || attachedRewards?.length);
 
     const handleEngagement = (type: 'review' | 'social' | 'feedback' | 'rewards', formId?: string) => {
         if (type === 'social') {
@@ -50,9 +52,9 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
                 <span className="material-symbols-outlined text-white text-4xl">check_circle</span>
             </div>
             {customSuccessTag && <span className={presets.tag + " mb-2 inline-block"}>{customSuccessTag}</span>}
-            <h1 className={presets.title}>{customSuccessTitle || "Successfully Linked!"}</h1>
+            <h1 className={presets.title}>{customSuccessTitle?.trim() || "Thank you!"}</h1>
             <p className={presets.body + " mt-4 mb-8"}>
-                {finalSuccessMessage || "Your profile has been successfully updated."}
+                {finalSuccessMessage?.trim() || "Thank you for visiting our store."}
             </p>
 
             {/* Prominent Google Review CTA */}
@@ -83,6 +85,7 @@ export const StepFinalSuccess: React.FC<StepFinalSuccessProps> = ({
                         onAction={handleEngagement}
                         settings={engagementSettings}
                         attachedForms={attachedForms}
+                        attachedRewards={attachedRewards}
                     />
                 </div>
             )}

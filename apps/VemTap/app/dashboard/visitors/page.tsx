@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import PageHeader from '@/components/dashboard/PageHeader';
 import StatsCard from '@/components/dashboard/StatsCard';
@@ -12,17 +13,24 @@ import { Users, UserPlus, Repeat, Star, Search, Download, MoreVertical, Send, Gi
 import toast from 'react-hot-toast';
 import { formatDate } from '@/lib/utils/date';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
+import MessagingChannelSelectorModal from '@/components/dashboard/MessagingChannelSelectorModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
+import { useChatStore } from '@/lib/store/useChatStore';
 import { exportToCSV } from '@/lib/utils/export';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export default function VisitorsOverviewPage() {
+    const router = useRouter();
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
-    const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<{ visitor: Visitor, type: 'welcome' | 'reward' | 'general' } | null>(null);
+    const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<Visitor | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
+    const [showChannelSelector, setShowChannelSelector] = useState(false);
+
+    const debouncedSearch = useDebounce(searchQuery, 400);
 
     const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(undefined, {
-        search: searchQuery,
+        search: debouncedSearch,
         status: filterStatus !== 'all' ? filterStatus : undefined
     });
     const { data: statsData } = useVisitorStats();
@@ -62,6 +70,34 @@ export default function VisitorsOverviewPage() {
     ];
 
     const filteredVisitors = visitors; // Server handles filtering now via useVisitors query param hook params payload
+
+    const addPendingThread = useChatStore(s => s.addPendingThread);
+    const setActiveConversation = useChatStore(s => s.setActiveConversation);
+
+    const handleSelectInApp = () => {
+        if (selectedVisitorForMsg) {
+            const visitorName = getVisitorDisplayName(selectedVisitorForMsg);
+            const chatContact = {
+                id: selectedVisitorForMsg.id,
+                name: visitorName,
+                phone: selectedVisitorForMsg.phone,
+                email: selectedVisitorForMsg.email,
+                isOnline: false,
+            };
+
+            // Prepare the thread in the store
+            const threadId = addPendingThread(chatContact);
+            setActiveConversation(threadId);
+
+            // Redirect to chat page
+            router.push(`/dashboard/messaging/chat?visitorId=${selectedVisitorForMsg.id}`);
+            setShowChannelSelector(false);
+        }
+    };
+
+    const handleSelectExternal = () => {
+        setShowChannelSelector(false);
+    };
 
     const getVisitorDisplayName = (visitor: Visitor) => {
         return visitor.name ||
@@ -120,22 +156,13 @@ export default function VisitorsOverviewPage() {
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedVisitorForMsg({ visitor: item, type: 'general' });
+                            setSelectedVisitorForMsg(item);
+                            setShowChannelSelector(true);
                         }}
                         className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
                         title="Quick Message"
                     >
                         <Send size={16} />
-                    </button>
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedVisitorForMsg({ visitor: item, type: 'reward' });
-                        }}
-                        className="p-2 text-text-secondary hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-all"
-                        title="Issue Reward"
-                    >
-                        <Gift size={16} />
                     </button>
                 </div>
             )
@@ -149,13 +176,6 @@ export default function VisitorsOverviewPage() {
                 description="Monitor your customer footfall and engagement levels"
                 actions={
                     <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => setSelectedVisitorForMsg({ visitor: {} as Visitor, type: 'general' })}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-lg shadow-primary/20"
-                        >
-                            <Plus size={18} />
-                            Compose
-                        </button>
                         <button
                             onClick={handleExportCSV}
                             className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm shadow-sm"
@@ -210,12 +230,25 @@ export default function VisitorsOverviewPage() {
                 }
             />
 
+            <MessagingChannelSelectorModal
+                isOpen={showChannelSelector}
+                onClose={() => {
+                    setShowChannelSelector(false);
+                    setSelectedVisitorForMsg(null);
+                }}
+                onSelectInApp={handleSelectInApp}
+                onSelectExternal={handleSelectExternal}
+                recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
+            />
+
             <SendMessageModal
-                isOpen={!!selectedVisitorForMsg}
+                isOpen={!!selectedVisitorForMsg && !showChannelSelector}
                 onClose={() => setSelectedVisitorForMsg(null)}
-                recipientName={selectedVisitorForMsg?.visitor ? getVisitorDisplayName(selectedVisitorForMsg.visitor) : ''}
-                recipientPhone={selectedVisitorForMsg?.visitor.phone}
-                type={selectedVisitorForMsg?.type || 'general'}
+                recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
+                recipientPhone={selectedVisitorForMsg?.phone}
+                recipientEmail={selectedVisitorForMsg?.email}
+                visitorIds={selectedVisitorForMsg?.id ? [selectedVisitorForMsg.id] : undefined}
+                type="general"
             />
 
             <VisitorDetailsModal
