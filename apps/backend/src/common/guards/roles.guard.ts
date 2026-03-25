@@ -31,7 +31,7 @@ export class RolesGuard implements CanActivate {
     // If the user is an Admin or Agent and has an impersonation token,
     // we allow them past the initial role check. The ImpersonationGuard
     // will further validate their specific module permissions.
-    const isImpersonating = !!request.headers['x-impersonation-token'];
+    const isImpersonating = !!(request as any).isImpersonated;
     if (
       isImpersonating &&
       (user?.role === UserRole.ADMIN || user?.role === UserRole.AGENT)

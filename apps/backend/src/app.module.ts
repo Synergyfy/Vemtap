@@ -34,6 +34,8 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { ObservabilityModule } from './observability/observability.module';
 import { AdministrationModule } from './modules/administration/administration.module';
 import { ImpersonationGuard } from './modules/administration/impersonation.guard';
+import { CustomerImpersonationGuard } from './modules/administration/customer-impersonation.guard';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { dataSourceOptions } from './database/data-source';
 
@@ -123,6 +125,7 @@ import { dataSourceOptions } from './database/data-source';
     CategoriesModule,
     ObservabilityModule,
     AdministrationModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [
@@ -138,6 +141,10 @@ import { dataSourceOptions } from './database/data-source';
     {
       provide: APP_GUARD,
       useClass: ImpersonationGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: CustomerImpersonationGuard,
     },
     {
       provide: APP_GUARD,

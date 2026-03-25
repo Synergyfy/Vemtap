@@ -51,6 +51,10 @@ export class SubscriptionGuard implements CanActivate {
       return true;
     }
 
+    if (userRole === 'agent' || user.role === UserRole.AGENT) {
+      return true; // Agents operate on behalf of admins — subscription check bypassed intentionally
+    }
+
     if (user.branchId) {
       const businessId = await this.branchesService.getBusinessId(
         user.branchId,
