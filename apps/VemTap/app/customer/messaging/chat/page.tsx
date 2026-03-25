@@ -15,7 +15,7 @@ export default function CustomerChatPage() {
             <div className="flex flex-col md:flex-row h-[calc(100dvh-64px)] md:h-[calc(100vh-160px)] bg-white md:rounded-xl border-y md:border border-gray-200 shadow-sm overflow-hidden -mx-4 md:mx-0 -mt-4 mb-[-16px] md:mt-4 md:mb-0">
                 {/* Sidebar: Hidden on mobile if a chat is active */}
                 <div className={`w-full md:w-80 lg:w-96 flex-col h-full shrink-0 ${activeConversationId ? 'hidden md:flex' : 'flex'}`}>
-                    <ChatSidebar mode="INTERNAL" />
+                    <ChatSidebar />
                 </div>
 
                 {/* Window: Hidden on mobile if no chat is active */}

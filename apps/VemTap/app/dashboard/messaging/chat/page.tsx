@@ -16,7 +16,7 @@ export default function ChatPage() {
                     w-full md:w-80 lg:w-96 flex flex-col h-full shrink-0 border-r border-gray-100
                     ${activeConversationId ? 'hidden md:flex' : 'flex'}
                 `}>
-                    <ChatSidebar mode="INTERNAL" />
+                    <ChatSidebar />
                 </div>
 
                 {/* Chat Window: Full screen on mobile, hidden when no chat is active */}

@@ -231,7 +231,11 @@ export default function ActiveFormsPage() {
                                         </div>
                                     ) : (
                                         <DraggableButtonList
-                                            forms={activeForms}
+                                            items={activeForms.map((f: BusinessForm) => ({
+                                                id: f.id,
+                                                title: f.title || 'Untitled Form',
+                                                subtitle: 'Additional Form'
+                                            }))}
                                             onReorder={reorderActiveFormsByIndex}
                                             onRemove={(id) => toggleActiveForm(branchKey, id)}
                                         />

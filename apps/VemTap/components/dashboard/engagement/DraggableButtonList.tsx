@@ -3,17 +3,22 @@
 import React, { useRef, useState } from 'react';
 import Draggable from 'react-draggable';
 import { GripVertical, X, FileText, ChevronUp, ChevronDown } from 'lucide-react';
-import type { BusinessForm } from '@/services/business-forms/types';
+interface DraggableItem {
+    id: string;
+    title: string;
+    subtitle?: string;
+    icon?: React.ReactNode;
+}
 
 interface DraggableButtonListProps {
-    forms: BusinessForm[];
+    items: DraggableItem[];
     onReorder: (sourceIndex: number, targetIndex: number) => void;
     onRemove?: (id: string) => void;
 }
 
 const DRAG_STEP = 72; // h-16 (64) + gap-2 (8)
 
-export default function DraggableButtonList({ forms, onReorder, onRemove }: DraggableButtonListProps) {
+export default function DraggableButtonList({ items, onReorder, onRemove }: DraggableButtonListProps) {
     const [draggedId, setDraggedId] = useState<string | null>(null);
     const [dragEpoch, setDragEpoch] = useState(0);
     const dragRefs = useRef<Record<string, React.RefObject<HTMLDivElement>>>({});
@@ -27,18 +32,18 @@ export default function DraggableButtonList({ forms, onReorder, onRemove }: Drag
 
     return (
         <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-2 relative">
-            {forms.map((form, index) => {
-                const nodeRef = getNodeRef(form.id);
+            {items.map((item, index) => {
+                const nodeRef = getNodeRef(item.id);
                 return (
                     <Draggable
-                        key={`${form.id}-${dragEpoch}`}
+                        key={`${item.id}-${dragEpoch}`}
                         axis="y"
                         nodeRef={nodeRef}
                         handle=".drag-handle"
-                        onStart={() => setDraggedId(form.id)}
+                        onStart={() => setDraggedId(item.id)}
                         onStop={(e, data) => {
                             const moveBy = Math.round(data.y / DRAG_STEP);
-                            const targetIndex = Math.max(0, Math.min(forms.length - 1, index + moveBy));
+                            const targetIndex = Math.max(0, Math.min(items.length - 1, index + moveBy));
                             if (moveBy !== 0 && targetIndex !== index) {
                                 onReorder(index, targetIndex);
                             }
@@ -49,7 +54,7 @@ export default function DraggableButtonList({ forms, onReorder, onRemove }: Drag
                         <div
                             ref={nodeRef}
                             className={`h-16 w-full rounded-xl bg-white border items-center flex px-3 gap-3 transition-colors ${
-                                draggedId === form.id 
+                                draggedId === item.id 
                                 ? 'border-primary ring-4 ring-primary/10 shadow-lg z-50 absolute inset-x-0' 
                                 : 'border-gray-200 shadow-sm relative z-0'
                             }`}
@@ -64,12 +69,12 @@ export default function DraggableButtonList({ forms, onReorder, onRemove }: Drag
 
                             <div className="flex-1 min-w-0 flex flex-col justify-center">
                                 <span className="text-sm font-bold text-gray-900 truncate block">
-                                    {form.title || 'Untitled Form'}
+                                    {item.title}
                                 </span>
                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                    <FileText size={10} className="text-gray-400" />
+                                    {item.icon || <FileText size={10} className="text-gray-400" />}
                                     <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block truncate">
-                                        Form Step
+                                        {item.subtitle || 'Step Item'}
                                     </span>
                                 </div>
                             </div>
@@ -88,7 +93,7 @@ export default function DraggableButtonList({ forms, onReorder, onRemove }: Drag
                                     <ChevronUp size={14} />
                                 </button>
                                 <button
-                                    disabled={index === forms.length - 1}
+                                    disabled={index === items.length - 1}
                                     onClick={(e) => {
                                         e.preventDefault();
                                         onReorder(index, index + 1);
@@ -104,7 +109,7 @@ export default function DraggableButtonList({ forms, onReorder, onRemove }: Drag
                                 <button
                                     onClick={(e) => {
                                         e.preventDefault();
-                                        onRemove(form.id);
+                                        onRemove(item.id);
                                     }}
                                     className="p-2 -mr-1 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors shrink-0"
                                     title="Remove from sequence"

@@ -18,6 +18,7 @@ interface StepOutcomeProps {
     engagementSettings?: any;
     socialLinks?: any;
     attachedForms?: Array<{ id: string; title: string; description?: string }>;
+    attachedRewards?: Array<{ id: string; name: string; pointCost?: number }>;
     completedFormIds?: string[];
     customSuccessTitle?: string | null;
     customSuccessDescription?: string | null;
@@ -39,6 +40,7 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
     engagementSettings,
     socialLinks,
     attachedForms,
+    attachedRewards = [],
     completedFormIds = [],
     customSuccessTitle,
     customSuccessDescription
@@ -51,7 +53,7 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
     const hasRewards = !!engagementSettings?.showRewards;
     const brandColor = engagementSettings?.brandColor || '#2563eb';
 
-    const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards || attachedForms?.length);
+    const showEngagement = engagementSettings && (hasSocial || hasReview || hasFeedback || hasRewards || attachedForms?.length || attachedRewards?.length);
 
     const normalizeUrl = (value: string | undefined) => {
         if (!value) return '';
@@ -123,6 +125,7 @@ export const StepOutcome: React.FC<StepOutcomeProps> = ({
                         onAction={handleEngagement}
                         settings={engagementSettings}
                         attachedForms={attachedForms}
+                        attachedRewards={attachedRewards}
                         completedFormIds={completedFormIds}
                     />
                 )}
