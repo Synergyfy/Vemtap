@@ -122,14 +122,7 @@ export class User extends AbstractBaseEntity {
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
 
-  @ApiProperty({
-    example: {
-      instagram: { profile: 'johndoe', link: 'https://instagr.am/johndoe' },
-    },
-    nullable: true,
-  })
-  @Column({ type: 'jsonb', nullable: true })
-  engagement?: Record<string, any>;
+
 
   @OneToMany(() => Visit, (visit) => visit.customer)
   visits: Visit[];

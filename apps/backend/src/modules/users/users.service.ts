@@ -200,18 +200,6 @@ export class UsersService {
     await this.usersRepository.remove(user);
   }
 
-  async updateEngagement(
-    id: string,
-    engagement: Record<string, any>,
-  ): Promise<User> {
-    const user = await this.findOne(id);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    user.engagement = engagement;
-    return this.usersRepository.save(user);
-  }
-
   async findByBranch(branchId: string): Promise<User[]> {
     return this.usersRepository.find({
       where: { branchId },
