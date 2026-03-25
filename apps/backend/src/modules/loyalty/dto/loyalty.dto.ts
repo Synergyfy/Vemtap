@@ -10,6 +10,7 @@ import {
   Min,
 } from 'class-validator';
 import { RewardCategory } from '../entities/reward-template.entity';
+import { RewardAudienceType } from '../entities/reward.entity';
 
 export class CreateRewardTemplateDto {
   @ApiProperty()
@@ -59,6 +60,14 @@ export class CreateRewardDto extends CreateRewardTemplateDto {
   @IsOptional()
   @IsUUID()
   templateId?: string;
+
+  @ApiPropertyOptional({
+    enum: RewardAudienceType,
+    default: RewardAudienceType.ALL,
+  })
+  @IsOptional()
+  @IsEnum(RewardAudienceType)
+  audienceType?: RewardAudienceType;
 }
 
 export class GivePointsDto {
