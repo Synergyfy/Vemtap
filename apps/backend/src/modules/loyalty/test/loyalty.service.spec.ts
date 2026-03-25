@@ -149,7 +149,7 @@ describe('LoyaltyService', () => {
 
   describe('generatePointCode', () => {
     it('should generate a 9-digit code', async () => {
-      const staff = { id: 'staff1' } as User;
+      const staff = { id: 'staff1', businessId: 'biz1' } as User;
       const dto = { points: 50, businessId: 'biz1' };
       pointCodeRepo.create.mockImplementation((d) => d);
       pointCodeRepo.save.mockImplementation((d) =>

@@ -21,7 +21,8 @@ export class AuditInterceptor implements NestInterceptor {
 
     // Only log state-changing requests or impersonated requests
     const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
-    const isImpersonated = !!impersonationTokenStr;
+    const isCustomerImpersonated = !!request.headers['x-customer-impersonation-token'];
+    const isImpersonated = !!impersonationTokenStr || isCustomerImpersonated;
     const isAdminOrAgent =
       user && (user.role === UserRole.ADMIN || user.role === UserRole.AGENT);
 
@@ -50,14 +51,22 @@ export class AuditInterceptor implements NestInterceptor {
           let actorId = user?.id;
           let impersonationTokenId: string | undefined = undefined;
 
-          if (impersonationTokenStr) {
-            const token = await this.adminService.validateToken(
-              impersonationTokenStr,
-            );
-            actorId = token.actorId;
-            branchId = token.targetBranchId;
-            businessId = token.targetBranch?.businessId;
-            impersonationTokenId = token.id;
+          const impersonationToken = request.impersonationToken;
+          const customerImpersonationToken = request.customerImpersonationToken;
+
+          if (impersonationToken) {
+            actorId = impersonationToken.actorId;
+            branchId = impersonationToken.targetBranchId;
+            businessId = impersonationToken.targetBranch?.business?.id ?? impersonationToken.targetBranch.businessId;
+            impersonationTokenId = impersonationToken.id;
+          } else if (customerImpersonationToken) {
+            actorId = customerImpersonationToken.actorId;
+            branchId = customerImpersonationToken.targetBranchId;
+            // The branch might not have the business loaded on the customer token,
+            // but we can try to fall back to the original actor's context if present,
+            // or leave businessId empty if not strictly needed here.
+            businessId = request.originalActor?.businessId;
+            impersonationTokenId = customerImpersonationToken.id;
           }
 
           if (actorId) {
@@ -68,7 +77,7 @@ export class AuditInterceptor implements NestInterceptor {
               module,
               method,
               endpoint: url,
-              payload: method !== 'GET' ? body : null,
+              payload: method !== 'GET' ? this.sanitisePayload(body) : null,
               statusCode,
               ipAddress: ip,
               userAgent: headers['user-agent'],
@@ -83,15 +92,25 @@ export class AuditInterceptor implements NestInterceptor {
     );
   }
 
+  private sanitisePayload(body: Record<string, unknown>): Record<string, unknown> {
+    if (!body || typeof body !== 'object') return body;
+    const sanitised = { ...body };
+    const SENSITIVE_KEYS = ['password', 'currentPassword', 'newPassword', 'pin', 'cardNumber'];
+    for (const key of SENSITIVE_KEYS) {
+      if (key in sanitised) sanitised[key] = '[REDACTED]';
+    }
+    return sanitised;
+  }
+
   private determineModule(url: string): BackendModule {
     if (url.includes('/loyalty')) return BackendModule.LOYALTY;
-    if (url.includes('/visitors')) return BackendModule.VISITORS;
+    if (url.includes('/visitors') || url.includes('/contacts')) return BackendModule.VISITORS;
     if (url.includes('/support') || url.includes('/tickets'))
       return BackendModule.TICKETS;
     if (url.includes('/messaging') || url.includes('/campaigns'))
       return BackendModule.MESSAGING;
     if (url.includes('/payments')) return BackendModule.PAYMENTS;
-    if (url.includes('/settings')) return BackendModule.SETTINGS;
+    if (url.includes('/settings') || url.includes('/forms') || url.includes('/users') || url.includes('/devices')) return BackendModule.SETTINGS;
     if (url.includes('/branches')) return BackendModule.BRANCHES;
     if (url.includes('/businesses')) return BackendModule.BUSINESSES;
     if (url.includes('/analytics') || url.includes('/reports'))

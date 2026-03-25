@@ -49,6 +49,7 @@ export class BusinessesService {
       city?: string;
       whatsappNumber?: string;
       officialEmail?: string;
+      engagement?: Record<string, any>;
     },
   ): Promise<Business> {
     if (businessData.ownerId) {
@@ -77,6 +78,7 @@ export class BusinessesService {
       whatsappNumber,
       officialEmail,
       phone,
+      engagement,
       ...businessBaseData
     } = businessData;
 
@@ -106,6 +108,7 @@ export class BusinessesService {
       whatsappNumber,
       officialEmail: officialEmail,
       phone: phone,
+      engagement,
     } as any); // Cast to any because the repository might not be updated yet in TS context
     const savedBranch = (await this.branchRepository.save(
       mainBranch,
@@ -495,7 +498,6 @@ export class BusinessesService {
       existingUser.lastName = dto.ownerLastName;
       existingUser.password = hashedPassword;
       existingUser.phone = dto.ownerPhone || existingUser.phone;
-      existingUser.engagement = dto.engagement;
       user = await this.usersRepository.save(existingUser);
     } else {
       user = this.usersRepository.create({
@@ -506,7 +508,6 @@ export class BusinessesService {
         role: UserRole.OWNER,
         status: UserStatus.ACTIVE,
         phone: dto.ownerPhone,
-        engagement: dto.engagement,
       });
       user = await this.usersRepository.save(user);
     }
@@ -535,6 +536,7 @@ export class BusinessesService {
       isRegistered: dto.isRegistered,
       registrationNumber: dto.registrationNumber,
       documents: dto.documents,
+      engagement: dto.engagement,
     } as any);
 
     // Ensure user status is active and linked to branch (linked during this.create)

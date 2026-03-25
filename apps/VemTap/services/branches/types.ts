@@ -47,6 +47,7 @@ export interface Branch {
     createdAt?: string;
     updatedAt?: string;
     deletedAt?: string | null;
+    engagement?: Record<string, any>;
 }
 
 export interface CreateBranchRequest {
@@ -98,4 +99,6 @@ export interface UpdateBranchRequest {
     showRewards?: boolean;
     identityNumber?: string;
     utilityBill?: string;
+    engagement?: Record<string, any>;
+    isMainBranch?: boolean;
 }

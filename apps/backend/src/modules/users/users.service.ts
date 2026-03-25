@@ -21,7 +21,7 @@ export class UsersService {
     @InjectRepository(PasswordResetHistory)
     private passwordResetHistoryRepository: Repository<PasswordResetHistory>,
     private readonly mailService: MailService,
-  ) {}
+  ) { }
 
   async inviteStaff(branchId: string, dto: InviteStaffDto): Promise<User> {
     const existingEmail = await this.findByEmail(dto.email);
@@ -38,6 +38,11 @@ export class UsersService {
       }
     }
 
+    // Get businessId from branch
+    const branch = await this.usersRepository.manager
+      .getRepository('branches')
+      .findOne({ where: { id: branchId } });
+
     const hashedPassword = await bcrypt.hash(dto.firstName.toLowerCase(), 10);
     const user = this.usersRepository.create({
       firstName: dto.firstName,
@@ -49,6 +54,7 @@ export class UsersService {
       jobTitle: dto.jobTitle,
       permissions: dto.permissions,
       branchId: branchId,
+      businessId: (branch as any)?.businessId,
       status: UserStatus.INVITED,
     });
     const savedUser = await this.usersRepository.save(user);
@@ -194,18 +200,6 @@ export class UsersService {
     await this.usersRepository.remove(user);
   }
 
-  async updateEngagement(
-    id: string,
-    engagement: Record<string, any>,
-  ): Promise<User> {
-    const user = await this.findOne(id);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    user.engagement = engagement;
-    return this.usersRepository.save(user);
-  }
-
   async findByBranch(branchId: string): Promise<User[]> {
     return this.usersRepository.find({
       where: { branchId },
@@ -213,11 +207,39 @@ export class UsersService {
     });
   }
 
+  async findTeamMembers(options: {
+    branchId?: string;
+    businessId?: string;
+    roles?: UserRole[];
+  }): Promise<User[]> {
+    const { branchId, businessId, roles } = options;
+    const qb = this.usersRepository.createQueryBuilder('user');
+
+    if (branchId) {
+      qb.andWhere('user.branchId = :branchId', { branchId });
+    } else if (businessId) {
+      qb.andWhere('user.businessId = :businessId', { businessId });
+    }
+
+    if (roles && roles.length > 0) {
+      qb.andWhere('user.role IN (:...roles)', { roles });
+    } else {
+      // Default to team roles
+      qb.andWhere('user.role IN (:...roles)', {
+        roles: [
+          UserRole.MANAGER,
+          UserRole.STAFF,
+
+        ],
+      });
+    }
+
+    qb.orderBy('user.createdAt', 'DESC');
+    return qb.getMany();
+  }
+
   async findTeam(branchId: string): Promise<User[]> {
-    return this.usersRepository.find({
-      where: { branchId },
-      order: { createdAt: 'DESC' },
-    });
+    return this.findTeamMembers({ branchId });
   }
 
   async findByBusiness(businessId: string): Promise<User[]> {

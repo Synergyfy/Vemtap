@@ -73,10 +73,11 @@ export const useRemoveStaff = (branchId?: string) => {
 export const useUpdateSocials = () => {
     const queryClient = useQueryClient();
     return useMutation<any, Error, any>({
-        mutationFn: async (engagement) => await api.patch('/users/engagement', { engagement }),
+        mutationFn: async (data) => await api.patch('/users/profile', data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['my-business'] });
             queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+            queryClient.invalidateQueries({ queryKey: ['branches'] });
         },
     });
 };

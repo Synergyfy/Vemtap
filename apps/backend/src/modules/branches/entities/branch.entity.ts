@@ -118,6 +118,18 @@ export class Branch extends AbstractBaseEntity {
   @Column({ type: 'jsonb', nullable: true })
   businessHours: Record<string, any>;
 
+  @ApiProperty({
+    example: {
+      instagram: 'https://instagram.com/johndoe',
+      linkedin: 'https://linkedin.com/company/johndoe',
+      reviewUrl: 'https://g.page/r/...',
+    },
+    description: 'User engagement settings (social links, etc.)',
+    nullable: true,
+  })
+  @Column({ type: 'jsonb', nullable: true })
+  engagement?: Record<string, any>;
+
   @Column({ default: false })
   rewardEnabled: boolean;
 

@@ -7,6 +7,8 @@ import {
   IsArray,
   IsEnum,
   IsOptional,
+  IsDateString,
+  IsUUID,
 } from 'class-validator';
 import { BackendModule } from '../../../common/enums/backend-module.enum';
 
@@ -48,19 +50,32 @@ export class AdminCreateAgentDto {
 }
 
 export class GenerateImpersonationTokenDto {
-  @ApiProperty({ example: 'agent-uuid-or-admin-uuid' })
-  @IsString()
-  @IsNotEmpty()
-  actorId: string;
-
   @ApiProperty({ example: 'branch-uuid' })
-  @IsString()
+  @IsUUID()
   @IsNotEmpty()
   targetBranchId: string;
 
   @ApiProperty({ example: '2026-12-31T23:59:59Z' })
+  @IsDateString()
   @IsNotEmpty()
-  expiresAt: Date;
+  expiresAt: string;
+}
+
+export class GenerateCustomerImpersonationTokenDto {
+  @ApiProperty({ example: 'customer-user-uuid' })
+  @IsUUID()
+  @IsNotEmpty()
+  targetCustomerId: string;
+
+  @ApiProperty({ example: 'branch-uuid' })
+  @IsUUID()
+  @IsNotEmpty()
+  targetBranchId: string;
+
+  @ApiProperty({ example: '2026-12-31T23:59:59Z' })
+  @IsDateString()
+  @IsNotEmpty()
+  expiresAt: string;
 }
 
 export class AuditLogFilterDto {

@@ -26,7 +26,6 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { UpdateEngagementDto } from './dto/update-engagement.dto';
 import { AdminCreateAgentDto } from './dto/admin-create-agent.dto';
 import { FindUsersAdminDto } from './dto/find-users-admin.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
@@ -71,16 +70,6 @@ export class UsersController {
     return this.usersService.updateProfile(req.user.id, updates);
   }
 
-  @Patch('engagement')
-  @Roles(UserRole.CUSTOMER)
-  @ApiOperation({
-    summary: 'Update customer engagement links (Instagram, etc.)',
-  })
-  @ApiResponse({ status: 200, type: User })
-  async updateEngagement(@Request() req, @Body() updates: UpdateEngagementDto) {
-    return this.usersService.updateEngagement(req.user.id, updates.engagement);
-  }
-
   // --- Team Management ---
 
   @Post('team/invite')
@@ -105,8 +94,14 @@ export class UsersController {
   @ApiOperation({ summary: 'Get all team members for the branch' })
   @ApiResponse({ status: 200, type: [User] })
   async getTeam(@Request() req, @Query() filter: BranchFilterDto) {
+    const businessId = req.user.businessId;
+
+    if (filter.allBranches && (req.user.role === UserRole.OWNER || req.user.role === UserRole.ADMIN)) {
+      return this.usersService.findTeamMembers({ businessId });
+    }
+
     const branchId = this.getBranchId(req, filter.branchId);
-    return this.usersService.findByBranch(branchId);
+    return this.usersService.findTeamMembers({ branchId, businessId });
   }
 
   @Patch('team/:id')

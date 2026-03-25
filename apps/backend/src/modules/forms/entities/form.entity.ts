@@ -44,6 +44,14 @@ export class Form extends AbstractBaseEntity {
   @Column({ default: false })
   adminDisabled: boolean;
 
+  @ApiProperty({
+    example: 'Violated terms of service',
+    description: 'Reason for disabling the form by an admin',
+    required: false,
+  })
+  @Column({ type: 'text', nullable: true })
+  adminDisabledNote: string;
+
   @ApiProperty({ example: false, description: 'Show form after lead capture' })
   @Column({ default: false })
   showAfterLeadCapture: boolean;

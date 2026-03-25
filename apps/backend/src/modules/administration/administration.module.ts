@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AdministrationService } from './administration.service';
 import { AdministrationController } from './administration.controller';
 import { ImpersonationToken } from './entities/impersonation-token.entity';
+import { CustomerImpersonationToken } from './entities/customer-impersonation-token.entity';
 import { AuditLog } from './entities/audit-log.entity';
 import { User } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
@@ -15,6 +16,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
   imports: [
     TypeOrmModule.forFeature([
       ImpersonationToken,
+      CustomerImpersonationToken,
       AuditLog,
       User,
       Branch,

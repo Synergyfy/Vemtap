@@ -107,6 +107,7 @@ export class BranchesService {
       privacyMessage: mainBranch?.privacyMessage,
       rewardMessage: mainBranch?.rewardMessage,
       about: mainBranch?.about,
+      engagement: createBranchDto.engagement ?? mainBranch?.engagement,
       rewardEnabled: mainBranch?.rewardEnabled ?? false,
       rewardVisitThreshold: mainBranch?.rewardVisitThreshold ?? 5,
       linkedinUrl: mainBranch?.linkedinUrl,

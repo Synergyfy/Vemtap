@@ -11,6 +11,7 @@ import {
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from '../../common/decorators/public.decorator';
+import { AllowPending } from '../../common/decorators/allow-pending.decorator';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -199,6 +200,7 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @AllowPending()
   @Post('change-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Change password for authenticated user' })

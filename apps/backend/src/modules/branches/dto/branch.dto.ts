@@ -101,6 +101,15 @@ export class CreateBranchDto {
   @IsEmail()
   @IsOptional()
   officialEmail?: string;
+
+  @ApiPropertyOptional({
+    example: {
+      instagram: 'https://instagram.com/branch',
+    },
+    description: 'Branch engagement settings (social links, etc.)',
+  })
+  @IsOptional()
+  engagement?: Record<string, any>;
 }
 
 export class UpdateBranchDto {
@@ -219,4 +228,13 @@ export class UpdateBranchDto {
   @IsBoolean()
   @IsOptional()
   isMainBranch?: boolean;
+
+  @ApiPropertyOptional({
+    example: {
+      instagram: 'https://instagram.com/branch',
+    },
+    description: 'Branch engagement settings (social links, etc.)',
+  })
+  @IsOptional()
+  engagement?: Record<string, any>;
 }
