@@ -157,19 +157,29 @@ export default function UserManagementPage({
         e.preventDefault();
         setIsSubmitting(true);
         const fd = new FormData(e.currentTarget);
-        const payload: any = {
-            firstName: fd.get('firstName') as string,
-            lastName: fd.get('lastName') as string,
-            email: fd.get('email') as string,
-            role: fd.get('role') as string,
-            password: (fd.get('password') as string) || 'Vemtap@123',
-        };
         try {
             if (selectedUser) {
-                await adminUsersApi.update(selectedUser.id, payload);
+                // Mapping for update payload (AdminUpdateUserDto)
+                const updatePayload: any = {
+                    firstName: fd.get('firstName') as string,
+                    lastName: fd.get('lastName') as string,
+                    email: fd.get('email') as string,
+                    role: fd.get('role') as string,
+                    phone: (fd.get('phone') as string) || undefined,
+                };
+                await adminUsersApi.update(selectedUser.id, updatePayload);
                 notify.success('User updated successfully');
             } else {
-                await adminUsersApi.create(payload);
+                // Mapping for create payload (AdminCreateUserDto)
+                const createPayload: any = {
+                    firstName: fd.get('firstName') as string,
+                    lastName: fd.get('lastName') as string,
+                    email: fd.get('email') as string,
+                    role: fd.get('role') as string,
+                    password: (fd.get('password') as string) || 'Vemtap@123',
+                    phone: (fd.get('phone') as string) || undefined,
+                };
+                await adminUsersApi.create(createPayload);
                 notify.success('User created successfully');
             }
             setIsModalOpen(false);
@@ -579,6 +589,15 @@ export default function UserManagementPage({
                             <div>
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Email Address</label>
                                 <input name="email" type="email" defaultValue={selectedUser?.email} required placeholder="john@example.com" className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all" />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block mb-2">Phone Number</label>
+                                <input
+                                    name="phone"
+                                    defaultValue={selectedUser?.phone || ''}
+                                    placeholder="+234 801 234 5678"
+                                    className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all"
+                                />
                             </div>
                             {!selectedUser && (
                                 <div className="space-y-4">

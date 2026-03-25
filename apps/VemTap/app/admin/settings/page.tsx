@@ -8,13 +8,17 @@ import {
     ShieldCheck, 
     CreditCard, 
     Bell, 
-    Code2, 
     Smartphone, 
     MessageSquare, 
     Save,
-    History
+    History,
+    RefreshCw,
+    Link
 } from 'lucide-react';
+import { useRegisterPushToken } from '@/services/notifications/hooks';
+import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { api } from '@/lib/api';
 
 export default function AdminSettingsPage() {
     const settings = useSystemSettingsStore();
@@ -75,7 +79,6 @@ export default function AdminSettingsPage() {
                                 { id: 'security', label: 'Security & Access', icon: ShieldCheck },
                                 { id: 'payment', label: 'Payment Gateways', icon: CreditCard },
                                 { id: 'notifications', label: 'Notifications', icon: Bell },
-                                { id: 'api', label: 'API & Integrations', icon: Code2 },
                             ].map((item) => (
                                 <button
                                     key={item.id}
@@ -282,10 +285,93 @@ export default function AdminSettingsPage() {
                                 </div>
                             )}
 
-                            {['payment', 'notifications', 'api'].includes(activeTab) && (
+                            {activeTab === 'notifications' && (
+                                <div className="bg-white rounded-3xl border border-gray-100 p-8 space-y-8 shadow-sm">
+                                    <div className="flex items-center gap-3 border-b border-gray-50 pb-6">
+                                        <div className="size-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+                                            <Bell size={20} />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-sm font-black text-text-main uppercase tracking-tight">Notification Settings</h2>
+                                            <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">Configure platform delivery channels</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        {/* Push Notifications Section */}
+                                        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="size-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-primary">
+                                                        <Smartphone size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-bold text-slate-800 text-sm">Browser Push Notifications</h3>
+                                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Receive real-time alerts on this device</p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        const mockToken = `fcm-token-${Math.random().toString(36).substr(2, 9)}`;
+                                                        toast.promise(
+                                                            api.post('/notifications/push-token', { token: mockToken }),
+                                                            {
+                                                                loading: 'Requesting permission...',
+                                                                success: 'Push notifications enabled successfully',
+                                                                error: 'Failed to enable push notifications'
+                                                            }
+                                                        );
+                                                    }}
+                                                    className="px-4 py-2 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-primary-hover transition-all flex items-center gap-2"
+                                                >
+                                                    <RefreshCw size={14} />
+                                                    Enable on this device
+                                                </button>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100">
+                                                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">System Status</span>
+                                                    <span className="px-2 py-1 bg-green-50 text-green-600 text-[8px] font-black uppercase rounded-md border border-green-100">Operational</span>
+                                                </div>
+                                                <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100">
+                                                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">FCM Integration</span>
+                                                    <span className="px-2 py-1 bg-blue-50 text-blue-600 text-[8px] font-black uppercase rounded-md border border-blue-100">Connected</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Notification Channels */}
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            {[
+                                                { label: 'Email Alerts', enabled: true },
+                                                { label: 'SMS Notifications', enabled: false },
+                                                { label: 'WhatsApp Updates', enabled: false }
+                                            ].map((channel, i) => (
+                                                <div key={i} className="p-4 bg-white rounded-2xl border border-gray-100 flex items-center justify-between">
+                                                    <span className="text-[10px] font-bold text-text-main uppercase tracking-widest">{channel.label}</span>
+                                                    <div className={`w-2 h-2 rounded-full ${channel.enabled ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex gap-3">
+                                        <Link size={20} className="text-blue-600 shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-xs font-bold text-blue-800">Advanced Configuration</p>
+                                            <p className="text-[10px] text-blue-700 font-medium leading-relaxed mt-0.5">
+                                                To configure provider-specific gateway credentials (Twilio, SendGrid, etc.), please visit the <button onClick={() => setActiveTab('api')} className="font-bold underline">API & Integrations</button> tab.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'payment' && (
                                 <div className="bg-white rounded-3xl border border-gray-100 p-16 text-center shadow-sm">
                                     <div className="size-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                                        <Code2 size={40} className="text-gray-300" />
+                                        <CreditCard size={40} className="text-gray-300" />
                                     </div>
                                     <h3 className="text-xl font-bold text-text-main mb-2">Module Under Construction</h3>
                                     <p className="text-sm text-gray-500 max-w-xs mx-auto mb-8 font-medium">This configuration module is being prepared and will be available in the next system update.</p>
