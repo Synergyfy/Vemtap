@@ -293,8 +293,8 @@ export const adminCreditsApi = {
 // LOYALTY (Admin)
 // =====================
 export const adminLoyaltyApi = {
-    getTemplates: () => api.get('/loyalty/templates'),
-    createTemplate: (data: any) => api.post('/loyalty/templates', data),
+    getTemplates: () => api.get('/loyalty/reward-templates'),
+    createTemplate: (data: any) => api.post('/loyalty/reward-templates', data),
     getBusinessLogs: (params: { businessId: string; branchId?: string; page?: number; limit?: number }) => {
         const q = new URLSearchParams();
         q.set('businessId', params.businessId);

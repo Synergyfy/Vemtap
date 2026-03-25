@@ -302,7 +302,7 @@ export const usePointTransactions = (profileId: string) => {
 export const useLoyaltyTemplates = () => {
     return useQuery<LoyaltyTemplate[], Error>({
         queryKey: ['loyalty', 'templates'],
-        queryFn: async () => await api.get('/loyalty/templates')
+        queryFn: async () => await api.get('/loyalty/reward-templates')
     });
 };
 
@@ -311,7 +311,7 @@ import { notify } from '@/lib/notify';
 export const useCreateLoyaltyTemplate = () => {
     const queryClient = useQueryClient();
     return useMutation<LoyaltyTemplate, Error, Partial<LoyaltyTemplate>>({
-        mutationFn: async (data) => await api.post('/loyalty/templates', data),
+        mutationFn: async (data) => await api.post('/loyalty/reward-templates', data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates'] });
             notify.success('Template created successfully');
@@ -325,7 +325,7 @@ export const useCreateLoyaltyTemplate = () => {
 export const useUpdateLoyaltyTemplate = () => {
     const queryClient = useQueryClient();
     return useMutation<LoyaltyTemplate, Error, { id: string; updates: Partial<LoyaltyTemplate> }>({
-        mutationFn: async ({ id, updates }) => await api.patch(`/loyalty/templates/${id}`, updates),
+        mutationFn: async ({ id, updates }) => await api.patch(`/loyalty/reward-templates/${id}`, updates),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates'] });
             notify.success('Template updated successfully');
@@ -339,7 +339,7 @@ export const useUpdateLoyaltyTemplate = () => {
 export const useDeleteLoyaltyTemplate = () => {
     const queryClient = useQueryClient();
     return useMutation<void, Error, string>({
-        mutationFn: async (id) => await api.delete(`/loyalty/templates/${id}`),
+        mutationFn: async (id) => await api.delete(`/loyalty/reward-templates/${id}`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'templates'] });
             notify.success('Template deleted successfully');
@@ -358,7 +358,7 @@ export const useApplyLoyaltyTemplate = (branchId?: string) => {
         mutationFn: async (id) => {
             const params = new URLSearchParams();
             if (resolvedBranchId) params.append('branchId', resolvedBranchId);
-            return await api.post(`/loyalty/templates/${id}/apply?${params.toString()}`, {});
+            return await api.post(`/loyalty/reward-templates/${id}/apply?${params.toString()}`, {});
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty', 'rewards'] });

@@ -474,7 +474,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                         {templates.filter(t => t.name.toLowerCase().includes(templateSearchQuery.toLowerCase()) || (t.description || '').toLowerCase().includes(templateSearchQuery.toLowerCase())).map((template) => {
                                             // Correctly resolve preview image from rewards
                                             const templateImage = template.rewards?.find((r: any) => r.imageUrl || (r.imageUrls && r.imageUrls.length > 0));
-                                            const previewUrl = templateImage ? (templateImage.imageUrl || templateImage.imageUrls[0]) : null;
+                                            const previewUrl = templateImage ? (templateImage.imageUrl || templateImage.imageUrls[0]) : (template.coverImage || (template.galleryImages && template.galleryImages[0]));
 
                                             return (
                                                 <div
@@ -497,7 +497,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                         )}
                                                         <div className="absolute top-3 left-3">
                                                             <span className="px-2.5 py-1 rounded-lg bg-white/90 backdrop-blur-md text-[9px] font-black uppercase tracking-widest text-primary border border-primary/10 shadow-sm">
-                                                                {template.rewards?.length || 0} REWARDS
+                                                                {template.rewards?.length || 1} {template.rewards?.length === 1 ? 'REWARD' : 'REWARDS'}
                                                             </span>
                                                         </div>
                                                     </div>
@@ -511,7 +511,7 @@ export const RewardManager: React.FC<RewardManagerProps> = ({ rewards, onCreate,
                                                         <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-widest font-black text-slate-400 mb-5">
                                                             <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1.5">
                                                                 <Zap className="w-3 h-3 text-amber-500" />
-                                                                {template.rules?.ruleType || 'rules'}
+                                                                {template.category || template.rules?.ruleType || 'rules'}
                                                             </span>
                                                         </div>
 
