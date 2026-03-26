@@ -20,7 +20,6 @@ import DeleteConfirmationModal from '@/components/dashboard/DeleteConfirmationMo
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import PreviewRewardModal from '@/components/dashboard/PreviewRewardModal';
 import ImportContactsModal from '@/components/dashboard/ImportContactsModal';
-import { useChatStore } from '@/lib/store/useChatStore';
 import {
     Users, UserPlus, Repeat, Star, Download, Search, Edit,
     Trash2, MoreVertical, Send, MessageSquare, Gift,
@@ -41,6 +40,8 @@ export default function AllVisitorsPage() {
     const [rewardPreviewVisitor, setRewardPreviewVisitor] = useState<Visitor | null>(null);
     const [deleteVisitorId, setDeleteVisitorId] = useState<string | null>(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [selectedChannelForMsg, setSelectedChannelForMsg] = useState<'In-App' | 'WhatsApp' | 'SMS' | 'Email'>('In-App');
+    const [allowedChannelsForMsg, setAllowedChannelsForMsg] = useState<Array<'In-App' | 'WhatsApp' | 'SMS' | 'Email'>>(['In-App', 'WhatsApp', 'SMS', 'Email']);
 
     const debouncedSearch = useDebounce(searchQuery, 400);
 
@@ -122,8 +123,6 @@ export default function AllVisitorsPage() {
     };
 
     const [showChannelSelector, setShowChannelSelector] = useState(false);
-    const addPendingThread = useChatStore(s => s.addPendingThread);
-    const setActiveConversation = useChatStore(s => s.setActiveConversation);
 
     const handleInviteVisitor = (visitor: Visitor) => {
         setSelectedVisitorForMsg(visitor);
@@ -140,29 +139,15 @@ export default function AllVisitorsPage() {
     };
 
     const handleSelectInApp = () => {
-        if (selectedVisitorForMsg) {
-            const visitorName = getVisitorDisplayName(selectedVisitorForMsg);
-            const chatContact = {
-                id: selectedVisitorForMsg.id,
-                name: visitorName,
-                phone: selectedVisitorForMsg.phone,
-                email: selectedVisitorForMsg.email,
-                isOnline: false,
-            };
-            
-            // Prepare the thread in the store
-            const threadId = addPendingThread(chatContact);
-            setActiveConversation(threadId);
-            
-            // Redirect to chat page
-            router.push(`/dashboard/messaging/chat?visitorId=${selectedVisitorForMsg.id}`);
-            setShowChannelSelector(false);
-        }
+        setSelectedChannelForMsg('In-App');
+        setAllowedChannelsForMsg(['In-App']);
+        setShowChannelSelector(false);
     };
 
     const handleSelectExternal = () => {
+        setSelectedChannelForMsg('WhatsApp');
+        setAllowedChannelsForMsg(['WhatsApp', 'SMS', 'Email']);
         setShowChannelSelector(false);
-        // This will allow SendMessageModal to show (controlled by !!selectedVisitorForMsg && !showChannelSelector)
     };
 
     const stats = statsData?.stats && statsData.stats.length > 0 ? statsData.stats.map(s => ({
@@ -353,7 +338,9 @@ export default function AllVisitorsPage() {
                 recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
                 recipientPhone={selectedVisitorForMsg?.phone}
                 recipientEmail={selectedVisitorForMsg?.email}
-                visitorIds={selectedVisitorForMsg?.id ? [selectedVisitorForMsg.id] : undefined}
+                visitors={selectedVisitorForMsg ? [selectedVisitorForMsg] : undefined}
+                initialChannel={selectedChannelForMsg}
+                allowedChannels={allowedChannelsForMsg}
                 type="welcome"
             />
 

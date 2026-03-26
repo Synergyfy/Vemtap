@@ -15,7 +15,6 @@ import { formatDate } from '@/lib/utils/date';
 import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import MessagingChannelSelectorModal from '@/components/dashboard/MessagingChannelSelectorModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
-import { useChatStore } from '@/lib/store/useChatStore';
 import { exportToCSV } from '@/lib/utils/export';
 import { useDebounce } from '@/hooks/useDebounce';
 
@@ -26,6 +25,8 @@ export default function VisitorsOverviewPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<Visitor | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
     const [showChannelSelector, setShowChannelSelector] = useState(false);
+    const [selectedChannelForMsg, setSelectedChannelForMsg] = useState<'In-App' | 'WhatsApp' | 'SMS' | 'Email'>('In-App');
+    const [allowedChannelsForMsg, setAllowedChannelsForMsg] = useState<Array<'In-App' | 'WhatsApp' | 'SMS' | 'Email'>>(['In-App', 'WhatsApp', 'SMS', 'Email']);
 
     const debouncedSearch = useDebounce(searchQuery, 400);
 
@@ -71,32 +72,20 @@ export default function VisitorsOverviewPage() {
 
     const filteredVisitors = visitors; // Server handles filtering now via useVisitors query param hook params payload
 
-    const addPendingThread = useChatStore(s => s.addPendingThread);
-    const setActiveConversation = useChatStore(s => s.setActiveConversation);
-
     const handleSelectInApp = () => {
         if (selectedVisitorForMsg) {
-            const visitorName = getVisitorDisplayName(selectedVisitorForMsg);
-            const chatContact = {
-                id: selectedVisitorForMsg.id,
-                name: visitorName,
-                phone: selectedVisitorForMsg.phone,
-                email: selectedVisitorForMsg.email,
-                isOnline: false,
-            };
-
-            // Prepare the thread in the store
-            const threadId = addPendingThread(chatContact);
-            setActiveConversation(threadId);
-
-            // Redirect to chat page
-            router.push(`/dashboard/messaging/chat?visitorId=${selectedVisitorForMsg.id}`);
+            setSelectedChannelForMsg('In-App');
+            setAllowedChannelsForMsg(['In-App']);
             setShowChannelSelector(false);
         }
     };
 
     const handleSelectExternal = () => {
-        setShowChannelSelector(false);
+        if (selectedVisitorForMsg) {
+            setSelectedChannelForMsg('WhatsApp'); // Default external to WhatsApp
+            setAllowedChannelsForMsg(['WhatsApp', 'SMS', 'Email']);
+            setShowChannelSelector(false);
+        }
     };
 
     const getVisitorDisplayName = (visitor: Visitor) => {
@@ -247,7 +236,9 @@ export default function VisitorsOverviewPage() {
                 recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
                 recipientPhone={selectedVisitorForMsg?.phone}
                 recipientEmail={selectedVisitorForMsg?.email}
-                visitorIds={selectedVisitorForMsg?.id ? [selectedVisitorForMsg.id] : undefined}
+                visitors={selectedVisitorForMsg ? [selectedVisitorForMsg] : undefined}
+                initialChannel={selectedChannelForMsg}
+                allowedChannels={allowedChannelsForMsg}
                 type="general"
             />
 
