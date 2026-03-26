@@ -157,53 +157,70 @@ export class VisitorsService {
     const { page = 1, limit = 10, search, status } = query;
     const skip = (page - 1) * limit;
 
-    const qb = this.userRepository
+    const baseQb = this.userRepository
       .createQueryBuilder('user')
       .innerJoin('user.visits', 'visit')
       .where('user.role = :role', { role: UserRole.CUSTOMER });
 
     if (branchId) {
-      qb.andWhere('visit.branchId = :branchId', { branchId });
+      baseQb.andWhere('visit.branchId = :branchId', { branchId });
     } else if (businessId) {
-      qb.andWhere('visit.businessId = :businessId', { businessId });
+      baseQb.andWhere('visit.businessId = :businessId', { businessId });
     }
 
     if (search) {
-      qb.andWhere(
+      baseQb.andWhere(
         '(user.firstName ILIKE :search OR user.lastName ILIKE :search OR user.email ILIKE :search OR user.phone ILIKE :search)',
         { search: `%${search}%` },
       );
     }
 
-    qb.select('user.id');
-    qb.groupBy('user.id');
+    // Get unique IDs for pagination
+    const idQb = baseQb.clone()
+      .select('user.id')
+      .groupBy('user.id')
+      .orderBy('MAX(visit.createdAt)', 'DESC')
+      .offset(skip)
+      .limit(limit);
 
-    const [usersRaw, total] = await qb.getManyAndCount();
+    const idResults = await idQb.getRawMany();
+    const userIds = idResults.map(r => r.user_id);
 
-    if (usersRaw.length === 0) {
+    if (userIds.length === 0) {
       return { data: [], total: 0, page, limit };
     }
 
-    const userIds = usersRaw.map((u) => u.id);
+    // Fetch full data for these users
+    const users = await this.userRepository.find({
+      where: { id: In(userIds) },
+      relations: ['visits'],
+    });
 
-    const fullQb = this.userRepository
-      .createQueryBuilder('user')
-      .leftJoinAndSelect('user.visits', 'visit')
-      .where('user.id IN (:...userIds)', { userIds });
+    // Re-sort because find with In() doesn't guarantee order
+    // And also we want to order visits within each user
+    users.forEach(u => {
+      if (u.visits) {
+        u.visits.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      }
+    });
+    
+    // Sort users to match the original order (by last visit)
+    const sortedUsers = userIds.map(id => users.find(u => u.id === id)!);
 
-    if (branchId) {
-      fullQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else if (businessId) {
-      fullQb.andWhere('visit.businessId = :businessId', { businessId });
-    }
+    // Reliable count
+    const countQb = baseQb.clone()
+      .select('user.id')
+      .groupBy('user.id');
+    
+    const totalRaw = await this.dataSource.createQueryBuilder()
+      .select('COUNT(*)', 'count')
+      .from(`(${countQb.getQuery()})`, 'subquery')
+      .setParameters(countQb.getParameters())
+      .getRawOne();
+    
+    const total = parseInt(totalRaw?.count || '0', 10);
 
-    const users = await fullQb
-      .orderBy('visit.createdAt', 'DESC')
-      .skip(skip)
-      .take(limit)
-      .getMany();
-
-    const data: VisitorResponseDto[] = users.map((user) =>
+    const data: VisitorResponseDto[] = sortedUsers.map((user) =>
       this.mapToVisitorDto(user),
     );
 
@@ -557,31 +574,68 @@ export class VisitorsService {
     branchId?: string,
     businessId?: string,
   ): Promise<{ data: NewVisitorResponseDto[]; total: number }> {
-    const { page = 1, limit = 10 } = query;
+    const { page = 1, limit = 10, search } = query;
     const skip = (page - 1) * limit;
 
     const startOfWeek = new Date();
     startOfWeek.setDate(startOfWeek.getDate() - 7);
 
-    const qb = this.userRepository
+    const baseQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoinAndSelect('user.visits', 'visit')
-      .where('user.createdAt >= :startOfWeek', { startOfWeek })
-      .andWhere('user.role = :role', { role: UserRole.CUSTOMER });
+      .innerJoin('user.visits', 'visit')
+      .where('user.role = :role', { role: UserRole.CUSTOMER });
 
     if (branchId) {
-      qb.andWhere('visit.branchId = :branchId', { branchId });
+      baseQb.andWhere('visit.branchId = :branchId', { branchId });
     } else if (businessId) {
-      qb.andWhere('visit.businessId = :businessId', { businessId });
+      baseQb.andWhere('visit.businessId = :businessId', { businessId });
     }
 
-    const [users, total] = await qb
-      .orderBy('user.createdAt', 'DESC')
-      .skip(skip)
-      .take(limit)
-      .getManyAndCount();
+    if (search) {
+      baseQb.andWhere(
+        '(user.firstName ILIKE :search OR user.lastName ILIKE :search OR user.email ILIKE :search OR user.phone ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
 
-    const dtos = users.map((u) => ({
+    const usersMatchQb = baseQb.clone()
+      .select('user.id')
+      .groupBy('user.id')
+      .having('MIN(visit.createdAt) >= :startOfWeek', { startOfWeek })
+      .orderBy('MIN(visit.createdAt)', 'DESC')
+      .offset(skip)
+      .limit(limit);
+
+    const usersMatches = await usersMatchQb.getRawMany();
+    const userIds = usersMatches.map(m => m.user_id);
+
+    if (userIds.length === 0) {
+      return { data: [], total: 0 };
+    }
+
+    const users = await this.userRepository.find({
+      where: { id: In(userIds) },
+      relations: ['visits'],
+    });
+
+    // Reliable count for grouped queries with HAVING
+    const countQb = baseQb.clone()
+      .select('user.id')
+      .groupBy('user.id')
+      .having('MIN(visit.createdAt) >= :startOfWeek', { startOfWeek });
+    
+    const totalRaw = await this.dataSource.createQueryBuilder()
+      .select('COUNT(*)', 'count')
+      .from(`(${countQb.getQuery()})`, 'subquery')
+      .setParameters(countQb.getParameters())
+      .getRawOne();
+    
+    const total = parseInt(totalRaw?.count || '0', 10);
+
+    // Sort to match dataQb order
+    const sortedUsers = userIds.map(id => users.find(u => u.id === id)!);
+
+    const dtos = sortedUsers.map((u) => ({
       id: u.id,
       firstName: u.firstName,
       lastName: u.lastName,
@@ -599,39 +653,34 @@ export class VisitorsService {
     branchId?: string,
     businessId?: string,
   ): Promise<VisitorStatsResponseDto> {
+    const contextWhere: any = {};
+    if (branchId) contextWhere.branchId = branchId;
+    else if (businessId) contextWhere.businessId = businessId;
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const newTodayQb = this.userRepository
-      .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-      .andWhere('user.role = :role', { role: UserRole.CUSTOMER })
-      .andWhere('user.createdAt >= :today', { today });
-
-    if (branchId) {
-      newTodayQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else if (businessId) {
-      newTodayQb.andWhere('visit.businessId = :businessId', { businessId });
-    }
-
-    const newToday = await newTodayQb.getCount();
+    const newTodayRaw = await this.visitRepository
+      .createQueryBuilder('visit')
+      .select('visit.customerId')
+      .where(contextWhere)
+      .groupBy('visit.customerId')
+      .having('MIN(visit.createdAt) >= :today', { today })
+      .getRawMany();
+    const newToday = newTodayRaw.length;
 
     const startOfWeek = new Date();
-    startOfWeek.setDate(1);
+    startOfWeek.setDate(today.getDate() - today.getDay()); // Start of Sunday/current week
     startOfWeek.setHours(0, 0, 0, 0);
-    const newWeeklyQb = this.userRepository
-      .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-      .andWhere('user.role = :role', { role: UserRole.CUSTOMER })
-      .andWhere('user.createdAt >= :startOfWeek', { startOfWeek });
-
-    if (branchId) {
-      newWeeklyQb.andWhere('visit.branchId = :branchId', { branchId });
-    } else if (businessId) {
-      newWeeklyQb.andWhere('visit.businessId = :businessId', { businessId });
-    }
-
-    const newWeekly = await newWeeklyQb.getCount();
+    
+    const newWeeklyRaw = await this.visitRepository
+      .createQueryBuilder('visit')
+      .select('visit.customerId')
+      .where(contextWhere)
+      .groupBy('visit.customerId')
+      .having('MIN(visit.createdAt) >= :startOfWeek', { startOfWeek })
+      .getRawMany();
+    const newWeekly = newWeeklyRaw.length;
 
     return {
       stats: [
@@ -674,71 +723,68 @@ export class VisitorsService {
     branchId?: string,
     businessId?: string,
   ): Promise<{ data: ReturningVisitorResponseDto[]; total: number }> {
-    const { page = 1, limit = 10 } = query;
+    const { page = 1, limit = 10, search } = query;
     const skip = (page - 1) * limit;
 
-    const qb = this.userRepository
-      .createQueryBuilder('user')
-      .innerJoinAndSelect('user.visits', 'visit')
-      .andWhere('user.role = :role', { role: UserRole.CUSTOMER });
-
-    if (branchId) {
-      qb.andWhere('visit.branchId = :branchId', { branchId });
-    } else if (businessId) {
-      qb.andWhere('visit.businessId = :businessId', { businessId });
-    }
-
-    qb.groupBy('user.id')
-      .having('COUNT(visit.id) > 1')
-      .select([
-        'user.id',
-        'user.firstName',
-        'user.lastName',
-        'user.email',
-        'user.phone',
-        'COUNT(visit.id) as total_visits',
-        'MAX(visit.createdAt) as last_visit',
-      ]);
-
-    const rawData: Array<{
-      user_id: string;
-      user_firstName: string;
-      user_lastName: string;
-      user_email: string;
-      user_phone: string;
-      total_visits: string;
-      last_visit: string;
-    }> = await qb
-      .orderBy('user.createdAt', 'DESC')
-      .offset(skip)
-      .limit(limit)
-      .getRawMany();
-
-    const totalQb = this.userRepository
+    const baseQb = this.userRepository
       .createQueryBuilder('user')
       .innerJoin('user.visits', 'visit')
-      .andWhere('user.role = :role', { role: UserRole.CUSTOMER });
+      .where('user.role = :role', { role: UserRole.CUSTOMER });
 
     if (branchId) {
-      totalQb.andWhere('visit.branchId = :branchId', { branchId });
+      baseQb.andWhere('visit.branchId = :branchId', { branchId });
     } else if (businessId) {
-      totalQb.andWhere('visit.businessId = :businessId', { businessId });
+      baseQb.andWhere('visit.businessId = :businessId', { businessId });
     }
 
-    const total = await totalQb
+    if (search) {
+      baseQb.andWhere(
+        '(user.firstName ILIKE :search OR user.lastName ILIKE :search OR user.email ILIKE :search OR user.phone ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    const dataQb = baseQb.clone()
+      .select([
+        'user.id as id',
+        'user.firstName as "firstName"',
+        'user.lastName as "lastName"',
+        'user.email as email',
+        'user.phone as phone',
+        'COUNT(visit.id) as "totalVisits"',
+        'MAX(visit.createdAt) as "lastVisit"',
+      ])
       .groupBy('user.id')
       .having('COUNT(visit.id) > 1')
-      .getCount();
+      .orderBy('MAX(visit.createdAt)', 'DESC')
+      .offset(skip)
+      .limit(limit);
+
+    const rawData = await dataQb.getRawMany();
+
+    // Reliable count for grouped queries with HAVING
+    const countQb = baseQb.clone()
+      .select('user.id')
+      .groupBy('user.id')
+      .having('COUNT(visit.id) > 1');
+    
+    const totalRaw = await this.dataSource.createQueryBuilder()
+      .select('COUNT(*)', 'count')
+      .from(`(${countQb.getQuery()})`, 'subquery')
+      .setParameters(countQb.getParameters())
+      .getRawOne();
+    
+    const total = parseInt(totalRaw?.count || '0', 10);
 
     const dtos = rawData.map((r) => ({
-      id: r.user_id,
-      firstName: r.user_firstName,
-      lastName: r.user_lastName,
-      email: r.user_email,
-      phone: r.user_phone,
-      totalVisits: parseInt(r.total_visits, 10),
-      frequency: parseInt(r.total_visits, 10) > 5 ? 'Monthly' : 'Weekly',
-      lastVisit: new Date(r.last_visit),
+      id: r.id,
+      firstName: r.firstName,
+      lastName: r.lastName,
+      email: r.email,
+      phone: r.phone,
+      totalVisits: parseInt(r.totalVisits, 10),
+      frequency: parseInt(r.totalVisits, 10) > 5 ? 'Monthly' : 'Weekly',
+      lastVisit: new Date(r.lastVisit),
       status: 'Returning',
     }));
 
@@ -777,10 +823,13 @@ export class VisitorsService {
       });
     }
 
-    const returningCount = await returningCountQb
-      .groupBy('user.id')
-      .having('COUNT(visit.id) > 1')
-      .getCount();
+    const returningCountRaw = await this.dataSource.createQueryBuilder()
+      .select('COUNT(*)', 'count')
+      .from(`(${returningCountQb.select('user.id').groupBy('user.id').having('COUNT(visit.id) > 1').getQuery()})`, 'subquery')
+      .setParameters(returningCountQb.getParameters())
+      .getRawOne();
+    
+    const returningCount = parseInt(returningCountRaw?.count || '0', 10);
 
     const rate =
       totalVisitors > 0
@@ -798,10 +847,13 @@ export class VisitorsService {
       vipCountQb.andWhere('visit.businessId = :businessId', { businessId });
     }
 
-    const vipCount = await vipCountQb
-      .groupBy('user.id')
-      .having('COUNT(visit.id) > 10')
-      .getCount();
+    const vipCountRaw = await this.dataSource.createQueryBuilder()
+      .select('COUNT(*)', 'count')
+      .from(`(${vipCountQb.select('user.id').groupBy('user.id').having('COUNT(visit.id) > 10').getQuery()})`, 'subquery')
+      .setParameters(vipCountQb.getParameters())
+      .getRawOne();
+
+    const vipCount = parseInt(vipCountRaw?.count || '0', 10);
 
     return {
       stats: [

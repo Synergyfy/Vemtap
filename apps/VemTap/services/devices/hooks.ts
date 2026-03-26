@@ -9,7 +9,7 @@ export const useDevices = (branchId?: string) => {
     const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
     const businessId = useAuthStore((state) => state.user?.businessId);
     const resolvedBranchId = branchId || urlBranchId;
-
+    console.log(resolvedBranchId, 'resolvedBranchId');
     return useQuery<Device[], Error>({
         queryKey: ['devices', businessId, resolvedBranchId, isAllBranches],
         queryFn: async () => {
@@ -22,7 +22,8 @@ export const useDevices = (branchId?: string) => {
             const query = searchParams.toString();
             return await api.get(`/devices${query ? `?${query}` : ''}`);
         },
-        enabled: !!businessId
+        enabled: !!businessId,
+        refetchOnMount: true
     });
 };
 

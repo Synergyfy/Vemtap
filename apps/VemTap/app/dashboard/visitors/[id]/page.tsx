@@ -225,7 +225,7 @@ export default function VisitorProfilePage() {
                 recipientName={displayName}
                 recipientPhone={visitor.phone}
                 recipientEmail={visitor.email}
-                visitorIds={[visitorId]}
+                visitors={[visitor]}
                 type="welcome"
             />
 

@@ -36,6 +36,7 @@ export interface User {
   lastName: string;
   name: string;
   role: UserRole;
+  isPasswordChanged: boolean;
   businessId?: string;
   branchId?: string;
   businessName?: string;
