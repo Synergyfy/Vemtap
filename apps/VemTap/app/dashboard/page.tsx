@@ -482,7 +482,7 @@ export default function DashboardPage() {
                 recipientName={selectedVisitorForMsg?.visitor.name || ''}
                 recipientPhone={selectedVisitorForMsg?.visitor.phone}
                 recipientEmail={selectedVisitorForMsg?.visitor.email}
-                visitorIds={selectedVisitorForMsg?.visitor.id ? [selectedVisitorForMsg.visitor.id] : undefined}
+                visitors={selectedVisitorForMsg?.visitor ? [selectedVisitorForMsg.visitor] : undefined}
                 type={selectedVisitorForMsg?.type || 'welcome'}
             />
 
