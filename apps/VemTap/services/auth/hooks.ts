@@ -146,7 +146,7 @@ export const useChangePassword = () => {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await api.post('/auth/password/change', payload);
+            const response = await api.post('/auth/change-password', payload);
             return response;
         } catch (err: any) {
             const errorMessage = err.message || 'Failed to change password';

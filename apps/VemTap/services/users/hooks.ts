@@ -1,34 +1,46 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { StaffMember, InviteStaffRequest, UpdateStaffRequest, AdminUser, AdminUsersResponse } from './types';
-import { useAuthStore, AuthState } from '../../store/useAuthStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export const useStaff = (branchId?: string, allBranches?: boolean) => {
-    const { activeBranchId: urlBranchId } = useActiveBranch();
-    const userBusinessId = useAuthStore((state: AuthState) => state.user?.businessId);
+    const { activeBranchId: urlBranchId, isAllBranches: contextIsAll } = useActiveBranch();
+    const businessId = useAuthStore((state) => state.user?.businessId);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+    // Prioritize passed branchId, then fallback to URL/Store context
     const resolvedBranchId = branchId || urlBranchId;
+    // Prioritize passed allBranches toggle, then fallback to URL "all" context
+    const resolvedAllBranches = allBranches !== undefined ? allBranches : contextIsAll;
 
     return useQuery<StaffMember[], Error>({
-        queryKey: ['staff', userBusinessId, resolvedBranchId, allBranches],
+        queryKey: ['staff', businessId, resolvedBranchId, resolvedAllBranches],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (resolvedBranchId && !allBranches) {
+
+            // If all branches is requested, don't filter by branchId
+            if (resolvedAllBranches) {
+                params.append('allBranches', 'true');
+            } else if (resolvedBranchId) {
                 params.append('branchId', resolvedBranchId);
             }
-            if (allBranches) {
-                params.append('allBranches', 'true');
-            }
-            const data = await api.get(`/users/team?${params.toString()}`);
+
+            const query = params.toString();
+            const data = await api.get(`/users/team${query ? `?${query}` : ''}`);
+
             if (!Array.isArray(data)) return [];
             return data.map(item => ({
                 ...item,
                 id: item.id || item.uniqueCode || item.email
             }));
         },
-        enabled: !!userBusinessId,
+        refetchOnMount: true,
+        enabled: isAuthenticated,
     });
 };
+
+
 export const useInviteStaff = () => {
     const queryClient = useQueryClient();
 

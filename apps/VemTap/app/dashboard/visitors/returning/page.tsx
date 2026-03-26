@@ -18,7 +18,6 @@ import SendMessageModal from '@/components/dashboard/SendMessageModal';
 import MessagingChannelSelectorModal from '@/components/dashboard/MessagingChannelSelectorModal';
 import VisitorDetailsModal from '@/components/dashboard/VisitorDetailsModal';
 import { Repeat, Users, Star, AlertTriangle, Gift, Award, Send } from 'lucide-react';
-import { useChatStore } from '@/lib/store/useChatStore';
 import { useRouter } from 'next/navigation';
 
 export default function ReturningVisitorsPage() {
@@ -26,14 +25,15 @@ export default function ReturningVisitorsPage() {
     const [selectedVisitorForMsg, setSelectedVisitorForMsg] = useState<Visitor | null>(null);
     const [selectedVisitorForDetails, setSelectedVisitorForDetails] = useState<Visitor | null>(null);
     const [showChannelSelector, setShowChannelSelector] = useState(false);
+    const [selectedChannelForMsg, setSelectedChannelForMsg] = useState<'In-App' | 'WhatsApp' | 'SMS' | 'Email'>('In-App');
+    const [allowedChannelsForMsg, setAllowedChannelsForMsg] = useState<Array<'In-App' | 'WhatsApp' | 'SMS' | 'Email'>>(['In-App', 'WhatsApp', 'SMS', 'Email']);
+
     const queryClient = useQueryClient();
     const { user, activeBranchId } = useAuthStore();
     const router = useRouter();
 
     const { data: paginatedData, isLoading } = useReturningVisitors();
     const { data: statsData } = useReturningVisitorStats();
-    const addPendingThread = useChatStore(s => s.addPendingThread);
-    const setActiveConversation = useChatStore(s => s.setActiveConversation);
 
     const returningVisitors = paginatedData?.data || [];
 
@@ -66,25 +66,14 @@ export default function ReturningVisitorsPage() {
     };
 
     const handleSelectInApp = () => {
-        if (selectedVisitorForMsg) {
-            const visitorName = getVisitorDisplayName(selectedVisitorForMsg);
-            const chatContact = {
-                id: selectedVisitorForMsg.id,
-                name: visitorName,
-                phone: selectedVisitorForMsg.phone,
-                email: selectedVisitorForMsg.email,
-                isOnline: false,
-            };
-            
-            const threadId = addPendingThread(chatContact);
-            setActiveConversation(threadId);
-            
-            router.push(`/dashboard/messaging/chat?visitorId=${selectedVisitorForMsg.id}`);
-            setShowChannelSelector(false);
-        }
+        setSelectedChannelForMsg('In-App');
+        setAllowedChannelsForMsg(['In-App']);
+        setShowChannelSelector(false);
     };
 
     const handleSelectExternal = () => {
+        setSelectedChannelForMsg('WhatsApp');
+        setAllowedChannelsForMsg(['WhatsApp', 'SMS', 'Email']);
         setShowChannelSelector(false);
     };
 
@@ -204,7 +193,9 @@ export default function ReturningVisitorsPage() {
                 recipientName={selectedVisitorForMsg ? getVisitorDisplayName(selectedVisitorForMsg) : ''}
                 recipientPhone={selectedVisitorForMsg?.phone}
                 recipientEmail={selectedVisitorForMsg?.email}
-                visitorIds={selectedVisitorForMsg?.id ? [selectedVisitorForMsg.id] : undefined}
+                visitors={selectedVisitorForMsg ? [selectedVisitorForMsg] : undefined}
+                initialChannel={selectedChannelForMsg}
+                allowedChannels={allowedChannelsForMsg}
                 type="reward"
             />
 
