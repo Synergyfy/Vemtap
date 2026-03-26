@@ -10,6 +10,7 @@ import {
 import { DevicesService } from './devices.service';
 import { VisitorsService } from '../visitors/visitors.service';
 import { Public } from '../../common/decorators/public.decorator';
+import { AllowPending } from '../../common/decorators/allow-pending.decorator';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('Device Taps')
@@ -21,6 +22,7 @@ export class DeviceTapController {
   ) {}
 
   @Public()
+  @AllowPending()
   @Get('context/:code')
   @ApiOperation({ summary: 'Get device and business context for a tap' })
   @ApiResponse({
@@ -61,6 +63,7 @@ export class DeviceTapController {
   }
 
   @Public()
+  @AllowPending()
   @Post('record/:code')
   @ApiOperation({
     summary: 'Record a visit for an anonymous or identified user',
