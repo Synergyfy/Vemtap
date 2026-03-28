@@ -22,15 +22,16 @@ export default function UserExperienceAppearancePage() {
     const updateMutation = useUpdateBranchFormSettings(activeBranchId || mainBranch?.id);
     const [isSaving, setIsSaving] = React.useState(false);
 
-    // Get color from branch settings first, then fall back to business or store
-    const brandColor = branch?.formAppearanceColor || business?.brandColor || engagementSettings?.brandColor || '#2563eb';
+    // Use store value primarily for UI responsiveness, fall back to branch/business settings
+    const brandColor = engagementSettings?.brandColor || branch?.formAppearanceColor || business?.brandColor || '#2563eb';
 
-    // Sync brandColor to store on load for preview
+    // Sync brandColor to store when data is available
     React.useEffect(() => {
-        if (brandColor && brandColor !== engagementSettings?.brandColor) {
-            updateEngagementSettings({ brandColor });
+        const initialColor = branch?.formAppearanceColor || business?.brandColor;
+        if (initialColor) {
+            updateEngagementSettings({ brandColor: initialColor });
         }
-    }, []); // Empty dependency array to run only once on mount
+    }, [branch?.formAppearanceColor, business?.brandColor]);
 
     const handleSave = async () => {
         setIsSaving(true);
