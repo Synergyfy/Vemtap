@@ -465,7 +465,7 @@ export const useWhatsAppConnectionStatus = (branchId?: string) => {
 // ─── Segmentation ────────────────────────────────────────────────────────────
 import { Segment } from './types';
 
-export const useSegments = (branchId?: string) => {
+export const useSegments = (branchId?: string, enabled: boolean = true) => {
     const { branchId: targetBranchId, allBranches } = useResolvedBranchParams(branchId);
     return useQuery<Segment[], Error>({
         queryKey: ['messaging', 'segments', targetBranchId, allBranches],
@@ -474,6 +474,7 @@ export const useSegments = (branchId?: string) => {
             if (targetBranchId && targetBranchId !== 'all') params.append('branchId', targetBranchId);
             return await api.get(`/segments?${params.toString()}`);
         },
+        enabled,
     });
 };
 

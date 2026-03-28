@@ -36,9 +36,10 @@ export default function ChatInput({
     const [showMediaOptions, setShowMediaOptions] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
     const user = useAuthStore(s => s.user);
+    const isCustomer = user?.role?.toLowerCase() === 'customer';
     const { activeBranchId, setActiveBranch } = useActiveBranch();
     const searchParams = useSearchParams();
-    const { data: branches = [] } = useBranches();
+    const { data: branches = [] } = useBranches(!isCustomer);
     const addPendingMessage = useChatStore(s => s.addPendingMessage);
     const linkPendingThread = useChatStore(s => s.linkPendingThread);
     const setActiveConversation = useChatStore(s => s.setActiveConversation);
@@ -56,8 +57,8 @@ export default function ChatInput({
 
     // Fetch templates and rewards for the current branch
     const effectiveBranchId = activeBranchId! || branches[0]?.id;
-    const { data: templates = [] } = useChatTemplates(effectiveBranchId);
-    const { data: rewards = [] } = useRewards(effectiveBranchId);
+    const { data: templates = [] } = useChatTemplates(effectiveBranchId, !isCustomer && !!effectiveBranchId);
+    const { data: rewards = [] } = useRewards(effectiveBranchId, !isCustomer && !!effectiveBranchId);
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -105,7 +106,6 @@ export default function ChatInput({
         }, 10);
     }, [conversationId]);
 
-    const isCustomer = user?.role?.toLowerCase() === 'customer';
     const branchId = isCustomer ? undefined : (activeBranchId || (branches.length === 1 ? branches[0]?.id : undefined));
     
     // Unified reply mutation (handles both business and customer endpoints)

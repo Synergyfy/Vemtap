@@ -323,8 +323,7 @@ export class CatalogueOrderService {
     }
 
     return updatedOrder;
-    }
-    }
+  }
 
   private async deductStock(item: CatalogueItem, quantity: number) {
     if (item.stockQuantity !== null) {

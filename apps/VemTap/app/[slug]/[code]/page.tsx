@@ -552,7 +552,7 @@ export default function DynamicTapJourneyPage() {
         } else if (id === 'chat') {
             const navigateToChat = () => {
                 const businessBranchId = branchId || businessId;
-                router.push(`/customer/messages/chat?id=${businessBranchId}`);
+                router.push(`/customer/messaging/chat?branchId=${businessBranchId}`);
             };
 
             if (!isAuthenticated) {

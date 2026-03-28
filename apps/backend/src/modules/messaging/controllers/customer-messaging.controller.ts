@@ -10,6 +10,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Delete,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,6 +19,7 @@ import {
   ApiBody,
   ApiResponse,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { InboxService } from '../services/inbox.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -41,11 +43,22 @@ export class CustomerMessagingController {
     description:
       'Retrieves all active conversations between the customer and various business branches. Access: CUSTOMER',
   })
+  @ApiQuery({
+    name: 'branchId',
+    required: false,
+    description: 'Optional branch ID to find or create a thread',
+  })
   @ApiResponse({
     status: 200,
     description: 'List of business threads for the visitor',
   })
-  async getThreads(@Request() req: { user: User }) {
+  async getThreads(
+    @Request() req: { user: User },
+    @Query('branchId') branchId?: string,
+  ) {
+    if (branchId) {
+      await this.inboxService.findOrCreateCustomerThread(req.user.id, branchId);
+    }
     return this.inboxService.getCustomerThreads(req.user.id);
   }
 

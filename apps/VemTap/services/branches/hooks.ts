@@ -3,11 +3,12 @@ import { api } from '@/lib/api';
 import { Branch, CreateBranchRequest, UpdateBranchRequest } from './types';
 
 // ─── Fetch all branches for the authenticated user's business ─────────────────
-export const useBranches = () => {
+export const useBranches = (enabled: boolean = true) => {
     return useQuery<Branch[], Error>({
         queryKey: ['branches'],
         queryFn: async () => await api.get('/branches'),
         staleTime: 1000 * 60 * 5, // cache for 5 minutes
+        enabled,
     });
 };
 

@@ -34,10 +34,16 @@ export const useChatThreads = (channel: string = 'IN_HOUSE', branchId?: string, 
   return useQuery({
     queryKey: ['chat-threads', channel, branchId, isCustomer],
     queryFn: async () => {
-      const endpoint = isCustomer 
+      let endpoint = isCustomer 
         ? `/customer/messaging/threads`
-        : `/messaging/inbox/${channel}${branchId ? `?branchId=${branchId}` : ''}`;
-      const data = await api.get(endpoint);
+        : `/messaging/inbox/${channel}`;
+      
+      const params = new URLSearchParams();
+      if (!isCustomer && branchId) params.append('branchId', branchId);
+      if (isCustomer && branchId) params.append('branchId', branchId);
+      
+      const qs = params.toString();
+      const data = await api.get(`${endpoint}${qs ? `?${qs}` : ''}`);
       return (data as any[]).map(t => normalizeThread(t, isCustomer));
     },
     enabled: isCustomer || !!branchId || channel === 'IN_HOUSE',
@@ -164,11 +170,11 @@ export const useDeleteMessage = (isCustomer: boolean = false) => {
 
 // --- Template Hooks ---
 
-export const useChatTemplates = (branchId?: string) => {
+export const useChatTemplates = (branchId?: string, enabled: boolean = true) => {
   return useQuery({
     queryKey: ['chat-templates', branchId],
     queryFn: () => api.get(`/messaging/templates${branchId ? `?branchId=${branchId}` : ''}`),
-    enabled: !!branchId,
+    enabled: !!branchId && enabled,
   });
 };
 

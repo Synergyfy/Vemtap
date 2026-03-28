@@ -87,9 +87,9 @@ export default function ChatSidebar() {
          search: customerQuery || searchQuery,
      });
      
-     const { data: newVisitorsData } = useNewVisitors(branchId || undefined, { limit: 1 });
-     const { data: returningVisitorsData } = useReturningVisitors(branchId || undefined, { limit: 1 });
-     const { data: segments = [] } = useSegments(branchId || undefined);
+     const { data: newVisitorsData } = useNewVisitors(branchId || undefined, { limit: 1 }, !isCustomer);
+     const { data: returningVisitorsData } = useReturningVisitors(branchId || undefined, { limit: 1 }, !isCustomer);
+     const { data: segments = [] } = useSegments(branchId || undefined, !isCustomer);
      const createSegment = useCreateSegment();
      const addSegmentMembers = useAddSegmentMembers();
      const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
@@ -184,15 +184,35 @@ export default function ChatSidebar() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showNewChat]);
 
-    // Auto-select thread if businessId is in URL (for Customers)
+    // Auto-select thread if businessId or branchId is in URL (for Customers)
     useEffect(() => {
-        if (isCustomer && businessIdFromUrl && allThreads.length > 0 && !activeConversationId) {
-            const thread = allThreads.find(t => t.business?.uniqueCode === businessIdFromUrl || t.business?.id === businessIdFromUrl);
-            if (thread && thread.id !== activeConversationId) {
-                setActiveConversation(thread.id);
+        const targetBranchId = searchParams.get('branchId') || searchParams.get('businessId');
+        if (isCustomer && targetBranchId && allThreads.length > 0 && !activeConversationId) {
+            const thread = allThreads.find(t => 
+                t.branchId === targetBranchId || 
+                t.contact?.id === targetBranchId ||
+                t.branch?.id === targetBranchId
+            );
+            
+            if (thread) {
+                if (thread.id !== activeConversationId) {
+                    setActiveConversation(thread.id);
+                }
+            } else if (customerAvailableBranches.length > 0) {
+                // If no existing thread, but we found the branch in history, start a pending one
+                const branch = customerAvailableBranches.find(b => b.id === targetBranchId);
+                if (branch) {
+                    const threadId = addPendingThread({
+                        id: branch.id,
+                        name: branch.name,
+                        avatar: branch.avatar,
+                        isOnline: false,
+                    });
+                    setActiveConversation(threadId);
+                }
             }
         }
-    }, [isCustomer, businessIdFromUrl, allThreads, activeConversationId, setActiveConversation]);
+    }, [isCustomer, searchParams, allThreads, activeConversationId, setActiveConversation, customerAvailableBranches, addPendingThread]);
 
     // Auto-select thread if visitorId is in URL (for Businesses)
     useEffect(() => {

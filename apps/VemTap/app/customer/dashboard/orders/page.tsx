@@ -125,7 +125,7 @@ export default function CustomerOrdersPage() {
                                     </p>
                                 </div>
                                 <Link 
-                                    href={`/customer/messages/chat?id=${order.branchId}&orderId=${order.id}`}
+                                    href={`/customer/messaging/chat?branchId=${order.branchId}&orderId=${order.id}`}
                                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all group-hover:-translate-x-1"
                                 >
                                     Contact Business
