@@ -36,6 +36,8 @@ import { AdministrationModule } from './modules/administration/administration.mo
 import { ImpersonationGuard } from './modules/administration/impersonation.guard';
 import { CustomerImpersonationGuard } from './modules/administration/customer-impersonation.guard';
 import { ScheduleModule } from '@nestjs/schedule';
+import { CatalogueModule } from './modules/catalogue/catalogue.module';
+import { CatalogueOrderModule } from './modules/catalogue-orders/catalogue-orders.module';
 
 import { dataSourceOptions } from './database/data-source';
 
@@ -125,6 +127,8 @@ import { dataSourceOptions } from './database/data-source';
     CategoriesModule,
     ObservabilityModule,
     AdministrationModule,
+    CatalogueModule,
+    CatalogueOrderModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
